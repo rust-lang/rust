@@ -1897,7 +1897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
 
             if !private_fields.is_empty() {
-                self.report_private_fields(adt_ty, span, private_fields, ast_fields);
+                self.report_private_fields(adt_ty, span, expr.span, private_fields, ast_fields);
             } else {
                 self.report_missing_fields(
                     adt_ty,
@@ -2056,6 +2056,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         adt_ty: Ty<'tcx>,
         span: Span,
+        expr_span: Span,
         private_fields: Vec<&ty::FieldDef>,
         used_fields: &'tcx [hir::ExprField<'tcx>],
     ) {
@@ -2100,6 +2101,81 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 were = pluralize!("was", remaining_private_fields_len),
             ));
         }
+
+        if let ty::Adt(def, _) = adt_ty.kind() {
+            let def_id = def.did();
+            let mut items = self
+                .tcx
+                .inherent_impls(def_id)
+                .iter()
+                .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
+                // Only assoc fn with no receivers.
+                .filter(|item| {
+                    matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter
+                })
+                .filter_map(|item| {
+                    // Only assoc fns that return `Self`
+                    let fn_sig = self.tcx.fn_sig(item.def_id).skip_binder();
+                    let ret_ty = fn_sig.output();
+                    let ret_ty =
+                        self.tcx.normalize_erasing_late_bound_regions(self.param_env, ret_ty);
+                    if !self.can_eq(self.param_env, ret_ty, adt_ty) {
+                        return None;
+                    }
+                    let input_len = fn_sig.inputs().skip_binder().len();
+                    let order = !item.name.as_str().starts_with("new");
+                    Some((order, item.name, input_len))
+                })
+                .collect::<Vec<_>>();
+            items.sort_by_key(|(order, _, _)| *order);
+            let suggestion = |name, args| {
+                format!(
+                    "::{name}({})",
+                    std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
+                )
+            };
+            match &items[..] {
+                [] => {}
+                [(_, name, args)] => {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_hi().with_hi(expr_span.hi()),
+                        format!("you might have meant to use the `{name}` associated function"),
+                        suggestion(name, *args),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {
+                    err.span_suggestions(
+                        span.shrink_to_hi().with_hi(expr_span.hi()),
+                        "you might have meant to use an associated function to build this type",
+                        items
+                            .iter()
+                            .map(|(_, name, args)| suggestion(name, *args))
+                            .collect::<Vec<String>>(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            if let Some(default_trait) = self.tcx.get_diagnostic_item(sym::Default)
+                && self
+                    .infcx
+                    .type_implements_trait(default_trait, [adt_ty], self.param_env)
+                    .may_apply()
+            {
+                err.multipart_suggestion(
+                    "consider using the `Default` trait",
+                    vec![
+                        (span.shrink_to_lo(), "<".to_string()),
+                        (
+                            span.shrink_to_hi().with_hi(expr_span.hi()),
+                            " as std::default::Default>::default()".to_string(),
+                        ),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
+
         err.emit();
     }
 
@@ -2703,7 +2779,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.get_field_candidates_considering_privacy(span, ty, mod_id, id)
         {
             let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
-            let candidate_fields: Vec<_> = found_fields
+            let mut candidate_fields: Vec<_> = found_fields
                 .into_iter()
                 .filter_map(|candidate_field| {
                     self.check_for_nested_field_satisfying(
@@ -2724,6 +2800,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .collect::<String>()
                 })
                 .collect::<Vec<_>>();
+            candidate_fields.sort();
 
             let len = candidate_fields.len();
             if len > 0 {

@@ -2608,6 +2608,7 @@ fn show_candidates(
         path_strings.extend(core_path_strings);
         path_strings.dedup_by(|a, b| a.0 == b.0);
     }
+    accessible_path_strings.sort();
 
     if !accessible_path_strings.is_empty() {
         let (determiner, kind, name, through) =

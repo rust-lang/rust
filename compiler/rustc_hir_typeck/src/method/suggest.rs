@@ -1426,6 +1426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !suggs.is_empty()
             && let Some(span) = sugg_span
         {
+            suggs.sort();
             err.span_suggestions(
                 span.with_hi(item_name.span.lo()),
                 "use fully-qualified syntax to disambiguate",
@@ -2000,8 +2001,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.get_diagnostic_item(sym::Borrow),
                     self.tcx.get_diagnostic_item(sym::BorrowMut),
                 ];
-                let candidate_fields: Vec<_> = fields
-                    .iter()
+                let mut candidate_fields: Vec<_> = fields
+                    .into_iter()
                     .filter_map(|candidate_field| {
                         self.check_for_nested_field_satisfying(
                             span,
@@ -2035,6 +2036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .join(".")
                     })
                     .collect();
+                candidate_fields.sort();
 
                 let len = candidate_fields.len();
                 if len > 0 {
@@ -2567,13 +2569,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.item_name(*trait_did),
             )
         });
+        let mut sugg: Vec<_> = path_strings.chain(glob_path_strings).collect();
+        sugg.sort();
 
-        err.span_suggestions(
-            span,
-            msg,
-            path_strings.chain(glob_path_strings),
-            Applicability::MaybeIncorrect,
-        );
+        err.span_suggestions(span, msg, sugg, Applicability::MaybeIncorrect);
     }
 
     fn suggest_valid_traits(

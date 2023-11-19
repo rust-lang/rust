@@ -1,11 +1,13 @@
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
 use crate::late::{LifetimeBinderKind, LifetimeRes, LifetimeRibKind, LifetimeUseSet};
+use crate::ty::fast_reject::SimplifiedType;
 use crate::{errors, path_names_to_string};
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 use rustc_hir::def::Namespace::{self, *};
 
+use rustc_ast::ptr::P;
 use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt};
 use rustc_ast::{
     self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
@@ -15,7 +17,7 @@ use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan,
+    MultiSpan, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
@@ -28,6 +30,8 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+
+use rustc_middle::ty;
 
 use std::borrow::Cow;
 use std::iter;
@@ -1331,7 +1335,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep = |err: &mut Diagnostic, expr: &Expr, kind: DefKind| {
+        let path_sep = |this: &mut Self, err: &mut Diagnostic, expr: &Expr, kind: DefKind| {
             const MESSAGE: &str = "use the path separator to refer to an item";
 
             let (lhs_span, rhs_span) = match &expr.kind {
@@ -1352,7 +1356,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 true
             } else if kind == DefKind::Struct
                 && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
-                && let Ok(snippet) = self.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
+                && let Ok(snippet) = this.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
             {
                 // The LHS is a type that originates from a macro call.
                 // We have to add angle brackets around it.
@@ -1387,13 +1391,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         };
 
-        let mut bad_struct_syntax_suggestion = |def_id: DefId| {
-            let (followed_by_brace, closing_brace) = self.followed_by_brace(span);
+        let mut bad_struct_syntax_suggestion = |this: &mut Self, def_id: DefId| {
+            let (followed_by_brace, closing_brace) = this.followed_by_brace(span);
 
             match source {
                 PathSource::Expr(Some(
                     parent @ Expr { kind: ExprKind::Field(..) | ExprKind::MethodCall(..), .. },
-                )) if path_sep(err, &parent, DefKind::Struct) => {}
+                )) if path_sep(this, err, &parent, DefKind::Struct) => {}
                 PathSource::Expr(
                     None
                     | Some(Expr {
@@ -1430,7 +1434,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
                 PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = find_span(&source, err);
-                    err.span_label(self.r.def_span(def_id), format!("`{path_str}` defined here"));
+                    err.span_label(this.r.def_span(def_id), format!("`{path_str}` defined here"));
 
                     let (tail, descr, applicability, old_fields) = match source {
                         PathSource::Pat => ("", "pattern", Applicability::MachineApplicable, None),
@@ -1440,50 +1444,69 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             Applicability::MachineApplicable,
                             Some(
                                 args.iter()
-                                    .map(|a| self.r.tcx.sess.source_map().span_to_snippet(*a).ok())
+                                    .map(|a| this.r.tcx.sess.source_map().span_to_snippet(*a).ok())
                                     .collect::<Vec<Option<String>>>(),
                             ),
                         ),
                         _ => (": val", "literal", Applicability::HasPlaceholders, None),
                     };
-                    let field_ids = self.r.field_def_ids(def_id);
-                    let (fields, applicability) = match field_ids {
-                        Some(field_ids) => {
-                            let fields = field_ids.iter().map(|&id| self.r.tcx.item_name(id));
 
-                            let fields = if let Some(old_fields) = old_fields {
-                                fields
-                                    .enumerate()
-                                    .map(|(idx, new)| (new, old_fields.get(idx)))
-                                    .map(|(new, old)| {
-                                        let new = new.to_ident_string();
-                                        if let Some(Some(old)) = old
-                                            && new != *old
-                                        {
-                                            format!("{new}: {old}")
-                                        } else {
-                                            new
-                                        }
-                                    })
-                                    .collect::<Vec<String>>()
-                            } else {
-                                fields.map(|f| format!("{f}{tail}")).collect::<Vec<String>>()
-                            };
+                    if !this.has_private_fields(def_id) {
+                        // If the fields of the type are private, we shouldn't be suggesting using
+                        // the struct literal syntax at all, as that will cause a subsequent error.
+                        let field_ids = this.r.field_def_ids(def_id);
+                        let (fields, applicability) = match field_ids {
+                            Some(field_ids) => {
+                                let fields = field_ids.iter().map(|&id| this.r.tcx.item_name(id));
 
-                            (fields.join(", "), applicability)
-                        }
-                        None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
-                    };
-                    let pad = match field_ids {
-                        Some(field_ids) if field_ids.is_empty() => "",
-                        _ => " ",
-                    };
-                    err.span_suggestion(
-                        span,
-                        format!("use struct {descr} syntax instead"),
-                        format!("{path_str} {{{pad}{fields}{pad}}}"),
-                        applicability,
-                    );
+                                let fields = if let Some(old_fields) = old_fields {
+                                    fields
+                                        .enumerate()
+                                        .map(|(idx, new)| (new, old_fields.get(idx)))
+                                        .map(|(new, old)| {
+                                            let new = new.to_ident_string();
+                                            if let Some(Some(old)) = old
+                                                && new != *old
+                                            {
+                                                format!("{new}: {old}")
+                                            } else {
+                                                new
+                                            }
+                                        })
+                                        .collect::<Vec<String>>()
+                                } else {
+                                    fields.map(|f| format!("{f}{tail}")).collect::<Vec<String>>()
+                                };
+
+                                (fields.join(", "), applicability)
+                            }
+                            None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
+                        };
+                        let pad = match field_ids {
+                            Some(field_ids) if field_ids.is_empty() => "",
+                            _ => " ",
+                        };
+                        err.span_suggestion(
+                            span,
+                            format!("use struct {descr} syntax instead"),
+                            format!("{path_str} {{{pad}{fields}{pad}}}"),
+                            applicability,
+                        );
+                    }
+                    if let PathSource::Expr(Some(Expr {
+                        kind: ExprKind::Call(path, ref args),
+                        span: call_span,
+                        ..
+                    })) = source
+                    {
+                        this.suggest_alternative_construction_methods(
+                            def_id,
+                            err,
+                            path.span,
+                            *call_span,
+                            &args[..],
+                        );
+                    }
                 }
                 _ => {
                     err.span_label(span, fallback_label.to_string());
@@ -1533,7 +1556,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 Res::Def(kind @ (DefKind::Mod | DefKind::Trait), _),
                 PathSource::Expr(Some(parent)),
             ) => {
-                if !path_sep(err, &parent, kind) {
+                if !path_sep(self, err, &parent, kind) {
                     return false;
                 }
             }
@@ -1567,13 +1590,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let (ctor_def, ctor_vis, fields) = if let Some(struct_ctor) = struct_ctor {
                     if let PathSource::Expr(Some(parent)) = source {
                         if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
-                            bad_struct_syntax_suggestion(def_id);
+                            bad_struct_syntax_suggestion(self, def_id);
                             return true;
                         }
                     }
                     struct_ctor
                 } else {
-                    bad_struct_syntax_suggestion(def_id);
+                    bad_struct_syntax_suggestion(self, def_id);
                     return true;
                 };
 
@@ -1593,30 +1616,21 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         Some(Vec::from(pattern_spans))
                     }
                     // e.g. `let _ = Enum::TupleVariant(field1, field2);`
-                    _ if source.is_call() => {
+                    PathSource::Expr(Some(Expr {
+                        kind: ExprKind::Call(path, ref args),
+                        span: call_span,
+                        ..
+                    })) => {
                         err.set_primary_message(
                             "cannot initialize a tuple struct which contains private fields",
                         );
-                        if !def_id.is_local()
-                            && self
-                                .r
-                                .tcx
-                                .inherent_impls(def_id)
-                                .iter()
-                                .flat_map(|impl_def_id| {
-                                    self.r.tcx.provided_trait_methods(*impl_def_id)
-                                })
-                                .any(|assoc| !assoc.fn_has_self_parameter && assoc.name == sym::new)
-                        {
-                            // FIXME: look for associated functions with Self return type,
-                            // instead of relying only on the name and lack of self receiver.
-                            err.span_suggestion_verbose(
-                                span.shrink_to_hi(),
-                                "you might have meant to use the `new` associated function",
-                                "::new".to_string(),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
+                        self.suggest_alternative_construction_methods(
+                            def_id,
+                            err,
+                            path.span,
+                            *call_span,
+                            &args[..],
+                        );
                         // Use spans of the tuple struct definition.
                         self.r.field_def_ids(def_id).map(|field_ids| {
                             field_ids
@@ -1663,7 +1677,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 err.span_label(span, "constructor is not visible here due to private fields");
             }
             (Res::Def(DefKind::Union | DefKind::Variant, def_id), _) if ns == ValueNS => {
-                bad_struct_syntax_suggestion(def_id);
+                bad_struct_syntax_suggestion(self, def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id), _) if ns == ValueNS => {
                 match source {
@@ -1707,6 +1721,161 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             _ => return false,
         }
         true
+    }
+
+    fn suggest_alternative_construction_methods(
+        &mut self,
+        def_id: DefId,
+        err: &mut Diagnostic,
+        path_span: Span,
+        call_span: Span,
+        args: &[P<Expr>],
+    ) {
+        if def_id.is_local() {
+            // Doing analysis on local `DefId`s would cause infinite recursion.
+            return;
+        }
+        // Look at all the associated functions without receivers in the type's
+        // inherent impls to look for builders that return `Self`
+        let mut items = self
+            .r
+            .tcx
+            .inherent_impls(def_id)
+            .iter()
+            .flat_map(|i| self.r.tcx.associated_items(i).in_definition_order())
+            // Only assoc fn with no receivers.
+            .filter(|item| matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter)
+            .filter_map(|item| {
+                // Only assoc fns that return `Self`
+                let fn_sig = self.r.tcx.fn_sig(item.def_id).skip_binder();
+                let ret_ty = fn_sig.output();
+                let ret_ty = self
+                    .r
+                    .tcx
+                    .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), ret_ty);
+                let ty::Adt(def, _args) = ret_ty.kind() else {
+                    return None;
+                };
+                let input_len = fn_sig.inputs().skip_binder().len();
+                if def.did() != def_id {
+                    return None;
+                }
+                let order = !item.name.as_str().starts_with("new");
+                Some((order, item.name, input_len))
+            })
+            .collect::<Vec<_>>();
+        items.sort_by_key(|(order, _, _)| *order);
+        let suggestion = |name, args| {
+            format!(
+                "::{name}({})",
+                std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
+            )
+        };
+        match &items[..] {
+            [] => {}
+            [(_, name, len)] if *len == args.len() => {
+                err.span_suggestion_verbose(
+                    path_span.shrink_to_hi(),
+                    format!("you might have meant to use the `{name}` associated function",),
+                    format!("::{name}"),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            [(_, name, len)] => {
+                err.span_suggestion_verbose(
+                    path_span.shrink_to_hi().with_hi(call_span.hi()),
+                    format!("you might have meant to use the `{name}` associated function",),
+                    suggestion(name, *len),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {
+                err.span_suggestions_with_style(
+                    path_span.shrink_to_hi().with_hi(call_span.hi()),
+                    "you might have meant to use an associated function to build this type",
+                    items
+                        .iter()
+                        .map(|(_, name, len)| suggestion(name, *len))
+                        .collect::<Vec<String>>(),
+                    Applicability::MaybeIncorrect,
+                    SuggestionStyle::ShowAlways,
+                );
+            }
+        }
+        // We'd ideally use `type_implements_trait` but don't have access to
+        // the trait solver here. We can't use `get_diagnostic_item` or
+        // `all_traits` in resolve either. So instead we abuse the import
+        // suggestion machinery to get `std::default::Default` and perform some
+        // checks to confirm that we got *only* that trait. We then see if the
+        // Adt we have has a direct implementation of `Default`. If so, we
+        // provide a structured suggestion.
+        let default_trait = self
+            .r
+            .lookup_import_candidates(
+                Ident::with_dummy_span(sym::Default),
+                Namespace::TypeNS,
+                &self.parent_scope,
+                &|res: Res| matches!(res, Res::Def(DefKind::Trait, _)),
+            )
+            .iter()
+            .filter_map(|candidate| candidate.did)
+            .filter(|did| {
+                self.r
+                    .tcx
+                    .get_attrs(*did, sym::rustc_diagnostic_item)
+                    .any(|attr| attr.value_str() == Some(sym::Default))
+            })
+            .next();
+        let Some(default_trait) = default_trait else {
+            return;
+        };
+        if self
+            .r
+            .extern_crate_map
+            .iter()
+            // FIXME: This doesn't include impls like `impl Default for String`.
+            .flat_map(|(_, crate_)| self.r.tcx.implementations_of_trait((*crate_, default_trait)))
+            .filter_map(|(_, simplified_self_ty)| *simplified_self_ty)
+            .filter_map(|simplified_self_ty| match simplified_self_ty {
+                SimplifiedType::Adt(did) => Some(did),
+                _ => None,
+            })
+            .any(|did| did == def_id)
+        {
+            err.multipart_suggestion(
+                "consider using the `Default` trait",
+                vec![
+                    (path_span.shrink_to_lo(), "<".to_string()),
+                    (
+                        path_span.shrink_to_hi().with_hi(call_span.hi()),
+                        " as std::default::Default>::default()".to_string(),
+                    ),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
+    fn has_private_fields(&self, def_id: DefId) -> bool {
+        let fields = match def_id.as_local() {
+            Some(def_id) => self.r.struct_constructors.get(&def_id).cloned().map(|(_, _, f)| f),
+            None => Some(
+                self.r
+                    .tcx
+                    .associated_item_def_ids(def_id)
+                    .iter()
+                    .map(|field_id| self.r.tcx.visibility(field_id))
+                    .collect(),
+            ),
+        };
+
+        fields.map_or(false, |fields| {
+            fields
+                .iter()
+                .filter(|vis| !self.r.is_accessible_from(**vis, self.parent_scope.module))
+                .next()
+                .is_some()
+        })
     }
 
     /// Given the target `ident` and `kind`, search for the similarly named associated item
@@ -2089,11 +2258,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         if suggest_only_tuple_variants {
             // Suggest only tuple variants regardless of whether they have fields and do not
             // suggest path with added parentheses.
-            let suggestable_variants = variants
+            let mut suggestable_variants = variants
                 .iter()
                 .filter(|(.., kind)| *kind == CtorKind::Fn)
                 .map(|(variant, ..)| path_names_to_string(variant))
                 .collect::<Vec<_>>();
+            suggestable_variants.sort();
 
             let non_suggestable_variant_count = variants.len() - suggestable_variants.len();
 
@@ -2144,7 +2314,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             };
 
-            let suggestable_variants = variants
+            let mut suggestable_variants = variants
                 .iter()
                 .filter(|(_, def_id, kind)| !needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -2153,6 +2323,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     CtorKind::Fn => format!("({variant}())"),
                 })
                 .collect::<Vec<_>>();
+            suggestable_variants.sort();
             let no_suggestable_variant = suggestable_variants.is_empty();
 
             if !no_suggestable_variant {
@@ -2170,7 +2341,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 );
             }
 
-            let suggestable_variants_with_placeholders = variants
+            let mut suggestable_variants_with_placeholders = variants
                 .iter()
                 .filter(|(_, def_id, kind)| needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -2179,6 +2350,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     _ => None,
                 })
                 .collect::<Vec<_>>();
+            suggestable_variants_with_placeholders.sort();
 
             if !suggestable_variants_with_placeholders.is_empty() {
                 let msg =
