@@ -597,7 +597,7 @@ impl Stdio {
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
                 opts.security_attributes(&mut sa);
-                File::open(Path::new("NUL"), &opts).map(|file| file.into_inner())
+                File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner())
             }
         }
     }
