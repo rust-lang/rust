@@ -1,6 +1,6 @@
 #![feature(portable_simd)]
 
-use core_simd::simd::*;
+use core_simd::simd::prelude::*;
 
 fn a(i: usize, j: usize) -> f64 {
     ((i + j) * (i + j + 1) / 2 + i + 1) as f64

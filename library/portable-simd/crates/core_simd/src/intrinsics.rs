@@ -160,4 +160,10 @@ extern "platform-intrinsic" {
 
     /// convert an exposed address back to a pointer
     pub(crate) fn simd_from_exposed_addr<T, U>(addr: T) -> U;
+
+    // Integer operations
+    pub(crate) fn simd_bswap<T>(x: T) -> T;
+    pub(crate) fn simd_bitreverse<T>(x: T) -> T;
+    pub(crate) fn simd_ctlz<T>(x: T) -> T;
+    pub(crate) fn simd_cttz<T>(x: T) -> T;
 }

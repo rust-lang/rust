@@ -1,30 +1,30 @@
 #![allow(unused_imports)]
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 use core::marker::PhantomData;
 
 /// A mask where each lane is represented by a single bit.
 #[repr(transparent)]
-pub struct Mask<T, const LANES: usize>(
-    <LaneCount<LANES> as SupportedLaneCount>::BitMask,
+pub struct Mask<T, const N: usize>(
+    <LaneCount<N> as SupportedLaneCount>::BitMask,
     PhantomData<T>,
 )
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount;
+    LaneCount<N>: SupportedLaneCount;
 
-impl<T, const LANES: usize> Copy for Mask<T, LANES>
+impl<T, const N: usize> Copy for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
 }
 
-impl<T, const LANES: usize> Clone for Mask<T, LANES>
+impl<T, const N: usize> Clone for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -32,10 +32,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> PartialEq for Mask<T, LANES>
+impl<T, const N: usize> PartialEq for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -43,10 +43,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> PartialOrd for Mask<T, LANES>
+impl<T, const N: usize> PartialOrd for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
@@ -54,17 +54,17 @@ where
     }
 }
 
-impl<T, const LANES: usize> Eq for Mask<T, LANES>
+impl<T, const N: usize> Eq for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
 }
 
-impl<T, const LANES: usize> Ord for Mask<T, LANES>
+impl<T, const N: usize> Ord for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
@@ -72,22 +72,22 @@ where
     }
 }
 
-impl<T, const LANES: usize> Mask<T, LANES>
+impl<T, const N: usize> Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn splat(value: bool) -> Self {
-        let mut mask = <LaneCount<LANES> as SupportedLaneCount>::BitMask::default();
+        let mut mask = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
         if value {
             mask.as_mut().fill(u8::MAX)
         } else {
             mask.as_mut().fill(u8::MIN)
         }
-        if LANES % 8 > 0 {
-            *mask.as_mut().last_mut().unwrap() &= u8::MAX >> (8 - LANES % 8);
+        if N % 8 > 0 {
+            *mask.as_mut().last_mut().unwrap() &= u8::MAX >> (8 - N % 8);
         }
         Self(mask, PhantomData)
     }
@@ -107,7 +107,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub fn to_int(self) -> Simd<T, LANES> {
+    pub fn to_int(self) -> Simd<T, N> {
         unsafe {
             intrinsics::simd_select_bitmask(self.0, Simd::splat(T::TRUE), Simd::splat(T::FALSE))
         }
@@ -115,51 +115,47 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
+    pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
         unsafe { Self(intrinsics::simd_bitmask(value), PhantomData) }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
-    #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask_array<const N: usize>(self) -> [u8; N] {
-        assert!(core::mem::size_of::<Self>() == N);
-
-        // Safety: converting an integer to an array of bytes of the same size is safe
-        unsafe { core::mem::transmute_copy(&self.0) }
-    }
-
-    #[cfg(feature = "generic_const_exprs")]
-    #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_array<const N: usize>(bitmask: [u8; N]) -> Self {
-        assert!(core::mem::size_of::<Self>() == N);
-
-        // Safety: converting an array of bytes to an integer of the same size is safe
-        Self(unsafe { core::mem::transmute_copy(&bitmask) }, PhantomData)
-    }
-
-    #[inline]
-    pub fn to_bitmask_integer<U>(self) -> U
-    where
-        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
-    {
-        // Safety: these are the same types
-        unsafe { core::mem::transmute_copy(&self.0) }
-    }
-
-    #[inline]
-    pub fn from_bitmask_integer<U>(bitmask: U) -> Self
-    where
-        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
-    {
-        // Safety: these are the same types
-        unsafe { Self(core::mem::transmute_copy(&bitmask), PhantomData) }
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    pub fn to_bitmask_vector(self) -> Simd<u8, N> {
+        let mut bitmask = Simd::splat(0);
+        bitmask.as_mut_array()[..self.0.as_ref().len()].copy_from_slice(self.0.as_ref());
+        bitmask
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn convert<U>(self) -> Mask<U, LANES>
+    pub fn from_bitmask_vector(bitmask: Simd<u8, N>) -> Self {
+        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
+        let len = bytes.as_ref().len();
+        bytes.as_mut().copy_from_slice(&bitmask.as_array()[..len]);
+        Self(bytes, PhantomData)
+    }
+
+    #[inline]
+    pub fn to_bitmask_integer(self) -> u64 {
+        let mut bitmask = [0u8; 8];
+        bitmask[..self.0.as_ref().len()].copy_from_slice(self.0.as_ref());
+        u64::from_ne_bytes(bitmask)
+    }
+
+    #[inline]
+    pub fn from_bitmask_integer(bitmask: u64) -> Self {
+        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
+        let len = bytes.as_mut().len();
+        bytes
+            .as_mut()
+            .copy_from_slice(&bitmask.to_ne_bytes()[..len]);
+        Self(bytes, PhantomData)
+    }
+
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn convert<U>(self) -> Mask<U, N>
     where
         U: MaskElement,
     {
@@ -180,11 +176,11 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::ops::BitAnd for Mask<T, LANES>
+impl<T, const N: usize> core::ops::BitAnd for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
-    <LaneCount<LANES> as SupportedLaneCount>::BitMask: AsRef<[u8]> + AsMut<[u8]>,
+    LaneCount<N>: SupportedLaneCount,
+    <LaneCount<N> as SupportedLaneCount>::BitMask: AsRef<[u8]> + AsMut<[u8]>,
 {
     type Output = Self;
     #[inline]
@@ -197,11 +193,11 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::ops::BitOr for Mask<T, LANES>
+impl<T, const N: usize> core::ops::BitOr for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
-    <LaneCount<LANES> as SupportedLaneCount>::BitMask: AsRef<[u8]> + AsMut<[u8]>,
+    LaneCount<N>: SupportedLaneCount,
+    <LaneCount<N> as SupportedLaneCount>::BitMask: AsRef<[u8]> + AsMut<[u8]>,
 {
     type Output = Self;
     #[inline]
@@ -214,10 +210,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::ops::BitXor for Mask<T, LANES>
+impl<T, const N: usize> core::ops::BitXor for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     type Output = Self;
     #[inline]
@@ -230,10 +226,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::ops::Not for Mask<T, LANES>
+impl<T, const N: usize> core::ops::Not for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     type Output = Self;
     #[inline]
@@ -242,8 +238,8 @@ where
         for x in self.0.as_mut() {
             *x = !*x;
         }
-        if LANES % 8 > 0 {
-            *self.0.as_mut().last_mut().unwrap() &= u8::MAX >> (8 - LANES % 8);
+        if N % 8 > 0 {
+            *self.0.as_mut().last_mut().unwrap() &= u8::MAX >> (8 - N % 8);
         }
         self
     }

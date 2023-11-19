@@ -1,15 +1,15 @@
 use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Mask, MaskElement, Simd, SimdElement, SupportedLaneCount};
 
-impl<T, const LANES: usize> Mask<T, LANES>
+impl<T, const N: usize> Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
-    /// Choose lanes from two vectors.
+    /// Choose elements from two vectors.
     ///
-    /// For each lane in the mask, choose the corresponding lane from `true_values` if
-    /// that lane mask is true, and `false_values` if that lane mask is false.
+    /// For each element in the mask, choose the corresponding element from `true_values` if
+    /// that element mask is true, and `false_values` if that element mask is false.
     ///
     /// # Examples
     /// ```
@@ -23,11 +23,7 @@ where
     /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn select<U>(
-        self,
-        true_values: Simd<U, LANES>,
-        false_values: Simd<U, LANES>,
-    ) -> Simd<U, LANES>
+    pub fn select<U>(self, true_values: Simd<U, N>, false_values: Simd<U, N>) -> Simd<U, N>
     where
         U: SimdElement<Mask = T>,
     {
@@ -36,10 +32,10 @@ where
         unsafe { intrinsics::simd_select(self.to_int(), true_values, false_values) }
     }
 
-    /// Choose lanes from two masks.
+    /// Choose elements from two masks.
     ///
-    /// For each lane in the mask, choose the corresponding lane from `true_values` if
-    /// that lane mask is true, and `false_values` if that lane mask is false.
+    /// For each element in the mask, choose the corresponding element from `true_values` if
+    /// that element mask is true, and `false_values` if that element mask is false.
     ///
     /// # Examples
     /// ```

@@ -167,40 +167,33 @@ jobs:
             RUSTFLAGS: ${{ matrix.rustflags }}
 
   cross-tests:
-    name: "${{ matrix.target }} (via cross)"
+    name: "${{ matrix.target_feature }} on ${{ matrix.target }} (via cross)"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # TODO: Sadly, we cant configure target-feature in a meaningful way
-      # because `cross` doesn't tell qemu to enable any non-default cpu
-      # features, nor does it give us a way to do so.
-      #
-      # Ultimately, we'd like to do something like [rust-lang/stdarch][stdarch].
-      # This is a lot more complex... but in practice it's likely that we can just
-      # snarf the docker config from around [here][1000-dockerfiles].
-      #
-      # [stdarch]: https://github.com/rust-lang/stdarch/blob/a5db4eaf/.github/workflows/main.yml#L67
-      # [1000-dockerfiles]: https://github.com/rust-lang/stdarch/tree/a5db4eaf/ci/docker
 
       matrix:
         target:
-          - i586-unknown-linux-gnu
-          # 32-bit arm has a few idiosyncracies like having subnormal flushing
-          # to zero on by default. Ideally we'd set
           - armv7-unknown-linux-gnueabihf
-          - aarch64-unknown-linux-gnu
-          # Note: The issue above means neither of these mips targets will use
-          # MSA (mips simd) but MIPS uses a nonstandard binary representation
-          # for NaNs which makes it worth testing on despite that.
+          - thumbv7neon-unknown-linux-gnueabihf # includes neon by default
+          - aarch64-unknown-linux-gnu           # includes neon by default
+          - powerpc-unknown-linux-gnu
+          - powerpc64le-unknown-linux-gnu       # includes altivec by default
+          - riscv64gc-unknown-linux-gnu
+          # MIPS uses a nonstandard binary representation for NaNs which makes it worth testing
+          # non-nightly since https://github.com/rust-lang/rust/pull/113274
           # - mips-unknown-linux-gnu
           # - mips64-unknown-linux-gnuabi64
-          - riscv64gc-unknown-linux-gnu
-          # TODO this test works, but it appears to time out
-          # - powerpc-unknown-linux-gnu
-          # TODO this test is broken, but it appears to be a problem with QEMU, not us.
-          # - powerpc64le-unknown-linux-gnu
-          # TODO enable this once a new version of cross is released
+          # Lots of errors in QEMU and no real hardware to test on. Not clear if it's QEMU or bad codegen.
           # - powerpc64-unknown-linux-gnu
+        target_feature: [default]
+        include:
+          - { target: powerpc64le-unknown-linux-gnu, target_feature: "+vsx" }
+          # Fails due to QEMU floating point errors, probably handling subnormals incorrectly.
+          # This target is somewhat redundant, since ppc64le has altivec as well.
+          # - { target: powerpc-unknown-linux-gnu, target_feature: "+altivec" }
+          # We should test this, but cross currently can't run it
+          # - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
 
     steps:
       - uses: actions/checkout@v2
@@ -217,10 +210,26 @@ jobs:
         # being part of the tarball means we can't just use the download/latest
         # URL :(
         run: |
-          CROSS_URL=https://github.com/rust-embedded/cross/releases/download/v0.2.1/cross-v0.2.1-x86_64-unknown-linux-gnu.tar.gz
+          CROSS_URL=https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-gnu.tar.gz
           mkdir -p "$HOME/.bin"
           curl -sfSL --retry-delay 10 --retry 5 "${CROSS_URL}" | tar zxf - -C "$HOME/.bin"
           echo "$HOME/.bin" >> $GITHUB_PATH
+
+      - name: Configure Emulated CPUs
+        run: |
+          echo "CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER=qemu-ppc -cpu e600" >> $GITHUB_ENV
+          # echo "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER=qemu-riscv64 -cpu rv64,zba=true,zbb=true,v=true,vlen=256,vext_spec=v1.0" >> $GITHUB_ENV
+
+      - name: Configure RUSTFLAGS
+        shell: bash
+        run: |
+          case "${{ matrix.target_feature }}" in
+            default)
+              echo "RUSTFLAGS=" >> $GITHUB_ENV;;
+            *)
+              echo "RUSTFLAGS=-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              ;;
+          esac
 
       - name: Test (debug)
         run: cross test --verbose --target=${{ matrix.target }}
@@ -229,7 +238,7 @@ jobs:
         run: cross test --verbose --target=${{ matrix.target }} --release
 
   features:
-    name: "Check cargo features (${{ matrix.simd }} × ${{ matrix.features }})"
+    name: "Test cargo features (${{ matrix.simd }} × ${{ matrix.features }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -240,12 +249,8 @@ jobs:
         features:
           - ""
           - "--features std"
-          - "--features generic_const_exprs"
-          - "--features std --features generic_const_exprs"
           - "--features all_lane_counts"
-          - "--features all_lane_counts --features std"
-          - "--features all_lane_counts --features generic_const_exprs"
-          - "--features all_lane_counts --features std --features generic_const_exprs"
+          - "--all-features"
 
     steps:
       - uses: actions/checkout@v2
@@ -257,9 +262,9 @@ jobs:
         run: echo "CPU_FEATURE=$(lscpu | grep -o avx512[a-z]* | sed s/avx/+avx/ | tr '\n' ',' )" >> $GITHUB_ENV
       - name: Check build
         if: ${{ matrix.simd == '' }}
-        run: RUSTFLAGS="-Dwarnings" cargo check --all-targets --no-default-features ${{ matrix.features }}
+        run: RUSTFLAGS="-Dwarnings" cargo test --all-targets --no-default-features ${{ matrix.features }}
       - name: Check AVX
         if: ${{ matrix.simd == 'avx512' && contains(env.CPU_FEATURE, 'avx512') }}
         run: |
           echo "Found AVX features: $CPU_FEATURE"
-          RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo check --all-targets --no-default-features ${{ matrix.features }}
+          RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo test --all-targets --no-default-features ${{ matrix.features }}
