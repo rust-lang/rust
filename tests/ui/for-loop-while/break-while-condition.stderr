@@ -38,7 +38,7 @@ LL |             while false {
    |             ^^^^^^^^^^^ this might have zero elements to iterate on
 LL |                 return
    |                 ------ if the loop doesn't execute, this value would never get returned
-   = help: return a value for the case when the loop has zero elements to iterate on, or consider changing the return type to account for that possibility
+   = help: return a value for the case when the loop has zero elements to iterate on, otherwise consider changing the return type to account for that possibility
 
 error: aborting due to 3 previous errors
 
