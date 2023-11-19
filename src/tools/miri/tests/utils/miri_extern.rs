@@ -137,4 +137,9 @@ extern "Rust" {
         out: *mut std::ffi::c_char,
         out_size: usize,
     ) -> usize;
+
+    /// Run the provenance GC. The GC will run automatically at some cadence,
+    /// but in tests we want to for sure run it at certain points to check
+    /// that it doesn't break anything.
+    pub fn miri_run_provenance_gc();
 }
