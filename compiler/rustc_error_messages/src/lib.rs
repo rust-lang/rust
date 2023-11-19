@@ -263,6 +263,8 @@ type FluentId = Cow<'static, str>;
 pub enum SubdiagnosticMessage {
     /// Non-translatable diagnostic message.
     Str(Cow<'static, str>),
+    /// Translatable diagnostic message in Fluent raw format.
+    FluentRaw(Cow<'static, str>),
     /// Translatable message which has already been translated eagerly.
     ///
     /// Some diagnostics have repeated subdiagnostics where the same interpolated variables would
@@ -310,6 +312,8 @@ impl From<Cow<'static, str>> for SubdiagnosticMessage {
 pub enum DiagnosticMessage {
     /// Non-translatable diagnostic message.
     Str(Cow<'static, str>),
+    /// Translatable diagnostic message in Fluent raw format.
+    FluentRaw(Cow<'static, str>),
     /// Translatable message which has already been translated eagerly.
     ///
     /// Some diagnostics have repeated subdiagnostics where the same interpolated variables would
@@ -339,6 +343,7 @@ impl DiagnosticMessage {
     pub fn with_subdiagnostic_message(&self, sub: SubdiagnosticMessage) -> Self {
         let attr = match sub {
             SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s),
+            SubdiagnosticMessage::FluentRaw(s) => return DiagnosticMessage::FluentRaw(s),
             SubdiagnosticMessage::Eager(s) => return DiagnosticMessage::Eager(s),
             SubdiagnosticMessage::FluentIdentifier(id) => {
                 return DiagnosticMessage::FluentIdentifier(id, None);
@@ -348,6 +353,7 @@ impl DiagnosticMessage {
 
         match self {
             DiagnosticMessage::Str(s) => DiagnosticMessage::Str(s.clone()),
+            DiagnosticMessage::FluentRaw(s) => DiagnosticMessage::FluentRaw(s.clone()),
             DiagnosticMessage::Eager(s) => DiagnosticMessage::Eager(s.clone()),
             DiagnosticMessage::FluentIdentifier(id, _) => {
                 DiagnosticMessage::FluentIdentifier(id.clone(), Some(attr))
@@ -357,7 +363,9 @@ impl DiagnosticMessage {
 
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            DiagnosticMessage::Eager(s) | DiagnosticMessage::Str(s) => Some(s),
+            DiagnosticMessage::Eager(s)
+            | DiagnosticMessage::Str(s)
+            | DiagnosticMessage::FluentRaw(s) => Some(s),
             DiagnosticMessage::FluentIdentifier(_, _) => None,
         }
     }
@@ -377,6 +385,13 @@ impl From<Cow<'static, str>> for DiagnosticMessage {
     fn from(s: Cow<'static, str>) -> Self {
         DiagnosticMessage::Str(s)
     }
+}
+
+#[macro_export]
+macro_rules! fluent_raw {
+    ($str:expr) => {
+        DiagnosticMessage::FluentRaw(Cow::Borrowed($str))
+    };
 }
 
 /// A workaround for "good path" ICEs when formatting types in disabled lints.
@@ -399,6 +414,7 @@ impl Into<SubdiagnosticMessage> for DiagnosticMessage {
     fn into(self) -> SubdiagnosticMessage {
         match self {
             DiagnosticMessage::Str(s) => SubdiagnosticMessage::Str(s),
+            DiagnosticMessage::FluentRaw(s) => SubdiagnosticMessage::FluentRaw(s),
             DiagnosticMessage::Eager(s) => SubdiagnosticMessage::Eager(s),
             DiagnosticMessage::FluentIdentifier(id, None) => {
                 SubdiagnosticMessage::FluentIdentifier(id)

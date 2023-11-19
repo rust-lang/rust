@@ -3,8 +3,12 @@ use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
-use rustc_errors::{error_code, Diagnostic, PResult};
+use rustc_errors::fluent_raw;
+use rustc_errors::DiagnosticMessage;
+use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
+use std::borrow::Cow;
+use std::convert::TryInto;
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -174,10 +178,15 @@ impl<'a> Parser<'a> {
             Ok(Some(item)) => {
                 // FIXME(#100717)
                 err.set_arg("item", item.kind.descr());
-                err.span_label(item.span, "the inner {$item_type} doesn't annotate this {$item}");
+                err.span_label(
+                    item.span,
+                    fluent_raw!("the inner {$item_type} doesn't annotate this {$item}"),
+                );
                 err.span_suggestion_verbose(
                     replacement_span,
-                    "to annotate the {$item}, change the {$item_type} from inner to outer style",
+                    fluent_raw!(
+                        "to annotate the {$item}, change the {$item_type} from inner to outer style"
+                    ),
                     match attr_type {
                         OuterAttributeType::Attribute => "",
                         OuterAttributeType::DocBlockComment => "*",

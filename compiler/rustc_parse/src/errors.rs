@@ -1,11 +1,12 @@
 // ignore-tidy-filelength
 use std::borrow::Cow;
 
+use crate::parser::{ForbiddenLetReason, TokenDescription};
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
     AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, IntoDiagnostic, Level,
-    SubdiagnosticMessage, DiagnosticMessage
+    SubdiagnosticMessage, DiagnosticMessage, fluent_raw
 };
 use rustc_errors::{AddToDiagnostic, Applicability, ErrorGuaranteed, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -13,8 +14,6 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
-
-use crate::parser::{ForbiddenLetReason, TokenDescription};
 
 #[derive(Diagnostic)]
 #[diag("ambiguous `+` in a type")]
@@ -1246,18 +1245,22 @@ impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
 
         let mut diag = handler.struct_diagnostic(match token_descr {
             Some(TokenDescription::ReservedIdentifier) => {
-                "expected identifier, found reserved identifier `{$token}`"
+                fluent_raw!("expected identifier, found reserved identifier `{$token}`")
             }
-            Some(TokenDescription::Keyword) => "expected identifier, found keyword `{$token}`",
+            Some(TokenDescription::Keyword) => {
+                fluent_raw!("expected identifier, found keyword `{$token}`")
+            }
+
             Some(TokenDescription::ReservedKeyword) => {
-                "expected identifier, found reserved keyword `{$token}`"
+                fluent_raw!("expected identifier, found reserved keyword `{$token}`")
             }
 
             Some(TokenDescription::DocComment) => {
-                "expected identifier, found doc comment `{$token}`"
+                fluent_raw!("expected identifier, found doc comment `{$token}`")
             }
-
-            None => "expected identifier, found `{$token}`",
+            None => {
+                fluent_raw!("expected identifier, found `{$token}`")
+            }
         });
         diag.set_span(self.span);
         diag.set_arg("token", self.token);
@@ -1302,14 +1305,18 @@ impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
 
         let mut diag = handler.struct_diagnostic(match token_descr {
             Some(TokenDescription::ReservedIdentifier) => {
-                "expected `;`, found reserved identifier `{$token}`"
+                fluent_raw!("expected `;`, found reserved identifier `{$token}`")
             }
-            Some(TokenDescription::Keyword) => "expected `;`, found keyword `{$token}`",
+            Some(TokenDescription::Keyword) => {
+                fluent_raw!("expected `;`, found keyword `{$token}`")
+            }
             Some(TokenDescription::ReservedKeyword) => {
-                "expected `;`, found reserved keyword `{$token}`"
+                fluent_raw!("expected `;`, found reserved keyword `{$token}`")
             }
-            Some(TokenDescription::DocComment) => "expected `;`, found doc comment `{$token}`",
-            None => "expected `;`, found `{$token}`",
+            Some(TokenDescription::DocComment) => {
+                fluent_raw!("expected `;`, found doc comment `{$token}`")
+            }
+            None => fluent_raw!("expected `;`, found `{$token}`"),
         });
         diag.set_span(self.span);
         diag.set_arg("token", self.token);

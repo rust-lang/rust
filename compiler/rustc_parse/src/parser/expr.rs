@@ -25,6 +25,7 @@ use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLim
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::DiagnosticMessage;
 use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, PResult, StashKey,
 };

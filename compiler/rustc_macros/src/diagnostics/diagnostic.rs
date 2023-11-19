@@ -60,7 +60,7 @@ impl<'a> DiagnosticDerive<'a> {
                 }
                 (None, Some(raw_label)) => {
                     quote! {
-                        let mut #diag = #handler.struct_diagnostic(DiagnosticMessage::Str(#raw_label.into()));
+                        let mut #diag = #handler.struct_diagnostic(DiagnosticMessage::FluentRaw(#raw_label.into()));
                     }
                 }
                 (Some(_slug), Some(_raw_label)) => {

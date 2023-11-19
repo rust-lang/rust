@@ -526,7 +526,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
                 );
             } else {
-                calls.extend(quote! { let #message = #f(#diag, #raw_label.into()); });
+                calls.extend(quote! { let #message = #f(#diag, DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label)).into()); });
             }
 
             let name = format_ident!(

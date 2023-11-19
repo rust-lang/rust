@@ -493,7 +493,7 @@ impl DiagnosticDeriveVariantBuilder {
 
                 let suggestion_label = if let Some(raw_label) = raw_label {
                     quote! {
-                        #raw_label
+                        DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label))
                     }
                 } else {
                     quote! {
@@ -530,7 +530,7 @@ impl DiagnosticDeriveVariantBuilder {
             return quote! {
                 #diag.#fn_name(
                     #field_binding,
-                    #raw_label
+                    DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label))
                 );
             };
         }
@@ -538,7 +538,7 @@ impl DiagnosticDeriveVariantBuilder {
             quote! {
                 #diag.#fn_name(
                     #field_binding,
-                    #raw_label
+                    DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label))
                 );
             }
         } else {
@@ -562,12 +562,12 @@ impl DiagnosticDeriveVariantBuilder {
         let diag = &self.parent.diag;
         if let Some(raw_label) = raw_label {
             return quote! {
-                #diag.#kind(#raw_label);
+                #diag.#kind(DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label)));
             };
         }
         if let Some(raw_label) = self.get_attr(kind.to_string().as_str()) {
             quote! {
-                #diag.#kind(#raw_label);
+                #diag.#kind(DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label)));
             }
         } else {
             quote! {
