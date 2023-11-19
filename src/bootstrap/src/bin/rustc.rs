@@ -114,7 +114,7 @@ fn main() {
         {
             cmd.arg("-Ztls-model=initial-exec");
         }
-    } else {
+    } else if std::env::var("MIRI").is_err() {
         // Find any host flags that were passed by bootstrap.
         // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
         if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
