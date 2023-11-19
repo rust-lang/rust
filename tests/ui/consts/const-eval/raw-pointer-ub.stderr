@@ -17,7 +17,7 @@ error[E0080]: evaluation of constant value failed
    |
 note: inside `copy_nonoverlapping::<u32>`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
-note: inside `ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
+note: inside `std::ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `MISALIGNED_COPY`
   --> $DIR/raw-pointer-ub.rs:22:5

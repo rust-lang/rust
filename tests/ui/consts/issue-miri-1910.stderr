@@ -5,7 +5,7 @@ error[E0080]: evaluation of constant value failed
    |
 note: inside `std::ptr::read::<u8>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `ptr::const_ptr::<impl *const u8>::read`
+note: inside `std::ptr::const_ptr::<impl *const u8>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `C`
   --> $DIR/issue-miri-1910.rs:7:5
