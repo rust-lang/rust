@@ -563,6 +563,32 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Returns `true` if the result is [`Ok`] or the value inside of the [`Err`] matches a predicate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_none_or)]
+    /// let x: Result<&'static str, u32> = Err(5);
+    /// assert_eq!(x.is_ok_or(|x| x > 1), true);
+    ///
+    /// let x: Result<&'static str, u32> = Err(0);
+    /// assert_eq!(x.is_ok_or(|x| x > 1), false);
+    ///
+    /// let x: Result<&'static str, u32> = Ok("some result");
+    /// assert_eq!(x.is_ok_or(|x| x > 1), true);
+    /// ```
+    #[must_use = "if you intended to assert that this is an ok or the error value matches \
+                  a predicate, considier use `and_then` with a `panic` instead"]
+    #[inline]
+    #[unstable(feature = "is_none_or", issue = "none")]
+    pub fn is_ok_or(self, f: impl FnOnce(E) -> bool) -> bool {
+        match self {
+            Ok(_) => true,
+            Err(e) => f(e),
+        }
+    }
+
     /// Returns `true` if the result is [`Err`].
     ///
     /// # Examples
@@ -605,6 +631,32 @@ impl<T, E> Result<T, E> {
         match self {
             Ok(_) => false,
             Err(e) => f(e),
+        }
+    }
+
+    /// Returns `true` if the result is [`Err`] or the value inside of the [`Ok`] matches a predicate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_none_or)]
+    /// let x: Result<u32, &'static str> = Err("some error");
+    /// assert_eq!(x.is_err_or(|x| x > 1), true);
+    ///
+    /// let x: Result<u32, &'static str> = Ok(0);
+    /// assert_eq!(x.is_err_or(|x| x > 1), false);
+    ///
+    /// let x: Result<u32, &'static str> = Ok(5);
+    /// assert_eq!(x.is_err_or(|x| x > 1), true);
+    /// ```
+    #[must_use = "if you intended to assert that this is an error or the ok value matches \
+                  a predicate, considier use `and_then` with a `panic` instead"]
+    #[inline]
+    #[unstable(feature = "is_none_or", issue = "none")]
+    pub fn is_err_or(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            Ok(x) => f(x),
+            Err(_) => true,
         }
     }
 
