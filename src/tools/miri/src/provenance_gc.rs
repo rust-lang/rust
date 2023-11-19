@@ -195,7 +195,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     }
 
     fn remove_unreachable_allocs(&mut self, allocs: FxHashSet<AllocId>) {
-        let this = self.eval_context_ref();
+        let this = self.eval_context_mut();
         let allocs = LiveAllocs {
             ecx: this,
             collected: allocs,
@@ -205,5 +205,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         if let Some(borrow_tracker) = &this.machine.borrow_tracker {
             borrow_tracker.borrow_mut().remove_unreachable_allocs(&allocs);
         }
+        this.remove_unreachable_allocs(&allocs.collected);
     }
 }

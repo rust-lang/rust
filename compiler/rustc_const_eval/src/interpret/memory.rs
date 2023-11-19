@@ -501,6 +501,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 }
 
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    /// This function is used by Miri's provenance GC to remove unreachable entries from the dead_alloc_map.
+    pub fn remove_unreachable_allocs(&mut self, reachable_allocs: &FxHashSet<AllocId>) {
+        // Unlike all the other GC helpers where we check if an `AllocId` is found in the interpreter or
+        // is live, here all the IDs in the map are for dead allocations so we don't
+        // need to check for liveness.
+        #[allow(rustc::potential_query_instability)] // Only used from Miri, not queries.
+        self.memory.dead_alloc_map.retain(|id, _| reachable_allocs.contains(id));
+    }
+}
+
 /// Allocation accessors
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Helper function to obtain a global (tcx) allocation.
