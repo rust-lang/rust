@@ -46,9 +46,6 @@
 // revisions: wasi
 //[wasi] compile-flags: --target wasm32-wasi
 //[wasi] needs-llvm-components: webassembly
-// revisions: csky
-//[csky] compile-flags: --target csky-unknown-linux-gnuabiv2
-//[csky] needs-llvm-components: csky
 // revisions: bpf
 //[bpf] compile-flags: --target bpfeb-unknown-none
 //[bpf] needs-llvm-components: bpf
@@ -60,6 +57,11 @@
 /* revisions: nvptx64
   [nvptx64] compile-flags: --target nvptx64-nvidia-cuda
   [nvptx64] needs-llvm-components: nvptx
+*/
+// FIXME: disabled since it fails on CI saying the csky component is missing
+/* revisions: csky
+  [csky] compile-flags: --target csky-unknown-linux-gnuabiv2
+  [csky] needs-llvm-components: csky
 */
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
 #![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
