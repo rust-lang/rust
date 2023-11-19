@@ -144,6 +144,7 @@ mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
 mod ignored_unit_patterns;
+mod impl_hash_with_borrow_str_and_bytes;
 mod implicit_hasher;
 mod implicit_return;
 mod implicit_saturating_add;
@@ -1066,6 +1067,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_hash_one::ManualHashOne::new(msrv())));
     store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
     store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
+    store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
