@@ -251,6 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             /// The root of the normal must_use lint with an optional message.
             Def(Span, DefId, Option<Symbol>),
             Boxed(Box<Self>),
+            Pinned(Box<Self>),
             Opaque(Box<Self>),
             TraitObject(Box<Self>),
             TupleElement(Vec<(usize, Self)>),
@@ -283,6 +284,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let boxed_ty = ty.boxed_ty();
                     is_ty_must_use(cx, boxed_ty, expr, span)
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
+                }
+                ty::Adt(def, args) if cx.tcx.lang_items().pin_type() == Some(def.did()) => {
+                    let pinned_ty = args.type_at(0);
+                    is_ty_must_use(cx, pinned_ty, expr, span)
+                        .map(|inner| MustUsePath::Pinned(Box::new(inner)))
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
@@ -415,6 +421,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 MustUsePath::Suppressed => {}
                 MustUsePath::Boxed(path) => {
                     let descr_pre = &format!("{descr_pre}boxed ");
+                    emit_must_use_untranslated(
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
+                    );
+                }
+                MustUsePath::Pinned(path) => {
+                    let descr_pre = &format!("{descr_pre}pinned ");
                     emit_must_use_untranslated(
                         cx,
                         path,
