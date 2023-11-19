@@ -3970,9 +3970,20 @@ name = "rustc_index"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "rustc_index_macros",
  "rustc_macros",
  "rustc_serialize",
  "smallvec",
+]
+
+[[package]]
+name = "rustc_index_macros"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.29",
+ "synstructure",
 ]
 
 [[package]]

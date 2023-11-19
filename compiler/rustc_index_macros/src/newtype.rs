@@ -24,9 +24,16 @@ impl Parse for Newtype {
         let mut consts = Vec::new();
         let mut encodable = true;
         let mut ord = true;
+        let mut gate_rustc_only = quote! {};
+        let mut gate_rustc_only_cfg = quote! { all() };
 
         attrs.retain(|attr| match attr.path().get_ident() {
             Some(ident) => match &*ident.to_string() {
+                "gate_rustc_only" => {
+                    gate_rustc_only = quote! { #[cfg(feature = "nightly")] };
+                    gate_rustc_only_cfg = quote! { feature = "nightly" };
+                    false
+                }
                 "custom_encodable" => {
                     encodable = false;
                     false
@@ -88,11 +95,13 @@ impl Parse for Newtype {
 
         let encodable_impls = if encodable {
             quote! {
+                #gate_rustc_only
                 impl<D: ::rustc_serialize::Decoder> ::rustc_serialize::Decodable<D> for #name {
                     fn decode(d: &mut D) -> Self {
                         Self::from_u32(d.read_u32())
                     }
                 }
+                #gate_rustc_only
                 impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for #name {
                     fn encode(&self, e: &mut E) {
                         e.emit_u32(self.private);
@@ -110,6 +119,7 @@ impl Parse for Newtype {
 
         let step = if ord {
             quote! {
+                #gate_rustc_only
                 impl ::std::iter::Step for #name {
                     #[inline]
                     fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -131,6 +141,7 @@ impl Parse for Newtype {
                 }
 
                 // Safety: The implementation of `Step` upholds all invariants.
+                #gate_rustc_only
                 unsafe impl ::std::iter::TrustedStep for #name {}
             }
         } else {
@@ -148,6 +159,7 @@ impl Parse for Newtype {
         let spec_partial_eq_impl = if let Lit::Int(max) = &max {
             if let Ok(max_val) = max.base10_parse::<u32>() {
                 quote! {
+                    #gate_rustc_only
                     impl core::option::SpecOptionPartialEq for #name {
                         #[inline]
                         fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
@@ -173,8 +185,8 @@ impl Parse for Newtype {
         Ok(Self(quote! {
             #(#attrs)*
             #[derive(Clone, Copy, PartialEq, Eq, Hash, #(#derive_paths),*)]
-            #[rustc_layout_scalar_valid_range_end(#max)]
-            #[rustc_pass_by_value]
+            #[cfg_attr(#gate_rustc_only_cfg, rustc_layout_scalar_valid_range_end(#max))]
+            #[cfg_attr(#gate_rustc_only_cfg, rustc_pass_by_value)]
             #vis struct #name {
                 private: u32,
             }
