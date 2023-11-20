@@ -4205,7 +4205,7 @@ impl<'test> TestCx<'test> {
         }
 
         let base_dir = Path::new("/rustc/FAKE_PREFIX");
-        // Paths into the libstd/libcore
+        // Fake paths into the libstd/libcore
         normalize_path(&base_dir.join("library"), "$SRC_DIR");
         // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
         // `rustc_macros`
@@ -4221,8 +4221,8 @@ impl<'test> TestCx<'test> {
         // eg. /home/user/rust/build
         normalize_path(parent_build_dir, "$BUILD_DIR");
 
-        // Paths into lib directory.
-        normalize_path(&parent_build_dir.parent().unwrap().join("lib"), "$LIB_DIR");
+        // Real paths into the libstd/libcore
+        normalize_path(&parent_build_dir.parent().unwrap().join("library"), "$SRC_DIR_REAL");
 
         if json {
             // escaped newlines in json strings should be readable
