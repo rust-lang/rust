@@ -1840,26 +1840,16 @@ function initSearch(rawSearchIndex) {
 
             const length = path.length;
             const clength = contains.length;
-            if (clength > length) {
-                return maxEditDistance + 1;
-            }
-            for (let i = 0; i < length; ++i) {
-                if (i + clength > length) {
-                    break;
-                }
+            pathiter: for (let i = length - clength; i >= 0; i -= 1) {
                 let dist_total = 0;
-                let aborted = false;
                 for (let x = 0; x < clength; ++x) {
                     const dist = editDistance(path[i + x], contains[x], maxEditDistance);
                     if (dist > maxEditDistance) {
-                        aborted = true;
-                        break;
+                        continue pathiter;
                     }
                     dist_total += dist;
                 }
-                if (!aborted) {
-                    ret_dist = Math.min(ret_dist, Math.round(dist_total / clength));
-                }
+                ret_dist = Math.min(ret_dist, Math.round(dist_total / clength));
             }
             return ret_dist;
         }
