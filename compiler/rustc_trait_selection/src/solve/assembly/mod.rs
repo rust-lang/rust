@@ -110,7 +110,7 @@ pub(super) trait GoalKind<'tcx>:
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx>;
+    ) -> Result<Candidate<'tcx>, NoSolution>;
 
     /// If the predicate contained an error, we want to avoid emitting unnecessary trait
     /// errors but still want to emit errors for other trait goals. We have some special
@@ -400,8 +400,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
                     match G::consider_impl_candidate(self, goal, impl_def_id) {
-                        Ok(result) => candidates
-                            .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
+                        Ok(candidate) => candidates.push(candidate),
                         Err(NoSolution) => (),
                     }
                 }
@@ -519,8 +518,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
         for &impl_def_id in trait_impls.blanket_impls() {
             match G::consider_impl_candidate(self, goal, impl_def_id) {
-                Ok(result) => candidates
-                    .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
+                Ok(candidate) => candidates.push(candidate),
                 Err(NoSolution) => (),
             }
         }

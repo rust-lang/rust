@@ -25,7 +25,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{Certainty, Goal};
+use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
@@ -1019,6 +1019,28 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
             _ => return ControlFlow::Continue(()),
         };
 
+        // Add ambiguity causes for reservation impls.
+        for cand in goal.candidates() {
+            if let inspect::ProbeKind::TraitCandidate {
+                source: CandidateSource::Impl(def_id),
+                result: Ok(_),
+            } = cand.kind()
+            {
+                if let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id) {
+                    let value = infcx
+                        .tcx
+                        .get_attr(def_id, sym::rustc_reservation_impl)
+                        .and_then(|a| a.value_str());
+                    if let Some(value) = value {
+                        self.causes.insert(IntercrateAmbiguityCause::ReservationImpl {
+                            message: value.to_string(),
+                        });
+                    }
+                }
+            }
+        }
+
+        // Add ambiguity causes for unknowable goals.
         let mut ambiguity_cause = None;
         for cand in goal.candidates() {
             // FIXME: boiiii, using string comparisions here sure is scuffed.
