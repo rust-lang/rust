@@ -81,6 +81,7 @@ mod read_line_without_trim;
 mod readonly_write_lock;
 mod redundant_as_str;
 mod repeat_once;
+mod result_map_or_else_none;
 mod search_is_some;
 mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
@@ -4334,6 +4335,9 @@ impl Methods {
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
+                },
+                ("map_or_else", [def, map]) => {
+                    result_map_or_else_none::check(cx, expr, recv, def, map);
                 },
                 ("next", []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {
