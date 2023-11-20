@@ -33,7 +33,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
                     scope 7 {
                     }
                 }
-                scope 8 (inlined cmp::impls::<impl PartialOrd for u32>::lt) {
+                scope 8 (inlined std::cmp::impls::<impl PartialOrd for u32>::lt) {
                     debug self => _7;
                     debug other => _8;
                     let mut _9: u32;

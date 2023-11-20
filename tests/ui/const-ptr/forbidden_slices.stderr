@@ -93,7 +93,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: out-of-bounds `offset_from`: null pointer is a dangling pointer (it has no provenance)
    |
-note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
@@ -108,7 +108,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: the evaluated program panicked at 'assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize', $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-note: inside `ptr::const_ptr::<impl *const ()>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const ()>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
@@ -124,7 +124,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: out-of-bounds pointer arithmetic: ALLOC10 has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
    |
-note: inside `ptr::const_ptr::<impl *const u32>::add`
+note: inside `std::ptr::const_ptr::<impl *const u32>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `R2`
   --> $DIR/forbidden_slices.rs:52:25
@@ -183,7 +183,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: out-of-bounds pointer arithmetic: ALLOC11 has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
    |
-note: inside `ptr::const_ptr::<impl *const u64>::add`
+note: inside `std::ptr::const_ptr::<impl *const u64>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `R8`
   --> $DIR/forbidden_slices.rs:76:25
@@ -196,7 +196,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on pointers into different allocations
    |
-note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
@@ -211,7 +211,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on pointers into different allocations
    |
-note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL

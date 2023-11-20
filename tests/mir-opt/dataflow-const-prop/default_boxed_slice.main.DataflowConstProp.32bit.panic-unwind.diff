@@ -28,16 +28,16 @@
                               scope 12 {
                                   scope 13 (inlined NonNull::<T>::new_unchecked::runtime::<[bool; 0]>) {
                                       debug ptr => _6;
-                                      scope 14 (inlined ptr::mut_ptr::<impl *mut [bool; 0]>::is_null) {
+                                      scope 14 (inlined std::ptr::mut_ptr::<impl *mut [bool; 0]>::is_null) {
                                           debug self => _6;
                                           let mut _9: *mut u8;
                                           scope 15 {
-                                              scope 16 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
+                                              scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
                                                   debug ptr => _9;
-                                                  scope 17 (inlined ptr::mut_ptr::<impl *mut u8>::addr) {
+                                                  scope 17 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
                                                       debug self => _9;
                                                       scope 18 {
-                                                          scope 19 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
+                                                          scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
                                                               debug self => _9;
                                                           }
                                                       }

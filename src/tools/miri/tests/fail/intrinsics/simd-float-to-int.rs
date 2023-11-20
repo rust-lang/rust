@@ -1,5 +1,5 @@
 #![feature(portable_simd)]
-use std::simd::*;
+use std::simd::prelude::*;
 
 fn main() {
     unsafe {

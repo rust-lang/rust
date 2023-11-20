@@ -24,10 +24,10 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                     let _6: usize;
                     scope 5 {
                         debug new_len => _6;
-                        scope 10 (inlined ptr::mut_ptr::<impl *mut [u32]>::as_mut_ptr) {
+                        scope 10 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::as_mut_ptr) {
                             debug self => _5;
                         }
-                        scope 11 (inlined ptr::mut_ptr::<impl *mut u32>::add) {
+                        scope 11 (inlined std::ptr::mut_ptr::<impl *mut u32>::add) {
                             debug self => _7;
                             debug count => _3;
                             scope 12 {
@@ -37,7 +37,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                             debug data => _8;
                             debug len => _6;
                             let mut _9: *mut ();
-                            scope 14 (inlined ptr::mut_ptr::<impl *mut u32>::cast::<()>) {
+                            scope 14 (inlined std::ptr::mut_ptr::<impl *mut u32>::cast::<()>) {
                                 debug self => _8;
                             }
                             scope 15 (inlined std::ptr::from_raw_parts_mut::<[u32]>) {
@@ -52,7 +52,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                         }
                     }
                 }
-                scope 6 (inlined ptr::mut_ptr::<impl *mut [u32]>::len) {
+                scope 6 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::len) {
                     debug self => _5;
                     let mut _15: *const [u32];
                     scope 7 (inlined std::ptr::metadata::<[u32]>) {
@@ -88,9 +88,9 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageLive(_11);
         StorageLive(_10);
         _10 = _9 as *const () (PointerCoercion(MutToConstPointer));
-        _11 = ptr::metadata::PtrComponents::<[u32]> { data_address: move _10, metadata: _6 };
+        _11 = std::ptr::metadata::PtrComponents::<[u32]> { data_address: move _10, metadata: _6 };
         StorageDead(_10);
-        _12 = ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _11 };
+        _12 = std::ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _11 };
         StorageDead(_11);
         _13 = (_12.1: *mut [u32]);
         StorageDead(_12);

@@ -39,7 +39,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                     scope 8 {
                     }
                 }
-                scope 9 (inlined cmp::impls::<impl PartialOrd for usize>::lt) {
+                scope 9 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
                     debug self => _7;
                     debug other => _8;
                     let mut _9: usize;

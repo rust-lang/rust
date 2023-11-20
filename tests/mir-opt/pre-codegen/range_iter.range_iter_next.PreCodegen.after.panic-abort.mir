@@ -17,7 +17,7 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
                 scope 4 {
                 }
             }
-            scope 5 (inlined cmp::impls::<impl PartialOrd for u32>::lt) {
+            scope 5 (inlined std::cmp::impls::<impl PartialOrd for u32>::lt) {
                 debug self => _2;
                 debug other => _3;
                 let mut _4: u32;

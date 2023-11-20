@@ -75,7 +75,7 @@ fn array_casts() -> () {
         StorageLive(_6);
         StorageLive(_7);
         _7 = _2;
-        _6 = ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> [return: bb1, unwind unreachable];
+        _6 = std::ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
@@ -101,7 +101,7 @@ fn array_casts() -> () {
         StorageLive(_16);
         StorageLive(_17);
         _17 = _9;
-        _16 = ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> [return: bb2, unwind unreachable];
+        _16 = std::ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> [return: bb2, unwind unreachable];
     }
 
     bb2: {

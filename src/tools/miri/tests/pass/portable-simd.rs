@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-strict-provenance
 #![feature(portable_simd, platform_intrinsics, adt_const_params, inline_const)]
-#![allow(incomplete_features)]
-use std::simd::*;
+#![allow(incomplete_features, internal_features)]
+use std::simd::{prelude::*, StdFloat};
 
 extern "platform-intrinsic" {
     pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
@@ -328,14 +328,12 @@ fn simd_cast() {
 }
 
 fn simd_swizzle() {
-    use Which::*;
-
     let a = f32x4::splat(10.0);
     let b = f32x4::from_array([1.0, 2.0, 3.0, -4.0]);
 
     assert_eq!(simd_swizzle!(b, [3, 0, 0, 2]), f32x4::from_array([-4.0, 1.0, 1.0, 3.0]));
     assert_eq!(simd_swizzle!(b, [1, 2]), f32x2::from_array([2.0, 3.0]));
-    assert_eq!(simd_swizzle!(b, a, [First(3), Second(0)]), f32x2::from_array([-4.0, 10.0]));
+    assert_eq!(simd_swizzle!(b, a, [3, 4]), f32x2::from_array([-4.0, 10.0]));
 }
 
 fn simd_gather_scatter() {
@@ -417,13 +415,13 @@ fn simd_intrinsics() {
             i32x4::from_array([10, 2, 10, 10])
         );
         assert_eq!(simd_shuffle_generic::<_, i32x4, { &[3, 1, 0, 2] }>(a, b), a,);
-        assert_eq!(simd_shuffle::<_, _, i32x4>(a, b, const { [3, 1, 0, 2] }), a,);
+        assert_eq!(simd_shuffle::<_, _, i32x4>(a, b, const { [3u32, 1, 0, 2] }), a,);
         assert_eq!(
             simd_shuffle_generic::<_, i32x4, { &[7, 5, 4, 6] }>(a, b),
             i32x4::from_array([4, 2, 1, 10]),
         );
         assert_eq!(
-            simd_shuffle::<_, _, i32x4>(a, b, const { [7, 5, 4, 6] }),
+            simd_shuffle::<_, _, i32x4>(a, b, const { [7u32, 5, 4, 6] }),
             i32x4::from_array([4, 2, 1, 10]),
         );
     }
