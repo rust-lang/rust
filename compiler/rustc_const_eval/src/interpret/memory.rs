@@ -57,16 +57,44 @@ impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum Liveness {
+    Live,
+    Dead,
+    Global,
+}
+
 /// The return value of `get_alloc_info` indicates the "kind" of the allocation.
+#[derive(Clone, Copy)]
 pub enum AllocKind {
     /// A regular live data allocation.
     LiveData,
+    /// A regular live data allocation that will never be deallocated.
+    GlobalLiveData,
     /// A function allocation (that fn ptrs point to).
     Function,
     /// A (symbolic) vtable allocation.
     VTable,
     /// A dead allocation.
     Dead,
+}
+
+impl AllocKind {
+    pub fn is_global(self) -> bool {
+        use AllocKind::*;
+        match self {
+            GlobalLiveData | Function | VTable => true,
+            LiveData | Dead => false,
+        }
+    }
+
+    pub fn is_live_data(self) -> bool {
+        use AllocKind::*;
+        match self {
+            GlobalLiveData | LiveData => true,
+            Function | VTable | Dead => false,
+        }
+    }
 }
 
 /// The value of a function pointer.
@@ -706,10 +734,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Check whether an allocation is live. This is faster than calling
     /// [`InterpCx::get_alloc_info`] if all you need to check is whether the kind is
     /// [`AllocKind::Dead`] because it doesn't have to look up the type and layout of statics.
-    pub fn is_alloc_live(&self, id: AllocId) -> bool {
-        self.tcx.try_get_global_alloc(id).is_some()
-            || self.memory.alloc_map.contains_key_ref(&id)
-            || self.memory.extra_fn_ptr_map.contains_key(&id)
+    pub fn is_alloc_live(&self, id: AllocId) -> Liveness {
+        if self.memory.alloc_map.contains_key_ref(&id) {
+            return Liveness::Live;
+        }
+        if self.tcx.try_get_global_alloc(id).is_some() {
+            return Liveness::Global;
+        }
+        if self.memory.extra_fn_ptr_map.contains_key(&id) {
+            return Liveness::Live;
+        }
+        Liveness::Dead
     }
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
@@ -744,13 +779,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .expect("statics should not have generic parameters");
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                 assert!(layout.is_sized());
-                (layout.size, layout.align.abi, AllocKind::LiveData)
+                (layout.size, layout.align.abi, AllocKind::GlobalLiveData)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
                 let alloc = alloc.inner();
-                (alloc.size(), alloc.align, AllocKind::LiveData)
+                (alloc.size(), alloc.align, AllocKind::GlobalLiveData)
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
             Some(GlobalAlloc::VTable(..)) => {

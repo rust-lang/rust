@@ -530,7 +530,7 @@ pub struct MiriMachine<'mir, 'tcx> {
 
     /// The spans we will use to report where an allocation was created and deallocated in
     /// diagnostics.
-    pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Span, Option<Span>)>>,
+    pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Span, Option<Span>, bool)>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -781,14 +781,14 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         self.allocation_spans
             .borrow()
             .get(&alloc_id)
-            .map(|(allocated, _deallocated)| allocated.data())
+            .map(|(allocated, _deallocated, _)| allocated.data())
     }
 
     pub(crate) fn deallocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
         self.allocation_spans
             .borrow()
             .get(&alloc_id)
-            .and_then(|(_allocated, deallocated)| *deallocated)
+            .and_then(|(_allocated, deallocated, _)| *deallocated)
             .map(Span::data)
     }
 }
@@ -1120,7 +1120,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             ecx.machine
                 .allocation_spans
                 .borrow_mut()
-                .insert(id, (ecx.machine.current_span(), None));
+                .insert(id, (ecx.machine.current_span(), None, false));
         }
 
         Ok(Cow::Owned(alloc))
@@ -1258,7 +1258,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, range, machine)?;
         }
-        if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
+        if let Some((_, deallocated_at, _)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
         {
             *deallocated_at = Some(machine.current_span());
         }
@@ -1447,7 +1447,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         };
         let local_decl = &ecx.active_thread_stack()[frame].body.local_decls[local];
         let span = local_decl.source_info.span;
-        ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
+        ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None, false));
         Ok(())
     }
 }

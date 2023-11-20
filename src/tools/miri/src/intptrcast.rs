@@ -35,7 +35,7 @@ pub struct GlobalStateInner {
     /// `AllocExtra` because function pointers also have a base address, and
     /// they do not have an `AllocExtra`.
     /// This is the inverse of `int_to_ptr_map`.
-    base_addr: FxHashMap<AllocId, u64>,
+    base_addr: FxHashMap<AllocId, (u64, bool)>,
     /// Whether an allocation has been exposed or not. This cannot be put
     /// into `AllocExtra` for the same reason as `base_addr`.
     exposed: FxHashSet<AllocId>,
@@ -78,7 +78,7 @@ impl GlobalStateInner {
     pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_, '_>) {
         // `exposed` and `int_to_ptr_map` are cleared immediately when an allocation
         // is freed, so `base_addr` is the only one we have to clean up based on the GC.
-        self.base_addr.retain(|id, _| allocs.is_live(*id));
+        self.base_addr.retain(|id, (_, is_global)| allocs.is_live(*id, is_global));
     }
 }
 
@@ -125,7 +125,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We only use this provenance if it has been exposed.
         if global_state.exposed.contains(&alloc_id) {
             // This must still be live, since we remove allocations from `int_to_ptr_map` when they get freed.
-            debug_assert!(ecx.is_alloc_live(alloc_id));
+            debug_assert!(!matches!(ecx.is_alloc_live(alloc_id), Liveness::Dead));
             Some(alloc_id)
         } else {
             None
@@ -138,7 +138,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let global_state = &mut *global_state;
 
         Ok(match global_state.base_addr.entry(alloc_id) {
-            Entry::Occupied(entry) => *entry.get(),
+            Entry::Occupied(entry) => entry.get().0,
             Entry::Vacant(entry) => {
                 let (size, align, kind) = ecx.get_alloc_info(alloc_id);
                 // This is either called immediately after allocation (and then cached), or when
@@ -161,7 +161,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     .checked_add(slack)
                     .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
                 let base_addr = align_addr(base_addr, align.bytes());
-                entry.insert(base_addr);
+                entry.insert((base_addr, kind.is_global()));
                 trace!(
                     "Assigning base address {:#x} to allocation {:?} (size: {}, align: {}, slack: {})",
                     base_addr,
@@ -204,7 +204,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         // Exposing a dead alloc is a no-op, because it's not possible to get a dead allocation
         // via int2ptr.
-        if !ecx.is_alloc_live(alloc_id) {
+        if matches!(ecx.is_alloc_live(alloc_id), Liveness::Dead) {
             return Ok(());
         }
         trace!("Exposing allocation id {alloc_id:?}");
@@ -312,7 +312,7 @@ impl GlobalStateInner {
         // returns a dead allocation.
         // To avoid a linear scan we first look up the address in `base_addr`, and then find it in
         // `int_to_ptr_map`.
-        let addr = *self.base_addr.get(&dead_id).unwrap();
+        let addr = self.base_addr.get(&dead_id).unwrap().0;
         let pos = self.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr).unwrap();
         let removed = self.int_to_ptr_map.remove(pos);
         assert_eq!(removed, (addr, dead_id)); // double-check that we removed the right thing

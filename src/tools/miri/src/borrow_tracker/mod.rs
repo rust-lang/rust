@@ -91,7 +91,7 @@ pub struct GlobalStateInner {
     /// Table storing the "base" tag for each allocation.
     /// The base tag is the one used for the initial pointer.
     /// We need this in a separate table to handle cyclic statics.
-    base_ptr_tags: FxHashMap<AllocId, BorTag>,
+    base_ptr_tags: FxHashMap<AllocId, (BorTag, bool)>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
     /// All currently protected tags.
@@ -222,7 +222,7 @@ impl GlobalStateInner {
     }
 
     pub fn base_ptr_tag(&mut self, id: AllocId, machine: &MiriMachine<'_, '_>) -> BorTag {
-        self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
+        self.base_ptr_tags.get(&id).map(|(id, _is_global)| *id).unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
                 machine.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
@@ -232,13 +232,13 @@ impl GlobalStateInner {
                 ));
             }
             trace!("New allocation {:?} has base tag {:?}", id, tag);
-            self.base_ptr_tags.try_insert(id, tag).unwrap();
+            self.base_ptr_tags.try_insert(id, (tag, false)).unwrap();
             tag
         })
     }
 
     pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_, '_>) {
-        self.base_ptr_tags.retain(|id, _| allocs.is_live(*id));
+        self.base_ptr_tags.retain(|id, (_, is_global)| allocs.is_live(*id, is_global));
     }
 }
 
@@ -382,7 +382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // pointer is readable, and the implicit read access inserted
             // will never cause UB on the pointer itself.
             let (_, _, kind) = this.get_alloc_info(*alloc_id);
-            if matches!(kind, AllocKind::LiveData) {
+            if kind.is_live_data() {
                 let alloc_extra = this.get_alloc_extra(*alloc_id).unwrap();
                 let alloc_borrow_tracker = &alloc_extra.borrow_tracker.as_ref().unwrap();
                 alloc_borrow_tracker.release_protector(&this.machine, borrow_tracker, *tag)?;

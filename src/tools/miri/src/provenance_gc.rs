@@ -156,9 +156,21 @@ pub struct LiveAllocs<'a, 'mir, 'tcx> {
 }
 
 impl LiveAllocs<'_, '_, '_> {
-    pub fn is_live(&self, id: AllocId) -> bool {
-        self.collected.contains(&id) ||
-        self.ecx.is_alloc_live(id)
+    pub fn is_live(&self, id: AllocId, is_global: &mut bool) -> bool {
+        if *is_global {
+            return true;
+        }
+        if self.collected.contains(&id) {
+            return true;
+        }
+        match self.ecx.is_alloc_live(id) {
+            Liveness::Dead => false,
+            Liveness::Live => true,
+            Liveness::Global => {
+                *is_global = true;
+                true
+            }
+        }
     }
 }
 
@@ -200,7 +212,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
             ecx: this,
             collected: allocs,
         };
-        this.machine.allocation_spans.borrow_mut().retain(|id, _| allocs.is_live(*id));
+        this.machine.allocation_spans.borrow_mut().retain(|id, (.., is_live)| allocs.is_live(*id, is_live));
         this.machine.intptrcast.borrow_mut().remove_unreachable_allocs(&allocs);
         if let Some(borrow_tracker) = &this.machine.borrow_tracker {
             borrow_tracker.borrow_mut().remove_unreachable_allocs(&allocs);

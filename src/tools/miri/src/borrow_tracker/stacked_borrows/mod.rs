@@ -648,32 +648,27 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             };
 
             let (_size, _align, alloc_kind) = this.get_alloc_info(alloc_id);
-            match alloc_kind {
-                AllocKind::LiveData => {
-                    // This should have alloc_extra data, but `get_alloc_extra` can still fail
-                    // if converting this alloc_id from a global to a local one
-                    // uncovers a non-supported `extern static`.
-                    let extra = this.get_alloc_extra(alloc_id)?;
-                    let mut stacked_borrows = extra
-                        .borrow_tracker_sb()
-                        .borrow_mut();
-                    // Note that we create a *second* `DiagnosticCxBuilder` below for the actual retag.
-                    // FIXME: can this be done cleaner?
-                    let dcx = DiagnosticCxBuilder::retag(
-                        &this.machine,
-                        retag_info,
-                        new_tag,
-                        orig_tag,
-                        alloc_range(base_offset, size),
-                    );
-                    let mut dcx = dcx.build(&mut stacked_borrows.history, base_offset);
-                    dcx.log_creation();
-                    if new_perm.protector().is_some() {
-                        dcx.log_protector();
-                    }
-                },
-                AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
-                    // No stacked borrows on these allocations.
+            if alloc_kind.is_live_data() {
+                // This should have alloc_extra data, but `get_alloc_extra` can still fail
+                // if converting this alloc_id from a global to a local one
+                // uncovers a non-supported `extern static`.
+                let extra = this.get_alloc_extra(alloc_id)?;
+                let mut stacked_borrows = extra
+                    .borrow_tracker_sb()
+                    .borrow_mut();
+                // Note that we create a *second* `DiagnosticCxBuilder` below for the actual retag.
+                // FIXME: can this be done cleaner?
+                let dcx = DiagnosticCxBuilder::retag(
+                    &this.machine,
+                    retag_info,
+                    new_tag,
+                    orig_tag,
+                    alloc_range(base_offset, size),
+                );
+                let mut dcx = dcx.build(&mut stacked_borrows.history, base_offset);
+                dcx.log_creation();
+                if new_perm.protector().is_some() {
+                    dcx.log_protector();
                 }
             }
             Ok(())
@@ -1012,18 +1007,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // This is okay because accessing them is UB anyway, no need for any Stacked Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
         let (_size, _align, kind) = this.get_alloc_info(alloc_id);
-        match kind {
-            AllocKind::LiveData => {
-                // This should have alloc_extra data, but `get_alloc_extra` can still fail
-                // if converting this alloc_id from a global to a local one
-                // uncovers a non-supported `extern static`.
-                let alloc_extra = this.get_alloc_extra(alloc_id)?;
-                trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
-                alloc_extra.borrow_tracker_sb().borrow_mut().exposed_tags.insert(tag);
-            }
-            AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
-                // No stacked borrows on these allocations.
-            }
+        if kind.is_live_data() {
+            // This should have alloc_extra data, but `get_alloc_extra` can still fail
+            // if converting this alloc_id from a global to a local one
+            // uncovers a non-supported `extern static`.
+            let alloc_extra = this.get_alloc_extra(alloc_id)?;
+            trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
+            alloc_extra.borrow_tracker_sb().borrow_mut().exposed_tags.insert(tag);
         }
         Ok(())
     }

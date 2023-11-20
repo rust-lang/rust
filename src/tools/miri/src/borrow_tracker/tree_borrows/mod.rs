@@ -285,7 +285,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         }
 
         let alloc_kind = this.get_alloc_info(alloc_id).2;
-        if !matches!(alloc_kind, AllocKind::LiveData) {
+        if !alloc_kind.is_live_data() {
             assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // There's not actually any bytes here where accesses could even be tracked.
             // Just produce the new provenance, nothing else to do.
@@ -538,18 +538,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // This is okay because accessing them is UB anyway, no need for any Tree Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
         let (_size, _align, kind) = this.get_alloc_info(alloc_id);
-        match kind {
-            AllocKind::LiveData => {
-                // This should have alloc_extra data, but `get_alloc_extra` can still fail
-                // if converting this alloc_id from a global to a local one
-                // uncovers a non-supported `extern static`.
-                let alloc_extra = this.get_alloc_extra(alloc_id)?;
-                trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
-                alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag);
-            }
-            AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
-                // No tree borrows on these allocations.
-            }
+        if kind.is_live_data() {
+            // This should have alloc_extra data, but `get_alloc_extra` can still fail
+            // if converting this alloc_id from a global to a local one
+            // uncovers a non-supported `extern static`.
+            let alloc_extra = this.get_alloc_extra(alloc_id)?;
+            trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
+            alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag);
         }
         Ok(())
     }

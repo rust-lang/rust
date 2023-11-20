@@ -25,7 +25,7 @@ pub use self::intern::{
     intern_const_alloc_for_constprop, intern_const_alloc_recursive, InternKind,
 };
 pub use self::machine::{compile_time_machine, AllocMap, Machine, MayLeak, StackPopJump};
-pub use self::memory::{AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
+pub use self::memory::{AllocKind, AllocRef, AllocRefMut, FnVal, Liveness, Memory, MemoryKind};
 pub use self::operand::{ImmTy, Immediate, OpTy, Readable};
 pub use self::place::{MPlaceTy, MemPlaceMeta, PlaceTy, Writeable};
 pub use self::projection::{OffsetMode, Projectable};
