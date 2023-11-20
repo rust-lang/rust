@@ -591,6 +591,8 @@ impl NonMacroAttrKind {
         }
     }
 
+    // Currently trivial, but exists in case a new kind is added in the future whose name starts
+    // with a vowel.
     pub fn article(self) -> &'static str {
         "a"
     }
