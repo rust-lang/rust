@@ -739,6 +739,9 @@ parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 
+parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
+    .suggestion = move `{$kw}` before the `for<...>`
+
 parse_type_ascription_removed =
     if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
