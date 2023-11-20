@@ -21,6 +21,7 @@ use crate::errors::{
 
 use crate::fluent_generated as fluent;
 use crate::parser;
+use crate::parser::attr::InnerAttrPolicy;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
@@ -723,6 +724,101 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
+    pub(super) fn attr_on_non_tail_expr(&self, expr: &Expr) {
+        // Missing semicolon typo error.
+        let span = self.prev_token.span.shrink_to_hi();
+        let mut err = self.sess.create_err(ExpectedSemi {
+            span,
+            token: self.token.clone(),
+            unexpected_token_label: Some(self.token.span),
+            sugg: ExpectedSemiSugg::AddSemi(span),
+        });
+        let attr_span = match &expr.attrs[..] {
+            [] => unreachable!(),
+            [only] => only.span,
+            [first, rest @ ..] => {
+                for attr in rest {
+                    err.span_label(attr.span, "");
+                }
+                first.span
+            }
+        };
+        err.span_label(
+            attr_span,
+            format!(
+                "only `;` terminated statements or tail expressions are allowed after {}",
+                if expr.attrs.len() == 1 { "this attribute" } else { "these attributes" },
+            ),
+        );
+        if self.token == token::Pound
+            && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Bracket))
+        {
+            // We have
+            // #[attr]
+            // expr
+            // #[not_attr]
+            // other_expr
+            err.span_label(span, "expected `;` here");
+            err.multipart_suggestion(
+                "alternatively, consider surrounding the expression with a block",
+                vec![
+                    (expr.span.shrink_to_lo(), "{ ".to_string()),
+                    (expr.span.shrink_to_hi(), " }".to_string()),
+                ],
+                Applicability::MachineApplicable,
+            );
+            let mut snapshot = self.create_snapshot_for_diagnostic();
+            if let [attr] = &expr.attrs[..]
+                && let ast::AttrKind::Normal(attr_kind) = &attr.kind
+                && let [segment] = &attr_kind.item.path.segments[..]
+                && segment.ident.name == sym::cfg
+                && let Ok(next_attr) = snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
+                && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
+                && let [next_segment] = &next_attr_kind.item.path.segments[..]
+                && segment.ident.name == sym::cfg
+                && let Ok(next_expr) = snapshot.parse_expr()
+            {
+                // We have for sure
+                // #[cfg(..)]
+                // expr
+                // #[cfg(..)]
+                // other_expr
+                // So we suggest using `if cfg!(..) { expr } else if cfg!(..) { other_expr }`.
+                let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
+                let sugg = vec![
+                    (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
+                    (
+                        attr_kind.item.args.span().unwrap().shrink_to_hi().with_hi(attr.span.hi()),
+                        " {".to_string(),
+                    ),
+                    (expr.span.shrink_to_lo(), "    ".to_string()),
+                    (
+                        next_attr.span.with_hi(next_segment.span().hi()),
+                        "} else if cfg!".to_string(),
+                    ),
+                    (
+                        next_attr_kind
+                            .item
+                            .args
+                            .span()
+                            .unwrap()
+                            .shrink_to_hi()
+                            .with_hi(next_attr.span.hi()),
+                        " {".to_string(),
+                    ),
+                    (next_expr.span.shrink_to_lo(), "    ".to_string()),
+                    (next_expr.span.shrink_to_hi(), format!("\n{}}}", " ".repeat(margin))),
+                ];
+                err.multipart_suggestion(
+                    "it seems like you are trying to provide different expressions depending on \
+                     `cfg`, consider using `if cfg!(..)`",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+        err.emit();
+    }
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
         let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {

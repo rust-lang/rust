@@ -619,6 +619,20 @@ impl<'a> Parser<'a> {
         match &mut stmt.kind {
             // Expression without semicolon.
             StmtKind::Expr(expr)
+                if classify::expr_requires_semi_to_be_stmt(expr)
+                    && !expr.attrs.is_empty()
+                    && ![token::Eof, token::Semi, token::CloseDelim(Delimiter::Brace)]
+                        .contains(&self.token.kind) =>
+            {
+                // The user has written `#[attr] expr` which is unsupported. (#106020)
+                self.attr_on_non_tail_expr(&expr);
+                // We already emitted an error, so don't emit another type error
+                let sp = expr.span.to(self.prev_token.span);
+                *expr = self.mk_expr_err(sp);
+            }
+
+            // Expression without semicolon.
+            StmtKind::Expr(expr)
                 if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
             {
                 // Just check for errors and recover; do not eat semicolon yet.
