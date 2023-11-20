@@ -360,8 +360,8 @@ fn run_compiler(
     drop(default_handler);
 
     interface::run_compiler(config, |compiler| {
-        let sess = compiler.session();
-        let codegen_backend = compiler.codegen_backend();
+        let sess = &compiler.sess;
+        let codegen_backend = &*compiler.codegen_backend;
 
         // This implements `-Whelp`. It should be handled very early, like
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
@@ -672,7 +672,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                 };
             }
         };
-        let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
+        let result = compiler.codegen_backend.link(sess, codegen_results, &outputs);
         abort_on_err(result, sess);
     } else {
         sess.emit_fatal(RlinkNotAFile {})

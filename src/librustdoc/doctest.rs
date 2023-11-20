@@ -127,17 +127,17 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                         options,
                         false,
                         opts,
-                        Some(compiler.session().parse_sess.clone_source_map()),
+                        Some(compiler.sess.parse_sess.clone_source_map()),
                         None,
                         enable_per_target_ignores,
                     );
 
                     let mut hir_collector = HirCollector {
-                        sess: compiler.session(),
+                        sess: &compiler.sess,
                         collector: &mut collector,
                         map: tcx.hir(),
                         codes: ErrorCodes::from(
-                            compiler.session().opts.unstable_features.is_nightly_build(),
+                            compiler.sess.opts.unstable_features.is_nightly_build(),
                         ),
                         tcx,
                     };
@@ -150,7 +150,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                     collector
                 });
-                if compiler.session().diagnostic().has_errors_or_lint_errors().is_some() {
+                if compiler.sess.diagnostic().has_errors_or_lint_errors().is_some() {
                     FatalError.raise();
                 }
 

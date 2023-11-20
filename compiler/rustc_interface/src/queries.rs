@@ -17,7 +17,8 @@ use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_session::config::{self, CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::{output::find_crate_name, Session};
+use rustc_session::output::find_crate_name;
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{RefCell, RefMut};
@@ -101,17 +102,10 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    fn session(&self) -> &Session {
-        self.compiler.session()
-    }
-
-    fn codegen_backend(&self) -> &dyn CodegenBackend {
-        self.compiler.codegen_backend()
-    }
-
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
-        self.parse
-            .compute(|| passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit()))
+        self.parse.compute(|| {
+            passes::parse(&self.compiler.sess).map_err(|mut parse_error| parse_error.emit())
+        })
     }
 
     #[deprecated = "pre_configure may be made private in the future. If you need it please open an issue with your use case."]
@@ -119,7 +113,7 @@ impl<'tcx> Queries<'tcx> {
         self.pre_configure.compute(|| {
             let mut krate = self.parse()?.steal();
 
-            let sess = self.session();
+            let sess = &self.compiler.sess;
             rustc_builtin_macros::cmdline_attrs::inject(
                 &mut krate,
                 &sess.parse_sess,
@@ -134,7 +128,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
-            let sess = self.session();
+            let sess = &self.compiler.sess;
             #[allow(deprecated)]
             let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
@@ -150,7 +144,7 @@ impl<'tcx> Queries<'tcx> {
             let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
 
             let cstore = FreezeLock::new(Box::new(CStore::new(
-                self.codegen_backend().metadata_loader(),
+                self.compiler.codegen_backend.metadata_loader(),
                 stable_crate_id,
             )) as _);
             let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
@@ -189,16 +183,16 @@ impl<'tcx> Queries<'tcx> {
     pub fn ongoing_codegen(&'tcx self) -> Result<Box<dyn Any>> {
         self.global_ctxt()?.enter(|tcx| {
             // Don't do code generation if there were any errors
-            self.session().compile_status()?;
+            self.compiler.sess.compile_status()?;
 
             // If we have any delayed bugs, for example because we created TyKind::Error earlier,
             // it's likely that codegen will only cause more ICEs, obscuring the original problem
-            self.session().diagnostic().flush_delayed();
+            self.compiler.sess.diagnostic().flush_delayed();
 
             // Hook for UI tests.
             Self::check_for_rustc_errors_attr(tcx);
 
-            Ok(passes::start_codegen(self.codegen_backend(), tcx))
+            Ok(passes::start_codegen(&*self.compiler.codegen_backend, tcx))
         })
     }
 
@@ -317,17 +311,16 @@ impl Compiler {
             // after this point, they'll show up as "<unknown>" in self-profiling data.
             {
                 let _prof_timer =
-                    queries.session().prof.generic_activity("self_profile_alloc_query_strings");
+                    queries.compiler.sess.prof.generic_activity("self_profile_alloc_query_strings");
                 gcx.enter(rustc_query_impl::alloc_self_profile_query_strings);
             }
 
-            self.session()
-                .time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
+            self.sess.time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
         }
 
         // The timer's lifetime spans the dropping of `queries`, which contains
         // the global context.
-        _timer = Some(self.session().timer("free_global_ctxt"));
+        _timer = Some(self.sess.timer("free_global_ctxt"));
 
         ret
     }
