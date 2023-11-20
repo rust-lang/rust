@@ -8,7 +8,7 @@ trait B: A {}
 
 impl<'a> Deref for dyn 'a + B {
     //~^ ERROR `dyn B` implements `Deref` with supertrait `A` as target
-    //~| WARN this was previously accepted by the compiler but is being phased out;
+    //~| WARN this will change its meaning in a future release!
 
     type Target = dyn A;
     fn deref(&self) -> &Self::Target {

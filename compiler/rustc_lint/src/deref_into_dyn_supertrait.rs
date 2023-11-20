@@ -50,7 +50,7 @@ declare_lint! {
     Warn,
     "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
         reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
     };
 }
