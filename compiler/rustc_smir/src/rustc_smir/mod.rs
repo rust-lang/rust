@@ -323,7 +323,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let size = tables.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap().size;
 
         let scalar = ScalarInt::try_from_uint(val, size).ok_or_else(|| {
-            Error::new(format!("Value overflow: cannot covert `{val}` to usize."))
+            Error::new(format!("Value overflow: cannot convert `{val}` to usize."))
         })?;
         Ok(ty::Const::new_value(tables.tcx, ty::ValTree::from_scalar_int(scalar), ty)
             .stable(&mut *tables))

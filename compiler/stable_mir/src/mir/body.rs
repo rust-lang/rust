@@ -2,7 +2,7 @@ use crate::mir::pretty::{function_body, pretty_statement};
 use crate::ty::{
     AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
 };
-use crate::{Error, Span, Opaque};
+use crate::{Error, Opaque, Span};
 use std::io;
 
 /// The SMIR representation of a single function.
@@ -685,40 +685,46 @@ impl Place {
         self.projection.iter().fold(Ok(start_ty), |place_ty, elem| {
             let ty = place_ty?;
             match elem {
-                ProjectionElem::Deref => {
-                    let deref_ty = ty
-                        .kind()
-                        .builtin_deref(true)
-                        .ok_or_else(|| error!("Cannot dereference type: {ty:?}"))?;
-                    Ok(deref_ty.ty)
-                }
+                ProjectionElem::Deref => Self::deref_ty(ty),
                 ProjectionElem::Field(_idx, fty) => Ok(*fty),
-                ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => ty
-                    .kind()
-                    .builtin_index()
-                    .ok_or_else(|| error!("Cannot index non-array type: {ty:?}")),
+                ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
+                    Self::index_ty(ty)
+                }
                 ProjectionElem::Subslice { from, to, from_end } => {
-                    let ty_kind = ty.kind();
-                    match ty_kind {
-                        TyKind::RigidTy(RigidTy::Slice(..)) => Ok(ty),
-                        TyKind::RigidTy(RigidTy::Array(inner, _)) if !from_end => {
-                            Ty::try_new_array(
-                                inner,
-                                to.checked_sub(*from)
-                                    .ok_or_else(|| error!("Subslice overflow: {from}..{to}"))?,
-                            )
-                        }
-                        TyKind::RigidTy(RigidTy::Array(inner, size)) => {
-                            let size = size.eval_target_usize()?;
-                            let len = size - from - to;
-                            Ty::try_new_array(inner, len)
-                        }
-                        _ => Err(Error(format!("Cannot subslice non-array type: `{ty_kind:?}`"))),
-                    }
+                    Self::subslice_ty(ty, from, to, from_end)
                 }
                 ProjectionElem::Downcast(_) => Ok(ty),
                 ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
             }
         })
+    }
+
+    fn index_ty(ty: Ty) -> Result<Ty, Error> {
+        ty.kind().builtin_index().ok_or_else(|| error!("Cannot index non-array type: {ty:?}"))
+    }
+
+    fn subslice_ty(ty: Ty, from: &u64, to: &u64, from_end: &bool) -> Result<Ty, Error> {
+        let ty_kind = ty.kind();
+        match ty_kind {
+            TyKind::RigidTy(RigidTy::Slice(..)) => Ok(ty),
+            TyKind::RigidTy(RigidTy::Array(inner, _)) if !from_end => Ty::try_new_array(
+                inner,
+                to.checked_sub(*from).ok_or_else(|| error!("Subslice overflow: {from}..{to}"))?,
+            ),
+            TyKind::RigidTy(RigidTy::Array(inner, size)) => {
+                let size = size.eval_target_usize()?;
+                let len = size - from - to;
+                Ty::try_new_array(inner, len)
+            }
+            _ => Err(Error(format!("Cannot subslice non-array type: `{ty_kind:?}`"))),
+        }
+    }
+
+    fn deref_ty(ty: Ty) -> Result<Ty, Error> {
+        let deref_ty = ty
+            .kind()
+            .builtin_deref(true)
+            .ok_or_else(|| error!("Cannot dereference type: {ty:?}"))?;
+        Ok(deref_ty.ty)
     }
 }

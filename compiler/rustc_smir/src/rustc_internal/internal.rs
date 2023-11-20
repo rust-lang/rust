@@ -262,11 +262,7 @@ impl<'tcx> RustcInternal<'tcx> for ClosureKind {
 impl<'tcx> RustcInternal<'tcx> for AdtDef {
     type T = rustc_ty::AdtDef<'tcx>;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        let ty = tables.tcx.type_of(self.0.internal(&mut *tables)).instantiate_identity().kind();
-        let rustc_ty::TyKind::Adt(def, _) = ty else {
-            panic!("Expected an ADT definition, but found: {ty:?}")
-        };
-        *def
+        tables.tcx.adt_def(self.0.internal(&mut *tables))
     }
 }
 
