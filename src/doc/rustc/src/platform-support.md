@@ -215,6 +215,8 @@ host tools.
 
 target | std | host | notes
 -------|:---:|:----:|-------
+[`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
+[`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 [`aarch64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS
 [`aarch64-apple-tvos-sim`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS Simulator
