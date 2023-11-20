@@ -408,13 +408,20 @@ fn impl_intersection_has_negative_obligation(
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
-    let Some(_equate_obligations) =
+    let Some(equate_obligations) =
         equate_impl_headers(infcx, param_env, &impl1_header, &impl2_header)
     else {
         return false;
     };
 
     plug_infer_with_placeholders(infcx, universe, (impl1_header.impl_args, impl2_header.impl_args));
+
+    // FIXME(with_negative_coherence): the infcx has constraints from equating
+    // the impl headers. We should use these constraints as assumptions, not as
+    // requirements, when proving the negated where clauses below.
+    drop(equate_obligations);
+    drop(infcx.take_registered_region_obligations());
+    drop(infcx.take_and_reset_region_constraints());
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
         .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
@@ -541,14 +548,6 @@ fn try_prove_negated_where_clause<'tcx>(
         return false;
     };
 
-    // FIXME(with_negative_coherence): the infcx has region contraints from equating
-    // the impl headers as requirements. Given that the only region constraints we
-    // get are involving inference regions in the root, it shouldn't matter, but
-    // still sus.
-    //
-    // We probably should just throw away the region obligations registered up until
-    // now, or ideally use them as assumptions when proving the region obligations
-    // that we get from proving the negative predicate below.
     let ref infcx = root_infcx.fork();
     let ocx = ObligationCtxt::new(infcx);
 
