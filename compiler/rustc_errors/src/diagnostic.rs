@@ -622,16 +622,17 @@ impl Diagnostic {
     pub fn multipart_suggestion_with_style(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestion: Vec<(Span, String)>,
+        mut suggestion: Vec<(Span, String)>,
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        let mut parts = suggestion
+        suggestion.sort_unstable();
+        suggestion.dedup();
+
+        let parts = suggestion
             .into_iter()
             .map(|(span, snippet)| SubstitutionPart { snippet, span })
             .collect::<Vec<_>>();
-
-        parts.sort_unstable_by_key(|part| part.span);
 
         assert!(!parts.is_empty());
         debug_assert_eq!(
