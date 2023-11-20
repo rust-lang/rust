@@ -6,8 +6,6 @@ LL | impl<T: Send> AnotherTrait for T {}
 ...
 LL | impl AnotherTrait for D<OpaqueType> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
-   |
-   = note: upstream crates may add a new impl of trait `std::marker::Send` for type `OpaqueType` in future versions
 
 error: aborting due to previous error
 
