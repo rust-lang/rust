@@ -11,7 +11,7 @@ use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::BoundRegionConversionTime;
-use rustc_infer::traits::{FulfillmentErrorCode, SelectionError, TraitEngineExt};
+use rustc_infer::traits::{FulfillmentErrorCode, SelectionError, TraitEngine, TraitEngineExt};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, FakeReadCause, Local, LocalInfo, LocalKind, Location,
@@ -1211,7 +1211,27 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                         .collect::<Vec<_>>();
                                     fulfill_cx
                                         .register_predicate_obligations(self.infcx, obligations);
+                                    // We also register the parent obligation for the type at hand
+                                    // implementing `Clone`, to account for bounds that also need
+                                    // to be evaluated, like ensuring that `Self: Clone`.
+                                    let trait_ref = ty::TraitRef::new(tcx, clone_trait, [ty]);
+                                    let obligation = Obligation::new(
+                                        tcx,
+                                        ObligationCause::dummy(),
+                                        self.param_env,
+                                        trait_ref,
+                                    );
+                                    fulfill_cx
+                                        .register_predicate_obligation(self.infcx, obligation);
                                     let errors = fulfill_cx.select_all_or_error(self.infcx);
+                                    // We remove the last predicate failure, which corresponds to
+                                    // the top-level obligation, because most of the type we only
+                                    // care about the other ones, *except* when it is the only one.
+                                    // This seems to only be relevant for arbitrary self-types.
+                                    // Look at `tests/ui/moves/move-fn-self-receiver.rs`.
+                                    let errors = match &errors[..] {
+                                        errors @ [] | errors @ [_] | [errors @ .., _] => errors,
+                                    };
                                     let msg = match &errors[..] {
                                         [] => "you can `clone` the value and consume it, but this \
                                                might not be your desired behavior"
