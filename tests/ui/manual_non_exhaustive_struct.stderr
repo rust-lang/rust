@@ -39,6 +39,26 @@ LL |         _c: (),
    |         ^^^^^^
 
 error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive_struct.rs:29:5
+   |
+LL |       struct NoUnderscore {
+   |       ^------------------
+   |       |
+   |  _____help: add the attribute: `#[non_exhaustive] struct NoUnderscore`
+   | |
+LL | |         pub a: i32,
+LL | |         pub b: i32,
+LL | |         c: (),
+LL | |     }
+   | |_____^
+   |
+help: remove this field
+  --> $DIR/manual_non_exhaustive_struct.rs:32:9
+   |
+LL |         c: (),
+   |         ^^^^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
   --> $DIR/manual_non_exhaustive_struct.rs:56:5
    |
 LL |     struct T(pub i32, pub i32, ());
@@ -64,5 +84,5 @@ help: remove this field
 LL |     struct Tp(pub i32, pub i32, ());
    |                                 ^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
