@@ -64,7 +64,7 @@ impl SpecFromElem for u8 {
 // but this cannot be implemented currently
 impl SpecFromElem for () {
     #[inline]
-    fn from_elem<A: Allocator>(elem: (), n: usize, alloc: A) -> Vec<(), A> {
+    fn from_elem<A: Allocator>(_elem: (), n: usize, alloc: A) -> Vec<(), A> {
         let mut v = Vec::with_capacity_in(n, alloc);
         // SAFETY: the capacity has just been set to `n` and `()`
         // is a ZST with trivial `Clone` implementation
