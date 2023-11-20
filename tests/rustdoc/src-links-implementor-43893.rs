@@ -1,5 +1,7 @@
 // ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/43893
+
 #![crate_name = "foo"]
 
 pub trait SomeTrait {}
