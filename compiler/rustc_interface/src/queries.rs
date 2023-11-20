@@ -304,6 +304,7 @@ impl Compiler {
     where
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
+        // Must declare `_timer` first so that it is dropped after `queries`.
         let mut _timer = None;
         let queries = Queries::new(self);
         let ret = f(&queries);
@@ -324,6 +325,8 @@ impl Compiler {
                 .time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
         }
 
+        // The timer's lifetime spans the dropping of `queries`, which contains
+        // the global context.
         _timer = Some(self.session().timer("free_global_ctxt"));
 
         ret
