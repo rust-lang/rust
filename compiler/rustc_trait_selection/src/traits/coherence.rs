@@ -397,6 +397,8 @@ fn impl_intersection_has_negative_obligation(
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
+    // N.B. We need to unify impl headers *with* intercrate mode, even if proving negative predicates
+    // do not need intercrate mode enabled.
     let ref infcx = tcx.infer_ctxt().intercrate(true).with_next_trait_solver(true).build();
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
@@ -415,19 +417,19 @@ fn impl_intersection_has_negative_obligation(
         return false;
     };
 
-    plug_infer_with_placeholders(
-        infcx,
-        root_universe,
-        (impl1_header.impl_args, impl2_header.impl_args),
-    );
-    let param_env = infcx.resolve_vars_if_possible(param_env);
-
     // FIXME(with_negative_coherence): the infcx has constraints from equating
     // the impl headers. We should use these constraints as assumptions, not as
     // requirements, when proving the negated where clauses below.
     drop(equate_obligations);
     drop(infcx.take_registered_region_obligations());
     drop(infcx.take_and_reset_region_constraints());
+
+    plug_infer_with_placeholders(
+        infcx,
+        root_universe,
+        (impl1_header.impl_args, impl2_header.impl_args),
+    );
+    let param_env = infcx.resolve_vars_if_possible(param_env);
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
         .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
@@ -554,7 +556,11 @@ fn try_prove_negated_where_clause<'tcx>(
         return false;
     };
 
-    let ref infcx = root_infcx.fork();
+    // N.B. We don't need to use intercrate mode here because we're trying to prove
+    // the *existence* of a negative goal, not the non-existence of a positive goal.
+    // Without this, we over-eagerly register coherence ambiguity candidates when
+    // impl candidates do exist.
+    let ref infcx = root_infcx.fork_with_intercrate(false);
     let ocx = ObligationCtxt::new(infcx);
 
     ocx.register_obligation(Obligation::new(
