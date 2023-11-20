@@ -18,6 +18,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
+        this.expect_target_feature_for_intrinsic(link_name, "sse3")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse3.").unwrap();
 
