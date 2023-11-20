@@ -61,13 +61,13 @@ impl SpecFromElem for u8 {
 }
 
 // A better way would be to implement this for all ZSTs which are `Copy` and have trivial `Clone`
-// but this cannot be implemented currently
+// but the latter cannot be detected currently
 impl SpecFromElem for () {
     #[inline]
     fn from_elem<A: Allocator>(_elem: (), n: usize, alloc: A) -> Vec<(), A> {
         let mut v = Vec::with_capacity_in(n, alloc);
-        // SAFETY: the capacity has just been set to `n` and `()`
-        // is a ZST with trivial `Clone` implementation
+        // SAFETY: the capacity has just been set to `n`
+        // and `()` is a ZST with trivial `Clone` implementation
         unsafe {
             v.set_len(n);
         }
