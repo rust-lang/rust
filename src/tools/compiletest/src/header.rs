@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::env;
+use std::fs::canonicalize;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -795,6 +796,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
     const BUILD_BASE: &str = "{{build-base}}";
+    const RUST_SRC_BASE: &str = "{{rust-src-base}}";
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
@@ -807,6 +809,12 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(BUILD_BASE) {
         value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
+    }
+
+    if value.contains(RUST_SRC_BASE) {
+        let src = config.sysroot_base.join("lib/rustlib/src/rust");
+        let canonical = canonicalize(&src).unwrap();
+        value = value.replace(RUST_SRC_BASE, &canonical.to_string_lossy());
     }
 
     value
