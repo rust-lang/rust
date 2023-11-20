@@ -61,11 +61,13 @@ use self::Ordering::*;
 /// The equality relation `==` must satisfy the following conditions
 /// (for all `a`, `b`, `c` of type `A`, `B`, `C`):
 ///
-/// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
+/// - **Symmetry**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
 ///   implies `b == a`**; and
 ///
-/// - **Transitive**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
+/// - **Transitivity**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
 ///   PartialEq<C>`, then **`a == b` and `b == c` implies `a == c`**.
+///   This must also work for longer chains, such as when `A: PartialEq<B>`, `B: PartialEq<C>`,
+///   `C: PartialEq<D>`, and `A: PartialEq<D>` all exist.
 ///
 /// Note that the `B: PartialEq<A>` (symmetric) and `A: PartialEq<C>`
 /// (transitive) impls are not forced to exist, but these requirements apply
