@@ -2859,3 +2859,28 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         write_bytes(dst, val, count)
     }
 }
+
+/// Inform Miri that a given pointer definitely has a certain alignment.
+#[cfg(miri)]
+pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize) {
+    extern "Rust" {
+        /// Miri-provided extern function to promise that a given pointer is properly aligned for
+        /// "symbolic" alignment checks. Will fail if the pointer is not actually aligned or `align` is
+        /// not a power of two. Has no effect when alignment checks are concrete (which is the default).
+        fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
+    }
+
+    fn runtime(ptr: *const (), align: usize) {
+        // SAFETY: this call is always safe.
+        unsafe {
+            miri_promise_symbolic_alignment(ptr, align);
+        }
+    }
+
+    const fn compiletime(_ptr: *const (), _align: usize) {}
+
+    // SAFETY: the extra behavior at runtime is for UB checks only.
+    unsafe {
+        const_eval_select((ptr, align), compiletime, runtime);
+    }
+}

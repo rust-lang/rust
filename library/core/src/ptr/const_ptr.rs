@@ -1374,27 +1374,7 @@ impl<T: ?Sized> *const T {
         // Inform Miri that we want to consider the resulting pointer to be suitably aligned.
         #[cfg(miri)]
         if ret != usize::MAX {
-            fn runtime(ptr: *const (), align: usize) {
-                extern "Rust" {
-                    pub fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
-                }
-
-                // SAFETY: this call is always safe.
-                unsafe {
-                    miri_promise_symbolic_alignment(ptr, align);
-                }
-            }
-
-            const fn compiletime(_ptr: *const (), _align: usize) {}
-
-            // SAFETY: the extra behavior at runtime is for UB checks only.
-            unsafe {
-                intrinsics::const_eval_select(
-                    (self.wrapping_add(ret).cast(), align),
-                    compiletime,
-                    runtime,
-                );
-            }
+            intrinsics::miri_promise_symbolic_alignment(self.wrapping_add(ret).cast(), align);
         }
 
         ret
