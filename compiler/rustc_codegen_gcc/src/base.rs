@@ -3,7 +3,6 @@ use std::env;
 use std::time::Instant;
 
 use gccjit::{
-    Context,
     FunctionType,
     GlobalKind,
 };
@@ -18,8 +17,9 @@ use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::DebugInfoMethods;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
+use rustc_target::spec::PanicStrategy;
 
-use crate::{LockedTargetInfo, gcc_util};
+use crate::{LockedTargetInfo, gcc_util, new_context};
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -88,19 +88,17 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
     fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, LockedTargetInfo)) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
-        let context = Context::default();
+        let context = new_context(tcx);
 
-        context.add_command_line_option("-fexceptions");
-        context.add_driver_option("-fexceptions");
+        if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
+            context.add_command_line_option("-fexceptions");
+            context.add_driver_option("-fexceptions");
+        }
 
         let disabled_features: HashSet<_> = tcx.sess.opts.cg.target_feature.split(',')
             .filter(|feature| feature.starts_with('-'))
             .map(|string| &string[1..])
             .collect();
-
-        if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
-            context.add_command_line_option("-masm=intel");
-        }
 
         if !disabled_features.contains("avx") && tcx.sess.target.arch == "x86_64" {
             // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
