@@ -152,6 +152,12 @@ pub trait CommandExt: Sealed {
     /// in a guaranteed race-free manner (e.g. if the `clone3` system call
     /// is supported). Otherwise, [`pidfd`] will return an error.
     ///
+    /// If a pidfd has been successfully created and not been taken from the `Child`
+    /// then calls to `kill()`, `wait()` and `try_wait()` will use the pidfd
+    /// instead of the pid. This can prevent pid recycling races, e.g.
+    /// those  caused by rogue libraries in the same process prematurely reaping
+    /// zombie children via `waitpid(-1, ...)` calls.
+    ///
     /// [`Command`]: process::Command
     /// [`Child`]: process::Child
     /// [`pidfd`]: fn@ChildExt::pidfd
