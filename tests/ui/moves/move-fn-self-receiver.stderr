@@ -55,7 +55,7 @@ note: `Foo::use_box_self` takes ownership of the receiver `self`, which moves `b
    |
 LL |     fn use_box_self(self: Box<Self>) {}
    |                     ^^^^
-help: you can `clone` the value and consume it, but this might not be your desired behavior
+help: you could `clone` the value and consume it, if the `Box<Foo>: Clone` trait bound could be satisfied
    |
 LL |     boxed_foo.clone().use_box_self();
    |              ++++++++
