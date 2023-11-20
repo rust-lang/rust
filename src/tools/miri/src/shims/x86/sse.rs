@@ -5,7 +5,7 @@ use rustc_target::spec::abi::Abi;
 
 use rand::Rng as _;
 
-use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp, FloatCmpOp};
+use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -95,33 +95,41 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 unary_op_ps(this, which, op, dest)?;
             }
-            // Used to implement the _mm_cmp_ss function.
+            // Used to implement the _mm_cmp*_ss functions.
             // Performs a comparison operation on the first component of `left`
             // and `right`, returning 0 if false or `u32::MAX` if true. The remaining
             // components are copied from `left`.
+            // _mm_cmp_ss is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_ss are SSE functions
+            // with hard-coded operations.
             "cmp.ss" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
+                let which = FloatBinOp::cmp_from_imm(
                     this.read_scalar(imm)?.to_i8()?,
                     "llvm.x86.sse.cmp.ss",
-                )?);
+                )?;
 
                 bin_op_simd_float_first::<Single>(this, which, left, right, dest)?;
             }
-            // Used to implement the _mm_cmp_ps function.
+            // Used to implement the _mm_cmp*_ps functions.
             // Performs a comparison operation on each component of `left`
             // and `right`. For each component, returns 0 if false or u32::MAX
             // if true.
+            // _mm_cmp_ps is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_ps are SSE functions
+            // with hard-coded operations.
             "cmp.ps" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
+                let which = FloatBinOp::cmp_from_imm(
                     this.read_scalar(imm)?.to_i8()?,
                     "llvm.x86.sse.cmp.ps",
-                )?);
+                )?;
 
                 bin_op_simd_float_all::<Single>(this, which, left, right, dest)?;
             }

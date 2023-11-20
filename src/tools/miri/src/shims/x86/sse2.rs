@@ -4,7 +4,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp, FloatCmpOp};
+use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -461,18 +461,22 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.write_scalar(res, &dest)?;
                 }
             }
-            // Used to implement the _mm_cmp*_sd function.
+            // Used to implement the _mm_cmp*_sd functions.
             // Performs a comparison operation on the first component of `left`
             // and `right`, returning 0 if false or `u64::MAX` if true. The remaining
             // components are copied from `left`.
+            // _mm_cmp_sd is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_sd are SSE2 functions
+            // with hard-coded operations.
             "cmp.sd" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
+                let which = FloatBinOp::cmp_from_imm(
                     this.read_scalar(imm)?.to_i8()?,
                     "llvm.x86.sse2.cmp.sd",
-                )?);
+                )?;
 
                 bin_op_simd_float_first::<Double>(this, which, left, right, dest)?;
             }
@@ -480,14 +484,18 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             // Performs a comparison operation on each component of `left`
             // and `right`. For each component, returns 0 if false or `u64::MAX`
             // if true.
+            // _mm_cmp_pd is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_pd are SSE2 functions
+            // with hard-coded operations.
             "cmp.pd" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
+                let which = FloatBinOp::cmp_from_imm(
                     this.read_scalar(imm)?.to_i8()?,
                     "llvm.x86.sse2.cmp.pd",
-                )?);
+                )?;
 
                 bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
             }
