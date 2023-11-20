@@ -921,14 +921,18 @@ pub macro Ord($item:item) {
 /// easy to accidentally make them disagree by deriving some of the traits and manually
 /// implementing others.
 ///
-/// The comparison must satisfy, for all `a`, `b` and `c`:
+/// The comparison relations must satisfy the following conditions
+/// (for all `a`, `b`, `c` of type `A`, `B`, `C`):
 ///
-/// - transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
-/// - duality: `a < b` if and only if `b > a`.
+/// - **Transitivity**: if `A: PartialOrd<B>` and `B: PartialOrd<C>` and `A:
+///   PartialOrd<C>`, then `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+///   This must also work for longer chains, such as when `A: PartialOrd<B>`, `B: PartialOrd<C>`,
+///   `C: PartialOrd<D>`, and `A: PartialOrd<D>` all exist.
+/// - **Duality**: if `A: PartialOrd<B>` and `B: PartialOrd<A>`, then `a < b` if and only if `b > a`.
 ///
-/// Note that these requirements mean that the trait itself must be implemented symmetrically and
-/// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
-/// PartialOrd<V>`.
+/// Note that the `B: PartialOrd<A>` (dual) and `A: PartialOrd<C>`
+/// (transitive) impls are not forced to exist, but these requirements apply
+/// whenever they do exist.
 ///
 /// Violating these requirements is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
