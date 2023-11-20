@@ -398,7 +398,8 @@ fn impl_intersection_has_negative_obligation(
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
     let ref infcx = tcx.infer_ctxt().intercrate(true).with_next_trait_solver(true).build();
-    let universe = infcx.universe();
+    let root_universe = infcx.universe();
+    assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
     let impl1_header = fresh_impl_header(infcx, impl1_def_id);
     let param_env =
@@ -414,7 +415,12 @@ fn impl_intersection_has_negative_obligation(
         return false;
     };
 
-    plug_infer_with_placeholders(infcx, universe, (impl1_header.impl_args, impl2_header.impl_args));
+    plug_infer_with_placeholders(
+        infcx,
+        root_universe,
+        (impl1_header.impl_args, impl2_header.impl_args),
+    );
+    let param_env = infcx.resolve_vars_if_possible(param_env);
 
     // FIXME(with_negative_coherence): the infcx has constraints from equating
     // the impl headers. We should use these constraints as assumptions, not as

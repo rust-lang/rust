@@ -80,6 +80,10 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             .or_insert(span);
                     }
 
+                    Component::Placeholder(_) => {
+                        span_bug!(span, "Should not deduce placeholder outlives component");
+                    }
+
                     Component::Alias(alias_ty) => {
                         // This would either arise from something like:
                         //
