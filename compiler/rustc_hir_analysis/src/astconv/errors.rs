@@ -4,7 +4,7 @@ use crate::errors::{
     ParenthesizedFnTraitExpansion,
 };
 use crate::traits::error_reporting::report_object_safety_error;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -15,8 +15,6 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::object_safety_violations_for_assoc_item;
-
-use std::collections::BTreeSet;
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
@@ -504,7 +502,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// emit a generic note suggesting using a `where` clause to constraint instead.
     pub(crate) fn complain_about_missing_associated_types(
         &self,
-        associated_types: FxHashMap<Span, BTreeSet<DefId>>,
+        associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
         potential_assoc_types: Vec<Span>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {
@@ -514,13 +512,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         // FIXME: Marked `mut` so that we can replace the spans further below with a more
         // appropriate one, but this should be handled earlier in the span assignment.
-        let mut associated_types: FxHashMap<Span, Vec<_>> = associated_types
+        let mut associated_types: FxIndexMap<Span, Vec<_>> = associated_types
             .into_iter()
             .map(|(span, def_ids)| {
                 (span, def_ids.into_iter().map(|did| tcx.associated_item(did)).collect())
             })
             .collect();
-        let mut names: FxHashMap<String, Vec<Symbol>> = Default::default();
+        let mut names: FxIndexMap<String, Vec<Symbol>> = Default::default();
         let mut names_len = 0;
 
         // Account for things like `dyn Foo + 'a`, like in tests `issue-22434.rs` and
