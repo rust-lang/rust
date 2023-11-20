@@ -180,22 +180,6 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn ongoing_codegen(&'tcx self) -> Result<Box<dyn Any>> {
-        self.global_ctxt()?.enter(|tcx| {
-            // Don't do code generation if there were any errors
-            self.compiler.sess.compile_status()?;
-
-            // If we have any delayed bugs, for example because we created TyKind::Error earlier,
-            // it's likely that codegen will only cause more ICEs, obscuring the original problem
-            self.compiler.sess.diagnostic().flush_delayed();
-
-            // Hook for UI tests.
-            Self::check_for_rustc_errors_attr(tcx);
-
-            Ok(passes::start_codegen(&*self.compiler.codegen_backend, tcx))
-        })
-    }
-
     /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
     /// to write UI tests that actually test that compilation succeeds without reporting
     /// an error.
@@ -230,8 +214,20 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    pub fn linker(&'tcx self, ongoing_codegen: Box<dyn Any>) -> Result<Linker> {
+    pub fn codegen_and_build_linker(&'tcx self) -> Result<Linker> {
         self.global_ctxt()?.enter(|tcx| {
+            // Don't do code generation if there were any errors
+            self.compiler.sess.compile_status()?;
+
+            // If we have any delayed bugs, for example because we created TyKind::Error earlier,
+            // it's likely that codegen will only cause more ICEs, obscuring the original problem
+            self.compiler.sess.diagnostic().flush_delayed();
+
+            // Hook for UI tests.
+            Self::check_for_rustc_errors_attr(tcx);
+
+            let ongoing_codegen = passes::start_codegen(&*self.compiler.codegen_backend, tcx);
+
             Ok(Linker {
                 dep_graph: tcx.dep_graph.clone(),
                 output_filenames: tcx.output_filenames(()).clone(),

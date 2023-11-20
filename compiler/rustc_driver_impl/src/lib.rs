@@ -453,7 +453,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            let ongoing_codegen = queries.ongoing_codegen()?;
+            let linker = queries.codegen_and_build_linker()?;
 
             // This must run after monomorphization so that all generic types
             // have been instantiated.
@@ -467,7 +467,6 @@ fn run_compiler(
                 sess.code_stats.print_vtable_sizes(crate_name);
             }
 
-            let linker = queries.linker(ongoing_codegen)?;
             Ok(Some(linker))
         })?;
 
