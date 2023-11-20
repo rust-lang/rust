@@ -22,7 +22,7 @@ pub enum ConstKind<I: Interner> {
     Param(I::ParamConst),
 
     /// Infer the value of the const.
-    Infer(I::InferConst),
+    Infer(InferConst),
 
     /// Bound const variable, used only when preparing a trait query.
     Bound(DebruijnIndex, I::BoundConst),
@@ -65,7 +65,6 @@ const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
 impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for ConstKind<I>
 where
     I::ParamConst: HashStable<CTX>,
-    I::InferConst: HashStable<CTX>,
     I::BoundConst: HashStable<CTX>,
     I::PlaceholderConst: HashStable<CTX>,
     I::AliasConst: HashStable<CTX>,
@@ -133,6 +132,80 @@ impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
             Value(valtree) => write!(f, "{valtree:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{:?}", &this.wrap(expr)),
+        }
+    }
+}
+
+rustc_index::newtype_index! {
+    /// A **`const`** **v**ariable **ID**.
+    #[debug_format = "?{}c"]
+    #[gate_rustc_only]
+    pub struct ConstVid {}
+}
+
+rustc_index::newtype_index! {
+    /// An **effect** **v**ariable **ID**.
+    ///
+    /// Handling effect infer variables happens separately from const infer variables
+    /// because we do not want to reuse any of the const infer machinery. If we try to
+    /// relate an effect variable with a normal one, we would ICE, which can catch bugs
+    /// where we are not correctly using the effect var for an effect param. Fallback
+    /// is also implemented on top of having separate effect and normal const variables.
+    #[debug_format = "?{}e"]
+    #[gate_rustc_only]
+    pub struct EffectVid {}
+}
+
+/// An inference variable for a const, for use in const generics.
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
+pub enum InferConst {
+    /// Infer the value of the const.
+    Var(ConstVid),
+    /// Infer the value of the effect.
+    ///
+    /// For why this is separate from the `Var` variant above, see the
+    /// documentation on `EffectVid`.
+    EffectVar(EffectVid),
+    /// A fresh const variable. See `infer::freshen` for more details.
+    Fresh(u32),
+}
+
+impl fmt::Debug for InferConst {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InferConst::Var(var) => write!(f, "{var:?}"),
+            InferConst::EffectVar(var) => write!(f, "{var:?}"),
+            InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
+        }
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for InferConst {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        match this.infcx.universe_of_ct(*this.data) {
+            None => write!(f, "{:?}", this.data),
+            Some(universe) => match *this.data {
+                InferConst::Var(vid) => write!(f, "?{}_{}c", vid.index(), universe.index()),
+                InferConst::EffectVar(vid) => write!(f, "?{}_{}e", vid.index(), universe.index()),
+                InferConst::Fresh(_) => {
+                    unreachable!()
+                }
+            },
+        }
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<CTX> HashStable<CTX> for InferConst {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        match self {
+            InferConst::Var(_) | InferConst::EffectVar(_) => {
+                panic!("const variables should not be hashed: {self:?}")
+            }
+            InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
         }
     }
 }

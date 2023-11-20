@@ -26,9 +26,9 @@ use crate::traits::solve::{
 };
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
-    ImplPolarity, InferTy, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig,
-    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
-    TyVid, TypeAndMut, Visibility,
+    ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
+    TypeAndMut, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -95,7 +95,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
     type PlaceholderTy = ty::PlaceholderType;
-    type InferTy = InferTy;
 
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
@@ -103,7 +102,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AllocId = crate::mir::interpret::AllocId;
 
     type Const = ty::Const<'tcx>;
-    type InferConst = ty::InferConst;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst;
     type ParamConst = ty::ParamConst;
