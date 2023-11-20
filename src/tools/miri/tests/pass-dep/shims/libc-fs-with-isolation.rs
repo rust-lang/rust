@@ -1,5 +1,4 @@
 //@ignore-target-windows: no libc on Windows
-//@ignore-target-freebsd: FIXME needs foreign function `stat@FBSD_1.0`
 //@compile-flags: -Zmiri-isolation-error=warn-nobacktrace
 //@normalize-stderr-test: "(stat(x)?)" -> "$$STAT"
 

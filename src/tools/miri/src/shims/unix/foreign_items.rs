@@ -155,6 +155,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "lseek64" => {
                 let [fd, offset, whence] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let offset = this.read_scalar(offset)?.to_i64()?;
+                let whence = this.read_scalar(whence)?.to_i32()?;
+                let result = this.lseek64(fd, offset.into(), whence)?;
+                this.write_scalar(result, dest)?;
+            }
+            "lseek" => {
+                let [fd, offset, whence] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
+                let whence = this.read_scalar(whence)?.to_i32()?;
                 let result = this.lseek64(fd, offset, whence)?;
                 this.write_scalar(result, dest)?;
             }

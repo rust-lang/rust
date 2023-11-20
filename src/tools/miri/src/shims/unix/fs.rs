@@ -827,24 +827,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn lseek64(
         &mut self,
-        fd_op: &OpTy<'tcx, Provenance>,
-        offset_op: &OpTy<'tcx, Provenance>,
-        whence_op: &OpTy<'tcx, Provenance>,
+        fd: i32,
+        offset: i128,
+        whence: i32,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
 
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let offset = this.read_scalar(offset_op)?.to_i64()?;
-        let whence = this.read_scalar(whence_op)?.to_i32()?;
-
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
             SeekFrom::Start(u64::try_from(offset).unwrap())
         } else if whence == this.eval_libc_i32("SEEK_CUR") {
-            SeekFrom::Current(offset)
+            SeekFrom::Current(i64::try_from(offset).unwrap())
         } else if whence == this.eval_libc_i32("SEEK_END") {
-            SeekFrom::End(offset)
+            SeekFrom::End(i64::try_from(offset).unwrap())
         } else {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
@@ -911,13 +907,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.try_unwrap_io_result(result)
     }
 
-    fn macos_stat(
+    fn macos_fbsd_stat(
         &mut self,
         path_op: &OpTy<'tcx, Provenance>,
         buf_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-        this.assert_target_os("macos", "stat");
+
+        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
+            panic!("`macos_fbsd_stat` should not be called on {}", this.tcx.sess.target.os);
+        }
 
         let path_scalar = this.read_pointer(path_op)?;
         let path = this.read_path_from_c_str(path_scalar)?.into_owned();
@@ -940,13 +939,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     // `lstat` is used to get symlink metadata.
-    fn macos_lstat(
+    fn macos_fbsd_lstat(
         &mut self,
         path_op: &OpTy<'tcx, Provenance>,
         buf_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-        this.assert_target_os("macos", "lstat");
+
+        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
+            panic!("`macos_fbsd_lstat` should not be called on {}", this.tcx.sess.target.os);
+        }
 
         let path_scalar = this.read_pointer(path_op)?;
         let path = this.read_path_from_c_str(path_scalar)?.into_owned();
@@ -967,14 +969,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(Scalar::from_i32(this.macos_stat_write_buf(metadata, buf_op)?))
     }
 
-    fn macos_fstat(
+    fn macos_fbsd_fstat(
         &mut self,
         fd_op: &OpTy<'tcx, Provenance>,
         buf_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("macos", "fstat");
+        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
+            panic!("`macos_fbsd_fstat` should not be called on {}", this.tcx.sess.target.os);
+        }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
@@ -1213,7 +1217,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         #[cfg_attr(not(unix), allow(unused_variables))]
-        let mode = if this.tcx.sess.target.os == "macos" {
+        let mode = if matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
             u32::from(this.read_scalar(mode_op)?.to_u16()?)
         } else {
             this.read_scalar(mode_op)?.to_u32()?
@@ -1385,7 +1389,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(Scalar::from_maybe_pointer(entry, this))
     }
 
-    fn macos_readdir_r(
+    fn macos_fbsd_readdir_r(
         &mut self,
         dirp_op: &OpTy<'tcx, Provenance>,
         entry_op: &OpTy<'tcx, Provenance>,
@@ -1393,7 +1397,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("macos", "readdir_r");
+        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
+            panic!("`macos_fbsd_readdir_r` should not be called on {}", this.tcx.sess.target.os);
+        }
 
         let dirp = this.read_target_usize(dirp_op)?;
 
@@ -1424,7 +1430,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // }
 
                 let entry_place = this.deref_pointer_as(entry_op, this.libc_ty_layout("dirent"))?;
-                let name_place = this.project_field(&entry_place, 5)?;
+                let name_place = this.project_field_named(&entry_place, "d_name")?;
 
                 let file_name = dir_entry.file_name(); // not a Path as there are no separators!
                 let (name_fits, file_name_buf_len) = this.write_os_str_to_c_str(
@@ -1448,16 +1454,41 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                this.write_int_fields_named(
-                    &[
-                        ("d_ino", ino.into()),
-                        ("d_seekoff", 0),
-                        ("d_reclen", 0),
-                        ("d_namlen", file_name_len.into()),
-                        ("d_type", file_type.into()),
-                    ],
-                    &entry_place,
-                )?;
+                // macOS offset field is d_seekoff
+                if this.projectable_has_field(&entry_place, "d_seekoff") {
+                    this.write_int_fields_named(
+                        &[
+                            ("d_ino", ino.into()),
+                            ("d_seekoff", 0),
+                            ("d_reclen", 0),
+                            ("d_namlen", file_name_len.into()),
+                            ("d_type", file_type.into()),
+                        ],
+                        &entry_place,
+                    )?;
+                    // freebsd 12 and onwards had added the d_off field
+                } else if this.projectable_has_field(&entry_place, "d_off") {
+                    this.write_int_fields_named(
+                        &[
+                            ("d_fileno", ino.into()),
+                            ("d_off", 0),
+                            ("d_reclen", 0),
+                            ("d_type", file_type.into()),
+                            ("d_namlen", file_name_len.into()),
+                        ],
+                        &entry_place,
+                    )?;
+                } else {
+                    this.write_int_fields_named(
+                        &[
+                            ("d_fileno", ino.into()),
+                            ("d_reclen", 0),
+                            ("d_type", file_type.into()),
+                            ("d_namlen", file_name_len.into()),
+                        ],
+                        &entry_place,
+                    )?;
+                }
 
                 let result_place = this.deref_pointer(result_op)?;
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
