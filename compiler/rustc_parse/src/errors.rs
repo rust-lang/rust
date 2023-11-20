@@ -2827,3 +2827,23 @@ pub(crate) struct GenericArgsInPatRequireTurbofishSyntax {
     )]
     pub suggest_turbofish: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_transpose_dyn_or_impl)]
+pub(crate) struct TransposeDynOrImpl<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub kw: &'a str,
+    #[subdiagnostic]
+    pub sugg: TransposeDynOrImplSugg<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct TransposeDynOrImplSugg<'a> {
+    #[suggestion_part(code = "")]
+    pub removal_span: Span,
+    #[suggestion_part(code = "{kw} ")]
+    pub insertion_span: Span,
+    pub kw: &'a str,
+}

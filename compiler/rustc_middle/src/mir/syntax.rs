@@ -1404,18 +1404,18 @@ pub enum BinOp {
     BitOr,
     /// The `<<` operator (shift left)
     ///
-    /// The offset is truncated to the size of the first operand before shifting.
+    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
     Shl,
-    /// Like `Shl`, but is UB if the RHS >= LHS::BITS
+    /// Like `Shl`, but is UB if the RHS >= LHS::BITS or RHS < 0
     ShlUnchecked,
     /// The `>>` operator (shift right)
     ///
-    /// The offset is truncated to the size of the first operand before shifting.
+    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
     ///
     /// This is an arithmetic shift if the LHS is signed
     /// and a logical shift if the LHS is unsigned.
     Shr,
-    /// Like `Shl`, but is UB if the RHS >= LHS::BITS
+    /// Like `Shl`, but is UB if the RHS >= LHS::BITS or RHS < 0
     ShrUnchecked,
     /// The `==` operator (equality)
     Eq,

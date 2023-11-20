@@ -147,6 +147,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
+    Placeholder(ty::PlaceholderType),
     Alias(ty::AliasTy<'tcx>),
 }
 
@@ -707,6 +708,7 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{p:?}"),
+            GenericKind::Placeholder(ref p) => write!(f, "{p:?}"),
             GenericKind::Alias(ref p) => write!(f, "{p:?}"),
         }
     }
@@ -716,6 +718,7 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{p}"),
+            GenericKind::Placeholder(ref p) => write!(f, "{p:?}"),
             GenericKind::Alias(ref p) => write!(f, "{p}"),
         }
     }
@@ -725,6 +728,7 @@ impl<'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
+            GenericKind::Placeholder(ref p) => Ty::new_placeholder(tcx, *p),
             GenericKind::Alias(ref p) => p.to_ty(tcx),
         }
     }

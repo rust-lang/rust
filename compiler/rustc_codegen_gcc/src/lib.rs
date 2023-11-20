@@ -39,6 +39,8 @@ extern crate rustc_errors;
 extern crate rustc_fluent_macro;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
+#[cfg(feature="master")]
+extern crate rustc_interface;
 extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
@@ -86,7 +88,7 @@ use std::sync::atomic::Ordering;
 
 use gccjit::{Context, OptimizationLevel};
 #[cfg(feature="master")]
-use gccjit::TargetInfo;
+use gccjit::{TargetInfo, Version};
 #[cfg(not(feature="master"))]
 use gccjit::CType;
 use errors::LTONotSupported;
@@ -244,17 +246,33 @@ impl CodegenBackend for GccCodegenBackend {
     }
 }
 
+fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
+    let context = Context::default();
+    if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
+        context.add_command_line_option("-masm=intel");
+    }
+    #[cfg(feature="master")]
+    {
+        let version = Version::get();
+        let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
+        context.set_output_ident(&format!("rustc version {} with libgccjit {}",
+                rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
+                version,
+        ));
+    }
+    // TODO(antoyo): check if this should only be added when using -Cforce-unwind-tables=n.
+    context.add_command_line_option("-fno-asynchronous-unwind-tables");
+    context
+}
+
 impl ExtraBackendMethods for GccCodegenBackend {
     fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) -> Self::Module {
         let mut mods = GccContext {
-            context: Context::default(),
+            context: new_context(tcx),
             should_combine_object_files: false,
             temp_dir: None,
         };
 
-        if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
-            mods.context.add_command_line_option("-masm=intel");
-        }
         unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind); }
         mods
     }

@@ -49,7 +49,7 @@ LL |     type B;
 LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
    |                     ^^^^^^^^   ^^^^^^^^   ^^^^^^   ^^^^^^ associated types `A`, `B`, `Output` must be specified
    |                     |          |          |
-   |                     |          |          associated types `Output` (from trait `Mul`), `Output` (from trait `Div`) must be specified
+   |                     |          |          associated types `Output` (from trait `Div`), `Output` (from trait `Mul`) must be specified
    |                     |          associated type `Output` must be specified
    |                     associated type `Output` must be specified
    |
@@ -119,7 +119,7 @@ error[E0191]: the value of the associated types `Output` in `Div`, `Output` in `
   --> $DIR/missing-associated-types.rs:24:21
    |
 LL | type Bal<Rhs> = dyn X<Rhs>;
-   |                     ^^^^^^ associated types `Output` (from trait `Mul`), `Output` (from trait `Div`) must be specified
+   |                     ^^^^^^ associated types `Output` (from trait `Div`), `Output` (from trait `Mul`) must be specified
    |
    = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
 
