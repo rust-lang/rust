@@ -415,19 +415,19 @@ fn impl_intersection_has_negative_obligation(
         return false;
     };
 
-    plug_infer_with_placeholders(
-        infcx,
-        root_universe,
-        (impl1_header.impl_args, impl2_header.impl_args),
-    );
-    let param_env = infcx.resolve_vars_if_possible(param_env);
-
     // FIXME(with_negative_coherence): the infcx has constraints from equating
     // the impl headers. We should use these constraints as assumptions, not as
     // requirements, when proving the negated where clauses below.
     drop(equate_obligations);
     drop(infcx.take_registered_region_obligations());
     drop(infcx.take_and_reset_region_constraints());
+
+    plug_infer_with_placeholders(
+        infcx,
+        root_universe,
+        (impl1_header.impl_args, impl2_header.impl_args),
+    );
+    let param_env = infcx.resolve_vars_if_possible(param_env);
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
         .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
