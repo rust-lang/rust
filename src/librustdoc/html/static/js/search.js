@@ -18,28 +18,28 @@ if (!Array.prototype.toSpliced) {
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
 const itemTypes = [
+    "keyword",
+    "primitive",
     "mod",
     "externcrate",
     "import",
-    "struct",
+    "struct", // 5
     "enum",
-    "fn", // 5
+    "fn",
     "type",
     "static",
-    "trait",
+    "trait", // 10
     "impl",
-    "tymethod", // 10
+    "tymethod",
     "method",
     "structfield",
-    "variant",
+    "variant", // 15
     "macro",
-    "primitive", // 15
     "associatedtype",
     "constant",
     "associatedconstant",
-    "union",
-    "foreigntype", // 20
-    "keyword",
+    "union", // 20
+    "foreigntype",
     "existential",
     "attr",
     "derive",
@@ -48,6 +48,8 @@ const itemTypes = [
 ];
 
 const longItemTypes = [
+    "keyword",
+    "primitive type",
     "module",
     "extern crate",
     "re-export",
@@ -63,13 +65,11 @@ const longItemTypes = [
     "struct field",
     "enum variant",
     "macro",
-    "primitive type",
     "assoc type",
     "constant",
     "assoc const",
     "union",
     "foreign type",
-    "keyword",
     "existential type",
     "attribute macro",
     "derive macro",
@@ -77,8 +77,6 @@ const longItemTypes = [
 ];
 
 // used for special search precedence
-const TY_PRIMITIVE = itemTypes.indexOf("primitive");
-const TY_KEYWORD = itemTypes.indexOf("keyword");
 const TY_GENERIC = itemTypes.indexOf("generic");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
@@ -1315,16 +1313,6 @@ function initSearch(rawSearchIndex) {
                 b = bbb.word;
                 if (a !== b) {
                     return (a > b ? +1 : -1);
-                }
-
-                // special precedence for primitive and keyword pages
-                if ((aaa.item.ty === TY_PRIMITIVE && bbb.item.ty !== TY_KEYWORD) ||
-                    (aaa.item.ty === TY_KEYWORD && bbb.item.ty !== TY_PRIMITIVE)) {
-                    return -1;
-                }
-                if ((bbb.item.ty === TY_PRIMITIVE && aaa.item.ty !== TY_PRIMITIVE) ||
-                    (bbb.item.ty === TY_KEYWORD && aaa.item.ty !== TY_KEYWORD)) {
-                    return 1;
                 }
 
                 // sort by description (no description goes later)
@@ -2943,7 +2931,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // https://mathiasbynens.be/notes/shapes-ics
             const crateRow = {
                 crate: crate,
-                ty: 1, // == ExternCrate
+                ty: 3, // == ExternCrate
                 name: crate,
                 path: "",
                 desc: crateCorpus.doc,
