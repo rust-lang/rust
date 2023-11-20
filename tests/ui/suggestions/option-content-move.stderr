@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
-  --> $DIR/option-content-move.rs:9:20
+  --> $DIR/option-content-move.rs:10:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
@@ -15,7 +15,7 @@ LL |                 if <Option<String> as Clone>::clone(&selection.1).unwrap().
    |                    ++++++++++++++++++++++++++++++++++           +
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
-  --> $DIR/option-content-move.rs:27:20
+  --> $DIR/option-content-move.rs:28:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
