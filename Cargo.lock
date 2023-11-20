@@ -2328,10 +2328,11 @@ dependencies = [
 
 [[package]]
 name = "md-5"
-version = "0.10.5"
+version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6365506850d44bff6e2fbcb5176cf63650e48bd45ef2fe2665ae1570e0f4b9ca"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
 dependencies = [
+ "cfg-if",
  "digest",
 ]
 
@@ -3783,6 +3784,7 @@ dependencies = [
  "annotate-snippets",
  "derive_setters",
  "fluent",
+ "md-5",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",

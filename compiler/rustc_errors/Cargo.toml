@@ -8,6 +8,7 @@ edition = "2021"
 annotate-snippets = "0.9"
 derive_setters = "0.1.6"
 fluent = "0.16.0"
+md-5 = "0.10.6"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }

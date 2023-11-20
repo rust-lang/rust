@@ -1,2 +1,2 @@
-parse_struct_literal_body_without_path = this is a test message
-    .suggestion = this is a test suggestion
+slug-687d6246 = this is a test message
+slug-7d40154a = this is a test suggestion

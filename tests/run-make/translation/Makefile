@@ -9,7 +9,7 @@ FAKEROOT=$(TMPDIR)/fakeroot
 RUSTC_LOG:=rustc_error_messages
 export RUSTC_TRANSLATION_NO_DEBUG_ASSERT:=1
 
-all: normal missing broken sysroot-invalid sysroot-missing
+all: normal custom missing broken sysroot sysroot-invalid sysroot-missing
 
 # Check that the test works normally, using the built-in fallback bundle.
 normal: test.rs
@@ -17,8 +17,6 @@ normal: test.rs
 
 # Check that a primary bundle can be loaded and will be preferentially used
 # where possible.
-# FIXME(yukang): This test is broken because the compiler doesn't look for the fluent slugs now
-# we need to fix it after we have implemented the new way to find the fluent resources
 custom: test.rs working.ftl
 	$(RUSTC) $< -Ztranslate-additional-ftl=$(CURDIR)/working.ftl 2>&1 | $(CGREP) "this is a test message"
 
@@ -36,8 +34,6 @@ broken: test.rs broken.ftl
 # identifier by making a local copy of the sysroot and adding the custom locale
 # to it.
 
-# FIXME(yukang): This test is broken because the compiler doesn't look for the fluent slugs now
-# we need to fix it after we have implemented the new way to find the fluent resources
 sysroot: test.rs working.ftl
 	rm -rf $(FAKEROOT)
 	mkdir $(FAKEROOT)
