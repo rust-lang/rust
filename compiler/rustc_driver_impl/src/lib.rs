@@ -455,6 +455,8 @@ fn run_compiler(
 
             let ongoing_codegen = queries.ongoing_codegen()?;
 
+            // This must run after monomorphization so that all generic types
+            // have been instantiated.
             if sess.opts.unstable_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
             }
@@ -469,6 +471,8 @@ fn run_compiler(
             Ok(Some(linker))
         })?;
 
+        // Linking is done outside the `compiler.enter()` so that the
+        // `GlobalCtxt` within `Queries` can be freed as early as possible.
         if let Some(linker) = linker {
             let _timer = sess.timer("link");
             linker.link(sess, codegen_backend)?
