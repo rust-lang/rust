@@ -1,3 +1,4 @@
+//! This module provides methods to retrieve allocation information, such as static variables.
 use crate::mir::mono::{Instance, StaticDef};
 use crate::ty::{Allocation, Binder, ExistentialTraitRef, IndexedVal, Ty};
 use crate::with;
@@ -25,6 +26,12 @@ impl From<AllocId> for GlobalAlloc {
 }
 
 impl GlobalAlloc {
+    /// Retrieve the allocation id for a global allocation if it exists.
+    ///
+    /// For `[GlobalAlloc::VTable]`, this will return the allocation for the VTable of the given
+    /// type for the optional trait if the type implements the trait.
+    ///
+    /// This method will always return `None` for allocations other than `[GlobalAlloc::VTable]`.
     pub fn vtable_allocation(&self) -> Option<AllocId> {
         with(|cx| cx.vtable_allocation(self))
     }
