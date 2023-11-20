@@ -226,6 +226,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     if sess.target.is_like_osx {
+        if macho_is_arm64e(&sess.target) {
+            file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
+        }
+
         file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
     }
     if binary_format == BinaryFormat::Coff {
@@ -383,6 +387,11 @@ fn macho_object_build_version_for_target(target: &Target) -> object::write::Mach
     build_version.minos = pack_version(min_os);
     build_version.sdk = pack_version(sdk);
     build_version
+}
+
+/// Is Apple's CPU subtype `arm64e`s
+fn macho_is_arm64e(target: &Target) -> bool {
+    return target.llvm_target.starts_with("arm64e");
 }
 
 pub enum MetadataPosition {

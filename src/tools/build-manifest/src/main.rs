@@ -50,7 +50,9 @@ static HOSTS: &[&str] = &[
 
 static TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
+    "arm64e-apple-darwin",
     "aarch64-apple-ios",
+    "arm64e-apple-ios",
     "aarch64-apple-ios-sim",
     "aarch64-unknown-fuchsia",
     "aarch64-linux-android",
