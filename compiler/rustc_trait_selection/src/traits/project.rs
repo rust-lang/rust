@@ -584,7 +584,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         data,
                         self.cause.clone(),
                         self.depth,
-                        &mut self.obligations,
+                        self.obligations,
                     )
                 } else {
                     opt_normalize_projection_type(
@@ -593,7 +593,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         data,
                         self.cause.clone(),
                         self.depth,
-                        &mut self.obligations,
+                        self.obligations,
                     )
                     .ok()
                     .flatten()
@@ -632,7 +632,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     data,
                     self.cause.clone(),
                     self.depth,
-                    &mut self.obligations,
+                    self.obligations,
                 )
                 .ok()
                 .flatten()
@@ -717,7 +717,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     data,
                     self.cause.clone(),
                     self.depth,
-                    &mut self.obligations,
+                    self.obligations,
                 )
             }
 
@@ -732,7 +732,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     data,
                     self.cause.clone(),
                     self.depth,
-                    &mut self.obligations,
+                    self.obligations,
                 );
 
                 PlaceholderReplacer::replace_placeholders(

@@ -102,7 +102,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     fn session(&self) -> &Session {
-        &self.compiler.session()
+        self.compiler.session()
     }
 
     fn codegen_backend(&self) -> &dyn CodegenBackend {

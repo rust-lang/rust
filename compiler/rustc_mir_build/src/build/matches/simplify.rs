@@ -69,7 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates = self.create_or_subcandidates(candidate, &place, pats);
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
                 return true;
             }
 

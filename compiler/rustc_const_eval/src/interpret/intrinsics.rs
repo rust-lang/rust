@@ -505,7 +505,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
-        let (res, overflow) = self.overflowing_binary_op(BinOp::Rem, &a, &b)?;
+        let (res, overflow) = self.overflowing_binary_op(BinOp::Rem, a, b)?;
         assert!(!overflow); // All overflow is UB, so this should never return on overflow.
         if res.to_scalar().assert_bits(a.layout.size) != 0 {
             throw_ub_custom!(
@@ -515,7 +515,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
-        self.binop_ignore_overflow(BinOp::Div, &a, &b, dest)
+        self.binop_ignore_overflow(BinOp::Div, a, b, dest)
     }
 
     pub fn saturating_arith(

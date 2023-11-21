@@ -537,8 +537,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 if feature_state.is_none() {
                     let rust_feature = supported_features.iter().find_map(|&(rust_feature, _)| {
                         let llvm_features = to_llvm_features(sess, rust_feature);
-                        if llvm_features.contains(&feature)
-                            && !llvm_features.contains(&rust_feature)
+                        if llvm_features.contains(feature) && !llvm_features.contains(rust_feature)
                         {
                             Some(rust_feature)
                         } else {

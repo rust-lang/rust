@@ -212,14 +212,14 @@ impl<'tcx> RustcInternal<'tcx> for BoundVariableKind {
             BoundVariableKind::Ty(kind) => rustc_ty::BoundVariableKind::Ty(match kind {
                 BoundTyKind::Anon => rustc_ty::BoundTyKind::Anon,
                 BoundTyKind::Param(def, symbol) => {
-                    rustc_ty::BoundTyKind::Param(def.0.internal(tables), Symbol::intern(&symbol))
+                    rustc_ty::BoundTyKind::Param(def.0.internal(tables), Symbol::intern(symbol))
                 }
             }),
             BoundVariableKind::Region(kind) => rustc_ty::BoundVariableKind::Region(match kind {
                 BoundRegionKind::BrAnon => rustc_ty::BoundRegionKind::BrAnon,
                 BoundRegionKind::BrNamed(def, symbol) => rustc_ty::BoundRegionKind::BrNamed(
                     def.0.internal(tables),
-                    Symbol::intern(&symbol),
+                    Symbol::intern(symbol),
                 ),
                 BoundRegionKind::BrEnv => rustc_ty::BoundRegionKind::BrEnv,
             }),

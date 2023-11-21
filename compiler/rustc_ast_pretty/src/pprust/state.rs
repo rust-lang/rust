@@ -1078,11 +1078,11 @@ impl<'a> State<'a> {
             }
             ast::TyKind::AnonStruct(fields) => {
                 self.head("struct");
-                self.print_record_struct_body(&fields, ty.span);
+                self.print_record_struct_body(fields, ty.span);
             }
             ast::TyKind::AnonUnion(fields) => {
                 self.head("union");
-                self.print_record_struct_body(&fields, ty.span);
+                self.print_record_struct_body(fields, ty.span);
             }
             ast::TyKind::Paren(typ) => {
                 self.popen();

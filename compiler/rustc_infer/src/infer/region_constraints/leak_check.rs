@@ -81,7 +81,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             return Ok(());
         }
 
-        let mini_graph = &MiniGraph::new(tcx, &self, only_consider_snapshot);
+        let mini_graph = &MiniGraph::new(tcx, self, only_consider_snapshot);
 
         let mut leak_check = LeakCheck::new(tcx, outer_universe, max_universe, mini_graph, self);
         leak_check.assign_placeholder_values()?;

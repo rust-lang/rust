@@ -511,7 +511,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         if Some(trait_ref.def_id()) == tcx.lang_items().tuple_trait() {
                             self.add_tuple_trait_message(
-                                &obligation.cause.code().peel_derives(),
+                                obligation.cause.code().peel_derives(),
                                 &mut err,
                             );
                         }
@@ -569,7 +569,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
                                 self.suggest_borrowing_for_object_cast(
                                     &mut err,
-                                    &root_obligation,
+                                    root_obligation,
                                     source,
                                     target,
                                 );
@@ -1965,7 +1965,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                self.get_parent_trait_ref(&parent_code)
+                self.get_parent_trait_ref(parent_code)
             }
             _ => None,
         }
@@ -2180,7 +2180,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span);
-                    expr_finder.visit_expr(&self.tcx.hir().body(body_id).value);
+                    expr_finder.visit_expr(self.tcx.hir().body(body_id).value);
 
                     if let Some(hir::Expr {
                         kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
@@ -2932,7 +2932,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 obligation.param_env,
             ) {
                 self.report_similar_impl_candidates_for_root_obligation(
-                    &obligation,
+                    obligation,
                     *trait_predicate,
                     body_def_id,
                     err,
@@ -3044,13 +3044,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 (ty::ClosureKind::FnOnce, Some((span, place))) => {
                     err.fn_once_label = Some(ClosureFnOnceLabel {
                         span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                        place: ty::place_to_string_for_capture(self.tcx, place),
                     })
                 }
                 (ty::ClosureKind::FnMut, Some((span, place))) => {
                     err.fn_mut_label = Some(ClosureFnMutLabel {
                         span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                        place: ty::place_to_string_for_capture(self.tcx, place),
                     })
                 }
                 _ => {}
@@ -3162,7 +3162,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut not_tupled = false;
 
         let found = match found_trait_ref.skip_binder().args.type_at(1).kind() {
-            ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
+            ty::Tuple(tys) => vec![ArgKind::empty(); tys.len()],
             _ => {
                 not_tupled = true;
                 vec![ArgKind::empty()]
@@ -3171,7 +3171,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let expected_ty = expected_trait_ref.skip_binder().args.type_at(1);
         let expected = match expected_ty.kind() {
-            ty::Tuple(ref tys) => {
+            ty::Tuple(tys) => {
                 tys.iter().map(|t| ArgKind::from_expected_ty(t, Some(span))).collect()
             }
             _ => {

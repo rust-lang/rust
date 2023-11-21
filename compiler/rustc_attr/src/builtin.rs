@@ -552,7 +552,7 @@ pub fn cfg_matches(
 fn try_gate_cfg(name: Symbol, span: Span, sess: &ParseSess, features: Option<&Features>) {
     let gate = find_gated_cfg(|sym| sym == name);
     if let (Some(feats), Some(gated_cfg)) = (features, gate) {
-        gate_cfg(&gated_cfg, span, sess, feats);
+        gate_cfg(gated_cfg, span, sess, feats);
     }
 }
 

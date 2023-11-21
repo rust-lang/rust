@@ -181,7 +181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_instantiated_copied(self.tcx, args)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
-            ty::Dynamic(ref object_type, ..) => {
+            ty::Dynamic(object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
                     let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
                     self.deduce_sig_from_projection(None, pb)
@@ -630,7 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
-            hir::FnRetTy::Return(ref output) => astconv.ast_ty_to_ty(&output),
+            hir::FnRetTy::Return(ref output) => astconv.ast_ty_to_ty(output),
             hir::FnRetTy::DefaultReturn(_) => match body.coroutine_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
@@ -819,7 +819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
-            astconv.ast_ty_to_ty(&output);
+            astconv.ast_ty_to_ty(output);
         }
 
         let result = ty::Binder::dummy(self.tcx.mk_fn_sig(

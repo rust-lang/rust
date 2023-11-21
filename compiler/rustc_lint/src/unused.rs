@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
-            && let ty = cx.typeck_results().expr_ty(&await_expr)
+            && let ty = cx.typeck_results().expr_ty(await_expr)
             && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: future_def_id, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
             && let async_fn_def_id = cx.tcx.parent(*future_def_id)
@@ -132,9 +132,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             return;
         }
 
-        let ty = cx.typeck_results().expr_ty(&expr);
+        let ty = cx.typeck_results().expr_ty(expr);
 
-        let must_use_result = is_ty_must_use(cx, ty, &expr, expr.span);
+        let must_use_result = is_ty_must_use(cx, ty, expr, expr.span);
         let type_lint_emitted_or_suppressed = match must_use_result {
             Some(path) => {
                 emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
@@ -211,7 +211,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             expr_is_from_block: bool,
         ) -> bool {
             let maybe_def_id = match expr.kind {
-                hir::ExprKind::Call(ref callee, _) => {
+                hir::ExprKind::Call(callee, _) => {
                     match callee.kind {
                         hir::ExprKind::Path(ref qpath) => {
                             match cx.qpath_res(qpath, callee.hir_id) {
@@ -692,7 +692,7 @@ trait UnusedDelimLint {
                 innermost = match &innermost.kind {
                     ExprKind::AddrOf(_, _, expr) => expr,
                     _ => {
-                        if parser::contains_exterior_struct_lit(&innermost) {
+                        if parser::contains_exterior_struct_lit(innermost) {
                             return true;
                         } else {
                             break;
@@ -721,7 +721,7 @@ trait UnusedDelimLint {
                     return matches!(rhs.kind, ExprKind::Block(..));
                 }
 
-                _ => return parser::contains_exterior_struct_lit(&inner),
+                _ => return parser::contains_exterior_struct_lit(inner),
             }
         }
     }
@@ -896,7 +896,7 @@ trait UnusedDelimLint {
         };
         self.check_unused_delims_expr(
             cx,
-            &value,
+            value,
             ctx,
             followed_by_block,
             left_pos,
@@ -919,7 +919,7 @@ trait UnusedDelimLint {
             StmtKind::Expr(ref expr) => {
                 self.check_unused_delims_expr(
                     cx,
-                    &expr,
+                    expr,
                     UnusedDelimsCtx::BlockRetValue,
                     false,
                     None,

@@ -40,7 +40,7 @@ impl<'tcx> PlaceTy<'tcx> {
                     None => adt_def.non_enum_variant(),
                     Some(variant_index) => {
                         assert!(adt_def.is_enum());
-                        &adt_def.variant(variant_index)
+                        adt_def.variant(variant_index)
                     }
                 };
                 let field_def = &variant_def.fields[f];
@@ -143,7 +143,7 @@ impl<'tcx> Place<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        Place::ty_from(self.local, &self.projection, local_decls, tcx)
+        Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
 }
 
@@ -152,7 +152,7 @@ impl<'tcx> PlaceRef<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        Place::ty_from(self.local, &self.projection, local_decls, tcx)
+        Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
 }
 

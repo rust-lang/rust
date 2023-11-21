@@ -481,14 +481,14 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
     assert!(body.phase == MirPhase::Analysis(AnalysisPhase::PostCleanup));
 
     // Do a little drop elaboration before const-checking if `const_precise_live_drops` is enabled.
-    if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, &body)) {
+    if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, body)) {
         pm::run_passes(
             tcx,
             body,
             &[&remove_uninit_drops::RemoveUninitDrops, &simplify::SimplifyCfg::RemoveFalseEdges],
             None,
         );
-        check_consts::post_drop_elaboration::check_live_drops(tcx, &body); // FIXME: make this a MIR lint
+        check_consts::post_drop_elaboration::check_live_drops(tcx, body); // FIXME: make this a MIR lint
     }
 
     debug!("runtime_mir_lowering({:?})", did);

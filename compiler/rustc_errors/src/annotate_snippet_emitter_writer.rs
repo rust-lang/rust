@@ -138,7 +138,7 @@ impl AnnotateSnippetEmitterWriter {
         let message = self.translate_messages(messages, args);
         if let Some(source_map) = &self.source_map {
             // Make sure our primary file comes first
-            let primary_lo = if let Some(ref primary_span) = msp.primary_span().as_ref() {
+            let primary_lo = if let Some(primary_span) = msp.primary_span().as_ref() {
                 if primary_span.is_dummy() {
                     // FIXME(#59346): Not sure when this is the case and what
                     // should be done if it happens
@@ -203,7 +203,7 @@ impl AnnotateSnippetEmitterWriter {
                         Slice {
                             source,
                             line_start: *line_index,
-                            origin: Some(&file_name),
+                            origin: Some(file_name),
                             // FIXME(#59346): Not really sure when `fold` should be true or false
                             fold: false,
                             annotations: annotations

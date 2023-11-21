@@ -322,7 +322,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             && let Some(symbol) = self.tcx().trimmed_def_paths(()).get(&def_id)
         {
             // If `Assoc` is unique, we don't want to talk about `Trait::Assoc`.
-            self.write_str(get_local_name(&self, *symbol, def_id, key).as_str())?;
+            self.write_str(get_local_name(self, *symbol, def_id, key).as_str())?;
             return Ok(true);
         }
         if let Some(symbol) = key.get_opt_name() {
@@ -332,7 +332,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 && let Some(symbol) = parent_key.get_opt_name()
             {
                 // Trait
-                self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
+                self.write_str(get_local_name(self, symbol, parent, parent_key).as_str())?;
                 self.write_str("::")?;
             } else if let DefKind::Variant = kind
                 && let Some(parent) = self.tcx().opt_parent(def_id)
@@ -343,7 +343,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                 // For associated items and variants, we want the "full" path, namely, include
                 // the parent type in the path. For example, `Iterator::Item`.
-                self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
+                self.write_str(get_local_name(self, symbol, parent, parent_key).as_str())?;
                 self.write_str("::")?;
             } else if let DefKind::Struct
             | DefKind::Union
@@ -358,7 +358,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 // If not covered above, like for example items out of `impl` blocks, fallback.
                 return Ok(false);
             }
-            self.write_str(get_local_name(&self, symbol, def_id, key).as_str())?;
+            self.write_str(get_local_name(self, symbol, def_id, key).as_str())?;
             return Ok(true);
         }
         Ok(false)
@@ -660,7 +660,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(print(ty::TypeAndMut { ty, mutbl }))
             }
             ty::Never => p!("!"),
-            ty::Tuple(ref tys) => {
+            ty::Tuple(tys) => {
                 p!("(", comma_sep(tys.iter()));
                 if tys.len() == 1 {
                     p!(",");
@@ -2399,7 +2399,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         let possible_names = ('a'..='z').rev().map(|s| Symbol::intern(&format!("'{s}")));
 
         let mut available_names = possible_names
-            .filter(|name| !self.used_region_names.contains(&name))
+            .filter(|name| !self.used_region_names.contains(name))
             .collect::<Vec<_>>();
         debug!(?available_names);
         let num_available = available_names.len();
@@ -2445,7 +2445,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
                     ty::BrAnon | ty::BrEnv => {
-                        let name = next_name(&self);
+                        let name = next_name(self);
 
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
@@ -2461,7 +2461,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         (name, ty::BrNamed(CRATE_DEF_ID.to_def_id(), name))
                     }
                     ty::BrNamed(def_id, kw::UnderscoreLifetime | kw::Empty) => {
-                        let name = next_name(&self);
+                        let name = next_name(self);
 
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {

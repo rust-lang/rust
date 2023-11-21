@@ -98,12 +98,12 @@ fn compute_components<'tcx>(
                 compute_components(tcx, element, out, visited);
             }
 
-            ty::Closure(_, ref args) => {
+            ty::Closure(_, args) => {
                 let tupled_ty = args.as_closure().tupled_upvars_ty();
                 compute_components(tcx, tupled_ty, out, visited);
             }
 
-            ty::Coroutine(_, ref args, _) => {
+            ty::Coroutine(_, args, _) => {
                 // Same as the closure case
                 let tupled_ty = args.as_coroutine().tupled_upvars_ty();
                 compute_components(tcx, tupled_ty, out, visited);

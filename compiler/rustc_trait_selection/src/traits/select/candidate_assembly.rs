@@ -634,7 +634,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let self_ty = placeholder_trait_predicate.self_ty();
             let principal_trait_ref = match self_ty.kind() {
-                ty::Dynamic(ref data, ..) => {
+                ty::Dynamic(data, ..) => {
                     if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
                         debug!(
                             "assemble_candidates_from_object_ty: matched builtin bound, \
@@ -759,10 +759,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (
-                &ty::Dynamic(ref a_data, a_region, ty::Dyn),
-                &ty::Dynamic(ref b_data, b_region, ty::Dyn),
-            ) => {
+            (&ty::Dynamic(a_data, a_region, ty::Dyn), &ty::Dynamic(b_data, b_region, ty::Dyn)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`

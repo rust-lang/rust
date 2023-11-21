@@ -231,13 +231,13 @@ fn dump_graph(query: &DepGraphQuery) {
             // Expect one of: "-> target", "source -> target", or "source ->".
             let edge_filter =
                 EdgeFilter::new(&string).unwrap_or_else(|e| bug!("invalid filter: {}", e));
-            let sources = node_set(&query, &edge_filter.source);
-            let targets = node_set(&query, &edge_filter.target);
-            filter_nodes(&query, &sources, &targets)
+            let sources = node_set(query, &edge_filter.source);
+            let targets = node_set(query, &edge_filter.target);
+            filter_nodes(query, &sources, &targets)
         }
         Err(_) => query.nodes().into_iter().map(|n| n.kind).collect(),
     };
-    let edges = filter_edges(&query, &nodes);
+    let edges = filter_edges(query, &nodes);
 
     {
         // dump a .txt file with just the edges:

@@ -59,7 +59,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
-            Nested::Body(id) => state.print_expr(&self.body(id).value),
+            Nested::Body(id) => state.print_expr(self.body(id).value),
             Nested::BodyParamPat(id, i) => state.print_pat(self.body(id).params[i].pat),
         }
     }
@@ -88,14 +88,14 @@ impl<'a> State<'a> {
             Node::AnonConst(a) => self.print_anon_const(a),
             Node::ConstBlock(a) => self.print_inline_const(a),
             Node::Expr(a) => self.print_expr(a),
-            Node::ExprField(a) => self.print_expr_field(&a),
+            Node::ExprField(a) => self.print_expr_field(a),
             Node::Stmt(a) => self.print_stmt(a),
             Node::PathSegment(a) => self.print_path_segment(a),
             Node::Ty(a) => self.print_type(a),
             Node::TypeBinding(a) => self.print_type_binding(a),
             Node::TraitRef(a) => self.print_trait_ref(a),
             Node::Pat(a) => self.print_pat(a),
-            Node::PatField(a) => self.print_patfield(&a),
+            Node::PatField(a) => self.print_patfield(a),
             Node::Arm(a) => self.print_arm(a),
             Node::Infer(_) => self.word("_"),
             Node::Block(a) => {
@@ -260,7 +260,7 @@ impl<'a> State<'a> {
                 self.word("*");
                 self.print_mt(mt, true);
             }
-            hir::TyKind::Ref(ref lifetime, ref mt) => {
+            hir::TyKind::Ref(lifetime, ref mt) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
                 self.print_mt(mt, false);
@@ -281,7 +281,7 @@ impl<'a> State<'a> {
             }
             hir::TyKind::OpaqueDef(..) => self.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
-            hir::TyKind::TraitObject(bounds, ref lifetime, syntax) => {
+            hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
                 if syntax == ast::TraitObjectSyntax::Dyn {
                     self.word_space("dyn");
                 }
@@ -517,10 +517,10 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ItemKind::Macro(ref macro_def, _) => {
+            hir::ItemKind::Macro(macro_def, _) => {
                 self.print_mac_def(macro_def, &item.ident, item.span, |_| {});
             }
-            hir::ItemKind::Mod(ref _mod) => {
+            hir::ItemKind::Mod(_mod) => {
                 self.head("mod");
                 self.print_ident(item.ident);
                 self.nbsp();
@@ -549,7 +549,7 @@ impl<'a> State<'a> {
                     state.print_type(ty);
                 });
             }
-            hir::ItemKind::OpaqueTy(ref opaque_ty) => {
+            hir::ItemKind::OpaqueTy(opaque_ty) => {
                 self.print_item_type(item, opaque_ty.generics, |state| {
                     let mut real_bounds = Vec::with_capacity(opaque_ty.bounds.len());
                     for b in opaque_ty.bounds {
@@ -1096,12 +1096,12 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(&self.attrs(field.hir_id));
+        self.print_outer_attributes(self.attrs(field.hir_id));
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_space(":");
         }
-        self.print_expr(&field.expr);
+        self.print_expr(field.expr);
         self.end()
     }
 
@@ -1131,7 +1131,7 @@ impl<'a> State<'a> {
         args: &[hir::Expr<'_>],
     ) {
         let base_args = args;
-        self.print_expr_maybe_paren(&receiver, parser::PREC_POSTFIX);
+        self.print_expr_maybe_paren(receiver, parser::PREC_POSTFIX);
         self.word(".");
         self.print_ident(segment.ident);
 
@@ -1217,7 +1217,7 @@ impl<'a> State<'a> {
         self.commasep(Consistent, &args, |s, arg| match *arg {
             AsmArg::Template(ref template) => s.print_string(template, ast::StrStyle::Cooked),
             AsmArg::Operand(op) => match *op {
-                hir::InlineAsmOperand::In { reg, ref expr } => {
+                hir::InlineAsmOperand::In { reg, expr } => {
                     s.word("in");
                     s.popen();
                     s.word(format!("{reg}"));
@@ -1236,7 +1236,7 @@ impl<'a> State<'a> {
                         None => s.word("_"),
                     }
                 }
-                hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
+                hir::InlineAsmOperand::InOut { reg, late, expr } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
                     s.word(format!("{reg}"));
@@ -1244,7 +1244,7 @@ impl<'a> State<'a> {
                     s.space();
                     s.print_expr(expr);
                 }
-                hir::InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
+                hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
                     s.word(format!("{reg}"));
@@ -1350,7 +1350,7 @@ impl<'a> State<'a> {
             hir::ExprKind::AddrOf(k, m, expr) => {
                 self.print_expr_addr_of(k, m, expr);
             }
-            hir::ExprKind::Lit(ref lit) => {
+            hir::ExprKind::Lit(lit) => {
                 self.print_literal(lit);
             }
             hir::ExprKind::Cast(expr, ty) => {
@@ -1516,7 +1516,7 @@ impl<'a> State<'a> {
                 self.word("asm!");
                 self.print_inline_asm(asm);
             }
-            hir::ExprKind::OffsetOf(container, ref fields) => {
+            hir::ExprKind::OffsetOf(container, fields) => {
                 self.word("offset_of!(");
                 self.print_type(container);
                 self.word(",");
@@ -1764,7 +1764,7 @@ impl<'a> State<'a> {
                 if !empty {
                     self.space();
                 }
-                self.commasep_cmnt(Consistent, &fields, |s, f| s.print_patfield(f), |f| f.pat.span);
+                self.commasep_cmnt(Consistent, fields, |s, f| s.print_patfield(f), |f| f.pat.span);
                 if etc {
                     if !fields.is_empty() {
                         self.word_space(",");
@@ -1864,7 +1864,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(&self.attrs(field.hir_id));
+        self.print_outer_attributes(self.attrs(field.hir_id));
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_nbsp(":");
@@ -2164,7 +2164,7 @@ impl<'a> State<'a> {
                     self.print_bounds(":", bounds);
                 }
                 hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    ref lifetime,
+                    lifetime,
                     bounds,
                     ..
                 }) => {

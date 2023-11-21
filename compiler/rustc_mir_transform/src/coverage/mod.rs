@@ -142,7 +142,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         ////////////////////////////////////////////////////
         // Compute coverage spans from the `CoverageGraph`.
         let coverage_spans = CoverageSpans::generate_coverage_spans(
-            &self.mir_body,
+            self.mir_body,
             fn_sig_span,
             body_span,
             &self.basic_coverage_blocks,
@@ -240,7 +240,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             );
 
             // Inject a counter into the newly-created BB.
-            inject_statement(self.mir_body, self.make_mir_coverage_kind(&counter_kind), new_bb);
+            inject_statement(self.mir_body, self.make_mir_coverage_kind(counter_kind), new_bb);
         }
 
         mappings

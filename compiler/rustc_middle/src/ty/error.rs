@@ -235,7 +235,7 @@ impl<'tcx> Ty<'tcx> {
                 _ => "fn item".into(),
             },
             ty::FnPtr(_) => "fn pointer".into(),
-            ty::Dynamic(ref inner, ..) if let Some(principal) = inner.principal() => {
+            ty::Dynamic(inner, ..) if let Some(principal) = inner.principal() => {
                 format!("`dyn {}`", tcx.def_path_str(principal.def_id())).into()
             }
             ty::Dynamic(..) => "trait object".into(),
@@ -281,7 +281,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::Str
             | ty::Never => "type".into(),
-            ty::Tuple(ref tys) if tys.is_empty() => "unit type".into(),
+            ty::Tuple(tys) if tys.is_empty() => "unit type".into(),
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
             ty::Array(..) => "array".into(),

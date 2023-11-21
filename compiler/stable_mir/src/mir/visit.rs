@@ -224,7 +224,7 @@ pub trait MirVisitor {
 
     fn super_terminator(&mut self, term: &Terminator, location: Location) {
         let Terminator { kind, span } = term;
-        self.visit_span(&span);
+        self.visit_span(span);
         match kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume

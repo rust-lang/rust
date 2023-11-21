@@ -29,7 +29,7 @@ where
             }
 
             let mut hasher = StableHasher::new();
-            (&self[..]).hash_stable(hcx, &mut hasher);
+            self[..].hash_stable(hcx, &mut hasher);
 
             let hash: Fingerprint = hasher.finish();
             cache.borrow_mut().insert(key, hash);

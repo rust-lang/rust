@@ -434,9 +434,9 @@ impl<'a> StripUnconfigured<'a> {
             }
         };
         (
-            parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
+            parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {
                 attr::cfg_matches(
-                    &meta_item,
+                    meta_item,
                     &self.sess.parse_sess,
                     self.lint_node_id,
                     self.features,

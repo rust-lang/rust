@@ -382,8 +382,8 @@ impl<T> LazyArray<T> {
     }
 
     fn from_bytes_impl(position: &[u8; 8], meta: &[u8; 8]) -> Option<LazyArray<T>> {
-        let position = NonZeroUsize::new(u64::from_bytes(&position) as usize)?;
-        let len = u64::from_bytes(&meta) as usize;
+        let position = NonZeroUsize::new(u64::from_bytes(position) as usize)?;
+        let len = u64::from_bytes(meta) as usize;
         Some(LazyArray::from_position_and_num_elems(position, len))
     }
 }

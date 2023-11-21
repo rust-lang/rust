@@ -367,7 +367,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug_assert!(!self.infcx.next_trait_solver());
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
-        self.check_recursion_limit(&stack.obligation, &stack.obligation)?;
+        self.check_recursion_limit(stack.obligation, stack.obligation)?;
 
         // Check the cache. Note that we freshen the trait-ref
         // separately rather than using `stack.fresh_trait_ref` --
@@ -416,7 +416,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let mut no_candidates_apply = true;
 
                     for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, &c)?.may_apply() {
+                        if self.evaluate_candidate(stack, c)?.may_apply() {
                             no_candidates_apply = false;
                             break;
                         }
@@ -2218,7 +2218,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            ty::CoroutineWitness(def_id, ref args) => {
+            ty::CoroutineWitness(def_id, args) => {
                 let hidden_types = bind_coroutine_hidden_types_above(
                     self.infcx,
                     def_id,
@@ -2307,23 +2307,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Array(element_ty, _) | ty::Slice(element_ty) => t.rebind(vec![element_ty]),
 
-            ty::Tuple(ref tys) => {
+            ty::Tuple(tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
                 t.rebind(tys.iter().collect())
             }
 
-            ty::Closure(_, ref args) => {
+            ty::Closure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
                 t.rebind(vec![ty])
             }
 
-            ty::Coroutine(_, ref args, _) => {
+            ty::Coroutine(_, args, _) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
             }
 
-            ty::CoroutineWitness(def_id, ref args) => {
+            ty::CoroutineWitness(def_id, args) => {
                 bind_coroutine_hidden_types_above(self.infcx, def_id, args, t.bound_vars())
             }
 

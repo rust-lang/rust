@@ -280,7 +280,7 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         let old_blocks = caller_body.basic_blocks.next_index();
-        self.inline_call(caller_body, &callsite, callee_body);
+        self.inline_call(caller_body, callsite, callee_body);
         let new_blocks = old_blocks..caller_body.basic_blocks.next_index();
 
         Ok(new_blocks)

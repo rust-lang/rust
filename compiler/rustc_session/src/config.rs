@@ -857,7 +857,7 @@ impl OutFileName {
     pub fn as_path(&self) -> &Path {
         match *self {
             OutFileName::Real(ref path) => path.as_ref(),
-            OutFileName::Stdout => &Path::new("stdout"),
+            OutFileName::Stdout => Path::new("stdout"),
         }
     }
 

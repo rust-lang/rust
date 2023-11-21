@@ -277,7 +277,7 @@ pub fn each_linked_rlib(
         let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.rlib {
-            f(cnum, &path);
+            f(cnum, path);
         } else {
             if used_crate_source.rmeta.is_some() {
                 return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
@@ -524,7 +524,7 @@ fn link_staticlib<'a>(
                 && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
 
             let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
-            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, &lib));
+            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
             let relevant_libs: FxHashSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
             let bundled_libs: FxHashSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
@@ -689,7 +689,7 @@ fn link_dwarf_object<'a>(
         // Adding an executable is primarily done to make `thorin` check that all the referenced
         // dwarf objects are found in the end.
         package.add_executable(
-            &executable_out_filename,
+            executable_out_filename,
             thorin::MissingReferencedObjectBehaviour::Skip,
         )?;
 
@@ -945,7 +945,7 @@ fn link_natively<'a>(
                     {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
                         let has_linker = windows_registry::find_tool(
-                            &sess.opts.target_triple.triple(),
+                            sess.opts.target_triple.triple(),
                             "link.exe",
                         )
                         .is_some();
@@ -1038,14 +1038,14 @@ fn link_natively<'a>(
     if sess.target.is_like_osx {
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-S"))
+                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-S"))
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-x"))
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, None)
+                strip_symbols_with_external_utility(sess, "strip", out_filename, None)
             }
             (Strip::None, _) => {}
         }
@@ -1059,7 +1059,7 @@ fn link_natively<'a>(
         match strip {
             // Always preserve the symbol table (-x).
             Strip::Debuginfo => {
-                strip_symbols_with_external_utility(sess, stripcmd, &out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
             }
             // Strip::Symbols is handled via the --strip-all linker option.
             Strip::Symbols => {}
@@ -1245,13 +1245,13 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         // rpath to the library as well (the rpath should be absolute, see
         // PR #41352 for details).
         let filename = format!("rustc{channel}_rt.{name}");
-        let path = find_sanitizer_runtime(&sess, &filename);
+        let path = find_sanitizer_runtime(sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
         linker.link_dylib(&filename, false, true);
     } else {
         let filename = format!("librustc{channel}_rt.{name}.a");
-        let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
+        let path = find_sanitizer_runtime(sess, &filename).join(&filename);
         linker.link_whole_rlib(&path);
     }
 }
@@ -1685,7 +1685,7 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 
 // Returns true if linker is located within sysroot
 fn detect_self_contained_mingw(sess: &Session) -> bool {
-    let (linker, _) = linker_and_flavor(&sess);
+    let (linker, _) = linker_and_flavor(sess);
     // Assume `-C linker=rust-lld` as self-contained mode
     if linker == Path::new("rust-lld") {
         return true;
@@ -1737,7 +1737,7 @@ fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfC
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
                         && sess.target.vendor != "uwp"
-                        && detect_self_contained_mingw(&sess)
+                        && detect_self_contained_mingw(sess)
                 }
             }
         };
@@ -2432,7 +2432,7 @@ fn add_native_libs_from_crate(
         // If rlib contains native libs as archives, unpack them to tmpdir.
         let rlib = &codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap().0;
         archive_builder_builder
-            .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
+            .extract_bundled_libs(rlib, tmpdir, bundled_libs)
             .unwrap_or_else(|e| sess.emit_fatal(e));
     }
 
@@ -2485,7 +2485,7 @@ fn add_native_libs_from_crate(
                             cmd.link_whole_staticlib(
                                 name,
                                 verbatim,
-                                &search_paths.get_or_init(|| archive_search_paths(sess)),
+                                search_paths.get_or_init(|| archive_search_paths(sess)),
                             );
                         } else {
                             cmd.link_staticlib(name, verbatim)
@@ -2719,7 +2719,7 @@ fn rehome_sysroot_lib_dir<'a>(sess: &'a Session, lib_dir: &Path) -> PathBuf {
         // already had `fix_windows_verbatim_for_gcc()` applied if needed.
         sysroot_lib_path
     } else {
-        fix_windows_verbatim_for_gcc(&lib_dir)
+        fix_windows_verbatim_for_gcc(lib_dir)
     }
 }
 
@@ -2756,7 +2756,7 @@ fn add_static_crate<'a>(
     let mut link_upstream = |path: &Path| {
         let rlib_path = if let Some(dir) = path.parent() {
             let file_name = path.file_name().expect("rlib path has no file name path component");
-            rehome_sysroot_lib_dir(sess, &dir).join(file_name)
+            rehome_sysroot_lib_dir(sess, dir).join(file_name)
         } else {
             fix_windows_verbatim_for_gcc(path)
         };
@@ -2793,7 +2793,7 @@ fn add_static_crate<'a>(
                 let canonical = f.replace('-', "_");
 
                 let is_rust_object =
-                    canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
+                    canonical.starts_with(&canonical_name) && looks_like_rust_object_file(f);
 
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the

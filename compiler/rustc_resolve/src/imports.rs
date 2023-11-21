@@ -708,7 +708,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.tcx,
                         &mut diag,
                         Some(err.span),
-                        &candidates,
+                        candidates,
                         DiagnosticMode::Import,
                         (source != target)
                             .then(|| format!(" as {target}"))
@@ -720,7 +720,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self.tcx,
                             &mut diag,
                             None,
-                            &candidates,
+                            candidates,
                             DiagnosticMode::Normal,
                             (source != target)
                                 .then(|| format!(" as {target}"))

@@ -1060,7 +1060,7 @@ impl<'a> Parser<'a> {
         match &*components {
             // 1e2
             [IdentLike(i)] => {
-                DestructuredFloat::Single(Symbol::intern(&i), span)
+                DestructuredFloat::Single(Symbol::intern(i), span)
             }
             // 1.
             [IdentLike(i), Punct('.')] => {
@@ -1072,7 +1072,7 @@ impl<'a> Parser<'a> {
                 } else {
                     (span, span)
                 };
-                let symbol = Symbol::intern(&i);
+                let symbol = Symbol::intern(i);
                 DestructuredFloat::TrailingDot(symbol, ident_span, dot_span)
             }
             // 1.2 | 1.2e3
@@ -1088,8 +1088,8 @@ impl<'a> Parser<'a> {
                 } else {
                     (span, span, span)
                 };
-                let symbol1 = Symbol::intern(&i1);
-                let symbol2 = Symbol::intern(&i2);
+                let symbol1 = Symbol::intern(i1);
+                let symbol2 = Symbol::intern(i2);
                 DestructuredFloat::MiddleDot(symbol1, ident1_span, dot_span, symbol2, ident2_span)
             }
             // 1e+ | 1e- (recovered)
@@ -2052,7 +2052,7 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         let span = token.uninterpolated_span();
                         self.bump();
-                        report_lit_error(&self.sess, err, lit, span);
+                        report_lit_error(self.sess, err, lit, span);
                         // Pack possible quotes and prefixes from the original literal into
                         // the error literal's symbol so they can be pretty-printed faithfully.
                         let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
@@ -3207,7 +3207,7 @@ impl<'a> Parser<'a> {
                     if let Some((ident, _)) = self.token.ident()
                         && !self.token.is_reserved_ident()
                         && self.look_ahead(1, |t| {
-                            AssocOp::from_token(&t).is_some()
+                            AssocOp::from_token(t).is_some()
                                 || matches!(t.kind, token::OpenDelim(_))
                                 || t.kind == token::Dot
                         })

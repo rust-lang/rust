@@ -67,7 +67,7 @@ pub(crate) unsafe fn codegen(
         llcx,
         llmod,
         "__rust_alloc_error_handler",
-        &alloc_error_handler_name(alloc_error_handler_kind),
+        alloc_error_handler_name(alloc_error_handler_kind),
         &[usize, usize], // size, align
         None,
         true,

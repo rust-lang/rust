@@ -124,7 +124,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMach
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
     target_machine_factory(
-        &tcx.sess,
+        tcx.sess,
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
     )(config)
@@ -1106,7 +1106,7 @@ fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, llmod: &llvm::Modu
     }
 
     let raw_stats =
-        llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(&llmod, s) })
+        llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(llmod, s) })
             .expect("cannot get module instruction stats");
 
     #[derive(serde::Deserialize)]

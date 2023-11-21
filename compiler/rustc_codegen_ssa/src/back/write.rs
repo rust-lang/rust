@@ -892,7 +892,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
 
     let load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
-        let source_file = in_incr_comp_dir(&incr_comp_session_dir, saved_path);
+        let source_file = in_incr_comp_dir(incr_comp_session_dir, saved_path);
         debug!(
             "copying preexisting module `{}` from {:?} to {}",
             module.name,
@@ -914,7 +914,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
     let object = load_from_incr_comp_dir(
         cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name)),
-        &module.source.saved_files.get("o").expect("no saved object file in work product"),
+        module.source.saved_files.get("o").expect("no saved object file in work product"),
     );
     let dwarf_object =
         module.source.saved_files.get("dwo").as_ref().and_then(|saved_dwarf_object_file| {
@@ -924,7 +924,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
                 .expect(
                     "saved dwarf object in work product but `split_dwarf_path` returned `None`",
                 );
-            load_from_incr_comp_dir(dwarf_obj_out, &saved_dwarf_object_file)
+            load_from_incr_comp_dir(dwarf_obj_out, saved_dwarf_object_file)
         });
 
     WorkItemResult::Finished(CompiledModule {

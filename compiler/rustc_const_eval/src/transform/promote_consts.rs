@@ -188,7 +188,7 @@ impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
     type Target = ConstCx<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.ccx
+        self.ccx
     }
 }
 
@@ -229,7 +229,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
-                        &self.ccx,
+                        self.ccx,
                         &mut |l| self.qualif_local::<Q>(l),
                         rhs,
                     ),
@@ -246,7 +246,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match &terminator.kind {
                     TerminatorKind::Call { .. } => {
                         let return_ty = self.body.local_decls[local].ty;
-                        Q::in_any_value_of_ty(&self.ccx, return_ty)
+                        Q::in_any_value_of_ty(self.ccx, return_ty)
                     }
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);

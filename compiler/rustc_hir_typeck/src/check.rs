@@ -76,7 +76,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
 
-    GatherLocalsVisitor::new(&fcx).visit_body(body);
+    GatherLocalsVisitor::new(fcx).visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
@@ -94,7 +94,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
         let ty_span = try { inputs_hir?.get(idx)?.span };
-        fcx.check_pat_top(&param.pat, param_ty, ty_span, None, None);
+        fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
 
         // Check that argument is Sized.
         if !params_can_be_unsized {
@@ -123,7 +123,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::Return(ty) => ty.span,
     };
     fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
-    fcx.check_return_expr(&body.value, false);
+    fcx.check_return_expr(body.value, false);
 
     // We insert the deferred_coroutine_interiors entry after visiting the body.
     // This ensures that all nested coroutines appear before the entry of this coroutine.
@@ -156,7 +156,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     // really expected to fail, since the coercions would have failed
     // earlier when trying to find a LUB.
     let coercion = fcx.ret_coercion.take().unwrap().into_inner();
-    let mut actual_return_ty = coercion.complete(&fcx);
+    let mut actual_return_ty = coercion.complete(fcx);
     debug!("actual_return_ty = {:?}", actual_return_ty);
     if let ty::Dynamic(..) = declared_ret_ty.kind() {
         // We have special-cased the case where the function is declared

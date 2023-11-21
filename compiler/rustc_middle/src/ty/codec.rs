@@ -297,7 +297,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AllocId {
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::SymbolName<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        ty::SymbolName::new(decoder.interner(), &decoder.read_str())
+        ty::SymbolName::new(decoder.interner(), decoder.read_str())
     }
 }
 

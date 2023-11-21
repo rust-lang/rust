@@ -42,11 +42,11 @@ pub(super) fn generate<'mir, 'tcx>(
 
     let free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
-        &typeck.borrowck_context.universal_regions,
+        typeck.borrowck_context.universal_regions,
         &typeck.borrowck_context.constraints.outlives_constraints,
     );
     let (relevant_live_locals, boring_locals) =
-        compute_relevant_live_locals(typeck.tcx(), &free_regions, &body);
+        compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
     let facts_enabled = use_polonius || AllFacts::enabled(typeck.tcx());
 
     let polonius_drop_used = facts_enabled.then(|| {

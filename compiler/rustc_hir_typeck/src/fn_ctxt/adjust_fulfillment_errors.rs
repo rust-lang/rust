@@ -495,7 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Whether it succeeded or failed, it likely made some amount of progress.
         // In the very worst case, it's just the same `expr` we originally passed in.
         let expr = match self.blame_specific_expr_if_possible_for_obligation_cause_code(
-            &error.obligation.cause.code(),
+            error.obligation.cause.code(),
             expr,
         ) {
             Ok(expr) => expr,

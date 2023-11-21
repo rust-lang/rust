@@ -45,7 +45,7 @@ pub fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
+    let msvc_tool = windows_registry::find_tool(sess.opts.target_triple.triple(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -78,7 +78,7 @@ pub fn get_linker<'a>(
     if matches!(flavor, LinkerFlavor::Msvc(..)) && t.vendor == "uwp" {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
-            if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
+            if let Some(root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_ref() {
                     "x86_64" => Some("x64"),
                     "x86" => Some("x86"),
@@ -519,7 +519,7 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = find_native_static_library(lib, verbatim, search_path, &self.sess);
+            let lib = find_native_static_library(lib, verbatim, search_path, self.sess);
             self.linker_arg(&lib);
         }
     }
@@ -1590,7 +1590,7 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn link_whole_staticlib(&mut self, lib: &str, verbatim: bool, search_path: &[PathBuf]) {
         self.hint_static();
-        let lib = find_native_static_library(lib, verbatim, search_path, &self.sess);
+        let lib = find_native_static_library(lib, verbatim, search_path, self.sess);
         self.cmd.arg(format!("-bkeepfile:{}", lib.to_str().unwrap()));
     }
 

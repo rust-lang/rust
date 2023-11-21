@@ -26,7 +26,7 @@ pub fn expand_test_case(
     anno_item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
-    warn_on_duplicate_attribute(&ecx, &anno_item, sym::test_case);
+    warn_on_duplicate_attribute(ecx, &anno_item, sym::test_case);
 
     if !ecx.ecfg.should_test {
         return vec![];
@@ -79,7 +79,7 @@ pub fn expand_test(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::test);
-    warn_on_duplicate_attribute(&cx, &item, sym::test);
+    warn_on_duplicate_attribute(cx, &item, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
@@ -90,7 +90,7 @@ pub fn expand_bench(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::bench);
-    warn_on_duplicate_attribute(&cx, &item, sym::bench);
+    warn_on_duplicate_attribute(cx, &item, sym::bench);
     expand_test_or_bench(cx, attr_sp, item, true)
 }
 
@@ -134,9 +134,9 @@ pub fn expand_test_or_bench(
     // will fail. We shouldn't try to expand in this case because the errors
     // would be spurious.
     let check_result = if is_bench {
-        check_bench_signature(cx, &item, &fn_)
+        check_bench_signature(cx, &item, fn_)
     } else {
-        check_test_signature(cx, &item, &fn_)
+        check_test_signature(cx, &item, fn_)
     };
     if check_result.is_err() {
         return if is_stmt {
