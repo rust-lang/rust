@@ -3,7 +3,7 @@
 const EXPECTED = {
     'query': 'fn',
     'others': [
-        { 'path': 'std', 'name': 'fn', ty: 15 }, // 15 is for primitive types
-        { 'path': 'std', 'name': 'fn', ty: 21 }, // 21 is for keywords
+        { 'path': 'std', 'name': 'fn', ty: 1 }, // 1 is for primitive types
+        { 'path': 'std', 'name': 'fn', ty: 0 }, // 0 is for keywords
     ],
 };
