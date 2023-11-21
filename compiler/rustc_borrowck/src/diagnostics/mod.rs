@@ -11,7 +11,7 @@ use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::BoundRegionConversionTime;
-use rustc_infer::traits::{FulfillmentErrorCode, SelectionError, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::{FulfillmentErrorCode, SelectionError};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, FakeReadCause, Local, LocalInfo, LocalKind, Location,
@@ -25,11 +25,9 @@ use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
-use rustc_trait_selection::solve::FulfillmentCtxt;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{
-    type_known_to_meet_bound_modulo_regions, Obligation, ObligationCause,
-};
+use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -1175,113 +1173,56 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             } else {
                                 vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
                             };
-                            self.infcx.probe(|_snapshot| {
-                                if let ty::Adt(def, args) = ty.kind()
-                                    && !has_sugg
-                                    && let Some((def_id, _imp)) = tcx
-                                        .all_impls(clone_trait)
-                                        .filter_map(|def_id| {
-                                            tcx.impl_trait_ref(def_id).map(|r| (def_id, r))
-                                        })
-                                        .map(|(def_id, imp)| (def_id, imp.skip_binder()))
-                                        .filter(|(_, imp)| match imp.self_ty().peel_refs().kind() {
-                                            ty::Adt(i_def, _) if i_def.did() == def.did() => true,
-                                            _ => false,
-                                        })
-                                        .next()
-                                {
-                                    let mut fulfill_cx = FulfillmentCtxt::new(self.infcx);
-                                    // We get all obligations from the impl to talk about specific
-                                    // trait bounds.
-                                    let obligations = tcx
-                                        .predicates_of(def_id)
-                                        .instantiate(tcx, args)
-                                        .into_iter()
-                                        .map(|(clause, span)| {
-                                            Obligation::new(
-                                                tcx,
-                                                ObligationCause::misc(
-                                                    span,
-                                                    self.body.source.def_id().expect_local(),
-                                                ),
-                                                self.param_env,
-                                                clause,
-                                            )
-                                        })
-                                        .collect::<Vec<_>>();
-                                    fulfill_cx
-                                        .register_predicate_obligations(self.infcx, obligations);
-                                    // We also register the parent obligation for the type at hand
-                                    // implementing `Clone`, to account for bounds that also need
-                                    // to be evaluated, like ensuring that `Self: Clone`.
-                                    let trait_ref = ty::TraitRef::new(tcx, clone_trait, [ty]);
-                                    let obligation = Obligation::new(
-                                        tcx,
-                                        ObligationCause::dummy(),
-                                        self.param_env,
-                                        trait_ref,
-                                    );
-                                    fulfill_cx
-                                        .register_predicate_obligation(self.infcx, obligation);
-                                    let errors = fulfill_cx.select_all_or_error(self.infcx);
-                                    // We remove the last predicate failure, which corresponds to
-                                    // the top-level obligation, because most of the type we only
-                                    // care about the other ones, *except* when it is the only one.
-                                    // This seems to only be relevant for arbitrary self-types.
-                                    // Look at `tests/ui/moves/move-fn-self-receiver.rs`.
-                                    let errors = match &errors[..] {
-                                        errors @ [] | errors @ [_] | [errors @ .., _] => errors,
-                                    };
-                                    let msg = match &errors[..] {
-                                        [] => "you can `clone` the value and consume it, but this \
-                                               might not be your desired behavior"
-                                            .to_string(),
-                                        [error] => {
-                                            format!(
-                                                "you could `clone` the value and consume it, if \
-                                                 the `{}` trait bound could be satisfied",
-                                                error.obligation.predicate,
-                                            )
-                                        }
-                                        [errors @ .., last] => {
-                                            format!(
-                                                "you could `clone` the value and consume it, if \
-                                                 the following trait bounds could be satisfied: {} \
-                                                 and `{}`",
-                                                errors
-                                                    .iter()
-                                                    .map(|e| format!(
-                                                        "`{}`",
-                                                        e.obligation.predicate
-                                                    ))
-                                                    .collect::<Vec<_>>()
-                                                    .join(", "),
-                                                last.obligation.predicate,
-                                            )
-                                        }
-                                    };
-                                    err.multipart_suggestion_verbose(
-                                        msg,
-                                        sugg.clone(),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                    for error in errors {
-                                        if let FulfillmentErrorCode::CodeSelectionError(
-                                            SelectionError::Unimplemented,
-                                        ) = error.code
-                                            && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                                                pred,
-                                            )) = error.obligation.predicate.kind().skip_binder()
-                                        {
-                                            self.infcx.err_ctxt().suggest_derive(
-                                                &error.obligation,
-                                                err,
-                                                error.obligation.predicate.kind().rebind(pred),
-                                            );
-                                        }
+                            if let Some(errors) =
+                                self.infcx.could_impl_trait(clone_trait, ty, self.param_env)
+                                && !has_sugg
+                            {
+                                let msg = match &errors[..] {
+                                    [] => "you can `clone` the value and consume it, but this \
+                                            might not be your desired behavior"
+                                        .to_string(),
+                                    [error] => {
+                                        format!(
+                                            "you could `clone` the value and consume it, if \
+                                                the `{}` trait bound could be satisfied",
+                                            error.obligation.predicate,
+                                        )
+                                    }
+                                    [errors @ .., last] => {
+                                        format!(
+                                            "you could `clone` the value and consume it, if \
+                                                the following trait bounds could be satisfied: {} \
+                                                and `{}`",
+                                            errors
+                                                .iter()
+                                                .map(|e| format!("`{}`", e.obligation.predicate))
+                                                .collect::<Vec<_>>()
+                                                .join(", "),
+                                            last.obligation.predicate,
+                                        )
+                                    }
+                                };
+                                err.multipart_suggestion_verbose(
+                                    msg,
+                                    sugg.clone(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                for error in errors {
+                                    if let FulfillmentErrorCode::CodeSelectionError(
+                                        SelectionError::Unimplemented,
+                                    ) = error.code
+                                        && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
+                                            pred,
+                                        )) = error.obligation.predicate.kind().skip_binder()
+                                    {
+                                        self.infcx.err_ctxt().suggest_derive(
+                                            &error.obligation,
+                                            err,
+                                            error.obligation.predicate.kind().rebind(pred),
+                                        );
                                     }
                                 }
-                            });
+                            }
                         }
                     }
                 }
