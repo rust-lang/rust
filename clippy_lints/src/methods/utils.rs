@@ -52,11 +52,17 @@ pub(super) fn get_hint_if_single_char_arg(
     cx: &LateContext<'_>,
     arg: &Expr<'_>,
     applicability: &mut Applicability,
+    ascii_only: bool,
 ) -> Option<String> {
     if let ExprKind::Lit(lit) = &arg.kind
         && let ast::LitKind::Str(r, style) = lit.node
         && let string = r.as_str()
-        && string.chars().count() == 1
+        && let len = if ascii_only {
+            string.len()
+        } else {
+            string.chars().count()
+        }
+        && len == 1
     {
         let snip = snippet_with_applicability(cx, arg.span, string, applicability);
         let ch = if let ast::StrStyle::Raw(nhash) = style {
