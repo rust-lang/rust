@@ -657,7 +657,7 @@ impl Process {
     }
 
     pub fn id(&self) -> u32 {
-        unsafe { c::GetProcessId(self.handle.as_raw_handle()) as u32 }
+        unsafe { c::GetProcessId(self.handle.as_raw_handle()) }
     }
 
     pub fn main_thread_handle(&self) -> BorrowedHandle<'_> {
@@ -918,7 +918,7 @@ fn make_proc_thread_attribute_list(
     };
 
     let mut proc_thread_attribute_list = ProcThreadAttributeList(
-        vec![MaybeUninit::uninit(); required_size as usize].into_boxed_slice(),
+        vec![MaybeUninit::uninit(); required_size].into_boxed_slice(),
     );
 
     // Once we've allocated the necessary memory, it's safe to invoke

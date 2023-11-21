@@ -364,5 +364,5 @@ pub fn exit(code: i32) -> ! {
 }
 
 pub fn getpid() -> u32 {
-    unsafe { c::GetCurrentProcessId() as u32 }
+    unsafe { c::GetCurrentProcessId() }
 }
