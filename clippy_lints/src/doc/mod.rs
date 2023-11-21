@@ -310,13 +310,15 @@ declare_clippy_lint! {
 pub struct DocMarkdown {
     valid_idents: FxHashSet<String>,
     in_trait_impl: bool,
+    check_private_items: bool,
 }
 
 impl DocMarkdown {
-    pub fn new(valid_idents: &[String]) -> Self {
+    pub fn new(valid_idents: &[String], check_private_items: bool) -> Self {
         Self {
             valid_idents: valid_idents.iter().cloned().collect(),
             in_trait_impl: false,
+            check_private_items,
         }
     }
 }
@@ -349,7 +351,15 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     let body = cx.tcx.hir().body(body_id);
 
                     let panic_span = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
-                    missing_headers::check(cx, item.owner_id, sig, headers, Some(body_id), panic_span);
+                    missing_headers::check(
+                        cx,
+                        item.owner_id,
+                        sig,
+                        headers,
+                        Some(body_id),
+                        panic_span,
+                        self.check_private_items,
+                    );
                 }
             },
             hir::ItemKind::Impl(impl_) => {
@@ -387,7 +397,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                missing_headers::check(cx, item.owner_id, sig, headers, None, None);
+                missing_headers::check(cx, item.owner_id, sig, headers, None, None, self.check_private_items);
             }
         }
     }
@@ -404,7 +414,15 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             let body = cx.tcx.hir().body(body_id);
 
             let panic_span = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
-            missing_headers::check(cx, item.owner_id, sig, headers, Some(body_id), panic_span);
+            missing_headers::check(
+                cx,
+                item.owner_id,
+                sig,
+                headers,
+                Some(body_id),
+                panic_span,
+                self.check_private_items,
+            );
         }
     }
 }
