@@ -1,7 +1,6 @@
 use crate::mir::pretty::{function_body, pretty_statement};
 use crate::ty::{AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, Ty};
-use crate::Opaque;
-use crate::Span;
+use crate::{Opaque, Span, Symbol};
 use std::io;
 /// The SMIR representation of a single function.
 #[derive(Clone, Debug)]
@@ -17,6 +16,9 @@ pub struct Body {
 
     // The number of arguments this function takes.
     pub(super) arg_count: usize,
+
+    // Debug information pertaining to user variables, including captures.
+    pub(super) var_debug_info: Vec<VarDebugInfo>,
 }
 
 impl Body {
@@ -24,14 +26,19 @@ impl Body {
     ///
     /// A constructor is required to build a `Body` from outside the crate
     /// because the `arg_count` and `locals` fields are private.
-    pub fn new(blocks: Vec<BasicBlock>, locals: LocalDecls, arg_count: usize) -> Self {
+    pub fn new(
+        blocks: Vec<BasicBlock>,
+        locals: LocalDecls,
+        arg_count: usize,
+        var_debug_info: Vec<VarDebugInfo>,
+    ) -> Self {
         // If locals doesn't contain enough entries, it can lead to panics in
         // `ret_local`, `arg_locals`, and `inner_locals`.
         assert!(
             locals.len() > arg_count,
             "A Body must contain at least a local for the return value and each of the function's arguments"
         );
-        Self { blocks, locals, arg_count }
+        Self { blocks, locals, arg_count, var_debug_info }
     }
 
     /// Return local that holds this function's return value.
@@ -423,6 +430,42 @@ pub struct Place {
     pub local: Local,
     /// projection out of a place (access a field, deref a pointer, etc)
     pub projection: Vec<ProjectionElem>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VarDebugInfo {
+    pub name: Symbol,
+    pub source_info: SourceInfo,
+    pub composite: Option<VarDebugInfoFragment>,
+    pub value: VarDebugInfoContents,
+    pub argument_index: Option<u16>,
+}
+
+pub type SourceScope = u32;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceInfo {
+    pub span: Span,
+    pub scope: SourceScope,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VarDebugInfoFragment {
+    pub ty: Ty,
+    pub projection: Vec<ProjectionElem>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum VarDebugInfoContents {
+    Place(Place),
+    Const(ConstOperand),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstOperand {
+    pub span: Span,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+    pub const_: Const,
 }
 
 // In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This
