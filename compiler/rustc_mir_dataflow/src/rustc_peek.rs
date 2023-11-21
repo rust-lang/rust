@@ -1,11 +1,3 @@
-use rustc_span::symbol::sym;
-use rustc_span::Span;
-
-use rustc_index::bit_set::ChunkedBitSet;
-use rustc_middle::mir::MirPass;
-use rustc_middle::mir::{self, Body, Local, Location};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-
 use crate::errors::{
     PeekArgumentNotALocal, PeekArgumentUntracked, PeekBitNotSet, PeekMustBeNotTemporary,
     PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
@@ -18,6 +10,12 @@ use crate::move_paths::{HasMoveData, MoveData};
 use crate::move_paths::{LookupResult, MovePathIndex};
 use crate::MoveDataParamEnv;
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
+use rustc_index::bit_set::ChunkedBitSet;
+use rustc_middle::mir::MirPass;
+use rustc_middle::mir::{self, Body, Local, Location};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 
 pub struct SanityCheck;
 
