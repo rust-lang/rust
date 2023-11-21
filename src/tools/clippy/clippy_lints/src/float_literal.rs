@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal;
-use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -64,73 +63,70 @@ declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
 impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         let ty = cx.typeck_results().expr_ty(expr);
-        if_chain! {
-            if let ty::Float(fty) = *ty.kind();
-            if let hir::ExprKind::Lit(lit) = expr.kind;
-            if let LitKind::Float(sym, lit_float_ty) = lit.node;
-            then {
-                let sym_str = sym.as_str();
-                let formatter = FloatFormat::new(sym_str);
-                // Try to bail out if the float is for sure fine.
-                // If its within the 2 decimal digits of being out of precision we
-                // check if the parsed representation is the same as the string
-                // since we'll need the truncated string anyway.
-                let digits = count_digits(sym_str);
-                let max = max_digits(fty);
-                let type_suffix = match lit_float_ty {
-                    LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),
-                    LitFloatType::Suffixed(ast::FloatTy::F64) => Some("f64"),
-                    LitFloatType::Unsuffixed => None
-                };
-                let (is_whole, is_inf, mut float_str) = match fty {
-                    FloatTy::F32 => {
-                        let value = sym_str.parse::<f32>().unwrap();
+        if let ty::Float(fty) = *ty.kind()
+            && let hir::ExprKind::Lit(lit) = expr.kind
+            && let LitKind::Float(sym, lit_float_ty) = lit.node
+        {
+            let sym_str = sym.as_str();
+            let formatter = FloatFormat::new(sym_str);
+            // Try to bail out if the float is for sure fine.
+            // If its within the 2 decimal digits of being out of precision we
+            // check if the parsed representation is the same as the string
+            // since we'll need the truncated string anyway.
+            let digits = count_digits(sym_str);
+            let max = max_digits(fty);
+            let type_suffix = match lit_float_ty {
+                LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),
+                LitFloatType::Suffixed(ast::FloatTy::F64) => Some("f64"),
+                LitFloatType::Unsuffixed => None,
+            };
+            let (is_whole, is_inf, mut float_str) = match fty {
+                FloatTy::F32 => {
+                    let value = sym_str.parse::<f32>().unwrap();
 
-                        (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                    },
-                    FloatTy::F64 => {
-                        let value = sym_str.parse::<f64>().unwrap();
+                    (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
+                },
+                FloatTy::F64 => {
+                    let value = sym_str.parse::<f64>().unwrap();
 
+                    (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
+                },
+            };
 
-                        (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                    },
-                };
+            if is_inf {
+                return;
+            }
 
-                if is_inf {
-                    return;
-                }
-
-                if is_whole && !sym_str.contains(|c| c == 'e' || c == 'E') {
-                    // Normalize the literal by stripping the fractional portion
-                    if sym_str.split('.').next().unwrap() != float_str {
-                        // If the type suffix is missing the suggestion would be
-                        // incorrectly interpreted as an integer so adding a `.0`
-                        // suffix to prevent that.
-                        if type_suffix.is_none() {
-                            float_str.push_str(".0");
-                        }
-
-                        span_lint_and_sugg(
-                            cx,
-                            LOSSY_FLOAT_LITERAL,
-                            expr.span,
-                            "literal cannot be represented as the underlying type without loss of precision",
-                            "consider changing the type or replacing it with",
-                            numeric_literal::format(&float_str, type_suffix, true),
-                            Applicability::MachineApplicable,
-                        );
+            if is_whole && !sym_str.contains(|c| c == 'e' || c == 'E') {
+                // Normalize the literal by stripping the fractional portion
+                if sym_str.split('.').next().unwrap() != float_str {
+                    // If the type suffix is missing the suggestion would be
+                    // incorrectly interpreted as an integer so adding a `.0`
+                    // suffix to prevent that.
+                    if type_suffix.is_none() {
+                        float_str.push_str(".0");
                     }
-                } else if digits > max as usize && float_str.len() < sym_str.len() {
+
                     span_lint_and_sugg(
                         cx,
-                        EXCESSIVE_PRECISION,
+                        LOSSY_FLOAT_LITERAL,
                         expr.span,
-                        "float has excessive precision",
-                        "consider changing the type or truncating it to",
+                        "literal cannot be represented as the underlying type without loss of precision",
+                        "consider changing the type or replacing it with",
                         numeric_literal::format(&float_str, type_suffix, true),
                         Applicability::MachineApplicable,
                     );
                 }
+            } else if digits > max as usize && float_str.len() < sym_str.len() {
+                span_lint_and_sugg(
+                    cx,
+                    EXCESSIVE_PRECISION,
+                    expr.span,
+                    "float has excessive precision",
+                    "consider changing the type or truncating it to",
+                    numeric_literal::format(&float_str, type_suffix, true),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }

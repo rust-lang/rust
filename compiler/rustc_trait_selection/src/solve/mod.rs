@@ -16,13 +16,14 @@
 //! about it on zulip.
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, IsNormalizesToHack, QueryResult,
     Response,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
 };
@@ -297,25 +298,62 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn try_normalize_ty(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        mut ty: Ty<'tcx>,
-    ) -> Result<Option<Ty<'tcx>>, NoSolution> {
-        for _ in 0..self.local_overflow_limit() {
-            let ty::Alias(_, projection_ty) = *ty.kind() else {
-                return Ok(Some(ty));
-            };
+        ty: Ty<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        self.try_normalize_ty_recur(param_env, DefineOpaqueTypes::Yes, 0, ty)
+    }
 
-            let normalized_ty = self.next_ty_infer();
+    fn try_normalize_ty_recur(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+        depth: usize,
+        ty: Ty<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        if !self.tcx().recursion_limit().value_within_limit(depth) {
+            return None;
+        }
+
+        let ty::Alias(kind, projection_ty) = *ty.kind() else {
+            return Some(ty);
+        };
+
+        // We do no always define opaque types eagerly to allow non-defining uses in the defining scope.
+        if let (DefineOpaqueTypes::No, ty::AliasKind::Opaque) = (define_opaque_types, kind) {
+            if let Some(def_id) = projection_ty.def_id.as_local() {
+                if self
+                    .unify_existing_opaque_tys(
+                        param_env,
+                        OpaqueTypeKey { def_id, args: projection_ty.args },
+                        self.next_ty_infer(),
+                    )
+                    .is_empty()
+                {
+                    return Some(ty);
+                }
+            }
+        }
+
+        // FIXME(@lcnr): If the normalization of the alias adds an inference constraint which
+        // causes a previously added goal to fail, then we treat the alias as rigid.
+        //
+        // These feels like a potential issue, I should look into writing some tests here
+        // and then probably changing `commit_if_ok` to not inherit the parent goals.
+        match self.commit_if_ok(|this| {
+            let normalized_ty = this.next_ty_infer();
             let normalizes_to_goal = Goal::new(
-                self.tcx(),
+                this.tcx(),
                 param_env,
                 ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
             );
-            self.add_goal(normalizes_to_goal);
-            self.try_evaluate_added_goals()?;
-            ty = self.resolve_vars_if_possible(normalized_ty);
+            this.add_goal(normalizes_to_goal);
+            this.try_evaluate_added_goals()?;
+            let ty = this.resolve_vars_if_possible(normalized_ty);
+            Ok(this.try_normalize_ty_recur(param_env, define_opaque_types, depth + 1, ty))
+        }) {
+            Ok(ty) => ty,
+            Err(NoSolution) => Some(ty),
         }
-
-        Ok(None)
     }
 }
 

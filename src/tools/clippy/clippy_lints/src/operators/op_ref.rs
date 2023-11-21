@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::get_enclosing_block;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
@@ -180,41 +179,33 @@ fn in_impl<'tcx>(
     e: &'tcx Expr<'_>,
     bin_op: DefId,
 ) -> Option<(&'tcx rustc_hir::Ty<'tcx>, &'tcx rustc_hir::Ty<'tcx>)> {
-    if_chain! {
-        if let Some(block) = get_enclosing_block(cx, e.hir_id);
-        if let Some(impl_def_id) = cx.tcx.impl_of_method(block.hir_id.owner.to_def_id());
-        let item = cx.tcx.hir().expect_item(impl_def_id.expect_local());
-        if let ItemKind::Impl(item) = &item.kind;
-        if let Some(of_trait) = &item.of_trait;
-        if let Some(seg) = of_trait.path.segments.last();
-        if let Res::Def(_, trait_id) = seg.res;
-        if trait_id == bin_op;
-        if let Some(generic_args) = seg.args;
-        if let Some(GenericArg::Type(other_ty)) = generic_args.args.last();
-
-        then {
-            Some((item.self_ty, other_ty))
-        }
-        else {
-            None
-        }
+    if let Some(block) = get_enclosing_block(cx, e.hir_id)
+        && let Some(impl_def_id) = cx.tcx.impl_of_method(block.hir_id.owner.to_def_id())
+        && let item = cx.tcx.hir().expect_item(impl_def_id.expect_local())
+        && let ItemKind::Impl(item) = &item.kind
+        && let Some(of_trait) = &item.of_trait
+        && let Some(seg) = of_trait.path.segments.last()
+        && let Res::Def(_, trait_id) = seg.res
+        && trait_id == bin_op
+        && let Some(generic_args) = seg.args
+        && let Some(GenericArg::Type(other_ty)) = generic_args.args.last()
+    {
+        Some((item.self_ty, other_ty))
+    } else {
+        None
     }
 }
 
 fn are_equal(cx: &LateContext<'_>, middle_ty: Ty<'_>, hir_ty: &rustc_hir::Ty<'_>) -> bool {
-    if_chain! {
-        if let ty::Adt(adt_def, _) = middle_ty.kind();
-        if let Some(local_did) = adt_def.did().as_local();
-        let item = cx.tcx.hir().expect_item(local_did);
-        let middle_ty_id = item.owner_id.to_def_id();
-        if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-        if let Res::Def(_, hir_ty_id) = path.res;
-
-        then {
-            hir_ty_id == middle_ty_id
-        }
-        else {
-            false
-        }
+    if let ty::Adt(adt_def, _) = middle_ty.kind()
+        && let Some(local_did) = adt_def.did().as_local()
+        && let item = cx.tcx.hir().expect_item(local_did)
+        && let middle_ty_id = item.owner_id.to_def_id()
+        && let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind
+        && let Res::Def(_, hir_ty_id) = path.res
+    {
+        hir_ty_id == middle_ty_id
+    } else {
+        false
     }
 }

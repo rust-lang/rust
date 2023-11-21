@@ -1,16 +1,15 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::{HashStableContext, Interner};
+use crate::Interner;
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
-#[derive(TyEncodable, TyDecodable)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -67,45 +66,6 @@ impl<I: Interner> PartialEq for ClauseKind<I> {
 
 impl<I: Interner> Eq for ClauseKind<I> {}
 
-fn clause_kind_discriminant<I: Interner>(value: &ClauseKind<I>) -> usize {
-    match value {
-        ClauseKind::Trait(_) => 0,
-        ClauseKind::RegionOutlives(_) => 1,
-        ClauseKind::TypeOutlives(_) => 2,
-        ClauseKind::Projection(_) => 3,
-        ClauseKind::ConstArgHasType(_, _) => 4,
-        ClauseKind::WellFormed(_) => 5,
-        ClauseKind::ConstEvaluatable(_) => 6,
-    }
-}
-
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for ClauseKind<I>
-where
-    I::Ty: HashStable<CTX>,
-    I::Const: HashStable<CTX>,
-    I::GenericArg: HashStable<CTX>,
-    I::TraitPredicate: HashStable<CTX>,
-    I::ProjectionPredicate: HashStable<CTX>,
-    I::TypeOutlivesPredicate: HashStable<CTX>,
-    I::RegionOutlivesPredicate: HashStable<CTX>,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        clause_kind_discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            ClauseKind::Trait(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::RegionOutlives(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::TypeOutlives(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::Projection(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::ConstArgHasType(c, t) => {
-                c.hash_stable(hcx, hasher);
-                t.hash_stable(hcx, hasher);
-            }
-            ClauseKind::WellFormed(t) => t.hash_stable(hcx, hasher),
-            ClauseKind::ConstEvaluatable(c) => c.hash_stable(hcx, hasher),
-        }
-    }
-}
-
 impl<I: Interner> TypeFoldable<I> for ClauseKind<I>
 where
     I::Ty: TypeFoldable<I>,
@@ -161,18 +121,13 @@ where
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
-#[derive(TyEncodable, TyDecodable)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
 
     /// Trait must be object-safe.
     ObjectSafe(I::DefId),
-
-    /// No direct syntax. May be thought of as `where T: FnFoo<...>`
-    /// for some generic args `...` and `T` being a closure type.
-    /// Satisfied (or refuted) once we know the closure's kind.
-    ClosureKind(I::DefId, I::GenericArgs, I::ClosureKind),
 
     /// `T1 <: T2`
     ///
@@ -213,7 +168,6 @@ where
     I::Term: Copy,
     I::CoercePredicate: Copy,
     I::SubtypePredicate: Copy,
-    I::ClosureKind: Copy,
     ClauseKind<I>: Copy,
 {
 }
@@ -223,9 +177,6 @@ impl<I: Interner> PartialEq for PredicateKind<I> {
         match (self, other) {
             (Self::Clause(l0), Self::Clause(r0)) => l0 == r0,
             (Self::ObjectSafe(l0), Self::ObjectSafe(r0)) => l0 == r0,
-            (Self::ClosureKind(l0, l1, l2), Self::ClosureKind(r0, r1, r2)) => {
-                l0 == r0 && l1 == r1 && l2 == r2
-            }
             (Self::Subtype(l0), Self::Subtype(r0)) => l0 == r0,
             (Self::Coerce(l0), Self::Coerce(r0)) => l0 == r0,
             (Self::ConstEquate(l0, l1), Self::ConstEquate(r0, r1)) => l0 == r0 && l1 == r1,
@@ -239,56 +190,6 @@ impl<I: Interner> PartialEq for PredicateKind<I> {
 
 impl<I: Interner> Eq for PredicateKind<I> {}
 
-fn predicate_kind_discriminant<I: Interner>(value: &PredicateKind<I>) -> usize {
-    match value {
-        PredicateKind::Clause(_) => 0,
-        PredicateKind::ObjectSafe(_) => 1,
-        PredicateKind::ClosureKind(_, _, _) => 2,
-        PredicateKind::Subtype(_) => 3,
-        PredicateKind::Coerce(_) => 4,
-        PredicateKind::ConstEquate(_, _) => 5,
-        PredicateKind::Ambiguous => 6,
-        PredicateKind::AliasRelate(_, _, _) => 7,
-    }
-}
-
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for PredicateKind<I>
-where
-    I::DefId: HashStable<CTX>,
-    I::Const: HashStable<CTX>,
-    I::GenericArgs: HashStable<CTX>,
-    I::Term: HashStable<CTX>,
-    I::CoercePredicate: HashStable<CTX>,
-    I::SubtypePredicate: HashStable<CTX>,
-    I::ClosureKind: HashStable<CTX>,
-    ClauseKind<I>: HashStable<CTX>,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        predicate_kind_discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            PredicateKind::Clause(p) => p.hash_stable(hcx, hasher),
-            PredicateKind::ObjectSafe(d) => d.hash_stable(hcx, hasher),
-            PredicateKind::ClosureKind(d, g, k) => {
-                d.hash_stable(hcx, hasher);
-                g.hash_stable(hcx, hasher);
-                k.hash_stable(hcx, hasher);
-            }
-            PredicateKind::Subtype(p) => p.hash_stable(hcx, hasher),
-            PredicateKind::Coerce(p) => p.hash_stable(hcx, hasher),
-            PredicateKind::ConstEquate(c1, c2) => {
-                c1.hash_stable(hcx, hasher);
-                c2.hash_stable(hcx, hasher);
-            }
-            PredicateKind::Ambiguous => {}
-            PredicateKind::AliasRelate(t1, t2, r) => {
-                t1.hash_stable(hcx, hasher);
-                t2.hash_stable(hcx, hasher);
-                r.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
 impl<I: Interner> TypeFoldable<I> for PredicateKind<I>
 where
     I::DefId: TypeFoldable<I>,
@@ -297,18 +198,12 @@ where
     I::Term: TypeFoldable<I>,
     I::CoercePredicate: TypeFoldable<I>,
     I::SubtypePredicate: TypeFoldable<I>,
-    I::ClosureKind: TypeFoldable<I>,
     ClauseKind<I>: TypeFoldable<I>,
 {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(match self {
             PredicateKind::Clause(c) => PredicateKind::Clause(c.try_fold_with(folder)?),
             PredicateKind::ObjectSafe(d) => PredicateKind::ObjectSafe(d.try_fold_with(folder)?),
-            PredicateKind::ClosureKind(d, g, k) => PredicateKind::ClosureKind(
-                d.try_fold_with(folder)?,
-                g.try_fold_with(folder)?,
-                k.try_fold_with(folder)?,
-            ),
             PredicateKind::Subtype(s) => PredicateKind::Subtype(s.try_fold_with(folder)?),
             PredicateKind::Coerce(s) => PredicateKind::Coerce(s.try_fold_with(folder)?),
             PredicateKind::ConstEquate(a, b) => {
@@ -332,18 +227,12 @@ where
     I::Term: TypeVisitable<I>,
     I::CoercePredicate: TypeVisitable<I>,
     I::SubtypePredicate: TypeVisitable<I>,
-    I::ClosureKind: TypeVisitable<I>,
     ClauseKind<I>: TypeVisitable<I>,
 {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self {
             PredicateKind::Clause(p) => p.visit_with(visitor),
             PredicateKind::ObjectSafe(d) => d.visit_with(visitor),
-            PredicateKind::ClosureKind(d, g, k) => {
-                d.visit_with(visitor)?;
-                g.visit_with(visitor)?;
-                k.visit_with(visitor)
-            }
             PredicateKind::Subtype(s) => s.visit_with(visitor),
             PredicateKind::Coerce(s) => s.visit_with(visitor),
             PredicateKind::ConstEquate(a, b) => {
@@ -361,7 +250,7 @@ where
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, Encodable, Decodable))]
 pub enum AliasRelationDirection {
     Equate,
     Subtype,
@@ -402,9 +291,6 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             PredicateKind::Coerce(pair) => pair.fmt(f),
             PredicateKind::ObjectSafe(trait_def_id) => {
                 write!(f, "ObjectSafe({trait_def_id:?})")
-            }
-            PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
-                write!(f, "ClosureKind({closure_def_id:?}, {closure_args:?}, {kind:?})")
             }
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),

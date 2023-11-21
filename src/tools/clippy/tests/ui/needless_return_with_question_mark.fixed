@@ -4,6 +4,7 @@
     clippy::no_effect,
     clippy::unit_arg,
     clippy::useless_conversion,
+    clippy::diverging_sub_expression,
     unused
 )]
 
@@ -35,5 +36,26 @@ fn main() -> Result<(), ()> {
     with_span! {
         return Err(())?;
     }
+
+    // Issue #11765
+    // Should not lint
+    let Some(s) = Some("") else {
+        return Err(())?;
+    };
+
+    let Some(s) = Some("") else {
+        let Some(s) = Some("") else {
+            return Err(())?;
+        };
+
+        return Err(())?;
+    };
+
+    let Some(_): Option<()> = ({
+        return Err(())?;
+    }) else {
+        panic!();
+    };
+
     Err(())
 }

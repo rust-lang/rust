@@ -7,9 +7,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[["f32", "f32"], ["f64", "f64"], ["std::string::String", "str"]];

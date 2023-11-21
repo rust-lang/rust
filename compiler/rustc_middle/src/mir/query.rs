@@ -341,7 +341,11 @@ pub enum ConstraintCategory<'tcx> {
     UseAsConst,
     UseAsStatic,
     TypeAnnotation,
-    Cast,
+    Cast {
+        /// Whether this is an unsizing cast and if yes, this contains the target type.
+        /// Region variables are erased to ReErased.
+        unsize_to: Option<Ty<'tcx>>,
+    },
 
     /// A constraint that came from checking the body of a closure.
     ///

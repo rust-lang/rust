@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
 use rustc_hir::def_id::{StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
@@ -101,10 +101,11 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    fn session(&self) -> &Lrc<Session> {
-        &self.compiler.sess
+    fn session(&self) -> &Session {
+        &self.compiler.session()
     }
-    fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
+
+    fn codegen_backend(&self) -> &dyn CodegenBackend {
         self.compiler.codegen_backend()
     }
 
@@ -148,8 +149,6 @@ impl<'tcx> Queries<'tcx> {
             );
             let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
 
-            let lint_store =
-                Lrc::new(passes::create_lint_store(sess, self.compiler.register_lints.as_deref()));
             let cstore = FreezeLock::new(Box::new(CStore::new(
                 self.codegen_backend().metadata_loader(),
                 stable_crate_id,
@@ -164,7 +163,6 @@ impl<'tcx> Queries<'tcx> {
                 self.compiler,
                 crate_types,
                 stable_crate_id,
-                lint_store,
                 dep_graph,
                 untracked,
                 &self.gcx_cell,
@@ -200,7 +198,7 @@ impl<'tcx> Queries<'tcx> {
             // Hook for UI tests.
             Self::check_for_rustc_errors_attr(tcx);
 
-            Ok(passes::start_codegen(&**self.codegen_backend(), tcx))
+            Ok(passes::start_codegen(self.codegen_backend(), tcx))
         })
     }
 
@@ -239,67 +237,48 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn linker(&'tcx self, ongoing_codegen: Box<dyn Any>) -> Result<Linker> {
-        let sess = self.session().clone();
-        let codegen_backend = self.codegen_backend().clone();
-
-        let (crate_hash, prepare_outputs, dep_graph) = self.global_ctxt()?.enter(|tcx| {
-            (
-                if tcx.needs_crate_hash() { Some(tcx.crate_hash(LOCAL_CRATE)) } else { None },
-                tcx.output_filenames(()).clone(),
-                tcx.dep_graph.clone(),
-            )
-        });
-
-        Ok(Linker {
-            sess,
-            codegen_backend,
-
-            dep_graph,
-            prepare_outputs,
-            crate_hash,
-            ongoing_codegen,
+        self.global_ctxt()?.enter(|tcx| {
+            Ok(Linker {
+                dep_graph: tcx.dep_graph.clone(),
+                output_filenames: tcx.output_filenames(()).clone(),
+                crate_hash: if tcx.needs_crate_hash() {
+                    Some(tcx.crate_hash(LOCAL_CRATE))
+                } else {
+                    None
+                },
+                ongoing_codegen,
+            })
         })
     }
 }
 
 pub struct Linker {
-    // compilation inputs
-    sess: Lrc<Session>,
-    codegen_backend: Lrc<dyn CodegenBackend>,
-
-    // compilation outputs
     dep_graph: DepGraph,
-    prepare_outputs: Arc<OutputFilenames>,
+    output_filenames: Arc<OutputFilenames>,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
     ongoing_codegen: Box<dyn Any>,
 }
 
 impl Linker {
-    pub fn link(self) -> Result<()> {
-        let (codegen_results, work_products) = self.codegen_backend.join_codegen(
-            self.ongoing_codegen,
-            &self.sess,
-            &self.prepare_outputs,
-        )?;
+    pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
+        let (codegen_results, work_products) =
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)?;
 
-        self.sess.compile_status()?;
+        sess.compile_status()?;
 
-        let sess = &self.sess;
-        let dep_graph = self.dep_graph;
         sess.time("serialize_work_products", || {
-            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
+            rustc_incremental::save_work_product_index(sess, &self.dep_graph, work_products)
         });
 
-        let prof = self.sess.prof.clone();
-        prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
+        let prof = sess.prof.clone();
+        prof.generic_activity("drop_dep_graph").run(move || drop(self.dep_graph));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(&self.sess, self.crate_hash);
+        rustc_incremental::finalize_session_directory(sess, self.crate_hash);
 
-        if !self
-            .sess
+        if !sess
             .opts
             .output_types
             .keys()
@@ -309,14 +288,14 @@ impl Linker {
         }
 
         if sess.opts.unstable_opts.no_link {
-            let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
+            let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
             CodegenResults::serialize_rlink(sess, &rlink_file, &codegen_results)
                 .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
             return Ok(());
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
+        codegen_backend.link(sess, codegen_results, &self.output_filenames)
     }
 }
 

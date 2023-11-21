@@ -93,6 +93,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         &ctx.sema,
         ctx.config.insert_use.prefix_kind,
         ctx.config.prefer_no_std,
+        ctx.config.prefer_no_std,
     );
     if proposed_imports.is_empty() {
         return None;

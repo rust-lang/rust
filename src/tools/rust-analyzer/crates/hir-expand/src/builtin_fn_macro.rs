@@ -78,7 +78,7 @@ pub fn find_builtin_macro(
 
 register_builtin! {
     LAZY:
-    (column, Column) => column_expand,
+    (column, Column) => line_expand,
     (file, File) => file_expand,
     (line, Line) => line_expand,
     (module_path, ModulePath) => module_path_expand,
@@ -127,11 +127,13 @@ fn line_expand(
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
     // dummy implementation for type-checking purposes
-    let expanded = quote! {
-        0 as u32
-    };
-
-    ExpandResult::ok(expanded)
+    ExpandResult::ok(tt::Subtree {
+        delimiter: tt::Delimiter::unspecified(),
+        token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+            text: "0u32".into(),
+            span: tt::Span::UNSPECIFIED,
+        }))],
+    })
 }
 
 fn log_syntax_expand(
@@ -159,19 +161,6 @@ fn stringify_expand(
 
     let expanded = quote! {
         #pretty
-    };
-
-    ExpandResult::ok(expanded)
-}
-
-fn column_expand(
-    _db: &dyn ExpandDatabase,
-    _id: MacroCallId,
-    _tt: &tt::Subtree,
-) -> ExpandResult<tt::Subtree> {
-    // dummy implementation for type-checking purposes
-    let expanded = quote! {
-        0 as u32
     };
 
     ExpandResult::ok(expanded)

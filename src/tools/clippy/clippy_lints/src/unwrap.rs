@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{higher, path_to_local};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegment, UnOp};
@@ -155,41 +154,35 @@ fn collect_unwrap_info<'tcx>(
         }
     } else if let ExprKind::Unary(UnOp::Not, expr) = &expr.kind {
         return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
-    } else {
-        if_chain! {
-            if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind;
-            if let Some(local_id) = path_to_local(receiver);
-            let ty = cx.typeck_results().expr_ty(receiver);
-            let name = method_name.ident.as_str();
-            if is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name);
-            then {
-                assert!(args.is_empty());
-                let unwrappable = match name {
-                    "is_some" | "is_ok" => true,
-                    "is_err" | "is_none" => false,
-                    _ => unreachable!(),
-                };
-                let safe_to_unwrap = unwrappable != invert;
-                let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
-                    UnwrappableKind::Option
-                } else {
-                    UnwrappableKind::Result
-                };
+    } else if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind
+        && let Some(local_id) = path_to_local(receiver)
+        && let ty = cx.typeck_results().expr_ty(receiver)
+        && let name = method_name.ident.as_str()
+        && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name))
+    {
+        assert!(args.is_empty());
+        let unwrappable = match name {
+            "is_some" | "is_ok" => true,
+            "is_err" | "is_none" => false,
+            _ => unreachable!(),
+        };
+        let safe_to_unwrap = unwrappable != invert;
+        let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
+            UnwrappableKind::Option
+        } else {
+            UnwrappableKind::Result
+        };
 
-                return vec![
-                    UnwrapInfo {
-                        local_id,
-                        if_expr,
-                        check: expr,
-                        check_name: method_name,
-                        branch,
-                        safe_to_unwrap,
-                        kind,
-                        is_entire_condition,
-                    }
-                ]
-            }
-        }
+        return vec![UnwrapInfo {
+            local_id,
+            if_expr,
+            check: expr,
+            check_name: method_name,
+            branch,
+            safe_to_unwrap,
+            kind,
+            is_entire_condition,
+        }];
     }
     Vec::new()
 }
@@ -319,73 +312,72 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
             }
         } else {
             // find `unwrap[_err]()` calls:
-            if_chain! {
-                if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind;
-                let (self_arg, as_ref_kind) = consume_option_as_ref(self_arg);
-                if let Some(id) = path_to_local(self_arg);
-                if [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name);
-                let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name);
-                if let Some(unwrappable) = self.unwrappables.iter()
-                    .find(|u| u.local_id == id);
+            if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind
+                && let (self_arg, as_ref_kind) = consume_option_as_ref(self_arg)
+                && let Some(id) = path_to_local(self_arg)
+                && [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name)
+                && let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name)
+                && let Some(unwrappable) = self.unwrappables.iter()
+                    .find(|u| u.local_id == id)
                 // Span contexts should not differ with the conditional branch
-                let span_ctxt = expr.span.ctxt();
-                if unwrappable.branch.span.ctxt() == span_ctxt;
-                if unwrappable.check.span.ctxt() == span_ctxt;
-                then {
-                    if call_to_unwrap == unwrappable.safe_to_unwrap {
-                        let is_entire_condition = unwrappable.is_entire_condition;
-                        let unwrappable_variable_name = self.cx.tcx.hir().name(unwrappable.local_id);
-                        let suggested_pattern = if call_to_unwrap {
-                            unwrappable.kind.success_variant_pattern()
-                        } else {
-                            unwrappable.kind.error_variant_pattern()
-                        };
-
-                        span_lint_hir_and_then(
-                            self.cx,
-                            UNNECESSARY_UNWRAP,
-                            expr.hir_id,
-                            expr.span,
-                            &format!(
-                                "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
-                                method_name.ident.name,
-                                unwrappable.check_name.ident.as_str(),
-                            ),
-                            |diag| {
-                                if is_entire_condition {
-                                    diag.span_suggestion(
-                                        unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
-                                        "try",
-                                        format!(
-                                            "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_name}",
-                                            borrow_prefix = match as_ref_kind {
-                                                Some(AsRefKind::AsRef) => "&",
-                                                Some(AsRefKind::AsMut) => "&mut ",
-                                                None => "",
-                                            },
-                                        ),
-                                        // We don't track how the unwrapped value is used inside the
-                                        // block or suggest deleting the unwrap, so we can't offer a
-                                        // fixable solution.
-                                        Applicability::Unspecified,
-                                    );
-                                } else {
-                                    diag.span_label(unwrappable.check.span, "the check is happening here");
-                                    diag.help("try using `if let` or `match`");
-                                }
-                            },
-                        );
+                && let span_ctxt = expr.span.ctxt()
+                && unwrappable.branch.span.ctxt() == span_ctxt
+                && unwrappable.check.span.ctxt() == span_ctxt
+            {
+                if call_to_unwrap == unwrappable.safe_to_unwrap {
+                    let is_entire_condition = unwrappable.is_entire_condition;
+                    let unwrappable_variable_name = self.cx.tcx.hir().name(unwrappable.local_id);
+                    let suggested_pattern = if call_to_unwrap {
+                        unwrappable.kind.success_variant_pattern()
                     } else {
-                        span_lint_hir_and_then(
-                            self.cx,
-                            PANICKING_UNWRAP,
-                            expr.hir_id,
-                            expr.span,
-                            &format!("this call to `{}()` will always panic",
-                            method_name.ident.name),
-                            |diag| { diag.span_label(unwrappable.check.span, "because of this check"); },
-                        );
-                    }
+                        unwrappable.kind.error_variant_pattern()
+                    };
+
+                    span_lint_hir_and_then(
+                        self.cx,
+                        UNNECESSARY_UNWRAP,
+                        expr.hir_id,
+                        expr.span,
+                        &format!(
+                            "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
+                            method_name.ident.name,
+                            unwrappable.check_name.ident.as_str(),
+                        ),
+                        |diag| {
+                            if is_entire_condition {
+                                diag.span_suggestion(
+                                    unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
+                                    "try",
+                                    format!(
+                                        "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_name}",
+                                        borrow_prefix = match as_ref_kind {
+                                            Some(AsRefKind::AsRef) => "&",
+                                            Some(AsRefKind::AsMut) => "&mut ",
+                                            None => "",
+                                        },
+                                    ),
+                                    // We don't track how the unwrapped value is used inside the
+                                    // block or suggest deleting the unwrap, so we can't offer a
+                                    // fixable solution.
+                                    Applicability::Unspecified,
+                                );
+                            } else {
+                                diag.span_label(unwrappable.check.span, "the check is happening here");
+                                diag.help("try using `if let` or `match`");
+                            }
+                        },
+                    );
+                } else {
+                    span_lint_hir_and_then(
+                        self.cx,
+                        PANICKING_UNWRAP,
+                        expr.hir_id,
+                        expr.span,
+                        &format!("this call to `{}()` will always panic", method_name.ident.name),
+                        |diag| {
+                            diag.span_label(unwrappable.check.span, "because of this check");
+                        },
+                    );
                 }
             }
             walk_expr(self, expr);

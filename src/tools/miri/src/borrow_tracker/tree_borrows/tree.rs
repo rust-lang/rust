@@ -742,11 +742,11 @@ impl Tree {
     }
 }
 
-impl VisitTags for Tree {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for Tree {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         // To ensure that the root never gets removed, we visit it
         // (the `root` node of `Tree` is not an `Option<_>`)
-        visit(self.nodes.get(self.root).unwrap().tag)
+        visit(None, Some(self.nodes.get(self.root).unwrap().tag))
     }
 }
 

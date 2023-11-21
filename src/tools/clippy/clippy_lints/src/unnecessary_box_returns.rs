@@ -71,7 +71,7 @@ impl UnnecessaryBoxReturns {
 
         let return_ty = cx
             .tcx
-            .erase_late_bound_regions(cx.tcx.fn_sig(def_id).skip_binder())
+            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(def_id).skip_binder())
             .output();
 
         if !return_ty.is_box() {

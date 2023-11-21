@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_trait_method, path_to_local_id, peel_blocks, strip_pat_refs};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -60,57 +59,51 @@ fn check_fold_with_op(
     op: hir::BinOpKind,
     replacement: Replacement,
 ) {
-    if_chain! {
+    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
         // Extract the body of the closure passed to fold
-        if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind;
-        let closure_body = cx.tcx.hir().body(body);
-        let closure_expr = peel_blocks(closure_body.value);
+        && let closure_body = cx.tcx.hir().body(body)
+        && let closure_expr = peel_blocks(closure_body.value)
 
         // Check if the closure body is of the form `acc <op> some_expr(x)`
-        if let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind;
-        if bin_op.node == op;
+        && let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind
+        && bin_op.node == op
 
         // Extract the names of the two arguments to the closure
-        if let [param_a, param_b] = closure_body.params;
-        if let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(param_a.pat).kind;
-        if let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(param_b.pat).kind;
+        && let [param_a, param_b] = closure_body.params
+        && let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(param_a.pat).kind
+        && let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(param_b.pat).kind
 
-        if path_to_local_id(left_expr, first_arg_id);
-        if replacement.has_args || path_to_local_id(right_expr, second_arg_id);
+        && path_to_local_id(left_expr, first_arg_id)
+        && (replacement.has_args || path_to_local_id(right_expr, second_arg_id))
+    {
+        let mut applicability = Applicability::MachineApplicable;
 
-        then {
-            let mut applicability = Applicability::MachineApplicable;
+        let turbofish = if replacement.has_generic_return {
+            format!("::<{}>", cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs())
+        } else {
+            String::new()
+        };
 
-            let turbofish = if replacement.has_generic_return {
-                format!("::<{}>", cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs())
-            } else {
-                String::new()
-            };
+        let sugg = if replacement.has_args {
+            format!(
+                "{method}{turbofish}(|{second_arg_ident}| {r})",
+                method = replacement.method_name,
+                r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
+            )
+        } else {
+            format!("{method}{turbofish}()", method = replacement.method_name,)
+        };
 
-            let sugg = if replacement.has_args {
-                format!(
-                    "{method}{turbofish}(|{second_arg_ident}| {r})",
-                    method = replacement.method_name,
-                    r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
-                )
-            } else {
-                format!(
-                    "{method}{turbofish}()",
-                    method = replacement.method_name,
-                )
-            };
-
-            span_lint_and_sugg(
-                cx,
-                UNNECESSARY_FOLD,
-                fold_span.with_hi(expr.span.hi()),
-                // TODO #2371 don't suggest e.g., .any(|x| f(x)) if we can suggest .any(f)
-                "this `.fold` can be written more succinctly using another method",
-                "try",
-                sugg,
-                applicability,
-            );
-        }
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_FOLD,
+            fold_span.with_hi(expr.span.hi()),
+            // TODO #2371 don't suggest e.g., .any(|x| f(x)) if we can suggest .any(f)
+            "this `.fold` can be written more succinctly using another method",
+            "try",
+            sugg,
+            applicability,
+        );
     }
 }
 

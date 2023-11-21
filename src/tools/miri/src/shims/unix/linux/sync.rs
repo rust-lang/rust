@@ -182,10 +182,10 @@ pub fn futex<'tcx>(
                         dest: PlaceTy<'tcx, Provenance>,
                     }
 
-                    impl<'tcx> VisitTags for Callback<'tcx> {
-                        fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+                    impl<'tcx> VisitProvenance for Callback<'tcx> {
+                        fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
                             let Callback { thread: _, addr_usize: _, dest } = self;
-                            dest.visit_tags(visit);
+                            dest.visit_provenance(visit);
                         }
                     }
 

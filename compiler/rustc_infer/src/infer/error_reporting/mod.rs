@@ -860,7 +860,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         self.suggest_boxing_for_return_impl_trait(
                             err,
                             ret_sp,
-                            prior_arms.iter().chain(std::iter::once(&arm_span)).map(|s| *s),
+                            prior_arms.iter().chain(std::iter::once(&arm_span)).copied(),
                         );
                     }
                 }
@@ -2351,6 +2351,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) => format!("the parameter type `{p}`"),
+            GenericKind::Placeholder(ref p) => format!("the placeholder type `{p:?}`"),
             GenericKind::Alias(ref p) => match p.kind(self.tcx) {
                 ty::AliasKind::Projection | ty::AliasKind::Inherent => {
                     format!("the associated type `{p}`")

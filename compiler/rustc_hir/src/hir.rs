@@ -13,7 +13,6 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_error_messages::MultiSpan;
 use rustc_index::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
@@ -76,13 +75,6 @@ impl ParamName {
             ParamName::Fresh | ParamName::Error => Ident::with_dummy_span(kw::UnderscoreLifetime),
         }
     }
-
-    pub fn normalize_to_macros_2_0(&self) -> ParamName {
-        match *self {
-            ParamName::Plain(ident) => ParamName::Plain(ident.normalize_to_macros_2_0()),
-            param_name => param_name,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
@@ -116,7 +108,7 @@ pub enum LifetimeName {
 }
 
 impl LifetimeName {
-    pub fn is_elided(&self) -> bool {
+    fn is_elided(&self) -> bool {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
 
@@ -289,10 +281,6 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn is_synthetic(&self) -> bool {
-        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.ident == Ident::empty())
-    }
-
     pub fn descr(&self) -> &'static str {
         match self {
             GenericArg::Lifetime(_) => "lifetime",
@@ -368,11 +356,6 @@ impl<'hir> GenericArgs<'hir> {
         panic!("GenericArgs::inputs: not a `Fn(T) -> U`");
     }
 
-    #[inline]
-    pub fn has_type_params(&self) -> bool {
-        self.args.iter().any(|arg| matches!(arg, GenericArg::Type(_)))
-    }
-
     pub fn has_err(&self) -> bool {
         self.args.iter().any(|arg| match arg {
             GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err(_)),
@@ -381,11 +364,6 @@ impl<'hir> GenericArgs<'hir> {
             TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err(_)),
             _ => false,
         })
-    }
-
-    #[inline]
-    pub fn num_type_params(&self) -> usize {
-        self.args.iter().filter(|arg| matches!(arg, GenericArg::Type(_))).count()
     }
 
     #[inline]
@@ -589,14 +567,6 @@ impl<'hir> Generics<'hir> {
         self.params.iter().find(|&param| name == param.name.ident().name)
     }
 
-    pub fn spans(&self) -> MultiSpan {
-        if self.params.is_empty() {
-            self.span.into()
-        } else {
-            self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
-        }
-    }
-
     /// If there are generic parameters, return where to introduce a new one.
     pub fn span_for_lifetime_suggestion(&self) -> Option<Span> {
         if let Some(first) = self.params.first()
@@ -679,7 +649,7 @@ impl<'hir> Generics<'hir> {
         )
     }
 
-    pub fn span_for_predicate_removal(&self, pos: usize) -> Span {
+    fn span_for_predicate_removal(&self, pos: usize) -> Span {
         let predicate = &self.predicates[pos];
         let span = predicate.span();
 
@@ -812,7 +782,7 @@ pub struct WhereRegionPredicate<'hir> {
 
 impl<'hir> WhereRegionPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `lifetime` of this predicate.
-    pub fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
+    fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
         self.lifetime.res == LifetimeName::Param(param_def_id)
     }
 }
@@ -869,7 +839,7 @@ pub struct OwnerNodes<'tcx> {
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
-    pub fn node(&self) -> OwnerNode<'tcx> {
+    fn node(&self) -> OwnerNode<'tcx> {
         use rustc_index::Idx;
         let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
@@ -1272,10 +1242,6 @@ impl BinOpKind {
         matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
-    pub fn is_shift(self) -> bool {
-        matches!(self, BinOpKind::Shl | BinOpKind::Shr)
-    }
-
     pub fn is_comparison(self) -> bool {
         match self {
             BinOpKind::Eq
@@ -1516,8 +1482,7 @@ impl<'hir> Body<'hir> {
 }
 
 /// The type of source expression that caused this coroutine to be created.
-#[derive(Clone, PartialEq, Eq, Debug, Copy, Hash)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
 pub enum CoroutineKind {
     /// An explicit `async` block or the body of an async function.
     Async(CoroutineSource),
@@ -1558,8 +1523,7 @@ impl fmt::Display for CoroutineKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy, HashStable_Generic, Encodable, Decodable)]
 pub enum CoroutineSource {
     /// An explicit `async`/`gen` block written by the user.
     Block,
@@ -2117,16 +2081,6 @@ impl<'hir> QPath<'hir> {
             QPath::LangItem(_, span, _) => span,
         }
     }
-
-    /// Returns the span of the last segment of this `QPath`. For example, `method` in
-    /// `<() as Trait>::method`.
-    pub fn last_segment_span(&self) -> Span {
-        match *self {
-            QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
-            QPath::TypeRelative(_, segment) => segment.ident.span,
-            QPath::LangItem(_, span, _) => span,
-        }
-    }
 }
 
 /// Hints at the original code for a let statement.
@@ -2153,8 +2107,7 @@ pub enum LocalSource {
 }
 
 /// Hints at the original code for a `match _ { .. }`.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic, Encodable, Decodable)]
 pub enum MatchSource {
     /// A `match _ { .. }`.
     Normal,
@@ -2314,6 +2267,35 @@ pub struct TraitItem<'hir> {
     pub defaultness: Defaultness,
 }
 
+macro_rules! expect_methods_self_kind {
+    ( $( $name:ident, $ret_ty:ty, $pat:pat, $ret_val:expr; )* ) => {
+        $(
+            #[track_caller]
+            pub fn $name(&self) -> $ret_ty {
+                let $pat = &self.kind else { expect_failed(stringify!($ident), self) };
+                $ret_val
+            }
+        )*
+    }
+}
+
+macro_rules! expect_methods_self {
+    ( $( $name:ident, $ret_ty:ty, $pat:pat, $ret_val:expr; )* ) => {
+        $(
+            #[track_caller]
+            pub fn $name(&self) -> $ret_ty {
+                let $pat = self else { expect_failed(stringify!($ident), self) };
+                $ret_val
+            }
+        )*
+    }
+}
+
+#[track_caller]
+fn expect_failed<T: fmt::Debug>(ident: &'static str, found: T) -> ! {
+    panic!("{ident}: found {found:?}")
+}
+
 impl<'hir> TraitItem<'hir> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
@@ -2325,30 +2307,15 @@ impl<'hir> TraitItem<'hir> {
         TraitItemId { owner_id: self.owner_id }
     }
 
-    /// Expect an [`TraitItemKind::Const`] or panic.
-    #[track_caller]
-    pub fn expect_const(&self) -> (&'hir Ty<'hir>, Option<BodyId>) {
-        let TraitItemKind::Const(ty, body) = self.kind else { self.expect_failed("a constant") };
-        (ty, body)
-    }
+    expect_methods_self_kind! {
+        expect_const, (&'hir Ty<'hir>, Option<BodyId>),
+            TraitItemKind::Const(ty, body), (ty, *body);
 
-    /// Expect an [`TraitItemKind::Fn`] or panic.
-    #[track_caller]
-    pub fn expect_fn(&self) -> (&FnSig<'hir>, &TraitFn<'hir>) {
-        let TraitItemKind::Fn(ty, trfn) = &self.kind else { self.expect_failed("a function") };
-        (ty, trfn)
-    }
+        expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
+            TraitItemKind::Fn(ty, trfn), (ty, trfn);
 
-    /// Expect an [`TraitItemKind::Type`] or panic.
-    #[track_caller]
-    pub fn expect_type(&self) -> (GenericBounds<'hir>, Option<&'hir Ty<'hir>>) {
-        let TraitItemKind::Type(bounds, ty) = self.kind else { self.expect_failed("a type") };
-        (bounds, ty)
-    }
-
-    #[track_caller]
-    fn expect_failed(&self, expected: &'static str) -> ! {
-        panic!("expected {expected} item, found {self:?}")
+        expect_type, (GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
+            TraitItemKind::Type(bounds, ty), (bounds, *ty);
     }
 }
 
@@ -2413,30 +2380,10 @@ impl<'hir> ImplItem<'hir> {
         ImplItemId { owner_id: self.owner_id }
     }
 
-    /// Expect an [`ImplItemKind::Const`] or panic.
-    #[track_caller]
-    pub fn expect_const(&self) -> (&'hir Ty<'hir>, BodyId) {
-        let ImplItemKind::Const(ty, body) = self.kind else { self.expect_failed("a constant") };
-        (ty, body)
-    }
-
-    /// Expect an [`ImplItemKind::Fn`] or panic.
-    #[track_caller]
-    pub fn expect_fn(&self) -> (&FnSig<'hir>, BodyId) {
-        let ImplItemKind::Fn(ty, body) = &self.kind else { self.expect_failed("a function") };
-        (ty, *body)
-    }
-
-    /// Expect an [`ImplItemKind::Type`] or panic.
-    #[track_caller]
-    pub fn expect_type(&self) -> &'hir Ty<'hir> {
-        let ImplItemKind::Type(ty) = self.kind else { self.expect_failed("a type") };
-        ty
-    }
-
-    #[track_caller]
-    fn expect_failed(&self, expected: &'static str) -> ! {
-        panic!("expected {expected} item, found {self:?}")
+    expect_methods_self_kind! {
+        expect_const, (&'hir Ty<'hir>, BodyId), ImplItemKind::Const(ty, body), (ty, *body);
+        expect_fn,    (&FnSig<'hir>, BodyId),   ImplItemKind::Fn(ty, body),    (ty, *body);
+        expect_type,  &'hir Ty<'hir>,           ImplItemKind::Type(ty),        ty;
     }
 }
 
@@ -2579,8 +2526,7 @@ impl<'hir> Ty<'hir> {
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum PrimTy {
     Int(IntTy),
     Uint(UintTy),
@@ -2860,8 +2806,7 @@ impl ImplicitSelfKind {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum IsAsync {
     Async(Span),
     NotAsync,
@@ -3124,134 +3069,51 @@ impl<'hir> Item<'hir> {
         ItemId { owner_id: self.owner_id }
     }
 
-    /// Expect an [`ItemKind::ExternCrate`] or panic.
-    #[track_caller]
-    pub fn expect_extern_crate(&self) -> Option<Symbol> {
-        let ItemKind::ExternCrate(s) = self.kind else { self.expect_failed("an extern crate") };
-        s
-    }
+    expect_methods_self_kind! {
+        expect_extern_crate, Option<Symbol>, ItemKind::ExternCrate(s), *s;
 
-    /// Expect an [`ItemKind::Use`] or panic.
-    #[track_caller]
-    pub fn expect_use(&self) -> (&'hir UsePath<'hir>, UseKind) {
-        let ItemKind::Use(p, uk) = self.kind else { self.expect_failed("a use") };
-        (p, uk)
-    }
+        expect_use, (&'hir UsePath<'hir>, UseKind), ItemKind::Use(p, uk), (p, *uk);
 
-    /// Expect an [`ItemKind::Static`] or panic.
-    #[track_caller]
-    pub fn expect_static(&self) -> (&'hir Ty<'hir>, Mutability, BodyId) {
-        let ItemKind::Static(ty, mutbl, body) = self.kind else { self.expect_failed("a static") };
-        (ty, mutbl, body)
-    }
-    /// Expect an [`ItemKind::Const`] or panic.
-    #[track_caller]
-    pub fn expect_const(&self) -> (&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId) {
-        let ItemKind::Const(ty, gen, body) = self.kind else { self.expect_failed("a constant") };
-        (ty, gen, body)
-    }
-    /// Expect an [`ItemKind::Fn`] or panic.
-    #[track_caller]
-    pub fn expect_fn(&self) -> (&FnSig<'hir>, &'hir Generics<'hir>, BodyId) {
-        let ItemKind::Fn(sig, gen, body) = &self.kind else { self.expect_failed("a function") };
-        (sig, gen, *body)
-    }
+        expect_static, (&'hir Ty<'hir>, Mutability, BodyId),
+            ItemKind::Static(ty, mutbl, body), (ty, *mutbl, *body);
 
-    /// Expect an [`ItemKind::Macro`] or panic.
-    #[track_caller]
-    pub fn expect_macro(&self) -> (&ast::MacroDef, MacroKind) {
-        let ItemKind::Macro(def, mk) = &self.kind else { self.expect_failed("a macro") };
-        (def, *mk)
-    }
+        expect_const, (&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
+            ItemKind::Const(ty, gen, body), (ty, gen, *body);
 
-    /// Expect an [`ItemKind::Mod`] or panic.
-    #[track_caller]
-    pub fn expect_mod(&self) -> &'hir Mod<'hir> {
-        let ItemKind::Mod(m) = self.kind else { self.expect_failed("a module") };
-        m
-    }
+        expect_fn, (&FnSig<'hir>, &'hir Generics<'hir>, BodyId),
+            ItemKind::Fn(sig, gen, body), (sig, gen, *body);
 
-    /// Expect an [`ItemKind::ForeignMod`] or panic.
-    #[track_caller]
-    pub fn expect_foreign_mod(&self) -> (Abi, &'hir [ForeignItemRef]) {
-        let ItemKind::ForeignMod { abi, items } = self.kind else {
-            self.expect_failed("a foreign module")
-        };
-        (abi, items)
-    }
+        expect_macro, (&ast::MacroDef, MacroKind), ItemKind::Macro(def, mk), (def, *mk);
 
-    /// Expect an [`ItemKind::GlobalAsm`] or panic.
-    #[track_caller]
-    pub fn expect_global_asm(&self) -> &'hir InlineAsm<'hir> {
-        let ItemKind::GlobalAsm(asm) = self.kind else { self.expect_failed("a global asm") };
-        asm
-    }
+        expect_mod, &'hir Mod<'hir>, ItemKind::Mod(m), m;
 
-    /// Expect an [`ItemKind::TyAlias`] or panic.
-    #[track_caller]
-    pub fn expect_ty_alias(&self) -> (&'hir Ty<'hir>, &'hir Generics<'hir>) {
-        let ItemKind::TyAlias(ty, gen) = self.kind else { self.expect_failed("a type alias") };
-        (ty, gen)
-    }
+        expect_foreign_mod, (Abi, &'hir [ForeignItemRef]),
+            ItemKind::ForeignMod { abi, items }, (*abi, items);
 
-    /// Expect an [`ItemKind::OpaqueTy`] or panic.
-    #[track_caller]
-    pub fn expect_opaque_ty(&self) -> &OpaqueTy<'hir> {
-        let ItemKind::OpaqueTy(ty) = &self.kind else { self.expect_failed("an opaque type") };
-        ty
-    }
+        expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm(asm), asm;
 
-    /// Expect an [`ItemKind::Enum`] or panic.
-    #[track_caller]
-    pub fn expect_enum(&self) -> (&EnumDef<'hir>, &'hir Generics<'hir>) {
-        let ItemKind::Enum(def, gen) = &self.kind else { self.expect_failed("an enum") };
-        (def, gen)
-    }
+        expect_ty_alias, (&'hir Ty<'hir>, &'hir Generics<'hir>),
+            ItemKind::TyAlias(ty, gen), (ty, gen);
 
-    /// Expect an [`ItemKind::Struct`] or panic.
-    #[track_caller]
-    pub fn expect_struct(&self) -> (&VariantData<'hir>, &'hir Generics<'hir>) {
-        let ItemKind::Struct(data, gen) = &self.kind else { self.expect_failed("a struct") };
-        (data, gen)
-    }
+        expect_opaque_ty, &OpaqueTy<'hir>, ItemKind::OpaqueTy(ty), ty;
 
-    /// Expect an [`ItemKind::Union`] or panic.
-    #[track_caller]
-    pub fn expect_union(&self) -> (&VariantData<'hir>, &'hir Generics<'hir>) {
-        let ItemKind::Union(data, gen) = &self.kind else { self.expect_failed("a union") };
-        (data, gen)
-    }
+        expect_enum, (&EnumDef<'hir>, &'hir Generics<'hir>), ItemKind::Enum(def, gen), (def, gen);
 
-    /// Expect an [`ItemKind::Trait`] or panic.
-    #[track_caller]
-    pub fn expect_trait(
-        self,
-    ) -> (IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]) {
-        let ItemKind::Trait(is_auto, unsafety, gen, bounds, items) = self.kind else {
-            self.expect_failed("a trait")
-        };
-        (is_auto, unsafety, gen, bounds, items)
-    }
+        expect_struct, (&VariantData<'hir>, &'hir Generics<'hir>),
+            ItemKind::Struct(data, gen), (data, gen);
 
-    /// Expect an [`ItemKind::TraitAlias`] or panic.
-    #[track_caller]
-    pub fn expect_trait_alias(&self) -> (&'hir Generics<'hir>, GenericBounds<'hir>) {
-        let ItemKind::TraitAlias(gen, bounds) = self.kind else {
-            self.expect_failed("a trait alias")
-        };
-        (gen, bounds)
-    }
+        expect_union, (&VariantData<'hir>, &'hir Generics<'hir>),
+            ItemKind::Union(data, gen), (data, gen);
 
-    /// Expect an [`ItemKind::Impl`] or panic.
-    #[track_caller]
-    pub fn expect_impl(&self) -> &'hir Impl<'hir> {
-        let ItemKind::Impl(imp) = self.kind else { self.expect_failed("an impl") };
-        imp
-    }
+        expect_trait,
+            (IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+            ItemKind::Trait(is_auto, unsafety, gen, bounds, items),
+            (*is_auto, *unsafety, gen, bounds, items);
 
-    #[track_caller]
-    fn expect_failed(&self, expected: &'static str) -> ! {
-        panic!("expected {expected} item, found {self:?}")
+        expect_trait_alias, (&'hir Generics<'hir>, GenericBounds<'hir>),
+            ItemKind::TraitAlias(gen, bounds), (gen, bounds);
+
+        expect_impl, &'hir Impl<'hir>, ItemKind::Impl(imp), imp;
     }
 }
 
@@ -3280,8 +3142,7 @@ impl fmt::Display for Unsafety {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Constness {
     Const,
     NotConst,
@@ -3624,32 +3485,11 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    pub fn expect_item(self) -> &'hir Item<'hir> {
-        match self {
-            OwnerNode::Item(n) => n,
-            _ => panic!(),
-        }
-    }
-
-    pub fn expect_foreign_item(self) -> &'hir ForeignItem<'hir> {
-        match self {
-            OwnerNode::ForeignItem(n) => n,
-            _ => panic!(),
-        }
-    }
-
-    pub fn expect_impl_item(self) -> &'hir ImplItem<'hir> {
-        match self {
-            OwnerNode::ImplItem(n) => n,
-            _ => panic!(),
-        }
-    }
-
-    pub fn expect_trait_item(self) -> &'hir TraitItem<'hir> {
-        match self {
-            OwnerNode::TraitItem(n) => n,
-            _ => panic!(),
-        }
+    expect_methods_self! {
+        expect_item,         &'hir Item<'hir>,        OwnerNode::Item(n),        n;
+        expect_foreign_item, &'hir ForeignItem<'hir>, OwnerNode::ForeignItem(n), n;
+        expect_impl_item,    &'hir ImplItem<'hir>,    OwnerNode::ImplItem(n),    n;
+        expect_trait_item,   &'hir TraitItem<'hir>,   OwnerNode::TraitItem(n),   n;
     }
 }
 
@@ -3902,196 +3742,33 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    /// Get the fields for the tuple-constructor,
-    /// if this node is a tuple constructor, otherwise None
-    pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _, _)) = self { Some(fields) } else { None }
-    }
-
-    /// Expect a [`Node::Param`] or panic.
-    #[track_caller]
-    pub fn expect_param(self) -> &'hir Param<'hir> {
-        let Node::Param(this) = self else { self.expect_failed("a parameter") };
-        this
-    }
-
-    /// Expect a [`Node::Item`] or panic.
-    #[track_caller]
-    pub fn expect_item(self) -> &'hir Item<'hir> {
-        let Node::Item(this) = self else { self.expect_failed("a item") };
-        this
-    }
-
-    /// Expect a [`Node::ForeignItem`] or panic.
-    #[track_caller]
-    pub fn expect_foreign_item(self) -> &'hir ForeignItem<'hir> {
-        let Node::ForeignItem(this) = self else { self.expect_failed("a foreign item") };
-        this
-    }
-
-    /// Expect a [`Node::TraitItem`] or panic.
-    #[track_caller]
-    pub fn expect_trait_item(self) -> &'hir TraitItem<'hir> {
-        let Node::TraitItem(this) = self else { self.expect_failed("a trait item") };
-        this
-    }
-
-    /// Expect a [`Node::ImplItem`] or panic.
-    #[track_caller]
-    pub fn expect_impl_item(self) -> &'hir ImplItem<'hir> {
-        let Node::ImplItem(this) = self else { self.expect_failed("an implementation item") };
-        this
-    }
-
-    /// Expect a [`Node::Variant`] or panic.
-    #[track_caller]
-    pub fn expect_variant(self) -> &'hir Variant<'hir> {
-        let Node::Variant(this) = self else { self.expect_failed("a variant") };
-        this
-    }
-
-    /// Expect a [`Node::Field`] or panic.
-    #[track_caller]
-    pub fn expect_field(self) -> &'hir FieldDef<'hir> {
-        let Node::Field(this) = self else { self.expect_failed("a field definition") };
-        this
-    }
-
-    /// Expect a [`Node::AnonConst`] or panic.
-    #[track_caller]
-    pub fn expect_anon_const(self) -> &'hir AnonConst {
-        let Node::AnonConst(this) = self else { self.expect_failed("an anonymous constant") };
-        this
-    }
-
-    /// Expect a [`Node::ConstBlock`] or panic.
-    #[track_caller]
-    pub fn expect_inline_const(self) -> &'hir ConstBlock {
-        let Node::ConstBlock(this) = self else { self.expect_failed("an inline constant") };
-        this
-    }
-
-    /// Expect a [`Node::Expr`] or panic.
-    #[track_caller]
-    pub fn expect_expr(self) -> &'hir Expr<'hir> {
-        let Node::Expr(this) = self else { self.expect_failed("an expression") };
-        this
-    }
-    /// Expect a [`Node::ExprField`] or panic.
-    #[track_caller]
-    pub fn expect_expr_field(self) -> &'hir ExprField<'hir> {
-        let Node::ExprField(this) = self else { self.expect_failed("an expression field") };
-        this
-    }
-
-    /// Expect a [`Node::Stmt`] or panic.
-    #[track_caller]
-    pub fn expect_stmt(self) -> &'hir Stmt<'hir> {
-        let Node::Stmt(this) = self else { self.expect_failed("a statement") };
-        this
-    }
-
-    /// Expect a [`Node::PathSegment`] or panic.
-    #[track_caller]
-    pub fn expect_path_segment(self) -> &'hir PathSegment<'hir> {
-        let Node::PathSegment(this) = self else { self.expect_failed("a path segment") };
-        this
-    }
-
-    /// Expect a [`Node::Ty`] or panic.
-    #[track_caller]
-    pub fn expect_ty(self) -> &'hir Ty<'hir> {
-        let Node::Ty(this) = self else { self.expect_failed("a type") };
-        this
-    }
-
-    /// Expect a [`Node::TypeBinding`] or panic.
-    #[track_caller]
-    pub fn expect_type_binding(self) -> &'hir TypeBinding<'hir> {
-        let Node::TypeBinding(this) = self else { self.expect_failed("a type binding") };
-        this
-    }
-
-    /// Expect a [`Node::TraitRef`] or panic.
-    #[track_caller]
-    pub fn expect_trait_ref(self) -> &'hir TraitRef<'hir> {
-        let Node::TraitRef(this) = self else { self.expect_failed("a trait reference") };
-        this
-    }
-
-    /// Expect a [`Node::Pat`] or panic.
-    #[track_caller]
-    pub fn expect_pat(self) -> &'hir Pat<'hir> {
-        let Node::Pat(this) = self else { self.expect_failed("a pattern") };
-        this
-    }
-
-    /// Expect a [`Node::PatField`] or panic.
-    #[track_caller]
-    pub fn expect_pat_field(self) -> &'hir PatField<'hir> {
-        let Node::PatField(this) = self else { self.expect_failed("a pattern field") };
-        this
-    }
-
-    /// Expect a [`Node::Arm`] or panic.
-    #[track_caller]
-    pub fn expect_arm(self) -> &'hir Arm<'hir> {
-        let Node::Arm(this) = self else { self.expect_failed("an arm") };
-        this
-    }
-
-    /// Expect a [`Node::Block`] or panic.
-    #[track_caller]
-    pub fn expect_block(self) -> &'hir Block<'hir> {
-        let Node::Block(this) = self else { self.expect_failed("a block") };
-        this
-    }
-
-    /// Expect a [`Node::Local`] or panic.
-    #[track_caller]
-    pub fn expect_local(self) -> &'hir Local<'hir> {
-        let Node::Local(this) = self else { self.expect_failed("a local") };
-        this
-    }
-
-    /// Expect a [`Node::Ctor`] or panic.
-    #[track_caller]
-    pub fn expect_ctor(self) -> &'hir VariantData<'hir> {
-        let Node::Ctor(this) = self else { self.expect_failed("a constructor") };
-        this
-    }
-
-    /// Expect a [`Node::Lifetime`] or panic.
-    #[track_caller]
-    pub fn expect_lifetime(self) -> &'hir Lifetime {
-        let Node::Lifetime(this) = self else { self.expect_failed("a lifetime") };
-        this
-    }
-
-    /// Expect a [`Node::GenericParam`] or panic.
-    #[track_caller]
-    pub fn expect_generic_param(self) -> &'hir GenericParam<'hir> {
-        let Node::GenericParam(this) = self else { self.expect_failed("a generic parameter") };
-        this
-    }
-
-    /// Expect a [`Node::Crate`] or panic.
-    #[track_caller]
-    pub fn expect_crate(self) -> &'hir Mod<'hir> {
-        let Node::Crate(this) = self else { self.expect_failed("a crate") };
-        this
-    }
-
-    /// Expect a [`Node::Infer`] or panic.
-    #[track_caller]
-    pub fn expect_infer(self) -> &'hir InferArg {
-        let Node::Infer(this) = self else { self.expect_failed("an infer") };
-        this
-    }
-
-    #[track_caller]
-    fn expect_failed(&self, expected: &'static str) -> ! {
-        panic!("expected {expected} node, found {self:?}")
+    expect_methods_self! {
+        expect_param,         &'hir Param<'hir>,        Node::Param(n),        n;
+        expect_item,          &'hir Item<'hir>,         Node::Item(n),         n;
+        expect_foreign_item,  &'hir ForeignItem<'hir>,  Node::ForeignItem(n),  n;
+        expect_trait_item,    &'hir TraitItem<'hir>,    Node::TraitItem(n),    n;
+        expect_impl_item,     &'hir ImplItem<'hir>,     Node::ImplItem(n),     n;
+        expect_variant,       &'hir Variant<'hir>,      Node::Variant(n),      n;
+        expect_field,         &'hir FieldDef<'hir>,     Node::Field(n),        n;
+        expect_anon_const,    &'hir AnonConst,          Node::AnonConst(n),    n;
+        expect_inline_const,  &'hir ConstBlock,         Node::ConstBlock(n),   n;
+        expect_expr,          &'hir Expr<'hir>,         Node::Expr(n),         n;
+        expect_expr_field,    &'hir ExprField<'hir>,    Node::ExprField(n),    n;
+        expect_stmt,          &'hir Stmt<'hir>,         Node::Stmt(n),         n;
+        expect_path_segment,  &'hir PathSegment<'hir>,  Node::PathSegment(n),  n;
+        expect_ty,            &'hir Ty<'hir>,           Node::Ty(n),           n;
+        expect_type_binding,  &'hir TypeBinding<'hir>,  Node::TypeBinding(n),  n;
+        expect_trait_ref,     &'hir TraitRef<'hir>,     Node::TraitRef(n),     n;
+        expect_pat,           &'hir Pat<'hir>,          Node::Pat(n),          n;
+        expect_pat_field,     &'hir PatField<'hir>,     Node::PatField(n),     n;
+        expect_arm,           &'hir Arm<'hir>,          Node::Arm(n),          n;
+        expect_block,         &'hir Block<'hir>,        Node::Block(n),        n;
+        expect_local,         &'hir Local<'hir>,        Node::Local(n),        n;
+        expect_ctor,          &'hir VariantData<'hir>,  Node::Ctor(n),         n;
+        expect_lifetime,      &'hir Lifetime,           Node::Lifetime(n),     n;
+        expect_generic_param, &'hir GenericParam<'hir>, Node::GenericParam(n), n;
+        expect_crate,         &'hir Mod<'hir>,          Node::Crate(n),        n;
+        expect_infer,         &'hir InferArg,           Node::Infer(n),        n;
     }
 }
 

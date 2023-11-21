@@ -25,6 +25,7 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo,
 };
+use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::query::Providers;
@@ -1902,10 +1903,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(deps.iter().map(|(_, dep)| dep))
     }
 
-    fn encode_lib_features(&mut self) -> LazyArray<(Symbol, Option<Symbol>)> {
+    fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let lib_features = tcx.lib_features(());
+        let lib_features = tcx.lib_features(LOCAL_CRATE);
         self.lazy_array(lib_features.to_vec())
     }
 

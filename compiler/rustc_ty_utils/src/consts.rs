@@ -17,7 +17,7 @@ use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
 
 /// Destructures array, ADT or tuple constants into the constants
 /// of their fields.
-pub(crate) fn destructure_const<'tcx>(
+fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
 ) -> ty::DestructuredConst<'tcx> {
@@ -396,7 +396,7 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
 }
 
 /// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
-pub fn thir_abstract_const(
+fn thir_abstract_const(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
 ) -> Result<Option<ty::EarlyBinder<ty::Const<'_>>>, ErrorGuaranteed> {
@@ -428,6 +428,6 @@ pub fn thir_abstract_const(
     Ok(Some(ty::EarlyBinder::bind(recurse_build(tcx, body, body_id, root_span)?)))
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { destructure_const, thir_abstract_const, ..*providers };
 }

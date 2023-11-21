@@ -303,7 +303,7 @@ const PARSED = [
         original: '->a<>b',
         returned: [],
         userQuery: '->a<>b',
-        error: 'Expected `,` after `>`, found `b`',
+        error: 'Expected `,` or `=` after `>`, found `b`',
     },
     {
         query: "a<->",

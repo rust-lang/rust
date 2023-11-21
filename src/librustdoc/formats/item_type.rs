@@ -49,6 +49,8 @@ pub(crate) enum ItemType {
     ProcAttribute = 23,
     ProcDerive = 24,
     TraitAlias = 25,
+    // This number is reserved for use in JavaScript
+    // Generic = 26,
 }
 
 impl Serialize for ItemType {

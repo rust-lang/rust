@@ -396,14 +396,7 @@ impl<'a> Ctx<'a> {
         let bounds = self.lower_type_bounds(type_alias);
         let generic_params = self.lower_generic_params(HasImplicitSelf::No, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
-        let res = TypeAlias {
-            name,
-            visibility,
-            bounds: bounds.into_boxed_slice(),
-            generic_params,
-            type_ref,
-            ast_id,
-        };
+        let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
         Some(id(self.data().type_aliases.alloc(res)))
     }
 
@@ -499,6 +492,7 @@ impl<'a> Ctx<'a> {
         let target_trait = impl_def.trait_().and_then(|tr| self.lower_trait_ref(&tr));
         let self_ty = self.lower_type_ref(&impl_def.self_ty()?);
         let is_negative = impl_def.excl_token().is_some();
+        let is_unsafe = impl_def.unsafe_token().is_some();
 
         // We cannot use `assoc_items()` here as that does not include macro calls.
         let items = impl_def
@@ -513,7 +507,8 @@ impl<'a> Ctx<'a> {
             })
             .collect();
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
-        let res = Impl { generic_params, target_trait, self_ty, is_negative, items, ast_id };
+        let res =
+            Impl { generic_params, target_trait, self_ty, is_negative, is_unsafe, items, ast_id };
         Some(id(self.data().impls.alloc(res)))
     }
 
@@ -637,13 +632,13 @@ impl<'a> Ctx<'a> {
         Interned::new(generics)
     }
 
-    fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Vec<Interned<TypeBound>> {
+    fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Box<[Interned<TypeBound>]> {
         match node.type_bound_list() {
             Some(bound_list) => bound_list
                 .bounds()
                 .map(|it| Interned::new(TypeBound::from_ast(&self.body_ctx, it)))
                 .collect(),
-            None => Vec::new(),
+            None => Box::default(),
         }
     }
 

@@ -56,32 +56,30 @@ fn is_alias(ty: hir::Ty<'_>) -> bool {
 
 impl LateLintPass<'_> for DefaultConstructedUnitStructs {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if_chain!(
+        if let hir::ExprKind::Call(fn_expr, &[]) = expr.kind
             // make sure we have a call to `Default::default`
-            if let hir::ExprKind::Call(fn_expr, &[]) = expr.kind;
-            if let ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(base, _)) = fn_expr.kind;
+            && let ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(base, _)) = fn_expr.kind
             // make sure this isn't a type alias:
             // `<Foo as Bar>::Assoc` cannot be used as a constructor
-            if !is_alias(*base);
-            if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
-            if cx.tcx.is_diagnostic_item(sym::default_fn, def_id);
+            && !is_alias(*base)
+            && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
+            && cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
             // make sure we have a struct with no fields (unit struct)
-            if let ty::Adt(def, ..) = cx.typeck_results().expr_ty(expr).kind();
-            if def.is_struct();
-            if let var @ ty::VariantDef { ctor: Some((hir::def::CtorKind::Const, _)), .. } = def.non_enum_variant();
-            if !var.is_field_list_non_exhaustive();
-            if !expr.span.from_expansion() && !qpath.span().from_expansion();
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
-                    expr.span.with_lo(qpath.qself_span().hi()),
-                    "use of `default` to create a unit struct",
-                    "remove this call to `default`",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-            }
-        );
+            && let ty::Adt(def, ..) = cx.typeck_results().expr_ty(expr).kind()
+            && def.is_struct()
+            && let var @ ty::VariantDef { ctor: Some((hir::def::CtorKind::Const, _)), .. } = def.non_enum_variant()
+            && !var.is_field_list_non_exhaustive()
+            && !expr.span.from_expansion() && !qpath.span().from_expansion()
+        {
+            span_lint_and_sugg(
+                cx,
+                DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
+                expr.span.with_lo(qpath.qself_span().hi()),
+                "use of `default` to create a unit struct",
+                "remove this call to `default`",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+        };
     }
 }

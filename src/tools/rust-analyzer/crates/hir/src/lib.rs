@@ -34,7 +34,7 @@ pub mod symbols;
 
 mod display;
 
-use std::{iter, ops::ControlFlow};
+use std::{iter, mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
@@ -54,14 +54,14 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
-    EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, HasModule, ImplId,
-    InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId, Lookup,
-    MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, UnionId,
+    EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
+    ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
+    Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
+    TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
-    all_super_traits, autoderef,
+    all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     known_const_to_ast,
@@ -90,17 +90,7 @@ use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
     attrs::{resolve_doc_path_on, HasAttrs},
-    diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
-        IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
-        MacroExpansionParseError, MalformedDerive, MismatchedArgCount,
-        MismatchedTupleStructPatArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
-        MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
-        ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
-        UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
-        UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
-        UnresolvedProcMacro, UnusedMut, UnusedVariable,
-    },
+    diagnostics::*,
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
 };
@@ -604,6 +594,7 @@ impl Module {
 
         let inherent_impls = db.inherent_impls_in_crate(self.id.krate());
 
+        let mut impl_assoc_items_scratch = vec![];
         for impl_def in self.impl_defs(db) {
             let loc = impl_def.id.lookup(db.upcast());
             let tree = loc.id.item_tree(db.upcast());
@@ -614,19 +605,109 @@ impl Module {
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;
             }
+            let ast_id_map = db.ast_id_map(file_id);
 
             for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
                 emit_def_diagnostic(db, acc, diag);
             }
 
             if inherent_impls.invalid_impls().contains(&impl_def.id) {
-                let ast_id_map = db.ast_id_map(file_id);
-
                 acc.push(IncoherentImpl { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
             }
 
-            for item in impl_def.items(db) {
-                let def: DefWithBody = match item {
+            if !impl_def.check_orphan_rules(db) {
+                acc.push(TraitImplOrphan { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
+            }
+
+            let trait_ = impl_def.trait_(db);
+            let trait_is_unsafe = trait_.map_or(false, |t| t.is_unsafe(db));
+            let impl_is_negative = impl_def.is_negative(db);
+            let impl_is_unsafe = impl_def.is_unsafe(db);
+
+            let drop_maybe_dangle = (|| {
+                // FIXME: This can be simplified a lot by exposing hir-ty's utils.rs::Generics helper
+                let trait_ = trait_?;
+                let drop_trait = db.lang_item(self.krate().into(), LangItem::Drop)?.as_trait()?;
+                if drop_trait != trait_.into() {
+                    return None;
+                }
+                let parent = impl_def.id.into();
+                let generic_params = db.generic_params(parent);
+                let lifetime_params = generic_params.lifetimes.iter().map(|(local_id, _)| {
+                    GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id })
+                });
+                let type_params = generic_params
+                    .iter()
+                    .filter(|(_, it)| it.type_param().is_some())
+                    .map(|(local_id, _)| {
+                        GenericParamId::TypeParamId(TypeParamId::from_unchecked(
+                            TypeOrConstParamId { parent, local_id },
+                        ))
+                    });
+                let res = type_params
+                    .chain(lifetime_params)
+                    .any(|p| db.attrs(AttrDefId::GenericParamId(p)).by_key("may_dangle").exists());
+                Some(res)
+            })()
+            .unwrap_or(false);
+
+            match (impl_is_unsafe, trait_is_unsafe, impl_is_negative, drop_maybe_dangle) {
+                // unsafe negative impl
+                (true, _, true, _) |
+                // unsafe impl for safe trait
+                (true, false, _, false) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(node.ast_id()), file_id, should_be_safe: true }.into()),
+                // safe impl for unsafe trait
+                (false, true, false, _) |
+                // safe impl of dangling drop
+                (false, false, _, true) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(node.ast_id()), file_id, should_be_safe: false }.into()),
+                _ => (),
+            };
+
+            if let Some(trait_) = trait_ {
+                let items = &db.trait_data(trait_.into()).items;
+                let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
+                    AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
+                    AssocItemId::ConstId(_) => true,
+                    AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
+                });
+                impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().map(
+                    |&item| {
+                        (
+                            item,
+                            match item {
+                                AssocItemId::FunctionId(it) => db.function_data(it).name.clone(),
+                                AssocItemId::ConstId(it) => {
+                                    db.const_data(it).name.as_ref().unwrap().clone()
+                                }
+                                AssocItemId::TypeAliasId(it) => db.type_alias_data(it).name.clone(),
+                            },
+                        )
+                    },
+                ));
+
+                let missing: Vec<_> = required_items
+                    .filter(|(name, id)| {
+                        !impl_assoc_items_scratch.iter().any(|(impl_item, impl_name)| {
+                            discriminant(impl_item) == discriminant(id) && impl_name == name
+                        })
+                    })
+                    .map(|(name, item)| (name.clone(), AssocItem::from(*item)))
+                    .collect();
+                if !missing.is_empty() {
+                    acc.push(
+                        TraitImplMissingAssocItems {
+                            impl_: ast_id_map.get(node.ast_id()),
+                            file_id,
+                            missing,
+                        }
+                        .into(),
+                    )
+                }
+                impl_assoc_items_scratch.clear();
+            }
+
+            for &item in &db.impl_data(impl_def.id).items {
+                let def: DefWithBody = match AssocItem::from(item) {
                     AssocItem::Function(it) => it.into(),
                     AssocItem::Const(it) => it.into(),
                     AssocItem::TypeAlias(_) => continue,
@@ -665,8 +746,15 @@ impl Module {
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
         prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path(db, item.into().into(), self.into(), prefer_no_std)
+        hir_def::find_path::find_path(
+            db,
+            item.into().into(),
+            self.into(),
+            prefer_no_std,
+            prefer_prelude,
+        )
     }
 
     /// Finds a path that can be used to refer to the given item from within
@@ -677,6 +765,7 @@ impl Module {
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
         prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> Option<ModPath> {
         hir_def::find_path::find_path_prefixed(
             db,
@@ -684,6 +773,7 @@ impl Module {
             self.into(),
             prefix_kind,
             prefer_no_std,
+            prefer_prelude,
         )
     }
 }
@@ -1447,9 +1537,7 @@ impl DefWithBody {
         let (body, source_map) = db.body_with_source_map(self.into());
 
         for (_, def_map) in body.blocks(db.upcast()) {
-            for diag in def_map.diagnostics() {
-                emit_def_diagnostic(db, acc, diag);
-            }
+            Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc);
         }
 
         for diag in source_map.diagnostics() {
@@ -3390,6 +3478,10 @@ impl Impl {
         db.impl_data(self.id).is_negative
     }
 
+    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
+        db.impl_data(self.id).is_unsafe
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.lookup(db.upcast()).container.into()
     }
@@ -3397,6 +3489,10 @@ impl Impl {
     pub fn as_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
         let src = self.source(db)?;
         src.file_id.as_builtin_derive_attr_node(db.upcast())
+    }
+
+    pub fn check_orphan_rules(self, db: &dyn HirDatabase) -> bool {
+        check_orphan_rules(db, self.id)
     }
 }
 

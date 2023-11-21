@@ -75,7 +75,7 @@ impl<'a> DescriptionCtx<'a> {
             // We shouldn't really be having unification failures with ReVar
             // and ReBound though.
             //
-            // FIXME(@lcnr): figure out why we `ReBound` have to handle `ReBound`
+            // FIXME(@lcnr): figure out why we have to handle `ReBound`
             // here, this feels somewhat off.
             ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
                 (alt_span, "revar", format!("{region:?}"))

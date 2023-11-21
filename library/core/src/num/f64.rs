@@ -1422,9 +1422,17 @@ impl f64 {
     /// ];
     ///
     /// bois.sort_by(|a, b| a.weight.total_cmp(&b.weight));
-    /// # assert!(bois.into_iter().map(|b| b.weight)
-    /// #     .zip([-5.0, 0.1, 10.0, 99.0, f64::INFINITY, f64::NAN].iter())
-    /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
+    ///
+    /// // `f64::NAN` could be positive or negative, which will affect the sort order.
+    /// if f64::NAN.is_sign_negative() {
+    ///     assert!(bois.into_iter().map(|b| b.weight)
+    ///         .zip([f64::NAN, -5.0, 0.1, 10.0, 99.0, f64::INFINITY].iter())
+    ///         .all(|(a, b)| a.to_bits() == b.to_bits()))
+    /// } else {
+    ///     assert!(bois.into_iter().map(|b| b.weight)
+    ///         .zip([-5.0, 0.1, 10.0, 99.0, f64::INFINITY, f64::NAN].iter())
+    ///         .all(|(a, b)| a.to_bits() == b.to_bits()))
+    /// }
     /// ```
     #[stable(feature = "total_cmp", since = "1.62.0")]
     #[must_use]

@@ -1,5 +1,10 @@
+use crate::solve::assembly::Candidate;
+
 use super::EvalCtxt;
-use rustc_middle::traits::solve::{inspect, CandidateSource, QueryResult};
+use rustc_middle::traits::{
+    query::NoSolution,
+    solve::{inspect, CandidateSource, QueryResult},
+};
 use std::marker::PhantomData;
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, 'tcx, F, T> {
@@ -36,6 +41,23 @@ where
     }
 }
 
+pub(in crate::solve) struct TraitProbeCtxt<'me, 'a, 'tcx, F> {
+    cx: ProbeCtxt<'me, 'a, 'tcx, F, QueryResult<'tcx>>,
+    source: CandidateSource,
+}
+
+impl<'tcx, F> TraitProbeCtxt<'_, '_, 'tcx, F>
+where
+    F: FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>,
+{
+    pub(in crate::solve) fn enter(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
+    ) -> Result<Candidate<'tcx>, NoSolution> {
+        self.cx.enter(|ecx| f(ecx)).map(|result| Candidate { source: self.source, result })
+    }
+}
+
 impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// `probe_kind` is only called when proof tree building is enabled so it can be
     /// as expensive as necessary to output the desired information.
@@ -69,20 +91,18 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     pub(in crate::solve) fn probe_trait_candidate(
         &mut self,
         source: CandidateSource,
-    ) -> ProbeCtxt<
-        '_,
-        'a,
-        'tcx,
-        impl FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>,
-        QueryResult<'tcx>,
-    > {
-        ProbeCtxt {
-            ecx: self,
-            probe_kind: move |result: &QueryResult<'tcx>| inspect::ProbeKind::TraitCandidate {
-                source,
-                result: *result,
+    ) -> TraitProbeCtxt<'_, 'a, 'tcx, impl FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>>
+    {
+        TraitProbeCtxt {
+            cx: ProbeCtxt {
+                ecx: self,
+                probe_kind: move |result: &QueryResult<'tcx>| inspect::ProbeKind::TraitCandidate {
+                    source,
+                    result: *result,
+                },
+                _result: PhantomData,
             },
-            _result: PhantomData,
+            source,
         }
     }
 }

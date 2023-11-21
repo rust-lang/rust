@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{def_path_def_ids, is_lint_allowed, match_any_def_paths, peel_hir_expr_refs};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::Applicability;
@@ -102,108 +101,106 @@ impl UnnecessaryDefPath {
             &["clippy_utils", "is_expr_path_def_path"],
         ];
 
-        if_chain! {
-            if let [cx_arg, def_arg, args @ ..] = args;
-            if let ExprKind::Path(path) = &func.kind;
-            if let Some(id) = cx.qpath_res(path, func.hir_id).opt_def_id();
-            if let Some(which_path) = match_any_def_paths(cx, id, PATHS);
-            let item_arg = if which_path == 4 { &args[1] } else { &args[0] };
+        if let [cx_arg, def_arg, args @ ..] = args
+            && let ExprKind::Path(path) = &func.kind
+            && let Some(id) = cx.qpath_res(path, func.hir_id).opt_def_id()
+            && let Some(which_path) = match_any_def_paths(cx, id, PATHS)
+            && let item_arg = if which_path == 4 { &args[1] } else { &args[0] }
             // Extract the path to the matched type
-            if let Some(segments) = path_to_matched_type(cx, item_arg);
-            let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
-            if let Some(def_id) = def_path_def_ids(cx, &segments[..]).next();
-            then {
-                // Check if the target item is a diagnostic item or LangItem.
-                #[rustfmt::skip]
-                let (msg, item) = if let Some(item_name)
-                    = cx.tcx.diagnostic_items(def_id.krate).id_to_name.get(&def_id)
-                {
-                    (
-                        "use of a def path to a diagnostic item",
-                        Item::DiagnosticItem(*item_name),
-                    )
-                } else if let Some(item_name) = get_lang_item_name(cx, def_id) {
-                    (
-                        "use of a def path to a `LangItem`",
-                        Item::LangItem(item_name),
-                    )
-                } else {
-                    return;
-                };
+            && let Some(segments) = path_to_matched_type(cx, item_arg)
+            && let segments = segments.iter().map(|sym| &**sym).collect::<Vec<_>>()
+            && let Some(def_id) = def_path_def_ids(cx, &segments[..]).next()
+        {
+            // Check if the target item is a diagnostic item or LangItem.
+            #[rustfmt::skip]
+            let (msg, item) = if let Some(item_name)
+                = cx.tcx.diagnostic_items(def_id.krate).id_to_name.get(&def_id)
+            {
+                (
+                    "use of a def path to a diagnostic item",
+                    Item::DiagnosticItem(*item_name),
+                )
+            } else if let Some(item_name) = get_lang_item_name(cx, def_id) {
+                (
+                    "use of a def path to a `LangItem`",
+                    Item::LangItem(item_name),
+                )
+            } else {
+                return;
+            };
 
-                let has_ctor = match cx.tcx.def_kind(def_id) {
-                    DefKind::Struct => {
-                        let variant = cx.tcx.adt_def(def_id).non_enum_variant();
-                        variant.ctor.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
-                    },
-                    DefKind::Variant => {
-                        let variant = cx.tcx.adt_def(cx.tcx.parent(def_id)).variant_with_id(def_id);
-                        variant.ctor.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
-                    },
-                    _ => false,
-                };
+            let has_ctor = match cx.tcx.def_kind(def_id) {
+                DefKind::Struct => {
+                    let variant = cx.tcx.adt_def(def_id).non_enum_variant();
+                    variant.ctor.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
+                },
+                DefKind::Variant => {
+                    let variant = cx.tcx.adt_def(cx.tcx.parent(def_id)).variant_with_id(def_id);
+                    variant.ctor.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
+                },
+                _ => false,
+            };
 
-                let mut app = Applicability::MachineApplicable;
-                let cx_snip = snippet_with_applicability(cx, cx_arg.span, "..", &mut app);
-                let def_snip = snippet_with_applicability(cx, def_arg.span, "..", &mut app);
-                let (sugg, with_note) = match (which_path, item) {
-                    // match_def_path
-                    (0, Item::DiagnosticItem(item)) => (
-                        format!("{cx_snip}.tcx.is_diagnostic_item(sym::{item}, {def_snip})"),
-                        has_ctor,
+            let mut app = Applicability::MachineApplicable;
+            let cx_snip = snippet_with_applicability(cx, cx_arg.span, "..", &mut app);
+            let def_snip = snippet_with_applicability(cx, def_arg.span, "..", &mut app);
+            let (sugg, with_note) = match (which_path, item) {
+                // match_def_path
+                (0, Item::DiagnosticItem(item)) => (
+                    format!("{cx_snip}.tcx.is_diagnostic_item(sym::{item}, {def_snip})"),
+                    has_ctor,
+                ),
+                (0, Item::LangItem(item)) => (
+                    format!("{cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some({def_snip})"),
+                    has_ctor,
+                ),
+                // match_trait_method
+                (1, Item::DiagnosticItem(item)) => {
+                    (format!("is_trait_method({cx_snip}, {def_snip}, sym::{item})"), false)
+                },
+                // match_type
+                (2, Item::DiagnosticItem(item)) => (
+                    format!("is_type_diagnostic_item({cx_snip}, {def_snip}, sym::{item})"),
+                    false,
+                ),
+                (2, Item::LangItem(item)) => (
+                    format!("is_type_lang_item({cx_snip}, {def_snip}, LangItem::{item})"),
+                    false,
+                ),
+                // is_expr_path_def_path
+                (3, Item::DiagnosticItem(item)) if has_ctor => (
+                    format!("is_res_diag_ctor({cx_snip}, path_res({cx_snip}, {def_snip}), sym::{item})",),
+                    false,
+                ),
+                (3, Item::LangItem(item)) if has_ctor => (
+                    format!("is_res_lang_ctor({cx_snip}, path_res({cx_snip}, {def_snip}), LangItem::{item})",),
+                    false,
+                ),
+                (3, Item::DiagnosticItem(item)) => (
+                    format!("is_path_diagnostic_item({cx_snip}, {def_snip}, sym::{item})"),
+                    false,
+                ),
+                (3, Item::LangItem(item)) => (
+                    format!(
+                        "path_res({cx_snip}, {def_snip}).opt_def_id()\
+                            .map_or(false, |id| {cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some(id))",
                     ),
-                    (0, Item::LangItem(item)) => (
-                        format!("{cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some({def_snip})"),
-                        has_ctor,
-                    ),
-                    // match_trait_method
-                    (1, Item::DiagnosticItem(item)) => {
-                        (format!("is_trait_method({cx_snip}, {def_snip}, sym::{item})"), false)
-                    },
-                    // match_type
-                    (2, Item::DiagnosticItem(item)) => (
-                        format!("is_type_diagnostic_item({cx_snip}, {def_snip}, sym::{item})"),
-                        false,
-                    ),
-                    (2, Item::LangItem(item)) => (
-                        format!("is_type_lang_item({cx_snip}, {def_snip}, LangItem::{item})"),
-                        false,
-                    ),
-                    // is_expr_path_def_path
-                    (3, Item::DiagnosticItem(item)) if has_ctor => (
-                        format!("is_res_diag_ctor({cx_snip}, path_res({cx_snip}, {def_snip}), sym::{item})",),
-                        false,
-                    ),
-                    (3, Item::LangItem(item)) if has_ctor => (
-                        format!("is_res_lang_ctor({cx_snip}, path_res({cx_snip}, {def_snip}), LangItem::{item})",),
-                        false,
-                    ),
-                    (3, Item::DiagnosticItem(item)) => (
-                        format!("is_path_diagnostic_item({cx_snip}, {def_snip}, sym::{item})"),
-                        false,
-                    ),
-                    (3, Item::LangItem(item)) => (
-                        format!(
-                            "path_res({cx_snip}, {def_snip}).opt_def_id()\
-                                .map_or(false, |id| {cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some(id))",
-                        ),
-                        false,
-                    ),
-                    _ => return,
-                };
+                    false,
+                ),
+                _ => return,
+            };
 
-                span_lint_and_then(cx, UNNECESSARY_DEF_PATH, span, msg, |diag| {
-                    diag.span_suggestion(span, "try", sugg, app);
-                    if with_note {
-                        diag.help(
-                            "if this `DefId` came from a constructor expression or pattern then the \
-                                    parent `DefId` should be used instead",
-                        );
-                    }
-                });
+            span_lint_and_then(cx, UNNECESSARY_DEF_PATH, span, msg, |diag| {
+                diag.span_suggestion(span, "try", sugg, app);
+                if with_note {
+                    diag.help(
+                        "if this `DefId` came from a constructor expression or pattern then the \
+                                parent `DefId` should be used instead",
+                    );
+                }
+            });
 
-                self.linted_def_ids.insert(def_id);
-            }
+            self.linted_def_ids.insert(def_id);
         }
     }
 

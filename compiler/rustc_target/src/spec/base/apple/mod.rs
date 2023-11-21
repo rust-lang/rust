@@ -9,11 +9,12 @@ mod tests;
 
 use Arch::*;
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Arch {
     Armv7k,
     Armv7s,
     Arm64,
+    Arm64e,
     Arm64_32,
     I386,
     I686,
@@ -31,6 +32,7 @@ impl Arch {
             Armv7k => "armv7k",
             Armv7s => "armv7s",
             Arm64 | Arm64_macabi | Arm64_sim => "arm64",
+            Arm64e => "arm64e",
             Arm64_32 => "arm64_32",
             I386 => "i386",
             I686 => "i686",
@@ -42,7 +44,7 @@ impl Arch {
     pub fn target_arch(self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
             Armv7k | Armv7s => "arm",
-            Arm64 | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
+            Arm64 | Arm64e | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
             I386 | I686 => "x86",
             X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
         })
@@ -50,7 +52,7 @@ impl Arch {
 
     fn target_abi(self) -> &'static str {
         match self {
-            Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
+            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
             X86_64_macabi | Arm64_macabi => "macabi",
             // x86_64-apple-ios is a simulator target, even though it isn't
             // declared that way in the target like the other ones...
@@ -63,6 +65,7 @@ impl Arch {
             Armv7k => "cortex-a8",
             Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
             Arm64 => "apple-a7",
+            Arm64e => "apple-a12",
             Arm64_32 => "apple-s4",
             // Only macOS 10.12+ is supported, which means
             // all x86_64/x86 CPUs must be running at least penryn
@@ -88,7 +91,7 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     };
 
     let platform_version: StaticCow<str> = match os {
-        "ios" => ios_lld_platform_version(),
+        "ios" => ios_lld_platform_version(arch),
         "tvos" => tvos_lld_platform_version(),
         "watchos" => watchos_lld_platform_version(),
         "macos" => macos_lld_platform_version(arch),
@@ -202,12 +205,22 @@ pub fn deployment_target(target: &Target) -> Option<(u32, u32)> {
     let (major, minor) = match &*target.os {
         "macos" => {
             // This does not need to be specific. It just needs to handle x86 vs M1.
-            let arch = if target.arch == "x86" || target.arch == "x86_64" { X86_64 } else { Arm64 };
+            let arch = match target.arch.as_ref() {
+                "x86" | "x86_64" => X86_64,
+                "arm64e" => Arm64e,
+                _ => Arm64,
+            };
             macos_deployment_target(arch)
         }
         "ios" => match &*target.abi {
             "macabi" => mac_catalyst_deployment_target(),
-            _ => ios_deployment_target(),
+            _ => {
+                let arch = match target.arch.as_ref() {
+                    "arm64e" => Arm64e,
+                    _ => Arm64,
+                };
+                ios_deployment_target(arch)
+            }
         },
         "watchos" => watchos_deployment_target(),
         "tvos" => tvos_deployment_target(),
@@ -228,7 +241,7 @@ fn from_set_deployment_target(var_name: &str) -> Option<(u32, u32)> {
 fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
     match arch {
         // Note: Arm64_sim is not included since macOS has no simulator.
-        Arm64 | Arm64_macabi => (11, 0),
+        Arm64 | Arm64e | Arm64_macabi => (11, 0),
         _ => (10, 12),
     }
 }
@@ -280,8 +293,8 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // Otherwise if cross-compiling for a different OS/SDK, remove any part
         // of the linking environment that's wrong and reversed.
         match arch {
-            Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim | X86_64h
-            | Arm64_sim => {
+            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
+            | X86_64h | Arm64_sim => {
                 cvs!["MACOSX_DEPLOYMENT_TARGET"]
             }
             X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
@@ -289,9 +302,10 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
     }
 }
 
-fn ios_deployment_target() -> (u32, u32) {
+fn ios_deployment_target(arch: Arch) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
+    let (major, minor) = if arch == Arm64e { (14, 0) } else { (10, 0) };
+    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((major, minor))
 }
 
 fn mac_catalyst_deployment_target() -> (u32, u32) {
@@ -306,17 +320,17 @@ pub fn ios_llvm_target(arch: Arch) -> String {
     // set high enough. Luckily one LC_BUILD_VERSION is enough, for Xcode
     // to pick it up (since std and core are still built with the fallback
     // of version 7.0 and hence emit the old LC_IPHONE_MIN_VERSION).
-    let (major, minor) = ios_deployment_target();
+    let (major, minor) = ios_deployment_target(arch);
     format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
 }
 
-fn ios_lld_platform_version() -> String {
-    let (major, minor) = ios_deployment_target();
+fn ios_lld_platform_version(arch: Arch) -> String {
+    let (major, minor) = ios_deployment_target(arch);
     format!("{major}.{minor}")
 }
 
 pub fn ios_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = ios_deployment_target();
+    let (major, minor) = ios_deployment_target(arch);
     format!("{}-apple-ios{}.{}.0-simulator", arch.target_name(), major, minor)
 }
 

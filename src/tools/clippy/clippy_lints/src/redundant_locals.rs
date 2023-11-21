@@ -46,40 +46,38 @@ declare_lint_pass!(RedundantLocals => [REDUNDANT_LOCALS]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
-        if_chain! {
-            if !local.span.is_desugaring(DesugaringKind::Async);
+        if !local.span.is_desugaring(DesugaringKind::Async)
             // the pattern is a single by-value binding
-            if let PatKind::Binding(BindingAnnotation(ByRef::No, mutability), _, ident, None) = local.pat.kind;
+            && let PatKind::Binding(BindingAnnotation(ByRef::No, mutability), _, ident, None) = local.pat.kind
             // the binding is not type-ascribed
-            if local.ty.is_none();
+            && local.ty.is_none()
             // the expression is a resolved path
-            if let Some(expr) = local.init;
-            if let ExprKind::Path(qpath @ QPath::Resolved(None, path)) = expr.kind;
+            && let Some(expr) = local.init
+            && let ExprKind::Path(qpath @ QPath::Resolved(None, path)) = expr.kind
             // the path is a single segment equal to the local's name
-            if let [last_segment] = path.segments;
-            if last_segment.ident == ident;
+            && let [last_segment] = path.segments
+            && last_segment.ident == ident
             // resolve the path to its defining binding pattern
-            if let Res::Local(binding_id) = cx.qpath_res(&qpath, expr.hir_id);
-            if let Node::Pat(binding_pat) = cx.tcx.hir().get(binding_id);
+            && let Res::Local(binding_id) = cx.qpath_res(&qpath, expr.hir_id)
+            && let Node::Pat(binding_pat) = cx.tcx.hir().get(binding_id)
             // the previous binding has the same mutability
-            if find_binding(binding_pat, ident).is_some_and(|bind| bind.1 == mutability);
+            && find_binding(binding_pat, ident).is_some_and(|bind| bind.1 == mutability)
             // the local does not change the effect of assignments to the binding. see #11290
-            if !affects_assignments(cx, mutability, binding_id, local.hir_id);
+            && !affects_assignments(cx, mutability, binding_id, local.hir_id)
             // the local does not affect the code's drop behavior
-            if !needs_ordered_drop(cx, cx.typeck_results().expr_ty(expr));
+            && !needs_ordered_drop(cx, cx.typeck_results().expr_ty(expr))
             // the local is user-controlled
-            if !in_external_macro(cx.sess(), local.span);
-            if !is_from_proc_macro(cx, expr);
-            then {
-                span_lint_and_help(
-                    cx,
-                    REDUNDANT_LOCALS,
-                    local.span,
-                    &format!("redundant redefinition of a binding `{ident}`"),
-                    Some(binding_pat.span),
-                    &format!("`{ident}` is initially defined here"),
-                );
-            }
+            && !in_external_macro(cx.sess(), local.span)
+            && !is_from_proc_macro(cx, expr)
+        {
+            span_lint_and_help(
+                cx,
+                REDUNDANT_LOCALS,
+                local.span,
+                &format!("redundant redefinition of a binding `{ident}`"),
+                Some(binding_pat.span),
+                &format!("`{ident}` is initially defined here"),
+            );
         }
     }
 }

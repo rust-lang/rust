@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -768,41 +768,22 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 }
 
-struct EraseEarlyRegions<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEarlyRegions<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_type_flags(ty::TypeFlags::HAS_FREE_REGIONS) {
-            ty.super_fold_with(self)
-        } else {
-            ty
-        }
-    }
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if r.is_bound() { r } else { self.tcx.lifetimes.re_erased }
-    }
-}
-
 impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
         self.fcx.tcx
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        let tcx = self.fcx.tcx;
         match self.fcx.fully_resolve(t) {
             Ok(t) if self.fcx.next_trait_solver() => {
                 // We must normalize erasing regions here, since later lints
                 // expect that types that show up in the typeck are fully
                 // normalized.
-                if let Ok(t) = self.fcx.tcx.try_normalize_erasing_regions(self.fcx.param_env, t) {
+                if let Ok(t) = tcx.try_normalize_erasing_regions(self.fcx.param_env, t) {
                     t
                 } else {
-                    EraseEarlyRegions { tcx: self.fcx.tcx }.fold_ty(t)
+                    tcx.fold_regions(t, |_, _| tcx.lifetimes.re_erased)
                 }
             }
             Ok(t) => {
@@ -810,7 +791,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
                 // (e.g. keep `for<'a>` named `for<'a>`).
                 // This allows NLL to generate error messages that
                 // refer to the higher-ranked lifetime names written by the user.
-                EraseEarlyRegions { tcx: self.fcx.tcx }.fold_ty(t)
+                tcx.fold_regions(t, |_, _| tcx.lifetimes.re_erased)
             }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);

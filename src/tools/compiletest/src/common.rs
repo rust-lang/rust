@@ -410,9 +410,6 @@ impl Config {
 
     pub fn matches_arch(&self, arch: &str) -> bool {
         self.target_cfg().arch == arch ||
-        // Shorthand for convenience. The arch for
-        // asmjs-unknown-emscripten is actually wasm32.
-        (arch == "asmjs" && self.target.starts_with("asmjs")) ||
         // Matching all the thumb variants as one can be convenient.
         // (thumbv6m, thumbv7em, thumbv7m, etc.)
         (arch == "thumb" && self.target.starts_with("thumb"))

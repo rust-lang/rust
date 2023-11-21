@@ -27,7 +27,7 @@
         }
     },
     "engines": {
-        "vscode": "^1.75.0"
+        "vscode": "^1.78.0"
     },
     "enabledApiProposals": [],
     "scripts": {
@@ -54,7 +54,7 @@
     "devDependencies": {
         "@tsconfig/strictest": "^2.0.1",
         "@types/node": "~16.11.7",
-        "@types/vscode": "~1.75",
+        "@types/vscode": "~1.78.1",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
         "@vscode/test-electron": "^2.3.3",
@@ -156,7 +156,7 @@
             },
             {
                 "command": "rust-analyzer.expandMacro",
-                "title": "Expand macro recursively",
+                "title": "Expand macro recursively at caret",
                 "category": "rust-analyzer"
             },
             {
@@ -207,11 +207,6 @@
             {
                 "command": "rust-analyzer.rebuildProcMacros",
                 "title": "Rebuild proc macros and build scripts",
-                "category": "rust-analyzer"
-            },
-            {
-                "command": "rust-analyzer.addProject",
-                "title": "Add current file's crate to workspace",
                 "category": "rust-analyzer"
             },
             {
@@ -1129,8 +1124,13 @@
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.imports.prefer.no.std": {
+                "rust-analyzer.imports.preferNoStd": {
                     "markdownDescription": "Prefer to unconditionally use imports of the core and alloc crate, over the std crate.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.imports.preferPrelude": {
+                    "markdownDescription": "Whether to prefer import paths containing a `prelude` module.",
                     "default": false,
                     "type": "boolean"
                 },

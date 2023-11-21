@@ -185,7 +185,7 @@ impl<'a> Parser<'a> {
         });
 
         if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtTy(ty) = &**nt {
+            if let token::NtTy(ty) = &nt.0 {
                 if let ast::TyKind::Path(None, path) = &ty.kind {
                     let path = path.clone();
                     self.bump();

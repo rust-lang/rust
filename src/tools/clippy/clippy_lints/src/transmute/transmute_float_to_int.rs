@@ -1,7 +1,6 @@
 use super::TRANSMUTE_FLOAT_TO_INT;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg;
-use if_chain::if_chain;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, UnOp};
@@ -32,17 +31,15 @@ pub(super) fn check<'tcx>(
                         arg = inner_expr;
                     }
 
-                    if_chain! {
+                    if let ExprKind::Lit(lit) = &arg.kind
                         // if the expression is a float literal and it is unsuffixed then
                         // add a suffix so the suggestion is valid and unambiguous
-                        if let ExprKind::Lit(lit) = &arg.kind;
-                        if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node;
-                        then {
-                            let op = format!("{sugg}{}", float_ty.name_str()).into();
-                            match sugg {
-                                sugg::Sugg::MaybeParen(_) => sugg = sugg::Sugg::MaybeParen(op),
-                                _ => sugg = sugg::Sugg::NonParen(op)
-                            }
+                        && let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node
+                    {
+                        let op = format!("{sugg}{}", float_ty.name_str()).into();
+                        match sugg {
+                            sugg::Sugg::MaybeParen(_) => sugg = sugg::Sugg::MaybeParen(op),
+                            _ => sugg = sugg::Sugg::NonParen(op),
                         }
                     }
 

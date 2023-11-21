@@ -1,6 +1,5 @@
 use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
-use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
@@ -145,20 +144,18 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
     fn visit_local(&mut self, l: &'tcx Local<'_>) {
         // Look for declarations of the variable
-        if_chain! {
-            if l.pat.hir_id == self.var_id;
-            if let PatKind::Binding(.., ident, _) = l.pat.kind;
-            then {
-                let ty = l.ty.map(|_| self.cx.typeck_results().pat_ty(l.pat));
+        if l.pat.hir_id == self.var_id
+            && let PatKind::Binding(.., ident, _) = l.pat.kind
+        {
+            let ty = l.ty.map(|_| self.cx.typeck_results().pat_ty(l.pat));
 
-                self.state = l.init.map_or(InitializeVisitorState::Declared(ident.name, ty), |init| {
-                    InitializeVisitorState::Initialized {
-                        initializer: init,
-                        ty,
-                        name: ident.name,
-                    }
-                })
-            }
+            self.state = l.init.map_or(InitializeVisitorState::Declared(ident.name, ty), |init| {
+                InitializeVisitorState::Initialized {
+                    initializer: init,
+                    ty,
+                    name: ident.name,
+                }
+            });
         }
 
         walk_local(self, l);

@@ -1426,6 +1426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !suggs.is_empty()
             && let Some(span) = sugg_span
         {
+            suggs.sort();
             err.span_suggestions(
                 span.with_hi(item_name.span.lo()),
                 "use fully-qualified syntax to disambiguate",
@@ -1454,7 +1455,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter_map(|item| {
                 // Only assoc fns that return `Self`, `Option<Self>` or `Result<Self, _>`.
                 let ret_ty = self.tcx.fn_sig(item.def_id).skip_binder().output();
-                let ret_ty = self.tcx.erase_late_bound_regions(ret_ty);
+                let ret_ty = self.tcx.instantiate_bound_regions_with_erased(ret_ty);
                 let ty::Adt(def, args) = ret_ty.kind() else {
                     return None;
                 };
@@ -1983,69 +1984,73 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         return_type: Option<Ty<'tcx>>,
     ) {
-        if let SelfSource::MethodCall(expr) = source
-            && let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id()
-            && let Some((fields, args)) =
-                self.get_field_candidates_considering_privacy(span, actual, mod_id)
-        {
-            let call_expr = self.tcx.hir().expect_expr(self.tcx.hir().parent_id(expr.hir_id));
+        if let SelfSource::MethodCall(expr) = source {
+            let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
+            for (fields, args) in
+                self.get_field_candidates_considering_privacy(span, actual, mod_id, expr.hir_id)
+            {
+                let call_expr = self.tcx.hir().expect_expr(self.tcx.hir().parent_id(expr.hir_id));
 
-            let lang_items = self.tcx.lang_items();
-            let never_mention_traits = [
-                lang_items.clone_trait(),
-                lang_items.deref_trait(),
-                lang_items.deref_mut_trait(),
-                self.tcx.get_diagnostic_item(sym::AsRef),
-                self.tcx.get_diagnostic_item(sym::AsMut),
-                self.tcx.get_diagnostic_item(sym::Borrow),
-                self.tcx.get_diagnostic_item(sym::BorrowMut),
-            ];
-            let candidate_fields: Vec<_> = fields
-                .filter_map(|candidate_field| {
-                    self.check_for_nested_field_satisfying(
-                        span,
-                        &|_, field_ty| {
-                            self.lookup_probe_for_diagnostic(
-                                item_name,
-                                field_ty,
-                                call_expr,
-                                ProbeScope::TraitsInScope,
-                                return_type,
-                            )
-                            .is_ok_and(|pick| {
-                                !never_mention_traits
-                                    .iter()
-                                    .flatten()
-                                    .any(|def_id| self.tcx.parent(pick.item.def_id) == *def_id)
-                            })
-                        },
-                        candidate_field,
-                        args,
-                        vec![],
-                        mod_id,
-                    )
-                })
-                .map(|field_path| {
-                    field_path
-                        .iter()
-                        .map(|id| id.name.to_ident_string())
-                        .collect::<Vec<String>>()
-                        .join(".")
-                })
-                .collect();
+                let lang_items = self.tcx.lang_items();
+                let never_mention_traits = [
+                    lang_items.clone_trait(),
+                    lang_items.deref_trait(),
+                    lang_items.deref_mut_trait(),
+                    self.tcx.get_diagnostic_item(sym::AsRef),
+                    self.tcx.get_diagnostic_item(sym::AsMut),
+                    self.tcx.get_diagnostic_item(sym::Borrow),
+                    self.tcx.get_diagnostic_item(sym::BorrowMut),
+                ];
+                let mut candidate_fields: Vec<_> = fields
+                    .into_iter()
+                    .filter_map(|candidate_field| {
+                        self.check_for_nested_field_satisfying(
+                            span,
+                            &|_, field_ty| {
+                                self.lookup_probe_for_diagnostic(
+                                    item_name,
+                                    field_ty,
+                                    call_expr,
+                                    ProbeScope::TraitsInScope,
+                                    return_type,
+                                )
+                                .is_ok_and(|pick| {
+                                    !never_mention_traits
+                                        .iter()
+                                        .flatten()
+                                        .any(|def_id| self.tcx.parent(pick.item.def_id) == *def_id)
+                                })
+                            },
+                            candidate_field,
+                            args,
+                            vec![],
+                            mod_id,
+                            expr.hir_id,
+                        )
+                    })
+                    .map(|field_path| {
+                        field_path
+                            .iter()
+                            .map(|id| id.name.to_ident_string())
+                            .collect::<Vec<String>>()
+                            .join(".")
+                    })
+                    .collect();
+                candidate_fields.sort();
 
-            let len = candidate_fields.len();
-            if len > 0 {
-                err.span_suggestions(
-                    item_name.span.shrink_to_lo(),
-                    format!(
-                        "{} of the expressions' fields {} a method of the same name",
-                        if len > 1 { "some" } else { "one" },
-                        if len > 1 { "have" } else { "has" },
-                    ),
-                    candidate_fields.iter().map(|path| format!("{path}.")),
-                    Applicability::MaybeIncorrect,
-                );
+                let len = candidate_fields.len();
+                if len > 0 {
+                    err.span_suggestions(
+                        item_name.span.shrink_to_lo(),
+                        format!(
+                            "{} of the expressions' fields {} a method of the same name",
+                            if len > 1 { "some" } else { "one" },
+                            if len > 1 { "have" } else { "has" },
+                        ),
+                        candidate_fields.iter().map(|path| format!("{path}.")),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         }
     }
@@ -2564,13 +2569,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.item_name(*trait_did),
             )
         });
+        let mut sugg: Vec<_> = path_strings.chain(glob_path_strings).collect();
+        sugg.sort();
 
-        err.span_suggestions(
-            span,
-            msg,
-            path_strings.chain(glob_path_strings),
-            Applicability::MaybeIncorrect,
-        );
+        err.span_suggestions(span, msg, sugg, Applicability::MaybeIncorrect);
     }
 
     fn suggest_valid_traits(

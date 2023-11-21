@@ -870,28 +870,6 @@ export function rebuildProcMacros(ctx: CtxInit): Cmd {
     return async () => ctx.client.sendRequest(ra.rebuildProcMacros);
 }
 
-export function addProject(ctx: CtxInit): Cmd {
-    return async () => {
-        const extensionName = ctx.config.discoverProjectRunner;
-        // this command shouldn't be enabled in the first place if this isn't set.
-        if (!extensionName) {
-            return;
-        }
-
-        const command = `${extensionName}.discoverWorkspaceCommand`;
-        const project: JsonProject = await vscode.commands.executeCommand(command);
-
-        ctx.addToDiscoveredWorkspaces([project]);
-
-        // this is a workaround to avoid needing writing the `rust-project.json` into
-        // a workspace-level VS Code-specific settings folder. We'd like to keep the
-        // `rust-project.json` entirely in-memory.
-        await ctx.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
-            settings: "",
-        });
-    };
-}
-
 async function showReferencesImpl(
     client: LanguageClient | undefined,
     uri: string,

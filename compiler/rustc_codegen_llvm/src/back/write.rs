@@ -990,11 +990,7 @@ unsafe fn embed_bitcode(
     // reason (see issue #90326 for historical background).
     let is_aix = target_is_aix(cgcx);
     let is_apple = target_is_apple(cgcx);
-    if is_apple
-        || is_aix
-        || cgcx.opts.target_triple.triple().starts_with("wasm")
-        || cgcx.opts.target_triple.triple().starts_with("asmjs")
-    {
+    if is_apple || is_aix || cgcx.opts.target_triple.triple().starts_with("wasm") {
         // We don't need custom section flags, create LLVM globals.
         let llconst = common::bytes_in_context(llcx, bitcode);
         let llglobal = llvm::LLVMAddGlobal(

@@ -1,12 +1,14 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use super::assembly::{self, structural_traits};
+use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::inspect::ProbeKind;
-use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::solve::{
+    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
+};
 use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
@@ -38,7 +40,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -63,7 +65,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             },
         };
 
-        ecx.probe_misc_candidate("impl").enter(|ecx| {
+        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
 
@@ -469,7 +471,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let a_ty = goal.predicate.self_ty();
             // We need to normalize the b_ty since it's destructured as a `dyn Trait`.
             let Some(b_ty) =
-                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))?
+                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             else {
                 return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
             };
@@ -536,9 +538,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let b_ty = match ecx
                 .try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             {
-                Ok(Some(b_ty)) => b_ty,
-                Ok(None) => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
-                Err(_) => return vec![],
+                Some(b_ty) => b_ty,
+                None => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
             };
 
             let goal = goal.with(ecx.tcx(), (a_ty, b_ty));

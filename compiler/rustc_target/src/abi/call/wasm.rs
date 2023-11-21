@@ -34,6 +34,10 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
+    if !arg.layout.is_sized() {
+        // Not touching this...
+        return;
+    }
     arg.extend_integer_width_to(32);
     if arg.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, arg) {
         arg.make_indirect_byval(None);
@@ -67,21 +71,33 @@ where
 /// Also see <https://github.com/rust-lang/rust/issues/115666>.
 pub fn compute_wasm_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+        classify_ret_wasm_abi(&mut fn_abi.ret);
     }
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(arg);
+        classify_arg_wasm_abi(arg);
     }
 
-    fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+    fn classify_ret_wasm_abi<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+        if !ret.layout.is_sized() {
+            // Not touching this...
+            return;
+        }
+        // FIXME: this is bad! https://github.com/rust-lang/rust/issues/115666
+        ret.make_direct_deprecated();
         ret.extend_integer_width_to(32);
     }
 
-    fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+    fn classify_arg_wasm_abi<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+        if !arg.layout.is_sized() {
+            // Not touching this...
+            return;
+        }
+        // FIXME: this is bad! https://github.com/rust-lang/rust/issues/115666
+        arg.make_direct_deprecated();
         arg.extend_integer_width_to(32);
     }
 }

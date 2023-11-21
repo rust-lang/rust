@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{get_parent_node, numeric_literal};
-use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_stmt, Visitor};
@@ -82,40 +81,40 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 
     /// Check whether a passed literal has potential to cause fallback or not.
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
-        if_chain! {
-                if !in_external_macro(self.cx.sess(), lit.span);
-                if matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)));
-                if matches!(lit.node,
-                            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed));
-                then {
-                    let (suffix, is_float) = match lit_ty.kind() {
-                        ty::Int(IntTy::I32) => ("i32", false),
-                        ty::Float(FloatTy::F64) => ("f64", true),
-                        // Default numeric fallback never results in other types.
-                        _ => return,
-                    };
+        if !in_external_macro(self.cx.sess(), lit.span)
+            && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
+            && matches!(
+                lit.node,
+                LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed)
+            )
+        {
+            let (suffix, is_float) = match lit_ty.kind() {
+                ty::Int(IntTy::I32) => ("i32", false),
+                ty::Float(FloatTy::F64) => ("f64", true),
+                // Default numeric fallback never results in other types.
+                _ => return,
+            };
 
-                    let src = if let Some(src) = snippet_opt(self.cx, lit.span) {
-                        src
-                    } else {
-                        match lit.node {
-                            LitKind::Int(src, _) => format!("{src}"),
-                            LitKind::Float(src, _) => format!("{src}"),
-                            _ => return,
-                        }
-                    };
-                    let sugg = numeric_literal::format(&src, Some(suffix), is_float);
-                    span_lint_hir_and_then(
-                        self.cx,
-                        DEFAULT_NUMERIC_FALLBACK,
-                        emit_hir_id,
-                        lit.span,
-                        "default numeric fallback might occur",
-                        |diag| {
-                            diag.span_suggestion(lit.span, "consider adding suffix", sugg, Applicability::MaybeIncorrect);
-                        }
-                    );
+            let src = if let Some(src) = snippet_opt(self.cx, lit.span) {
+                src
+            } else {
+                match lit.node {
+                    LitKind::Int(src, _) => format!("{src}"),
+                    LitKind::Float(src, _) => format!("{src}"),
+                    _ => return,
                 }
+            };
+            let sugg = numeric_literal::format(&src, Some(suffix), is_float);
+            span_lint_hir_and_then(
+                self.cx,
+                DEFAULT_NUMERIC_FALLBACK,
+                emit_hir_id,
+                lit.span,
+                "default numeric fallback might occur",
+                |diag| {
+                    diag.span_suggestion(lit.span, "consider adding suffix", sugg, Applicability::MaybeIncorrect);
+                },
+            );
         }
     }
 }
@@ -149,36 +148,33 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
             ExprKind::Struct(_, fields, base) => {
                 let ty = self.cx.typeck_results().expr_ty(expr);
-                if_chain! {
-                    if let Some(adt_def) = ty.ty_adt_def();
-                    if adt_def.is_struct();
-                    if let Some(variant) = adt_def.variants().iter().next();
-                    then {
-                        let fields_def = &variant.fields;
+                if let Some(adt_def) = ty.ty_adt_def()
+                    && adt_def.is_struct()
+                    && let Some(variant) = adt_def.variants().iter().next()
+                {
+                    let fields_def = &variant.fields;
 
-                        // Push field type then visit each field expr.
-                        for field in *fields {
-                            let bound =
-                                fields_def
-                                    .iter()
-                                    .find_map(|f_def| {
-                                        if f_def.ident(self.cx.tcx) == field.ident
-                                            { Some(self.cx.tcx.type_of(f_def.did).instantiate_identity()) }
-                                        else { None }
-                                    });
-                            self.ty_bounds.push(bound.into());
-                            self.visit_expr(field.expr);
-                            self.ty_bounds.pop();
-                        }
-
-                        // Visit base with no bound.
-                        if let Some(base) = base {
-                            self.ty_bounds.push(ExplicitTyBound(false));
-                            self.visit_expr(base);
-                            self.ty_bounds.pop();
-                        }
-                        return;
+                    // Push field type then visit each field expr.
+                    for field in *fields {
+                        let bound = fields_def.iter().find_map(|f_def| {
+                            if f_def.ident(self.cx.tcx) == field.ident {
+                                Some(self.cx.tcx.type_of(f_def.did).instantiate_identity())
+                            } else {
+                                None
+                            }
+                        });
+                        self.ty_bounds.push(bound.into());
+                        self.visit_expr(field.expr);
+                        self.ty_bounds.pop();
                     }
+
+                    // Visit base with no bound.
+                    if let Some(base) = base {
+                        self.ty_bounds.push(ExplicitTyBound(false));
+                        self.visit_expr(base);
+                        self.ty_bounds.pop();
+                    }
+                    return;
                 }
             },
 

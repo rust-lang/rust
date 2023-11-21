@@ -48,7 +48,7 @@ pub struct TraitEnvironment {
     pub krate: CrateId,
     pub block: Option<BlockId>,
     // FIXME make this a BTreeMap
-    pub(crate) traits_from_clauses: Vec<(Ty, TraitId)>,
+    pub(crate) traits_from_clauses: Box<[(Ty, TraitId)]>,
     pub env: chalk_ir::Environment<Interner>,
 }
 
@@ -57,7 +57,7 @@ impl TraitEnvironment {
         TraitEnvironment {
             krate,
             block: None,
-            traits_from_clauses: Vec::new(),
+            traits_from_clauses: Box::default(),
             env: chalk_ir::Environment::new(Interner),
         }
     }

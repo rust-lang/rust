@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let mut v: Vec<usize> = Vec::with_capacity(10);
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.74.0"]
     pub RESERVE_AFTER_INITIALIZATION,
     complexity,
     "`reserve` called immediately after `Vec` creation"

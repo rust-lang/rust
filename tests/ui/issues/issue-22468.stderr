@@ -7,6 +7,9 @@ LL |     let x = foo("baz");
    |             ^^^-------
    |             |
    |             call expression requires function
+...
+LL | fn foo(file: &str) -> bool {
+   | -------------------------- this function of the same name is available here, but it's shadowed by the local binding
 
 error: aborting due to previous error
 

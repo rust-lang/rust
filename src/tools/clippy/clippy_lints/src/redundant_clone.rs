@@ -3,7 +3,6 @@ use clippy_utils::mir::{visit_local_usage, LocalUsage, PossibleBorrowerMap};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, is_type_lang_item, walk_ptrs_ty_depth};
 use clippy_utils::{fn_has_unsatisfiable_preds, match_def_path, paths};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{def_id, Body, FnDecl, LangItem};
@@ -145,18 +144,16 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 let pred_terminator = mir[ps[0]].terminator();
 
                 // receiver of the `deref()` call
-                let (pred_arg, deref_clone_ret) = if_chain! {
-                    if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =
-                        is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
-                    if res == cloned;
-                    if cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id);
-                    if is_type_diagnostic_item(cx, pred_arg_ty, sym::PathBuf)
-                        || is_type_diagnostic_item(cx, pred_arg_ty, sym::OsString);
-                    then {
-                        (pred_arg, res)
-                    } else {
-                        continue;
-                    }
+                let (pred_arg, deref_clone_ret) = if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =
+                    is_call_with_ref_arg(cx, mir, &pred_terminator.kind)
+                    && res == cloned
+                    && cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id)
+                    && (is_type_diagnostic_item(cx, pred_arg_ty, sym::PathBuf)
+                        || is_type_diagnostic_item(cx, pred_arg_ty, sym::OsString))
+                {
+                    (pred_arg, res)
+                } else {
+                    continue;
                 };
 
                 let (local, cannot_move_out) =
@@ -211,45 +208,37 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 .assert_crate_local()
                 .lint_root;
 
-            if_chain! {
-                if let Some(snip) = snippet_opt(cx, span);
-                if let Some(dot) = snip.rfind('.');
-                then {
-                    let sugg_span = span.with_lo(
-                        span.lo() + BytePos(u32::try_from(dot).unwrap())
-                    );
-                    let mut app = Applicability::MaybeIncorrect;
+            if let Some(snip) = snippet_opt(cx, span)
+                && let Some(dot) = snip.rfind('.')
+            {
+                let sugg_span = span.with_lo(span.lo() + BytePos(u32::try_from(dot).unwrap()));
+                let mut app = Applicability::MaybeIncorrect;
 
-                    let call_snip = &snip[dot + 1..];
-                    // Machine applicable when `call_snip` looks like `foobar()`
-                    if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim) {
-                        if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
-                            app = Applicability::MachineApplicable;
-                        }
+                let call_snip = &snip[dot + 1..];
+                // Machine applicable when `call_snip` looks like `foobar()`
+                if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim) {
+                    if call_snip
+                        .as_bytes()
+                        .iter()
+                        .all(|b| b.is_ascii_alphabetic() || *b == b'_')
+                    {
+                        app = Applicability::MachineApplicable;
                     }
-
-                    span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |diag| {
-                        diag.span_suggestion(
-                            sugg_span,
-                            "remove this",
-                            "",
-                            app,
-                        );
-                        if clone_usage.cloned_used {
-                            diag.span_note(
-                                span,
-                                "cloned value is neither consumed nor mutated",
-                            );
-                        } else {
-                            diag.span_note(
-                                span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
-                                "this value is dropped without further use",
-                            );
-                        }
-                    });
-                } else {
-                    span_lint_hir(cx, REDUNDANT_CLONE, node, span, "redundant clone");
                 }
+
+                span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |diag| {
+                    diag.span_suggestion(sugg_span, "remove this", "", app);
+                    if clone_usage.cloned_used {
+                        diag.span_note(span, "cloned value is neither consumed nor mutated");
+                    } else {
+                        diag.span_note(
+                            span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
+                            "this value is dropped without further use",
+                        );
+                    }
+                });
+            } else {
+                span_lint_hir(cx, REDUNDANT_CLONE, node, span, "redundant clone");
             }
         }
     }
@@ -261,18 +250,21 @@ fn is_call_with_ref_arg<'tcx>(
     mir: &'tcx mir::Body<'tcx>,
     kind: &'tcx mir::TerminatorKind<'tcx>,
 ) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, mir::Local)> {
-    if_chain! {
-        if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
-        if args.len() == 1;
-        if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
-        if let ty::FnDef(def_id, _) = *func.ty(mir, cx.tcx).kind();
-        if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(mir, cx.tcx));
-        if !is_copy(cx, inner_ty);
-        then {
-            Some((def_id, *local, inner_ty, destination.as_local()?))
-        } else {
-            None
-        }
+    if let mir::TerminatorKind::Call {
+        func,
+        args,
+        destination,
+        ..
+    } = kind
+        && args.len() == 1
+        && let mir::Operand::Move(mir::Place { local, .. }) = &args[0]
+        && let ty::FnDef(def_id, _) = *func.ty(mir, cx.tcx).kind()
+        && let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(mir, cx.tcx))
+        && !is_copy(cx, inner_ty)
+    {
+        Some((def_id, *local, inner_ty, destination.as_local()?))
+    } else {
+        None
     }
 }
 

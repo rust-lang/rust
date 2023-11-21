@@ -191,13 +191,11 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
 }
 
 fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
-    if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind;
-        if let ExprKind::Array(exprs) = expr.kind;
-        then {
-            for expr in exprs {
-                check_regex(cx, expr, utf8);
-            }
+    if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind
+        && let ExprKind::Array(exprs) = expr.kind
+    {
+        for expr in exprs {
+            check_regex(cx, expr, utf8);
         }
     }
 }

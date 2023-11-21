@@ -74,6 +74,19 @@ fn nanos() {
 }
 
 #[test]
+fn abs_diff() {
+    assert_eq!(Duration::new(2, 0).abs_diff(Duration::new(1, 0)), Duration::new(1, 0));
+    assert_eq!(Duration::new(1, 0).abs_diff(Duration::new(2, 0)), Duration::new(1, 0));
+    assert_eq!(Duration::new(1, 0).abs_diff(Duration::new(1, 0)), Duration::new(0, 0));
+    assert_eq!(Duration::new(1, 1).abs_diff(Duration::new(0, 2)), Duration::new(0, 999_999_999));
+    assert_eq!(Duration::new(1, 1).abs_diff(Duration::new(2, 1)), Duration::new(1, 0));
+    assert_eq!(Duration::MAX.abs_diff(Duration::MAX), Duration::ZERO);
+    assert_eq!(Duration::ZERO.abs_diff(Duration::ZERO), Duration::ZERO);
+    assert_eq!(Duration::MAX.abs_diff(Duration::ZERO), Duration::MAX);
+    assert_eq!(Duration::ZERO.abs_diff(Duration::MAX), Duration::MAX);
+}
+
+#[test]
 fn add() {
     assert_eq!(Duration::new(0, 0) + Duration::new(0, 1), Duration::new(0, 1));
     assert_eq!(Duration::new(0, 500_000_000) + Duration::new(0, 500_000_001), Duration::new(1, 1));

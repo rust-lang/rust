@@ -470,7 +470,7 @@ impl<'tcx> Collector<'tcx> {
     }
 
     fn i686_arg_list_size(&self, item: DefId) -> usize {
-        let argument_types: &List<Ty<'_>> = self.tcx.erase_late_bound_regions(
+        let argument_types: &List<Ty<'_>> = self.tcx.instantiate_bound_regions_with_erased(
             self.tcx
                 .type_of(item)
                 .instantiate_identity()

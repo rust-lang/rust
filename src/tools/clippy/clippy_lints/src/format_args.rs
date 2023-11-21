@@ -8,7 +8,6 @@ use clippy_utils::macros::{
 };
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -404,49 +403,43 @@ fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symb
 }
 
 fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Expr<'_>) {
-    if_chain! {
-        if !value.span.from_expansion();
-        if let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind;
-        if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id);
-        if is_diag_trait_item(cx, method_def_id, sym::ToString);
-        let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        if let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display);
-        let (n_needed_derefs, target) =
-            count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter());
-        if implements_trait(cx, target, display_trait_id, &[]);
-        if let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait();
-        if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
-        then {
-            let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
-            if n_needed_derefs == 0 && !needs_ref {
-                span_lint_and_sugg(
-                    cx,
-                    TO_STRING_IN_FORMAT_ARGS,
-                    to_string_span.with_lo(receiver.span.hi()),
-                    &format!(
-                        "`to_string` applied to a type that implements `Display` in `{name}!` args"
-                    ),
-                    "remove this",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                );
-            } else {
-                span_lint_and_sugg(
-                    cx,
-                    TO_STRING_IN_FORMAT_ARGS,
-                    value.span,
-                    &format!(
-                        "`to_string` applied to a type that implements `Display` in `{name}!` args"
-                    ),
-                    "use this",
-                    format!(
-                        "{}{:*>n_needed_derefs$}{receiver_snippet}",
-                        if needs_ref { "&" } else { "" },
-                        ""
-                    ),
-                    Applicability::MachineApplicable,
-                );
-            }
+    if !value.span.from_expansion()
+        && let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind
+        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
+        && is_diag_trait_item(cx, method_def_id, sym::ToString)
+        && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+        && let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display)
+        && let (n_needed_derefs, target) =
+            count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
+        && implements_trait(cx, target, display_trait_id, &[])
+        && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
+        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+    {
+        let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
+        if n_needed_derefs == 0 && !needs_ref {
+            span_lint_and_sugg(
+                cx,
+                TO_STRING_IN_FORMAT_ARGS,
+                to_string_span.with_lo(receiver.span.hi()),
+                &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                "remove this",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            span_lint_and_sugg(
+                cx,
+                TO_STRING_IN_FORMAT_ARGS,
+                value.span,
+                &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                "use this",
+                format!(
+                    "{}{:*>n_needed_derefs$}{receiver_snippet}",
+                    if needs_ref { "&" } else { "" },
+                    ""
+                ),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }

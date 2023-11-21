@@ -34,18 +34,10 @@
           StorageLive(_3);
           StorageLive(_4);
 -         _4 = g() -> [return: bb1, unwind continue];
--     }
-- 
--     bb1: {
 +         _4 = {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8 (#0)};
-          _3 = &mut _4;
--         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new(move _3) -> [return: bb2, unwind: bb5];
--     }
-- 
--     bb2: {
++         _3 = &mut _4;
 +         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}> { pointer: move _3 };
-          StorageDead(_3);
--         _1 = <{coroutine@$DIR/inline_coroutine.rs:19:5: 19:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
++         StorageDead(_3);
 +         StorageLive(_5);
 +         _5 = const false;
 +         StorageLive(_6);
@@ -55,40 +47,50 @@
 +         switchInt(move _7) -> [0: bb5, 1: bb9, 3: bb10, otherwise: bb11];
       }
   
+      bb1: {
+-         _3 = &mut _4;
+-         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new(move _3) -> [return: bb2, unwind: bb5];
++         StorageDead(_4);
++         _0 = const ();
++         StorageDead(_1);
++         return;
+      }
+  
+-     bb2: {
+-         StorageDead(_3);
+-         _1 = <{coroutine@$DIR/inline_coroutine.rs:19:5: 19:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
++     bb2 (cleanup): {
++         drop(_4) -> [return: bb3, unwind terminate(cleanup)];
+      }
+  
 -     bb3: {
-+     bb1: {
+-         StorageDead(_2);
+-         drop(_4) -> [return: bb4, unwind: bb6];
++     bb3 (cleanup): {
++         resume;
+      }
+  
+      bb4: {
+-         StorageDead(_4);
+-         _0 = const ();
+-         StorageDead(_1);
+-         return;
 +         StorageDead(_7);
 +         StorageDead(_6);
 +         StorageDead(_5);
-          StorageDead(_2);
--         drop(_4) -> [return: bb4, unwind: bb6];
-+         drop(_4) -> [return: bb2, unwind: bb4];
-      }
-  
--     bb4: {
-+     bb2: {
-          StorageDead(_4);
-          _0 = const ();
-          StorageDead(_1);
-          return;
++         StorageDead(_2);
++         drop(_4) -> [return: bb1, unwind: bb3];
       }
   
 -     bb5 (cleanup): {
 -         drop(_4) -> [return: bb6, unwind terminate(cleanup)];
-+     bb3 (cleanup): {
-+         drop(_4) -> [return: bb4, unwind terminate(cleanup)];
-      }
-  
--     bb6 (cleanup): {
-+     bb4 (cleanup): {
-          resume;
-+     }
-+ 
 +     bb5: {
 +         StorageLive(_8);
 +         switchInt(_5) -> [0: bb6, otherwise: bb7];
-+     }
-+ 
+      }
+  
+-     bb6 (cleanup): {
+-         resume;
 +     bb6: {
 +         _8 = const 13_i32;
 +         goto -> bb8;
@@ -102,11 +104,11 @@
 +     bb8: {
 +         _1 = CoroutineState::<i32, bool>::Yielded(move _8);
 +         discriminant((*_6)) = 3;
-+         goto -> bb1;
++         goto -> bb4;
 +     }
 + 
 +     bb9: {
-+         assert(const false, "coroutine resumed after completion") -> [success: bb9, unwind: bb3];
++         assert(const false, "coroutine resumed after completion") -> [success: bb9, unwind: bb2];
 +     }
 + 
 +     bb10: {
@@ -114,7 +116,7 @@
 +         StorageDead(_8);
 +         _1 = CoroutineState::<i32, bool>::Complete(_5);
 +         discriminant((*_6)) = 1;
-+         goto -> bb1;
++         goto -> bb4;
 +     }
 + 
 +     bb11: {

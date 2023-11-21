@@ -64,7 +64,8 @@ fn test_command_fork_no_unwind() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_command_pidfd() {
-    use crate::os::fd::RawFd;
+    use crate::assert_matches::assert_matches;
+    use crate::os::fd::{AsRawFd, RawFd};
     use crate::os::linux::process::{ChildExt, CommandExt};
     use crate::process::Command;
 
@@ -78,10 +79,22 @@ fn test_command_pidfd() {
     };
 
     // always exercise creation attempts
-    let child = Command::new("echo").create_pidfd(true).spawn().unwrap();
+    let mut child = Command::new("false").create_pidfd(true).spawn().unwrap();
 
     // but only check if we know that the kernel supports pidfds
     if pidfd_open_available {
-        assert!(child.pidfd().is_ok())
+        assert!(child.pidfd().is_ok());
     }
+    if let Ok(pidfd) = child.pidfd() {
+        let flags = super::cvt(unsafe { libc::fcntl(pidfd.as_raw_fd(), libc::F_GETFD) }).unwrap();
+        assert!(flags & libc::FD_CLOEXEC != 0);
+    }
+    let status = child.wait().expect("error waiting on pidfd");
+    assert_eq!(status.code(), Some(1));
+
+    let mut child = Command::new("sleep").arg("1000").create_pidfd(true).spawn().unwrap();
+    assert_matches!(child.try_wait(), Ok(None));
+    child.kill().expect("failed to kill child");
+    let status = child.wait().expect("error waiting on pidfd");
+    assert_eq!(status.signal(), Some(libc::SIGKILL));
 }

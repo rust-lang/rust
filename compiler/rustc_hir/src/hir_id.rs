@@ -3,8 +3,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, 
 use rustc_span::{def_id::DefPathHash, HashStableContext};
 use std::fmt::{self, Debug};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[derive(Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct OwnerId {
     pub def_id: LocalDefId,
 }
@@ -73,8 +72,7 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub struct HirId {
     pub owner: OwnerId,

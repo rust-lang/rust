@@ -887,7 +887,9 @@ impl Step for Rustc {
         } else if let Some(path) = &builder.config.rust_profile_use {
             if compiler.stage == 1 {
                 cargo.rustflag(&format!("-Cprofile-use={path}"));
-                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+                if builder.is_verbose() {
+                    cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+                }
                 true
             } else {
                 false
@@ -1002,6 +1004,13 @@ pub fn rustc_cargo_env(
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
         .env("CFG_VERSION", builder.rust_version());
+
+    // Some tools like Cargo detect their own git information in build scripts. When omit-git-hash
+    // is enabled in config.toml, we pass this environment variable to tell build scripts to avoid
+    // detecting git information on their own.
+    if builder.config.omit_git_hash {
+        cargo.env("CFG_OMIT_GIT_HASH", "1");
+    }
 
     if let Some(backend) = builder.config.default_codegen_backend() {
         cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);

@@ -77,12 +77,12 @@ impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     }
 }
 
-impl VisitTags for FrameExtra<'_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for FrameExtra<'_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _ } = self;
 
-        catch_unwind.visit_tags(visit);
-        borrow_tracker.visit_tags(visit);
+        catch_unwind.visit_provenance(visit);
+        borrow_tracker.visit_provenance(visit);
     }
 }
 
@@ -311,13 +311,13 @@ pub struct AllocExtra<'tcx> {
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
 }
 
-impl VisitTags for AllocExtra<'_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for AllocExtra<'_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
 
-        borrow_tracker.visit_tags(visit);
-        data_race.visit_tags(visit);
-        weak_memory.visit_tags(visit);
+        borrow_tracker.visit_provenance(visit);
+        data_race.visit_provenance(visit);
+        weak_memory.visit_provenance(visit);
     }
 }
 
@@ -793,8 +793,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     }
 }
 
-impl VisitTags for MiriMachine<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for MiriMachine<'_, '_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         #[rustfmt::skip]
         let MiriMachine {
             threads,
@@ -843,20 +843,20 @@ impl VisitTags for MiriMachine<'_, '_> {
             allocation_spans: _,
         } = self;
 
-        threads.visit_tags(visit);
-        tls.visit_tags(visit);
-        env_vars.visit_tags(visit);
-        dir_handler.visit_tags(visit);
-        file_handler.visit_tags(visit);
-        data_race.visit_tags(visit);
-        borrow_tracker.visit_tags(visit);
-        intptrcast.visit_tags(visit);
-        main_fn_ret_place.visit_tags(visit);
-        argc.visit_tags(visit);
-        argv.visit_tags(visit);
-        cmd_line.visit_tags(visit);
+        threads.visit_provenance(visit);
+        tls.visit_provenance(visit);
+        env_vars.visit_provenance(visit);
+        dir_handler.visit_provenance(visit);
+        file_handler.visit_provenance(visit);
+        data_race.visit_provenance(visit);
+        borrow_tracker.visit_provenance(visit);
+        intptrcast.visit_provenance(visit);
+        main_fn_ret_place.visit_provenance(visit);
+        argc.visit_provenance(visit);
+        argv.visit_provenance(visit);
+        cmd_line.visit_provenance(visit);
         for ptr in extern_statics.values() {
-            ptr.visit_tags(visit);
+            ptr.visit_provenance(visit);
         }
     }
 }
@@ -1380,7 +1380,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         // where it mistakenly removes an important tag become visible.
         if ecx.machine.gc_interval > 0 && ecx.machine.since_gc >= ecx.machine.gc_interval {
             ecx.machine.since_gc = 0;
-            ecx.garbage_collect_tags()?;
+            ecx.run_provenance_gc();
         }
 
         // These are our preemption points.

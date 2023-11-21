@@ -1544,6 +1544,7 @@ supported_targets! {
     ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
 
     ("aarch64-apple-darwin", aarch64_apple_darwin),
+    ("arm64e-apple-darwin", arm64e_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("x86_64h-apple-darwin", x86_64h_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
@@ -1566,6 +1567,7 @@ supported_targets! {
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
     ("aarch64-apple-ios", aarch64_apple_ios),
+    ("arm64e-apple-ios", arm64e_apple_ios),
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
@@ -1585,7 +1587,6 @@ supported_targets! {
     ("armv7r-none-eabihf", armv7r_none_eabihf),
 
     ("x86_64-pc-solaris", x86_64_pc_solaris),
-    ("x86_64-sun-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
@@ -1609,7 +1610,6 @@ supported_targets! {
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
-    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
@@ -2242,10 +2242,6 @@ impl TargetOptions {
 
     fn add_pre_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
         add_link_args(&mut self.pre_link_args, flavor, args);
-    }
-
-    fn add_post_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
-        add_link_args(&mut self.post_link_args, flavor, args);
     }
 
     fn update_from_cli(&mut self) {
