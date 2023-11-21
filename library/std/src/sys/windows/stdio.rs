@@ -195,7 +195,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         MaybeUninit::slice_assume_init_ref(&utf16[..result as usize])
     };
 
-    let mut written = write_u16s(handle, &utf16)?;
+    let mut written = write_u16s(handle, utf16)?;
 
     // Figure out how many bytes of as UTF-8 were written away as UTF-16.
     if written == utf16.len() {

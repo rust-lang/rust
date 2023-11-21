@@ -189,7 +189,7 @@ impl Handle {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        self.synchronous_write(&buf, None)
+        self.synchronous_write(buf, None)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -202,7 +202,7 @@ impl Handle {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        self.synchronous_write(&buf, Some(offset))
+        self.synchronous_write(buf, Some(offset))
     }
 
     pub fn try_clone(&self) -> io::Result<Self> {

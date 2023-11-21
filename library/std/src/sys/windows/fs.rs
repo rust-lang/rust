@@ -548,7 +548,7 @@ impl File {
                 let user = super::args::from_wide_to_user_path(
                     subst.iter().copied().chain([0]).collect(),
                 )?;
-                Ok(PathBuf::from(OsString::from_wide(&user.strip_suffix(&[0]).unwrap_or(&user))))
+                Ok(PathBuf::from(OsString::from_wide(user.strip_suffix(&[0]).unwrap_or(&user))))
             } else {
                 Ok(PathBuf::from(OsString::from_wide(subst)))
             }
@@ -874,7 +874,7 @@ impl fmt::Debug for File {
         // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.as_raw_handle());
-        if let Ok(path) = get_path(&self) {
+        if let Ok(path) = get_path(self) {
             b.field("path", &path);
         }
         b.finish()
@@ -1193,7 +1193,7 @@ pub fn readlink(path: &Path) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
     opts.access_mode(0);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = File::open(&path, &opts)?;
+    let file = File::open(path, &opts)?;
     file.readlink()
 }
 
@@ -1407,7 +1407,7 @@ pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(
 #[allow(dead_code)]
 fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
-    d.mkdir(&junction)?;
+    d.mkdir(junction)?;
 
     let mut opts = OpenOptions::new();
     opts.write(true);
