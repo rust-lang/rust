@@ -1,15 +1,13 @@
-error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
-  --> $DIR/closure-wrong-kind.rs:10:19
+error[E0277]: expected a `Fn(u32)` closure, found `{closure@$DIR/closure-wrong-kind.rs:10:19: 10:22}`
+  --> $DIR/closure-wrong-kind.rs:11:9
    |
-LL |     let closure = |_| foo(x);
-   |                   ^^^     - closure is `FnOnce` because it moves the variable `x` out of its environment
-   |                   |
-   |                   this closure implements `FnOnce`, not `Fn`
 LL |     bar(closure);
-   |     --- ------- the requirement to implement `Fn` derives from here
+   |     --- ^^^^^^^ expected an `Fn(u32)` closure, found `{closure@$DIR/closure-wrong-kind.rs:10:19: 10:22}`
    |     |
    |     required by a bound introduced by this call
    |
+   = help: the trait `Fn<(u32,)>` is not implemented for closure `{closure@$DIR/closure-wrong-kind.rs:10:19: 10:22}`
+   = note: `{closure@$DIR/closure-wrong-kind.rs:10:19: 10:22}` implements `FnOnce`, but it must implement `Fn`, which is more general
 note: required by a bound in `bar`
   --> $DIR/closure-wrong-kind.rs:6:11
    |
@@ -18,4 +16,4 @@ LL | fn bar<T: Fn(u32)>(_: T) {}
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0525`.
+For more information about this error, try `rustc --explain E0277`.

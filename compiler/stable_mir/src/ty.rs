@@ -766,7 +766,6 @@ pub struct GenericPredicates {
 pub enum PredicateKind {
     Clause(ClauseKind),
     ObjectSafe(TraitDef),
-    ClosureKind(ClosureDef, GenericArgs, ClosureKind),
     SubType(SubtypePredicate),
     Coerce(CoercePredicate),
     ConstEquate(Const, Const),

@@ -885,19 +885,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::ClosureKind(_, closure_args, kind) => {
-                    match self.infcx.closure_kind(closure_args) {
-                        Some(closure_kind) => {
-                            if closure_kind.extends(kind) {
-                                Ok(EvaluatedToOk)
-                            } else {
-                                Ok(EvaluatedToErr)
-                            }
-                        }
-                        None => Ok(EvaluatedToAmbig),
-                    }
-                }
-
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.infcx,

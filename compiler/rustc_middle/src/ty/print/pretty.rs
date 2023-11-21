@@ -2781,11 +2781,6 @@ define_print! {
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }
-            ty::PredicateKind::ClosureKind(closure_def_id, _closure_args, kind) => p!(
-                "the closure `",
-                print_value_path(closure_def_id, &[]),
-                write("` implements the trait `{}`", kind)
-            ),
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")
             }

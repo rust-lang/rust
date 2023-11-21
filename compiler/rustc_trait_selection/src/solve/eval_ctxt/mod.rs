@@ -406,8 +406,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Coerce(predicate) => {
                     self.compute_coerce_goal(Goal { param_env, predicate })
                 }
-                ty::PredicateKind::ClosureKind(def_id, args, kind) => self
-                    .compute_closure_kind_goal(Goal { param_env, predicate: (def_id, args, kind) }),
                 ty::PredicateKind::ObjectSafe(trait_def_id) => {
                     self.compute_object_safe_goal(trait_def_id)
                 }

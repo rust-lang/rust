@@ -786,11 +786,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
-                    ty::PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
-                        let found_kind = self.closure_kind(closure_args).unwrap();
-                        self.report_closure_error(&obligation, closure_def_id, found_kind, kind)
-                    }
-
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
                         let ty = self.resolve_vars_if_possible(ty);
                         match self.tcx.sess.opts.unstable_opts.trait_solver {
