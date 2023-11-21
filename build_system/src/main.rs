@@ -61,7 +61,7 @@ fn main() {
         Command::Build => build::run(),
         Command::Test => test::run(),
     } {
-        eprintln!("Command failed to run: {e:?}");
+        eprintln!("Command failed to run: {e}");
         process::exit(1);
     }
 }

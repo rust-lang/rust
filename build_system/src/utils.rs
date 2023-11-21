@@ -29,22 +29,37 @@ fn check_exit_status(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
     exit_status: ExitStatus,
+    output: Option<&Output>,
 ) -> Result<(), String> {
     if exit_status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "Command `{}`{} exited with status {:?}",
-            input
-                .iter()
-                .map(|s| s.as_ref().to_str().unwrap())
-                .collect::<Vec<_>>()
-                .join(" "),
-            cwd.map(|cwd| format!(" (running in folder `{}`)", cwd.display()))
-                .unwrap_or_default(),
-            exit_status.code(),
-        ))
+        return Ok(());
     }
+    let mut error = format!(
+        "Command `{}`{} exited with status {:?}",
+        input
+            .iter()
+            .map(|s| s.as_ref().to_str().unwrap())
+            .collect::<Vec<_>>()
+            .join(" "),
+        cwd.map(|cwd| format!(" (running in folder `{}`)", cwd.display()))
+            .unwrap_or_default(),
+        exit_status.code()
+    );
+    if let Some(output) = output {
+        unsafe {
+            let stdout = std::str::from_utf8_unchecked(&output.stdout);
+            if !stdout.is_empty() {
+                error.push_str("\n==== STDOUT ====\n");
+                error.push_str(stdout);
+            }
+            let stderr = std::str::from_utf8_unchecked(&output.stderr);
+            if !stderr.is_empty() {
+                error.push_str("\n==== STDERR ====\n");
+                error.push_str(stderr);
+            }
+        }
+    }
+    Err(error)
 }
 
 fn command_error<D: Debug>(input: &[&dyn AsRef<OsStr>], cwd: &Option<&Path>, error: D) -> String {
@@ -73,7 +88,7 @@ pub fn run_command_with_env(
     let output = get_command_inner(input, cwd, env)
         .output()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, output.status)?;
+    check_exit_status(input, cwd, output.status, Some(&output))?;
     Ok(output)
 }
 
@@ -86,7 +101,7 @@ pub fn run_command_with_output(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status)?;
+    check_exit_status(input, cwd, exit_status, None)?;
     Ok(())
 }
 
@@ -100,7 +115,7 @@ pub fn run_command_with_output_and_env(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status)?;
+    check_exit_status(input, cwd, exit_status, None)?;
     Ok(())
 }
 

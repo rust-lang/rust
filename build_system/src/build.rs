@@ -189,9 +189,16 @@ fn build_sysroot_inner(
 
     // Copy the source files to the sysroot (Rust for Linux needs this).
     let sysroot_src_path = "sysroot/lib/rustlib/src/rust";
-    fs::create_dir_all(&sysroot_src_path)
-        .map_err(|error| format!("Failed to create directory `{}`: {:?}", sysroot_src_path, error))?;
-    run_command(&[&"cp", &"-r", &"sysroot_src/library/", &sysroot_src_path], None)?;
+    fs::create_dir_all(&sysroot_src_path).map_err(|error| {
+        format!(
+            "Failed to create directory `{}`: {:?}",
+            sysroot_src_path, error
+        )
+    })?;
+    run_command(
+        &[&"cp", &"-r", &"sysroot_src/library/", &sysroot_src_path],
+        None,
+    )?;
 
     Ok(())
 }
