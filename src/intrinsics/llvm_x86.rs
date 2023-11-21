@@ -364,9 +364,11 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             for out_lane_idx in 0..lane_count / 8 {
                 let mut lane_diff_acc = fx.bcx.ins().iconst(types::I64, 0);
 
-                for lane_idx in out_lane_idx * 8..out_lane_idx * 8 + 1 {
+                for lane_idx in out_lane_idx * 8..out_lane_idx * 8 + 8 {
                     let a_lane = a.value_lane(fx, lane_idx).load_scalar(fx);
+                    let a_lane = fx.bcx.ins().uextend(types::I16, a_lane);
                     let b_lane = b.value_lane(fx, lane_idx).load_scalar(fx);
+                    let b_lane = fx.bcx.ins().uextend(types::I16, b_lane);
 
                     let lane_diff = fx.bcx.ins().isub(a_lane, b_lane);
                     let abs_lane_diff = fx.bcx.ins().iabs(lane_diff);
