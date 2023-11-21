@@ -151,7 +151,6 @@ static TARGETS: &[&str] = &[
     "x86_64-linux-android",
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
-    "x86_64-sun-solaris",
     "x86_64-pc-solaris",
     "x86_64-unikraft-linux-musl",
     "x86_64-unknown-freebsd",

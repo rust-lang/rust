@@ -165,7 +165,7 @@ target | std | notes
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
-`sparcv9-sun-solaris` | ✓ | SPARC Solaris 10/11, illumos
+`sparcv9-sun-solaris` | ✓ | SPARC Solaris 11, illumos
 `thumbv6m-none-eabi` | * | Bare ARMv6-M
 `thumbv7em-none-eabi` | * | Bare ARMv7E-M
 `thumbv7em-none-eabihf` | * | Bare ARMV7E-M, hardfloat
@@ -184,7 +184,7 @@ target | std | notes
 `x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`
 [`x86_64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | 64-bit x86 Fuchsia
 [`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
-`x86_64-pc-solaris` | ✓ | 64-bit Solaris 10/11, illumos
+`x86_64-pc-solaris` | ✓ | 64-bit Solaris 11, illumos
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-redox` | ✓ | Redox OS
@@ -342,7 +342,6 @@ target | std | host | notes
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support
-`x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
