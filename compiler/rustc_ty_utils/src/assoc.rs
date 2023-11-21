@@ -8,7 +8,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, GenericArgs, ImplTraitInTraitData, Ty, TyCtxt};
 use rustc_span::symbol::kw;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         associated_item,
         associated_item_def_ids,
