@@ -1,0 +1,36 @@
+thread 'main' panicked at library/alloc/src/raw_vec.rs:545:5:
+capacity overflow
+stack backtrace:
+   0:        0x103ce1fb0 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h34ddcf7e122b89ac
+   1:        0x103d39714 - core::fmt::write::hd1aeea4ff96546ca
+   2:        0x103ce59e4 - std::io::Write::write_fmt::h17b1090c1278c55b
+   3:        0x103ce1e20 - std::sys_common::backtrace::print::hfafdd06e00730994
+   4:        0x103d0218c - std::panicking::default_hook::{{closure}}::h97a3d80e798f2ed6
+   5:        0x103d01f6c - std::panicking::default_hook::hda0f04e04c8eb266
+   6:        0x103d025d0 - std::panicking::rust_panic_with_hook::hf66d5a2176bf0f70
+   7:        0x103ce27f4 - std::panicking::begin_panic_handler::{{closure}}::haacaa3525d299c3a
+   8:        0x103ce21e0 - std::sys_common::backtrace::__rust_end_short_backtrace::h87e6f3e754a75849
+   9:        0x103d02334 - _rust_begin_unwind
+  10:        0x103d567f8 - core::panicking::panic_fmt::h02ef70cf9926e63a
+  11:        0x103d345c4 - alloc::raw_vec::capacity_overflow::h4447458ef5d0325b
+  12:        0x102fcb250 - alloc::raw_vec::RawVec<T,A>::allocate_in::he48752b99f53b509
+                               at $SRC_DIR_REAL/alloc/src/raw_vec.rs:LL:COL
+  13:        0x102fcadac - alloc::raw_vec::RawVec<T,A>::with_capacity_in::h0f23d7d992348ac1
+                               at $SRC_DIR_REAL/alloc/src/raw_vec.rs:LL:COL
+  14:        0x102fcadac - alloc::vec::Vec<T,A>::with_capacity_in::h8aa83d89b81dd67c
+                               at $SRC_DIR_REAL/alloc/src/vec/mod.rs:LL:COL
+  15:        0x102fcadac - alloc::vec::Vec<T>::with_capacity::h9bcc7d8009345416
+                               at $SRC_DIR_REAL/alloc/src/vec/mod.rs:LL:COL
+  16:        0x102fcb7ac - remap_path_prefix_sysroot::main::hc6dc31a7bd7adcd2
+                               at $DIR/remap-path-prefix-sysroot.rs:11:5
+  17:        0x102fcaa28 - core::ops::function::FnOnce::call_once::hc6cd7e6e6c0a39ec
+                               at $SRC_DIR_REAL/core/src/ops/function.rs:LL:COL
+  18:        0x102fca938 - std::sys_common::backtrace::__rust_begin_short_backtrace::h00cfadb0500687d9
+                               at $SRC_DIR_REAL/std/src/sys_common/backtrace.rs:LL:COL
+  19:        0x102fca9cc - std::rt::lang_start::{{closure}}::hdaed3a6f285f5688
+                               at $SRC_DIR_REAL/std/src/rt.rs:LL:COL
+  20:        0x103d0227c - std::panicking::try::hfb03667ecc24ab29
+  21:        0x103cee9e4 - std::rt::lang_start_internal::he5e74d4e4d2cb01e
+  22:        0x102fca998 - std::rt::lang_start::hdf7d4c5cfb24235f
+                               at $SRC_DIR_REAL/std/src/rt.rs:LL:COL
+  23:        0x102fcb7e4 - _main
