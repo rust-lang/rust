@@ -77,9 +77,9 @@ mod intptrcast;
 mod machine;
 mod mono_hash_map;
 mod operator;
+mod provenance_gc;
 mod range_map;
 mod shims;
-mod tag_gc;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
@@ -125,8 +125,8 @@ pub use crate::machine::{
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
+pub use crate::provenance_gc::{EvalContextExt as _, VisitProvenance, VisitWith, LiveAllocs};
 pub use crate::range_map::RangeMap;
-pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.

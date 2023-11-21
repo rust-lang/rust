@@ -200,7 +200,7 @@ impl<'tcx> Tree {
     /// Climb the tree to get the tag of a distant ancestor.
     /// Allows operations on tags that are unreachable by the program
     /// but still exist in the tree. Not guaranteed to perform consistently
-    /// if `tag-gc=1`.
+    /// if `provenance-gc=1`.
     fn nth_parent(&self, tag: BorTag, nth_parent: u8) -> Option<BorTag> {
         let mut idx = self.tag_mapping.get(&tag).unwrap();
         for _ in 0..nth_parent {

@@ -692,6 +692,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok((&mut alloc.extra, machine))
     }
 
+    /// Check whether an allocation is live. This is faster than calling
+    /// [`InterpCx::get_alloc_info`] if all you need to check is whether the kind is
+    /// [`AllocKind::Dead`] because it doesn't have to look up the type and layout of statics.
+    pub fn is_alloc_live(&self, id: AllocId) -> bool {
+        self.tcx.try_get_global_alloc(id).is_some()
+            || self.memory.alloc_map.contains_key_ref(&id)
+            || self.memory.extra_fn_ptr_map.contains_key(&id)
+    }
+
     /// Obtain the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
     pub fn get_alloc_info(&self, id: AllocId) -> (Size, Align, AllocKind) {

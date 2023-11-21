@@ -43,7 +43,7 @@ pub enum TlsAllocAction {
 }
 
 /// Trait for callbacks that can be executed when some event happens, such as after a timeout.
-pub trait MachineCallback<'mir, 'tcx>: VisitTags {
+pub trait MachineCallback<'mir, 'tcx>: VisitProvenance {
     fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
 }
 
@@ -228,8 +228,8 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
-impl VisitTags for Thread<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for Thread<'_, '_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Thread {
             panic_payloads: panic_payload,
             last_error,
@@ -242,17 +242,17 @@ impl VisitTags for Thread<'_, '_> {
         } = self;
 
         for payload in panic_payload {
-            payload.visit_tags(visit);
+            payload.visit_provenance(visit);
         }
-        last_error.visit_tags(visit);
+        last_error.visit_provenance(visit);
         for frame in stack {
-            frame.visit_tags(visit)
+            frame.visit_provenance(visit)
         }
     }
 }
 
-impl VisitTags for Frame<'_, '_, Provenance, FrameExtra<'_>> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for Frame<'_, '_, Provenance, FrameExtra<'_>> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Frame {
             return_place,
             locals,
@@ -266,22 +266,22 @@ impl VisitTags for Frame<'_, '_, Provenance, FrameExtra<'_>> {
         } = self;
 
         // Return place.
-        return_place.visit_tags(visit);
+        return_place.visit_provenance(visit);
         // Locals.
         for local in locals.iter() {
             match local.as_mplace_or_imm() {
                 None => {}
                 Some(Either::Left((ptr, meta))) => {
-                    ptr.visit_tags(visit);
-                    meta.visit_tags(visit);
+                    ptr.visit_provenance(visit);
+                    meta.visit_provenance(visit);
                 }
                 Some(Either::Right(imm)) => {
-                    imm.visit_tags(visit);
+                    imm.visit_provenance(visit);
                 }
             }
         }
 
-        extra.visit_tags(visit);
+        extra.visit_provenance(visit);
     }
 }
 
@@ -341,8 +341,8 @@ pub struct ThreadManager<'mir, 'tcx> {
     timeout_callbacks: FxHashMap<ThreadId, TimeoutCallbackInfo<'mir, 'tcx>>,
 }
 
-impl VisitTags for ThreadManager<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for ThreadManager<'_, '_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let ThreadManager {
             threads,
             thread_local_alloc_ids,
@@ -353,15 +353,15 @@ impl VisitTags for ThreadManager<'_, '_> {
         } = self;
 
         for thread in threads {
-            thread.visit_tags(visit);
+            thread.visit_provenance(visit);
         }
         for ptr in thread_local_alloc_ids.borrow().values() {
-            ptr.visit_tags(visit);
+            ptr.visit_provenance(visit);
         }
         for callback in timeout_callbacks.values() {
-            callback.callback.visit_tags(visit);
+            callback.callback.visit_provenance(visit);
         }
-        sync.visit_tags(visit);
+        sync.visit_provenance(visit);
     }
 }
 
