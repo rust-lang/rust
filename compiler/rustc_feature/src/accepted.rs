@@ -159,6 +159,9 @@ declare_features! (
     (accepted, explicit_generic_args_with_impl_trait, "1.63.0", Some(83701), None),
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835), None),
+    /// Allows using `efiapi`, `aapcs`, `sysv64` and `win64` as calling
+    /// convention for functions with varargs.
+    (accepted, extended_varargs_abi_support, "1.74.0", Some(100189), None),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660), None),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.

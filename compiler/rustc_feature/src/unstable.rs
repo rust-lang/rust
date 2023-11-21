@@ -443,9 +443,6 @@ declare_features! (
     (unstable, exhaustive_patterns, "1.13.0", Some(51085), None),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788), None),
-    /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
-    /// for functions with varargs.
-    (unstable, extended_varargs_abi_support, "1.65.0", Some(100189), None),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467), None),
     /// Allows the use of `#[ffi_const]` on foreign functions.

@@ -1,5 +1,4 @@
 // ignore-arm stdcall isn't supported
-#![feature(extended_varargs_abi_support)]
 
 fn baz(f: extern "stdcall" fn(usize, ...)) {
     //~^ ERROR: C-variadic function must have a compatible calling convention,
