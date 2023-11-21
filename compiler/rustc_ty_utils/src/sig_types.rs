@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
 
-pub trait SpannedTypeVisitor<'tcx> {
+pub(crate) trait SpannedTypeVisitor<'tcx> {
     type BreakTy = !;
     fn visit(
         &mut self,
@@ -17,7 +17,7 @@ pub trait SpannedTypeVisitor<'tcx> {
     ) -> ControlFlow<Self::BreakTy>;
 }
 
-pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
+pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
     visitor: &mut V,

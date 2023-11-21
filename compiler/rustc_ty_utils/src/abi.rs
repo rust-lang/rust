@@ -16,7 +16,7 @@ use rustc_target::spec::abi::Abi as SpecAbi;
 
 use std::iter;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
 }
 
