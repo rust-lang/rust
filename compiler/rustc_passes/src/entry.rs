@@ -38,7 +38,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
+    if attr::contains_name(tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
         return None;
     }
 

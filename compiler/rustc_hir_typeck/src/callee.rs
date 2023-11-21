@@ -649,7 +649,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ExprKind::Path(ref qpath) => {
                 self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
             }
-            hir::ExprKind::Call(ref inner_callee, _) => {
+            hir::ExprKind::Call(inner_callee, _) => {
                 if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
                     inner_callee_path = Some(inner_qpath);
                     self.typeck_results.borrow().qpath_res(inner_qpath, inner_callee.hir_id)

@@ -808,7 +808,7 @@ impl Session {
 
     /// Returns a list of directories where target-specific tool binaries are located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let rustlib_path = rustc_target::target_rustlib_path(&self.sysroot, &config::host_triple());
+        let rustlib_path = rustc_target::target_rustlib_path(&self.sysroot, config::host_triple());
         let p = PathBuf::from_iter([
             Path::new(&self.sysroot),
             Path::new(&rustlib_path),

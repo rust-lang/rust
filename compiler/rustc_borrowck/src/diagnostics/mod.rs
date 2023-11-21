@@ -354,7 +354,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
-                        &def.variant(idx)
+                        def.variant(idx)
                     } else {
                         def.non_enum_variant()
                     };
@@ -851,7 +851,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             let Some((method_did, method_args)) = rustc_middle::util::find_self_call(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 target_temp,
                 location.block,
             ) else {
@@ -1048,7 +1048,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let ty = moved_place.ty(self.body, tcx).ty;
                         let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => type_known_to_meet_bound_modulo_regions(
-                                &self.infcx,
+                                self.infcx,
                                 self.param_env,
                                 Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
                                 def_id,

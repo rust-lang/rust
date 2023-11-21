@@ -314,7 +314,7 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
     is_static: bool,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
+    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)) {
         Err(error) => {
             let (error, backtrace) = error.into_parts();
             backtrace.print_backtrace();

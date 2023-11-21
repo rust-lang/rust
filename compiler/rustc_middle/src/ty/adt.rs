@@ -99,7 +99,7 @@ pub struct AdtDefData {
 
 impl PartialOrd for AdtDefData {
     fn partial_cmp(&self, other: &AdtDefData) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -375,7 +375,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Asserts this is a struct or union and returns its unique variant.
     pub fn non_enum_variant(self) -> &'tcx VariantDef {
         assert!(self.is_struct() || self.is_union());
-        &self.variant(FIRST_VARIANT)
+        self.variant(FIRST_VARIANT)
     }
 
     #[inline]

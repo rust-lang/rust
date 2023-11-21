@@ -179,7 +179,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(RegionValueElements::new(&body));
+    let elements = &Rc::new(RegionValueElements::new(body));
 
     // Run the MIR type-checker.
     let MirTypeckResults {
@@ -206,7 +206,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     if let Some(all_facts) = &mut all_facts {
         let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
         all_facts.universal_region.extend(universal_regions.universal_regions());
-        populate_polonius_move_facts(all_facts, move_data, location_table, &body);
+        populate_polonius_move_facts(all_facts, move_data, location_table, body);
 
         // Emit universal regions facts, and their relations, for Polonius.
         //
@@ -263,7 +263,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         &mut liveness_constraints,
         &mut all_facts,
         location_table,
-        &body,
+        body,
         borrow_set,
     );
 
@@ -302,7 +302,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
-            Some(Rc::new(Output::compute(&all_facts, algorithm, false)))
+            Some(Rc::new(Output::compute(all_facts, algorithm, false)))
         } else {
             None
         }
@@ -310,7 +310,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, param_env, &body, polonius_output.clone());
+        regioncx.solve(infcx, param_env, body, polonius_output.clone());
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
@@ -320,7 +320,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         ));
     }
 
-    let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values);
+    let remapped_opaque_tys = regioncx.infer_opaque_types(infcx, opaque_type_values);
 
     NllOutput {
         regioncx,

@@ -243,7 +243,7 @@ fn typeck_with_fallback<'tcx>(
         // Gather locals in statics (because of block expressions).
         GatherLocalsVisitor::new(&fcx).visit_body(body);
 
-        fcx.check_expr_coercible_to_type(&body.value, expected_type, None);
+        fcx.check_expr_coercible_to_type(body.value, expected_type, None);
 
         fcx.write_ty(id, expected_type);
     };

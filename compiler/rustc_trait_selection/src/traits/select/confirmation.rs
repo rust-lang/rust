@@ -394,7 +394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.recursion_depth + 1,
                 obligation.param_env,
                 trait_def_id,
-                &trait_ref.args,
+                trait_ref.args,
                 obligation.predicate,
             );
 
@@ -455,7 +455,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             recursion_depth,
             param_env,
             impl_def_id,
-            &args.value,
+            args.value,
             parent_trait_pred,
         );
 
@@ -708,7 +708,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.recursion_depth,
             obligation.param_env,
             trait_def_id,
-            &args,
+            args,
             obligation.predicate,
         );
 
@@ -986,7 +986,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         Ok(match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
-            (&ty::Dynamic(ref data_a, r_a, dyn_a), &ty::Dynamic(ref data_b, r_b, dyn_b))
+            (&ty::Dynamic(data_a, r_a, dyn_a), &ty::Dynamic(data_b, r_b, dyn_b))
                 if dyn_a == dyn_b =>
             {
                 // See `assemble_candidates_for_unsizing` for more info.
@@ -1031,7 +1031,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(ref data, r, ty::Dyn)) => {
+            (_, &ty::Dynamic(data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));

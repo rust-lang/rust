@@ -252,7 +252,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             fresh_preds.insert(self.clean_pred(infcx, predicate.as_predicate()));
         }
 
-        let mut select = SelectionContext::new(&infcx);
+        let mut select = SelectionContext::new(infcx);
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();

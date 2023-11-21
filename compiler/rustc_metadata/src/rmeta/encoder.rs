@@ -160,7 +160,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        rustc_span::hygiene::raw_encode_syntax_context(*self, &s.hygiene_ctxt, s);
+        rustc_span::hygiene::raw_encode_syntax_context(*self, s.hygiene_ctxt, s);
     }
 }
 
@@ -660,7 +660,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
         // this as late as possible to give the prefetching as much time as possible to complete.
         let exported_symbols = stat!("exported-symbols", || {
-            self.encode_exported_symbols(&tcx.exported_symbols(LOCAL_CRATE))
+            self.encode_exported_symbols(tcx.exported_symbols(LOCAL_CRATE))
         });
 
         // Encode the hygiene data.
@@ -694,15 +694,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: attr::contains_name(&attrs, sym::default_lib_allocator),
+                has_default_lib_allocator: attr::contains_name(attrs, sym::default_lib_allocator),
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: attr::contains_name(&attrs, sym::compiler_builtins),
-                needs_allocator: attr::contains_name(&attrs, sym::needs_allocator),
-                needs_panic_runtime: attr::contains_name(&attrs, sym::needs_panic_runtime),
-                no_builtins: attr::contains_name(&attrs, sym::no_builtins),
-                panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
-                profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
+                compiler_builtins: attr::contains_name(attrs, sym::compiler_builtins),
+                needs_allocator: attr::contains_name(attrs, sym::needs_allocator),
+                needs_panic_runtime: attr::contains_name(attrs, sym::needs_panic_runtime),
+                no_builtins: attr::contains_name(attrs, sym::no_builtins),
+                panic_runtime: attr::contains_name(attrs, sym::panic_runtime),
+                profiler_runtime: attr::contains_name(attrs, sym::profiler_runtime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -1728,9 +1728,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
-        let hir::ItemKind::Macro(ref macro_def, _) = tcx.hir().expect_item(def_id).kind else {
-            bug!()
-        };
+        let hir::ItemKind::Macro(macro_def, _) = tcx.hir().expect_item(def_id).kind else { bug!() };
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }

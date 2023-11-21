@@ -295,7 +295,7 @@ where
         let mut results = Results { analysis, entry_sets, _marker: PhantomData };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, &body, &mut results, pass_name);
+            let res = write_graphviz_results(tcx, body, &mut results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }

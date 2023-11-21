@@ -143,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn sess(&self) -> &Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     /// Creates an `TypeErrCtxt` with a reference to the in-progress
@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     type Target = Inherited<'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.inh
+        self.inh
     }
 }
 

@@ -85,7 +85,7 @@ struct Coerce<'a, 'tcx> {
 impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
     type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.fcx
+        self.fcx
     }
 }
 
@@ -158,7 +158,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             if self.next_trait_solver() {
                 if let Ok(res) = &res {
                     for obligation in &res.obligations {
-                        if !self.predicate_may_hold(&obligation) {
+                        if !self.predicate_may_hold(obligation) {
                             return Err(TypeError::Mismatch);
                         }
                     }
@@ -1510,7 +1510,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         expression,
                         expression_ty,
                     ),
-                    Expressions::UpFront(ref coercion_sites) => fcx.try_find_coercion_lub(
+                    Expressions::UpFront(coercion_sites) => fcx.try_find_coercion_lub(
                         cause,
                         &coercion_sites[0..self.pushed],
                         self.merged_ty(),
@@ -1665,7 +1665,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 if visitor.ret_exprs.len() > 0
                     && let Some(expr) = expression
                 {
-                    self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
+                    self.note_unreachable_loop_return(&mut err, expr, &visitor.ret_exprs);
                 }
 
                 let reported = err.emit_unless(unsized_return);
@@ -1772,7 +1772,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             if blk_id.is_none() {
                 fcx.suggest_missing_return_type(
                     &mut err,
-                    &fn_decl,
+                    fn_decl,
                     expected,
                     found,
                     can_suggest,
@@ -1871,6 +1871,6 @@ impl AsCoercionSite for ! {
 
 impl AsCoercionSite for hir::Arm<'_> {
     fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        &self.body
+        self.body
     }
 }

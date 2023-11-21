@@ -979,7 +979,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     path_span: path.span,
                     // intentionally converting to String, as the text would also be used as
                     // in suggestion context
-                    path_str: pprust::path_to_string(&path),
+                    path_str: pprust::path_to_string(path),
                 })
             }
             VisResolutionError::AncestorOnly(span) => {
@@ -1444,7 +1444,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::All(ns),
-                &parent_scope,
+                parent_scope,
                 None,
                 false,
                 None,

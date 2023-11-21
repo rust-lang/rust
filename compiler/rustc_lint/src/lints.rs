@@ -250,7 +250,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
-            &self.parse_sess,
+            self.parse_sess,
             sym::async_fn_track_caller,
         );
         diag

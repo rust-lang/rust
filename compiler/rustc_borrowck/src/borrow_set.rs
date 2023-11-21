@@ -107,7 +107,7 @@ impl LocalsStateAtExit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
             let mut has_storage_dead = HasStorageDead(BitSet::new_empty(body.local_decls.len()));
-            has_storage_dead.visit_body(&body);
+            has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {
                 if let Some(index) = move_data.base_local(move_out.path) {
@@ -128,7 +128,7 @@ impl<'tcx> BorrowSet<'tcx> {
     ) -> Self {
         let mut visitor = GatherBorrows {
             tcx,
-            body: &body,
+            body: body,
             location_map: Default::default(),
             activation_map: Default::default(),
             local_map: Default::default(),
@@ -140,7 +140,7 @@ impl<'tcx> BorrowSet<'tcx> {
             ),
         };
 
-        for (block, block_data) in traversal::preorder(&body) {
+        for (block, block_data) in traversal::preorder(body) {
             visitor.visit_basic_block_data(block, block_data);
         }
 

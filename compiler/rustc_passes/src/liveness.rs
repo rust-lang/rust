@@ -170,7 +170,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     // compute liveness
     let mut lsets = Liveness::new(&mut maps, def_id);
-    let entry_ln = lsets.compute(&body, hir_id);
+    let entry_ln = lsets.compute(body, hir_id);
     lsets.log_liveness(entry_ln, body_id.hir_id);
 
     // check for various error conditions
@@ -366,7 +366,7 @@ impl<'tcx> IrMaps<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
-        self.add_from_pat(&local.pat);
+        self.add_from_pat(local.pat);
         if local.els.is_some() {
             self.add_live_node_for_node(local.hir_id, ExprNode(local.span, local.hir_id));
         }
@@ -374,8 +374,8 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.add_from_pat(&arm.pat);
-        if let Some(hir::Guard::IfLet(ref let_expr)) = arm.guard {
+        self.add_from_pat(arm.pat);
+        if let Some(hir::Guard::IfLet(let_expr)) = arm.guard {
             self.add_from_pat(let_expr.pat);
         }
         intravisit::walk_arm(self, arm);
@@ -400,7 +400,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         match expr.kind {
             // live nodes required for uses or definitions of variables:
-            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
                 debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
                 if let Res::Local(_var_hir_id) = path.res {
                     self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
@@ -736,7 +736,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
 
-        let succ = self.propagate_through_expr(&body.value, self.exit_ln);
+        let succ = self.propagate_through_expr(body.value, self.exit_ln);
 
         if self.closure_min_captures.is_none() {
             // Either not a closure, or closure without any captured variables.
@@ -776,7 +776,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             if !self.merge_from_succ(self.exit_ln, self.closure_ln) {
                 break;
             }
-            assert_eq!(succ, self.propagate_through_expr(&body.value, self.exit_ln));
+            assert_eq!(succ, self.propagate_through_expr(body.value, self.exit_ln));
         }
 
         succ
@@ -792,7 +792,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt<'_>, succ: LiveNode) -> LiveNode {
         match stmt.kind {
-            hir::StmtKind::Local(ref local) => {
+            hir::StmtKind::Local(local) => {
                 // Note: we mark the variable as defined regardless of whether
                 // there is an initializer. Initially I had thought to only mark
                 // the live variable as defined if it was initialized, and then we
@@ -830,7 +830,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         self.init_from_succ(ln, succ);
                         self.merge_from_succ(ln, else_ln);
                         let succ = self.propagate_through_expr(init, ln);
-                        self.define_bindings_in_pat(&local.pat, succ)
+                        self.define_bindings_in_pat(local.pat, succ)
                     } else {
                         span_bug!(
                             stmt.span,
@@ -839,18 +839,18 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     }
                 } else {
                     let succ = self.propagate_through_opt_expr(local.init, succ);
-                    self.define_bindings_in_pat(&local.pat, succ)
+                    self.define_bindings_in_pat(local.pat, succ)
                 }
             }
             hir::StmtKind::Item(..) => succ,
             hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
-                self.propagate_through_expr(&expr, succ)
+                self.propagate_through_expr(expr, succ)
             }
         }
     }
 
     fn propagate_through_exprs(&mut self, exprs: &[Expr<'_>], succ: LiveNode) -> LiveNode {
-        exprs.iter().rev().fold(succ, |succ, expr| self.propagate_through_expr(&expr, succ))
+        exprs.iter().rev().fold(succ, |succ, expr| self.propagate_through_expr(expr, succ))
     }
 
     fn propagate_through_opt_expr(
@@ -866,11 +866,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match expr.kind {
             // Interesting cases with control flow or which gen/kill
-            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
                 self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
             }
 
-            hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(&e, succ),
+            hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(e, succ),
 
             hir::ExprKind::Closure { .. } => {
                 debug!("{:?} is an ExprKind::Closure", expr);
@@ -899,9 +899,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
-            hir::ExprKind::Loop(ref blk, ..) => self.propagate_through_loop(expr, &blk, succ),
+            hir::ExprKind::Loop(ref blk, ..) => self.propagate_through_loop(expr, blk, succ),
 
-            hir::ExprKind::Yield(ref e, ..) => {
+            hir::ExprKind::Yield(e, ..) => {
                 let yield_ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(yield_ln, succ);
                 self.merge_from_succ(yield_ln, self.exit_ln);
@@ -923,11 +923,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //   (  succ  )
                 //
                 let else_ln = self.propagate_through_opt_expr(else_opt.as_deref(), succ);
-                let then_ln = self.propagate_through_expr(&then, succ);
+                let then_ln = self.propagate_through_expr(then, succ);
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, else_ln);
                 self.merge_from_succ(ln, then_ln);
-                self.propagate_through_expr(&cond, ln)
+                self.propagate_through_expr(cond, ln)
             }
 
             hir::ExprKind::Match(ref e, arms, _) => {
@@ -948,7 +948,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_empty(ln, succ);
                 for arm in arms {
-                    let body_succ = self.propagate_through_expr(&arm.body, succ);
+                    let body_succ = self.propagate_through_expr(arm.body, succ);
 
                     let guard_succ = arm.guard.as_ref().map_or(body_succ, |g| match g {
                         hir::Guard::If(e) => self.propagate_through_expr(e, body_succ),
@@ -957,10 +957,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             self.propagate_through_expr(let_expr.init, let_bind)
                         }
                     });
-                    let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
+                    let arm_succ = self.define_bindings_in_pat(arm.pat, guard_succ);
                     self.merge_from_succ(ln, arm_succ);
                 }
-                self.propagate_through_expr(&e, ln)
+                self.propagate_through_expr(e, ln)
             }
 
             hir::ExprKind::Ret(ref o_e) => {
@@ -968,7 +968,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_opt_expr(o_e.as_deref(), self.exit_ln)
             }
 
-            hir::ExprKind::Become(ref e) => {
+            hir::ExprKind::Become(e) => {
                 // Ignore succ and subst exit_ln.
                 self.propagate_through_expr(e, self.exit_ln)
             }
@@ -1007,63 +1007,63 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Assign(ref l, ref r, _) => {
                 // see comment on places in
                 // propagate_through_place_components()
-                let succ = self.write_place(&l, succ, ACC_WRITE);
-                let succ = self.propagate_through_place_components(&l, succ);
-                self.propagate_through_expr(&r, succ)
+                let succ = self.write_place(l, succ, ACC_WRITE);
+                let succ = self.propagate_through_place_components(l, succ);
+                self.propagate_through_expr(r, succ)
             }
 
             hir::ExprKind::AssignOp(_, ref l, ref r) => {
                 // an overloaded assign op is like a method call
                 if self.typeck_results.is_method_call(expr) {
-                    let succ = self.propagate_through_expr(&l, succ);
-                    self.propagate_through_expr(&r, succ)
+                    let succ = self.propagate_through_expr(l, succ);
+                    self.propagate_through_expr(r, succ)
                 } else {
                     // see comment on places in
                     // propagate_through_place_components()
-                    let succ = self.write_place(&l, succ, ACC_WRITE | ACC_READ);
-                    let succ = self.propagate_through_expr(&r, succ);
-                    self.propagate_through_place_components(&l, succ)
+                    let succ = self.write_place(l, succ, ACC_WRITE | ACC_READ);
+                    let succ = self.propagate_through_expr(r, succ);
+                    self.propagate_through_place_components(l, succ)
                 }
             }
 
             // Uninteresting cases: just propagate in rev exec order
-            hir::ExprKind::Array(ref exprs) => self.propagate_through_exprs(exprs, succ),
+            hir::ExprKind::Array(exprs) => self.propagate_through_exprs(exprs, succ),
 
-            hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
+            hir::ExprKind::Struct(_, fields, ref with_expr) => {
                 let succ = self.propagate_through_opt_expr(with_expr.as_deref(), succ);
                 fields
                     .iter()
                     .rev()
-                    .fold(succ, |succ, field| self.propagate_through_expr(&field.expr, succ))
+                    .fold(succ, |succ, field| self.propagate_through_expr(field.expr, succ))
             }
 
-            hir::ExprKind::Call(ref f, ref args) => {
+            hir::ExprKind::Call(ref f, args) => {
                 let succ = self.check_is_ty_uninhabited(expr, succ);
                 let succ = self.propagate_through_exprs(args, succ);
-                self.propagate_through_expr(&f, succ)
+                self.propagate_through_expr(f, succ)
             }
 
-            hir::ExprKind::MethodCall(.., receiver, ref args, _) => {
+            hir::ExprKind::MethodCall(.., receiver, args, _) => {
                 let succ = self.check_is_ty_uninhabited(expr, succ);
                 let succ = self.propagate_through_exprs(args, succ);
                 self.propagate_through_expr(receiver, succ)
             }
 
-            hir::ExprKind::Tup(ref exprs) => self.propagate_through_exprs(exprs, succ),
+            hir::ExprKind::Tup(exprs) => self.propagate_through_exprs(exprs, succ),
 
             hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
-                let r_succ = self.propagate_through_expr(&r, succ);
+                let r_succ = self.propagate_through_expr(r, succ);
 
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, succ);
                 self.merge_from_succ(ln, r_succ);
 
-                self.propagate_through_expr(&l, ln)
+                self.propagate_through_expr(l, ln)
             }
 
             hir::ExprKind::Index(ref l, ref r, _) | hir::ExprKind::Binary(_, ref l, ref r) => {
-                let r_succ = self.propagate_through_expr(&r, succ);
-                self.propagate_through_expr(&l, r_succ)
+                let r_succ = self.propagate_through_expr(r, succ);
+                self.propagate_through_expr(l, r_succ)
             }
 
             hir::ExprKind::AddrOf(_, _, ref e)
@@ -1071,9 +1071,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::Type(ref e, _)
             | hir::ExprKind::DropTemps(ref e)
             | hir::ExprKind::Unary(_, ref e)
-            | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(&e, succ),
+            | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(e, succ),
 
-            hir::ExprKind::InlineAsm(ref asm) => {
+            hir::ExprKind::InlineAsm(asm) => {
                 // Handle non-returning asm
                 let mut succ = if asm.options.contains(InlineAsmOptions::NORETURN) {
                     self.exit_ln
@@ -1141,7 +1141,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
-            hir::ExprKind::Block(ref blk, _) => self.propagate_through_block(&blk, succ),
+            hir::ExprKind::Block(ref blk, _) => self.propagate_through_block(blk, succ),
         }
     }
 
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match expr.kind {
             hir::ExprKind::Path(_) => succ,
-            hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(&e, succ),
+            hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(e, succ),
             _ => self.propagate_through_expr(expr, succ),
         }
     }
@@ -1205,7 +1205,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     // see comment on propagate_through_place()
     fn write_place(&mut self, expr: &Expr<'_>, succ: LiveNode, acc: u32) -> LiveNode {
         match expr.kind {
-            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
                 self.access_path(expr.hir_id, path, succ, acc)
             }
 
@@ -1341,7 +1341,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
-        self.check_unused_vars_in_pat(&local.pat, None, None, |spans, hir_id, ln, var| {
+        self.check_unused_vars_in_pat(local.pat, None, None, |spans, hir_id, ln, var| {
             if local.init.is_some() {
                 self.warn_about_dead_assign(spans, hir_id, ln, var);
             }
@@ -1356,7 +1356,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.check_unused_vars_in_pat(&arm.pat, None, None, |_, _, _, _| {});
+        self.check_unused_vars_in_pat(arm.pat, None, None, |_, _, _, _| {});
         intravisit::walk_arm(self, arm);
     }
 }
@@ -1364,16 +1364,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
     match expr.kind {
         hir::ExprKind::Assign(ref l, ..) => {
-            this.check_place(&l);
+            this.check_place(l);
         }
 
         hir::ExprKind::AssignOp(_, ref l, _) => {
             if !this.typeck_results.is_method_call(expr) {
-                this.check_place(&l);
+                this.check_place(l);
             }
         }
 
-        hir::ExprKind::InlineAsm(ref asm) => {
+        hir::ExprKind::InlineAsm(asm) => {
             for (op, _op_sp) in asm.operands {
                 match op {
                     hir::InlineAsmOperand::Out { expr, .. } => {
@@ -1434,7 +1434,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
 impl<'tcx> Liveness<'_, 'tcx> {
     fn check_place(&mut self, expr: &'tcx Expr<'tcx>) {
         match expr.kind {
-            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
                 if let Res::Local(var_hid) = path.res {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
@@ -1507,7 +1507,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
     fn warn_about_unused_args(&self, body: &hir::Body<'_>, entry_ln: LiveNode) {
         for p in body.params {
             self.check_unused_vars_in_pat(
-                &p.pat,
+                p.pat,
                 Some(entry_ln),
                 Some(body),
                 |spans, hir_id, ln, var| {

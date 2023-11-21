@@ -57,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         // For types that do not need dropping, the behaviour is trivial. So we only need to track
         // init/uninit for types that do need dropping.
         let move_data =
-            MoveData::gather_moves(&body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
+            MoveData::gather_moves(body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
 
@@ -67,7 +67,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
                 .into_results_cursor(body);
-            let dead_unwinds = compute_dead_unwinds(&body, &mut inits);
+            let dead_unwinds = compute_dead_unwinds(body, &mut inits);
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
                 .mark_inactive_variants_as_uninit()

@@ -187,7 +187,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     {
         cx.declare_global(
             &common::i686_decorated_name(
-                &dllimport,
+                dllimport,
                 common::is_mingw_gnu_toolchain(&cx.tcx.sess.target),
                 true,
             ),

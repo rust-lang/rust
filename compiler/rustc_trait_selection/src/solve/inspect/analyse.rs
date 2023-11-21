@@ -175,7 +175,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 warn!("unexpected root evaluation: {:?}", self.evaluation);
                 return vec![];
             }
-            inspect::CanonicalGoalEvaluationKind::Evaluation { ref revisions } => {
+            inspect::CanonicalGoalEvaluationKind::Evaluation { revisions } => {
                 if let Some(last) = revisions.last() {
                     last
                 } else {

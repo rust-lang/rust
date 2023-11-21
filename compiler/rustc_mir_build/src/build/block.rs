@@ -31,7 +31,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             destination,
                             block,
                             span,
-                            &stmts,
+                            stmts,
                             expr,
                             safety_mode,
                             region_scope,
@@ -42,7 +42,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         destination,
                         block,
                         span,
-                        &stmts,
+                        stmts,
                         expr,
                         safety_mode,
                         region_scope,
@@ -312,7 +312,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             None,
                                             Some((None, initializer_span)),
                                         );
-                                        this.expr_into_pattern(block, &pattern, init)
+                                        this.expr_into_pattern(block, pattern, init)
                                         // irrefutable pattern
                                     })
                                 },

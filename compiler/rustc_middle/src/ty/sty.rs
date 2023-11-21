@@ -1590,7 +1590,7 @@ impl<'tcx> Deref for Region<'tcx> {
 
     #[inline]
     fn deref(&self) -> &RegionKind<'tcx> {
-        &self.0.0
+        self.0.0
     }
 }
 
@@ -2114,7 +2114,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_tup(tcx: TyCtxt<'tcx>, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(&ts))) }
+        if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(ts))) }
     }
 
     pub fn new_tup_from_iter<I, T>(tcx: TyCtxt<'tcx>, iter: I) -> T::Output
@@ -2270,7 +2270,7 @@ impl<'tcx> Ty<'tcx> {
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
-        &self.0.0
+        self.0.0
     }
 
     #[inline(always)]
@@ -2281,7 +2281,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_unit(self) -> bool {
         match self.kind() {
-            Tuple(ref tys) => tys.is_empty(),
+            Tuple(tys) => tys.is_empty(),
             _ => false,
         }
     }

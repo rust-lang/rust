@@ -50,7 +50,7 @@ impl<T> Sharded<T> {
     #[inline]
     pub fn get_shard_by_value<K: Hash + ?Sized>(&self, _val: &K) -> &Lock<T> {
         match self {
-            Self::Single(single) => &single,
+            Self::Single(single) => single,
             #[cfg(parallel_compiler)]
             Self::Shards(..) => self.get_shard_by_hash(make_hash(_val)),
         }
@@ -64,7 +64,7 @@ impl<T> Sharded<T> {
     #[inline]
     pub fn get_shard_by_index(&self, _i: usize) -> &Lock<T> {
         match self {
-            Self::Single(single) => &single,
+            Self::Single(single) => single,
             #[cfg(parallel_compiler)]
             Self::Shards(shards) => {
                 // SAFETY: The index gets ANDed with the shard mask, ensuring it is always inbounds.

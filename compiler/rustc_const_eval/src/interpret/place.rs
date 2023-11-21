@@ -456,7 +456,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(&mplace)?
+            .size_and_align_of_mplace(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
@@ -472,7 +472,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(&mplace)?
+            .size_and_align_of_mplace(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and raise that error *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.

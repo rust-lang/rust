@@ -266,16 +266,16 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 return self.lower_path(qpath, pat.hir_id, pat.span);
             }
 
-            hir::PatKind::Ref(ref subpattern, _) | hir::PatKind::Box(ref subpattern) => {
+            hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
             }
 
-            hir::PatKind::Slice(ref prefix, ref slice, ref suffix) => {
+            hir::PatKind::Slice(prefix, ref slice, suffix) => {
                 self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }
 
-            hir::PatKind::Tuple(ref pats, ddpos) => {
-                let ty::Tuple(ref tys) = ty.kind() else {
+            hir::PatKind::Tuple(pats, ddpos) => {
+                let ty::Tuple(tys) = ty.kind() else {
                     span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty);
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
@@ -325,7 +325,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
             }
 
-            hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
+            hir::PatKind::TupleStruct(ref qpath, pats, ddpos) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let ty::Adt(adt_def, _) = ty.kind() else {
                     span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty);
@@ -335,20 +335,20 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
-            hir::PatKind::Struct(ref qpath, ref fields, _) => {
+            hir::PatKind::Struct(ref qpath, fields, _) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
                         field: self.typeck_results.field_index(field.hir_id),
-                        pattern: self.lower_pattern(&field.pat),
+                        pattern: self.lower_pattern(field.pat),
                     })
                     .collect();
 
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
-            hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
+            hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
         Box::new(Pat { span, ty, kind })

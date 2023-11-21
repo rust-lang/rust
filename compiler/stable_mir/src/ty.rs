@@ -138,7 +138,7 @@ impl Span {
 
     /// Return lines that corespond to this `Span`
     pub fn get_lines(&self) -> LineInfo {
-        with(|c| c.get_lines(&self))
+        with(|c| c.get_lines(self))
     }
 }
 

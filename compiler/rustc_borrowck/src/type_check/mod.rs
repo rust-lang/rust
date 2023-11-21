@@ -191,11 +191,11 @@ pub(crate) fn type_check<'mir, 'tcx>(
     checker.check_user_type_annotations();
 
     let mut verifier = TypeVerifier::new(&mut checker, promoted);
-    verifier.visit_body(&body);
+    verifier.visit_body(body);
 
     checker.typeck_mir(body);
-    checker.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
-    checker.check_signature_annotation(&body);
+    checker.equate_inputs_and_outputs(body, universal_regions, &normalized_inputs_and_output);
+    checker.check_signature_annotation(body);
 
     liveness::generate(
         &mut checker,
@@ -389,7 +389,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     self.cx.ascribe_user_type(
                         constant.const_.ty(),
                         UserType::TypeOf(uv.def, UserArgs { args: uv.args, user_self_ty: None }),
-                        locations.span(&self.cx.body),
+                        locations.span(self.cx.body),
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
@@ -553,7 +553,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let all_facts = &mut None;
         let mut constraints = Default::default();
         let mut liveness_constraints =
-            LivenessValues::new(Rc::new(RegionValueElements::new(&promoted_body)));
+            LivenessValues::new(Rc::new(RegionValueElements::new(promoted_body)));
         // Don't try to add borrow_region facts for the promoted MIR
 
         let mut swap_constraints = |this: &mut Self| {
@@ -570,7 +570,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         swap_constraints(self);
 
-        self.visit_body(&promoted_body);
+        self.visit_body(promoted_body);
 
         self.cx.typeck_mir(promoted_body);
 
@@ -1127,7 +1127,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             locations.span(self.body),
             category,
-            &mut self.borrowck_context.constraints,
+            self.borrowck_context.constraints,
         )
         .convert_all(data);
     }
@@ -1854,7 +1854,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 for op in ops {
                     self.check_operand(op, location);
                 }
-                self.check_aggregate_rvalue(&body, rvalue, ak, ops, location)
+                self.check_aggregate_rvalue(body, rvalue, ak, ops, location)
             }
 
             Rvalue::Repeat(operand, len) => {
@@ -2300,7 +2300,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(&body, location, *region, borrowed_place);
+                self.add_reborrow_constraint(body, location, *region, borrowed_place);
             }
 
             Rvalue::BinaryOp(
@@ -2512,7 +2512,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
         let field = path_utils::is_upvar_field_projection(
             tcx,
-            &self.borrowck_context.upvars,
+            self.borrowck_context.upvars,
             borrowed_place.as_ref(),
             body,
         );
@@ -2668,13 +2668,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 location.to_locations(),
                 DUMMY_SP,                   // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
-                &mut self.borrowck_context.constraints,
+                self.borrowck_context.constraints,
             )
-            .apply_closure_requirements(
-                &closure_requirements,
-                def_id.to_def_id(),
-                args,
-            );
+            .apply_closure_requirements(closure_requirements, def_id.to_def_id(), args);
         }
 
         // Now equate closure args to regions inherited from `typeck_root_def_id`. Fixes #98589.
@@ -2714,7 +2710,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?body.span);
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
-            self.check_local(&body, local, local_decl);
+            self.check_local(body, local, local_decl);
         }
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
@@ -2727,8 +2723,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 location.statement_index += 1;
             }
 
-            self.check_terminator(&body, block_data.terminator(), location);
-            self.check_iscleanup(&body, block_data);
+            self.check_terminator(body, block_data.terminator(), location);
+            self.check_iscleanup(body, block_data);
         }
     }
 }

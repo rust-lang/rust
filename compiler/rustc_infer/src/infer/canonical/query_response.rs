@@ -552,7 +552,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // `query_response.var_values` after applying the substitution
         // `result_subst`.
         let substituted_query_response = |index: BoundVar| -> GenericArg<'tcx> {
-            query_response.substitute_projected(self.tcx, &result_subst, |v| v.var_values[index])
+            query_response.substitute_projected(self.tcx, result_subst, |v| v.var_values[index])
         };
 
         // Unify the original value for each variable with the value

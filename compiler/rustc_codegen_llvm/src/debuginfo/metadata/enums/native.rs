@@ -197,7 +197,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                                 coroutine_type_and_layout,
                                 coroutine_type_di_node,
                                 coroutine_layout,
-                                &common_upvar_names,
+                                common_upvar_names,
                             ),
                         source_info,
                     }

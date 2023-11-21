@@ -1135,7 +1135,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .fcx
                     .probe_instantiate_query_response(
                         self.span,
-                        &self.orig_steps_var_values,
+                        self.orig_steps_var_values,
                         &step.self_ty,
                     )
                     .unwrap_or_else(|_| {
@@ -1509,7 +1509,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // match as well (or at least may match, sometimes we
             // don't have enough information to fully evaluate).
             match probe.kind {
-                InherentImplCandidate(ref args, ref ref_obligations) => {
+                InherentImplCandidate(args, ref ref_obligations) => {
                     // `xform_ret_ty` hasn't been normalized yet, only `xform_self_ty`,
                     // see the reasons mentioned in the comments in `assemble_inherent_impl_probe`
                     // for why this is necessary

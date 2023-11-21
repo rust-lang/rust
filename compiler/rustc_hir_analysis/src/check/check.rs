@@ -222,11 +222,11 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.owner_id.def_id, args, span, &origin).is_err() {
+    if check_opaque_for_cycles(tcx, item.owner_id.def_id, args, span, origin).is_err() {
         return;
     }
 
-    let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, &origin);
+    let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, origin);
 }
 
 /// Checks that an opaque type does not contain cycles.
@@ -518,7 +518,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         DefKind::TyAlias => {
             let pty_ty = tcx.type_of(id.owner_id).instantiate_identity();
             let generics = tcx.generics_of(id.owner_id);
-            check_type_params_are_used(tcx, &generics, pty_ty);
+            check_type_params_are_used(tcx, generics, pty_ty);
         }
         DefKind::ForeignMod => {
             let it = tcx.hir().item(id);
@@ -900,7 +900,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
         for attr in tcx.get_attrs(def.did(), sym::repr) {
-            for r in attr::parse_repr_attr(&tcx.sess, attr) {
+            for r in attr::parse_repr_attr(tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
                     && pack as u64 != repr_pack.bytes()
@@ -1150,8 +1150,8 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let has_disr = |var: &ty::VariantDef| matches!(var.discr, ty::VariantDiscr::Explicit(_));
 
         let has_non_units = def.variants().iter().any(|var| !is_unit(var));
-        let disr_units = def.variants().iter().any(|var| is_unit(&var) && has_disr(&var));
-        let disr_non_unit = def.variants().iter().any(|var| !is_unit(&var) && has_disr(&var));
+        let disr_units = def.variants().iter().any(|var| is_unit(var) && has_disr(var));
+        let disr_non_unit = def.variants().iter().any(|var| !is_unit(var) && has_disr(var));
 
         if disr_non_unit || (disr_units && has_non_units) {
             let mut err = struct_span_err!(

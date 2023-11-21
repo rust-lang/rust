@@ -686,7 +686,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n) | ImplSource::Builtin(_, n) => &n,
+            ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 

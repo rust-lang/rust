@@ -175,8 +175,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     ) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
         if self.sess.target.llvm_target.contains("-apple-macosx") {
-            if let Some(new_archive_path) =
-                try_extract_macho_fat_archive(&self.sess, &archive_path)?
+            if let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
             {
                 archive_path = new_archive_path
             }

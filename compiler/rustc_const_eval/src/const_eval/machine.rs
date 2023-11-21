@@ -200,7 +200,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                 &caller
                     .file
                     .name
-                    .for_scope(&self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
+                    .for_scope(self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
                     .to_string_lossy(),
             ),
             u32::try_from(caller.line).unwrap(),

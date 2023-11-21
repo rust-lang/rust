@@ -219,18 +219,18 @@ fn do_mir_borrowck<'tcx>(
     let location_table_owned = LocationTable::new(body);
     let location_table = &location_table_owned;
 
-    let move_data = MoveData::gather_moves(&body, tcx, param_env, |_| true);
+    let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
     let promoted_move_data = promoted
         .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env, |_| true)));
+        .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, param_env, |_| true)));
 
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
-    let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body)
+    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+        .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint()
-        .into_results_cursor(&body);
+        .into_results_cursor(body);
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
     let borrow_set =
@@ -260,13 +260,13 @@ fn do_mir_borrowck<'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_mir_results(&infcx, &body, &regioncx, &opt_closure_req);
+    nll::dump_mir_results(&infcx, body, &regioncx, &opt_closure_req);
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
     nll::dump_annotation(
         &infcx,
-        &body,
+        body,
         &regioncx,
         &opt_closure_req,
         &opaque_type_values,
@@ -1538,7 +1538,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         if places_conflict::borrow_conflicts_with_place(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             place,
             borrow.kind,
             root_place,
@@ -2193,7 +2193,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // If this is a mutate access to an immutable local variable with no projections
                 // report the error as an illegal reassignment
                 let init = &self.move_data.inits[init_index];
-                let assigned_span = init.span(&self.body);
+                let assigned_span = init.span(self.body);
                 self.report_illegal_reassignment(location, (place, span), assigned_span, place);
             } else {
                 self.report_mutability_error(place, span, the_place_err, error_access, location)

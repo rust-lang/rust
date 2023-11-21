@@ -96,7 +96,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 }
             }
 
-            hir::TyKind::Ref(ref lifetime, _) => {
+            hir::TyKind::Ref(lifetime, _) => {
                 // the lifetime of the Ref
                 let hir_id = lifetime.hir_id;
                 match (self.tcx.named_bound_var(hir_id), self.bound_region) {

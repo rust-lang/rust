@@ -54,7 +54,7 @@ impl<'mir, 'tcx> std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.ccx
+        self.ccx
     }
 }
 

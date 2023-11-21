@@ -422,7 +422,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         kind_place: Option<(WriteKind, Place<'tcx>)>,
     ) -> BorrowExplanation<'tcx> {
         let regioncx = &self.regioncx;
-        let body: &Body<'_> = &self.body;
+        let body: &Body<'_> = self.body;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;

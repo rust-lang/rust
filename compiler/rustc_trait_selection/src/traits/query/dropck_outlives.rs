@@ -48,9 +48,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.
         ty::Tuple(tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t)),
-        ty::Closure(_, ref args) => {
-            trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty())
-        }
+        ty::Closure(_, args) => trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty()),
 
         ty::Adt(def, _) => {
             if Some(def.did()) == tcx.lang_items().manually_drop() {

@@ -227,7 +227,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         self.tcx(),
                         generics,
                         &mut err,
-                        &ty_param_name,
+                        ty_param_name,
                         &trait_name,
                         None,
                         None,

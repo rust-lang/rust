@@ -371,7 +371,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             if opt_ext.is_none() {
                 *opt_ext = Some(
                     match self.resolve_macro_path(
-                        &path,
+                        path,
                         Some(MacroKind::Derive),
                         &parent_scope,
                         true,
@@ -485,7 +485,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     }
 
     fn registered_tools(&self) -> &RegisteredTools {
-        &self.registered_tools
+        self.registered_tools
     }
 }
 
@@ -887,7 +887,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
         if let Some(depr) = &ext.deprecation {
-            let path = pprust::path_to_string(&path);
+            let path = pprust::path_to_string(path);
             let (message, lint) = stability::deprecation_message_and_lint(depr, "macro", &path);
             stability::early_report_deprecation(
                 &mut self.lint_buffer,

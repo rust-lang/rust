@@ -279,7 +279,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         let generics = self.context.generics.take();
-        self.context.generics = Some(&trait_item.generics);
+        self.context.generics = Some(trait_item.generics);
         self.with_lint_attrs(trait_item.hir_id(), |cx| {
             cx.with_param_env(trait_item.owner_id, |cx| {
                 lint_callback!(cx, check_trait_item, trait_item);
@@ -291,7 +291,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let generics = self.context.generics.take();
-        self.context.generics = Some(&impl_item.generics);
+        self.context.generics = Some(impl_item.generics);
         self.with_lint_attrs(impl_item.hir_id(), |cx| {
             cx.with_param_env(impl_item.owner_id, |cx| {
                 lint_callback!(cx, check_impl_item, impl_item);
@@ -355,7 +355,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         enclosing_body: None,
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
-        effective_visibilities: &tcx.effective_visibilities(()),
+        effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: tcx.hir().local_def_id_to_hir_id(module_def_id),
         generics: None,
         only_module: true,
@@ -364,7 +364,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
-    let mut passes: Vec<_> = unerased_lint_store(&tcx.sess)
+    let mut passes: Vec<_> = unerased_lint_store(tcx.sess)
         .late_module_passes
         .iter()
         .map(|mk_pass| (mk_pass)(tcx))
@@ -405,7 +405,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     // Note: `passes` is often empty.
     let mut passes: Vec<_> =
-        unerased_lint_store(&tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
+        unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
 
     if passes.is_empty() {
         return;
@@ -416,7 +416,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         enclosing_body: None,
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
-        effective_visibilities: &tcx.effective_visibilities(()),
+        effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,
         only_module: false,

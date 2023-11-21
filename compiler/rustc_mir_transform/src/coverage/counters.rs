@@ -222,7 +222,7 @@ impl<'a> MakeBcbCounters<'a> {
         // all `BasicCoverageBlock` nodes in the loop are visited before visiting any node outside
         // the loop. The `traversal` state includes a `context_stack`, providing a way to know if
         // the current BCB is in one or more nested loops or not.
-        let mut traversal = TraverseCoverageGraphWithLoops::new(&self.basic_coverage_blocks);
+        let mut traversal = TraverseCoverageGraphWithLoops::new(self.basic_coverage_blocks);
         while let Some(bcb) = traversal.next() {
             if bcb_has_coverage_spans(bcb) {
                 debug!("{:?} has at least one coverage span. Get or make its counter", bcb);
@@ -425,7 +425,7 @@ impl<'a> MakeBcbCounters<'a> {
         traversal: &TraverseCoverageGraphWithLoops<'_>,
         branches: &[BcbBranch],
     ) -> BcbBranch {
-        let good_reloop_branch = self.find_good_reloop_branch(traversal, &branches);
+        let good_reloop_branch = self.find_good_reloop_branch(traversal, branches);
         if let Some(reloop_branch) = good_reloop_branch {
             assert!(self.branch_has_no_counter(&reloop_branch));
             debug!("Selecting reloop branch {reloop_branch:?} to get an expression");
@@ -508,7 +508,7 @@ impl<'a> MakeBcbCounters<'a> {
     fn bcb_branches(&self, from_bcb: BasicCoverageBlock) -> Vec<BcbBranch> {
         self.bcb_successors(from_bcb)
             .iter()
-            .map(|&to_bcb| BcbBranch::from_to(from_bcb, to_bcb, &self.basic_coverage_blocks))
+            .map(|&to_bcb| BcbBranch::from_to(from_bcb, to_bcb, self.basic_coverage_blocks))
             .collect::<Vec<_>>()
     }
 

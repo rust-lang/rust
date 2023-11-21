@@ -175,7 +175,7 @@ fn to_upvars_resolved_place_builder<'tcx>(
     projection: &[PlaceElem<'tcx>],
 ) -> Option<PlaceBuilder<'tcx>> {
     let Some((capture_index, capture)) =
-        find_capture_matching_projections(&cx.upvars, var_hir_id, &projection)
+        find_capture_matching_projections(&cx.upvars, var_hir_id, projection)
     else {
         let closure_span = cx.tcx.def_span(closure_def_id);
         if !enable_precise_capture(closure_span) {
@@ -683,7 +683,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                         let fake_borrow_temp =
                             self.local_decls.push(LocalDecl::new(fake_borrow_ty, expr_span));
-                        let projection = tcx.mk_place_elems(&base_place.projection);
+                        let projection = tcx.mk_place_elems(base_place.projection);
                         self.cfg.push_assign(
                             block,
                             source_info,

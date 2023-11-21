@@ -136,7 +136,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let outlives = &mut TypeOutlives::new(
                 self,
                 self.tcx,
-                &outlives_env.region_bound_pairs(),
+                outlives_env.region_bound_pairs(),
                 None,
                 outlives_env.param_env,
             );
@@ -248,7 +248,7 @@ where
                 }
                 Component::Alias(alias_ty) => self.alias_ty_must_outlive(origin, region, *alias_ty),
                 Component::EscapingAlias(subcomponents) => {
-                    self.components_must_outlive(origin, &subcomponents, region, category);
+                    self.components_must_outlive(origin, subcomponents, region, category);
                 }
                 Component::UnresolvedInferenceVariable(v) => {
                     // ignore this, we presume it will yield an error

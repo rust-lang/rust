@@ -650,14 +650,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &self.upvars,
             errci.fr,
         );
         let outlived_fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &self.upvars,
             errci.outlived_fr,
@@ -971,7 +971,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         for found_did in found_dids {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_ty(&self_ty);
+            hir_v.visit_ty(self_ty);
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();

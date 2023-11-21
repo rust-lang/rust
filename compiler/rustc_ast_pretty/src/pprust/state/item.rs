@@ -368,7 +368,7 @@ impl<'a> State<'a> {
                 self.nbsp();
                 if !bounds.is_empty() {
                     self.word_nbsp("=");
-                    self.print_type_bounds(&bounds);
+                    self.print_type_bounds(bounds);
                 }
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");

@@ -221,7 +221,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn err_handler(&self) -> &rustc_errors::Handler {
-        &self.session.diagnostic()
+        self.session.diagnostic()
     }
 
     fn check_lifetime(&self, ident: Ident) {
@@ -622,7 +622,7 @@ impl<'a> AstValidator<'a> {
             data: data.span,
             constraint_spans: errors::EmptyLabelManySpans(constraint_spans),
             arg_spans2: errors::EmptyLabelManySpans(arg_spans),
-            suggestion: self.correct_generic_order_suggestion(&data),
+            suggestion: self.correct_generic_order_suggestion(data),
             constraint_len,
             args_len,
         });
@@ -738,7 +738,7 @@ fn validate_generic_param_order(
 
             if !bounds.is_empty() {
                 ordered_params += ": ";
-                ordered_params += &pprust::bounds_to_string(&bounds);
+                ordered_params += &pprust::bounds_to_string(bounds);
             }
 
             match kind {

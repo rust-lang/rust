@@ -86,7 +86,7 @@ impl<'tcx> Ord for GenericArg<'tcx> {
 
 impl<'tcx> PartialOrd for GenericArg<'tcx> {
     fn partial_cmp(&self, other: &GenericArg<'tcx>) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
