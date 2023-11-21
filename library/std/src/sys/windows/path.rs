@@ -78,7 +78,7 @@ impl<'a> PrefixParserSlice<'a, '_> {
     fn strip_prefix(&self, prefix: &str) -> Option<Self> {
         self.prefix[self.index..]
             .starts_with(prefix.as_bytes())
-            .then(|| Self { index: self.index + prefix.len(), ..*self })
+            .then_some(Self { index: self.index + prefix.len(), ..*self })
     }
 
     fn prefix_bytes(&self) -> &'a [u8] {
