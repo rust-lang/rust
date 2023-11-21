@@ -23,7 +23,7 @@ mod while_let_on_iterator;
 
 use clippy_config::msrvs::Msrv;
 use clippy_utils::higher;
-use rustc_hir::{self as hir, Expr, ExprKind, LoopSource, Pat};
+use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -678,22 +678,20 @@ declare_clippy_lint! {
     "possibly unintended infinite loops"
 }
 
-pub struct Loops<'tcx> {
+pub struct Loops {
     msrv: Msrv,
     enforce_iter_loop_reborrow: bool,
-    parent_fn_ret_ty: Option<hir::FnRetTy<'tcx>>,
 }
-impl<'tcx> Loops<'tcx> {
+impl Loops {
     pub fn new(msrv: Msrv, enforce_iter_loop_reborrow: bool) -> Self {
         Self {
             msrv,
             enforce_iter_loop_reborrow,
-            parent_fn_ret_ty: None,
         }
     }
 }
 
-impl_lint_pass!(Loops<'_> => [
+impl_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     MANUAL_FLATTEN,
     NEEDLESS_RANGE_LOOP,
@@ -717,7 +715,7 @@ impl_lint_pass!(Loops<'_> => [
     INFINITE_LOOPS,
 ]);
 
-impl<'tcx> LateLintPass<'tcx> for Loops<'tcx> {
+impl<'tcx> LateLintPass<'tcx> for Loops {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let for_loop = higher::ForLoop::hir(expr);
         if let Some(higher::ForLoop {
@@ -757,9 +755,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops<'tcx> {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             empty_loop::check(cx, expr, block);
             while_let_loop::check(cx, expr, block);
-            if let Some(parent_fn_ret_ty) = self.parent_fn_ret_ty {
-                infinite_loops::check(cx, expr, block, label, parent_fn_ret_ty);
-            }
+            infinite_loops::check(cx, expr, block, label);
         }
 
         while_let_on_iterator::check(cx, expr);
@@ -771,25 +767,11 @@ impl<'tcx> LateLintPass<'tcx> for Loops<'tcx> {
         }
     }
 
-    fn check_fn(
-        &mut self,
-        _: &LateContext<'tcx>,
-        kind: hir::intravisit::FnKind<'tcx>,
-        decl: &'tcx hir::FnDecl<'tcx>,
-        _: &'tcx hir::Body<'tcx>,
-        _: Span,
-        _: rustc_span::def_id::LocalDefId,
-    ) {
-        if let hir::intravisit::FnKind::ItemFn(..) = kind {
-            self.parent_fn_ret_ty = Some(decl.output);
-        }
-    }
-
     extract_msrv_attr!(LateContext);
 }
 
-impl<'tcx> Loops<'tcx> {
-    fn check_for_loop(
+impl Loops {
+    fn check_for_loop<'tcx>(
         &self,
         cx: &LateContext<'tcx>,
         pat: &'tcx Pat<'_>,

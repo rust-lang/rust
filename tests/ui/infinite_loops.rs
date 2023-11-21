@@ -11,6 +11,31 @@ fn no_break() {
     }
 }
 
+fn all_inf() {
+    loop {
+        //~^ ERROR: infinite loop detected
+        loop {
+            //~^ ERROR: infinite loop detected
+            loop {
+                //~^ ERROR: infinite loop detected
+                do_something();
+            }
+        }
+        do_something();
+    }
+}
+
+fn no_break_return_some_ty() -> Option<u8> {
+    loop {
+        do_something();
+        return None;
+    }
+    loop {
+        //~^ ERROR: infinite loop detected
+        do_something();
+    }
+}
+
 fn no_break_never_ret() -> ! {
     loop {
         do_something();
@@ -254,6 +279,82 @@ fn ret_in_macro(opt: Option<u8>) {
             _ => do_something(),
         }
     }
+}
+
+fn panic_like_macros_1() {
+    loop {
+        do_something();
+        panic!();
+    }
+}
+
+fn panic_like_macros_2() {
+    let mut x = 0;
+
+    loop {
+        do_something();
+        if true {
+            todo!();
+        }
+    }
+    loop {
+        do_something();
+        x += 1;
+        assert_eq!(x, 0);
+    }
+    loop {
+        do_something();
+        assert!(x % 2 == 0);
+    }
+    loop {
+        do_something();
+        match Some(1) {
+            Some(n) => println!("{n}"),
+            None => unreachable!("It won't happen"),
+        }
+    }
+}
+
+fn exit_directly(cond: bool) {
+    loop {
+        if cond {
+            std::process::exit(0);
+        }
+    }
+}
+
+trait MyTrait {
+    fn problematic_trait_method() {
+        loop {
+            //~^ ERROR: infinite loop detected
+            do_something();
+        }
+    }
+    fn could_be_problematic();
+}
+
+impl MyTrait for String {
+    fn could_be_problematic() {
+        loop {
+            //~^ ERROR: infinite loop detected
+            do_something();
+        }
+    }
+}
+
+fn inf_loop_in_closure() {
+    let _loop_forever = || {
+        loop {
+            //~^ ERROR: infinite loop detected
+            do_something();
+        }
+    };
+
+    let _somehow_ok = || -> ! {
+        loop {
+            do_something();
+        }
+    };
 }
 
 fn main() {}
