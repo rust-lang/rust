@@ -44,10 +44,6 @@ pub mod value_analysis;
 
 fluent_messages! { "../messages.ftl" }
 
-pub(crate) mod indexes {
-    pub(crate) use super::move_paths::MovePathIndex;
-}
-
 pub struct MoveDataParamEnv<'tcx> {
     pub move_data: MoveData<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,

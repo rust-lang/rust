@@ -3,8 +3,7 @@ use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::VariantIdx;
 
-use super::indexes::MovePathIndex;
-use super::move_paths::{InitKind, LookupResult, MoveData};
+use super::move_paths::{InitKind, LookupResult, MoveData, MovePathIndex};
 use super::MoveDataParamEnv;
 
 pub fn move_path_children_matching<'tcx, F>(
