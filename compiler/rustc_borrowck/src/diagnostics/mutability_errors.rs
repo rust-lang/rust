@@ -3,8 +3,9 @@ use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
+use rustc_infer::traits;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceDef, ToPredicate, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
     mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
@@ -12,6 +13,8 @@ use rustc_middle::{
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, DesugaringKind, Span};
 use rustc_target::abi::FieldIdx;
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
@@ -1212,6 +1215,103 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(hir_id) = hir_id
                     && let Some(hir::Node::Local(local)) = hir_map.find(hir_id)
                 {
+                    let tables = self.infcx.tcx.typeck(def_id.as_local().unwrap());
+                    if let Some(clone_trait) = self.infcx.tcx.lang_items().clone_trait()
+                        && let Some(expr) = local.init
+                        && let ty = tables.node_type_opt(expr.hir_id)
+                        && let Some(ty) = ty
+                        && let ty::Ref(..) = ty.kind()
+                    {
+                        match self
+                            .infcx
+                            .could_impl_trait(clone_trait, ty.peel_refs(), self.param_env)
+                            .as_deref()
+                        {
+                            Some([]) => {
+                                // The type implements Clone.
+                                err.span_help(
+                                    expr.span,
+                                    format!(
+                                        "you can `clone` the `{}` value and consume it, but this \
+                                         might not be your desired behavior",
+                                        ty.peel_refs(),
+                                    ),
+                                );
+                            }
+                            None => {
+                                if let hir::ExprKind::MethodCall(segment, _rcvr, [], span) =
+                                    expr.kind
+                                    && segment.ident.name == sym::clone
+                                {
+                                    err.span_help(
+                                        span,
+                                        format!(
+                                            "`{}` doesn't implement `Clone`, so this call clones \
+                                             the reference `{ty}`",
+                                            ty.peel_refs(),
+                                        ),
+                                    );
+                                }
+                                // The type doesn't implement Clone.
+                                let trait_ref = ty::Binder::dummy(ty::TraitRef::new(
+                                    self.infcx.tcx,
+                                    clone_trait,
+                                    [ty.peel_refs()],
+                                ));
+                                let obligation = traits::Obligation::new(
+                                    self.infcx.tcx,
+                                    traits::ObligationCause::dummy(),
+                                    self.param_env,
+                                    trait_ref,
+                                );
+                                self.infcx.err_ctxt().suggest_derive(
+                                    &obligation,
+                                    err,
+                                    trait_ref.to_predicate(self.infcx.tcx),
+                                );
+                            }
+                            Some(errors) => {
+                                if let hir::ExprKind::MethodCall(segment, _rcvr, [], span) =
+                                    expr.kind
+                                    && segment.ident.name == sym::clone
+                                {
+                                    err.span_help(
+                                        span,
+                                        format!(
+                                            "`{}` doesn't implement `Clone` because its \
+                                             implementations trait bounds could not be met, so \
+                                             this call clones the reference `{ty}`",
+                                            ty.peel_refs(),
+                                        ),
+                                    );
+                                    err.note(format!(
+                                        "the following trait bounds weren't met: {}",
+                                        errors
+                                            .iter()
+                                            .map(|e| e.obligation.predicate.to_string())
+                                            .collect::<Vec<_>>()
+                                            .join("\n"),
+                                    ));
+                                }
+                                // The type doesn't implement Clone because of unmet obligations.
+                                for error in errors {
+                                    if let traits::FulfillmentErrorCode::CodeSelectionError(
+                                        traits::SelectionError::Unimplemented,
+                                    ) = error.code
+                                        && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
+                                            pred,
+                                        )) = error.obligation.predicate.kind().skip_binder()
+                                    {
+                                        self.infcx.err_ctxt().suggest_derive(
+                                            &error.obligation,
+                                            err,
+                                            error.obligation.predicate.kind().rebind(pred),
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
                     let (changing, span, sugg) = match local.ty {
                         Some(ty) => ("changing", ty.span, message),
                         None => {
