@@ -81,7 +81,7 @@ const PARSED = [
                             pathWithoutLast: [],
                             pathLast: "never",
                             generics: [],
-                            typeFilter: 15,
+                            typeFilter: 1,
                         }]
                     ],
                 ],
@@ -112,7 +112,7 @@ const PARSED = [
                             pathWithoutLast: [],
                             pathLast: "[]",
                             generics: [],
-                            typeFilter: 15,
+                            typeFilter: 1,
                         }]
                     ],
                 ],
@@ -149,10 +149,10 @@ const PARSED = [
                                     pathWithoutLast: [],
                                     pathLast: "never",
                                     generics: [],
-                                    typeFilter: 15,
+                                    typeFilter: 1,
                                 },
                             ],
-                            typeFilter: 15,
+                            typeFilter: 1,
                         }]
                     ],
                 ],
