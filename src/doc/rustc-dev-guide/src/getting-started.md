@@ -48,10 +48,10 @@ guide :)
 ### Experts
 
 Not all `t-compiler` members are experts on all parts of `rustc`; it's a pretty
-large project.  To find out who has expertise on different parts of the
+large project. To find out who has expertise on different parts of the
 compiler, [consult this "experts map"][map].
 
-It's not perfectly complete, though, so please also feel free to ask questions
+The experts map incomplete and not actively maintained, so please also feel free to ask questions
 even if you can't figure out who to ping.
 
 Another way to find experts for a given part of the compiler is to see who has made recent commits.
@@ -165,7 +165,6 @@ incredibly helpful:
 [users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
-
 [iceb]: ./notification-groups/cleanup-crew.md
 [wd]: ./contributing.md#writing-documentation
 [wg]: https://rust-lang.github.io/compiler-team/working-groups/
