@@ -1609,24 +1609,6 @@ impl fmt::Debug for EarlyParamRegion {
 }
 
 rustc_index::newtype_index! {
-    /// A **`const`** **v**ariable **ID**.
-    #[debug_format = "?{}c"]
-    pub struct ConstVid {}
-}
-
-rustc_index::newtype_index! {
-    /// An **effect** **v**ariable **ID**.
-    ///
-    /// Handling effect infer variables happens separately from const infer variables
-    /// because we do not want to reuse any of the const infer machinery. If we try to
-    /// relate an effect variable with a normal one, we would ICE, which can catch bugs
-    /// where we are not correctly using the effect var for an effect param. Fallback
-    /// is also implemented on top of having separate effect and normal const variables.
-    #[debug_format = "?{}e"]
-    pub struct EffectVid {}
-}
-
-rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
     #[debug_format = "'?{}"]

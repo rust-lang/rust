@@ -1,12 +1,14 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use super::assembly::{self, structural_traits};
+use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::inspect::ProbeKind;
-use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::solve::{
+    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
+};
 use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
@@ -38,7 +40,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -63,7 +65,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             },
         };
 
-        ecx.probe_misc_candidate("impl").enter(|ecx| {
+        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
 

@@ -53,7 +53,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Yield => "yielding this value ",
             ConstraintCategory::UseAsConst => "using this value as a constant ",
             ConstraintCategory::UseAsStatic => "using this value as a static ",
-            ConstraintCategory::Cast => "cast ",
+            ConstraintCategory::Cast { .. } => "cast ",
             ConstraintCategory::CallArgument(_) => "argument ",
             ConstraintCategory::TypeAnnotation => "type annotation ",
             ConstraintCategory::ClosureBounds => "closure body ",

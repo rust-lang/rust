@@ -50,7 +50,7 @@ declare_lint! {
     Warn,
     "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
         reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
     };
 }
@@ -59,12 +59,13 @@ declare_lint_pass!(DerefIntoDynSupertrait => [DEREF_INTO_DYN_SUPERTRAIT]);
 
 impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        let tcx = cx.tcx;
         // `Deref` is being implemented for `t`
         if let hir::ItemKind::Impl(impl_) = item.kind
             && let Some(trait_) = &impl_.of_trait
-            && let t = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let t = tcx.type_of(item.owner_id).instantiate_identity()
             && let opt_did @ Some(did) = trait_.trait_def_id()
-            && opt_did == cx.tcx.lang_items().deref_trait()
+            && opt_did == tcx.lang_items().deref_trait()
             // `t` is `dyn t_principal`
             && let ty::Dynamic(data, _, ty::Dyn) = t.kind()
             && let Some(t_principal) = data.principal()
@@ -73,9 +74,14 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             && let ty::Dynamic(data, _, ty::Dyn) = target.kind()
             && let Some(target_principal) = data.principal()
             // `target_principal` is a supertrait of `t_principal`
-            && supertraits(cx.tcx, t_principal.with_self_ty(cx.tcx, cx.tcx.types.trait_object_dummy_self))
-                .any(|sup| sup.map_bound(|x| ty::ExistentialTraitRef::erase_self_ty(cx.tcx, x)) == target_principal)
+            && supertraits(tcx, t_principal.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
+                .any(|sup| {
+                    tcx.erase_regions(
+                        sup.map_bound(|x| ty::ExistentialTraitRef::erase_self_ty(tcx, x)),
+                    ) == tcx.erase_regions(target_principal)
+                })
         {
+            let t = tcx.erase_regions(t);
             let label = impl_
                 .items
                 .iter()
@@ -83,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
                 .map(|label| SupertraitAsDerefTargetLabel { label });
             cx.emit_spanned_lint(
                 DEREF_INTO_DYN_SUPERTRAIT,
-                cx.tcx.def_span(item.owner_id.def_id),
+                tcx.def_span(item.owner_id.def_id),
                 SupertraitAsDerefTarget { t, target_principal, label },
             );
         }

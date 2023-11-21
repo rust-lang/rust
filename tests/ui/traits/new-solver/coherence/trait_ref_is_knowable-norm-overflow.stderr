@@ -6,9 +6,6 @@ LL | impl<T: Copy> Trait for T {}
 LL | struct LocalTy;
 LL | impl Trait for <LocalTy as Overflow>::Assoc {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<LocalTy as Overflow>::Assoc`
-   |
-   = note: downstream crates may implement trait `std::marker::Sized` for type `<LocalTy as Overflow>::Assoc`
-   = note: downstream crates may implement trait `std::marker::Copy` for type `<LocalTy as Overflow>::Assoc`
 
 error: aborting due to previous error
 
