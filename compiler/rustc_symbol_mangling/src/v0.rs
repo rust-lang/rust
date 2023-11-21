@@ -189,7 +189,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         self.push("N");
         self.out.push(ns);
         print_prefix(self)?;
-        self.push_disambiguator(disambiguator as u64);
+        self.push_disambiguator(disambiguator);
         self.push_ident(name);
         Ok(())
     }
