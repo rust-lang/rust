@@ -14,6 +14,7 @@ function initSearch(searchIndex){}
  *     pathWithoutLast: Array<string>,
  *     pathLast: string,
  *     generics: Array<QueryElement>,
+ *     bindings: Map<(string|integer), Array<QueryElement>>,
  * }}
  */
 let QueryElement;
@@ -24,6 +25,7 @@ let QueryElement;
  *      totalElems: number,
  *      typeFilter: (null|string),
  *      userQuery: string,
+ *      isInBinding: (null|string),
  * }}
  */
 let ParserState;
@@ -191,8 +193,9 @@ let FunctionSearchType;
 /**
  * @typedef {{
  *     id: (null|number),
- *     ty: (null|number),
+ *     ty: number,
  *     generics: Array<FunctionType>,
+ *     bindings: Map<integer, Array<FunctionType>>,
  * }}
  */
 let FunctionType;
