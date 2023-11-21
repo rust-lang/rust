@@ -120,7 +120,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `#[deprecated]` annotations with a `since`
-    /// field that is not a valid semantic version.
+    /// field that is not a valid semantic version. Also allows "TBD" to signal
+    /// future deprecation.
     ///
     /// ### Why is this bad?
     /// For checking the version of the deprecation, it must be
@@ -479,7 +480,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         && let MetaItemKind::NameValue(lit) = &mi.kind
                         && mi.has_name(sym::since)
                     {
-                        check_semver(cx, item.span(), lit);
+                        check_deprecated_since(cx, item.span(), lit);
                     }
                 }
             }
@@ -760,9 +761,9 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
     }
 }
 
-fn check_semver(cx: &LateContext<'_>, span: Span, lit: &MetaItemLit) {
+fn check_deprecated_since(cx: &LateContext<'_>, span: Span, lit: &MetaItemLit) {
     if let LitKind::Str(is, _) = lit.kind {
-        if Version::parse(is.as_str()).is_ok() {
+        if is.as_str() == "TBD" || Version::parse(is.as_str()).is_ok() {
             return;
         }
     }
