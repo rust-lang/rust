@@ -13,7 +13,6 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_error_messages::MultiSpan;
 use rustc_index::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
@@ -76,13 +75,6 @@ impl ParamName {
             ParamName::Fresh | ParamName::Error => Ident::with_dummy_span(kw::UnderscoreLifetime),
         }
     }
-
-    pub fn normalize_to_macros_2_0(&self) -> ParamName {
-        match *self {
-            ParamName::Plain(ident) => ParamName::Plain(ident.normalize_to_macros_2_0()),
-            param_name => param_name,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
@@ -116,7 +108,7 @@ pub enum LifetimeName {
 }
 
 impl LifetimeName {
-    pub fn is_elided(&self) -> bool {
+    fn is_elided(&self) -> bool {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
 
@@ -289,10 +281,6 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn is_synthetic(&self) -> bool {
-        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.ident == Ident::empty())
-    }
-
     pub fn descr(&self) -> &'static str {
         match self {
             GenericArg::Lifetime(_) => "lifetime",
@@ -368,11 +356,6 @@ impl<'hir> GenericArgs<'hir> {
         panic!("GenericArgs::inputs: not a `Fn(T) -> U`");
     }
 
-    #[inline]
-    pub fn has_type_params(&self) -> bool {
-        self.args.iter().any(|arg| matches!(arg, GenericArg::Type(_)))
-    }
-
     pub fn has_err(&self) -> bool {
         self.args.iter().any(|arg| match arg {
             GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err(_)),
@@ -381,11 +364,6 @@ impl<'hir> GenericArgs<'hir> {
             TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err(_)),
             _ => false,
         })
-    }
-
-    #[inline]
-    pub fn num_type_params(&self) -> usize {
-        self.args.iter().filter(|arg| matches!(arg, GenericArg::Type(_))).count()
     }
 
     #[inline]
@@ -589,14 +567,6 @@ impl<'hir> Generics<'hir> {
         self.params.iter().find(|&param| name == param.name.ident().name)
     }
 
-    pub fn spans(&self) -> MultiSpan {
-        if self.params.is_empty() {
-            self.span.into()
-        } else {
-            self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
-        }
-    }
-
     /// If there are generic parameters, return where to introduce a new one.
     pub fn span_for_lifetime_suggestion(&self) -> Option<Span> {
         if let Some(first) = self.params.first()
@@ -679,7 +649,7 @@ impl<'hir> Generics<'hir> {
         )
     }
 
-    pub fn span_for_predicate_removal(&self, pos: usize) -> Span {
+    fn span_for_predicate_removal(&self, pos: usize) -> Span {
         let predicate = &self.predicates[pos];
         let span = predicate.span();
 
@@ -812,7 +782,7 @@ pub struct WhereRegionPredicate<'hir> {
 
 impl<'hir> WhereRegionPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `lifetime` of this predicate.
-    pub fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
+    fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
         self.lifetime.res == LifetimeName::Param(param_def_id)
     }
 }
@@ -869,7 +839,7 @@ pub struct OwnerNodes<'tcx> {
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
-    pub fn node(&self) -> OwnerNode<'tcx> {
+    fn node(&self) -> OwnerNode<'tcx> {
         use rustc_index::Idx;
         let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
@@ -1270,10 +1240,6 @@ impl BinOpKind {
 
     pub fn is_lazy(self) -> bool {
         matches!(self, BinOpKind::And | BinOpKind::Or)
-    }
-
-    pub fn is_shift(self) -> bool {
-        matches!(self, BinOpKind::Shl | BinOpKind::Shr)
     }
 
     pub fn is_comparison(self) -> bool {
@@ -2112,16 +2078,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, _) => qself.span,
-            QPath::LangItem(_, span, _) => span,
-        }
-    }
-
-    /// Returns the span of the last segment of this `QPath`. For example, `method` in
-    /// `<() as Trait>::method`.
-    pub fn last_segment_span(&self) -> Span {
-        match *self {
-            QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
-            QPath::TypeRelative(_, segment) => segment.ident.span,
             QPath::LangItem(_, span, _) => span,
         }
     }
@@ -3894,12 +3850,6 @@ impl<'hir> Node<'hir> {
             },
             _ => None,
         }
-    }
-
-    /// Get the fields for the tuple-constructor,
-    /// if this node is a tuple constructor, otherwise None
-    pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _, _)) = self { Some(fields) } else { None }
     }
 
     /// Expect a [`Node::Param`] or panic.
