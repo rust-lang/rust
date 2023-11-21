@@ -250,7 +250,7 @@ pub(crate) fn get_long_path(mut path: Vec<u16>, prefer_verbatim: bool) -> io::Re
     // \\?\UNC\
     const UNC_PREFIX: &[u16] = &[SEP, SEP, QUERY, SEP, U, N, C, SEP];
 
-    if path.starts_with(VERBATIM_PREFIX) || path.starts_with(NT_PREFIX) || path == &[0] {
+    if path.starts_with(VERBATIM_PREFIX) || path.starts_with(NT_PREFIX) || path == [0] {
         // Early return for paths that are already verbatim or empty.
         return Ok(path);
     } else if path.len() < LEGACY_MAX_PATH {
