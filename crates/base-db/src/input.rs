@@ -353,20 +353,18 @@ impl CrateData {
             return false;
         }
 
-        let mut opts = self.cfg_options.diff(&other.cfg_options).into_iter();
-        match opts.len() {
-            0 => (),
-            1 => {
-                // Don't care if rust_analyzer CfgAtom is the only cfg in the difference set of self's and other's cfgs.
-                // https://github.com/rust-lang/rust-analyzer/blob/0840038f02daec6ba3238f05d8caa037d28701a0/crates/project-model/src/workspace.rs#L894
-                if let Some(cfg) = opts.next() {
-                    if cfg.to_string() != "rust_analyzer" {
-                        return false;
-                    }
-                }
+        let mut opts = self.cfg_options.difference(&other.cfg_options);
+        if let Some(it) = opts.next() {
+            // Don't care if rust_analyzer CfgAtom is the only cfg in the difference set of self's and other's cfgs.
+            // https://github.com/rust-lang/rust-analyzer/blob/0840038f02daec6ba3238f05d8caa037d28701a0/crates/project-model/src/workspace.rs#L894
+            if it.to_string() != "rust_analyzer" {
+                return false;
             }
-            _ => return false,
-        };
+
+            if let Some(_) = opts.next() {
+                return false;
+            }
+        }
 
         if self.env != other.env {
             return false;
@@ -378,8 +376,8 @@ impl CrateData {
         if ignore_dev_deps {
             return slf_deps
                 .clone()
-                .filter(|it| it.kind == DependencyKind::Normal)
-                .eq(other_deps.clone().filter(|it| it.kind == DependencyKind::Normal));
+                .filter(|it| it.kind != DependencyKind::Dev)
+                .eq(other_deps.clone().filter(|it| it.kind != DependencyKind::Dev));
         }
 
         slf_deps.eq(other_deps)
@@ -524,7 +522,7 @@ impl CrateGraph {
 
         self.check_cycle_after_dependency(from, dep.crate_id)?;
 
-        self.arena[from].add_dep_unchecked(dep);
+        self.arena[from].add_dep(dep);
         Ok(())
     }
 
@@ -667,7 +665,12 @@ impl CrateGraph {
                     }
                     (a @ CrateOrigin::Local { .. }, CrateOrigin::Library { .. })
                     | (a @ CrateOrigin::Library { .. }, CrateOrigin::Local { .. }) => {
-                        // See #15656 for a relevant example.
+                        // If the origins differ, check if the two crates are equal without
+                        // considering the dev dependencies, if they are, they most likely are in
+                        // different loaded workspaces which may cause issues. We keep the local
+                        //  version and discard the library one as the local version may have
+                        // dev-dependencies that we want to keep resolving. See #15656 for more
+                        // information.
                         if data.eq_ignoring_origin_and_deps(&crate_data, true) {
                             return Some((id, if a.is_local() { false } else { true }));
                         }
@@ -681,22 +684,12 @@ impl CrateGraph {
             if let Some((res, should_update_lib_to_local)) = res {
                 id_map.insert(topo, res);
                 if should_update_lib_to_local {
-                    let origin_old = self.arena[res].origin.clone();
-                    assert!(origin_old.is_lib());
-
-                    if let CrateOrigin::Library { repo, name } = origin_old {
-                        self.arena[res].origin = CrateOrigin::Local { repo, name: Some(name) };
-                    }
+                    assert!(self.arena[res].origin.is_lib());
+                    assert!(crate_data.origin.is_local());
+                    self.arena[res].origin = crate_data.origin.clone();
 
                     // Move local's dev dependencies into the newly-local-formerly-lib crate.
-                    let dev_deps = crate_data
-                        .dependencies
-                        .clone()
-                        .into_iter()
-                        .filter(|dep| dep.kind() == DependencyKind::Dev)
-                        .collect::<Vec<Dependency>>();
-
-                    self.arena[res].add_dep(dev_deps).unwrap_or_default();
+                    self.arena[res].dependencies = crate_data.dependencies.clone();
                 }
             } else {
                 let id = self.arena.alloc(crate_data.clone());
@@ -766,33 +759,11 @@ impl ops::Index<CrateId> for CrateGraph {
     }
 }
 
-struct ExistingDepsError(Vec<Dependency>);
-
 impl CrateData {
     /// Add a dependency to `self` without checking if the dependency
     // is existent among `self.dependencies`.
-    fn add_dep_unchecked(&mut self, dep: Dependency) {
+    fn add_dep(&mut self, dep: Dependency) {
         self.dependencies.push(dep)
-    }
-
-    /// Add `deps` to `self` if the dependency is not already listed.
-    /// Finally returning an `Err` propagating the dependencies it couldn't add.
-    fn add_dep(&mut self, deps: Vec<Dependency>) -> Result<(), ExistingDepsError> {
-        let mut existing_deps: Vec<Dependency> = vec![];
-
-        deps.into_iter().for_each(|dep| {
-            if !self.dependencies.contains(&dep) {
-                self.dependencies.push(dep);
-            } else {
-                existing_deps.push(dep);
-            }
-        });
-
-        if !existing_deps.is_empty() {
-            return Err(ExistingDepsError(existing_deps));
-        }
-
-        Ok(())
     }
 }
 
