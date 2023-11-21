@@ -1,5 +1,5 @@
 //@revisions: default uniq
-//@compile-flags: -Zmiri-tree-borrows -Zmiri-tag-gc=0
+//@compile-flags: -Zmiri-tree-borrows -Zmiri-provenance-gc=0
 //@[uniq]compile-flags: -Zmiri-unique-is-unique
 
 #![feature(vec_into_raw_parts)]

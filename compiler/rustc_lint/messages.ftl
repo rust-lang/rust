@@ -128,12 +128,6 @@ lint_builtin_type_alias_generic_bounds = bounds on generic parameters are not en
 lint_builtin_type_alias_where_clause = where clauses are not enforced in type aliases
     .suggestion = the clause will not be checked when the type alias is used, and should be removed
 
-lint_builtin_unexpected_cli_config_name = unexpected `{$name}` as condition name
-    .help = was set with `--cfg` but isn't in the `--check-cfg` expected names
-
-lint_builtin_unexpected_cli_config_value = unexpected condition value `{$value}` for condition name `{$name}`
-    .help = was set with `--cfg` but isn't in the `--check-cfg` expected values
-
 lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
 lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
 

@@ -274,8 +274,8 @@ struct UnblockCallback {
     thread_to_unblock: ThreadId,
 }
 
-impl VisitTags for UnblockCallback {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {}
+impl VisitProvenance for UnblockCallback {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
 impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for UnblockCallback {

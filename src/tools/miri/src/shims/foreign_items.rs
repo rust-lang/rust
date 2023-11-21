@@ -459,6 +459,10 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
             // Miri-specific extern functions
+            "miri_run_provenance_gc" => {
+                let [] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                this.run_provenance_gc();
+            }
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;

@@ -35,7 +35,7 @@ use crate::session_diagnostics::{
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
 
-use super::{OutlivesSuggestionBuilder, RegionName};
+use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
     nll::ConstraintDescription,
@@ -763,7 +763,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let err = LifetimeOutliveErr { span: *span };
         let mut diag = self.infcx.tcx.sess.create_err(err);
 
-        let fr_name = self.give_region_a_name(*fr).unwrap();
+        // In certain scenarios, such as the one described in issue #118021,
+        // we might encounter a lifetime that cannot be named.
+        // These situations are bound to result in errors.
+        // To prevent an immediate ICE, we opt to create a dummy name instead.
+        let fr_name = self.give_region_a_name(*fr).unwrap_or(RegionName {
+            name: kw::UnderscoreLifetime,
+            source: RegionNameSource::Static,
+        });
         fr_name.highlight_region_name(&mut diag);
         let outlived_fr_name = self.give_region_a_name(*outlived_fr).unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
