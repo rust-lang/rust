@@ -12,5 +12,5 @@ LL | struct Foo<'a>(&'a [(); 100]);
    = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_value)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

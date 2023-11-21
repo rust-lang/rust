@@ -7,5 +7,5 @@ LL | /// Calls ['bar'] uselessly
    = note: `-D clippy::doc-link-with-quotes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_link_with_quotes)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

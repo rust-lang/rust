@@ -22,5 +22,5 @@ LL |     _C,
    = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
