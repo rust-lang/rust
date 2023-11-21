@@ -59,7 +59,8 @@ fn test_body(body: mir::Body) {
     for term in body.blocks.iter().map(|bb| &bb.terminator) {
         match &term.kind {
             Call { func, .. } => {
-                let TyKind::RigidTy(ty) = func.ty(body.locals()).kind() else { unreachable!() };
+                let TyKind::RigidTy(ty) = func.ty(body.locals()).unwrap().kind() else { unreachable!
+                () };
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
                 let instance = Instance::resolve(def, &args).unwrap();
                 let mangled_name = instance.mangled_name();

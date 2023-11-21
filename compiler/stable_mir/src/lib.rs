@@ -31,6 +31,7 @@ use self::ty::{
 #[macro_use]
 extern crate scoped_tls;
 
+#[macro_use]
 pub mod error;
 pub mod mir;
 pub mod ty;
@@ -38,10 +39,10 @@ pub mod visitor;
 
 use crate::mir::pretty::function_name;
 use crate::mir::Mutability;
-use crate::ty::{AdtDef, AdtKind, ClosureDef, ClosureKind};
+use crate::ty::{AdtDef, AdtKind, ClosureDef, ClosureKind, Const, RigidTy};
 pub use error::*;
 use mir::mono::Instance;
-use ty::{Const, FnDef, GenericArgs};
+use ty::{FnDef, GenericArgs};
 
 /// Use String for now but we should replace it.
 pub type Symbol = String;
@@ -224,8 +225,23 @@ pub trait Context {
     /// Returns the `kind` of given `DefId`
     fn item_kind(&self, item: CrateItem) -> ItemKind;
 
+    /// Returns whether this is a foreign item.
+    fn is_foreign_item(&self, item: CrateItem) -> bool;
+
     /// Returns the kind of a given algebraic data type
     fn adt_kind(&self, def: AdtDef) -> AdtKind;
+
+    /// Returns if the ADT is a box.
+    fn adt_is_box(&self, def: AdtDef) -> bool;
+
+    /// Evaluate constant as a target usize.
+    fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
+
+    /// Create a target usize constant for the given value.
+    fn usize_to_const(&self, val: u64) -> Result<Const, Error>;
+
+    /// Create a new type from the given kind.
+    fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
 
     /// Returns the type of given crate item.
     fn def_ty(&self, item: DefId) -> Ty;

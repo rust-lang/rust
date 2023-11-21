@@ -92,7 +92,8 @@ impl<'a> mir::MirVisitor for TestVisitor<'a> {
 
     fn visit_terminator(&mut self, term: &mir::Terminator, location: mir::visit::Location) {
         if let mir::TerminatorKind::Call { func, .. } = &term.kind {
-            let ty::TyKind::RigidTy(ty) = func.ty(self.body.locals()).kind() else { unreachable!
+            let ty::TyKind::RigidTy(ty) = func.ty(self.body.locals()).unwrap().kind() else {
+                unreachable!
             () };
             let ty::RigidTy::FnDef(def, args) = ty else { unreachable!() };
             self.calls.push(mir::mono::Instance::resolve(def, &args).unwrap());

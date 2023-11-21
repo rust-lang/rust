@@ -9,8 +9,8 @@ use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy};
 use rustc_span::Symbol;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::ty::{
-    Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const, GenericArgKind,
-    GenericArgs, Region, TraitRef, Ty,
+    AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const, FloatTy,
+    GenericArgKind, GenericArgs, IntTy, Region, RigidTy, TraitRef, Ty, UintTy,
 };
 use stable_mir::{AllocId, CrateItem, DefId};
 
@@ -60,6 +60,82 @@ impl<'tcx> RustcInternal<'tcx> for Ty {
     type T = InternalTy<'tcx>;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables.types[*self]
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for RigidTy {
+    type T = rustc_ty::TyKind<'tcx>;
+
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            RigidTy::Bool => rustc_ty::TyKind::Bool,
+            RigidTy::Char => rustc_ty::TyKind::Char,
+            RigidTy::Int(int_ty) => rustc_ty::TyKind::Int(int_ty.internal(tables)),
+            RigidTy::Uint(uint_ty) => rustc_ty::TyKind::Uint(uint_ty.internal(tables)),
+            RigidTy::Float(float_ty) => rustc_ty::TyKind::Float(float_ty.internal(tables)),
+            RigidTy::Never => rustc_ty::TyKind::Never,
+            RigidTy::Array(ty, cnst) => {
+                rustc_ty::TyKind::Array(ty.internal(tables), ty_const(cnst, tables))
+            }
+            RigidTy::Adt(def, args) => {
+                rustc_ty::TyKind::Adt(def.internal(tables), args.internal(tables))
+            }
+            RigidTy::Str => rustc_ty::TyKind::Str,
+            RigidTy::Slice(ty) => rustc_ty::TyKind::Slice(ty.internal(tables)),
+            RigidTy::RawPtr(..)
+            | RigidTy::Ref(..)
+            | RigidTy::Foreign(_)
+            | RigidTy::FnDef(_, _)
+            | RigidTy::FnPtr(_)
+            | RigidTy::Closure(..)
+            | RigidTy::Coroutine(..)
+            | RigidTy::CoroutineWitness(..)
+            | RigidTy::Dynamic(..)
+            | RigidTy::Tuple(..) => {
+                todo!()
+            }
+        }
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for IntTy {
+    type T = rustc_ty::IntTy;
+
+    fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            IntTy::Isize => rustc_ty::IntTy::Isize,
+            IntTy::I8 => rustc_ty::IntTy::I8,
+            IntTy::I16 => rustc_ty::IntTy::I16,
+            IntTy::I32 => rustc_ty::IntTy::I32,
+            IntTy::I64 => rustc_ty::IntTy::I64,
+            IntTy::I128 => rustc_ty::IntTy::I128,
+        }
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for UintTy {
+    type T = rustc_ty::UintTy;
+
+    fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            UintTy::Usize => rustc_ty::UintTy::Usize,
+            UintTy::U8 => rustc_ty::UintTy::U8,
+            UintTy::U16 => rustc_ty::UintTy::U16,
+            UintTy::U32 => rustc_ty::UintTy::U32,
+            UintTy::U64 => rustc_ty::UintTy::U64,
+            UintTy::U128 => rustc_ty::UintTy::U128,
+        }
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for FloatTy {
+    type T = rustc_ty::FloatTy;
+
+    fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            FloatTy::F32 => rustc_ty::FloatTy::F32,
+            FloatTy::F64 => rustc_ty::FloatTy::F64,
+        }
     }
 }
 
@@ -180,6 +256,13 @@ impl<'tcx> RustcInternal<'tcx> for ClosureKind {
             ClosureKind::FnMut => rustc_ty::ClosureKind::FnMut,
             ClosureKind::FnOnce => rustc_ty::ClosureKind::FnOnce,
         }
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for AdtDef {
+    type T = rustc_ty::AdtDef<'tcx>;
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.tcx.adt_def(self.0.internal(&mut *tables))
     }
 }
 
