@@ -61,7 +61,7 @@ fn resolve_instance<'tcx>(
 
         Ok(Some(Instance { def, args }))
     };
-    debug!("inner_resolve_instance: result={:?}", result);
+    debug!("resolve_instance: result={:?}", result);
     result
 }
 
