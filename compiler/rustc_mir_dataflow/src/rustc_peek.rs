@@ -10,19 +10,33 @@ use crate::move_paths::{HasMoveData, MoveData};
 use crate::move_paths::{LookupResult, MovePathIndex};
 use crate::MoveDataParamEnv;
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
+use rustc_ast::MetaItem;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::MirPass;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 pub struct SanityCheck;
 
+pub fn has_rustc_mir_with(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Option<MetaItem> {
+    for attr in tcx.get_attrs(def_id, sym::rustc_mir) {
+        let items = attr.meta_item_list();
+        for item in items.iter().flat_map(|l| l.iter()) {
+            match item.meta_item() {
+                Some(mi) if mi.has_name(name) => return Some(mi.clone()),
+                _ => continue,
+            }
+        }
+    }
+    None
+}
+
 // FIXME: This should be a `MirLint`, but it needs to be moved back to `rustc_mir_transform` first.
 impl<'tcx> MirPass<'tcx> for SanityCheck {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        use crate::has_rustc_mir_with;
         let def_id = body.source.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
