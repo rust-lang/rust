@@ -317,7 +317,7 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
         match undo_entry {
             AddVar(vid) => {
                 self.var_infos.pop().unwrap();
-                assert_eq!(self.var_infos.len(), vid.index() as usize);
+                assert_eq!(self.var_infos.len(), vid.index());
             }
             AddConstraint(ref constraint) => {
                 self.data.constraints.remove(constraint);
