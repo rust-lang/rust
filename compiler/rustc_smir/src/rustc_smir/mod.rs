@@ -69,15 +69,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn get_filename(&self, span: &Span) -> Filename {
         let tables = self.0.borrow();
-        opaque(
-            &tables
-                .tcx
-                .sess
-                .source_map()
-                .span_to_filename(tables[*span])
-                .display(rustc_span::FileNameDisplayPreference::Local)
-                .to_string(),
-        )
+        tables
+            .tcx
+            .sess
+            .source_map()
+            .span_to_filename(tables[*span])
+            .display(rustc_span::FileNameDisplayPreference::Local)
+            .to_string()
     }
 
     fn get_lines(&self, span: &Span) -> LineInfo {

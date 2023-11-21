@@ -110,7 +110,7 @@ pub enum ItemKind {
     Const,
 }
 
-pub type Filename = Opaque;
+pub type Filename = String;
 
 /// Holds information about an item in the crate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
