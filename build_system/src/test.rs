@@ -33,6 +33,7 @@ fn get_runners() -> Runners {
     runners.insert("--test-libcore", ("Run libcore tests", &test_libcore));
     runners.insert("--clean-ui-tests", ("Clean ui tests", &clean_ui_tests));
     runners.insert("--clean", ("Empty cargo target directory", &clean));
+    runners.insert("--build-sysroot", ("Build sysroot", &build_sysroot));
     runners.insert("--std-tests", ("Run std tests", &std_tests));
     runners.insert("--asm-tests", ("Run asm tests", &asm_tests));
     runners.insert(
