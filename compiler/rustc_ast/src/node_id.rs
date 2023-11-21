@@ -8,6 +8,7 @@ rustc_index::newtype_index! {
     /// This is later turned into [`DefId`] and `HirId` for the HIR.
     ///
     /// [`DefId`]: rustc_span::def_id::DefId
+    #[encodable]
     #[debug_format = "NodeId({})"]
     pub struct NodeId {
         /// The [`NodeId`] used to represent the root of the crate.

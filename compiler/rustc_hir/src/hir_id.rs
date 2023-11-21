@@ -154,6 +154,7 @@ rustc_index::newtype_index! {
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
     #[derive(HashStable_Generic)]
+    #[encodable]
     pub struct ItemLocalId {}
 }
 

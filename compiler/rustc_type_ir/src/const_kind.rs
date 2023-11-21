@@ -95,6 +95,7 @@ impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
 
 rustc_index::newtype_index! {
     /// A **`const`** **v**ariable **ID**.
+    #[encodable]
     #[debug_format = "?{}c"]
     #[gate_rustc_only]
     pub struct ConstVid {}
@@ -108,6 +109,7 @@ rustc_index::newtype_index! {
     /// relate an effect variable with a normal one, we would ICE, which can catch bugs
     /// where we are not correctly using the effect var for an effect param. Fallback
     /// is also implemented on top of having separate effect and normal const variables.
+    #[encodable]
     #[debug_format = "?{}e"]
     #[gate_rustc_only]
     pub struct EffectVid {}

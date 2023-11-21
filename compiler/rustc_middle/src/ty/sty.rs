@@ -1612,6 +1612,7 @@ impl fmt::Debug for EarlyParamRegion {
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
+    #[encodable]
     #[debug_format = "'?{}"]
     pub struct RegionVid {}
 }

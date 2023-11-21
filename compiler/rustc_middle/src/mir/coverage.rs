@@ -17,6 +17,7 @@ rustc_index::newtype_index! {
     /// Note that LLVM handles counter IDs as `uint32_t`, so there is no need
     /// to use a larger representation on the Rust side.
     #[derive(HashStable)]
+    #[encodable]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "CounterId({})"]
     pub struct CounterId {}
@@ -37,6 +38,7 @@ rustc_index::newtype_index! {
     /// Note that LLVM handles expression IDs as `uint32_t`, so there is no need
     /// to use a larger representation on the Rust side.
     #[derive(HashStable)]
+    #[encodable]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "ExpressionId({})"]
     pub struct ExpressionId {}

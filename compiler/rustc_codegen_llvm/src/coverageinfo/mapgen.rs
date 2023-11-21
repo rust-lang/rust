@@ -189,8 +189,6 @@ impl GlobalFileTable {
 }
 
 rustc_index::newtype_index! {
-    // Tell the newtype macro to not generate `Encode`/`Decode` impls.
-    #[custom_encodable]
     struct LocalFileId {}
 }
 
