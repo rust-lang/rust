@@ -1,14 +1,16 @@
-error[E0277]: expected a `Fn()` closure, found `{closure@$DIR/issue-34349.rs:16:17: 16:19}`
-  --> $DIR/issue-34349.rs:21:11
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/issue-34349.rs:16:17
    |
+LL |     let diary = || {
+   |                 ^^ this closure implements `FnMut`, not `Fn`
+LL |         farewell.push_str("!!!");
+   |         -------- closure is `FnMut` because it mutates the variable `farewell` here
+...
 LL |     apply(diary);
-   |     ----- ^^^^^ expected an `Fn()` closure, found `{closure@$DIR/issue-34349.rs:16:17: 16:19}`
+   |     ----- ----- the requirement to implement `Fn` derives from here
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Fn<()>` is not implemented for closure `{closure@$DIR/issue-34349.rs:16:17: 16:19}`
-   = note: wrap the `{closure@$DIR/issue-34349.rs:16:17: 16:19}` in a closure with no arguments: `|| { /* code */ }`
-   = note: `{closure@$DIR/issue-34349.rs:16:17: 16:19}` implements `FnMut`, but it must implement `Fn`, which is more general
 note: required by a bound in `apply`
   --> $DIR/issue-34349.rs:11:32
    |
@@ -17,4 +19,4 @@ LL |     fn apply<F>(f: F) where F: Fn() {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0525`.

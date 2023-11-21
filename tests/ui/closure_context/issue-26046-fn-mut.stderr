@@ -1,14 +1,16 @@
-error[E0277]: expected a `Fn()` closure, found `{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}`
-  --> $DIR/issue-26046-fn-mut.rs:8:5
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/issue-26046-fn-mut.rs:4:19
    |
+LL |     let closure = || {
+   |                   ^^ this closure implements `FnMut`, not `Fn`
+LL |         num += 1;
+   |         --- closure is `FnMut` because it mutates the variable `num` here
+...
 LL |     Box::new(closure)
-   |     ^^^^^^^^^^^^^^^^^ expected an `Fn()` closure, found `{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}`
+   |     ----------------- the requirement to implement `Fn` derives from here
    |
-   = help: the trait `Fn<()>` is not implemented for closure `{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}`
-   = note: wrap the `{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}` in a closure with no arguments: `|| { /* code */ }`
-   = note: `{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}` implements `FnMut`, but it must implement `Fn`, which is more general
    = note: required for the cast from `Box<{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}>` to `Box<(dyn Fn() + 'static)>`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0525`.

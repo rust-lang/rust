@@ -1,14 +1,16 @@
-error[E0277]: expected a `Fn()` closure, found `{closure@$DIR/issue-26046-fn-once.rs:4:19: 4:26}`
-  --> $DIR/issue-26046-fn-once.rs:8:5
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
+  --> $DIR/issue-26046-fn-once.rs:4:19
    |
+LL |     let closure = move || {
+   |                   ^^^^^^^ this closure implements `FnOnce`, not `Fn`
+LL |         vec
+   |         --- closure is `FnOnce` because it moves the variable `vec` out of its environment
+...
 LL |     Box::new(closure)
-   |     ^^^^^^^^^^^^^^^^^ expected an `Fn()` closure, found `{closure@$DIR/issue-26046-fn-once.rs:4:19: 4:26}`
+   |     ----------------- the requirement to implement `Fn` derives from here
    |
-   = help: the trait `Fn<()>` is not implemented for closure `{closure@$DIR/issue-26046-fn-once.rs:4:19: 4:26}`
-   = note: wrap the `{closure@$DIR/issue-26046-fn-once.rs:4:19: 4:26}` in a closure with no arguments: `|| { /* code */ }`
-   = note: `{closure@$DIR/issue-26046-fn-once.rs:4:19: 4:26}` implements `FnOnce`, but it must implement `Fn`, which is more general
    = note: required for the cast from `Box<{closure@$DIR/issue-26046-fn-once.rs:4:19: 4:26}>` to `Box<(dyn Fn() -> Vec<u8> + 'static)>`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0525`.
