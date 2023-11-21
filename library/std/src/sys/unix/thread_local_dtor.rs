@@ -23,6 +23,8 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     /// This is necessary because the __cxa_thread_atexit_impl implementation
     /// std links to by default may be a C or C++ implementation that was not
     /// compiled using the Clang integer normalization option.
+    #[cfg(sanitizer_cfi_normalize_integers)]
+    use core::ffi::c_int;
     #[cfg(not(sanitizer_cfi_normalize_integers))]
     #[cfi_encoding = "i"]
     #[repr(transparent)]
