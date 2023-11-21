@@ -1732,13 +1732,10 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id) }
     }
 
-    query lib_features(_: ()) -> &'tcx LibFeatures {
-        arena_cache
-        desc { "calculating the lib features map" }
-    }
-    query defined_lib_features(_: CrateNum) -> &'tcx [(Symbol, Option<Symbol>)] {
+    query lib_features(_: CrateNum) -> &'tcx LibFeatures {
         desc { "calculating the lib features defined in a crate" }
         separate_provide_extern
+        arena_cache
     }
     query stability_implications(_: CrateNum) -> &'tcx FxHashMap<Symbol, Symbol> {
         arena_cache
