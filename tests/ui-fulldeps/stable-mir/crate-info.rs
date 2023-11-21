@@ -23,6 +23,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::ItemKind;
+use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::mono::Instance;
 use stable_mir::ty::{RigidTy, TyKind};
 use std::assert_matches::assert_matches;

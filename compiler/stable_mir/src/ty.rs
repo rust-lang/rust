@@ -3,6 +3,7 @@ use super::{
     mir::{Body, Mutability},
     with, DefId, Error, Symbol,
 };
+use crate::crate_def::CrateDef;
 use crate::mir::alloc::AllocId;
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
@@ -295,11 +296,15 @@ pub enum Movability {
     Movable,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ForeignDef(pub DefId);
+crate_def! {
+    /// Hold information about a ForeignItem in a crate.
+    pub ForeignDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct FnDef(pub DefId);
+crate_def! {
+    /// Hold information about a function definition in a crate.
+    pub FnDef;
+}
 
 impl FnDef {
     pub fn body(&self) -> Body {
@@ -307,20 +312,25 @@ impl FnDef {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ClosureDef(pub DefId);
+crate_def! {
+    pub ClosureDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct CoroutineDef(pub DefId);
+crate_def! {
+    pub CoroutineDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ParamDef(pub DefId);
+crate_def! {
+    pub ParamDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct BrNamedDef(pub DefId);
+crate_def! {
+    pub BrNamedDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AdtDef(pub DefId);
+crate_def! {
+    pub AdtDef;
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum AdtKind {
@@ -363,26 +373,33 @@ impl AdtKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AliasDef(pub DefId);
+crate_def! {
+    pub AliasDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct TraitDef(pub DefId);
+crate_def! {
+    pub TraitDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct GenericDef(pub DefId);
+crate_def! {
+    pub GenericDef;
+}
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ConstDef(pub DefId);
+crate_def! {
+    pub ConstDef;
+}
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct ImplDef(pub DefId);
+crate_def! {
+    pub ImplDef;
+}
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct RegionDef(pub DefId);
+crate_def! {
+    pub RegionDef;
+}
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct CoroutineWitnessDef(pub DefId);
+crate_def! {
+    pub CoroutineWitnessDef;
+}
 
 /// A list of generic arguments.
 #[derive(Clone, Debug, Eq, PartialEq)]
