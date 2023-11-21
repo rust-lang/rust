@@ -101,7 +101,7 @@ use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods};
-use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMessage};
+use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
