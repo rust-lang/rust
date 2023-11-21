@@ -21,7 +21,7 @@ use rustc_hir::{
     StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
-use rustc_infer::traits::{self, StatementAsExpression};
+use rustc_infer::traits::{self, StatementAsExpression, TraitEngineExt};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -34,6 +34,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::solve::FulfillmentCtxt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1619,6 +1620,78 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             } else {
+                self.infcx.probe(|_snapshot| {
+                    if let ty::Adt(def, args) = expected_ty.kind()
+                        && let Some((def_id, _imp)) = self
+                            .tcx
+                            .all_impls(clone_trait_did)
+                            .filter_map(|def_id| {
+                                self.tcx.impl_trait_ref(def_id).map(|r| (def_id, r))
+                            })
+                            .map(|(def_id, imp)| (def_id, imp.skip_binder()))
+                            .filter(|(_, imp)| match imp.self_ty().peel_refs().kind() {
+                                ty::Adt(i_def, _) if i_def.did() == def.did() => true,
+                                _ => false,
+                            })
+                            .next()
+                    {
+                        let mut fulfill_cx = FulfillmentCtxt::new(&self.infcx);
+                        // We get all obligations from the impl to talk about specific
+                        // trait bounds.
+                        let obligations = self
+                            .tcx
+                            .predicates_of(def_id)
+                            .instantiate(self.tcx, args)
+                            .into_iter()
+                            .map(|(clause, span)| {
+                                traits::Obligation::new(
+                                    self.tcx,
+                                    traits::ObligationCause::misc(span, self.body_id),
+                                    self.param_env,
+                                    clause,
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        fulfill_cx.register_predicate_obligations(&self.infcx, obligations);
+                        let errors = fulfill_cx.select_all_or_error(&self.infcx);
+                        match &errors[..] {
+                            [] => {}
+                            [error] => {
+                                diag.help(format!(
+                                    "`Clone` is not implemented because the trait bound `{}` is \
+                                     not satisfied",
+                                    error.obligation.predicate,
+                                ));
+                            }
+                            [errors @ .., last] => {
+                                diag.help(format!(
+                                    "`Clone` is not implemented because the following trait bounds \
+                                     could not be satisfied: {} and `{}`",
+                                    errors
+                                        .iter()
+                                        .map(|e| format!("`{}`", e.obligation.predicate))
+                                        .collect::<Vec<_>>()
+                                        .join(", "),
+                                    last.obligation.predicate,
+                                ));
+                            }
+                        }
+                        for error in errors {
+                            if let traits::FulfillmentErrorCode::CodeSelectionError(
+                                traits::SelectionError::Unimplemented,
+                            ) = error.code
+                                && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+                                    error.obligation.predicate.kind().skip_binder()
+                            {
+                                self.infcx.err_ctxt().suggest_derive(
+                                    &error.obligation,
+                                    diag,
+                                    error.obligation.predicate.kind().rebind(pred),
+                                );
+                            }
+                        }
+                    }
+                });
                 self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
             }
         }
