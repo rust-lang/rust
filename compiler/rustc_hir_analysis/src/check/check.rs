@@ -18,7 +18,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
-use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
+use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
     self, AdtDef, ParamEnv, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
@@ -236,29 +236,9 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let args = GenericArgs::identity_for_item(tcx, def_id);
 
-    // First, try to look at any opaque expansion cycles, considering coroutine fields
-    // (even though these aren't necessarily true errors).
-    if tcx
-        .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::Yes)
-        .is_err()
-    {
-        // Look for true opaque expansion cycles, but ignore coroutines.
-        // This will give us any true errors. Coroutines are only problematic
-        // if they cause layout computation errors.
-        if tcx
-            .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::No)
-            .is_err()
-        {
-            let reported = opaque_type_cycle_error(tcx, def_id, span);
-            return Err(reported);
-        }
-
-        // And also look for cycle errors in the layout of coroutines.
-        if let Err(&LayoutError::Cycle(guar)) =
-            tcx.layout_of(tcx.param_env(def_id).and(Ty::new_opaque(tcx, def_id.to_def_id(), args)))
-        {
-            return Err(guar);
-        }
+    if tcx.try_expand_impl_trait_type(def_id.to_def_id(), args).is_err() {
+        let reported = opaque_type_cycle_error(tcx, def_id, span);
+        return Err(reported);
     }
 
     Ok(())
@@ -1520,5 +1500,12 @@ pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     debug!(?errors);
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(errors);
+        return;
+    }
+
+    if let Err(&LayoutError::Cycle(_guar)) =
+        tcx.layout_of(param_env.and(tcx.type_of(def_id).instantiate_identity()))
+    {
+        debug!("layout error in coroutine")
     }
 }

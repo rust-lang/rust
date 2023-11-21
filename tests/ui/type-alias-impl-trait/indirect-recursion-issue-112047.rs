@@ -1,5 +1,4 @@
 // edition: 2021
-// build-fail
 
 #![feature(impl_trait_in_assoc_type)]
 
@@ -12,6 +11,7 @@ trait Recur {
 }
 
 async fn recur(t: impl Recur) {
+    //~^ ERROR recursion in an async fn requires boxing
     t.recur().await;
 }
 
@@ -20,7 +20,6 @@ impl Recur for () {
 
     fn recur(self) -> Self::Recur {
         async move { recur(self).await; }
-        //~^ ERROR recursion in an async block requires boxing
     }
 }
 

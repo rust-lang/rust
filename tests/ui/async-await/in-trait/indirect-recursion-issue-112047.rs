@@ -1,5 +1,4 @@
 // edition: 2021
-// build-fail
 
 fn main() {
     let _ = async {

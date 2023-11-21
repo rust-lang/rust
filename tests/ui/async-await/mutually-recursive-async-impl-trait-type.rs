@@ -2,11 +2,11 @@
 // Test that impl trait does not allow creating recursive types that are
 // otherwise forbidden when using `async` and `await`.
 
-async fn rec_1() { //~ ERROR recursion in an async fn
+async fn rec_1() {
     rec_2().await;
 }
 
-async fn rec_2() {
+async fn rec_2() { //~ ERROR recursion in an async fn
     rec_1().await;
 }
 
