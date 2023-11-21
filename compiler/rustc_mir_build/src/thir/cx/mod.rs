@@ -135,7 +135,7 @@ impl<'tcx> Cx<'tcx> {
                 let env_region = ty::Region::new_bound(self.tcx, ty::INNERMOST, br);
                 let closure_env_ty =
                     self.tcx.closure_env_ty(closure_def_id, closure_args, env_region).unwrap();
-                let liberated_closure_env_ty = self.tcx.erase_late_bound_regions(
+                let liberated_closure_env_ty = self.tcx.instantiate_bound_regions_with_erased(
                     ty::Binder::bind_with_vars(closure_env_ty, bound_vars),
                 );
                 let env_param = Param {

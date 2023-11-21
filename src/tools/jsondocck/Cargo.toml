@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-jsonpath_lib = "0.2"
+jsonpath_lib = "0.3"
 getopts = "0.2"
 regex = "1.4"
 shlex = "1.0"

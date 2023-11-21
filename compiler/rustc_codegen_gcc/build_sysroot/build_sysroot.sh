@@ -28,3 +28,7 @@ fi
 # Copy files to sysroot
 mkdir -p sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
 cp -r target/$TARGET_TRIPLE/$sysroot_channel/deps/* sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
+# Copy the source files to the sysroot (Rust for Linux needs this).
+source_dir=sysroot/lib/rustlib/src/rust
+mkdir -p $source_dir
+cp -r sysroot_src/library/ $source_dir

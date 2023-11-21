@@ -906,12 +906,14 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow().undo_log.opaque_types_in_snapshot(&snapshot.undo_snapshot)
     }
 
-    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
+    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, expected: T, actual: T) -> bool
     where
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| self.at(origin, param_env).sub(DefineOpaqueTypes::No, a, b).is_ok())
+        self.probe(|_| {
+            self.at(origin, param_env).sub(DefineOpaqueTypes::No, expected, actual).is_ok()
+        })
     }
 
     pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool

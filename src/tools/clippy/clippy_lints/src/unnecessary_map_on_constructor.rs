@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// Some(i32::swap_bytes(4));
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.74.0"]
     pub UNNECESSARY_MAP_ON_CONSTRUCTOR,
     complexity,
     "using `map`/`map_err` on `Option` or `Result` constructors"

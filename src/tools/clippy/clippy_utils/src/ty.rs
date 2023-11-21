@@ -1160,11 +1160,16 @@ pub fn make_normalized_projection<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_bound_regions()) {
+        if let Some((i, arg)) = ty
+            .args
+            .iter()
+            .enumerate()
+            .find(|(_, arg)| arg.has_escaping_bound_vars())
+        {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
-                    use `TyCtxt::erase_late_bound_regions`\n\
+                    use `TyCtxt::instantiate_bound_regions_with_erased`\n\
                     note: arg is `{arg:#?}`",
             );
             return None;
@@ -1233,11 +1238,16 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_bound_regions()) {
+        if let Some((i, arg)) = ty
+            .args
+            .iter()
+            .enumerate()
+            .find(|(_, arg)| arg.has_escaping_bound_vars())
+        {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
-                    use `TyCtxt::erase_late_bound_regions`\n\
+                    use `TyCtxt::instantiate_bound_regions_with_erased`\n\
                     note: arg is `{arg:#?}`",
             );
             return None;
@@ -1265,4 +1275,9 @@ pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>
         Ok(ty) => ty.value,
         Err(_) => ty,
     }
+}
+
+/// Checks if the type is `core::mem::ManuallyDrop<_>`
+pub fn is_manually_drop(ty: Ty<'_>) -> bool {
+    ty.ty_adt_def().map_or(false, AdtDef::is_manually_drop)
 }

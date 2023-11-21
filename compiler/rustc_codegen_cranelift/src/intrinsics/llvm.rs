@@ -12,6 +12,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     target: Option<BasicBlock>,
+    span: Span,
 ) {
     if intrinsic.starts_with("llvm.aarch64") {
         return llvm_aarch64::codegen_aarch64_llvm_intrinsic_call(
@@ -31,6 +32,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             args,
             ret,
             target,
+            span,
         );
     }
 

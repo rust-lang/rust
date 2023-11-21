@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_entrypoint_fn, is_no_std_crate};
-use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -43,21 +42,19 @@ impl LateLintPass<'_> for MainRecursion {
             return;
         }
 
-        if_chain! {
-            if let ExprKind::Call(func, _) = &expr.kind;
-            if let ExprKind::Path(QPath::Resolved(_, path)) = &func.kind;
-            if let Some(def_id) = path.res.opt_def_id();
-            if is_entrypoint_fn(cx, def_id);
-            then {
-                span_lint_and_help(
-                    cx,
-                    MAIN_RECURSION,
-                    func.span,
-                    &format!("recursing into entrypoint `{}`", snippet(cx, func.span, "main")),
-                    None,
-                    "consider using another function for this recursion"
-                )
-            }
+        if let ExprKind::Call(func, _) = &expr.kind
+            && let ExprKind::Path(QPath::Resolved(_, path)) = &func.kind
+            && let Some(def_id) = path.res.opt_def_id()
+            && is_entrypoint_fn(cx, def_id)
+        {
+            span_lint_and_help(
+                cx,
+                MAIN_RECURSION,
+                func.span,
+                &format!("recursing into entrypoint `{}`", snippet(cx, func.span, "main")),
+                None,
+                "consider using another function for this recursion",
+            );
         }
     }
 }

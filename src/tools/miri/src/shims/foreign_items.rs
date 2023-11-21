@@ -345,7 +345,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // List taken from `library/std/src/sys/common/alloc.rs`.
         // This list should be kept in sync with the one from libstd.
         let min_align = match this.tcx.sess.target.arch.as_ref() {
-            "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
+            "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "mips64r6" | "s390x" | "sparc64" | "loongarch64" =>
                 16,
             arch => bug!("unsupported target architecture for malloc: `{}`", arch),
@@ -459,6 +459,10 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
             // Miri-specific extern functions
+            "miri_run_provenance_gc" => {
+                let [] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                this.run_provenance_gc();
+            }
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;

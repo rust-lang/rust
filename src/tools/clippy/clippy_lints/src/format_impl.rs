@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::macros::{find_format_arg_expr, find_format_args, is_format_macro, root_macro_call_first_node};
 use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
-use if_chain::if_chain;
 use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
@@ -141,27 +140,25 @@ impl<'tcx> LateLintPass<'tcx> for FormatImpl {
 }
 
 fn check_to_string_in_display(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if_chain! {
+    if let ExprKind::MethodCall(path, self_arg, ..) = expr.kind
         // Get the hir_id of the object we are calling the method on
-        if let ExprKind::MethodCall(path, self_arg, ..) = expr.kind;
         // Is the method to_string() ?
-        if path.ident.name == sym::to_string;
+        && path.ident.name == sym::to_string
         // Is the method a part of the ToString trait? (i.e. not to_string() implemented
         // separately)
-        if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-        if is_diag_trait_item(cx, expr_def_id, sym::ToString);
+        && let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && is_diag_trait_item(cx, expr_def_id, sym::ToString)
         // Is the method is called on self
-        if let ExprKind::Path(QPath::Resolved(_, path)) = self_arg.kind;
-        if let [segment] = path.segments;
-        if segment.ident.name == kw::SelfLower;
-        then {
-            span_lint(
-                cx,
-                RECURSIVE_FORMAT_IMPL,
-                expr.span,
-                "using `self.to_string` in `fmt::Display` implementation will cause infinite recursion",
-            );
-        }
+        && let ExprKind::Path(QPath::Resolved(_, path)) = self_arg.kind
+        && let [segment] = path.segments
+        && segment.ident.name == kw::SelfLower
+    {
+        span_lint(
+            cx,
+            RECURSIVE_FORMAT_IMPL,
+            expr.span,
+            "using `self.to_string` in `fmt::Display` implementation will cause infinite recursion",
+        );
     }
 }
 
@@ -215,55 +212,53 @@ fn check_format_arg_self(cx: &LateContext<'_>, span: Span, arg: &Expr<'_>, impl_
 }
 
 fn check_print_in_format_impl(cx: &LateContext<'_>, expr: &Expr<'_>, impl_trait: FormatTraitNames) {
-    if_chain! {
-        if let Some(macro_call) = root_macro_call_first_node(cx, expr);
-        if let Some(name) = cx.tcx.get_diagnostic_name(macro_call.def_id);
-        then {
-            let replacement = match name {
-                sym::print_macro | sym::eprint_macro => "write",
-                sym::println_macro | sym::eprintln_macro => "writeln",
-                _ => return,
-            };
+    if let Some(macro_call) = root_macro_call_first_node(cx, expr)
+        && let Some(name) = cx.tcx.get_diagnostic_name(macro_call.def_id)
+    {
+        let replacement = match name {
+            sym::print_macro | sym::eprint_macro => "write",
+            sym::println_macro | sym::eprintln_macro => "writeln",
+            _ => return,
+        };
 
-            let name = name.as_str().strip_suffix("_macro").unwrap();
+        let name = name.as_str().strip_suffix("_macro").unwrap();
 
-            span_lint_and_sugg(
-                cx,
-                PRINT_IN_FORMAT_IMPL,
-                macro_call.span,
-                &format!("use of `{name}!` in `{}` impl", impl_trait.name),
-                "replace with",
-                if let Some(formatter_name) = impl_trait.formatter_name {
-                    format!("{replacement}!({formatter_name}, ..)")
-                } else {
-                    format!("{replacement}!(..)")
-                },
-                Applicability::HasPlaceholders,
-            );
-        }
+        span_lint_and_sugg(
+            cx,
+            PRINT_IN_FORMAT_IMPL,
+            macro_call.span,
+            &format!("use of `{name}!` in `{}` impl", impl_trait.name),
+            "replace with",
+            if let Some(formatter_name) = impl_trait.formatter_name {
+                format!("{replacement}!({formatter_name}, ..)")
+            } else {
+                format!("{replacement}!(..)")
+            },
+            Applicability::HasPlaceholders,
+        );
     }
 }
 
 fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Option<FormatTraitNames> {
-    if_chain! {
-        if impl_item.ident.name == sym::fmt;
-        if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
-        if let Some(Impl { of_trait: Some(trait_ref),..}) = get_parent_as_impl(cx.tcx, impl_item.hir_id());
-        if let Some(did) = trait_ref.trait_def_id();
-        if let Some(name) = cx.tcx.get_diagnostic_name(did);
-        if matches!(name, sym::Debug | sym::Display);
-        then {
-            let body = cx.tcx.hir().body(body_id);
-            let formatter_name = body.params.get(1)
-                .and_then(|param| param.pat.simple_ident())
-                .map(|ident| ident.name);
+    if impl_item.ident.name == sym::fmt
+        && let ImplItemKind::Fn(_, body_id) = impl_item.kind
+        && let Some(Impl {
+            of_trait: Some(trait_ref),
+            ..
+        }) = get_parent_as_impl(cx.tcx, impl_item.hir_id())
+        && let Some(did) = trait_ref.trait_def_id()
+        && let Some(name) = cx.tcx.get_diagnostic_name(did)
+        && matches!(name, sym::Debug | sym::Display)
+    {
+        let body = cx.tcx.hir().body(body_id);
+        let formatter_name = body
+            .params
+            .get(1)
+            .and_then(|param| param.pat.simple_ident())
+            .map(|ident| ident.name);
 
-            Some(FormatTraitNames {
-                name,
-                formatter_name,
-            })
-        } else {
-            None
-        }
+        Some(FormatTraitNames { name, formatter_name })
+    } else {
+        None
     }
 }

@@ -2,7 +2,12 @@ error[E0560]: struct `Foo` has no field named `field2`
   --> $DIR/rmeta_meta_main.rs:13:19
    |
 LL |     let _ = Foo { field2: 42 };
-   |                   ^^^^^^ help: a field with a similar name exists: `field`
+   |                   ^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |     let _ = Foo { field: 42 };
+   |                   ~~~~~
 
 error: aborting due to previous error
 

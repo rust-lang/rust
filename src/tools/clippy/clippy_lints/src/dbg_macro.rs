@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, BytePos, Pos, Span};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -29,31 +29,6 @@ declare_clippy_lint! {
     pub DBG_MACRO,
     restriction,
     "`dbg!` macro is intended as a debugging tool"
-}
-
-/// Gets the span of the statement up to the next semicolon, if and only if the next
-/// non-whitespace character actually is a semicolon.
-/// E.g.
-/// ```rust,ignore
-/// 
-///    dbg!();
-///    ^^^^^^^  this span is returned
-///
-///   foo!(dbg!());
-///             no span is returned
-/// ```
-fn span_including_semi(cx: &LateContext<'_>, span: Span) -> Option<Span> {
-    let sm = cx.sess().source_map();
-    let sf = sm.lookup_source_file(span.hi());
-    let src = sf.src.as_ref()?.get(span.hi().to_usize()..)?;
-    let first_non_whitespace = src.find(|c: char| !c.is_whitespace())?;
-
-    if src.as_bytes()[first_non_whitespace] == b';' {
-        let hi = span.hi() + BytePos::from_usize(first_non_whitespace + 1);
-        Some(span.with_hi(hi))
-    } else {
-        None
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -88,10 +63,10 @@ impl LateLintPass<'_> for DbgMacro {
                 ExprKind::Block(..) => {
                     // If the `dbg!` macro is a "free" statement and not contained within other expressions,
                     // remove the whole statement.
-                    if let Some(Node::Stmt(stmt)) = cx.tcx.hir().find_parent(expr.hir_id)
-                        && let Some(span) = span_including_semi(cx, stmt.span.source_callsite())
+                    if let Some(Node::Stmt(_)) = cx.tcx.hir().find_parent(expr.hir_id)
+                        && let Some(semi_span) = cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
                     {
-                        (span, String::new())
+                        (macro_call.span.to(semi_span), String::new())
                     } else {
                         (macro_call.span, String::from("()"))
                     }

@@ -11,9 +11,11 @@ If parsing the output with Rust, the
 [`cargo_metadata`](https://crates.io/crates/cargo_metadata) crate provides
 some support for parsing the messages.
 
-When parsing, care should be taken to be forwards-compatible with future changes
-to the format. Optional values may be `null`. New fields may be added. Enumerated
-fields like "level" or "suggestion_applicability" may add new values.
+Each type of message has a `$message_type` field which can be used to
+distinguish the different formats. When parsing, care should be taken
+to be forwards-compatible with future changes to the format. Optional
+values may be `null`. New fields may be added. Enumerated fields like
+"level" or "suggestion_applicability" may add new values.
 
 ## Diagnostics
 
@@ -29,6 +31,8 @@ Diagnostics have the following format:
 
 ```javascript
 {
+    /* Type of this message */
+    "$message_type": "diagnostic",
     /* The primary message. */
     "message": "unused variable: `x`",
     /* The diagnostic code.
@@ -217,6 +221,8 @@ flag][option-emit] documentation.
 
 ```javascript
 {
+    /* Type of this message */
+    "$message_type": "artifact",
     /* The filename that was generated. */
     "artifact": "libfoo.rlib",
     /* The kind of artifact that was generated. Possible values:
@@ -239,6 +245,8 @@ information, even if the diagnostics have been suppressed (such as with an
 
 ```javascript
 {
+    /* Type of this message */
+    "$message_type": "future_incompat",
     /* An array of objects describing a warning that will become a hard error
        in the future.
     */

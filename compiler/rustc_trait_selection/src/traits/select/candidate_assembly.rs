@@ -291,8 +291,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                     None => {
-                        debug!("assemble_unboxed_candidates: closure_kind not yet known");
-                        candidates.vec.push(ClosureCandidate { is_const });
+                        if kind == ty::ClosureKind::FnOnce {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        } else {
+                            candidates.ambiguous = true;
+                        }
                     }
                 }
             }
@@ -1051,7 +1054,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         // The regions of a type don't affect the size of the type
         let tcx = self.tcx();
-        let self_ty = tcx.erase_late_bound_regions(obligation.predicate.self_ty());
+        let self_ty = tcx.instantiate_bound_regions_with_erased(obligation.predicate.self_ty());
         // We should erase regions from both the param-env and type, since both
         // may have infer regions. Specifically, after canonicalizing and instantiating,
         // early bound regions turn into region vars in both the new and old solver.

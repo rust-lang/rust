@@ -24,19 +24,19 @@ fn download_ci_llvm() {
     }
 
     let parse_llvm = |s| parse(s).llvm_from_ci;
-    let if_available = parse_llvm("llvm.download-ci-llvm = \"if-available\"");
+    let if_unchanged = parse_llvm("llvm.download-ci-llvm = \"if-unchanged\"");
 
     assert!(parse_llvm("llvm.download-ci-llvm = true"));
     assert!(!parse_llvm("llvm.download-ci-llvm = false"));
-    assert_eq!(parse_llvm(""), if_available);
-    assert_eq!(parse_llvm("rust.channel = \"dev\""), if_available);
+    assert_eq!(parse_llvm(""), if_unchanged);
+    assert_eq!(parse_llvm("rust.channel = \"dev\""), if_unchanged);
     assert!(!parse_llvm("rust.channel = \"stable\""));
     assert!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""));
     assert!(parse_llvm(
-        "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-available\""
+        "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
     ));
     assert!(!parse_llvm(
-        "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-available\""
+        "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
     ));
 }
 

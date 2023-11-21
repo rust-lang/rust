@@ -179,7 +179,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         GenericArgs::identity_for_item(tcx, def_id)
     };
     let sig = tcx.fn_sig(def_id).instantiate(tcx, args);
-    let sig = tcx.erase_late_bound_regions(sig);
+    let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let span = tcx.def_span(def_id);
 
     let source_info = SourceInfo::outermost(span);
@@ -416,7 +416,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
         let sig = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]);
-        let sig = tcx.erase_late_bound_regions(sig);
+        let sig = tcx.instantiate_bound_regions_with_erased(sig);
         let span = tcx.def_span(def_id);
 
         CloneShimBuilder {
@@ -654,7 +654,7 @@ fn build_call_shim<'tcx>(
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
     let (sig_args, untuple_args) = if let ty::InstanceDef::FnPtrShim(_, ty) = instance {
-        let sig = tcx.erase_late_bound_regions(ty.fn_sig(tcx));
+        let sig = tcx.instantiate_bound_regions_with_erased(ty.fn_sig(tcx));
 
         let untuple_args = sig.inputs();
 
@@ -668,7 +668,7 @@ fn build_call_shim<'tcx>(
 
     let def_id = instance.def_id();
     let sig = tcx.fn_sig(def_id);
-    let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
+    let sig = sig.map_bound(|sig| tcx.instantiate_bound_regions_with_erased(sig));
 
     assert_eq!(sig_args.is_some(), !instance.has_polymorphic_mir_body());
     let mut sig = if let Some(sig_args) = sig_args {

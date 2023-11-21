@@ -243,6 +243,9 @@ where
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
                 }
+                Component::Placeholder(placeholder_ty) => {
+                    self.placeholder_ty_must_outlive(origin, region, *placeholder_ty);
+                }
                 Component::Alias(alias_ty) => self.alias_ty_must_outlive(origin, region, *alias_ty),
                 Component::EscapingAlias(subcomponents) => {
                     self.components_must_outlive(origin, &subcomponents, region, category);
@@ -267,8 +270,26 @@ where
         region: ty::Region<'tcx>,
         param_ty: ty::ParamTy,
     ) {
-        let verify_bound = self.verify_bound.param_bound(param_ty);
+        let verify_bound = self.verify_bound.param_or_placeholder_bound(param_ty.to_ty(self.tcx));
         self.delegate.push_verify(origin, GenericKind::Param(param_ty), region, verify_bound);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn placeholder_ty_must_outlive(
+        &mut self,
+        origin: infer::SubregionOrigin<'tcx>,
+        region: ty::Region<'tcx>,
+        placeholder_ty: ty::PlaceholderType,
+    ) {
+        let verify_bound = self
+            .verify_bound
+            .param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty));
+        self.delegate.push_verify(
+            origin,
+            GenericKind::Placeholder(placeholder_ty),
+            region,
+            verify_bound,
+        );
     }
 
     #[instrument(level = "debug", skip(self))]

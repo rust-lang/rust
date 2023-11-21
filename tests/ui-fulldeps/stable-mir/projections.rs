@@ -19,11 +19,11 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};
-use stable_mir::ty::{RigidTy, TyKind};
+use stable_mir::ty::{RigidTy, TyKind, UintTy};
+use stable_mir::ItemKind;
 use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -33,13 +33,13 @@ const CRATE_NAME: &str = "input";
 /// Tests projections within Place objects
 fn test_place_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
-    let body = get_item(&items, (DefKind::Fn, "projections")).unwrap().body();
+    let body = get_item(&items, (ItemKind::Fn, "projections")).unwrap().body();
     assert_eq!(body.blocks.len(), 4);
     // The first statement assigns `&s.c` to a local. The projections include a deref for `s`, since
     // `s` is passed as a reference argument, and a field access for field `c`.
     match &body.blocks[0].statements[0].kind {
         StatementKind::Assign(
-            stable_mir::mir::Place { local: _, projection: local_proj },
+            place @ stable_mir::mir::Place { local: _, projection: local_proj },
             Rvalue::Ref(_, _, stable_mir::mir::Place { local: _, projection: r_proj }),
         ) => {
             // We can't match on vecs, only on slices. Comparing statements for equality wouldn't be
@@ -48,10 +48,14 @@ fn test_place_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
             assert!(local_proj.is_empty());
             match &r_proj[..] {
                 // Similarly we can't match against a type, only against its kind.
-                [ProjectionElem::Deref, ProjectionElem::Field(2, ty)] => assert_matches!(
-                    ty.kind(),
-                    TyKind::RigidTy(RigidTy::Uint(stable_mir::ty::UintTy::U8))
-                ),
+                [ProjectionElem::Deref, ProjectionElem::Field(2, ty)] => {
+                    assert_matches!(
+                        ty.kind(),
+                        TyKind::RigidTy(RigidTy::Uint(stable_mir::ty::UintTy::U8))
+                    );
+                    let ty = place.ty(body.locals()).unwrap();
+                    assert_matches!(ty.kind().rigid(), Some(RigidTy::Ref(..)));
+                },
                 other => panic!(
                     "Unable to match against expected rvalue projection. Expected the projection \
                      for `s.c`, which is a Deref and u8 Field. Got: {:?}",
@@ -69,7 +73,7 @@ fn test_place_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     // since `slice` is a reference, and an index.
     match &body.blocks[2].statements[0].kind {
         StatementKind::Assign(
-            stable_mir::mir::Place { local: _, projection: local_proj },
+            place @ stable_mir::mir::Place { local: _, projection: local_proj },
             Rvalue::Use(stable_mir::mir::Operand::Copy(stable_mir::mir::Place {
                 local: _,
                 projection: r_proj,
@@ -80,6 +84,8 @@ fn test_place_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
             // wildcards.
             assert!(local_proj.is_empty());
             assert_matches!(r_proj[..], [ProjectionElem::Deref, ProjectionElem::Index(_)]);
+            let ty = place.ty(body.locals()).unwrap();
+            assert_matches!(ty.kind().rigid(), Some(RigidTy::Uint(UintTy::U8)));
         }
         other => panic!(
             "Unable to match against expected Assign statement with a Use rvalue. Expected the \
@@ -131,10 +137,10 @@ fn test_place_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
 // Use internal API to find a function in a crate.
 fn get_item<'a>(
     items: &'a stable_mir::CrateItems,
-    item: (DefKind, &str),
+    item: (ItemKind, &str),
 ) -> Option<&'a stable_mir::CrateItem> {
     items.iter().find(|crate_item| {
-        crate_item.kind().to_string() == format!("{:?}", item.0) && crate_item.name() == item.1
+        crate_item.kind() == item.0 && crate_item.name() == item.1
     })
 }
 

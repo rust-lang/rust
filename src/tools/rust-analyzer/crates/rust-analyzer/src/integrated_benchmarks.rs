@@ -146,6 +146,7 @@ fn integrated_completion_benchmark() {
             },
             snippets: Vec::new(),
             prefer_no_std: false,
+            prefer_prelude: true,
             limit: None,
         };
         let position =
@@ -186,6 +187,7 @@ fn integrated_completion_benchmark() {
             },
             snippets: Vec::new(),
             prefer_no_std: false,
+            prefer_prelude: true,
             limit: None,
         };
         let position =

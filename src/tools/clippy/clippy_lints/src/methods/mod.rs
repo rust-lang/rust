@@ -123,7 +123,6 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
-use if_chain::if_chain;
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -3698,8 +3697,10 @@ impl Methods {
         msrv: Msrv,
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
-        allowed_dotfiles: FxHashSet<String>,
+        mut allowed_dotfiles: FxHashSet<String>,
     ) -> Self {
+        allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES.iter().map(ToString::to_string));
+
         Self {
             avoid_breaking_exported_api,
             msrv,
@@ -3896,7 +3897,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
             let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
-            let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
+            let method_sig = cx.tcx.instantiate_bound_regions_with_erased(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
             if !implements_trait && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
@@ -3977,44 +3978,41 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if_chain! {
-            if let TraitItemKind::Fn(ref sig, _) = item.kind;
-            if sig.decl.implicit_self.has_implicit_self();
-            if let Some(first_arg_hir_ty) = sig.decl.inputs.first();
-            if let Some(&first_arg_ty) = cx.tcx.fn_sig(item.owner_id)
+        if let TraitItemKind::Fn(ref sig, _) = item.kind
+            && sig.decl.implicit_self.has_implicit_self()
+            && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
+            && let Some(&first_arg_ty) = cx
+                .tcx
+                .fn_sig(item.owner_id)
                 .instantiate_identity()
                 .inputs()
                 .skip_binder()
-                .first();
-            then {
-                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-                wrong_self_convention::check(
-                    cx,
-                    item.ident.name.as_str(),
-                    self_ty,
-                    first_arg_ty,
-                    first_arg_hir_ty.span,
-                    false,
-                    true,
-                );
-            }
+                .first()
+        {
+            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
+            wrong_self_convention::check(
+                cx,
+                item.ident.name.as_str(),
+                self_ty,
+                first_arg_ty,
+                first_arg_hir_ty.span,
+                false,
+                true,
+            );
         }
 
-        if_chain! {
-            if item.ident.name == sym::new;
-            if let TraitItemKind::Fn(_, _) = item.kind;
-            let ret_ty = return_ty(cx, item.owner_id);
-            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-            if !ret_ty.contains(self_ty);
-
-            then {
-                span_lint(
-                    cx,
-                    NEW_RET_NO_SELF,
-                    item.span,
-                    "methods called `new` usually return `Self`",
-                );
-            }
+        if item.ident.name == sym::new
+            && let TraitItemKind::Fn(_, _) = item.kind
+            && let ret_ty = return_ty(cx, item.owner_id)
+            && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
+            && !ret_ty.contains(self_ty)
+        {
+            span_lint(
+                cx,
+                NEW_RET_NO_SELF,
+                item.span,
+                "methods called `new` usually return `Self`",
+            );
         }
     }
 

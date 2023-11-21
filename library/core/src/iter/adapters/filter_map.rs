@@ -97,9 +97,11 @@ where
             // SAFETY: Loop conditions ensure the index is in bounds.
 
             unsafe {
-                let opt_payload_at = core::intrinsics::option_payload_ptr(&val);
+                let opt_payload_at: *const MaybeUninit<B> = (&val as *const Option<B>)
+                    .byte_add(core::mem::offset_of!(Option<B>, Some.0))
+                    .cast();
                 let dst = guard.array.as_mut_ptr().add(idx);
-                crate::ptr::copy_nonoverlapping(opt_payload_at.cast(), dst, 1);
+                crate::ptr::copy_nonoverlapping(opt_payload_at, dst, 1);
                 crate::mem::forget(val);
             };
 

@@ -10,11 +10,11 @@
 #![allow(internal_features)]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
+#![feature(box_patterns)]
+#![feature(if_let_guard)]
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
-#![feature(if_let_guard)]
 #![feature(never_type)]
-#![feature(box_patterns)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -34,13 +34,13 @@ mod common_traits;
 mod consts;
 mod errors;
 mod implied_bounds;
-pub mod instance;
+mod instance;
 mod layout;
 mod layout_sanity_check;
 mod needs_drop;
 mod opaque_types;
-pub mod representability;
-pub mod sig_types;
+mod representability;
+mod sig_types;
 mod structural_match;
 mod ty;
 

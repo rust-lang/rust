@@ -14,12 +14,12 @@ pub struct ExpandedMacro {
 
 // Feature: Expand Macro Recursively
 //
-// Shows the full macro expansion of the macro at current cursor.
+// Shows the full macro expansion of the macro at the current caret position.
 //
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **rust-analyzer: Expand macro recursively**
+// | VS Code | **rust-analyzer: Expand macro recursively at caret**
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif[]

@@ -600,10 +600,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
                 // For an unsigned RHS, the shift is in-range for `rhs < bits`.
                 // For a signed RHS, `IntToInt` cast to the equivalent unsigned
-                // type and do that same comparison. Because the type is the
-                // same size, there's no negative shift amount that ends up
-                // overlapping with valid ones, thus it catches negatives too.
+                // type and do that same comparison.
+                // A negative value will be *at least* 128 after the cast (that's i8::MIN),
+                // and 128 is an overflowing shift amount for all our currently existing types,
+                // so this cast can never make us miss an overflow.
                 let (lhs_size, _) = ty.int_size_and_signed(self.tcx);
+                assert!(lhs_size.bits() <= 128);
                 let rhs_ty = rhs.ty(&self.local_decls, self.tcx);
                 let (rhs_size, _) = rhs_ty.int_size_and_signed(self.tcx);
 
@@ -625,7 +627,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // This can't overflow because the largest shiftable types are 128-bit,
                 // which fits in `u8`, the smallest possible `unsigned_ty`.
-                // (And `from_uint` will `bug!` if that's ever no longer true.)
                 let lhs_bits = Operand::const_from_scalar(
                     self.tcx,
                     unsigned_ty,

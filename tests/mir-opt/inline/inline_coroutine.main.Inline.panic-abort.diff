@@ -50,20 +50,20 @@
       bb1: {
 -         _3 = &mut _4;
 -         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new(move _3) -> [return: bb2, unwind unreachable];
-+         StorageDead(_7);
-+         StorageDead(_6);
-+         StorageDead(_5);
-+         StorageDead(_2);
-+         drop(_4) -> [return: bb2, unwind unreachable];
++         StorageDead(_4);
++         _0 = const ();
++         StorageDead(_1);
++         return;
       }
   
       bb2: {
 -         StorageDead(_3);
 -         _1 = <{coroutine@$DIR/inline_coroutine.rs:19:5: 19:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind unreachable];
-+         StorageDead(_4);
-+         _0 = const ();
-+         StorageDead(_1);
-+         return;
++         StorageDead(_7);
++         StorageDead(_6);
++         StorageDead(_5);
++         StorageDead(_2);
++         drop(_4) -> [return: bb1, unwind unreachable];
       }
   
       bb3: {
@@ -90,7 +90,7 @@
 +     bb6: {
 +         _1 = CoroutineState::<i32, bool>::Yielded(move _8);
 +         discriminant((*_6)) = 3;
-+         goto -> bb1;
++         goto -> bb2;
 +     }
 + 
 +     bb7: {
@@ -102,7 +102,7 @@
 +         StorageDead(_8);
 +         _1 = CoroutineState::<i32, bool>::Complete(_5);
 +         discriminant((*_6)) = 1;
-+         goto -> bb1;
++         goto -> bb2;
 +     }
 + 
 +     bb9: {

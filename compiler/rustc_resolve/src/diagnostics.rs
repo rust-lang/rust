@@ -2028,7 +2028,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     },
                 )
             });
-            (format!("use of undeclared crate or module `{ident}`"), suggestion)
+            if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
+                ident,
+                ScopeSet::All(ValueNS),
+                parent_scope,
+                None,
+                false,
+                ignore_binding,
+            ) {
+                let descr = binding.res().descr();
+                (format!("{descr} `{ident}` is not a crate or module"), suggestion)
+            } else {
+                (format!("use of undeclared crate or module `{ident}`"), suggestion)
+            }
         }
     }
 
@@ -2596,6 +2608,7 @@ fn show_candidates(
         path_strings.extend(core_path_strings);
         path_strings.dedup_by(|a, b| a.0 == b.0);
     }
+    accessible_path_strings.sort();
 
     if !accessible_path_strings.is_empty() {
         let (determiner, kind, name, through) =

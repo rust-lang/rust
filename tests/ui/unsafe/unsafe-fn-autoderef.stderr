@@ -3,7 +3,8 @@ error[E0609]: no field `f` on type `*const Rec`
    |
 LL |     return p.f;
    |            --^
-   |            |
+   |            | |
+   |            | unknown field
    |            help: `p` is a raw pointer; try dereferencing it: `(*p).f`
 
 error: aborting due to previous error

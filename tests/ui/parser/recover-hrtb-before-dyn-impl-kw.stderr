@@ -1,0 +1,26 @@
+error: `for<...>` expected after `dyn`, not before
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:3:21
+   |
+LL | fn test(_: &for<'a> dyn Trait) {}
+   |                     ^^^
+   |
+help: move `dyn` before the `for<...>`
+   |
+LL - fn test(_: &for<'a> dyn Trait) {}
+LL + fn test(_: &dyn for<'a> Trait) {}
+   |
+
+error: `for<...>` expected after `impl`, not before
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:6:21
+   |
+LL | fn test2(_: for<'a> impl Trait) {}
+   |                     ^^^^
+   |
+help: move `impl` before the `for<...>`
+   |
+LL - fn test2(_: for<'a> impl Trait) {}
+LL + fn test2(_: impl for<'a> Trait) {}
+   |
+
+error: aborting due to 2 previous errors
+

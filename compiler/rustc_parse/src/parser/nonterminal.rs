@@ -50,12 +50,12 @@ impl<'a> Parser<'a> {
             NonterminalKind::Literal => token.can_begin_literal_maybe_minus(),
             NonterminalKind::Vis => match token.kind {
                 // The follow-set of :vis + "priv" keyword + interpolated
-                token::Comma | token::Ident(..) | token::Interpolated(..) => true,
+                token::Comma | token::Ident(..) | token::Interpolated(_) => true,
                 _ => token.can_begin_type(),
             },
             NonterminalKind::Block => match &token.kind {
                 token::OpenDelim(Delimiter::Brace) => true,
-                token::Interpolated(nt) => match **nt {
+                token::Interpolated(nt) => match &nt.0 {
                     NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
                     NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_)
                     | NtVis(_) => false,
@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::ModSep | token::Ident(..) => true,
-                token::Interpolated(nt) => may_be_ident(nt),
+                token::Interpolated(nt) => may_be_ident(&nt.0),
                 _ => false,
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
@@ -75,7 +75,7 @@ impl<'a> Parser<'a> {
                 token::BinOp(token::And) |                  // reference
                 token::BinOp(token::Minus) |                // negative literal
                 token::AndAnd |                             // double reference
-                token::Literal(..) |                        // literal
+                token::Literal(_) |                        // literal
                 token::DotDot |                             // range pattern (future compat)
                 token::DotDotDot |                          // range pattern (future compat)
                 token::ModSep |                             // path
@@ -83,14 +83,14 @@ impl<'a> Parser<'a> {
                 token::BinOp(token::Shl) => true,           // path (double UFCS)
                 // leading vert `|` or-pattern
                 token::BinOp(token::Or) => matches!(kind, NonterminalKind::PatWithOr),
-                token::Interpolated(nt) => may_be_ident(nt),
+                token::Interpolated(nt) => may_be_ident(&nt.0),
                 _ => false,
             }
             }
             NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(_) => true,
                 token::Interpolated(nt) => {
-                    matches!(**nt, NtLifetime(_))
+                    matches!(&nt.0, NtLifetime(_))
                 }
                 _ => false,
             },
@@ -191,7 +191,7 @@ impl<'a> Parser<'a> {
             panic!(
                 "Missing tokens for nt {:?} at {:?}: {:?}",
                 nt,
-                nt.span(),
+                nt.use_span(),
                 pprust::nonterminal_to_string(&nt)
             );
         }

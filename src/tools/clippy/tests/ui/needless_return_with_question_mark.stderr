@@ -1,5 +1,5 @@
 error: unneeded `return` statement with `?` operator
-  --> $DIR/needless_return_with_question_mark.rs:27:5
+  --> $DIR/needless_return_with_question_mark.rs:28:5
    |
 LL |     return Err(())?;
    |     ^^^^^^^ help: remove it

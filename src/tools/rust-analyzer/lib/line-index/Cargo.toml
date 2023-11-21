@@ -7,5 +7,5 @@ repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/line-in
 edition = "2021"
 
 [dependencies]
-text-size = "1.1.0"
+text-size = "1.1.1"
 nohash-hasher = "0.2.0"

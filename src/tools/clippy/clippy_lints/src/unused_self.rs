@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::visitors::is_local_used;
-use if_chain::if_chain;
 use rustc_hir::{Body, Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -73,25 +72,23 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             })
             .is_some()
         };
-        if_chain! {
-            if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;
-            if assoc_item.fn_has_self_parameter;
-            if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
-            if !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) || !self.avoid_breaking_exported_api;
-            let body = cx.tcx.hir().body(*body_id);
-            if let [self_param, ..] = body.params;
-            if !is_local_used(cx, body, self_param.pat.hir_id);
-            if !contains_todo(cx, body);
-            then {
-                span_lint_and_help(
-                    cx,
-                    UNUSED_SELF,
-                    self_param.span,
-                    "unused `self` argument",
-                    None,
-                    "consider refactoring to an associated function",
-                );
-            }
+        if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind
+            && assoc_item.fn_has_self_parameter
+            && let ImplItemKind::Fn(.., body_id) = &impl_item.kind
+            && (!cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) || !self.avoid_breaking_exported_api)
+            && let body = cx.tcx.hir().body(*body_id)
+            && let [self_param, ..] = body.params
+            && !is_local_used(cx, body, self_param.pat.hir_id)
+            && !contains_todo(cx, body)
+        {
+            span_lint_and_help(
+                cx,
+                UNUSED_SELF,
+                self_param.span,
+                "unused `self` argument",
+                None,
+                "consider refactoring to an associated function",
+            );
         }
     }
 }

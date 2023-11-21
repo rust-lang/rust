@@ -250,7 +250,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// This method only replaces late bound regions. Any types or
     /// constants bound by `value` will cause an ICE.
-    pub fn replace_late_bound_regions<T, F>(
+    pub fn instantiate_bound_regions<T, F>(
         self,
         value: Binder<'tcx, T>,
         mut fld_r: F,
@@ -261,11 +261,11 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let mut region_map = BTreeMap::new();
         let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
-        let value = self.replace_late_bound_regions_uncached(value, real_fld_r);
+        let value = self.instantiate_bound_regions_uncached(value, real_fld_r);
         (value, region_map)
     }
 
-    pub fn replace_late_bound_regions_uncached<T, F>(
+    pub fn instantiate_bound_regions_uncached<T, F>(
         self,
         value: Binder<'tcx, T>,
         mut replace_regions: F,
@@ -325,7 +325,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.replace_late_bound_regions_uncached(value, |br| {
+        self.instantiate_bound_regions_uncached(value, |br| {
             ty::Region::new_late_param(self, all_outlive_scope, br.kind)
         })
     }
@@ -361,11 +361,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
     /// method lookup and a few other places where precise region relationships are not required.
-    pub fn erase_late_bound_regions<T>(self, value: Binder<'tcx, T>) -> T
+    pub fn instantiate_bound_regions_with_erased<T>(self, value: Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.replace_late_bound_regions(value, |_| self.lifetimes.re_erased).0
+        self.instantiate_bound_regions(value, |_| self.lifetimes.re_erased).0
     }
 
     /// Anonymize all bound variables in `value`, this is mostly used to improve caching.

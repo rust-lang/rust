@@ -47,8 +47,8 @@ Stabilized APIs
 - [`core::num::Saturating`](https://doc.rust-lang.org/stable/std/num/struct.Saturating.html)
 - [`impl From<io::Stdout> for std::process::Stdio`](https://doc.rust-lang.org/stable/std/process/struct.Stdio.html#impl-From%3CStdout%3E-for-Stdio)
 - [`impl From<io::Stderr> for std::process::Stdio`](https://doc.rust-lang.org/stable/std/process/struct.Stdio.html#impl-From%3CStderr%3E-for-Stdio)
-- [`impl From<OwnedHandle> for std::process::Child{Stdin, Stdout, Stderr}`](https://doc.rust-lang.org/stable/std/process/struct.Stdio.html#impl-From%3CStderr%3E-for-Stdio)
-- [`impl From<OwnedFd> for std::process::Child{Stdin, Stdout, Stderr}`](https://doc.rust-lang.org/stable/std/process/struct.Stdio.html#impl-From%3CStderr%3E-for-Stdio)
+- [`impl From<OwnedHandle> for std::process::Child{Stdin, Stdout, Stderr}`](https://doc.rust-lang.org/stable/std/process/struct.ChildStderr.html#impl-From%3COwnedHandle%3E-for-ChildStderr)
+- [`impl From<OwnedFd> for std::process::Child{Stdin, Stdout, Stderr}`](https://doc.rust-lang.org/stable/std/process/struct.ChildStderr.html#impl-From%3COwnedFd%3E-for-ChildStderr)
 - [`std::ffi::OsString::from_encoded_bytes_unchecked`](https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.from_encoded_bytes_unchecked)
 - [`std::ffi::OsString::into_encoded_bytes`](https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.into_encoded_bytes)
 - [`std::ffi::OsStr::from_encoded_bytes_unchecked`](https://doc.rust-lang.org/stable/std/ffi/struct.OsStr.html#method.from_encoded_bytes_unchecked)
@@ -71,17 +71,17 @@ These APIs are now stable in const contexts:
 Cargo
 -----
 
-- [fix: Set MSRV for internal packages](https://github.com/rust-lang/cargo/pull/12381/)
-- [config: merge lists in precedence order](https://github.com/rust-lang/cargo/pull/12515/)
-- [fix(update): Clarify meaning of --aggressive as --recursive](https://github.com/rust-lang/cargo/pull/12544/)
-- [fix(update): Make `-p` more convenient by being positional](https://github.com/rust-lang/cargo/pull/12545/)
-- [feat(help): Add styling to help output ](https://github.com/rust-lang/cargo/pull/12578/)
-- [feat(pkgid): Allow incomplete versions when unambigious](https://github.com/rust-lang/cargo/pull/12614/)
-- [feat: stabilize credential-process and registry-auth](https://github.com/rust-lang/cargo/pull/12649/)
-- [feat(cli): Add '-n' to dry-run](https://github.com/rust-lang/cargo/pull/12660/)
+- [In `Cargo.toml`, stabilize `[lints]`](https://github.com/rust-lang/cargo/pull/12648/)
+- [Stabilize credential-process and registry-auth](https://github.com/rust-lang/cargo/pull/12649/)
+- [Stabilize `--keep-going` build flag](https://github.com/rust-lang/cargo/pull/12568/)
+- [Add styling to `--help` output](https://github.com/rust-lang/cargo/pull/12578/)
+- [For `cargo clean`, add `--dry-run` flag and summary line at the end](https://github.com/rust-lang/cargo/pull/12638)
+- [For `cargo update`, make `--package` more convenient by being positional](https://github.com/rust-lang/cargo/pull/12545/)
+- [For `cargo update`, clarify meaning of --aggressive as --recursive](https://github.com/rust-lang/cargo/pull/12544/)
+- [Add '-n' as an alias for `--dry-run`](https://github.com/rust-lang/cargo/pull/12660/)
+- [Allow version-prefixes in pkgid's (e.g. `--package` flags) to resolve ambiguities](https://github.com/rust-lang/cargo/pull/12614/)
+- [In `.cargo/config.toml`, merge lists in precedence order](https://github.com/rust-lang/cargo/pull/12515/)
 - [Add support for `target.'cfg(..)'.linker`](https://github.com/rust-lang/cargo/pull/12535/)
-- [Stabilize `--keep-going`](https://github.com/rust-lang/cargo/pull/12568/)
-- [feat: Stabilize lints](https://github.com/rust-lang/cargo/pull/12648/)
 
 <a id="1.74.0-Rustdoc"></a>
 
@@ -200,7 +200,6 @@ These APIs are now stable in const contexts:
 Cargo
 -----
 
-- [Encode URL params correctly for `SourceId` in `Cargo.lock`.](https://github.com/rust-lang/cargo/pull/12280/)
 - [Bail out an error when using `cargo::` in custom build script.](https://github.com/rust-lang/cargo/pull/12332/)
 
 <a id="1.73.0-Misc"></a>

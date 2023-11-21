@@ -58,7 +58,7 @@ elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
         "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
 
     # Disable downloading CI LLVM on this builder;
-    # setting up clang-cl just above conflicts with the default if-available option.
+    # setting up clang-cl just above conflicts with the default if-unchanged option.
     ciCommandSetEnv NO_DOWNLOAD_CI_LLVM 1
 fi
 

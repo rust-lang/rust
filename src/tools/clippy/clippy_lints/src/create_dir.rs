@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -33,22 +32,20 @@ declare_lint_pass!(CreateDir => [CREATE_DIR]);
 
 impl LateLintPass<'_> for CreateDir {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(func, [arg, ..]) = expr.kind;
-            if let ExprKind::Path(ref path) = func.kind;
-            if let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id();
-            if cx.tcx.is_diagnostic_item(sym::fs_create_dir, def_id);
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    CREATE_DIR,
-                    expr.span,
-                    "calling `std::fs::create_dir` where there may be a better way",
-                    "consider calling `std::fs::create_dir_all` instead",
-                    format!("create_dir_all({})", snippet(cx, arg.span, "..")),
-                    Applicability::MaybeIncorrect,
-                )
-            }
+        if let ExprKind::Call(func, [arg, ..]) = expr.kind
+            && let ExprKind::Path(ref path) = func.kind
+            && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
+            && cx.tcx.is_diagnostic_item(sym::fs_create_dir, def_id)
+        {
+            span_lint_and_sugg(
+                cx,
+                CREATE_DIR,
+                expr.span,
+                "calling `std::fs::create_dir` where there may be a better way",
+                "consider calling `std::fs::create_dir_all` instead",
+                format!("create_dir_all({})", snippet(cx, arg.span, "..")),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }

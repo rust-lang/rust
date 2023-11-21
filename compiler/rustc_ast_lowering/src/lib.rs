@@ -499,7 +499,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn orig_opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver.node_id_to_def_id.get(&node).map(|local_def_id| *local_def_id)
+        self.resolver.node_id_to_def_id.get(&node).copied()
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
@@ -542,7 +542,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.generics_def_id_map
             .iter()
             .rev()
-            .find_map(|map| map.get(&local_def_id).map(|local_def_id| *local_def_id))
+            .find_map(|map| map.get(&local_def_id).copied())
             .unwrap_or(local_def_id)
     }
 

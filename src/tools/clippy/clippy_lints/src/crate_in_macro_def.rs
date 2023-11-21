@@ -53,35 +53,31 @@ declare_lint_pass!(CrateInMacroDef => [CRATE_IN_MACRO_DEF]);
 
 impl EarlyLintPass for CrateInMacroDef {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if_chain! {
-            if item.attrs.iter().any(is_macro_export);
-            if let ItemKind::MacroDef(macro_def) = &item.kind;
-            let tts = macro_def.body.tokens.clone();
-            if let Some(span) = contains_unhygienic_crate_reference(&tts);
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    CRATE_IN_MACRO_DEF,
-                    span,
-                    "`crate` references the macro call's crate",
-                    "to reference the macro definition's crate, use",
-                    String::from("$crate"),
-                    Applicability::MachineApplicable,
-                );
-            }
+        if item.attrs.iter().any(is_macro_export)
+            && let ItemKind::MacroDef(macro_def) = &item.kind
+            && let tts = macro_def.body.tokens.clone()
+            && let Some(span) = contains_unhygienic_crate_reference(&tts)
+        {
+            span_lint_and_sugg(
+                cx,
+                CRATE_IN_MACRO_DEF,
+                span,
+                "`crate` references the macro call's crate",
+                "to reference the macro definition's crate, use",
+                String::from("$crate"),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
 
 fn is_macro_export(attr: &Attribute) -> bool {
-    if_chain! {
-        if let AttrKind::Normal(normal) = &attr.kind;
-        if let [segment] = normal.item.path.segments.as_slice();
-        then {
-            segment.ident.name == sym::macro_export
-        } else {
-            false
-        }
+    if let AttrKind::Normal(normal) = &attr.kind
+        && let [segment] = normal.item.path.segments.as_slice()
+    {
+        segment.ident.name == sym::macro_export
+    } else {
+        false
     }
 }
 
@@ -89,14 +85,12 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
     let mut prev_is_dollar = false;
     let mut cursor = tts.trees();
     while let Some(curr) = cursor.next() {
-        if_chain! {
-            if !prev_is_dollar;
-            if let Some(span) = is_crate_keyword(curr);
-            if let Some(next) = cursor.look_ahead(0);
-            if is_token(next, &TokenKind::ModSep);
-            then {
-                return Some(span);
-            }
+        if !prev_is_dollar
+            && let Some(span) = is_crate_keyword(curr)
+            && let Some(next) = cursor.look_ahead(0)
+            && is_token(next, &TokenKind::ModSep)
+        {
+            return Some(span);
         }
         if let TokenTree::Delimited(_, _, tts) = &curr {
             let span = contains_unhygienic_crate_reference(tts);
@@ -110,10 +104,18 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
 }
 
 fn is_crate_keyword(tt: &TokenTree) -> Option<Span> {
-    if_chain! {
-        if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }, _) = tt;
-        if symbol.as_str() == "crate";
-        then { Some(*span) } else { None }
+    if let TokenTree::Token(
+        Token {
+            kind: TokenKind::Ident(symbol, _),
+            span,
+        },
+        _,
+    ) = tt
+        && symbol.as_str() == "crate"
+    {
+        Some(*span)
+    } else {
+        None
     }
 }
 

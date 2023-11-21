@@ -49,6 +49,14 @@ pub trait AllocMap<K: Hash + Eq, V> {
     where
         K: Borrow<Q>;
 
+    /// Callers should prefer [`AllocMap::contains_key`] when it is possible to call because it may
+    /// be more efficient. This function exists for callers that only have a shared reference
+    /// (which might make it slightly less efficient than `contains_key`, e.g. if
+    /// the data is stored inside a `RefCell`).
+    fn contains_key_ref<Q: ?Sized + Hash + Eq>(&self, k: &Q) -> bool
+    where
+        K: Borrow<Q>;
+
     /// Inserts a new entry into the map.
     fn insert(&mut self, k: K, v: V) -> Option<V>;
 

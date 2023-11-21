@@ -1,7 +1,6 @@
 pub mod almost_standard_lint_formulation;
 pub mod collapsible_calls;
 pub mod compiler_lint_functions;
-pub mod if_chain_style;
 pub mod interning_defined_symbol;
 pub mod invalid_paths;
 pub mod lint_without_lint_pass;

@@ -9,6 +9,7 @@ use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
+use rustc_smir::rustc_internal::pretty::write_smir_pretty;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
@@ -323,6 +324,11 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         MirCFG => {
             let mut out = Vec::new();
             write_mir_graphviz(ex.tcx(), None, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        }
+        StableMir => {
+            let mut out = Vec::new();
+            write_smir_pretty(ex.tcx(), &mut out).unwrap();
             String::from_utf8(out).unwrap()
         }
         ThirTree => {

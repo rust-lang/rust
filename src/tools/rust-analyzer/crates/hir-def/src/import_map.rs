@@ -1,13 +1,14 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{collections::hash_map::Entry, fmt, hash::BuildHasherDefault};
+use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
-use fst::{self, Streamer};
+use fst::{self, raw::IndexedValue, Streamer};
 use hir_expand::name::Name;
 use indexmap::IndexMap;
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+use rustc_hash::{FxHashSet, FxHasher};
+use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
@@ -20,22 +21,20 @@ use crate::{
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
-// FIXME: Support aliases: an item may be exported under multiple names, so `ImportInfo` should
-// have `Vec<(Name, ModuleId)>` instead of `(Name, ModuleId)`.
 /// Item import details stored in the `ImportMap`.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ImportInfo {
     /// A name that can be used to import the item, relative to the crate's root.
     pub name: Name,
     /// The module containing this item.
     pub container: ModuleId,
-    /// Whether the import is a trait associated item or not.
-    pub is_trait_assoc_item: bool,
     /// Whether this item is annotated with `#[doc(hidden)]`.
     pub is_doc_hidden: bool,
     /// Whether this item is annotated with `#[unstable(..)]`.
     pub is_unstable: bool,
 }
+
+type ImportMapIndex = FxIndexMap<ItemInNs, (SmallVec<[ImportInfo; 1]>, IsTraitAssocItem)>;
 
 /// A map from publicly exported items to its name.
 ///
@@ -43,8 +42,7 @@ pub struct ImportInfo {
 /// names, the one with the shortest import path will be used.
 #[derive(Default)]
 pub struct ImportMap {
-    map: FxIndexMap<ItemInNs, ImportInfo>,
-
+    map: ImportMapIndex,
     /// List of keys stored in `map`, sorted lexicographically by their `ModPath`. Indexed by the
     /// values returned by running `fst`.
     ///
@@ -53,6 +51,12 @@ pub struct ImportMap {
     /// the index of the first one.
     importables: Vec<ItemInNs>,
     fst: fst::Map<Vec<u8>>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum IsTraitAssocItem {
+    Yes,
+    No,
 }
 
 impl ImportMap {
@@ -64,13 +68,18 @@ impl ImportMap {
         let mut importables: Vec<_> = map
             .iter()
             // We've only collected items, whose name cannot be tuple field.
-            .map(|(&item, info)| (item, info.name.as_str().unwrap().to_ascii_lowercase()))
+            .flat_map(|(&item, (info, _))| {
+                info.iter()
+                    .map(move |info| (item, info.name.as_str().unwrap().to_ascii_lowercase()))
+            })
             .collect();
         importables.sort_by(|(_, lhs_name), (_, rhs_name)| lhs_name.cmp(rhs_name));
+        importables.dedup();
 
         // Build the FST, taking care not to insert duplicate values.
         let mut builder = fst::MapBuilder::memory();
-        let iter = importables.iter().enumerate().dedup_by(|lhs, rhs| lhs.1 .1 == rhs.1 .1);
+        let iter =
+            importables.iter().enumerate().dedup_by(|(_, (_, lhs)), (_, (_, rhs))| lhs == rhs);
         for (start_idx, (_, name)) in iter {
             let _ = builder.insert(name, start_idx as u64);
         }
@@ -82,12 +91,12 @@ impl ImportMap {
         })
     }
 
-    pub fn import_info_for(&self, item: ItemInNs) -> Option<&ImportInfo> {
-        self.map.get(&item)
+    pub fn import_info_for(&self, item: ItemInNs) -> Option<&[ImportInfo]> {
+        self.map.get(&item).map(|(info, _)| &**info)
     }
 }
 
-fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemInNs, ImportInfo> {
+fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
     let _p = profile::span("collect_import_map");
 
     let def_map = db.crate_def_map(krate);
@@ -95,11 +104,13 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
 
     // We look only into modules that are public(ly reexported), starting with the crate root.
     let root = def_map.module_id(DefMap::ROOT);
-    let mut worklist = vec![(root, 0u32)];
-    // Records items' minimum module depth.
-    let mut depth_map = FxHashMap::default();
+    let mut worklist = vec![root];
+    let mut visited = FxHashSet::default();
 
-    while let Some((module, depth)) = worklist.pop() {
+    while let Some(module) = worklist.pop() {
+        if !visited.insert(module) {
+            continue;
+        }
         let ext_def_map;
         let mod_data = if module.krate == krate {
             &def_map[module.local_id]
@@ -127,61 +138,17 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
                         ItemInNs::Macros(id) => Some(id.into()),
                     }
                 };
-                let status @ (is_doc_hidden, is_unstable) =
-                    attr_id.map_or((false, false), |attr_id| {
-                        let attrs = db.attrs(attr_id);
-                        (attrs.has_doc_hidden(), attrs.is_unstable())
-                    });
+                let (is_doc_hidden, is_unstable) = attr_id.map_or((false, false), |attr_id| {
+                    let attrs = db.attrs(attr_id);
+                    (attrs.has_doc_hidden(), attrs.is_unstable())
+                });
 
                 let import_info = ImportInfo {
                     name: name.clone(),
                     container: module,
-                    is_trait_assoc_item: false,
                     is_doc_hidden,
                     is_unstable,
                 };
-
-                match depth_map.entry(item) {
-                    Entry::Vacant(entry) => _ = entry.insert((depth, status)),
-                    Entry::Occupied(mut entry) => {
-                        let &(occ_depth, (occ_is_doc_hidden, occ_is_unstable)) = entry.get();
-                        (depth, occ_depth);
-                        let overwrite = match (
-                            is_doc_hidden,
-                            occ_is_doc_hidden,
-                            is_unstable,
-                            occ_is_unstable,
-                        ) {
-                            // no change of hiddeness or unstableness
-                            (true, true, true, true)
-                            | (true, true, false, false)
-                            | (false, false, true, true)
-                            | (false, false, false, false) => depth < occ_depth,
-
-                            // either less hidden or less unstable, accept
-                            (true, true, false, true)
-                            | (false, true, true, true)
-                            | (false, true, false, true)
-                            | (false, true, false, false)
-                            | (false, false, false, true) => true,
-                            // more hidden or unstable, discard
-                            (true, true, true, false)
-                            | (true, false, true, true)
-                            | (true, false, true, false)
-                            | (true, false, false, false)
-                            | (false, false, true, false) => false,
-
-                            // exchanges doc(hidden) for unstable (and vice-versa),
-                            (true, false, false, true) | (false, true, true, false) => {
-                                depth < occ_depth
-                            }
-                        };
-                        if !overwrite {
-                            continue;
-                        }
-                        entry.insert((depth, status));
-                    }
-                }
 
                 if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
                     collect_trait_assoc_items(
@@ -193,13 +160,14 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
                     );
                 }
 
-                map.insert(item, import_info);
+                let (infos, _) =
+                    map.entry(item).or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::No));
+                infos.reserve_exact(1);
+                infos.push(import_info);
 
-                // If we've just added a module, descend into it. We might traverse modules
-                // multiple times, but only if the module depth is smaller (else we `continue`
-                // above).
+                // If we've just added a module, descend into it.
                 if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
-                    worklist.push((mod_id, depth + 1));
+                    worklist.push(mod_id);
                 }
             }
         }
@@ -210,7 +178,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
 
 fn collect_trait_assoc_items(
     db: &dyn DefDatabase,
-    map: &mut FxIndexMap<ItemInNs, ImportInfo>,
+    map: &mut ImportMapIndex,
     tr: TraitId,
     is_type_in_ns: bool,
     trait_import_info: &ImportInfo,
@@ -237,11 +205,14 @@ fn collect_trait_assoc_items(
         let assoc_item_info = ImportInfo {
             container: trait_import_info.container,
             name: assoc_item_name.clone(),
-            is_trait_assoc_item: true,
             is_doc_hidden: attrs.has_doc_hidden(),
             is_unstable: attrs.is_unstable(),
         };
-        map.insert(assoc_item, assoc_item_info);
+
+        let (infos, _) =
+            map.entry(assoc_item).or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::Yes));
+        infos.reserve_exact(1);
+        infos.push(assoc_item_info);
     }
 }
 
@@ -259,10 +230,13 @@ impl fmt::Debug for ImportMap {
         let mut importable_names: Vec<_> = self
             .map
             .iter()
-            .map(|(item, _)| match item {
-                ItemInNs::Types(it) => format!("- {it:?} (t)",),
-                ItemInNs::Values(it) => format!("- {it:?} (v)",),
-                ItemInNs::Macros(it) => format!("- {it:?} (m)",),
+            .map(|(item, (infos, _))| {
+                let l = infos.len();
+                match item {
+                    ItemInNs::Types(it) => format!("- {it:?} (t) [{l}]",),
+                    ItemInNs::Values(it) => format!("- {it:?} (v) [{l}]",),
+                    ItemInNs::Macros(it) => format!("- {it:?} (m) [{l}]",),
+                }
             })
             .collect();
 
@@ -272,7 +246,7 @@ impl fmt::Debug for ImportMap {
 }
 
 /// A way to match import map contents against the search query.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 enum SearchMode {
     /// Import map entry should strictly match the query string.
     Exact,
@@ -345,6 +319,15 @@ impl Query {
         Self { case_sensitive: true, ..self }
     }
 
+    fn matches_assoc_mode(&self, is_trait_assoc_item: IsTraitAssocItem) -> bool {
+        match (is_trait_assoc_item, self.assoc_mode) {
+            (IsTraitAssocItem::Yes, AssocSearchMode::Exclude)
+            | (IsTraitAssocItem::No, AssocSearchMode::AssocItemsOnly) => false,
+            _ => true,
+        }
+    }
+
+    /// Checks whether the import map entry matches the query.
     fn import_matches(
         &self,
         db: &dyn DefDatabase,
@@ -352,12 +335,8 @@ impl Query {
         enforce_lowercase: bool,
     ) -> bool {
         let _p = profile::span("import_map::Query::import_matches");
-        match (import.is_trait_assoc_item, self.assoc_mode) {
-            (true, AssocSearchMode::Exclude) => return false,
-            (false, AssocSearchMode::AssocItemsOnly) => return false,
-            _ => {}
-        }
 
+        // FIXME: Can we get rid of the alloc here?
         let mut input = import.name.display(db.upcast()).to_string();
         let case_insensitive = enforce_lowercase || !self.case_sensitive;
         if case_insensitive {
@@ -388,7 +367,7 @@ impl Query {
 pub fn search_dependencies(
     db: &dyn DefDatabase,
     krate: CrateId,
-    query: Query,
+    ref query: Query,
 ) -> FxHashSet<ItemInNs> {
     let _p = profile::span("search_dependencies").detail(|| format!("{query:?}"));
 
@@ -406,31 +385,58 @@ pub fn search_dependencies(
     let mut stream = op.union();
 
     let mut res = FxHashSet::default();
+    let mut common_importable_data_scratch = vec![];
     while let Some((_, indexed_values)) = stream.next() {
-        for indexed_value in indexed_values {
-            let import_map = &import_maps[indexed_value.index];
-            let importables = &import_map.importables[indexed_value.value as usize..];
+        for &IndexedValue { index, value } in indexed_values {
+            let import_map = &import_maps[index];
+            let importables @ [importable, ..] = &import_map.importables[value as usize..] else {
+                continue;
+            };
 
-            let common_importable_data = &import_map.map[&importables[0]];
-            if !query.import_matches(db, common_importable_data, true) {
+            let &(ref importable_data, is_trait_assoc_item) = &import_map.map[importable];
+            if !query.matches_assoc_mode(is_trait_assoc_item) {
                 continue;
             }
 
-            // Name shared by the importable items in this group.
-            let common_importable_name =
-                common_importable_data.name.to_smol_str().to_ascii_lowercase();
-            // Add the items from this name group. Those are all subsequent items in
-            // `importables` whose name match `common_importable_name`.
-            let iter = importables
-                .iter()
-                .copied()
-                .take_while(|item| {
-                    common_importable_name
-                        == import_map.map[item].name.to_smol_str().to_ascii_lowercase()
-                })
-                .filter(|item| {
-                    !query.case_sensitive // we've already checked the common importables name case-insensitively
-                        || query.import_matches(db, &import_map.map[item], false)
+            common_importable_data_scratch.extend(
+                importable_data
+                    .iter()
+                    .filter(|&info| query.import_matches(db, info, true))
+                    // Name shared by the importable items in this group.
+                    .map(|info| info.name.to_smol_str()),
+            );
+            if common_importable_data_scratch.is_empty() {
+                continue;
+            }
+            common_importable_data_scratch.sort();
+            common_importable_data_scratch.dedup();
+
+            let iter =
+                common_importable_data_scratch.drain(..).flat_map(|common_importable_name| {
+                    // Add the items from this name group. Those are all subsequent items in
+                    // `importables` whose name match `common_importable_name`.
+                    importables
+                        .iter()
+                        .copied()
+                        .take_while(move |item| {
+                            let &(ref import_infos, assoc_mode) = &import_map.map[item];
+                            query.matches_assoc_mode(assoc_mode)
+                                && import_infos.iter().any(|info| {
+                                    info.name
+                                        .to_smol_str()
+                                        .eq_ignore_ascii_case(&common_importable_name)
+                                })
+                        })
+                        .filter(move |item| {
+                            !query.case_sensitive || {
+                                // we've already checked the common importables name case-insensitively
+                                let &(ref import_infos, assoc_mode) = &import_map.map[item];
+                                query.matches_assoc_mode(assoc_mode)
+                                    && import_infos
+                                        .iter()
+                                        .any(|info| query.import_matches(db, info, false))
+                            }
+                        })
                 });
             res.extend(iter);
 
@@ -457,6 +463,7 @@ mod tests {
             let mut importable_paths: Vec<_> = self
                 .map
                 .iter()
+                .flat_map(|(item, (info, _))| info.iter().map(move |info| (item, info)))
                 .map(|(item, info)| {
                     let path = render_path(db, info);
                     let ns = match item {
@@ -495,7 +502,7 @@ mod tests {
                 let (path, mark) = match assoc_item_path(&db, &dependency_imports, dependency) {
                     Some(assoc_item_path) => (assoc_item_path, "a"),
                     None => (
-                        render_path(&db, dependency_imports.import_info_for(dependency)?),
+                        render_path(&db, &dependency_imports.import_info_for(dependency)?[0]),
                         match dependency {
                             ItemInNs::Types(ModuleDefId::FunctionId(_))
                             | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
@@ -543,7 +550,12 @@ mod tests {
             .items
             .iter()
             .find(|(_, assoc_item_id)| &dependency_assoc_item_id == assoc_item_id)?;
-        Some(format!("{}::{}", render_path(db, trait_info), assoc_item_name.display(db.upcast())))
+        // FIXME: This should check all import infos, not just the first
+        Some(format!(
+            "{}::{}",
+            render_path(db, &trait_info[0]),
+            assoc_item_name.display(db.upcast())
+        ))
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -619,6 +631,7 @@ mod tests {
                 main:
                 - publ1 (t)
                 - real_pu2 (t)
+                - real_pu2::Pub (t)
                 - real_pub (t)
                 - real_pub::Pub (t)
             "#]],
@@ -644,6 +657,7 @@ mod tests {
                 - sub (t)
                 - sub::Def (t)
                 - sub::subsub (t)
+                - sub::subsub::Def (t)
             "#]],
         );
     }
@@ -743,7 +757,9 @@ mod tests {
                 - module (t)
                 - module::S (t)
                 - module::S (v)
+                - module::module (t)
                 - sub (t)
+                - sub::module (t)
             "#]],
         );
     }
