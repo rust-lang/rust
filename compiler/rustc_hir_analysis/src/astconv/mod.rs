@@ -27,11 +27,12 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{
-    self, Const, GenericArgKind, GenericArgsRef, IsSuggestable, Ty, TyCtxt, TypeVisitableExt,
+    self, Const, GenericArgKind, GenericArgsRef, IsSuggestable, ParamEnv, Predicate, Ty, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -1607,7 +1608,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_env = tcx.param_env(block.owner);
         let cause = ObligationCause::misc(span, block.owner.def_id);
 
-        let mut fulfillment_errors = Vec::new();
         let mut universes = if self_ty.has_escaping_bound_vars() {
             vec![None; self_ty.outer_exclusive_binder().as_usize()]
         } else {
@@ -1619,94 +1619,110 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &mut universes,
             self_ty,
             |self_ty| {
+                let tcx = self.tcx();
                 let InferOk { value: self_ty, obligations } =
                     infcx.at(&cause, param_env).normalize(self_ty);
 
-                let mut applicable_candidates: Vec<_> = candidates
-                    .iter()
-                    .copied()
-                    .filter(|&(impl_, _)| {
-                        infcx.probe(|_| {
-                            let ocx = ObligationCtxt::new(infcx);
-                            ocx.register_obligations(obligations.clone());
-
-                            let impl_args = infcx.fresh_args_for_item(span, impl_);
-                            let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
-                            let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
-
-                            // Check that the self types can be related.
-                            if ocx
-                                .eq(&ObligationCause::dummy(), param_env, impl_ty, self_ty)
-                                .is_err()
-                            {
-                                return false;
-                            }
-
-                            // Check whether the impl imposes obligations we have to worry about.
-                            let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
-                            let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
-                            let impl_obligations = traits::predicates_for_generics(
-                                |_, _| cause.clone(),
-                                param_env,
-                                impl_bounds,
-                            );
-                            ocx.register_obligations(impl_obligations);
-
-                            let mut errors = ocx.select_where_possible();
-                            if !errors.is_empty() {
-                                fulfillment_errors.append(&mut errors);
-                                return false;
-                            }
-
-                            true
-                        })
-                    })
-                    .collect();
-
-                if applicable_candidates.len() > 1 {
-                    return Err(self.complain_about_ambiguous_inherent_assoc_type(
-                        name,
-                        applicable_candidates
-                            .into_iter()
-                            .map(|(_, (candidate, _))| candidate)
-                            .collect(),
-                        span,
-                    ));
-                }
-
-                if let Some((impl_, (assoc_item, def_scope))) = applicable_candidates.pop() {
-                    self.check_assoc_ty(assoc_item, name, def_scope, block, span);
-
-                    // FIXME(fmease): Currently creating throwaway `parent_args` to please
-                    // `create_args_for_associated_item`. Modify the latter instead (or sth. similar) to
-                    // not require the parent args logic.
-                    let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
-                    let args = self.create_args_for_associated_item(
-                        span,
-                        assoc_item,
-                        segment,
-                        parent_args,
-                    );
-                    let args = tcx.mk_args_from_iter(
-                        std::iter::once(ty::GenericArg::from(self_ty))
-                            .chain(args.into_iter().skip(parent_args.len())),
-                    );
-
-                    let ty =
-                        Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new(tcx, assoc_item, args));
-
-                    return Ok(Some((ty, assoc_item)));
-                }
-
-                Err(self.complain_about_inherent_assoc_type_not_found(
+                let (impl_, (assoc_item, def_scope)) = self.select_inherent_assoc_type_candidates(
+                    infcx,
                     name,
-                    self_ty,
-                    candidates,
-                    fulfillment_errors,
                     span,
-                ))
+                    self_ty,
+                    cause,
+                    param_env,
+                    obligations,
+                    candidates,
+                )?;
+
+                self.check_assoc_ty(assoc_item, name, def_scope, block, span);
+
+                // FIXME(fmease): Currently creating throwaway `parent_args` to please
+                // `create_args_for_associated_item`. Modify the latter instead (or sth. similar) to
+                // not require the parent args logic.
+                let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
+                let args =
+                    self.create_args_for_associated_item(span, assoc_item, segment, parent_args);
+                let args = tcx.mk_args_from_iter(
+                    std::iter::once(ty::GenericArg::from(self_ty))
+                        .chain(args.into_iter().skip(parent_args.len())),
+                );
+
+                let ty = Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new(tcx, assoc_item, args));
+
+                Ok(Some((ty, assoc_item)))
             },
         )
+    }
+
+    fn select_inherent_assoc_type_candidates(
+        &self,
+        infcx: &InferCtxt<'tcx>,
+        name: Ident,
+        span: Span,
+        self_ty: Ty<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        obligations: Vec<Obligation<'tcx, Predicate<'tcx>>>,
+        candidates: Vec<(DefId, (DefId, DefId))>,
+    ) -> Result<(DefId, (DefId, DefId)), ErrorGuaranteed> {
+        let tcx = self.tcx();
+        let mut fulfillment_errors = Vec::new();
+
+        let applicable_candidates: Vec<_> = candidates
+            .iter()
+            .copied()
+            .filter(|&(impl_, _)| {
+                infcx.probe(|_| {
+                    let ocx = ObligationCtxt::new(infcx);
+                    ocx.register_obligations(obligations.clone());
+
+                    let impl_args = infcx.fresh_args_for_item(span, impl_);
+                    let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
+                    let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
+
+                    // Check that the self types can be related.
+                    if ocx.eq(&ObligationCause::dummy(), param_env, impl_ty, self_ty).is_err() {
+                        return false;
+                    }
+
+                    // Check whether the impl imposes obligations we have to worry about.
+                    let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
+                    let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
+                    let impl_obligations = traits::predicates_for_generics(
+                        |_, _| cause.clone(),
+                        param_env,
+                        impl_bounds,
+                    );
+                    ocx.register_obligations(impl_obligations);
+
+                    let mut errors = ocx.select_where_possible();
+                    if !errors.is_empty() {
+                        fulfillment_errors.append(&mut errors);
+                        return false;
+                    }
+
+                    true
+                })
+            })
+            .collect();
+
+        match &applicable_candidates[..] {
+            &[] => Err(self.complain_about_inherent_assoc_type_not_found(
+                name,
+                self_ty,
+                candidates,
+                fulfillment_errors,
+                span,
+            )),
+
+            &[applicable_candidate] => Ok(applicable_candidate),
+
+            &[_, ..] => Err(self.complain_about_ambiguous_inherent_assoc_type(
+                name,
+                applicable_candidates.into_iter().map(|(_, (candidate, _))| candidate).collect(),
+                span,
+            )),
+        }
     }
 
     fn lookup_assoc_ty(
