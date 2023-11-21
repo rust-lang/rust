@@ -147,12 +147,10 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
                 None
             }
         }
-    } else if let Some(drive) = parse_drive(path) {
-        // C:
-        Some(Disk(drive))
     } else {
-        // no prefix
-        None
+        // If it has a drive like `C:` then it's a disk.
+        // Otherwise there is no prefix.
+        parse_drive(path).map(Disk)
     }
 }
 
