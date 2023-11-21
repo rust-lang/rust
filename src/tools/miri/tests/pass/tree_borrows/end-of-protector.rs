@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-tree-borrows -Zmiri-tag-gc=0
+//@compile-flags: -Zmiri-tree-borrows -Zmiri-provenance-gc=0
 
 // Check that a protector goes back to normal behavior when the function
 // returns.

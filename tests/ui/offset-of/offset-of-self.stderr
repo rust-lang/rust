@@ -54,6 +54,8 @@ error[E0609]: no field `Self` on type `S`
    |
 LL |         offset_of!(S, Self);
    |                       ^^^^
+   |
+   = note: available fields are: `v`, `w`
 
 error[E0616]: field `v` of struct `T` is private
   --> $DIR/offset-of-self.rs:41:30
@@ -66,6 +68,8 @@ error[E0609]: no field `self` on type `S`
    |
 LL |     offset_of!(S, self);
    |                   ^^^^
+   |
+   = note: available fields are: `v`, `w`
 
 error[E0609]: no field `self` on type `u8`
   --> $DIR/offset-of-self.rs:56:21

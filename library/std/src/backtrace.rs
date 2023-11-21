@@ -95,7 +95,7 @@ use crate::fmt;
 use crate::panic::UnwindSafe;
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sync::LazyLock;
-use crate::sys_common::backtrace::{lock, output_filename};
+use crate::sys_common::backtrace::{lock, output_filename, set_image_base};
 use crate::vec::Vec;
 
 /// A captured OS thread stack backtrace.
@@ -327,6 +327,7 @@ impl Backtrace {
         let _lock = lock();
         let mut frames = Vec::new();
         let mut actual_start = None;
+        set_image_base();
         unsafe {
             backtrace_rs::trace_unsynchronized(|frame| {
                 frames.push(BacktraceFrame {

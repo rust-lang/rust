@@ -122,7 +122,31 @@ function checkNeededFields(fullPath, expected, error_text, queryName, position) 
 }
 
 function valueCheck(fullPath, expected, result, error_text, queryName) {
-    if (Array.isArray(expected)) {
+    if (Array.isArray(expected) && result instanceof Map) {
+        const expected_set = new Set();
+        for (const [key, expected_value] of expected) {
+            expected_set.add(key);
+            checkNeededFields(fullPath, expected_value, error_text, queryName, key);
+            if (result.has(key)) {
+                valueCheck(
+                    fullPath + "[" + key + "]",
+                    expected_value,
+                    result.get(key),
+                    error_text,
+                    queryName
+                );
+            } else {
+                error_text.push(`${queryName}==> EXPECTED has extra key in map from field ` +
+                    `\`${fullPath}\` (key ${key}): \`${JSON.stringify(expected_value)}\``);
+            }
+        }
+        for (const [key, result_value] of result.entries()) {
+            if (!expected_set.has(key)) {
+                error_text.push(`${queryName}==> EXPECTED missing key in map from field ` +
+                    `\`${fullPath}\` (key ${key}): \`${JSON.stringify(result_value)}\``);
+            }
+        }
+    } else if (Array.isArray(expected)) {
         let i;
         for (i = 0; i < expected.length; ++i) {
             checkNeededFields(fullPath, expected[i], error_text, queryName, i);
@@ -153,6 +177,9 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
             }
             let result_v = result[key];
             if (result_v !== null && key === "error") {
+                if (!result_v.forEach) {
+                    throw result_v;
+                }
                 result_v.forEach((value, index) => {
                     value = value.split("&nbsp;").join(" ");
                     if (index % 2 === 1) {

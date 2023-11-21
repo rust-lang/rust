@@ -203,6 +203,16 @@ pub fn prepare_tool_cargo(
     if !features.is_empty() {
         cargo.arg("--features").arg(&features.join(", "));
     }
+
+    // Enable internal lints for clippy and rustdoc
+    // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
+    // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
+    //
+    // NOTE: We unconditionally set this here to avoid recompiling tools between `x check $tool`
+    // and `x test $tool` executions.
+    // See https://github.com/rust-lang/rust/issues/116538
+    cargo.rustflag("-Zunstable-options");
+
     cargo
 }
 

@@ -90,18 +90,35 @@ la-arena = { version = "0.3.1" }
 lsp-server = { version = "0.7.4" }
 
 # non-local crates
+anyhow = "1.0.75"
+bitflags = "2.4.1"
+cargo_metadata = "0.18.1"
+dissimilar = "1.0.7"
+either = "1.9.0"
+indexmap = "2.1.0"
+itertools = "0.12.0"
+libc = "0.2.150"
 smallvec = { version = "1.10.0", features = [
   "const_new",
   "union",
   "const_generics",
 ] }
+tracing = "0.1.40"
+tracing-tree = "0.3.0"
+tracing-subscriber = { version = "0.3.18", default-features = false, features = [
+    "registry",
+    "fmt",
+    "tracing-log",
+] }
 smol_str = "0.2.0"
 nohash-hasher = "0.2.0"
-text-size = "1.1.0"
-serde = { version = "1.0.156", features = ["derive"] }
-serde_json = "1.0.96"
+text-size = "1.1.1"
+rayon = "1.8.0"
+serde = { version = "1.0.192", features = ["derive"] }
+serde_json = "1.0.108"
 triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
 # can't upgrade due to dashmap depending on 0.12.3 currently
 hashbrown = { version = "0.12.3", features = [
   "inline-more",
 ], default-features = false }
+xshell = "0.2.5"

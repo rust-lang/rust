@@ -13,9 +13,9 @@ doctest = false
 
 [dependencies]
 rustc-hash = "1.1.0"
-either = "1.7.0"
+either.workspace = true
 arrayvec = "0.7.2"
-itertools = "0.10.5"
+itertools.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
 once_cell = "1.17.1"

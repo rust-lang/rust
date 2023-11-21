@@ -2487,12 +2487,6 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
-
-    /// This method creates a pointer to any `Some` value. If the argument is
-    /// `None`, an invalid within-bounds pointer (that is still acceptable for
-    /// constructing an empty slice) is returned.
-    #[rustc_nounwind]
-    pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 }
 
 // Some functions are defined here because they accidentally got made

@@ -8,6 +8,11 @@ use std::convert::From;
 use std::fmt::{Debug, Display, Formatter};
 use std::{error, fmt};
 
+macro_rules! error {
+     ($fmt: literal $(,)?) => { Error(format!($fmt)) };
+     ($fmt: literal, $($arg:tt)*) => { Error(format!($fmt, $($arg:tt)*)) };
+ }
+
 /// An error type used to represent an error that has already been reported by the compiler.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CompilerError<T> {
@@ -24,10 +29,10 @@ pub enum CompilerError<T> {
 
 /// A generic error to represent an API request that cannot be fulfilled.
 #[derive(Debug)]
-pub struct Error(String);
+pub struct Error(pub(crate) String);
 
 impl Error {
-    pub(crate) fn new(msg: String) -> Self {
+    pub fn new(msg: String) -> Self {
         Self(msg)
     }
 }

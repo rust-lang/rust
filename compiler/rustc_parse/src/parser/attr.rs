@@ -249,7 +249,7 @@ impl<'a> Parser<'a> {
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
         let item = match &self.token.kind {
-            token::Interpolated(nt) => match &**nt {
+            token::Interpolated(nt) => match &nt.0 {
                 Nonterminal::NtMeta(item) => Some(item.clone().into_inner()),
                 _ => None,
             },
@@ -369,7 +369,7 @@ impl<'a> Parser<'a> {
     /// ```
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
         let nt_meta = match &self.token.kind {
-            token::Interpolated(nt) => match &**nt {
+            token::Interpolated(nt) => match &nt.0 {
                 token::NtMeta(e) => Some(e.clone()),
                 _ => None,
             },

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{position_before_rarrow, snippet_opt};
-use if_chain::if_chain;
 use rustc_ast::visit::FnKind;
 use rustc_ast::{ast, ClosureBinder};
 use rustc_errors::Applicability;
@@ -37,40 +36,39 @@ declare_lint_pass!(UnusedUnit => [UNUSED_UNIT]);
 
 impl EarlyLintPass for UnusedUnit {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, span: Span, _: ast::NodeId) {
-        if_chain! {
-            if let ast::FnRetTy::Ty(ref ty) = kind.decl().output;
-            if let ast::TyKind::Tup(ref vals) = ty.kind;
-            if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
-            then {
-                // implicit types in closure signatures are forbidden when `for<...>` is present
-                if let FnKind::Closure(&ClosureBinder::For { .. }, ..) = kind {
-                    return;
-                }
-
-                lint_unneeded_unit_return(cx, ty, span);
+        if let ast::FnRetTy::Ty(ref ty) = kind.decl().output
+            && let ast::TyKind::Tup(ref vals) = ty.kind
+            && vals.is_empty()
+            && !ty.span.from_expansion()
+            && get_def(span) == get_def(ty.span)
+        {
+            // implicit types in closure signatures are forbidden when `for<...>` is present
+            if let FnKind::Closure(&ClosureBinder::For { .. }, ..) = kind {
+                return;
             }
+
+            lint_unneeded_unit_return(cx, ty, span);
         }
     }
 
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
-        if_chain! {
-            if let Some(stmt) = block.stmts.last();
-            if let ast::StmtKind::Expr(ref expr) = stmt.kind;
-            if is_unit_expr(expr);
-            let ctxt = block.span.ctxt();
-            if stmt.span.ctxt() == ctxt && expr.span.ctxt() == ctxt;
-            then {
-                let sp = expr.span;
-                span_lint_and_sugg(
-                    cx,
-                    UNUSED_UNIT,
-                    sp,
-                    "unneeded unit expression",
-                    "remove the final `()`",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                );
-            }
+        if let Some(stmt) = block.stmts.last()
+            && let ast::StmtKind::Expr(ref expr) = stmt.kind
+            && is_unit_expr(expr)
+            && let ctxt = block.span.ctxt()
+            && stmt.span.ctxt() == ctxt
+            && expr.span.ctxt() == ctxt
+        {
+            let sp = expr.span;
+            span_lint_and_sugg(
+                cx,
+                UNUSED_UNIT,
+                sp,
+                "unneeded unit expression",
+                "remove the final `()`",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
         }
     }
 
@@ -96,16 +94,14 @@ impl EarlyLintPass for UnusedUnit {
     fn check_poly_trait_ref(&mut self, cx: &EarlyContext<'_>, poly: &ast::PolyTraitRef) {
         let segments = &poly.trait_ref.path.segments;
 
-        if_chain! {
-            if segments.len() == 1;
-            if ["Fn", "FnMut", "FnOnce"].contains(&segments[0].ident.name.as_str());
-            if let Some(args) = &segments[0].args;
-            if let ast::GenericArgs::Parenthesized(generic_args) = &**args;
-            if let ast::FnRetTy::Ty(ty) = &generic_args.output;
-            if ty.kind.is_unit();
-            then {
-                lint_unneeded_unit_return(cx, ty, generic_args.span);
-            }
+        if segments.len() == 1
+            && ["Fn", "FnMut", "FnOnce"].contains(&segments[0].ident.name.as_str())
+            && let Some(args) = &segments[0].args
+            && let ast::GenericArgs::Parenthesized(generic_args) = &**args
+            && let ast::FnRetTy::Ty(ty) = &generic_args.output
+            && ty.kind.is_unit()
+        {
+            lint_unneeded_unit_return(cx, ty, generic_args.span);
         }
     }
 }

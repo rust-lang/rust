@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{contains_return, is_res_lang_ctor, path_res, return_ty};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
@@ -119,28 +118,24 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         // Check if all return expression respect the following condition and collect them.
         let mut suggs = Vec::new();
         let can_sugg = find_all_ret_expressions(cx, body.value, |ret_expr| {
-            if_chain! {
-                if !ret_expr.span.from_expansion();
+            if !ret_expr.span.from_expansion()
                 // Check if a function call.
-                if let ExprKind::Call(func, [arg]) = ret_expr.kind;
-                if is_res_lang_ctor(cx, path_res(cx, func), lang_item);
+                && let ExprKind::Call(func, [arg]) = ret_expr.kind
+                && is_res_lang_ctor(cx, path_res(cx, func), lang_item)
                 // Make sure the function argument does not contain a return expression.
-                if !contains_return(arg);
-                then {
-                    suggs.push(
-                        (
-                            ret_expr.span,
-                            if inner_type.is_unit() {
-                                String::new()
-                            } else {
-                                snippet(cx, arg.span.source_callsite(), "..").to_string()
-                            }
-                        )
-                    );
-                    true
-                } else {
-                    false
-                }
+                && !contains_return(arg)
+            {
+                suggs.push((
+                    ret_expr.span,
+                    if inner_type.is_unit() {
+                        String::new()
+                    } else {
+                        snippet(cx, arg.span.source_callsite(), "..").to_string()
+                    },
+                ));
+                true
+            } else {
+                false
             }
         });
 

@@ -1132,10 +1132,12 @@ impl<T> fmt::Debug for Discriminant<T> {
 ///
 /// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
-/// The value of a [`Discriminant<T>`] is independent of any *lifetimes* in `T`. As such, reading
-/// or writing a `Discriminant<Foo<'a>>` as a `Discriminant<Foo<'b>>` (whether via [`transmute`] or
-/// otherwise) is always sound. Note that this is **not** true for other kinds of generic
-/// parameters; `Discriminant<Foo<A>>` and `Discriminant<Foo<B>>` might be incompatible.
+/// The value of a [`Discriminant<T>`] is independent of any *free lifetimes* in `T`. As such,
+/// reading or writing a `Discriminant<Foo<'a>>` as a `Discriminant<Foo<'b>>` (whether via
+/// [`transmute`] or otherwise) is always sound. Note that this is **not** true for other kinds
+/// of generic parameters and for higher-ranked lifetimes; `Discriminant<Foo<A>>` and
+/// `Discriminant<Foo<B>>` as well as `Discriminant<Bar<dyn for<'a> Trait<'a>>>` and
+/// `Discriminant<Bar<dyn Trait<'static>>>` may be incompatible.
 ///
 /// # Examples
 ///

@@ -31,6 +31,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.annotate_alternative_method_deref(err, expr, error);
+        self.explain_self_literal(err, expr, expected, expr_ty);
 
         // Use `||` to give these suggestions a precedence
         let suggested = self.suggest_missing_parentheses(err, expr)
@@ -1025,6 +1026,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         return false;
+    }
+
+    fn explain_self_literal(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        match expr.peel_drop_temps().kind {
+            hir::ExprKind::Struct(
+                hir::QPath::Resolved(
+                    None,
+                    hir::Path { res: hir::def::Res::SelfTyAlias { alias_to, .. }, span, .. },
+                ),
+                ..,
+            )
+            | hir::ExprKind::Call(
+                hir::Expr {
+                    kind:
+                        hir::ExprKind::Path(hir::QPath::Resolved(
+                            None,
+                            hir::Path {
+                                res: hir::def::Res::SelfTyAlias { alias_to, .. },
+                                span,
+                                ..
+                            },
+                        )),
+                    ..
+                },
+                ..,
+            ) => {
+                if let Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
+                    ..
+                })) = self.tcx.hir().get_if_local(*alias_to)
+                {
+                    err.span_label(self_ty.span, "this is the type of the `Self` literal");
+                }
+                if let ty::Adt(e_def, e_args) = expected.kind()
+                    && let ty::Adt(f_def, _f_args) = found.kind()
+                    && e_def == f_def
+                {
+                    err.span_suggestion_verbose(
+                        *span,
+                        "use the type name directly",
+                        self.tcx.value_path_str_with_args(*alias_to, e_args),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            _ => {}
+        }
     }
 
     fn note_wrong_return_ty_due_to_generic_arg(

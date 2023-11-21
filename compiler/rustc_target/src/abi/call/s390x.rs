@@ -17,6 +17,10 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
+    if !arg.layout.is_sized() {
+        // Not touching this...
+        return;
+    }
     if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
         arg.extend_integer_width_to(64);
         return;

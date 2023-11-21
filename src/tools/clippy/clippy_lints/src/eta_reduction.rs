@@ -247,8 +247,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure: ClosureArgs<'tcx>, call_sig:
 /// This is needed because rustc is unable to late bind early-bound regions in a function signature.
 fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'_>) -> bool {
     fn check_region(from_region: Region<'_>, to_region: Region<'_>) -> bool {
-        matches!(from_region.kind(), RegionKind::ReBound(..))
-            && !matches!(to_region.kind(), RegionKind::ReBound(..))
+        matches!(from_region.kind(), RegionKind::ReBound(..)) && !matches!(to_region.kind(), RegionKind::ReBound(..))
     }
 
     fn check_subs(from_subs: &[GenericArg<'_>], to_subs: &[GenericArg<'_>]) -> bool {

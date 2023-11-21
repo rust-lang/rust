@@ -27,19 +27,12 @@ macro_rules! arena_types {
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<'tcx>
                 >,
-            [decode] closure_debuginfo:
-                rustc_index::IndexVec<
-                    rustc_target::abi::FieldIdx,
-                    rustc_span::symbol::Symbol,
-                >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
-            [decode] borrowck_result:
-                rustc_middle::mir::BorrowCheckResult<'tcx>,
+            [decode] borrowck_result: rustc_middle::mir::BorrowCheckResult<'tcx>,
             [] resolver: rustc_data_structures::steal::Steal<(
                 rustc_middle::ty::ResolverAstLowering,
                 rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
             )>,
-            [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
@@ -91,21 +84,16 @@ macro_rules! arena_types {
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
-            [] all_traits: Vec<rustc_hir::def_id::DefId>,
             [] effective_visibilities: rustc_middle::middle::privacy::EffectiveVisibilities,
-            [] foreign_module: rustc_session::cstore::ForeignModule,
-            [] foreign_modules: Vec<rustc_session::cstore::ForeignModule>,
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
             [decode] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::symbol::Symbol>,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::symbol::Symbol>,
-            [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
             [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyKind<'tcx>>,
-            [] predicates: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::PredicateKind<'tcx>>,
             [] consts: rustc_middle::ty::ConstData<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
@@ -113,7 +101,6 @@ macro_rules! arena_types {
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [decode] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
-            [decode] registered_tools: rustc_middle::ty::RegisteredTools,
             [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
@@ -124,11 +111,9 @@ macro_rules! arena_types {
                     rustc_hir::def_id::DefId,
                     rustc_middle::ty::EarlyBinder<rustc_middle::ty::Ty<'tcx>>
                 >,
-            [] bit_set_u32: rustc_index::bit_set::BitSet<u32>,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
             [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
-            [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
             [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
             [] features: rustc_feature::Features,

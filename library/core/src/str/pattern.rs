@@ -806,6 +806,8 @@ unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N>
     searcher_methods!(reverse);
 }
 
+impl<'a, const N: usize> DoubleEndedSearcher<'a> for CharArraySearcher<'a, N> {}
+
 /// Searches for chars that are equal to any of the [`char`]s in the array.
 ///
 /// # Examples
@@ -825,6 +827,8 @@ unsafe impl<'a, 'b, const N: usize> Searcher<'a> for CharArrayRefSearcher<'a, 'b
 unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(reverse);
 }
+
+impl<'a, 'b, const N: usize> DoubleEndedSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // Impl for &[char]

@@ -1,16 +1,14 @@
 #![deny(deref_into_dyn_supertrait)]
 
-extern crate core;
-
-use core::ops::Deref;
+use std::ops::Deref;
 
 // issue 89190
 trait A {}
 trait B: A {}
 
 impl<'a> Deref for dyn 'a + B {
-    //~^ ERROR `(dyn B + 'a)` implements `Deref` with supertrait `A` as target
-    //~| WARN this was previously accepted by the compiler but is being phased out;
+    //~^ ERROR `dyn B` implements `Deref` with supertrait `A` as target
+    //~| WARN this will change its meaning in a future release!
 
     type Target = dyn A;
     fn deref(&self) -> &Self::Target {

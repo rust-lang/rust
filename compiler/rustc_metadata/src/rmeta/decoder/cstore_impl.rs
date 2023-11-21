@@ -346,7 +346,7 @@ provide! { tcx, def_id, other, cdata,
     module_children => {
         tcx.arena.alloc_from_iter(cdata.get_module_children(def_id.index, tcx.sess))
     }
-    defined_lib_features => { cdata.get_lib_features(tcx) }
+    lib_features => { cdata.get_lib_features() }
     stability_implications => {
         cdata.get_stability_implications(tcx).iter().copied().collect()
     }

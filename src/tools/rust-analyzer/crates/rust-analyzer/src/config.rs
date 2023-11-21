@@ -352,7 +352,9 @@ config_data! {
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         imports_merge_glob: bool           = "true",
         /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
-        imports_prefer_no_std: bool                     = "false",
+        imports_preferNoStd | imports_prefer_no_std: bool = "false",
+        /// Whether to prefer import paths containing a `prelude` module.
+        imports_preferPrelude: bool                       = "false",
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = "\"plain\"",
 
@@ -1117,7 +1119,8 @@ impl Config {
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
             },
             insert_use: self.insert_use_config(),
-            prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_no_std: self.data.imports_preferNoStd,
+            prefer_prelude: self.data.imports_preferPrelude,
         }
     }
 
@@ -1486,7 +1489,8 @@ impl Config {
                 CallableCompletionDef::None => None,
             },
             insert_use: self.insert_use_config(),
-            prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_no_std: self.data.imports_preferNoStd,
+            prefer_prelude: self.data.imports_preferPrelude,
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
                     .text_document
@@ -1515,7 +1519,8 @@ impl Config {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
             allowed: None,
             insert_use: self.insert_use_config(),
-            prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_no_std: self.data.imports_preferNoStd,
+            prefer_prelude: self.data.imports_preferPrelude,
             assist_emit_must_use: self.data.assist_emitMustUse,
         }
     }

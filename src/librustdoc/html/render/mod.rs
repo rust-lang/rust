@@ -113,6 +113,7 @@ pub(crate) struct IndexItem {
 pub(crate) struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
+    bindings: Option<Vec<(RenderTypeId, Vec<RenderType>)>>,
 }
 
 impl Serialize for RenderType {
@@ -129,10 +130,15 @@ impl Serialize for RenderType {
             Some(RenderTypeId::Index(idx)) => *idx,
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        if let Some(generics) = &self.generics {
+        if self.generics.is_some() || self.bindings.is_some() {
             let mut seq = serializer.serialize_seq(None)?;
             seq.serialize_element(&id)?;
-            seq.serialize_element(generics)?;
+            seq.serialize_element(self.generics.as_ref().map(Vec::as_slice).unwrap_or_default())?;
+            if self.bindings.is_some() {
+                seq.serialize_element(
+                    self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default(),
+                )?;
+            }
             seq.end()
         } else {
             id.serialize(serializer)
@@ -140,11 +146,29 @@ impl Serialize for RenderType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
+    AssociatedType(Symbol),
     Index(isize),
+}
+
+impl Serialize for RenderTypeId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let id = match &self {
+            // 0 is a sentinel, everything else is one-indexed
+            // concrete type
+            RenderTypeId::Index(idx) if *idx >= 0 => idx + 1,
+            // generic type parameter
+            RenderTypeId::Index(idx) => *idx,
+            _ => panic!("must convert render types to indexes before serializing"),
+        };
+        id.serialize(serializer)
+    }
 }
 
 /// Full type of functions/methods in the search index.
@@ -171,17 +195,22 @@ impl Serialize for IndexItemFunctionType {
         } else {
             let mut seq = serializer.serialize_seq(None)?;
             match &self.inputs[..] {
-                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                [one] if one.generics.is_none() && one.bindings.is_none() => {
+                    seq.serialize_element(one)?
+                }
                 _ => seq.serialize_element(&self.inputs)?,
             }
             match &self.output[..] {
                 [] if self.where_clause.is_empty() => {}
-                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                [one] if one.generics.is_none() && one.bindings.is_none() => {
+                    seq.serialize_element(one)?
+                }
                 _ => seq.serialize_element(&self.output)?,
             }
             for constraint in &self.where_clause {
                 if let [one] = &constraint[..]
                     && one.generics.is_none()
+                    && one.bindings.is_none()
                 {
                     seq.serialize_element(one)?;
                 } else {

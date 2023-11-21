@@ -11,7 +11,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Abi, VariantIdx};
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
@@ -101,11 +101,16 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             // Not all raw pointers are allowed, as we cannot properly test them for
             // equality at compile-time (see `ptr_guaranteed_cmp`).
             // However we allow those that are just integers in disguise.
-            // (We could allow wide raw pointers where both sides are integers in the future,
-            // but for now we reject them.)
-            let Ok(val) = ecx.read_scalar(place) else {
+            // First, get the pointer. Remember it might be wide!
+            let Ok(val) = ecx.read_immediate(place) else {
                 return Err(ValTreeCreationError::Other);
             };
+            // We could allow wide raw pointers where both sides are integers in the future,
+            // but for now we reject them.
+            if matches!(val.layout.abi, Abi::ScalarPair(..)) {
+                return Err(ValTreeCreationError::Other);
+            }
+            let val = val.to_scalar();
             // We are in the CTFE machine, so ptr-to-int casts will fail.
             // This can only be `Ok` if `val` already is an integer.
             let Ok(val) = val.try_to_int() else {

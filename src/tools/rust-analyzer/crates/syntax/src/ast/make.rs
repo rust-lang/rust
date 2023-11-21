@@ -941,6 +941,13 @@ pub fn lifetime_arg(lifetime: ast::Lifetime) -> ast::LifetimeArg {
     ast_from_text(&format!("const S: T<{lifetime}> = ();"))
 }
 
+pub fn turbofish_generic_arg_list(
+    args: impl IntoIterator<Item = ast::GenericArg>,
+) -> ast::GenericArgList {
+    let args = args.into_iter().join(", ");
+    ast_from_text(&format!("const S: T::<{args}> = ();"))
+}
+
 pub(crate) fn generic_arg_list(
     args: impl IntoIterator<Item = ast::GenericArg>,
 ) -> ast::GenericArgList {
@@ -1126,7 +1133,7 @@ pub mod tokens {
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
         SourceFile::parse(
-            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p)\n;\n\n",
+            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let a @ [] })\n;\n\n",
         )
     });
 

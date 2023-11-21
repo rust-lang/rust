@@ -809,7 +809,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 return;
             }
 
-            let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
+            let new_trait_ref = this.instantiate_bound_regions_with_erased(new_trait_ref);
 
             let (xform_self_ty, xform_ret_ty) =
                 this.xform_self_ty(item, new_trait_ref.self_ty(), new_trait_ref.args);
@@ -1885,7 +1885,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             fn_sig.instantiate(self.tcx, args)
         };
 
-        self.erase_late_bound_regions(xform_fn_sig)
+        self.instantiate_bound_regions_with_erased(xform_fn_sig)
     }
 
     /// Gets the type of an impl and generate substitutions with inference vars.
@@ -1897,7 +1897,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     /// Replaces late-bound-regions bound by `value` with `'static` using
-    /// `ty::erase_late_bound_regions`.
+    /// `ty::instantiate_bound_regions_with_erased`.
     ///
     /// This is only a reasonable thing to do during the *probe* phase, not the *confirm* phase, of
     /// method matching. It is reasonable during the probe phase because we don't consider region
@@ -1914,11 +1914,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///    region got replaced with the same variable, which requires a bit more coordination
     ///    and/or tracking the substitution and
     ///    so forth.
-    fn erase_late_bound_regions<T>(&self, value: ty::Binder<'tcx, T>) -> T
+    fn instantiate_bound_regions_with_erased<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.erase_late_bound_regions(value)
+        self.tcx.instantiate_bound_regions_with_erased(value)
     }
 
     /// Determine if the given associated item type is relevant in the current context.

@@ -777,17 +777,15 @@ impl Diagnostic {
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        let mut suggestions: Vec<_> = suggestions.into_iter().collect();
-        suggestions.sort();
-
-        debug_assert!(
-            !(sp.is_empty() && suggestions.iter().any(|suggestion| suggestion.is_empty())),
-            "Span must not be empty and have no suggestion"
-        );
-
         let substitutions = suggestions
             .into_iter()
-            .map(|snippet| Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] })
+            .map(|snippet| {
+                debug_assert!(
+                    !(sp.is_empty() && snippet.is_empty()),
+                    "Span must not be empty and have no suggestion"
+                );
+                Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] }
+            })
             .collect();
         self.push_suggestion(CodeSuggestion {
             substitutions,

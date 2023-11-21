@@ -61,7 +61,7 @@ fn resolve_instance<'tcx>(
 
         Ok(Some(Instance { def, args }))
     };
-    debug!("inner_resolve_instance: result={:?}", result);
+    debug!("resolve_instance: result={:?}", result);
     result
 }
 
@@ -328,6 +328,6 @@ fn resolve_associated_item<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { resolve_instance, ..*providers };
 }

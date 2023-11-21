@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_drop, is_copy};
 use clippy_utils::{any_parent_is_automatically_derived, contains_name, get_parent_expr, is_from_proc_macro};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -81,33 +80,31 @@ impl_lint_pass!(Default => [DEFAULT_TRAIT_ACCESS, FIELD_REASSIGN_WITH_DEFAULT]);
 
 impl<'tcx> LateLintPass<'tcx> for Default {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if !expr.span.from_expansion();
+        if !expr.span.from_expansion()
             // Avoid cases already linted by `field_reassign_with_default`
-            if !self.reassigned_linted.contains(&expr.span);
-            if let ExprKind::Call(path, ..) = expr.kind;
-            if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
-            if let ExprKind::Path(ref qpath) = path.kind;
-            if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
-            if cx.tcx.is_diagnostic_item(sym::default_fn, def_id);
-            if !is_update_syntax_base(cx, expr);
+            && !self.reassigned_linted.contains(&expr.span)
+            && let ExprKind::Call(path, ..) = expr.kind
+            && !any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
+            && let ExprKind::Path(ref qpath) = path.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+            && cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
+            && !is_update_syntax_base(cx, expr)
             // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
-            if let QPath::Resolved(None, _path) = qpath;
-            let expr_ty = cx.typeck_results().expr_ty(expr);
-            if let ty::Adt(def, ..) = expr_ty.kind();
-            if !is_from_proc_macro(cx, expr);
-            then {
-                let replacement = with_forced_trimmed_paths!(format!("{}::default()", cx.tcx.def_path_str(def.did())));
-                span_lint_and_sugg(
-                    cx,
-                    DEFAULT_TRAIT_ACCESS,
-                    expr.span,
-                    &format!("calling `{replacement}` is more clear than this expression"),
-                    "try",
-                    replacement,
-                    Applicability::Unspecified, // First resolve the TODO above
-                );
-            }
+            && let QPath::Resolved(None, _path) = qpath
+            && let expr_ty = cx.typeck_results().expr_ty(expr)
+            && let ty::Adt(def, ..) = expr_ty.kind()
+            && !is_from_proc_macro(cx, expr)
+        {
+            let replacement = with_forced_trimmed_paths!(format!("{}::default()", cx.tcx.def_path_str(def.did())));
+            span_lint_and_sugg(
+                cx,
+                DEFAULT_TRAIT_ACCESS,
+                expr.span,
+                &format!("calling `{replacement}` is more clear than this expression"),
+                "try",
+                replacement,
+                Applicability::Unspecified, // First resolve the TODO above
+            );
         }
     }
 
@@ -124,38 +121,36 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             // find all binding statements like `let mut _ = T::default()` where `T::default()` is the
             // `default` method of the `Default` trait, and store statement index in current block being
             // checked and the name of the bound variable
-            let (local, variant, binding_name, binding_type, span) = if_chain! {
+            let (local, variant, binding_name, binding_type, span) = if let StmtKind::Local(local) = stmt.kind
                 // only take `let ...` statements
-                if let StmtKind::Local(local) = stmt.kind;
-                if let Some(expr) = local.init;
-                if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
-                if !expr.span.from_expansion();
+                && let Some(expr) = local.init
+                && !any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
+                && !expr.span.from_expansion()
                 // only take bindings to identifiers
-                if let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind;
+                && let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind
                 // only when assigning `... = Default::default()`
-                if is_expr_default(expr, cx);
-                let binding_type = cx.typeck_results().node_type(binding_id);
-                if let Some(adt) = binding_type.ty_adt_def();
-                if adt.is_struct();
-                let variant = adt.non_enum_variant();
-                if adt.did().is_local() || !variant.is_field_list_non_exhaustive();
-                let module_did = cx.tcx.parent_module(stmt.hir_id);
-                if variant
+                && is_expr_default(expr, cx)
+                && let binding_type = cx.typeck_results().node_type(binding_id)
+                && let Some(adt) = binding_type.ty_adt_def()
+                && adt.is_struct()
+                && let variant = adt.non_enum_variant()
+                && (adt.did().is_local() || !variant.is_field_list_non_exhaustive())
+                && let module_did = cx.tcx.parent_module(stmt.hir_id)
+                && variant
                     .fields
                     .iter()
-                    .all(|field| field.vis.is_accessible_from(module_did, cx.tcx));
-                let all_fields_are_copy = variant
+                    .all(|field| field.vis.is_accessible_from(module_did, cx.tcx))
+                && let all_fields_are_copy = variant
                     .fields
                     .iter()
                     .all(|field| {
                         is_copy(cx, cx.tcx.type_of(field.did).instantiate_identity())
-                    });
-                if !has_drop(cx, binding_type) || all_fields_are_copy;
-                then {
-                    (local, variant, ident.name, binding_type, expr.span)
-                } else {
-                    continue;
-                }
+                    })
+                && (!has_drop(cx, binding_type) || all_fields_are_copy)
+            {
+                (local, variant, ident.name, binding_type, expr.span)
+            } else {
+                continue;
             };
 
             let init_ctxt = local.span.ctxt();
@@ -216,21 +211,19 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .join(", ");
 
                 // give correct suggestion if generics are involved (see #6944)
-                let binding_type = if_chain! {
-                    if let ty::Adt(adt_def, args) = binding_type.kind();
-                    if !args.is_empty();
-                    then {
-                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did());
-                        let generic_args = args.iter().collect::<Vec<_>>();
-                        let tys_str = generic_args
-                            .iter()
-                            .map(ToString::to_string)
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        format!("{adt_def_ty_name}::<{}>", &tys_str)
-                    } else {
-                        binding_type.to_string()
-                    }
+                let binding_type = if let ty::Adt(adt_def, args) = binding_type.kind()
+                    && !args.is_empty()
+                {
+                    let adt_def_ty_name = cx.tcx.item_name(adt_def.did());
+                    let generic_args = args.iter().collect::<Vec<_>>();
+                    let tys_str = generic_args
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("{adt_def_ty_name}::<{}>", &tys_str)
+                } else {
+                    binding_type.to_string()
                 };
 
                 let sugg = if ext_with_default {
@@ -260,48 +253,42 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
 /// Checks if the given expression is the `default` method belonging to the `Default` trait.
 fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    if_chain! {
-        if let ExprKind::Call(fn_expr, _) = &expr.kind;
-        if let ExprKind::Path(qpath) = &fn_expr.kind;
-        if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
-        then {
-            // right hand side of assignment is `Default::default`
-            cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
-        } else {
-            false
-        }
+    if let ExprKind::Call(fn_expr, _) = &expr.kind
+        && let ExprKind::Path(qpath) = &fn_expr.kind
+        && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
+    {
+        // right hand side of assignment is `Default::default`
+        cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
+    } else {
+        false
     }
 }
 
 /// Returns the reassigned field and the assigning expression (right-hand side of assign).
 fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Option<(Ident, &'tcx Expr<'tcx>)> {
-    if_chain! {
+    if let StmtKind::Semi(later_expr) = this.kind
         // only take assignments
-        if let StmtKind::Semi(later_expr) = this.kind;
-        if let ExprKind::Assign(assign_lhs, assign_rhs, _) = later_expr.kind;
+        && let ExprKind::Assign(assign_lhs, assign_rhs, _) = later_expr.kind
         // only take assignments to fields where the left-hand side field is a field of
         // the same binding as the previous statement
-        if let ExprKind::Field(binding, field_ident) = assign_lhs.kind;
-        if let ExprKind::Path(QPath::Resolved(_, path)) = binding.kind;
-        if let Some(second_binding_name) = path.segments.last();
-        if second_binding_name.ident.name == binding_name;
-        then {
-            Some((field_ident, assign_rhs))
-        } else {
-            None
-        }
+        && let ExprKind::Field(binding, field_ident) = assign_lhs.kind
+        && let ExprKind::Path(QPath::Resolved(_, path)) = binding.kind
+        && let Some(second_binding_name) = path.segments.last()
+        && second_binding_name.ident.name == binding_name
+    {
+        Some((field_ident, assign_rhs))
+    } else {
+        None
     }
 }
 
 /// Returns whether `expr` is the update syntax base: `Foo { a: 1, .. base }`
 fn is_update_syntax_base<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    if_chain! {
-        if let Some(parent) = get_parent_expr(cx, expr);
-        if let ExprKind::Struct(_, _, Some(base)) = parent.kind;
-        then {
-            base.hir_id == expr.hir_id
-        } else {
-            false
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let ExprKind::Struct(_, _, Some(base)) = parent.kind
+    {
+        base.hir_id == expr.hir_id
+    } else {
+        false
     }
 }

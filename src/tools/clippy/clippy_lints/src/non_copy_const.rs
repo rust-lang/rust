@@ -7,7 +7,6 @@ use std::ptr;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::{def_path_def_ids, in_constant};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -386,15 +385,14 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                     of_trait: Some(of_trait_ref),
                     ..
                 }) => {
-                    if_chain! {
+                    if let Some(of_trait_def_id) = of_trait_ref.trait_def_id()
                         // Lint a trait impl item only when the definition is a generic type,
                         // assuming an assoc const is not meant to be an interior mutable type.
-                        if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
-                        if let Some(of_assoc_item) = cx
+                        && let Some(of_assoc_item) = cx
                             .tcx
                             .associated_item(impl_item.owner_id)
-                            .trait_item_def_id;
-                        if cx
+                            .trait_item_def_id
+                        && cx
                             .tcx
                             .layout_of(cx.tcx.param_env(of_trait_def_id).and(
                                 // Normalize assoc types because ones originated from generic params
@@ -405,23 +403,17 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                                     cx.tcx.type_of(of_assoc_item).instantiate_identity(),
                                 ),
                             ))
-                            .is_err();
+                            .is_err()
                             // If there were a function like `has_frozen_variant` described above,
                             // we should use here as a frozen variant is a potential to be frozen
                             // similar to unknown layouts.
                             // e.g. `layout_of(...).is_err() || has_frozen_variant(...);`
-                        let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity();
-                        let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
-                        if !self.is_ty_ignored(ty) && Self::is_unfrozen(cx, normalized);
-                        if self.is_value_unfrozen_poly(cx, *body_id, normalized);
-                        then {
-                            lint(
-                               cx,
-                               Source::Assoc {
-                                   item: impl_item.span,
-                                },
-                            );
-                        }
+                        && let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity()
+                        && let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty)
+                        && !self.is_ty_ignored(ty) && Self::is_unfrozen(cx, normalized)
+                        && self.is_value_unfrozen_poly(cx, *body_id, normalized)
+                    {
+                        lint(cx, Source::Assoc { item: impl_item.span });
                     }
                 },
                 ItemKind::Impl(Impl { of_trait: None, .. }) => {

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
-use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -80,11 +79,13 @@ declare_lint_pass!(EvalOrderDependence => [MIXED_READ_WRITE_IN_EXPRESSION, DIVER
 impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Find a write to a local variable.
-        let var = if_chain! {
-            if let ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) = expr.kind;
-            if let Some(var) = path_to_local(lhs);
-            if expr.span.desugaring_kind().is_none();
-            then { var } else { return; }
+        let var = if let ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) = expr.kind
+            && let Some(var) = path_to_local(lhs)
+            && expr.span.desugaring_kind().is_none()
+        {
+            var
+        } else {
+            return;
         };
         let mut visitor = ReadVisitor {
             cx,
@@ -164,7 +165,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                 match typ.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => {
                         let sig = typ.fn_sig(self.cx.tcx);
-                        if self.cx.tcx.erase_late_bound_regions(sig).output().kind() == &ty::Never {
+                        if self.cx.tcx.instantiate_bound_regions_with_erased(sig).output().kind() == &ty::Never {
                             self.report_diverging_sub_expr(e);
                         }
                     },

@@ -278,6 +278,7 @@ struct Foo;
 struct Bar;
 impl core::ops::Deref for Foo {
     type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
 }
 
 fn main() {
@@ -290,6 +291,7 @@ struct Foo;
 struct Bar;
 impl core::ops::Deref for Foo {
     type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
 }
 
 fn main() {
@@ -737,6 +739,21 @@ fn f() -> i32 {
     0
 }
 fn g() { return; }
+"#,
+        );
+    }
+
+    #[test]
+    fn smoke_test_inner_items() {
+        check_diagnostics(
+            r#"
+fn f() {
+    fn inner() -> i32 {
+        return;
+     // ^^^^^^ error: expected i32, found ()
+        0
+    }
+}
 "#,
         );
     }

@@ -1,14 +1,16 @@
 // WF check for impl Trait in associated type position.
 //
-// revisions: pass fail
+// revisions: pass pass_next fail
 // [pass] check-pass
+// [pass_next] compile-flags: -Ztrait-solver=next
+// [pass_next] check-pass
 // [fail] check-fail
 
 #![feature(impl_trait_in_assoc_type)]
 
 // The hidden type here (`&'a T`) requires proving `T: 'a`.
 // We know it holds because of implied bounds from the impl header.
-#[cfg(pass)]
+#[cfg(any(pass, pass_next))]
 mod pass {
     trait Trait<Req> {
         type Opaque1;

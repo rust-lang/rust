@@ -8,17 +8,13 @@ use rustc_ast::Attribute;
 use rustc_attr::VERSION_PLACEHOLDER;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::lib_features::LibFeatures;
-use rustc_middle::query::Providers;
+use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
+use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 
 use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
-
-fn new_lib_features() -> LibFeatures {
-    LibFeatures { stable: Default::default(), unstable: Default::default() }
-}
 
 pub struct LibFeatureCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -27,10 +23,10 @@ pub struct LibFeatureCollector<'tcx> {
 
 impl<'tcx> LibFeatureCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> LibFeatureCollector<'tcx> {
-        LibFeatureCollector { tcx, lib_features: new_lib_features() }
+        LibFeatureCollector { tcx, lib_features: LibFeatures::default() }
     }
 
-    fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
+    fn extract(&self, attr: &Attribute) -> Option<(Symbol, FeatureStability, Span)> {
         let stab_attrs = [
             sym::stable,
             sym::unstable,
@@ -72,8 +68,11 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                             | sym::rustc_const_unstable
                             | sym::rustc_default_body_unstable
                     );
-                    if since.is_some() || is_unstable {
-                        return Some((feature, since, attr.span));
+                    if is_unstable {
+                        return Some((feature, FeatureStability::Unstable, attr.span));
+                    }
+                    if let Some(since) = since {
+                        return Some((feature, FeatureStability::AcceptedSince(since), attr.span));
                     }
                 }
                 // We need to iterate over the other attributes, because
@@ -86,39 +85,39 @@ impl<'tcx> LibFeatureCollector<'tcx> {
         None
     }
 
-    fn collect_feature(&mut self, feature: Symbol, since: Option<Symbol>, span: Span) {
-        let already_in_stable = self.lib_features.stable.contains_key(&feature);
-        let already_in_unstable = self.lib_features.unstable.contains_key(&feature);
+    fn collect_feature(&mut self, feature: Symbol, stability: FeatureStability, span: Span) {
+        let existing_stability = self.lib_features.stability.get(&feature).cloned();
 
-        match (since, already_in_stable, already_in_unstable) {
-            (Some(since), _, false) => {
-                if let Some((prev_since, _)) = self.lib_features.stable.get(&feature) {
-                    if *prev_since != since {
-                        self.tcx.sess.emit_err(FeatureStableTwice {
-                            span,
-                            feature,
-                            since,
-                            prev_since: *prev_since,
-                        });
-                        return;
-                    }
+        match (stability, existing_stability) {
+            (_, None) => {
+                self.lib_features.stability.insert(feature, (stability, span));
+            }
+            (
+                FeatureStability::AcceptedSince(since),
+                Some((FeatureStability::AcceptedSince(prev_since), _)),
+            ) => {
+                if prev_since != since {
+                    self.tcx.sess.emit_err(FeatureStableTwice { span, feature, since, prev_since });
                 }
-
-                self.lib_features.stable.insert(feature, (since, span));
             }
-            (None, false, _) => {
-                self.lib_features.unstable.insert(feature, span);
-            }
-            (Some(_), _, true) | (None, true, _) => {
-                let declared = if since.is_some() { "stable" } else { "unstable" };
-                let prev_declared = if since.is_none() { "stable" } else { "unstable" };
+            (FeatureStability::AcceptedSince(_), Some((FeatureStability::Unstable, _))) => {
                 self.tcx.sess.emit_err(FeaturePreviouslyDeclared {
                     span,
                     feature,
-                    declared,
-                    prev_declared,
+                    declared: "stable",
+                    prev_declared: "unstable",
                 });
             }
+            (FeatureStability::Unstable, Some((FeatureStability::AcceptedSince(_), _))) => {
+                self.tcx.sess.emit_err(FeaturePreviouslyDeclared {
+                    span,
+                    feature,
+                    declared: "unstable",
+                    prev_declared: "stable",
+                });
+            }
+            // duplicate `unstable` feature is ok.
+            (FeatureStability::Unstable, Some((FeatureStability::Unstable, _))) => {}
         }
     }
 }
@@ -137,11 +136,11 @@ impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
     }
 }
 
-fn lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
+fn lib_features(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> LibFeatures {
     // If `staged_api` is not enabled then we aren't allowed to define lib
     // features; there is no point collecting them.
     if !tcx.features().staged_api {
-        return new_lib_features();
+        return LibFeatures::default();
     }
 
     let mut collector = LibFeatureCollector::new(tcx);

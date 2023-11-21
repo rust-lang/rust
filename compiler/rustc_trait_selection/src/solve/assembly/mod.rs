@@ -110,7 +110,7 @@ pub(super) trait GoalKind<'tcx>:
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx>;
+    ) -> Result<Candidate<'tcx>, NoSolution>;
 
     /// If the predicate contained an error, we want to avoid emitting unnecessary trait
     /// errors but still want to emit errors for other trait goals. We have some special
@@ -263,7 +263,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Vec<Candidate<'tcx>> {
         debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
         if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
-            return ambig;
+            return vec![ambig];
         }
 
         let mut candidates = self.assemble_candidates_via_self_ty(goal, 0);
@@ -288,15 +288,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn assemble_self_ty_infer_ambiguity_response<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
-    ) -> Option<Vec<Candidate<'tcx>>> {
-        goal.predicate.self_ty().is_ty_var().then(|| {
-            vec![Candidate {
-                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-                result: self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    .unwrap(),
-            }]
-        })
+    ) -> Option<Candidate<'tcx>> {
+        if goal.predicate.self_ty().is_ty_var() {
+            debug!("adding self_ty_infer_ambiguity_response");
+            let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
+            let result = self
+                .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                .unwrap();
+            let mut dummy_probe = self.inspect.new_probe();
+            dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result: Ok(result) });
+            self.inspect.finish_probe(dummy_probe);
+            Some(Candidate { source, result })
+        } else {
+            None
+        }
     }
 
     /// Assemble candidates which apply to the self type. This only looks at candidate which
@@ -310,7 +315,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Vec<Candidate<'tcx>> {
         debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
         if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
-            return ambig;
+            return vec![ambig];
         }
 
         let mut candidates = Vec::new();
@@ -352,7 +357,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else { return };
 
         candidates.extend(self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
-            if num_steps < ecx.local_overflow_limit() {
+            if tcx.recursion_limit().value_within_limit(num_steps) {
                 let normalized_ty = ecx.next_ty_infer();
                 let normalizes_to_goal = goal.with(
                     tcx,
@@ -395,8 +400,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
                     match G::consider_impl_candidate(self, goal, impl_def_id) {
-                        Ok(result) => candidates
-                            .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
+                        Ok(candidate) => candidates.push(candidate),
                         Err(NoSolution) => (),
                     }
                 }
@@ -514,8 +518,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
         for &impl_def_id in trait_impls.blanket_impls() {
             match G::consider_impl_candidate(self, goal, impl_def_id) {
-                Ok(result) => candidates
-                    .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
+                Ok(candidate) => candidates.push(candidate),
                 Err(NoSolution) => (),
             }
         }
@@ -864,23 +867,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let result = self.probe_misc_candidate("coherence unknowable").enter(|ecx| {
             let trait_ref = goal.predicate.trait_ref(tcx);
-
             #[derive(Debug)]
-            enum FailureKind {
-                Overflow,
-                NoSolution(NoSolution),
-            }
+            struct Overflow;
             let lazily_normalize_ty = |ty| match ecx.try_normalize_ty(goal.param_env, ty) {
-                Ok(Some(ty)) => Ok(ty),
-                Ok(None) => Err(FailureKind::Overflow),
-                Err(e) => Err(FailureKind::NoSolution(e)),
+                Some(ty) => Ok(ty),
+                None => Err(Overflow),
             };
 
             match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty) {
-                Err(FailureKind::Overflow) => {
+                Err(Overflow) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
                 }
-                Err(FailureKind::NoSolution(NoSolution)) | Ok(Ok(())) => Err(NoSolution),
+                Ok(Ok(())) => Err(NoSolution),
                 Ok(Err(_)) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }

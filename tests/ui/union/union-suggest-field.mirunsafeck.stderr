@@ -2,13 +2,23 @@ error[E0560]: union `U` has no field named `principle`
   --> $DIR/union-suggest-field.rs:13:17
    |
 LL |     let u = U { principle: 0 };
-   |                 ^^^^^^^^^ help: a field with a similar name exists: `principal`
+   |                 ^^^^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |     let u = U { principal: 0 };
+   |                 ~~~~~~~~~
 
 error[E0609]: no field `principial` on type `U`
   --> $DIR/union-suggest-field.rs:17:15
    |
 LL |     let w = u.principial;
-   |               ^^^^^^^^^^ help: a field with a similar name exists: `principal`
+   |               ^^^^^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |     let w = u.principal;
+   |               ~~~~~~~~~
 
 error[E0615]: attempted to take value of method `calculate` on type `U`
   --> $DIR/union-suggest-field.rs:21:15

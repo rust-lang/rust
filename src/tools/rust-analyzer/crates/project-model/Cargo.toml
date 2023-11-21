@@ -12,16 +12,16 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-tracing = "0.1.35"
+anyhow.workspace = true
+cargo_metadata.workspace = true
 rustc-hash = "1.1.0"
-cargo_metadata = "0.15.0"
 semver = "1.0.14"
 serde_json.workspace = true
 serde.workspace = true
+tracing.workspace = true
 triomphe.workspace = true
-anyhow = "1.0.62"
 la-arena.workspace = true
-itertools = "0.10.5"
+itertools.workspace = true
 
 # local deps
 base-db.workspace = true

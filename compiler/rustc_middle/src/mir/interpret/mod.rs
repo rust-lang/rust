@@ -525,13 +525,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.alloc_map.lock().reserve()
     }
 
-    /// Miri's provenance GC needs to see all live allocations. The interpreter manages most
-    /// allocations but some are managed by [`TyCtxt`] and without this method the interpreter
-    /// doesn't know their [`AllocId`]s are in use.
-    pub fn iter_allocs<F: FnMut(AllocId)>(self, func: F) {
-        self.alloc_map.lock().alloc_map.keys().copied().for_each(func)
-    }
-
     /// Reserves a new ID *if* this allocation has not been dedup-reserved before.
     /// Should only be used for "symbolic" allocations (function pointers, vtables, statics), we
     /// don't want to dedup IDs for "real" memory!

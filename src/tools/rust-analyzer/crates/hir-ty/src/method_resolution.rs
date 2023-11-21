@@ -862,6 +862,62 @@ fn is_inherent_impl_coherent(
     }
 }
 
+/// Checks whether the impl satisfies the orphan rules.
+///
+/// Given `impl<P1..=Pn> Trait<T1..=Tn> for T0`, an `impl`` is valid only if at least one of the following is true:
+/// - Trait is a local trait
+/// - All of
+///   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
+///   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
+    let substs = TyBuilder::placeholder_subst(db, impl_);
+    let Some(impl_trait) = db.impl_trait(impl_) else {
+        // not a trait impl
+        return true;
+    };
+
+    let local_crate = impl_.lookup(db.upcast()).container.krate();
+    let is_local = |tgt_crate| tgt_crate == local_crate;
+
+    let trait_ref = impl_trait.substitute(Interner, &substs);
+    let trait_id = from_chalk_trait_id(trait_ref.trait_id);
+    if is_local(trait_id.module(db.upcast()).krate()) {
+        // trait to be implemented is local
+        return true;
+    }
+
+    let unwrap_fundamental = |ty: Ty| match ty.kind(Interner) {
+        TyKind::Ref(_, _, referenced) => referenced.clone(),
+        &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref subs) => {
+            let struct_data = db.struct_data(s);
+            if struct_data.flags.contains(StructFlags::IS_FUNDAMENTAL) {
+                let next = subs.type_parameters(Interner).next();
+                match next {
+                    Some(ty) => ty,
+                    None => ty,
+                }
+            } else {
+                ty
+            }
+        }
+        _ => ty,
+    };
+    //   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
+    let is_not_orphan = trait_ref.substitution.type_parameters(Interner).any(|ty| {
+        match unwrap_fundamental(ty).kind(Interner) {
+            &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
+            TyKind::Error => true,
+            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
+                is_local(from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate())
+            }),
+            _ => false,
+        }
+    });
+    // FIXME: param coverage
+    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+    is_not_orphan
+}
+
 pub fn iterate_path_candidates(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,

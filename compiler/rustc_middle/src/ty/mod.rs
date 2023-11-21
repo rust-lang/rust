@@ -84,9 +84,7 @@ pub use self::closure::{
     CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
     RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath, CAPTURE_STRUCT_LOCAL,
 };
-pub use self::consts::{
-    Const, ConstData, ConstInt, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
-};
+pub use self::consts::{Const, ConstData, ConstInt, Expr, ScalarInt, UnevaluatedConst, ValTree};
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
 };
@@ -98,7 +96,7 @@ pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
     BoundVariableKind, CanonicalPolyFnSig, ClauseKind, ClosureArgs, ClosureArgsParts, ConstKind,
-    ConstVid, CoroutineArgs, CoroutineArgsParts, EarlyParamRegion, EffectVid, ExistentialPredicate,
+    CoroutineArgs, CoroutineArgsParts, EarlyParamRegion, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, GenSig, InlineConstArgs,
     InlineConstArgsParts, LateParamRegion, ParamConst, ParamTy, PolyExistentialPredicate,
     PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,

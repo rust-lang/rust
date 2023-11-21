@@ -12,10 +12,9 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-tracing = "0.1.35"
+tracing.workspace = true
 walkdir = "2.3.2"
 crossbeam-channel = "0.5.5"
-# We demand 5.1.0 as any higher version pulls in a new windows-sys dupe
 notify = "6.1.1"
 
 stdx.workspace = true

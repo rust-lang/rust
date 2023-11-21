@@ -68,6 +68,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
     prefer_no_std: false,
+    prefer_prelude: true,
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,
         prefix_kind: PrefixKind::Plain,

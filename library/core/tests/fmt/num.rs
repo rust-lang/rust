@@ -152,8 +152,11 @@ fn test_format_int_exp_precision() {
     assert_eq!(format!("{:+10.3e}", 1), "  +1.000e0");
 
     // test precision remains correct when rounding to next power
-
-    for i in i16::MIN..=i16::MAX {
+    #[cfg(miri)] // can't cover all of `i16` in Miri
+    let range = [i16::MIN, -1, 1, i16::MAX];
+    #[cfg(not(miri))]
+    let range = i16::MIN..=i16::MAX;
+    for i in range {
         for p in 0..=5 {
             assert_eq!(
                 format!("{i:.p$e}"),

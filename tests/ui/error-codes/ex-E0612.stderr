@@ -2,7 +2,12 @@ error[E0609]: no field `1` on type `Foo`
   --> $DIR/ex-E0612.rs:5:6
    |
 LL |    y.1;
-   |      ^ help: a field with a similar name exists: `0`
+   |      ^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |    y.0;
+   |      ~
 
 error: aborting due to previous error
 

@@ -81,73 +81,74 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         // We start from `Send` impl instead of `check_field_def()` because
         // single `AdtDef` may have multiple `Send` impls due to generic
         // parameters, and the lint is much easier to implement in this way.
-        if_chain! {
-            if !in_external_macro(cx.tcx.sess, item.span);
-            if let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send);
-            if let ItemKind::Impl(hir_impl) = &item.kind;
-            if let Some(trait_ref) = &hir_impl.of_trait;
-            if let Some(trait_id) = trait_ref.trait_def_id();
-            if send_trait == trait_id;
-            if hir_impl.polarity == ImplPolarity::Positive;
-            if let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id);
-            if let self_ty = ty_trait_ref.instantiate_identity().self_ty();
-            if let ty::Adt(adt_def, impl_trait_args) = self_ty.kind();
-            then {
-                let mut non_send_fields = Vec::new();
+        if !in_external_macro(cx.tcx.sess, item.span)
+            && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
+            && let ItemKind::Impl(hir_impl) = &item.kind
+            && let Some(trait_ref) = &hir_impl.of_trait
+            && let Some(trait_id) = trait_ref.trait_def_id()
+            && send_trait == trait_id
+            && hir_impl.polarity == ImplPolarity::Positive
+            && let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
+            && let self_ty = ty_trait_ref.instantiate_identity().self_ty()
+            && let ty::Adt(adt_def, impl_trait_args) = self_ty.kind()
+        {
+            let mut non_send_fields = Vec::new();
 
-                let hir_map = cx.tcx.hir();
-                for variant in adt_def.variants() {
-                    for field in &variant.fields {
-                        if_chain! {
-                            if let Some(field_hir_id) = field
-                                .did
-                                .as_local()
-                                .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id));
-                            if !is_lint_allowed(cx, NON_SEND_FIELDS_IN_SEND_TY, field_hir_id);
-                            if let field_ty = field.ty(cx.tcx, impl_trait_args);
-                            if !ty_allowed_in_send(cx, field_ty, send_trait);
-                            if let Node::Field(field_def) = hir_map.get(field_hir_id);
-                            then {
-                                non_send_fields.push(NonSendField {
-                                    def: field_def,
-                                    ty: field_ty,
-                                    generic_params: collect_generic_params(field_ty),
-                                })
-                            }
-                        }
+            let hir_map = cx.tcx.hir();
+            for variant in adt_def.variants() {
+                for field in &variant.fields {
+                    if let Some(field_hir_id) = field
+                        .did
+                        .as_local()
+                        .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id))
+                        && !is_lint_allowed(cx, NON_SEND_FIELDS_IN_SEND_TY, field_hir_id)
+                        && let field_ty = field.ty(cx.tcx, impl_trait_args)
+                        && !ty_allowed_in_send(cx, field_ty, send_trait)
+                        && let Node::Field(field_def) = hir_map.get(field_hir_id)
+                    {
+                        non_send_fields.push(NonSendField {
+                            def: field_def,
+                            ty: field_ty,
+                            generic_params: collect_generic_params(field_ty),
+                        });
                     }
                 }
+            }
 
-                if !non_send_fields.is_empty() {
-                    span_lint_and_then(
-                        cx,
-                        NON_SEND_FIELDS_IN_SEND_TY,
-                        item.span,
-                        &format!(
-                            "some fields in `{}` are not safe to be sent to another thread",
-                            snippet(cx, hir_impl.self_ty.span, "Unknown")
-                        ),
-                        |diag| {
-                            for field in non_send_fields {
-                                diag.span_note(
-                                    field.def.span,
-                                    format!("it is not safe to send field `{}` to another thread", field.def.ident.name),
-                                );
+            if !non_send_fields.is_empty() {
+                span_lint_and_then(
+                    cx,
+                    NON_SEND_FIELDS_IN_SEND_TY,
+                    item.span,
+                    &format!(
+                        "some fields in `{}` are not safe to be sent to another thread",
+                        snippet(cx, hir_impl.self_ty.span, "Unknown")
+                    ),
+                    |diag| {
+                        for field in non_send_fields {
+                            diag.span_note(
+                                field.def.span,
+                                format!(
+                                    "it is not safe to send field `{}` to another thread",
+                                    field.def.ident.name
+                                ),
+                            );
 
-                                match field.generic_params.len() {
-                                    0 => diag.help("use a thread-safe type that implements `Send`"),
-                                    1 if is_ty_param(field.ty) => diag.help(format!("add `{}: Send` bound in `Send` impl", field.ty)),
-                                    _ => diag.help(format!(
-                                        "add bounds on type parameter{} `{}` that satisfy `{}: Send`",
-                                        if field.generic_params.len() > 1 { "s" } else { "" },
-                                        field.generic_params_string(),
-                                        snippet(cx, field.def.ty.span, "Unknown"),
-                                    )),
-                                };
-                            }
-                        },
-                    );
-                }
+                            match field.generic_params.len() {
+                                0 => diag.help("use a thread-safe type that implements `Send`"),
+                                1 if is_ty_param(field.ty) => {
+                                    diag.help(format!("add `{}: Send` bound in `Send` impl", field.ty))
+                                },
+                                _ => diag.help(format!(
+                                    "add bounds on type parameter{} `{}` that satisfy `{}: Send`",
+                                    if field.generic_params.len() > 1 { "s" } else { "" },
+                                    field.generic_params_string(),
+                                    snippet(cx, field.def.ty.span, "Unknown"),
+                                )),
+                            };
+                        }
+                    },
+                );
             }
         }
     }

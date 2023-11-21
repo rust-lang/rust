@@ -27,7 +27,6 @@ pub trait Interner: Sized {
     type ParamTy: Clone + Debug + Hash + Ord;
     type BoundTy: Clone + Debug + Hash + Ord;
     type PlaceholderTy: Clone + Debug + Hash + Ord;
-    type InferTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Clone + Debug + Hash + Ord;
@@ -37,7 +36,6 @@ pub trait Interner: Sized {
 
     // Kinds of consts
     type Const: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type InferConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type AliasConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderConst: Clone + Debug + Hash + Ord;
     type ParamConst: Clone + Debug + Hash + Ord;

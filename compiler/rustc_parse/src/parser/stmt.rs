@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtStmt(stmt) = &**nt
+            && let token::NtStmt(stmt) = &nt.0
         {
             let mut stmt = stmt.clone();
             self.bump();
@@ -617,6 +617,20 @@ impl<'a> Parser<'a> {
         let mut add_semi_to_stmt = false;
 
         match &mut stmt.kind {
+            // Expression without semicolon.
+            StmtKind::Expr(expr)
+                if classify::expr_requires_semi_to_be_stmt(expr)
+                    && !expr.attrs.is_empty()
+                    && ![token::Eof, token::Semi, token::CloseDelim(Delimiter::Brace)]
+                        .contains(&self.token.kind) =>
+            {
+                // The user has written `#[attr] expr` which is unsupported. (#106020)
+                self.attr_on_non_tail_expr(&expr);
+                // We already emitted an error, so don't emit another type error
+                let sp = expr.span.to(self.prev_token.span);
+                *expr = self.mk_expr_err(sp);
+            }
+
             // Expression without semicolon.
             StmtKind::Expr(expr)
                 if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>

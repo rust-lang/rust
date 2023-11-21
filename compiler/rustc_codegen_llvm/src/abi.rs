@@ -348,50 +348,18 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Direct(_) => {
                     // ABI-compatible Rust types have the same `layout.abi` (up to validity ranges),
                     // and for Scalar ABIs the LLVM type is fully determined by `layout.abi`,
-                    // guarnateeing that we generate ABI-compatible LLVM IR. Things get tricky for
-                    // aggregates...
-                    if matches!(arg.layout.abi, abi::Abi::Aggregate { .. }) {
-                        assert!(
-                            arg.layout.is_sized(),
-                            "`PassMode::Direct` for unsized type: {}",
-                            arg.layout.ty
-                        );
-                        // This really shouldn't happen, since `immediate_llvm_type` will use
-                        // `layout.fields` to turn this Rust type into an LLVM type. This means all
-                        // sorts of Rust type details leak into the ABI. However wasm sadly *does*
-                        // currently use this mode so we have to allow it -- but we absolutely
-                        // shouldn't let any more targets do that.
-                        // (Also see <https://github.com/rust-lang/rust/issues/115666>.)
-                        //
-                        // The unstable abi `PtxKernel` also uses Direct for now.
-                        // It needs to switch to something else before stabilization can happen.
-                        // (See issue: https://github.com/rust-lang/rust/issues/117271)
-                        assert!(
-                            matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
-                                || self.conv == Conv::PtxKernel,
-                            "`PassMode::Direct` for aggregates only allowed on wasm and `extern \"ptx-kernel\"` fns\nProblematic type: {:#?}",
-                            arg.layout,
-                        );
-                    }
+                    // guaranteeing that we generate ABI-compatible LLVM IR.
                     arg.layout.immediate_llvm_type(cx)
                 }
                 PassMode::Pair(..) => {
                     // ABI-compatible Rust types have the same `layout.abi` (up to validity ranges),
                     // so for ScalarPair we can easily be sure that we are generating ABI-compatible
                     // LLVM IR.
-                    assert!(
-                        matches!(arg.layout.abi, abi::Abi::ScalarPair(..)),
-                        "PassMode::Pair for type {}",
-                        arg.layout.ty
-                    );
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0, true));
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack } => {
-                    // `Indirect` with metadata is only for unsized types, and doesn't work with
-                    // on-stack passing.
-                    assert!(arg.layout.is_unsized() && !on_stack);
+                PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                     // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
                     // Any two ABI-compatible unsized types have the same metadata type and
                     // moreover the same metadata value leads to the same dynamic size and
@@ -402,13 +370,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
-                    assert!(arg.layout.is_sized());
-                    cx.type_ptr()
-                }
+                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => cx.type_ptr(),
                 PassMode::Cast { cast, pad_i32 } => {
-                    // `Cast` means "transmute to `CastType`"; that only makes sense for sized types.
-                    assert!(arg.layout.is_sized());
                     // add padding
                     if *pad_i32 {
                         llargument_tys.push(Reg::i32().llvm_type(cx));

@@ -150,7 +150,7 @@ where
 
 #[test]
 fn test_overlapping() {
-    use rustc_span::source_map::DUMMY_SP;
+    use rustc_span::DUMMY_SP;
 
     let sp = |s, e| SpannedRange {
         span: DUMMY_SP,

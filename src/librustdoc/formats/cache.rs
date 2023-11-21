@@ -369,6 +369,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                                 &item,
                                 self.tcx,
                                 clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
+                                parent,
                                 self.cache,
                             ),
                             aliases: item.attrs.get_doc_aliases(),
