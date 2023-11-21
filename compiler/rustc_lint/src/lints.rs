@@ -553,21 +553,6 @@ pub enum BuiltinSpecialModuleNameUsed {
     Main,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_unexpected_cli_config_name)]
-#[help]
-pub struct BuiltinUnexpectedCliConfigName {
-    pub name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_unexpected_cli_config_value)]
-#[help]
-pub struct BuiltinUnexpectedCliConfigValue {
-    pub name: Symbol,
-    pub value: Symbol,
-}
-
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]

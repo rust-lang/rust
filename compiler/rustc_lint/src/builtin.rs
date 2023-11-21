@@ -33,7 +33,6 @@ use crate::{
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
         BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
         BuiltinTypeAliasGenericBoundsSuggestion, BuiltinTypeAliasWhereClause,
-        BuiltinUnexpectedCliConfigName, BuiltinUnexpectedCliConfigValue,
         BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
         BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
@@ -60,7 +59,6 @@ use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
-use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
@@ -2885,29 +2883,6 @@ impl EarlyLintPass for SpecialModuleName {
                     ),
                     _ => continue,
                 }
-            }
-        }
-    }
-}
-
-pub use rustc_session::lint::builtin::UNEXPECTED_CFGS;
-
-declare_lint_pass!(UnexpectedCfgs => [UNEXPECTED_CFGS]);
-
-impl EarlyLintPass for UnexpectedCfgs {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        let cfg = &cx.sess().parse_sess.config;
-        let check_cfg = &cx.sess().parse_sess.check_config;
-        for &(name, value) in cfg {
-            match check_cfg.expecteds.get(&name) {
-                Some(ExpectedValues::Some(values)) if !values.contains(&value) => {
-                    let value = value.unwrap_or(kw::Empty);
-                    cx.emit_lint(UNEXPECTED_CFGS, BuiltinUnexpectedCliConfigValue { name, value });
-                }
-                None if check_cfg.exhaustive_names => {
-                    cx.emit_lint(UNEXPECTED_CFGS, BuiltinUnexpectedCliConfigName { name });
-                }
-                _ => { /* expected */ }
             }
         }
     }

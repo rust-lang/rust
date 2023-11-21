@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `unknown_key`
-  --> $DIR/exhaustive-names-values.rs:12:7
+  --> $DIR/exhaustive-names-values.rs:11:7
    |
 LL | #[cfg(unknown_key = "value")]
    |       ^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[cfg(unknown_key = "value")]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `value`
-  --> $DIR/exhaustive-names-values.rs:16:7
+  --> $DIR/exhaustive-names-values.rs:15:7
    |
 LL | #[cfg(test = "value")]
    |       ^^^^----------
@@ -17,9 +17,5 @@ LL | #[cfg(test = "value")]
    |
    = note: no expected value for `test`
 
-warning: unexpected `empty_cfg` as condition name
-   |
-   = help: was set with `--cfg` but isn't in the `--check-cfg` expected names
-
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 

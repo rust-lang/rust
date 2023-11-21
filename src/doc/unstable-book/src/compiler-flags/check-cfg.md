@@ -35,6 +35,9 @@ and `cfg!(name = "value")` call. It will check that the `"value"` specified is p
 list of expected values. If `"value"` is not in it, then `rustc` will report an `unexpected_cfgs`
 lint diagnostic. The default diagnostic level for this lint is `Warn`.
 
+The command line `--cfg` arguments are currently *NOT* checked but may very well be checked in
+the future.
+
 To enable checking of values, but to provide an empty set of expected values, use these forms:
 
 ```bash

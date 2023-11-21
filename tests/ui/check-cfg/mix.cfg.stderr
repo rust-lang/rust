@@ -38,14 +38,6 @@ LL | #[cfg_attr(uu, test)]
    |
    = help: expected names are: `cfg`, `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `names_values`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
-warning: unexpected condition value `bar` for condition name `feature`
-   |
-   = help: was set with `--cfg` but isn't in the `--check-cfg` expected values
-
-warning: unexpected `unknown_name` as condition name
-   |
-   = help: was set with `--cfg` but isn't in the `--check-cfg` expected names
-
 warning: unexpected `cfg` condition name: `widnows`
   --> $DIR/mix.rs:43:10
    |
@@ -188,5 +180,5 @@ LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |
    = note: expected values for `feature` are: `foo`
 
-warning: 28 warnings emitted
+warning: 26 warnings emitted
 
