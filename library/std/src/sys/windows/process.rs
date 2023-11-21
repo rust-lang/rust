@@ -463,7 +463,7 @@ fn resolve_exe<'a>(
 
         // Search the directories given by `search_paths`.
         let result = search_paths(parent_paths, child_paths, |mut path| {
-            path.push(&exe_path);
+            path.push(exe_path);
             if !has_extension {
                 path.set_extension(EXE_EXTENSION);
             }

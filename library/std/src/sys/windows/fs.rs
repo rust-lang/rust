@@ -156,7 +156,7 @@ impl DirEntry {
     }
 
     pub fn path(&self) -> PathBuf {
-        self.root.join(&self.file_name())
+        self.root.join(self.file_name())
     }
 
     pub fn file_name(&self) -> OsString {
