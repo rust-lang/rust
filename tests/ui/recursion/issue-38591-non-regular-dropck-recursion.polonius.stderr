@@ -11,5 +11,5 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the full type name has been written to '$TEST_BUILD_DIR/recursion/issue-38591-non-regular-dropck-recursion.polonius/issue-38591-non-regular-dropck-recursion.long-type.txt'
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

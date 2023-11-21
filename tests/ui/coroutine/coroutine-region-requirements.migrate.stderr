@@ -7,6 +7,6 @@ LL | fn dangle(x: &mut i32) -> &'static mut i32 {
 LL |             GeneratorState::Complete(c) => return c,
    |                                                   ^ lifetime `'static` required
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0621`.
