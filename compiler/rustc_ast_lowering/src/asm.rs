@@ -228,6 +228,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 parent_def_id.def_id,
                                 node_id,
                                 DefPathData::AnonConst,
+                                DefKind::AnonConst,
                                 *op_sp,
                             );
                             let anon_const = AnonConst { id: node_id, value: P(expr) };

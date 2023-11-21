@@ -501,6 +501,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
+    pub fn feed_local_def_id(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+        TyCtxtFeed { tcx: self, key }
+    }
 
     /// In order to break cycles involving `AnonConst`, we need to set the expected type by side
     /// effect. However, we do not want this as a general capability, so this interface restricts
@@ -973,6 +976,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         self,
         parent: LocalDefId,
         data: hir::definitions::DefPathData,
+        def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
@@ -997,6 +1001,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         let key = self.untracked.definitions.write().create_def(parent, data);
 
         let feed = TyCtxtFeed { tcx: self.tcx, key };
+        feed.def_kind(def_kind);
         feed.def_span(self.span);
         feed
     }
