@@ -10,5 +10,5 @@ LL - trait<T> Foo {
 LL + trait Foo<T> {
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,6 +4,6 @@ error[E0627]: yield expression outside of coroutine literal
 LL | fn main() { yield; }
    |             ^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0627`.

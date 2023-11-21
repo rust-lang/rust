@@ -4,5 +4,5 @@ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
 LL |   let x.y::<isize>.z foo;
    |        ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

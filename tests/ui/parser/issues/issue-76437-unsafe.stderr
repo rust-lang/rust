@@ -7,5 +7,5 @@ LL |     unsafe pub fn t() {}
    |     |      expected one of `extern` or `fn`
    |     help: visibility `pub` must come before `unsafe`: `pub unsafe`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

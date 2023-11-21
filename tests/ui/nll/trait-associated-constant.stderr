@@ -17,6 +17,6 @@ note: ...does not necessarily outlive the lifetime `'b` as defined here
 LL | impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct {
    |              ^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

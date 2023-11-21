@@ -8,5 +8,5 @@ LL | fn foo(mut x: Ref, y: &u32) {
 LL |     x.b = y;
    |     ^^^^^^^ assignment requires that `'1` must outlive `'2`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

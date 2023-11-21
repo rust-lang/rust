@@ -18,6 +18,6 @@ help: consider introducing a `where` clause, but there might be an alternative b
 LL | fn qux<T>(a: Wrapper<T>, b: T) -> T where Wrapper<T>: Add<T, Output = T> {
    |                                     ++++++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0369`.

@@ -6,6 +6,6 @@ LL | impl<T: Display> MyMarker for T {}
 LL | impl<T: Debug> MyMarker for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0119`.

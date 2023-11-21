@@ -7,6 +7,6 @@ LL |     debug_assert_eq!(iter.next(), Some(value));
    = note: expected enum `Option<<I as Iterator>::Item>`
               found enum `Option<&<I as Iterator>::Item>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

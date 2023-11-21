@@ -14,6 +14,6 @@ LL |     let _: Box<F> = Box::new(|| ());
 note: associated function defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

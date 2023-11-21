@@ -14,6 +14,6 @@ LL |     map.get_mut(&0).map(|val| { *val = 1; });
 LL |     let val = map.entry(&0).or_insert(1);
    |     +++++++++    ~~~~~~~  ~~~~~~~~~~~~ +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0594`.

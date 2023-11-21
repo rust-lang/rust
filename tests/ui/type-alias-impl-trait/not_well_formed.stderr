@@ -9,6 +9,6 @@ help: consider restricting type parameter `V`
 LL | type Foo<V: TraitWithAssoc> = impl Trait<V::Assoc>;
    |           ++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0220`.

@@ -16,5 +16,5 @@ help: consider immediately dropping the value
 LL |     drop(data.lock().unwrap());
    |     ~~~~~                    +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

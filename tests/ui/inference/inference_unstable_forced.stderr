@@ -7,6 +7,6 @@ LL |     assert_eq!('x'.ipu_flatten(), 0);
    = note: see issue #99999 <https://github.com/rust-lang/rust/issues/99999> for more information
    = help: add `#![feature(ipu_flatten)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

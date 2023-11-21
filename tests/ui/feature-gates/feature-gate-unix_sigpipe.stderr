@@ -7,6 +7,6 @@ LL | #[unix_sigpipe = "inherit"]
    = note: see issue #97889 <https://github.com/rust-lang/rust/issues/97889> for more information
    = help: add `#![feature(unix_sigpipe)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

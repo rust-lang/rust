@@ -4,6 +4,6 @@ error[E0033]: type `Box<(dyn MyTrait + 'static)>` cannot be dereferenced
 LL |         TraitWrapper::A(box ref map) => map,
    |                         ^^^^^^^^^^^ type `Box<(dyn MyTrait + 'static)>` cannot be dereferenced
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0033`.

@@ -15,5 +15,5 @@ LL |     for<const C: usize> [(); C]: Copy,
    |         |
    |         parameter defined here
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

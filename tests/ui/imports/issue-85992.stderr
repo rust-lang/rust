@@ -4,6 +4,6 @@ error[E0432]: unresolved import `crate::issue_85992_extern_2`
 LL | use crate::issue_85992_extern_2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `issue_85992_extern_2` in the root
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0432`.

@@ -7,6 +7,6 @@ LL |     let a = concat_bytes!(b'A', b"BC");
    = note: see issue #87555 <https://github.com/rust-lang/rust/issues/87555> for more information
    = help: add `#![feature(concat_bytes)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

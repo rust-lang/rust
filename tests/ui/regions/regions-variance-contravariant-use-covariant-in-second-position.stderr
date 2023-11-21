@@ -11,5 +11,5 @@ LL |     let _: S<'long, 'long> = c;
    |
    = help: consider adding the following bound: `'short: 'long`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

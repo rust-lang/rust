@@ -14,6 +14,6 @@ help: consider specifying the generic argument
 LL |     lst.sort_by_key(|&(v, _)| v.iter().sum::<S>());
    |                                           +++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0283`.

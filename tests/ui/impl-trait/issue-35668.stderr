@@ -11,6 +11,6 @@ help: consider introducing a `where` clause, but there might be an alternative b
 LL | fn func<'a, T>(a: &'a [T]) -> impl Iterator<Item=&'a T> where &T: Mul<&T> {
    |                                                         +++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0369`.

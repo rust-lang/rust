@@ -4,5 +4,5 @@ error: associated type bounds are only allowed in where clauses and function sig
 LL |     dyn for<'j> B<AssocType: 'j>:,
    |                   ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

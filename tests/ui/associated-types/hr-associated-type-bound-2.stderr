@@ -18,6 +18,6 @@ LL |     for<'b> <Self as X<'b>>::U: Clone,
    = note: 128 redundant requirements hidden
    = note: required for `u32` to implement `for<'b> X<'b>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0275`.

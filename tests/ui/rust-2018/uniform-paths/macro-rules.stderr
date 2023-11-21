@@ -10,6 +10,6 @@ help: consider adding a `#[macro_export]` to the macro in the imported module
 LL |     macro_rules! legacy_macro { () => () }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0364`.

@@ -7,6 +7,6 @@ LL |     fn zip<B, U: Iterator<U>>(self, other: U) -> ZipIterator<Self, U>;
 LL |     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
    |                  ^^^^^^^^^^^ impl has extra requirement `U: Iterator<B>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0276`.

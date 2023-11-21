@@ -4,5 +4,5 @@ error: option_env! takes 1 argument
 LL | fn main() { option_env!(); }
    |             ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

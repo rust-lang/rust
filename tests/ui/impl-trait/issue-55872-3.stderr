@@ -4,6 +4,6 @@ error[E0277]: the trait bound `{async block@$DIR/issue-55872-3.rs:15:9: 15:17}: 
 LL |     fn foo<T>() -> Self::E {
    |                    ^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/issue-55872-3.rs:15:9: 15:17}`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

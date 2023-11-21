@@ -7,6 +7,6 @@ LL | #[expect(unused)]
    = note: see issue #54503 <https://github.com/rust-lang/rust/issues/54503> for more information
    = help: add `#![feature(lint_reasons)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

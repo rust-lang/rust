@@ -25,6 +25,6 @@ help: consider further restricting this bound
 LL | impl<T: 'static + std::cmp::PartialEq> X for T {
    |                 +++++++++++++++++++++
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

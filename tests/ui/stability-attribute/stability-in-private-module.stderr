@@ -9,6 +9,6 @@ LL |     let _ = std::thread::thread_info::current_thread();
 note: the module `thread_info` is defined here
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0603`.

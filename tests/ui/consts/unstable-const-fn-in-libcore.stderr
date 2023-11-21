@@ -4,5 +4,5 @@ error: ~const can only be applied to `#[const_trait]` traits
 LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
    |                                       ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
