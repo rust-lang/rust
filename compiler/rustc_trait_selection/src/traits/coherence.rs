@@ -1010,7 +1010,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
 
         let Goal { param_env, predicate } = goal.goal();
 
-        // For bound predicates we simply call `infcx.replace_bound_vars_with_placeholders`
+        // For bound predicates we simply call `infcx.instantiate_binder_with_placeholders`
         // and then prove the resulting predicate as a nested goal.
         let trait_ref = match predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
