@@ -1,7 +1,7 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use std::{
     iter::once,
-    path,
+    mem, path,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -1123,13 +1123,20 @@ pub(crate) fn snippet_text_document_ops(
 
 pub(crate) fn snippet_workspace_edit(
     snap: &GlobalStateSnapshot,
-    source_change: SourceChange,
+    mut source_change: SourceChange,
 ) -> Cancellable<lsp_ext::SnippetWorkspaceEdit> {
     let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
 
-    for op in source_change.file_system_edits {
-        let ops = snippet_text_document_ops(snap, op)?;
-        document_changes.extend_from_slice(&ops);
+    for op in &mut source_change.file_system_edits {
+        if let FileSystemEdit::CreateFile { dst, initial_contents } = op {
+            // replace with a placeholder to avoid cloneing the edit
+            let op = FileSystemEdit::CreateFile {
+                dst: dst.clone(),
+                initial_contents: mem::take(initial_contents),
+            };
+            let ops = snippet_text_document_ops(snap, op)?;
+            document_changes.extend_from_slice(&ops);
+        }
     }
     for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {
         let edit = snippet_text_document_edit(
@@ -1140,6 +1147,12 @@ pub(crate) fn snippet_workspace_edit(
             snippet_edit,
         )?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
+    }
+    for op in source_change.file_system_edits {
+        if !matches!(op, FileSystemEdit::CreateFile { .. }) {
+            let ops = snippet_text_document_ops(snap, op)?;
+            document_changes.extend_from_slice(&ops);
+        }
     }
     let mut workspace_edit = lsp_ext::SnippetWorkspaceEdit {
         changes: None,
