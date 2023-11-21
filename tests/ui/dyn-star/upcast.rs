@@ -1,6 +1,6 @@
 // known-bug: #104800
 
-#![feature(dyn_star, trait_upcasting)]
+#![feature(dyn_star)]
 
 trait Foo: Bar {
     fn hello(&self);

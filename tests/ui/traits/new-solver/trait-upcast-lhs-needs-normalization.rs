@@ -1,8 +1,6 @@
 // check-pass
 // compile-flags: -Ztrait-solver=next
 
-#![feature(trait_upcasting)]
-
 pub trait A {}
 pub trait B: A {}
 
