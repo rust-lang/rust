@@ -52,6 +52,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::invalid_utf8_in_unchecked", "invalid_from_utf8_unchecked"),
     ("clippy::let_underscore_drop", "let_underscore_drop"),
     ("clippy::mem_discriminant_non_enum", "enum_intrinsics_non_enums"),
+    ("clippy::precedence", "ambiguous_precedence"),
     ("clippy::panic_params", "non_fmt_panics"),
     ("clippy::positional_named_format_parameters", "named_arguments_used_positionally"),
     ("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr"),

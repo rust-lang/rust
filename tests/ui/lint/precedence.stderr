@@ -1,0 +1,201 @@
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:5:13
+   |
+LL |     let _ = 1 << 2 + 3;
+   |             ^^^^^^^^^^
+   |
+   = note: `#[warn(ambiguous_precedence)]` on by default
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = 1 << (2 + 3);
+   |                  +     +
+
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:7:13
+   |
+LL |     let _ = 1 + 2 << 3;
+   |             ^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = (1 + 2) << 3;
+   |             +     +
+
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:9:13
+   |
+LL |     let _ = 4 >> 1 + 1;
+   |             ^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = 4 >> (1 + 1);
+   |                  +     +
+
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:11:13
+   |
+LL |     let _ = 1 + 3 >> 2;
+   |             ^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = (1 + 3) >> 2;
+   |             +     +
+
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:13:13
+   |
+LL |     let _ = 1 ^ 1 - 1;
+   |             ^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = 1 ^ (1 - 1);
+   |                 +     +
+
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:15:13
+   |
+LL |     let _ = 3 | 2 - 1;
+   |             ^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = 3 | (2 - 1);
+   |                 +     +
+
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:17:13
+   |
+LL |     let _ = 3 & 5 - 2;
+   |             ^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = 3 & (5 - 2);
+   |                 +     +
+
+warning: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:19:13
+   |
+LL |     let _ = 1 + 2 << 3 + 1;
+   |             ^^^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = (1 + 2) << (3 + 1);
+   |             +     +    +     +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:21:13
+   |
+LL |     let _ = -1i32.abs();
+   |             ^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1i32.abs());
+   |              +          +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:23:13
+   |
+LL |     let _ = -1f32.abs();
+   |             ^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1f32.abs());
+   |              +          +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:25:13
+   |
+LL |     let _ = -1f64.asin();
+   |             ^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.asin());
+   |              +           +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:27:13
+   |
+LL |     let _ = -1f64.asinh();
+   |             ^^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.asinh());
+   |              +            +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:29:13
+   |
+LL |     let _ = -1f64.tan();
+   |             ^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.tan());
+   |              +          +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:31:13
+   |
+LL |     let _ = -1f64.tanh();
+   |             ^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.tanh());
+   |              +           +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:33:13
+   |
+LL |     let _ = -1.0_f64.cos().cos();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1.0_f64.cos().cos());
+   |              +                   +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:35:13
+   |
+LL |     let _ = -1.0_f64.cos().sin();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1.0_f64.cos().sin());
+   |              +                   +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:37:13
+   |
+LL |     let _ = -1.0_f64.sin().cos();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1.0_f64.sin().cos());
+   |              +                   +
+
+warning: unary operator `-` has lower precedence than method call
+  --> $DIR/precedence.rs:39:13
+   |
+LL |     let _ = -1f64.sin().sin();
+   |             ^^^^^^^^^^^^^^^^^
+   |
+help: consider adding parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.sin().sin());
+   |              +                +
+
+warning: 18 warnings emitted
+

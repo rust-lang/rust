@@ -1,6 +1,6 @@
 #![warn(clippy::neg_multiply)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::precedence)]
-#![allow(unused)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(unused, ambiguous_precedence)]
 
 use std::ops::Mul;
 

@@ -264,7 +264,6 @@ mod partialeq_to_none;
 mod pass_by_ref_or_value;
 mod pattern_type_mismatch;
 mod permissions_set_readonly_false;
-mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
 mod pub_use;
@@ -809,7 +808,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(returns::Return));
     store.register_early_pass(|| Box::new(collapsible_if::CollapsibleIf));
     store.register_late_pass(|_| Box::new(items_after_statements::ItemsAfterStatements));
-    store.register_early_pass(|| Box::new(precedence::Precedence));
     store.register_late_pass(|_| Box::new(needless_parens_on_range_literals::NeedlessParensOnRangeLiterals));
     store.register_early_pass(|| Box::new(needless_continue::NeedlessContinue));
     store.register_early_pass(|| Box::new(redundant_else::RedundantElse));
