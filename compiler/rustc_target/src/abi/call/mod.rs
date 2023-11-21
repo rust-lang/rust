@@ -382,6 +382,7 @@ impl HomogeneousAggregate {
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
+    /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     fn is_aggregate(&self) -> bool {
         match self.abi {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
