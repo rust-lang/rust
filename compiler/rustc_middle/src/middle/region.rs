@@ -149,6 +149,7 @@ rustc_index::newtype_index! {
     ///   and thus does not include EXPR_2, but covers the `...`.
     #[derive(HashStable)]
     #[encodable]
+    #[orderable]
     pub struct FirstStatementIndex {}
 }
 

@@ -9,6 +9,7 @@ rustc_index::newtype_index! {
     ///
     /// [`DefId`]: rustc_span::def_id::DefId
     #[encodable]
+    #[orderable]
     #[debug_format = "NodeId({})"]
     pub struct NodeId {
         /// The [`NodeId`] used to represent the root of the crate.

@@ -23,7 +23,7 @@ impl Parse for Newtype {
         let mut max = None;
         let mut consts = Vec::new();
         let mut encodable = false;
-        let mut ord = true;
+        let mut ord = false;
         let mut gate_rustc_only = quote! {};
         let mut gate_rustc_only_cfg = quote! { all() };
 
@@ -38,8 +38,8 @@ impl Parse for Newtype {
                     encodable = true;
                     false
                 }
-                "no_ord_impl" => {
-                    ord = false;
+                "orderable" => {
+                    ord = true;
                     false
                 }
                 "max" => {

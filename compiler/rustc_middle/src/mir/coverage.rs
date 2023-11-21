@@ -18,6 +18,7 @@ rustc_index::newtype_index! {
     /// to use a larger representation on the Rust side.
     #[derive(HashStable)]
     #[encodable]
+    #[orderable]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "CounterId({})"]
     pub struct CounterId {}
@@ -39,6 +40,7 @@ rustc_index::newtype_index! {
     /// to use a larger representation on the Rust side.
     #[derive(HashStable)]
     #[encodable]
+    #[orderable]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "ExpressionId({})"]
     pub struct ExpressionId {}

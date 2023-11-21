@@ -1613,6 +1613,7 @@ rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
     #[encodable]
+    #[orderable]
     #[debug_format = "'?{}"]
     pub struct RegionVid {}
 }

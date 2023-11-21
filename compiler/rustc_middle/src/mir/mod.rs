@@ -737,6 +737,7 @@ impl SourceInfo {
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
+    #[orderable]
     #[debug_format = "_{}"]
     pub struct Local {
         const RETURN_PLACE = 0;
@@ -1173,6 +1174,7 @@ rustc_index::newtype_index! {
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     #[derive(HashStable)]
     #[encodable]
+    #[orderable]
     #[debug_format = "bb{}"]
     pub struct BasicBlock {
         const START_BLOCK = 0;
@@ -1537,6 +1539,7 @@ impl UserTypeProjection {
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
+    #[orderable]
     #[debug_format = "promoted[{}]"]
     pub struct Promoted {}
 }

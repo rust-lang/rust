@@ -155,6 +155,7 @@ rustc_index::newtype_index! {
     /// tree or hash map.
     #[derive(HashStable_Generic)]
     #[encodable]
+    #[orderable]
     pub struct ItemLocalId {}
 }
 

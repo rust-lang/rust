@@ -109,6 +109,7 @@ impl_visitable! {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "bw{}"]
     pub struct BorrowIndex {}
 }

@@ -93,6 +93,7 @@ rustc_index::newtype_index! {
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
     #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
     #[encodable]
+    #[orderable]
     #[debug_format = "DebruijnIndex({})"]
     #[gate_rustc_only]
     pub struct DebruijnIndex {
@@ -295,6 +296,7 @@ rustc_index::newtype_index! {
     /// use for checking generic functions.
     #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
     #[encodable]
+    #[orderable]
     #[debug_format = "U{}"]
     #[gate_rustc_only]
     pub struct UniverseIndex {}
@@ -338,6 +340,7 @@ impl UniverseIndex {
 rustc_index::newtype_index! {
     #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
     #[encodable]
+    #[orderable]
     #[debug_format = "{}"]
     #[gate_rustc_only]
     pub struct BoundVar {}

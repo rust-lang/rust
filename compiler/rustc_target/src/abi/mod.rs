@@ -43,6 +43,7 @@ rustc_index::newtype_index! {
     /// `f` is `FieldIdx(1)` in `VariantIdx(0)`.
     #[derive(HashStable_Generic)]
     #[encodable]
+    #[orderable]
     pub struct FieldIdx {}
 }
 
@@ -59,6 +60,7 @@ rustc_index::newtype_index! {
     /// with variant index zero, aka [`FIRST_VARIANT`].
     #[derive(HashStable_Generic)]
     #[encodable]
+    #[orderable]
     pub struct VariantIdx {
         /// Equivalent to `VariantIdx(0)`.
         const FIRST_VARIANT = 0;

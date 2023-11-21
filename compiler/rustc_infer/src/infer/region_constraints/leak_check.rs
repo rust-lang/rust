@@ -341,11 +341,13 @@ impl<'tcx> SccUniverse<'tcx> {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "LeakCheckNode({})"]
     struct LeakCheckNode {}
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "LeakCheckScc({})"]
     struct LeakCheckScc {}
 }
