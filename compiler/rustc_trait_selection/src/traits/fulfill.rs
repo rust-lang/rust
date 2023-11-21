@@ -420,7 +420,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ProcessResult::Error(CodeSelectionError(Unimplemented))
                             }
                         }
-                        None => ProcessResult::Unchanged,
+                        None => {
+                            if kind == ty::ClosureKind::FnOnce {
+                                ProcessResult::Changed(vec![])
+                            } else {
+                                ProcessResult::Unchanged
+                            }
+                        }
                     }
                 }
 

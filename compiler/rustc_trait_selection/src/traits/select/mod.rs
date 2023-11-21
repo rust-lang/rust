@@ -894,7 +894,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Ok(EvaluatedToErr)
                             }
                         }
-                        None => Ok(EvaluatedToAmbig),
+                        None => {
+                            if kind == ty::ClosureKind::FnOnce {
+                                Ok(EvaluatedToOk)
+                            } else {
+                                Ok(EvaluatedToAmbig)
+                            }
+                        }
                     }
                 }
 
