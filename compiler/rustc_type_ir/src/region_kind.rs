@@ -263,7 +263,7 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
 #[cfg(feature = "nightly")]
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
 where
     I::EarlyParamRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,

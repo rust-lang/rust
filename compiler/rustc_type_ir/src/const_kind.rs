@@ -16,7 +16,7 @@ use self::ConstKind::*;
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
     Param(I::ParamConst),
@@ -45,49 +45,6 @@ pub enum ConstKind<I: Interner> {
     /// Unevaluated non-const-item, used by `feature(generic_const_exprs)` to represent
     /// const arguments such as `N + 1` or `foo(N)`
     Expr(I::ExprConst),
-}
-
-#[cfg(feature = "nightly")]
-const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
-    match value {
-        Param(_) => 0,
-        Infer(_) => 1,
-        Bound(_, _) => 2,
-        Placeholder(_) => 3,
-        Unevaluated(_) => 4,
-        Value(_) => 5,
-        Error(_) => 6,
-        Expr(_) => 7,
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for ConstKind<I>
-where
-    I::ParamConst: HashStable<CTX>,
-    I::BoundConst: HashStable<CTX>,
-    I::PlaceholderConst: HashStable<CTX>,
-    I::AliasConst: HashStable<CTX>,
-    I::ValueConst: HashStable<CTX>,
-    I::ErrorGuaranteed: HashStable<CTX>,
-    I::ExprConst: HashStable<CTX>,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        const_kind_discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            Param(p) => p.hash_stable(hcx, hasher),
-            Infer(i) => i.hash_stable(hcx, hasher),
-            Bound(d, b) => {
-                d.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            Placeholder(p) => p.hash_stable(hcx, hasher),
-            Unevaluated(u) => u.hash_stable(hcx, hasher),
-            Value(v) => v.hash_stable(hcx, hasher),
-            Error(e) => e.hash_stable(hcx, hasher),
-            Expr(e) => e.hash_stable(hcx, hasher),
-        }
-    }
 }
 
 impl<I: Interner> PartialEq for ConstKind<I> {
