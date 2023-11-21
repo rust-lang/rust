@@ -222,7 +222,7 @@ flag][option-emit] documentation.
 ```javascript
 {
     /* Type of this message */
-    "type": "artifact",
+    "$message_type": "artifact",
     /* The filename that was generated. */
     "artifact": "libfoo.rlib",
     /* The kind of artifact that was generated. Possible values:
@@ -246,7 +246,7 @@ information, even if the diagnostics have been suppressed (such as with an
 ```javascript
 {
     /* Type of this message */
-    "type": "future_incompat",
+    "$message_type": "future_incompat",
     /* An array of objects describing a warning that will become a hard error
        in the future.
     */

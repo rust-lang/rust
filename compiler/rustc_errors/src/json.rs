@@ -317,7 +317,8 @@ struct ArtifactNotification<'a> {
 
 #[derive(Serialize)]
 struct FutureBreakageItem<'a> {
-    // Actually Diagnostic, but we want to make sure it gets serialized with `type`.
+    // Always EmitTyped::Diagnostic, but we want to make sure it gets serialized
+    // with "$message_type".
     diagnostic: EmitTyped<'a>,
 }
 
