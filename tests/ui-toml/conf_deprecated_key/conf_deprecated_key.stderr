@@ -20,5 +20,5 @@ LL | fn cognitive_complexity() {
    = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cognitive_complexity)]`
 
-error: aborting due to previous error; 2 warnings emitted
+error: aborting due to 1 previous error; 2 warnings emitted
 

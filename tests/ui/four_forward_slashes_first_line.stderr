@@ -12,5 +12,5 @@ help: make this a doc comment by removing one `/`
 LL + /// borked doc comment on the first line. doesn't combust!
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
