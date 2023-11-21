@@ -786,7 +786,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
         // tricked into following a symlink. However, it may not be available in
         // earlier versions of Windows.
         static ATTRIBUTES: AtomicU32 = AtomicU32::new(c::OBJ_DONT_REPARSE);
-        let mut object = c::OBJECT_ATTRIBUTES {
+        let object = c::OBJECT_ATTRIBUTES {
             ObjectName: &mut name_str,
             RootDirectory: parent.as_raw_handle(),
             Attributes: ATTRIBUTES.load(Ordering::Relaxed),
@@ -795,7 +795,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
         let status = c::NtCreateFile(
             &mut handle,
             access,
-            &mut object,
+            &object,
             &mut io_status,
             crate::ptr::null_mut(),
             0,
