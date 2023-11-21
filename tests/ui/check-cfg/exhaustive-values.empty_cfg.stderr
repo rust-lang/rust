@@ -9,9 +9,5 @@ LL | #[cfg(test = "value")]
    = note: no expected value for `test`
    = note: `#[warn(unexpected_cfgs)]` on by default
 
-warning: unexpected `empty_cfg` as condition name
-   |
-   = help: was set with `--cfg` but isn't in the `--check-cfg` expected names
-
-warning: 2 warnings emitted
+warning: 1 warning emitted
 

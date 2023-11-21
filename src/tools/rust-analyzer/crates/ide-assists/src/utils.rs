@@ -106,8 +106,18 @@ pub fn filter_assoc_items(
         .iter()
         .copied()
         .filter(|assoc_item| {
-            !(ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
-                && assoc_item.attrs(sema.db).has_doc_hidden())
+            if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
+                && assoc_item.attrs(sema.db).has_doc_hidden()
+            {
+                if let hir::AssocItem::Function(f) = assoc_item {
+                    if !f.has_body(sema.db) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            return true;
         })
         // Note: This throws away items with no source.
         .filter_map(|assoc_item| {

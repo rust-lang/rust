@@ -2,7 +2,12 @@ error[E0609]: no field `baa` on type `BuildData`
   --> $DIR/struct-fields-typo.rs:11:17
    |
 LL |     let x = foo.baa;
-   |                 ^^^ help: a field with a similar name exists: `bar`
+   |                 ^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |     let x = foo.bar;
+   |                 ~~~
 
 error: aborting due to previous error
 

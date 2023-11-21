@@ -21,8 +21,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, Span};
 use rustc_span::symbol::Symbol;
+use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -712,7 +712,7 @@ fn matches_preds<'tcx>(
     preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
     let infcx = cx.tcx.infer_ctxt().build();
-    preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
+    preds.iter().all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {
         ExistentialPredicate::Trait(p) => infcx
             .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.args.iter()), cx.param_env)
             .must_apply_modulo_regions(),

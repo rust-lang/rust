@@ -34,7 +34,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionData {
     pub name: Name,
-    pub params: Vec<Interned<TypeRef>>,
+    pub params: Box<[Interned<TypeRef>]>,
     pub ret_type: Interned<TypeRef>,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
@@ -177,7 +177,7 @@ pub struct TypeAliasData {
     pub rustc_has_incoherent_inherent_impls: bool,
     pub rustc_allow_incoherent_impl: bool,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
-    pub bounds: Vec<Interned<TypeBound>>,
+    pub bounds: Box<[Interned<TypeBound>]>,
 }
 
 impl TypeAliasData {
@@ -210,7 +210,7 @@ impl TypeAliasData {
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
             rustc_has_incoherent_inherent_impls,
             rustc_allow_incoherent_impl,
-            bounds: typ.bounds.to_vec(),
+            bounds: typ.bounds.clone(),
         })
     }
 }
@@ -327,6 +327,7 @@ pub struct ImplData {
     pub self_ty: Interned<TypeRef>,
     pub items: Vec<AssocItemId>,
     pub is_negative: bool,
+    pub is_unsafe: bool,
     // box it as the vec is usually empty anyways
     pub attribute_calls: Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
 }
@@ -348,6 +349,7 @@ impl ImplData {
         let target_trait = impl_def.target_trait.clone();
         let self_ty = impl_def.self_ty.clone();
         let is_negative = impl_def.is_negative;
+        let is_unsafe = impl_def.is_unsafe;
 
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::ImplId(id));
@@ -357,7 +359,14 @@ impl ImplData {
         let items = items.into_iter().map(|(_, item)| item).collect();
 
         (
-            Arc::new(ImplData { target_trait, self_ty, items, is_negative, attribute_calls }),
+            Arc::new(ImplData {
+                target_trait,
+                self_ty,
+                items,
+                is_negative,
+                is_unsafe,
+                attribute_calls,
+            }),
             diagnostics.into(),
         )
     }

@@ -531,10 +531,10 @@ fn main() {
                 Err(err) => show_error!("-Zmiri-report-progress requires a `u32`: {}", err),
             };
             miri_config.report_progress = Some(interval);
-        } else if let Some(param) = arg.strip_prefix("-Zmiri-tag-gc=") {
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-provenance-gc=") {
             let interval = match param.parse::<u32>() {
                 Ok(i) => i,
-                Err(err) => show_error!("-Zmiri-tag-gc requires a `u32`: {}", err),
+                Err(err) => show_error!("-Zmiri-provenance-gc requires a `u32`: {}", err),
             };
             miri_config.gc_interval = interval;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {

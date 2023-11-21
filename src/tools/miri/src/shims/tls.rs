@@ -207,15 +207,15 @@ impl<'tcx> TlsData<'tcx> {
     }
 }
 
-impl VisitTags for TlsData<'_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for TlsData<'_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let TlsData { keys, macos_thread_dtors, next_key: _ } = self;
 
         for scalar in keys.values().flat_map(|v| v.data.values()) {
-            scalar.visit_tags(visit);
+            scalar.visit_provenance(visit);
         }
         for (_, scalar) in macos_thread_dtors.values() {
-            scalar.visit_tags(visit);
+            scalar.visit_provenance(visit);
         }
     }
 }

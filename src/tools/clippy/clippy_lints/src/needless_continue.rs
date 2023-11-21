@@ -362,21 +362,19 @@ fn suggestion_snippet_for_continue_inside_else(cx: &EarlyContext<'_>, data: &Lin
 }
 
 fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
-    if_chain! {
-        if let ast::ExprKind::Loop(loop_block, ..) = &expr.kind;
-        if let Some(last_stmt) = loop_block.stmts.last();
-        if let ast::StmtKind::Expr(inner_expr) | ast::StmtKind::Semi(inner_expr) = &last_stmt.kind;
-        if let ast::ExprKind::Continue(_) = inner_expr.kind;
-        then {
-            span_lint_and_help(
-                cx,
-                NEEDLESS_CONTINUE,
-                last_stmt.span,
-                MSG_REDUNDANT_CONTINUE_EXPRESSION,
-                None,
-                DROP_CONTINUE_EXPRESSION_MSG,
-            );
-        }
+    if let ast::ExprKind::Loop(loop_block, ..) = &expr.kind
+        && let Some(last_stmt) = loop_block.stmts.last()
+        && let ast::StmtKind::Expr(inner_expr) | ast::StmtKind::Semi(inner_expr) = &last_stmt.kind
+        && let ast::ExprKind::Continue(_) = inner_expr.kind
+    {
+        span_lint_and_help(
+            cx,
+            NEEDLESS_CONTINUE,
+            last_stmt.span,
+            MSG_REDUNDANT_CONTINUE_EXPRESSION,
+            None,
+            DROP_CONTINUE_EXPRESSION_MSG,
+        );
     }
     with_loop_block(expr, |loop_block, label| {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {

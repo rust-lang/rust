@@ -138,6 +138,26 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     for i in 0..dst.len() {
         dst[i] = src[i];
     }
+
+    // Range is equal to array length
+    let src = [0, 1, 2, 3, 4];
+    let mut dst = [0; 4];
+    for i in 0..4 {
+        //~^ ERROR: it looks like you're manually copying between slices
+        dst[i] = src[i];
+    }
+
+    let mut dst = [0; 6];
+    for i in 0..5 {
+        //~^ ERROR: it looks like you're manually copying between slices
+        dst[i] = src[i];
+    }
+
+    let mut dst = [0; 5];
+    for i in 0..5 {
+        //~^ ERROR: it looks like you're manually copying between slices
+        dst[i] = src[i];
+    }
 }
 
 #[warn(clippy::needless_range_loop, clippy::manual_memcpy)]

@@ -14,9 +14,9 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0-pre.1"
 crossbeam-channel = "0.5.5"
-either = "1.7.0"
-itertools = "0.10.5"
-tracing = "0.1.35"
+either.workspace = true
+itertools.workspace = true
+tracing.workspace = true
 oorandom = "11.1.3"
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.1", default-features = false }

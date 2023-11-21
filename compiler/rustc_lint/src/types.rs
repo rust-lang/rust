@@ -1234,7 +1234,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     };
                 }
 
-                let sig = tcx.erase_late_bound_regions(sig);
+                let sig = tcx.instantiate_bound_regions_with_erased(sig);
                 for arg in sig.inputs() {
                     match self.check_type_for_ffi(cache, *arg) {
                         FfiSafe => {}
@@ -1391,7 +1391,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// types that have external ABIs, as these still need checked.
     fn check_fn(&mut self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).instantiate_identity();
-        let sig = self.cx.tcx.erase_late_bound_regions(sig);
+        let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             for (fn_ptr_ty, span) in self.find_fn_ptr_ty_with_external_abi(input_hir, *input_ty) {
@@ -1409,7 +1409,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if a function's argument types and result type are "ffi-safe".
     fn check_foreign_fn(&mut self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).instantiate_identity();
-        let sig = self.cx.tcx.erase_late_bound_regions(sig);
+        let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, *input_ty, false, false);

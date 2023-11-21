@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Bar` for type `&_`
-  --> $DIR/negative-coherence-considering-regions.rs:22:1
+  --> $DIR/negative-coherence-considering-regions.rs:16:1
    |
 LL | impl<T> Bar for T where T: Foo {}
    | ------------------------------ first implementation here

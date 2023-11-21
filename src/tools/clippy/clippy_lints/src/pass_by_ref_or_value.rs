@@ -5,7 +5,6 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{is_self, is_self_ty};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -20,7 +19,6 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_target::spec::Target;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -117,10 +115,10 @@ impl<'tcx> PassByRefOrValue {
         ref_min_size: Option<u64>,
         value_max_size: u64,
         avoid_breaking_exported_api: bool,
-        target: &Target,
+        pointer_width: u32,
     ) -> Self {
         let ref_min_size = ref_min_size.unwrap_or_else(|| {
-            let bit_width = u64::from(target.pointer_width);
+            let bit_width = u64::from(pointer_width);
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
@@ -179,7 +177,7 @@ impl<'tcx> PassByRefOrValue {
                         _ => (),
                     }
 
-                    let ty = cx.tcx.erase_late_bound_regions(fn_sig.rebind(ty));
+                    let ty = cx.tcx.instantiate_bound_regions_with_erased(fn_sig.rebind(ty));
                     if is_copy(cx, ty)
                         && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
                         && size <= self.ref_min_size
@@ -227,24 +225,25 @@ impl<'tcx> PassByRefOrValue {
                             _ => continue,
                         }
                     }
-                    let ty = cx.tcx.erase_late_bound_regions(ty);
+                    let ty = cx.tcx.instantiate_bound_regions_with_erased(ty);
 
-                    if_chain! {
-                        if is_copy(cx, ty);
-                        if !is_self_ty(input);
-                        if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
-                        if size > self.value_max_size;
-                        then {
-                            span_lint_and_sugg(
-                                cx,
-                                LARGE_TYPES_PASSED_BY_VALUE,
-                                input.span,
-                                &format!("this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)", self.value_max_size),
-                                "consider passing by reference instead",
-                                format!("&{}", snippet(cx, input.span, "_")),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
+                    if is_copy(cx, ty)
+                        && !is_self_ty(input)
+                        && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
+                        && size > self.value_max_size
+                    {
+                        span_lint_and_sugg(
+                            cx,
+                            LARGE_TYPES_PASSED_BY_VALUE,
+                            input.span,
+                            &format!(
+                                "this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)",
+                                self.value_max_size
+                            ),
+                            "consider passing by reference instead",
+                            format!("&{}", snippet(cx, input.span, "_")),
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                 },
 

@@ -1228,4 +1228,20 @@ fn foo(mut foo: Foo) {
 "#,
         );
     }
+
+    #[test]
+    fn regression_15670() {
+        check_diagnostics(
+            r#"
+//- minicore: fn
+
+pub struct A {}
+pub unsafe fn foo(a: *mut A) {
+    let mut b = || -> *mut A { &mut *a };
+      //^^^^^ 💡 warn: variable does not need to be mutable
+    let _ = b();
+}
+"#,
+        );
+    }
 }

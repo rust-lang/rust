@@ -626,15 +626,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                let coerce_to = match opt_coerce_to {
-                    Some(c) => c,
-                    None => {
-                        // If the loop context is not a `loop { }`, then break with
-                        // a value is illegal, and `opt_coerce_to` will be `None`.
-                        // Return error in that case (#114529).
-                        return Ty::new_misc_error(tcx);
-                    }
-                };
+                // If the loop context is not a `loop { }`, then break with
+                // a value is illegal, and `opt_coerce_to` will be `None`.
+                // Set expectation to error in that case and set tainted
+                // by error (#114529)
+                let coerce_to = opt_coerce_to.unwrap_or_else(|| {
+                    let guar = tcx.sess.delay_span_bug(
+                        expr.span,
+                        "illegal break with value found but no error reported",
+                    );
+                    self.set_tainted_by_errors(guar);
+                    Ty::new_error(tcx, guar)
+                });
 
                 // Recurse without `enclosing_breakables` borrowed.
                 e_ty = self.check_expr_with_hint(e, coerce_to);
@@ -1897,7 +1900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
 
             if !private_fields.is_empty() {
-                self.report_private_fields(adt_ty, span, private_fields, ast_fields);
+                self.report_private_fields(adt_ty, span, expr.span, private_fields, ast_fields);
             } else {
                 self.report_missing_fields(
                     adt_ty,
@@ -2056,6 +2059,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         adt_ty: Ty<'tcx>,
         span: Span,
+        expr_span: Span,
         private_fields: Vec<&ty::FieldDef>,
         used_fields: &'tcx [hir::ExprField<'tcx>],
     ) {
@@ -2100,6 +2104,81 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 were = pluralize!("was", remaining_private_fields_len),
             ));
         }
+
+        if let ty::Adt(def, _) = adt_ty.kind() {
+            let def_id = def.did();
+            let mut items = self
+                .tcx
+                .inherent_impls(def_id)
+                .iter()
+                .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
+                // Only assoc fn with no receivers.
+                .filter(|item| {
+                    matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter
+                })
+                .filter_map(|item| {
+                    // Only assoc fns that return `Self`
+                    let fn_sig = self.tcx.fn_sig(item.def_id).skip_binder();
+                    let ret_ty = fn_sig.output();
+                    let ret_ty =
+                        self.tcx.normalize_erasing_late_bound_regions(self.param_env, ret_ty);
+                    if !self.can_eq(self.param_env, ret_ty, adt_ty) {
+                        return None;
+                    }
+                    let input_len = fn_sig.inputs().skip_binder().len();
+                    let order = !item.name.as_str().starts_with("new");
+                    Some((order, item.name, input_len))
+                })
+                .collect::<Vec<_>>();
+            items.sort_by_key(|(order, _, _)| *order);
+            let suggestion = |name, args| {
+                format!(
+                    "::{name}({})",
+                    std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
+                )
+            };
+            match &items[..] {
+                [] => {}
+                [(_, name, args)] => {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_hi().with_hi(expr_span.hi()),
+                        format!("you might have meant to use the `{name}` associated function"),
+                        suggestion(name, *args),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {
+                    err.span_suggestions(
+                        span.shrink_to_hi().with_hi(expr_span.hi()),
+                        "you might have meant to use an associated function to build this type",
+                        items
+                            .iter()
+                            .map(|(_, name, args)| suggestion(name, *args))
+                            .collect::<Vec<String>>(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            if let Some(default_trait) = self.tcx.get_diagnostic_item(sym::Default)
+                && self
+                    .infcx
+                    .type_implements_trait(default_trait, [adt_ty], self.param_env)
+                    .may_apply()
+            {
+                err.multipart_suggestion(
+                    "consider using the `Default` trait",
+                    vec![
+                        (span.shrink_to_lo(), "<".to_string()),
+                        (
+                            span.shrink_to_hi().with_hi(expr_span.hi()),
+                            " as std::default::Default>::default()".to_string(),
+                        ),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
+
         err.emit();
     }
 
@@ -2191,7 +2270,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(field_name) =
                     find_best_match_for_name(&available_field_names, field.ident.name, None)
                 {
-                    err.span_suggestion(
+                    err.span_label(field.ident.span, "unknown field");
+                    err.span_suggestion_verbose(
                         field.ident.span,
                         "a field with a similar name exists",
                         field_name,
@@ -2420,35 +2500,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) {
         let Some(output_ty) = self.get_impl_future_output_ty(ty) else {
+            err.span_label(field_ident.span, "unknown field");
             return;
         };
-        let mut add_label = true;
-        if let ty::Adt(def, _) = output_ty.kind() {
-            // no field access on enum type
-            if !def.is_enum() {
-                if def
-                    .non_enum_variant()
-                    .fields
-                    .iter()
-                    .any(|field| field.ident(self.tcx) == field_ident)
-                {
-                    add_label = false;
-                    err.span_label(
-                        field_ident.span,
-                        "field not available in `impl Future`, but it is available in its `Output`",
-                    );
-                    err.span_suggestion_verbose(
-                        base.span.shrink_to_hi(),
-                        "consider `await`ing on the `Future` and access the field of its `Output`",
-                        ".await",
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
+        let ty::Adt(def, _) = output_ty.kind() else {
+            err.span_label(field_ident.span, "unknown field");
+            return;
+        };
+        // no field access on enum type
+        if def.is_enum() {
+            err.span_label(field_ident.span, "unknown field");
+            return;
         }
-        if add_label {
-            err.span_label(field_ident.span, format!("field not found in `{ty}`"));
+        if !def.non_enum_variant().fields.iter().any(|field| field.ident(self.tcx) == field_ident) {
+            err.span_label(field_ident.span, "unknown field");
+            return;
         }
+        err.span_label(
+            field_ident.span,
+            "field not available in `impl Future`, but it is available in its `Output`",
+        );
+        err.span_suggestion_verbose(
+            base.span.shrink_to_hi(),
+            "consider `await`ing on the `Future` and access the field of its `Output`",
+            ".await",
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn ban_nonexisting_field(
@@ -2471,16 +2548,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::RawPtr(..) => {
                 self.suggest_first_deref_field(&mut err, expr, base, ident);
             }
-            ty::Adt(def, _) if !def.is_enum() => {
-                self.suggest_fields_on_recordish(&mut err, expr, def, ident);
-            }
             ty::Param(param_ty) => {
+                err.span_label(ident.span, "unknown field");
                 self.point_at_param_definition(&mut err, param_ty);
             }
             ty::Alias(ty::Opaque, _) => {
                 self.suggest_await_on_field_access(&mut err, ident, base, base_ty.peel_refs());
             }
-            _ => {}
+            _ => {
+                err.span_label(ident.span, "unknown field");
+            }
         }
 
         self.suggest_fn_call(&mut err, base, base_ty, |output_ty| {
@@ -2633,34 +2710,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(param_span, format!("type parameter '{param_name}' declared here"));
     }
 
-    fn suggest_fields_on_recordish(
-        &self,
-        err: &mut Diagnostic,
-        expr: &hir::Expr<'_>,
-        def: ty::AdtDef<'tcx>,
-        field: Ident,
-    ) {
-        let available_field_names = self.available_field_names(def.non_enum_variant(), expr, &[]);
-        if let Some(suggested_field_name) =
-            find_best_match_for_name(&available_field_names, field.name, None)
-        {
-            err.span_suggestion(
-                field.span,
-                "a field with a similar name exists",
-                suggested_field_name,
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            err.span_label(field.span, "unknown field");
-            if !available_field_names.is_empty() {
-                err.note(format!(
-                    "available fields are: {}",
-                    self.name_series_display(available_field_names),
-                ));
-            }
-        }
-    }
-
     fn maybe_suggest_array_indexing(
         &self,
         err: &mut Diagnostic,
@@ -2669,6 +2718,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         len: ty::Const<'tcx>,
     ) {
+        err.span_label(field.span, "unknown field");
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_target_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
             && let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
@@ -2691,6 +2741,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &hir::Expr<'_>,
         field: Ident,
     ) {
+        err.span_label(field.span, "unknown field");
         if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
             let msg = format!("`{base}` is a raw pointer; try dereferencing it");
             let suggestion = format!("(*{base}).{field}");
@@ -2709,7 +2760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err = type_error_struct!(
             self.tcx().sess,
-            field.span,
+            span,
             expr_t,
             E0609,
             "no field `{field}` on type `{expr_t}`",
@@ -2717,10 +2768,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(id).to_def_id();
-        if let Some((fields, args)) =
-            self.get_field_candidates_considering_privacy(span, expr_t, mod_id)
+        let (ty, unwrap) = if let ty::Adt(def, args) = expr_t.kind()
+            && (self.tcx.is_diagnostic_item(sym::Result, def.did())
+                || self.tcx.is_diagnostic_item(sym::Option, def.did()))
+            && let Some(arg) = args.get(0)
+            && let Some(ty) = arg.as_type()
         {
-            let candidate_fields: Vec<_> = fields
+            (ty, "unwrap().")
+        } else {
+            (expr_t, "")
+        };
+        for (found_fields, args) in
+            self.get_field_candidates_considering_privacy(span, ty, mod_id, id)
+        {
+            let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
+            let mut candidate_fields: Vec<_> = found_fields
+                .into_iter()
                 .filter_map(|candidate_field| {
                     self.check_for_nested_field_satisfying(
                         span,
@@ -2729,17 +2792,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         args,
                         vec![],
                         mod_id,
+                        id,
                     )
                 })
                 .map(|mut field_path| {
                     field_path.pop();
                     field_path
                         .iter()
-                        .map(|id| id.name.to_ident_string())
-                        .collect::<Vec<String>>()
-                        .join(".")
+                        .map(|id| format!("{}.", id.name.to_ident_string()))
+                        .collect::<String>()
                 })
                 .collect::<Vec<_>>();
+            candidate_fields.sort();
 
             let len = candidate_fields.len();
             if len > 0 {
@@ -2750,9 +2814,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if len > 1 { "some" } else { "one" },
                         if len > 1 { "have" } else { "has" },
                     ),
-                    candidate_fields.iter().map(|path| format!("{path}.")),
+                    candidate_fields.iter().map(|path| format!("{unwrap}{path}")),
                     Applicability::MaybeIncorrect,
                 );
+            } else {
+                if let Some(field_name) = find_best_match_for_name(&field_names, field.name, None) {
+                    err.span_suggestion_verbose(
+                        field.span,
+                        "a field with a similar name exists",
+                        format!("{unwrap}{}", field_name),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else if !field_names.is_empty() {
+                    let is = if field_names.len() == 1 { " is" } else { "s are" };
+                    err.note(format!(
+                        "available field{is}: {}",
+                        self.name_series_display(field_names),
+                    ));
+                }
             }
         }
         err
@@ -2781,33 +2860,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         base_ty: Ty<'tcx>,
         mod_id: DefId,
-    ) -> Option<(impl Iterator<Item = &'tcx ty::FieldDef> + 'tcx, GenericArgsRef<'tcx>)> {
+        hir_id: hir::HirId,
+    ) -> Vec<(Vec<&'tcx ty::FieldDef>, GenericArgsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
-        for (base_t, _) in self.autoderef(span, base_ty) {
-            match base_t.kind() {
-                ty::Adt(base_def, args) if !base_def.is_enum() => {
-                    let tcx = self.tcx;
-                    let fields = &base_def.non_enum_variant().fields;
-                    // Some struct, e.g. some that impl `Deref`, have all private fields
-                    // because you're expected to deref them to access the _real_ fields.
-                    // This, for example, will help us suggest accessing a field through a `Box<T>`.
-                    if fields.iter().all(|field| !field.vis.is_accessible_from(mod_id, tcx)) {
-                        continue;
+        self.autoderef(span, base_ty)
+            .filter_map(move |(base_t, _)| {
+                match base_t.kind() {
+                    ty::Adt(base_def, args) if !base_def.is_enum() => {
+                        let tcx = self.tcx;
+                        let fields = &base_def.non_enum_variant().fields;
+                        // Some struct, e.g. some that impl `Deref`, have all private fields
+                        // because you're expected to deref them to access the _real_ fields.
+                        // This, for example, will help us suggest accessing a field through a `Box<T>`.
+                        if fields.iter().all(|field| !field.vis.is_accessible_from(mod_id, tcx)) {
+                            return None;
+                        }
+                        return Some((
+                            fields
+                                .iter()
+                                .filter(move |field| {
+                                    field.vis.is_accessible_from(mod_id, tcx)
+                                        && self.is_field_suggestable(field, hir_id, span)
+                                })
+                                // For compile-time reasons put a limit on number of fields we search
+                                .take(100)
+                                .collect::<Vec<_>>(),
+                            *args,
+                        ));
                     }
-                    return Some((
-                        fields
-                            .iter()
-                            .filter(move |field| field.vis.is_accessible_from(mod_id, tcx))
-                            // For compile-time reasons put a limit on number of fields we search
-                            .take(100),
-                        args,
-                    ));
+                    _ => None,
                 }
-                _ => {}
-            }
-        }
-        None
+            })
+            .collect()
     }
 
     /// This method is called after we have encountered a missing field error to recursively
@@ -2820,6 +2905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         subst: GenericArgsRef<'tcx>,
         mut field_path: Vec<Ident>,
         mod_id: DefId,
+        hir_id: HirId,
     ) -> Option<Vec<Ident>> {
         debug!(
             "check_for_nested_field_satisfying(span: {:?}, candidate_field: {:?}, field_path: {:?}",
@@ -2835,20 +2921,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let field_ty = candidate_field.ty(self.tcx, subst);
             if matches(candidate_field, field_ty) {
                 return Some(field_path);
-            } else if let Some((nested_fields, subst)) =
-                self.get_field_candidates_considering_privacy(span, field_ty, mod_id)
-            {
-                // recursively search fields of `candidate_field` if it's a ty::Adt
-                for field in nested_fields {
-                    if let Some(field_path) = self.check_for_nested_field_satisfying(
-                        span,
-                        matches,
-                        field,
-                        subst,
-                        field_path.clone(),
-                        mod_id,
-                    ) {
-                        return Some(field_path);
+            } else {
+                for (nested_fields, subst) in
+                    self.get_field_candidates_considering_privacy(span, field_ty, mod_id, hir_id)
+                {
+                    // recursively search fields of `candidate_field` if it's a ty::Adt
+                    for field in nested_fields {
+                        if let Some(field_path) = self.check_for_nested_field_satisfying(
+                            span,
+                            matches,
+                            field,
+                            subst,
+                            field_path.clone(),
+                            mod_id,
+                            hir_id,
+                        ) {
+                            return Some(field_path);
+                        }
                     }
                 }
             }

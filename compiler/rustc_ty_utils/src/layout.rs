@@ -24,7 +24,7 @@ use crate::errors::{
 };
 use crate::layout_sanity_check::sanity_check_layout;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { layout_of, ..*providers };
 }
 
@@ -65,7 +65,11 @@ fn layout_of<'tcx>(
     let layout = layout_of_uncached(&cx, ty)?;
     let layout = TyAndLayout { ty, layout };
 
-    record_layout_for_printing(&cx, layout);
+    // If we are running with `-Zprint-type-sizes`, maybe record layouts
+    // for dumping later.
+    if cx.tcx.sess.opts.unstable_opts.print_type_sizes {
+        record_layout_for_printing(&cx, layout);
+    }
 
     sanity_check_layout(&cx, &layout);
 
@@ -911,21 +915,7 @@ fn coroutine_layout<'tcx>(
     Ok(layout)
 }
 
-/// This is invoked by the `layout_of` query to record the final
-/// layout of each type.
-#[inline(always)]
 fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: TyAndLayout<'tcx>) {
-    // If we are running with `-Zprint-type-sizes`, maybe record layouts
-    // for dumping later.
-    if cx.tcx.sess.opts.unstable_opts.print_type_sizes {
-        record_layout_for_printing_outlined(cx, layout)
-    }
-}
-
-fn record_layout_for_printing_outlined<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-    layout: TyAndLayout<'tcx>,
-) {
     // Ignore layouts that are done with non-empty environments or
     // non-monomorphic layouts, as the user only wants to see the stuff
     // resulting from the final codegen session.

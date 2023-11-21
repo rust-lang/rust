@@ -110,39 +110,6 @@ impl<'tcx> SearchGraph<'tcx> {
         self.stack.is_empty()
     }
 
-    /// Whether we're currently in a cycle. This should only be used
-    /// for debug assertions.
-    pub(super) fn in_cycle(&self) -> bool {
-        if let Some(stack_depth) = self.stack.last_index() {
-            // Either the current goal on the stack is the root of a cycle
-            // or it depends on a goal with a lower depth.
-            self.stack[stack_depth].has_been_used
-                || self.stack[stack_depth].cycle_root_depth != stack_depth
-        } else {
-            false
-        }
-    }
-
-    /// Fetches whether the current goal encountered overflow.
-    ///
-    /// This should only be used for the check in `evaluate_goal`.
-    pub(super) fn encountered_overflow(&self) -> bool {
-        if let Some(last) = self.stack.raw.last() { last.encountered_overflow } else { false }
-    }
-
-    /// Resets `encountered_overflow` of the current goal.
-    ///
-    /// This should only be used for the check in `evaluate_goal`.
-    pub(super) fn reset_encountered_overflow(&mut self, encountered_overflow: bool) -> bool {
-        if let Some(last) = self.stack.raw.last_mut() {
-            let prev = last.encountered_overflow;
-            last.encountered_overflow = encountered_overflow;
-            prev
-        } else {
-            false
-        }
-    }
-
     /// Returns the remaining depth allowed for nested goals.
     ///
     /// This is generally simply one less than the current depth.

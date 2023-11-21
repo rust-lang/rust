@@ -40,7 +40,7 @@ fn test_visitor(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let exit_fn = main_visitor.calls.last().unwrap();
     assert!(exit_fn.mangled_name().contains("exit_fn"), "Unexpected last function: {exit_fn:?}");
 
-    let exit_body = exit_fn.body();
+    let exit_body = exit_fn.body().unwrap();
     let exit_visitor = TestVisitor::collect(&exit_body);
     assert!(exit_visitor.ret_val.is_some());
     assert_eq!(exit_visitor.args.len(), 1);
@@ -92,7 +92,8 @@ impl<'a> mir::MirVisitor for TestVisitor<'a> {
 
     fn visit_terminator(&mut self, term: &mir::Terminator, location: mir::visit::Location) {
         if let mir::TerminatorKind::Call { func, .. } = &term.kind {
-            let ty::TyKind::RigidTy(ty) = func.ty(self.body.locals()).kind() else { unreachable!
+            let ty::TyKind::RigidTy(ty) = func.ty(self.body.locals()).unwrap().kind() else {
+                unreachable!
             () };
             let ty::RigidTy::FnDef(def, args) = ty else { unreachable!() };
             self.calls.push(mir::mono::Instance::resolve(def, &args).unwrap());

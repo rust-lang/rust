@@ -4,13 +4,14 @@ use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, method_chain_args, return_ty};
-use if_chain::if_chain;
 use pulldown_cmark::Event::{
     Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
 };
 use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
 use rustc_ast::ast::{Async, Attribute, Fn, FnRetTy, ItemKind};
+use rustc_ast::token::CommentKind;
+use rustc_ast::{AttrKind, AttrStyle};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
@@ -30,8 +31,8 @@ use rustc_resolve::rustdoc::{
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::{sym, BytePos, FileName, Pos, Span};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
+use rustc_span::{sym, BytePos, FileName, Pos, Span};
 use std::ops::Range;
 use std::{io, thread};
 use url::Url;
@@ -261,6 +262,53 @@ declare_clippy_lint! {
     "`pub fn` or `pub trait` with `# Safety` docs"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects the use of outer doc comments (`///`, `/**`) followed by a bang (`!`): `///!`
+    ///
+    /// ### Why is this bad?
+    /// Triple-slash comments (known as "outer doc comments") apply to items that follow it.
+    /// An outer doc comment followed by a bang (i.e. `///!`) has no specific meaning.
+    ///
+    /// The user most likely meant to write an inner doc comment (`//!`, `/*!`), which
+    /// applies to the parent item (i.e. the item that the comment is contained in,
+    /// usually a module or crate).
+    ///
+    /// ### Known problems
+    /// Inner doc comments can only appear before items, so there are certain cases where the suggestion
+    /// made by this lint is not valid code. For example:
+    /// ```rs
+    /// fn foo() {}
+    /// ///!
+    /// fn bar() {}
+    /// ```
+    /// This lint detects the doc comment and suggests changing it to `//!`, but an inner doc comment
+    /// is not valid at that position.
+    ///
+    /// ### Example
+    /// In this example, the doc comment is attached to the *function*, rather than the *module*.
+    /// ```no_run
+    /// pub mod util {
+    ///     ///! This module contains utility functions.
+    ///
+    ///     pub fn dummy() {}
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// pub mod util {
+    ///     //! This module contains utility functions.
+    ///
+    ///     pub fn dummy() {}
+    /// }
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub SUSPICIOUS_DOC_COMMENTS,
+    suspicious,
+    "suspicious usage of (outer) doc comments"
+}
+
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
@@ -269,9 +317,9 @@ pub struct DocMarkdown {
 }
 
 impl DocMarkdown {
-    pub fn new(valid_idents: FxHashSet<String>) -> Self {
+    pub fn new(valid_idents: &[String]) -> Self {
         Self {
-            valid_idents,
+            valid_idents: valid_idents.iter().cloned().collect(),
             in_trait_impl: false,
         }
     }
@@ -285,6 +333,7 @@ impl_lint_pass!(DocMarkdown => [
     MISSING_PANICS_DOC,
     NEEDLESS_DOCTEST_MAIN,
     UNNECESSARY_SAFETY_DOC,
+    SUSPICIOUS_DOC_COMMENTS
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
@@ -428,25 +477,21 @@ fn lint_for_missing_headers(
                 span,
                 "docs for function returning `Result` missing `# Errors` section",
             );
-        } else {
-            if_chain! {
-                if let Some(body_id) = body_id;
-                if let Some(future) = cx.tcx.lang_items().future_trait();
-                let typeck = cx.tcx.typeck_body(body_id);
-                let body = cx.tcx.hir().body(body_id);
-                let ret_ty = typeck.expr_ty(body.value);
-                if implements_trait(cx, ret_ty, future, &[]);
-                if let ty::Coroutine(_, subs, _) = ret_ty.kind();
-                if is_type_diagnostic_item(cx, subs.as_coroutine().return_ty(), sym::Result);
-                then {
-                    span_lint(
-                        cx,
-                        MISSING_ERRORS_DOC,
-                        span,
-                        "docs for function returning `Result` missing `# Errors` section",
-                    );
-                }
-            }
+        } else if let Some(body_id) = body_id
+            && let Some(future) = cx.tcx.lang_items().future_trait()
+            && let typeck = cx.tcx.typeck_body(body_id)
+            && let body = cx.tcx.hir().body(body_id)
+            && let ret_ty = typeck.expr_ty(body.value)
+            && implements_trait(cx, ret_ty, future, &[])
+            && let ty::Coroutine(_, subs, _) = ret_ty.kind()
+            && is_type_diagnostic_item(cx, subs.as_coroutine().return_ty(), sym::Result)
+        {
+            span_lint(
+                cx,
+                MISSING_ERRORS_DOC,
+                span,
+                "docs for function returning `Result` missing `# Errors` section",
+            );
         }
     }
 }
@@ -483,6 +528,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         return None;
     }
 
+    check_almost_inner_doc(cx, attrs);
+
     let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
     let mut doc = String::new();
     for fragment in &fragments {
@@ -509,6 +556,43 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
             doc: &doc,
         },
     ))
+}
+
+/// Looks for `///!` and `/**!` comments, which were probably meant to be `//!` and `/*!`
+fn check_almost_inner_doc(cx: &LateContext<'_>, attrs: &[Attribute]) {
+    let replacements: Vec<_> = attrs
+        .iter()
+        .filter_map(|attr| {
+            if let AttrKind::DocComment(com_kind, sym) = attr.kind
+                && let AttrStyle::Outer = attr.style
+                && let Some(com) = sym.as_str().strip_prefix('!')
+            {
+                let sugg = match com_kind {
+                    CommentKind::Line => format!("//!{com}"),
+                    CommentKind::Block => format!("/*!{com}*/"),
+                };
+                Some((attr.span, sugg))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    if let Some((&(lo_span, _), &(hi_span, _))) = replacements.first().zip(replacements.last()) {
+        span_lint_and_then(
+            cx,
+            SUSPICIOUS_DOC_COMMENTS,
+            lo_span.to(hi_span),
+            "this is an outer doc comment and does not apply to the parent module or crate",
+            |diag| {
+                diag.multipart_suggestion(
+                    "use an inner doc comment to document the parent module or crate",
+                    replacements,
+                    Applicability::MaybeIncorrect,
+                );
+            },
+        );
+    }
 }
 
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
@@ -649,11 +733,12 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, range: Range<u
             rustc_span::create_session_globals_then(edition, || {
                 let filename = FileName::anon_source_code(&code);
 
-                let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let fallback_bundle =
                     rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
                 let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
                 let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
+                #[expect(clippy::arc_with_non_send_sync)] // `Lrc` is expected by with_span_handler
+                let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let sess = ParseSess::with_span_handler(handler, sm);
 
                 let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {

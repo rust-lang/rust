@@ -67,6 +67,12 @@ pub(super) fn failed_to_match_macro<'cx>(
         && (matches!(expected_token.kind, TokenKind::Interpolated(_))
             || matches!(token.kind, TokenKind::Interpolated(_)))
     {
+        if let TokenKind::Interpolated(node) = &expected_token.kind {
+            err.span_label(node.1, "");
+        }
+        if let TokenKind::Interpolated(node) = &token.kind {
+            err.span_label(node.1, "");
+        }
         err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
         err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
 

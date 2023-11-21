@@ -684,6 +684,32 @@ enum Foo {
     }
 
     #[test]
+    fn test_self() {
+        check(
+            r#"
+struct S$0<T> {
+    t: PhantomData<T>,
+}
+
+impl<T> S<T> {
+    fn new() -> Self {
+        Self {
+            t: Default::default(),
+        }
+    }
+}
+"#,
+            expect![[r#"
+            S Struct FileId(0) 0..38 7..8
+
+            FileId(0) 48..49
+            FileId(0) 71..75
+            FileId(0) 86..90
+            "#]],
+        )
+    }
+
+    #[test]
     fn test_find_all_refs_two_modules() {
         check(
             r#"

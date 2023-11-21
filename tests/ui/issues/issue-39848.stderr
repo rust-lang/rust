@@ -1,4 +1,4 @@
-error: expected `{`, found `foo`
+error: expected `{`, found identifier `foo`
   --> $DIR/issue-39848.rs:3:21
    |
 LL |         if $tgt.has_$field() {}

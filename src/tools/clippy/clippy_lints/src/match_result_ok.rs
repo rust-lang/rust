@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{higher, is_res_lang_ctor};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -56,33 +55,31 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
                 return;
             };
 
-        if_chain! {
-            if let ExprKind::MethodCall(ok_path, recv, [], ..) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
-            if let PatKind::TupleStruct(ref pat_path, [ok_pat], _)  = let_pat.kind; //get operation
-            if ok_path.ident.as_str() == "ok";
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
-            if is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome);
-            let ctxt = expr.span.ctxt();
-            if let_expr.span.ctxt() == ctxt;
-            if let_pat.span.ctxt() == ctxt;
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                let some_expr_string = snippet_with_context(cx, ok_pat.span, ctxt, "", &mut applicability).0;
-                let trimmed_ok = snippet_with_context(cx, recv.span, ctxt, "", &mut applicability).0;
-                let sugg = format!(
-                    "{ifwhile} let Ok({some_expr_string}) = {}",
-                    trimmed_ok.trim().trim_end_matches('.'),
-                );
-                span_lint_and_sugg(
-                    cx,
-                    MATCH_RESULT_OK,
-                    expr.span.with_hi(let_expr.span.hi()),
-                    "matching on `Some` with `ok()` is redundant",
-                    &format!("consider matching on `Ok({some_expr_string})` and removing the call to `ok` instead"),
-                    sugg,
-                    applicability,
-                );
-            }
+        if let ExprKind::MethodCall(ok_path, recv, [], ..) = let_expr.kind //check is expr.ok() has type Result<T,E>.ok(, _)
+            && let PatKind::TupleStruct(ref pat_path, [ok_pat], _)  = let_pat.kind //get operation
+            && ok_path.ident.as_str() == "ok"
+            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result)
+            && is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome)
+            && let ctxt = expr.span.ctxt()
+            && let_expr.span.ctxt() == ctxt
+            && let_pat.span.ctxt() == ctxt
+        {
+            let mut applicability = Applicability::MachineApplicable;
+            let some_expr_string = snippet_with_context(cx, ok_pat.span, ctxt, "", &mut applicability).0;
+            let trimmed_ok = snippet_with_context(cx, recv.span, ctxt, "", &mut applicability).0;
+            let sugg = format!(
+                "{ifwhile} let Ok({some_expr_string}) = {}",
+                trimmed_ok.trim().trim_end_matches('.'),
+            );
+            span_lint_and_sugg(
+                cx,
+                MATCH_RESULT_OK,
+                expr.span.with_hi(let_expr.span.hi()),
+                "matching on `Some` with `ok()` is redundant",
+                &format!("consider matching on `Ok({some_expr_string})` and removing the call to `ok` instead"),
+                sugg,
+                applicability,
+            );
         }
     }
 }

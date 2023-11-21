@@ -5,8 +5,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
-use if_chain::if_chain;
-
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for types that implement `Copy` as well as
@@ -38,25 +36,23 @@ declare_lint_pass!(CopyIterator => [COPY_ITERATOR]);
 
 impl<'tcx> LateLintPass<'tcx> for CopyIterator {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if_chain! {
-            if let ItemKind::Impl(Impl {
-                of_trait: Some(ref trait_ref),
-                ..
-            }) = item.kind;
-            let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
-            if is_copy(cx, ty);
-            if let Some(trait_id) = trait_ref.trait_def_id();
-            if cx.tcx.is_diagnostic_item(sym::Iterator, trait_id);
-            then {
-                span_lint_and_note(
-                    cx,
-                    COPY_ITERATOR,
-                    item.span,
-                    "you are implementing `Iterator` on a `Copy` type",
-                    None,
-                    "consider implementing `IntoIterator` instead",
-                );
-            }
+        if let ItemKind::Impl(Impl {
+            of_trait: Some(ref trait_ref),
+            ..
+        }) = item.kind
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && is_copy(cx, ty)
+            && let Some(trait_id) = trait_ref.trait_def_id()
+            && cx.tcx.is_diagnostic_item(sym::Iterator, trait_id)
+        {
+            span_lint_and_note(
+                cx,
+                COPY_ITERATOR,
+                item.span,
+                "you are implementing `Iterator` on a `Copy` type",
+                None,
+                "consider implementing `IntoIterator` instead",
+            );
         }
     }
 }

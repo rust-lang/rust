@@ -123,5 +123,3 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
         });
     }
 }
-
-impl<'ctx> rustc_type_ir::HashStableContext for StableHashingContext<'ctx> {}

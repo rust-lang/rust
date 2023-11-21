@@ -285,6 +285,12 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             UnwindAction::Unreachable | UnwindAction::Terminate(UnwindTerminateReason::Abi) => (),
         }
     }
+
+    fn is_critical_call_edge(&self, target: Option<BasicBlock>, unwind: UnwindAction) -> bool {
+        let Some(target) = target else { return false };
+        matches!(unwind, UnwindAction::Cleanup(_) | UnwindAction::Terminate(_))
+            && self.body.basic_blocks.predecessors()[target].len() > 1
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
@@ -424,6 +430,22 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.check_edge(location, *target, EdgeKind::Normal);
                 }
                 self.check_unwind_edge(location, *unwind);
+
+                // The code generation assumes that there are no critical call edges. The assumption
+                // is used to simplify inserting code that should be executed along the return edge
+                // from the call. FIXME(tmiasko): Since this is a strictly code generation concern,
+                // the code generation should be responsible for handling it.
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && self.is_critical_call_edge(*target, *unwind)
+                {
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered critical edge in `Call` terminator {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
 
                 // The call destination place and Operand::Move place used as an argument might be
                 // passed by a reference to the callee. Consequently they must be non-overlapping

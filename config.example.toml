@@ -42,18 +42,15 @@ change-id = 116881
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
-# Set this to `"if-available"` if you are not sure whether you're on a tier 1 
-# target. All tier 1 targets are currently supported;
-#
-# We also currently only support this when building LLVM for the build triple.
-#
-# Set this to `"if-unchanged"` to only download if the llvm-project have not 
-# been modified. (If there are no changes or if built from tarball source, 
-# the logic is the same as "if-available")
+# Set this to `"if-unchanged"` to download only if the llvm-project has not
+# been modified. You can also use this if you are unsure whether you're on a
+# tier 1 target. All tier 1 targets are currently supported.
+
+# Currently, we only support this when building LLVM for the build triple.
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = if rust.channel == "dev" { "if-available" } else { false }
+#download-ci-llvm = if rust.channel == "dev" { "if-unchanged" } else { false }
 
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true

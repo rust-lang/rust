@@ -49,59 +49,59 @@ declare_lint_pass!(TypeParamMismatch => [MISMATCHING_TYPE_PARAM_ORDER]);
 
 impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if_chain! {
-            if !item.span.from_expansion();
-            if let ItemKind::Impl(imp) = &item.kind;
-            if let TyKind::Path(QPath::Resolved(_, path)) = &imp.self_ty.kind;
-            if let Some(segment) = path.segments.iter().next();
-            if let Some(generic_args) = segment.args;
-            if !generic_args.args.is_empty();
-            then {
-                // get the name and span of the generic parameters in the Impl
-                let mut impl_params = Vec::new();
-                for p in generic_args.args {
-                    match p {
-                        GenericArg::Type(Ty {kind: TyKind::Path(QPath::Resolved(_, path)), ..}) =>
-                            impl_params.push((path.segments[0].ident.to_string(), path.span)),
-                        GenericArg::Type(_) => return,
-                        _ => (),
-                    };
-                }
-
-                // find the type that the Impl is for
-                // only lint on struct/enum/union for now
-                let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, defid) = path.res else {
-                    return
+        if !item.span.from_expansion()
+            && let ItemKind::Impl(imp) = &item.kind
+            && let TyKind::Path(QPath::Resolved(_, path)) = &imp.self_ty.kind
+            && let Some(segment) = path.segments.iter().next()
+            && let Some(generic_args) = segment.args
+            && !generic_args.args.is_empty()
+        {
+            // get the name and span of the generic parameters in the Impl
+            let mut impl_params = Vec::new();
+            for p in generic_args.args {
+                match p {
+                    GenericArg::Type(Ty {
+                        kind: TyKind::Path(QPath::Resolved(_, path)),
+                        ..
+                    }) => impl_params.push((path.segments[0].ident.to_string(), path.span)),
+                    GenericArg::Type(_) => return,
+                    _ => (),
                 };
+            }
 
-                // get the names of the generic parameters in the type
-                let type_params = &cx.tcx.generics_of(defid).params;
-                let type_param_names: Vec<_> = type_params.iter()
-                .filter_map(|p|
-                    match p.kind {
-                        GenericParamDefKind::Type {..} => Some(p.name.to_string()),
-                        _ => None,
-                    }
-                ).collect();
-                // hashmap of name -> index for mismatch_param_name
-                let type_param_names_hashmap: FxHashMap<&String, usize> =
-                    type_param_names.iter().enumerate().map(|(i, param)| (param, i)).collect();
+            // find the type that the Impl is for
+            // only lint on struct/enum/union for now
+            let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, defid) = path.res else {
+                return;
+            };
 
-                let type_name = segment.ident;
-                for (i, (impl_param_name, impl_param_span)) in impl_params.iter().enumerate() {
-                    if mismatch_param_name(i, impl_param_name, &type_param_names_hashmap) {
-                        let msg = format!("`{type_name}` has a similarly named generic type parameter `{impl_param_name}` in its declaration, but in a different order");
-                        let help = format!("try `{}`, or a name that does not conflict with `{type_name}`'s generic params",
-                                           type_param_names[i]);
-                        span_lint_and_help(
-                            cx,
-                            MISMATCHING_TYPE_PARAM_ORDER,
-                            *impl_param_span,
-                            &msg,
-                            None,
-                            &help
-                        );
-                    }
+            // get the names of the generic parameters in the type
+            let type_params = &cx.tcx.generics_of(defid).params;
+            let type_param_names: Vec<_> = type_params
+                .iter()
+                .filter_map(|p| match p.kind {
+                    GenericParamDefKind::Type { .. } => Some(p.name.to_string()),
+                    _ => None,
+                })
+                .collect();
+            // hashmap of name -> index for mismatch_param_name
+            let type_param_names_hashmap: FxHashMap<&String, usize> = type_param_names
+                .iter()
+                .enumerate()
+                .map(|(i, param)| (param, i))
+                .collect();
+
+            let type_name = segment.ident;
+            for (i, (impl_param_name, impl_param_span)) in impl_params.iter().enumerate() {
+                if mismatch_param_name(i, impl_param_name, &type_param_names_hashmap) {
+                    let msg = format!(
+                        "`{type_name}` has a similarly named generic type parameter `{impl_param_name}` in its declaration, but in a different order"
+                    );
+                    let help = format!(
+                        "try `{}`, or a name that does not conflict with `{type_name}`'s generic params",
+                        type_param_names[i]
+                    );
+                    span_lint_and_help(cx, MISMATCHING_TYPE_PARAM_ORDER, *impl_param_span, &msg, None, &help);
                 }
             }
         }

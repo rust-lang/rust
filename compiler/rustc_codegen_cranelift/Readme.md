@@ -5,7 +5,47 @@ This has the potential to improve compilation times in debug mode.
 If your project doesn't use any of the things listed under "Not yet supported", it should work fine.
 If not please open an issue.
 
+## Download using Rustup
+
+The Cranelift codegen backend is distributed in nightly builds on Linux and x86_64 macOS. If you want to
+install it using Rustup, you can do that by running:
+
+```bash
+$ rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+```
+
+Once it is installed, you can enable it with one of the following approaches:
+- `CARGO_PROFILE_DEV_CODEGEN_BACKEND=cranelift cargo +nightly build -Zcodegen-backend`
+- `RUSTFLAGS="-Zcodegen-backend=cranelift" cargo +nightly build`
+- Add the following to `.cargo/config.toml`:
+    ```toml
+    [unstable]
+    codegen-backend = true
+
+    [profile.dev]
+    codegen-backend = "cranelift"
+    ```
+- Add the following to `Cargo.toml`:
+    ```toml
+    # This line needs to come before anything else in Cargo.toml
+    cargo-features = ["codegen-backend"]
+
+    [profile.dev]
+    codegen-backend = "cranelift"
+    ```
+
+## Precompiled builds
+
+You can also download a pre-built version from the [releases] page.
+Extract the `dist` directory in the archive anywhere you want.
+If you want to use `cargo clif build` instead of having to specify the full path to the `cargo-clif` executable, you can add the `bin` subdirectory of the extracted `dist` directory to your `PATH`.
+(tutorial [for Windows](https://stackoverflow.com/a/44272417), and [for Linux/MacOS](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path/26059#26059)).
+
+[releases]: https://github.com/rust-lang/rustc_codegen_cranelift/releases/tag/dev
+
 ## Building and testing
+
+If you want to build the backend manually, you can download it from GitHub and build it yourself:
 
 ```bash
 $ git clone https://github.com/rust-lang/rustc_codegen_cranelift
@@ -21,15 +61,6 @@ $ ./test.sh
 ```
 
 For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.sh`.
-
-## Precompiled builds
-
-Alternatively you can download a pre built version from the [releases] page.
-Extract the `dist` directory in the archive anywhere you want.
-If you want to use `cargo clif build` instead of having to specify the full path to the `cargo-clif` executable, you can add the `bin` subdirectory of the extracted `dist` directory to your `PATH`.
-(tutorial [for Windows](https://stackoverflow.com/a/44272417), and [for Linux/MacOS](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path/26059#26059)).
-
-[releases]: https://github.com/rust-lang/rustc_codegen_cranelift/releases/tag/dev
 
 ## Usage
 

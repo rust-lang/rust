@@ -1,7 +1,7 @@
 use crate::astconv::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
 use crate::bounds::Bounds;
 use crate::errors::TraitObjectDeclaredWithNoTraits;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -14,7 +14,6 @@ use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::{self, astconv_object_safety_violations};
 
 use smallvec::{smallvec, SmallVec};
-use std::collections::BTreeSet;
 
 use super::AstConv;
 
@@ -148,8 +147,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        // Use a `BTreeSet` to keep output in a more consistent order.
-        let mut associated_types: FxHashMap<Span, BTreeSet<DefId>> = FxHashMap::default();
+        let mut associated_types: FxIndexMap<Span, FxIndexSet<DefId>> = FxIndexMap::default();
 
         let regular_traits_refs_spans = trait_bounds
             .into_iter()

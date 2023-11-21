@@ -5,7 +5,7 @@ use rustc_hir::{ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Region, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -68,7 +68,13 @@ fn diagnostic_hir_wf_check<'tcx>(
             let infcx = self.tcx.infer_ctxt().build();
             let ocx = ObligationCtxt::new(&infcx);
 
-            let tcx_ty = self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
+            let tcx_ty = self.icx.to_ty(ty);
+            // This visitor can walk into binders, resulting in the `tcx_ty` to
+            // potentially reference escaping bound variables. We simply erase
+            // those here.
+            let tcx_ty = self.tcx.fold_regions(tcx_ty, |r, _| {
+                if r.is_bound() { self.tcx.lifetimes.re_erased } else { r }
+            });
             let cause = traits::ObligationCause::new(
                 ty.span,
                 self.def_id,
@@ -177,26 +183,4 @@ fn diagnostic_hir_wf_check<'tcx>(
         visitor.visit_ty(ty);
     }
     visitor.cause
-}
-
-struct EraseAllBoundRegions<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-// Higher ranked regions are complicated.
-// To make matters worse, the HIR WF check can instantiate them
-// outside of a `Binder`, due to the way we (ab)use
-// `ItemCtxt::to_ty`. To make things simpler, we just erase all
-// of them, regardless of depth. At worse, this will give
-// us an inaccurate span for an error message, but cannot
-// lead to unsoundness (we call `delay_span_bug` at the start
-// of `diagnostic_hir_wf_check`).
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseAllBoundRegions<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        // FIXME(@lcnr): only erase escaping bound regions!
-        if r.is_bound() { self.tcx.lifetimes.re_erased } else { r }
-    }
 }

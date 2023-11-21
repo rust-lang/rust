@@ -1578,8 +1578,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         let sig = args.as_closure().sig();
-        let tupled_params =
-            tcx.erase_late_bound_regions(sig.inputs().iter().next().unwrap().map_bound(|&b| b));
+        let tupled_params = tcx.instantiate_bound_regions_with_erased(
+            sig.inputs().iter().next().unwrap().map_bound(|&b| b),
+        );
         let ty::Tuple(params) = tupled_params.kind() else { return };
 
         // Find the first argument with a matching type, get its name

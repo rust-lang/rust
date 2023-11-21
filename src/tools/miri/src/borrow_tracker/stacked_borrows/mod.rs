@@ -462,10 +462,10 @@ impl Stacks {
     }
 }
 
-impl VisitTags for Stacks {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for Stacks {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         for tag in self.exposed_tags.iter().copied() {
-            visit(tag);
+            visit(None, Some(tag));
         }
     }
 }

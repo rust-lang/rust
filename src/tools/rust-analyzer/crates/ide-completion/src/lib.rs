@@ -263,6 +263,7 @@ pub fn resolve_completion_edits(
                     candidate,
                     config.insert_use.prefix_kind,
                     config.prefer_no_std,
+                    config.prefer_prelude,
                 )
             })
             .find(|mod_path| mod_path.display(db).to_string() == full_import_path);

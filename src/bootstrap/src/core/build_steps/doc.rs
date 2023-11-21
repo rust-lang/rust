@@ -7,8 +7,9 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
-use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::{fs, mem};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::tool::{self, prepare_tool_cargo, SourceType, Tool};
@@ -384,6 +385,104 @@ impl Step for Standalone {
         if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>(Kind::Doc) {
             let index = out.join("index.html");
             builder.open_in_browser(&index);
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Releases {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for Releases {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("RELEASES.md").alias("releases").default_condition(builder.config.docs)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Releases {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    /// Generates HTML release notes to include in the final docs bundle.
+    ///
+    /// This uses the same stylesheet and other tools as Standalone, but the
+    /// RELEASES.md file is included at the root of the repository and gets
+    /// the headline added. In the end, the conversion is done by Rustdoc.
+    fn run(self, builder: &Builder<'_>) {
+        let target = self.target;
+        let compiler = self.compiler;
+        let _guard = builder.msg_doc(compiler, "releases", target);
+        let out = builder.doc_out(target);
+        t!(fs::create_dir_all(&out));
+
+        builder.ensure(Standalone {
+            compiler: builder.compiler(builder.top_stage, builder.config.build),
+            target,
+        });
+
+        let version_info = builder.ensure(SharedAssets { target: self.target }).version_info;
+
+        let favicon = builder.src.join("src/doc/favicon.inc");
+        let footer = builder.src.join("src/doc/footer.inc");
+        let full_toc = builder.src.join("src/doc/full-toc.inc");
+
+        let html = out.join("releases.html");
+        let tmppath = out.join("releases.md");
+        let inpath = builder.src.join("RELEASES.md");
+        let rustdoc = builder.rustdoc(compiler);
+        if !up_to_date(&inpath, &html)
+            || !up_to_date(&footer, &html)
+            || !up_to_date(&favicon, &html)
+            || !up_to_date(&full_toc, &html)
+            || !(builder.config.dry_run()
+                || up_to_date(&version_info, &html)
+                || up_to_date(&rustdoc, &html))
+        {
+            let mut tmpfile = t!(fs::File::create(&tmppath));
+            t!(tmpfile.write_all(b"% Rust Release Notes\n\n"));
+            t!(io::copy(&mut t!(fs::File::open(&inpath)), &mut tmpfile));
+            mem::drop(tmpfile);
+            let mut cmd = builder.rustdoc_cmd(compiler);
+
+            // Needed for --index-page flag
+            cmd.arg("-Z").arg("unstable-options");
+
+            cmd.arg("--html-after-content")
+                .arg(&footer)
+                .arg("--html-before-content")
+                .arg(&version_info)
+                .arg("--html-in-header")
+                .arg(&favicon)
+                .arg("--markdown-no-toc")
+                .arg("--markdown-css")
+                .arg("rust.css")
+                .arg("--index-page")
+                .arg(&builder.src.join("src/doc/index.md"))
+                .arg("--markdown-playground-url")
+                .arg("https://play.rust-lang.org/")
+                .arg("-o")
+                .arg(&out)
+                .arg(&tmppath);
+
+            if !builder.config.docs_minification {
+                cmd.arg("--disable-minification");
+            }
+
+            builder.run(&mut cmd);
+        }
+
+        // We open doc/RELEASES.html as the default if invoked as `x.py doc --open RELEASES.md`
+        // with no particular explicit doc requested (e.g. library/core).
+        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
+            builder.open_in_browser(&html);
         }
     }
 }

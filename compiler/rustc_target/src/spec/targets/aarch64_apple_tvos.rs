@@ -11,7 +11,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
-            forces_embed_bitcode: true,
             frame_pointer: FramePointer::NonLeaf,
             ..opts("tvos", arch)
         },

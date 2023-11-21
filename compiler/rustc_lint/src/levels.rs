@@ -123,7 +123,7 @@ impl LintLevelSets {
 }
 
 fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExpectation)> {
-    let store = unerased_lint_store(tcx);
+    let store = unerased_lint_store(&tcx.sess);
 
     let mut builder = LintLevelsBuilder {
         sess: tcx.sess,
@@ -152,7 +152,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
 
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
-    let store = unerased_lint_store(tcx);
+    let store = unerased_lint_store(&tcx.sess);
     let attrs = tcx.hir_attrs(owner);
 
     let mut levels = LintLevelsBuilder {
@@ -546,10 +546,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
     pub(crate) fn features(&self) -> &Features {
         self.features
-    }
-
-    pub(crate) fn lint_store(&self) -> &LintStore {
-        self.store
     }
 
     fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {

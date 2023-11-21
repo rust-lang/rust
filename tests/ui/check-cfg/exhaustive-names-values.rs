@@ -1,5 +1,4 @@
-// Check warning for unexpected cfg in the code and in the CLI
-// arguments (here the revision cfg).
+// Check warning for unexpected cfg in the code.
 //
 // check-pass
 // revisions: empty_names_values empty_cfg feature full

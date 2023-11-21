@@ -1,6 +1,6 @@
 use crate::traits::{check_args_compatible, specialization_graph};
 
-use super::assembly::{self, structural_traits};
+use super::assembly::{self, structural_traits, Candidate};
 use super::EvalCtxt;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -154,7 +154,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);

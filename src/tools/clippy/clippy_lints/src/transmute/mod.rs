@@ -19,7 +19,6 @@ mod wrong_transmute;
 
 use clippy_config::msrvs::Msrv;
 use clippy_utils::in_constant;
-use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -494,51 +493,47 @@ impl Transmute {
 }
 impl<'tcx> LateLintPass<'tcx> for Transmute {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(path_expr, [arg]) = e.kind;
-            if let ExprKind::Path(QPath::Resolved(None, path)) = path_expr.kind;
-            if let Some(def_id) = path.res.opt_def_id();
-            if cx.tcx.is_diagnostic_item(sym::transmute, def_id);
-            then {
-                // Avoid suggesting non-const operations in const contexts:
-                // - from/to bits (https://github.com/rust-lang/rust/issues/73736)
-                // - dereferencing raw pointers (https://github.com/rust-lang/rust/issues/51911)
-                // - char conversions (https://github.com/rust-lang/rust/issues/89259)
-                let const_context = in_constant(cx, e.hir_id);
+        if let ExprKind::Call(path_expr, [arg]) = e.kind
+            && let ExprKind::Path(QPath::Resolved(None, path)) = path_expr.kind
+            && let Some(def_id) = path.res.opt_def_id()
+            && cx.tcx.is_diagnostic_item(sym::transmute, def_id)
+        {
+            // Avoid suggesting non-const operations in const contexts:
+            // - from/to bits (https://github.com/rust-lang/rust/issues/73736)
+            // - dereferencing raw pointers (https://github.com/rust-lang/rust/issues/51911)
+            // - char conversions (https://github.com/rust-lang/rust/issues/89259)
+            let const_context = in_constant(cx, e.hir_id);
 
-                let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
-                    [] => (cx.typeck_results().expr_ty(arg), false),
-                    [.., a] => (a.target, true),
-                };
-                // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
-                let to_ty = cx.typeck_results().expr_ty(e);
+            let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
+                [] => (cx.typeck_results().expr_ty(arg), false),
+                [.., a] => (a.target, true),
+            };
+            // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
+            let to_ty = cx.typeck_results().expr_ty(e);
 
-                // If useless_transmute is triggered, the other lints can be skipped.
-                if useless_transmute::check(cx, e, from_ty, to_ty, arg) {
-                    return;
-                }
+            // If useless_transmute is triggered, the other lints can be skipped.
+            if useless_transmute::check(cx, e, from_ty, to_ty, arg) {
+                return;
+            }
 
-                let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
-                    | crosspointer_transmute::check(cx, e, from_ty, to_ty)
-                    | transmuting_null::check(cx, e, arg, to_ty)
-                    | transmute_null_to_fn::check(cx, e, arg, to_ty)
-                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
-                    | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
-                    | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
-                    | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
-                    | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
-                    | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
-                    | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
-                    | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
-                    | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
-                    | (
-                        unsound_collection_transmute::check(cx, e, from_ty, to_ty)
-                        || transmute_undefined_repr::check(cx, e, from_ty, to_ty)
-                    );
+            let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
+                | crosspointer_transmute::check(cx, e, from_ty, to_ty)
+                | transmuting_null::check(cx, e, arg, to_ty)
+                | transmute_null_to_fn::check(cx, e, arg, to_ty)
+                | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
+                | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
+                | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
+                | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
+                | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
+                | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
+                | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
+                | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
+                | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
+                | (unsound_collection_transmute::check(cx, e, from_ty, to_ty)
+                    || transmute_undefined_repr::check(cx, e, from_ty, to_ty));
 
-                if !linted {
-                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
-                }
+            if !linted {
+                transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
             }
         }
     }

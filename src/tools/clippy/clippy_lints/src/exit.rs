@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_entrypoint_fn;
-use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -42,19 +41,17 @@ declare_lint_pass!(Exit => [EXIT]);
 
 impl<'tcx> LateLintPass<'tcx> for Exit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(path_expr, _args) = e.kind;
-            if let ExprKind::Path(ref path) = path_expr.kind;
-            if let Some(def_id) = cx.qpath_res(path, path_expr.hir_id).opt_def_id();
-            if cx.tcx.is_diagnostic_item(sym::process_exit, def_id);
-            let parent = cx.tcx.hir().get_parent_item(e.hir_id).def_id;
-            if let Some(Node::Item(Item{kind: ItemKind::Fn(..), ..})) = cx.tcx.hir().find_by_def_id(parent);
+        if let ExprKind::Call(path_expr, _args) = e.kind
+            && let ExprKind::Path(ref path) = path_expr.kind
+            && let Some(def_id) = cx.qpath_res(path, path_expr.hir_id).opt_def_id()
+            && cx.tcx.is_diagnostic_item(sym::process_exit, def_id)
+            && let parent = cx.tcx.hir().get_parent_item(e.hir_id).def_id
+            && let Some(Node::Item(Item{kind: ItemKind::Fn(..), ..})) = cx.tcx.hir().find_by_def_id(parent)
             // If the next item up is a function we check if it is an entry point
             // and only then emit a linter warning
-            if !is_entrypoint_fn(cx, parent.to_def_id());
-            then {
-                span_lint(cx, EXIT, e.span, "usage of `process::exit`");
-            }
+            && !is_entrypoint_fn(cx, parent.to_def_id())
+        {
+            span_lint(cx, EXIT, e.span, "usage of `process::exit`");
         }
     }
 }

@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use std::iter;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         assumed_wf_types,
         assumed_wf_types_for_rpitit: |tcx, def_id| {

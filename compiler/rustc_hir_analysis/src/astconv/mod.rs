@@ -945,7 +945,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 Applicability::MachineApplicable,
             );
         } else {
-            match (types, traits) {
+            let mut types = types.to_vec();
+            types.sort();
+            let mut traits = traits.to_vec();
+            traits.sort();
+            match (&types[..], &traits[..]) {
                 ([], []) => {
                     err.span_suggestion_verbose(
                         span,

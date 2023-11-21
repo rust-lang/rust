@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -22,22 +21,20 @@ pub(super) fn check<'tcx>(
             _ => (left, right),
         };
 
-        if_chain! {
-            if let Some(left_var) = expr_as_cast_to_raw_pointer(cx, left);
-            if let Some(right_var) = expr_as_cast_to_raw_pointer(cx, right);
-            if let Some(left_snip) = snippet_opt(cx, left_var.span);
-            if let Some(right_snip) = snippet_opt(cx, right_var.span);
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    PTR_EQ,
-                    expr.span,
-                    LINT_MSG,
-                    "try",
-                    format!("std::ptr::eq({left_snip}, {right_snip})"),
-                    Applicability::MachineApplicable,
-                    );
-            }
+        if let Some(left_var) = expr_as_cast_to_raw_pointer(cx, left)
+            && let Some(right_var) = expr_as_cast_to_raw_pointer(cx, right)
+            && let Some(left_snip) = snippet_opt(cx, left_var.span)
+            && let Some(right_snip) = snippet_opt(cx, right_var.span)
+        {
+            span_lint_and_sugg(
+                cx,
+                PTR_EQ,
+                expr.span,
+                LINT_MSG,
+                "try",
+                format!("std::ptr::eq({left_snip}, {right_snip})"),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }

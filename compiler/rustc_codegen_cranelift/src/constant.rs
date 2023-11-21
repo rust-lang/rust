@@ -1,10 +1,13 @@
 //! Handling of `static`s, `const`s and promoted allocations
 
+use std::cmp::Ordering;
+
 use cranelift_module::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{read_target_uint, AllocId, GlobalAlloc, Scalar};
 use rustc_middle::mir::ConstValue;
+use rustc_middle::ty::ScalarInt;
 
 use crate::prelude::*;
 
@@ -430,9 +433,9 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
-) -> Option<ConstValue<'tcx>> {
+) -> Option<ScalarInt> {
     match operand {
-        Operand::Constant(const_) => Some(eval_mir_constant(fx, const_).0),
+        Operand::Constant(const_) => eval_mir_constant(fx, const_).0.try_to_scalar_int(),
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
         // inside a temporary before being passed to the intrinsic requiring the const argument.
         // This code tries to find a single constant defining definition of the referenced local.
@@ -440,7 +443,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
             if !place.projection.is_empty() {
                 return None;
             }
-            let mut computed_const_val = None;
+            let mut computed_scalar_int = None;
             for bb_data in fx.mir.basic_blocks.iter() {
                 for stmt in &bb_data.statements {
                     match &stmt.kind {
@@ -456,22 +459,38 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                     operand,
                                     ty,
                                 ) => {
-                                    if computed_const_val.is_some() {
+                                    if computed_scalar_int.is_some() {
                                         return None; // local assigned twice
                                     }
                                     if !matches!(ty.kind(), ty::Uint(_) | ty::Int(_)) {
                                         return None;
                                     }
-                                    let const_val = mir_operand_get_const_val(fx, operand)?;
-                                    if fx.layout_of(*ty).size
-                                        != const_val.try_to_scalar_int()?.size()
+                                    let scalar_int = mir_operand_get_const_val(fx, operand)?;
+                                    let scalar_int = match fx
+                                        .layout_of(*ty)
+                                        .size
+                                        .cmp(&scalar_int.size())
                                     {
-                                        return None;
-                                    }
-                                    computed_const_val = Some(const_val);
+                                        Ordering::Equal => scalar_int,
+                                        Ordering::Less => match ty.kind() {
+                                            ty::Uint(_) => ScalarInt::try_from_uint(
+                                                scalar_int.try_to_uint(scalar_int.size()).unwrap(),
+                                                fx.layout_of(*ty).size,
+                                            )
+                                            .unwrap(),
+                                            ty::Int(_) => ScalarInt::try_from_int(
+                                                scalar_int.try_to_int(scalar_int.size()).unwrap(),
+                                                fx.layout_of(*ty).size,
+                                            )
+                                            .unwrap(),
+                                            _ => unreachable!(),
+                                        },
+                                        Ordering::Greater => return None,
+                                    };
+                                    computed_scalar_int = Some(scalar_int);
                                 }
                                 Rvalue::Use(operand) => {
-                                    computed_const_val = mir_operand_get_const_val(fx, operand)
+                                    computed_scalar_int = mir_operand_get_const_val(fx, operand)
                                 }
                                 _ => return None,
                             }
@@ -522,7 +541,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     TerminatorKind::Call { .. } => {}
                 }
             }
-            computed_const_val
+            computed_scalar_int
         }
     }
 }

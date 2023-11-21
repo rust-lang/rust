@@ -398,8 +398,6 @@ fn ignore_arch() {
         ("x86_64-unknown-linux-gnu", "x86_64"),
         ("i686-unknown-linux-gnu", "x86"),
         ("nvptx64-nvidia-cuda", "nvptx64"),
-        ("asmjs-unknown-emscripten", "wasm32"),
-        ("asmjs-unknown-emscripten", "asmjs"),
         ("thumbv7m-none-eabi", "thumb"),
     ];
     for (target, arch) in archs {
@@ -492,9 +490,6 @@ fn wasm_special() {
         ("wasm32-unknown-unknown", "wasm32", true),
         ("wasm32-unknown-unknown", "wasm32-bare", true),
         ("wasm32-unknown-unknown", "wasm64", false),
-        ("asmjs-unknown-emscripten", "emscripten", true),
-        ("asmjs-unknown-emscripten", "wasm32", true),
-        ("asmjs-unknown-emscripten", "wasm32-bare", false),
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
         ("wasm32-unknown-emscripten", "wasm32-bare", false),

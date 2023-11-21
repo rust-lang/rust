@@ -145,6 +145,25 @@ impl JsonEmitter {
     pub fn ignored_directories_in_source_blocks(self, value: Vec<String>) -> Self {
         Self { ignored_directories_in_source_blocks: value, ..self }
     }
+
+    fn emit(&mut self, val: EmitTyped<'_>) -> io::Result<()> {
+        if self.pretty {
+            serde_json::to_writer_pretty(&mut *self.dst, &val)?
+        } else {
+            serde_json::to_writer(&mut *self.dst, &val)?
+        };
+        self.dst.write_all(b"\n")?;
+        self.dst.flush()
+    }
+}
+
+#[derive(Serialize)]
+#[serde(tag = "$message_type", rename_all = "snake_case")]
+enum EmitTyped<'a> {
+    Diagnostic(Diagnostic),
+    Artifact(ArtifactNotification<'a>),
+    FutureIncompat(FutureIncompatReport<'a>),
+    UnusedExtern(UnusedExterns<'a, 'a, 'a>),
 }
 
 impl Translate for JsonEmitter {
@@ -160,12 +179,7 @@ impl Translate for JsonEmitter {
 impl Emitter for JsonEmitter {
     fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
             panic!("failed to print diagnostics: {e:?}");
         }
@@ -173,34 +187,28 @@ impl Emitter for JsonEmitter {
 
     fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
         let data = ArtifactNotification { artifact: path, emit: artifact_type };
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::Artifact(data));
         if let Err(e) = result {
             panic!("failed to print notification: {e:?}");
         }
     }
 
     fn emit_future_breakage_report(&mut self, diags: Vec<crate::Diagnostic>) {
-        let data: Vec<FutureBreakageItem> = diags
+        let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
                 if diag.level == crate::Level::Allow {
                     diag.level = crate::Level::Warning(None);
                 }
-                FutureBreakageItem { diagnostic: Diagnostic::from_errors_diagnostic(&diag, self) }
+                FutureBreakageItem {
+                    diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
+                        &diag, self,
+                    )),
+                }
             })
             .collect();
         let report = FutureIncompatReport { future_incompat_report: data };
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&report).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&report).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::FutureIncompat(report));
         if let Err(e) = result {
             panic!("failed to print future breakage report: {e:?}");
         }
@@ -209,12 +217,7 @@ impl Emitter for JsonEmitter {
     fn emit_unused_externs(&mut self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
         let lint_level = lint_level.as_str();
         let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
-        let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
-        } else {
-            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
-        }
-        .and_then(|_| self.dst.flush());
+        let result = self.emit(EmitTyped::UnusedExtern(data));
         if let Err(e) = result {
             panic!("failed to print unused externs: {e:?}");
         }
@@ -313,13 +316,15 @@ struct ArtifactNotification<'a> {
 }
 
 #[derive(Serialize)]
-struct FutureBreakageItem {
-    diagnostic: Diagnostic,
+struct FutureBreakageItem<'a> {
+    // Always EmitTyped::Diagnostic, but we want to make sure it gets serialized
+    // with "$message_type".
+    diagnostic: EmitTyped<'a>,
 }
 
 #[derive(Serialize)]
-struct FutureIncompatReport {
-    future_incompat_report: Vec<FutureBreakageItem>,
+struct FutureIncompatReport<'a> {
+    future_incompat_report: Vec<FutureBreakageItem<'a>>,
 }
 
 // NOTE: Keep this in sync with the equivalent structs in rustdoc's

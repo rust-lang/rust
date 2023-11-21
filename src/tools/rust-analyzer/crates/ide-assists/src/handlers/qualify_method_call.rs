@@ -48,6 +48,7 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         ctx.sema.db,
         item_for_path_search(ctx.sema.db, item_in_ns)?,
         ctx.config.prefer_no_std,
+        ctx.config.prefer_prelude,
     )?;
 
     let qualify_candidate = QualifyCandidate::ImplMethod(ctx.sema.db, call, resolved_call);

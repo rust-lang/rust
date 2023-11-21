@@ -3,7 +3,6 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, in_constant, std_or_core};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -149,36 +148,33 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     }
 
     for [s1, s2, s3] in block.stmts.array_windows::<3>() {
-        if_chain! {
+        if let StmtKind::Local(tmp) = s1.kind
             // let t = foo();
-            if let StmtKind::Local(tmp) = s1.kind;
-            if let Some(tmp_init) = tmp.init;
-            if let PatKind::Binding(.., ident, None) = tmp.pat.kind;
+            && let Some(tmp_init) = tmp.init
+            && let PatKind::Binding(.., ident, None) = tmp.pat.kind
 
             // foo() = bar();
-            if let StmtKind::Semi(first) = s2.kind;
-            if let ExprKind::Assign(lhs1, rhs1, _) = first.kind;
+            && let StmtKind::Semi(first) = s2.kind
+            && let ExprKind::Assign(lhs1, rhs1, _) = first.kind
 
             // bar() = t;
-            if let StmtKind::Semi(second) = s3.kind;
-            if let ExprKind::Assign(lhs2, rhs2, _) = second.kind;
-            if let ExprKind::Path(QPath::Resolved(None, rhs2)) = rhs2.kind;
-            if rhs2.segments.len() == 1;
+            && let StmtKind::Semi(second) = s3.kind
+            && let ExprKind::Assign(lhs2, rhs2, _) = second.kind
+            && let ExprKind::Path(QPath::Resolved(None, rhs2)) = rhs2.kind
+            && rhs2.segments.len() == 1
 
-            if ident.name == rhs2.segments[0].ident.name;
-            if eq_expr_value(cx, tmp_init, lhs1);
-            if eq_expr_value(cx, rhs1, lhs2);
+            && ident.name == rhs2.segments[0].ident.name
+            && eq_expr_value(cx, tmp_init, lhs1)
+            && eq_expr_value(cx, rhs1, lhs2)
 
-            let ctxt = s1.span.ctxt();
-            if s2.span.ctxt() == ctxt;
-            if s3.span.ctxt() == ctxt;
-            if first.span.ctxt() == ctxt;
-            if second.span.ctxt() == ctxt;
-
-            then {
-                let span = s1.span.to(s3.span);
-                generate_swap_warning(cx, lhs1, lhs2, span, false);
-            }
+            && let ctxt = s1.span.ctxt()
+            && s2.span.ctxt() == ctxt
+            && s3.span.ctxt() == ctxt
+            && first.span.ctxt() == ctxt
+            && second.span.ctxt() == ctxt
+        {
+            let span = s1.span.to(s3.span);
+            generate_swap_warning(cx, lhs1, lhs2, span, false);
         }
     }
 }
@@ -261,20 +257,18 @@ fn parse<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(ExprOrIdent<'hir>, &'a Expr<
 fn check_xor_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for [s1, s2, s3] in block.stmts.array_windows::<3>() {
         let ctxt = s1.span.ctxt();
-        if_chain! {
-            if let Some((lhs0, rhs0)) = extract_sides_of_xor_assign(s1, ctxt);
-            if let Some((lhs1, rhs1)) = extract_sides_of_xor_assign(s2, ctxt);
-            if let Some((lhs2, rhs2)) = extract_sides_of_xor_assign(s3, ctxt);
-            if eq_expr_value(cx, lhs0, rhs1);
-            if eq_expr_value(cx, lhs2, rhs1);
-            if eq_expr_value(cx, lhs1, rhs0);
-            if eq_expr_value(cx, lhs1, rhs2);
-            if s2.span.ctxt() == ctxt;
-            if s3.span.ctxt() == ctxt;
-            then {
-                let span = s1.span.to(s3.span);
-                generate_swap_warning(cx, lhs0, rhs0, span, true);
-            }
+        if let Some((lhs0, rhs0)) = extract_sides_of_xor_assign(s1, ctxt)
+            && let Some((lhs1, rhs1)) = extract_sides_of_xor_assign(s2, ctxt)
+            && let Some((lhs2, rhs2)) = extract_sides_of_xor_assign(s3, ctxt)
+            && eq_expr_value(cx, lhs0, rhs1)
+            && eq_expr_value(cx, lhs2, rhs1)
+            && eq_expr_value(cx, lhs1, rhs0)
+            && eq_expr_value(cx, lhs1, rhs2)
+            && s2.span.ctxt() == ctxt
+            && s3.span.ctxt() == ctxt
+        {
+            let span = s1.span.to(s3.span);
+            generate_swap_warning(cx, lhs0, rhs0, span, true);
         };
     }
 }

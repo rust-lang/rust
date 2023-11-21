@@ -11,6 +11,7 @@ use smallvec::{smallvec, SmallVec};
 pub enum Component<'tcx> {
     Region(ty::Region<'tcx>),
     Param(ty::ParamTy),
+    Placeholder(ty::PlaceholderType),
     UnresolvedInferenceVariable(ty::InferTy),
 
     // Projections like `T::Foo` are tricky because a constraint like
@@ -120,6 +121,10 @@ fn compute_components<'tcx>(
                 out.push(Component::Param(p));
             }
 
+            ty::Placeholder(p) => {
+                out.push(Component::Placeholder(p));
+            }
+
             // For projections, we prefer to generate an obligation like
             // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
             // regionck more ways to prove that it holds. However,
@@ -176,7 +181,6 @@ fn compute_components<'tcx>(
             ty::Tuple(..) |       // ...
             ty::FnPtr(_) |        // OutlivesFunction (*)
             ty::Dynamic(..) |     // OutlivesObject, OutlivesFragment (*)
-            ty::Placeholder(..) |
             ty::Bound(..) |
             ty::Error(_) => {
                 // (*) Function pointers and trait objects are both binders.

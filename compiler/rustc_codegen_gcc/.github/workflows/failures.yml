@@ -21,11 +21,14 @@ jobs:
         libgccjit_version:
           - gcc: "libgccjit.so"
             artifacts_branch: "master"
+            # TODO: switch back to --no-default-features in the case of libgccjit 12 when the default is to enable
+            # master again.
+            extra: "--features master"
           - gcc: "libgccjit_without_int128.so"
             artifacts_branch: "master-without-128bit-integers"
+            extra: "--features master"
           - gcc: "libgccjit12.so"
             artifacts_branch: "gcc12"
-            extra: "--no-default-features"
             # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
             # Not sure why it's not found otherwise.
             env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests' GCC_EXEC_PREFIX=/usr/lib/gcc/"

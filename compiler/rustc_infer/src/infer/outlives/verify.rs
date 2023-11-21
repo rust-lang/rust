@@ -37,11 +37,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
+    pub fn param_or_placeholder_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
-        let declared_bounds_from_env = self.declared_generic_bounds_from_env(param_ty);
+        let declared_bounds_from_env = self.declared_generic_bounds_from_env(ty);
         debug!(?declared_bounds_from_env);
         let mut param_bounds = vec![];
         for declared_bound in declared_bounds_from_env {
@@ -51,7 +51,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 param_bounds.push(VerifyBound::OutlivedBy(region));
             } else {
                 // This is `for<'a> T: 'a`. This means that `T` outlives everything! All done here.
-                debug!("found that {param_ty:?} outlives any lifetime, returning empty vector");
+                debug!("found that {ty:?} outlives any lifetime, returning empty vector");
                 return VerifyBound::AllBounds(vec![]);
             }
         }
@@ -168,7 +168,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> VerifyBound<'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
-            Component::Param(param_ty) => self.param_bound(param_ty),
+            Component::Param(param_ty) => self.param_or_placeholder_bound(param_ty.to_ty(self.tcx)),
+            Component::Placeholder(placeholder_ty) => {
+                self.param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty))
+            }
             Component::Alias(alias_ty) => self.alias_bound(alias_ty, visited),
             Component::EscapingAlias(ref components) => {
                 self.bound_from_components(components, visited)
@@ -195,9 +198,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// bounds, but all the bounds it returns can be relied upon.
     fn declared_generic_bounds_from_env(
         &self,
-        param_ty: ty::ParamTy,
+        generic_ty: Ty<'tcx>,
     ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
-        let generic_ty = param_ty.to_ty(self.tcx);
+        assert!(matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_)));
         self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
 

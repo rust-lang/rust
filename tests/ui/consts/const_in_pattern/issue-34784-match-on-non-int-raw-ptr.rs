@@ -23,9 +23,17 @@ fn foo2(x: *const u8) {
 
 const D: *const [u8; 4] = b"abcd";
 
+const STR: *const str = "abcd";
+
 fn main() {
     match D {
         D => {} //~ERROR: behave unpredictably
+        //~| previously accepted
+        _ => {}
+    }
+
+    match STR {
+        STR => {} //~ERROR: behave unpredictably
         //~| previously accepted
         _ => {}
     }
