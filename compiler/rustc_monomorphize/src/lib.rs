@@ -10,7 +10,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
-use rustc_fluent_macro::fluent_messages;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::query::{Providers, TyCtxtAt};
 use rustc_middle::traits;
@@ -23,7 +22,7 @@ mod partitioning;
 mod polymorphize;
 mod util;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 fn custom_coerce_unsize_info<'tcx>(
     tcx: TyCtxtAt<'tcx>,

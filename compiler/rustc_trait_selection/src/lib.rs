@@ -37,11 +37,9 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate smallvec;
 
-use rustc_fluent_macro::fluent_messages;
-
 pub mod errors;
 pub mod infer;
 pub mod solve;
 pub mod traits;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

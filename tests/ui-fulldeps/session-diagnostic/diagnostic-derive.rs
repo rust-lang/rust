@@ -19,7 +19,6 @@ use rustc_span::Span;
 
 extern crate rustc_fluent_macro;
 extern crate rustc_macros;
-use rustc_fluent_macro::fluent_messages;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 
 extern crate rustc_middle;
@@ -30,7 +29,7 @@ use rustc_errors::{Applicability, DiagnosticMessage, MultiSpan, SubdiagnosticMes
 
 extern crate rustc_session;
 
-fluent_messages! { "./example.ftl" }
+rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = "E0123")]
