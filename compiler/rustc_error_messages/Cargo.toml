@@ -13,7 +13,6 @@ icu_provider_adapters = "1.2"
 intl-memoizer = "0.5.1"
 rustc_baked_icu_data = { path = "../rustc_baked_icu_data" }
 rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }

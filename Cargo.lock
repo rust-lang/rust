@@ -3771,7 +3771,6 @@ dependencies = [
  "intl-memoizer",
  "rustc_baked_icu_data",
  "rustc_data_structures",
- "rustc_fluent_macro",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
