@@ -22,12 +22,12 @@ pub use self::drop_flag_effects::{
     move_path_children_matching, on_all_children_bits, on_lookup_result_bits,
 };
 pub use self::framework::{
-    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, AnalysisResults, Backward,
-    CloneAnalysis, Direction, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice,
-    MaybeReachable, Results, ResultsCloned, ResultsClonedCursor, ResultsCursor, ResultsRefCursor,
-    ResultsVisitable, ResultsVisitor, SwitchIntEdgeEffects,
+    fmt, lattice, visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis,
+    JoinSemiLattice, MaybeReachable, Results, ResultsCursor, ResultsVisitable, ResultsVisitor,
 };
-
+use self::framework::{
+    Backward, CloneAnalysis, Forward, ResultsClonedCursor, SwitchIntEdgeEffects,
+};
 use self::move_paths::MoveData;
 
 pub mod debuginfo;
