@@ -245,7 +245,7 @@ impl Command {
     }
 
     pub fn get_current_dir(&self) -> Option<&Path> {
-        self.cwd.as_ref().map(|cwd| Path::new(cwd))
+        self.cwd.as_ref().map(Path::new)
     }
 
     pub unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
