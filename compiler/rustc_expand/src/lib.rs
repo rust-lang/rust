@@ -23,7 +23,6 @@ extern crate tracing;
 
 extern crate proc_macro as pm;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
 mod placeholders;

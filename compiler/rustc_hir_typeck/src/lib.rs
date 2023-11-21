@@ -52,10 +52,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::RawTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{
-    struct_span_err, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
-    SubdiagnosticMessage,
-};
+use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed, MultiSpan};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

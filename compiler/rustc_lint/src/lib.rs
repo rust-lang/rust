@@ -90,7 +90,6 @@ mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;

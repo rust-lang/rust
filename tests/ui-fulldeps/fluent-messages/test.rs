@@ -2,7 +2,7 @@
 
 #![feature(rustc_private)]
 #![crate_type = "lib"]
-
+extern crate rustc_errors;
 extern crate rustc_fluent_macro;
 use rustc_fluent_macro::fluent_messages;
 

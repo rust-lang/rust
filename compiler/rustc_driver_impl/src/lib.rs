@@ -28,7 +28,7 @@ use rustc_data_structures::profiling::{
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{markdown, ColorConfig};
-use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage};
+use rustc_errors::{ErrorGuaranteed, Handler, PResult};
 use rustc_feature::find_gated_cfg;
 use rustc_fluent_macro::fluent_messages;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};

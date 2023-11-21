@@ -10,7 +10,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::query::{Providers, TyCtxtAt};

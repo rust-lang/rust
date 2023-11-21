@@ -14,7 +14,6 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate rustc_macros;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
 pub mod cache;

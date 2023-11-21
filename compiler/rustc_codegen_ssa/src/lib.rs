@@ -27,7 +27,6 @@ extern crate rustc_middle;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::dep_graph::WorkProduct;

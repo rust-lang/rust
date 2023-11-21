@@ -13,7 +13,6 @@
 #[macro_use]
 extern crate tracing;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
 mod callbacks;

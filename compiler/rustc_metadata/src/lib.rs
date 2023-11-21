@@ -31,7 +31,6 @@ extern crate rustc_middle;
 extern crate tracing;
 
 pub use rmeta::provide;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
 mod dependency_format;

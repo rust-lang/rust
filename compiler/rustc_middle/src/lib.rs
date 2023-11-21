@@ -77,7 +77,6 @@ extern crate tracing;
 #[macro_use]
 extern crate smallvec;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
 #[cfg(test)]
