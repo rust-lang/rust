@@ -19,5 +19,5 @@ LL |         let x: *mut u32 = xref as *const _ as *mut _;
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

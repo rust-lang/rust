@@ -8,5 +8,5 @@ LL |     _fat = [0; (1u64 << 61) as usize + (1u64 << 31) as usize];
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

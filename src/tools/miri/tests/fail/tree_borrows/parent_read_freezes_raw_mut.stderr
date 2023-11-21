@@ -29,5 +29,5 @@ LL |         assert_eq!(root, 0); // Parent Read
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
