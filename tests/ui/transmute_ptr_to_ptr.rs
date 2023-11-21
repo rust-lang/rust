@@ -43,6 +43,9 @@ fn transmute_ptr_to_ptr() {
         //~^ ERROR: transmute from a reference to a reference
         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
         //~^ ERROR: transmute from a reference to a reference
+        let u8_ref: &u8 = &0u8;
+        let u64_ref: &u64 = unsafe { std::mem::transmute(u8_ref) };
+        //~^ ERROR: transmute from a reference to a reference
     }
 
     // these are recommendations for solving the above; if these lint we need to update

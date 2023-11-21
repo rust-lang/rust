@@ -37,5 +37,11 @@ error: transmute from a reference to a reference
 LL |         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`
 
-error: aborting due to 6 previous errors
+error: transmute from a reference to a reference
+  --> $DIR/transmute_ptr_to_ptr.rs:47:38
+   |
+LL |         let u64_ref: &u64 = unsafe { std::mem::transmute(u8_ref) };
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(u8_ref as *const u8 as *const u64)`
+
+error: aborting due to 7 previous errors
 
