@@ -3063,7 +3063,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        self.commit_if_ok(|_| {
+        self.commit_if_ok(|snapshot| {
+            let outer_universe = self.universe();
+
             let ocx = ObligationCtxt::new(self);
             let impl_args = self.fresh_args_for_item(base_expr.span, impl_def_id);
             let impl_trait_ref =
@@ -3073,7 +3075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Match the impl self type against the base ty. If this fails,
             // we just skip this impl, since it's not particularly useful.
             let impl_trait_ref = ocx.normalize(&cause, self.param_env, impl_trait_ref);
-            ocx.eq(&cause, self.param_env, impl_trait_ref.self_ty(), base_ty)?;
+            ocx.eq(&cause, self.param_env, base_ty, impl_trait_ref.self_ty())?;
 
             // Register the impl's predicates. One of these predicates
             // must be unsatisfied, or else we wouldn't have gotten here
@@ -3109,11 +3111,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_projection(self.tcx, index_trait_output_def_id, impl_trait_ref.args),
             );
 
-            let errors = ocx.select_where_possible();
+            let true_errors = ocx.select_where_possible();
+
+            // Do a leak check -- we can't really report report a useful error here,
+            // but it at least avoids an ICE when the error has to do with higher-ranked
+            // lifetimes.
+            self.leak_check(outer_universe, Some(snapshot))?;
+
+            // Bail if we have ambiguity errors, which we can't report in a useful way.
+            let ambiguity_errors = ocx.select_all_or_error();
+            if true_errors.is_empty() && !ambiguity_errors.is_empty() {
+                return Err(NoSolution);
+            }
+
             // There should be at least one error reported. If not, we
             // will still delay a span bug in `report_fulfillment_errors`.
             Ok::<_, NoSolution>((
-                self.err_ctxt().report_fulfillment_errors(errors),
+                self.err_ctxt().report_fulfillment_errors(true_errors),
                 impl_trait_ref.args.type_at(1),
                 element_ty,
             ))

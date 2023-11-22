@@ -89,7 +89,7 @@ const PARSED = [
             pathWithoutLast: [],
             pathLast: "never",
             generics: [],
-            typeFilter: 15,
+            typeFilter: 1,
         }],
         userQuery: "-> !",
         error: null,
