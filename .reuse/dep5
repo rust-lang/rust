@@ -93,3 +93,11 @@ License: MIT OR Apache-2.0
 Files: src/doc/rustc-dev-guide/mermaid.min.js
 Copyright: Knut Sveidqvist
 License: MIT
+
+# Note that the LLVM submodule here only specifies the NCSA as the license for
+# LLVM, even though LLVM is in the process of a relicensing to Apache 2.0 with
+# the LLVM Exception. That's because relicensed files have a SPDX header with
+# the correct license, so it will automatically be included here.
+Files: src/llvm-project/*
+Copyright: The LLVM Authors
+License: NCSA
