@@ -3,12 +3,25 @@
 // list of all the expected names
 //
 // check-pass
+// revisions: some none
 // rustc-env:CARGO=/usr/bin/cargo
 // compile-flags: --check-cfg=cfg() -Z unstable-options
-// error-pattern:Cargo.toml
+// [some]compile-flags: --check-cfg=cfg(feature,values("bitcode"))
+// [some]compile-flags: --check-cfg=cfg(CONFIG_NVME,values("y"))
+// [none]error-pattern:Cargo.toml
 
 #[cfg(feature = "serde")]
-//~^ WARNING unexpected `cfg` condition name
+//[none]~^ WARNING unexpected `cfg` condition name
+//[some]~^^ WARNING unexpected `cfg` condition value
 fn ser() {}
+
+#[cfg(tokio_unstable)]
+//~^ WARNING unexpected `cfg` condition name
+fn tokio() {}
+
+#[cfg(CONFIG_NVME = "m")]
+//[none]~^ WARNING unexpected `cfg` condition name
+//[some]~^^ WARNING unexpected `cfg` condition value
+fn tokio() {}
 
 fn main() {}

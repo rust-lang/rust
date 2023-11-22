@@ -1,0 +1,74 @@
+warning: unexpected `cfg` condition name: `featur`
+  --> $DIR/diagnotics.rs:7:7
+   |
+LL | #[cfg(featur)]
+   |       ^^^^^^ help: there is a config with a similar name: `feature`
+   |
+   = help: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(featur)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `featur`
+  --> $DIR/diagnotics.rs:11:7
+   |
+LL | #[cfg(featur = "foo")]
+   |       ^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(featur, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+help: there is a config with a similar name and value
+   |
+LL | #[cfg(feature = "foo")]
+   |       ~~~~~~~
+
+warning: unexpected `cfg` condition name: `featur`
+  --> $DIR/diagnotics.rs:15:7
+   |
+LL | #[cfg(featur = "fo")]
+   |       ^^^^^^^^^^^^^
+   |
+   = help: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(featur, values("fo"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+help: there is a config with a similar name and different values
+   |
+LL | #[cfg(feature = "foo")]
+   |       ~~~~~~~~~~~~~~~
+
+warning: unexpected `cfg` condition name: `no_value`
+  --> $DIR/diagnotics.rs:22:7
+   |
+LL | #[cfg(no_value)]
+   |       ^^^^^^^^ help: there is a config with a similar name: `no_values`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(no_value)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `no_value`
+  --> $DIR/diagnotics.rs:26:7
+   |
+LL | #[cfg(no_value = "foo")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(no_value, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+help: there is a config with a similar name and no value
+   |
+LL | #[cfg(no_values)]
+   |       ~~~~~~~~~
+
+warning: unexpected `cfg` condition value: `bar`
+  --> $DIR/diagnotics.rs:30:7
+   |
+LL | #[cfg(no_values = "bar")]
+   |       ^^^^^^^^^--------
+   |                |
+   |                help: remove the value
+   |
+   = note: no expected value for `no_values`
+   = help: to expect this configuration use `--check-cfg=cfg(no_values, values("bar"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: 6 warnings emitted
+
