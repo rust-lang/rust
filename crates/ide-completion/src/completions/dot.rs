@@ -1186,12 +1186,24 @@ impl<B: Bar, F: core::ops::Deref<Target = B>> Foo<F> {
     fn test_struct_function_field_completion() {
         check(
             r#"
-struct S { field: fn() }
-fn foo() { S { field: || {} }.fi$0() }
+struct S { va_field: u32, fn_field: fn() }
+fn foo() { S { va_field: 0, fn_field: || {} }.fi$0() }
 "#,
             expect![[r#"
-                fd field fn()
+                fd fn_field fn()
             "#]],
+        );
+
+        check_edit(
+            "fn_field",
+            r#"
+struct S { va_field: u32, fn_field: fn() }
+fn foo() { S { va_field: 0, fn_field: || {} }.fi$0() }
+"#,
+            r#"
+struct S { va_field: u32, fn_field: fn() }
+fn foo() { (S { va_field: 0, fn_field: || {} }).fn_field() }
+"#,
         );
     }
 
@@ -1209,5 +1221,23 @@ fn foo() {
                 fd 1 fn()
             "#]],
         );
+
+        check_edit(
+            "1",
+            r#"
+struct B(u32, fn())
+fn foo() {
+   let b = B(0, || {});
+   b.$0()
+}
+"#,
+            r#"
+struct B(u32, fn())
+fn foo() {
+   let b = B(0, || {});
+   (b).1()
+}
+"#,
+        )
     }
 }
