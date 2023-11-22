@@ -917,9 +917,8 @@ fn make_proc_thread_attribute_list(
         )
     };
 
-    let mut proc_thread_attribute_list = ProcThreadAttributeList(
-        vec![MaybeUninit::uninit(); required_size].into_boxed_slice(),
-    );
+    let mut proc_thread_attribute_list =
+        ProcThreadAttributeList(vec![MaybeUninit::uninit(); required_size].into_boxed_slice());
 
     // Once we've allocated the necessary memory, it's safe to invoke
     // `InitializeProcThreadAttributeList` to properly initialize the list.
