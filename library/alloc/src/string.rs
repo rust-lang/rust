@@ -43,6 +43,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::error::Error;
+use core::fmt::FormattingOptions;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
@@ -2682,7 +2683,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
     default fn to_string(&self) -> String {
         let mut buf = String::new();
-        let mut formatter = core::fmt::Formatter::new(&mut buf);
+        let mut formatter = core::fmt::Formatter::new(&mut buf, FormattingOptions::new());
         // Bypass format_args!() to avoid write_str with zero-length strs
         fmt::Display::fmt(self, &mut formatter)
             .expect("a Display implementation returned an error unexpectedly");
