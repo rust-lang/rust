@@ -928,7 +928,9 @@ where
     }
     fn file_handling(file: &Path) -> Result<(), String> {
         let path_str = file.display().to_string().replace("\\", "/");
-        if should_not_remove_test(&path_str) {
+        if !path_str.ends_with(".rs") {
+            return Ok(())
+        } else if should_not_remove_test(&path_str) {
             return Ok(());
         } else if should_remove_test(file, &path_str) {
             return std::fs::remove_file(file)
