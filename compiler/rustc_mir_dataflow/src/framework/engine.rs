@@ -239,7 +239,6 @@ where
             tcx,
             apply_statement_trans_for_block,
             pass_name,
-            ..
         } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
