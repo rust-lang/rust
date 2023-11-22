@@ -1,3 +1,6 @@
+//! HIR pretty-printing is layered on top of AST pretty-printing. A number of
+//! the definitions in this file have equivalents in `rustc_ast_pretty`.
+
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -12,7 +15,7 @@ use rustc_hir::LifetimeParamKind;
 use rustc_hir::{BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Node, Term};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::spec::abi::Abi;
 
@@ -49,8 +52,8 @@ pub trait PpAnn {
 }
 
 pub struct NoAnn;
+
 impl PpAnn for NoAnn {}
-pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
@@ -136,9 +139,8 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn print_ident(&mut self, ident: Ident) {
-        self.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
-        self.ann.post(self, AnnNode::Name(&ident.name))
+    fn ann_post(&mut self, ident: Ident) {
+        self.ann.post(self, AnnNode::Name(&ident.name));
     }
 
     fn print_generic_args(&mut self, _: &ast::GenericArgs, _colons_before_params: bool) {
@@ -183,15 +185,15 @@ where
 }
 
 pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_type(ty))
+    to_string(&NoAnn, |s| s.print_type(ty))
 }
 
 pub fn qpath_to_string(segment: &hir::QPath<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_qpath(segment, false))
+    to_string(&NoAnn, |s| s.print_qpath(segment, false))
 }
 
 pub fn pat_to_string(pat: &hir::Pat<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_pat(pat))
+    to_string(&NoAnn, |s| s.print_pat(pat))
 }
 
 impl<'a> State<'a> {
