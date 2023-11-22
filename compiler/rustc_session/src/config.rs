@@ -1443,9 +1443,8 @@ impl CheckCfg {
         let relocation_model_values = RelocModel::all();
 
         // Unknown possible values:
-        //  - `feature`
         //  - `target_feature`
-        for name in [sym::feature, sym::target_feature] {
+        for name in [sym::target_feature] {
             self.expecteds.entry(name).or_insert(ExpectedValues::Any);
         }
 

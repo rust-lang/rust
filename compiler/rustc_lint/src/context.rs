@@ -739,6 +739,8 @@ pub trait LintContext {
                         } else {
                             db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
                         }
+                    } else if name == sym::feature && std::env::var_os("CARGO").is_some() {
+                        db.help("consider defining some features in `Cargo.toml`");
                     } else if !possibilities.is_empty() {
                         let mut possibilities = possibilities.iter()
                             .map(Symbol::as_str)
