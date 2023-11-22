@@ -295,6 +295,9 @@ git pull origin master
 git checkout -b subtree-update_cg_gcc_YYYY-MM-DD
 PATH="$HOME/bin:$PATH" ~/bin/git-subtree pull --prefix=compiler/rustc_codegen_gcc/ https://github.com/rust-lang/rustc_codegen_gcc.git master
 git push
+
+# Immediately merge the merge commit into cg_gcc to prevent merge conflicts when syncing from rust-lang/rust later.
+PATH="$HOME/bin:$PATH" ~/bin/git-subtree push -P compiler/rustc_codegen_gcc/ ../rustc_codegen_gcc/ sync_branch_name
 ```
 
 TODO: write a script that does the above.

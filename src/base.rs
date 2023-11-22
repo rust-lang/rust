@@ -88,7 +88,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
     fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, LockedTargetInfo)) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
-        let context = new_context(&tcx);
+        let context = new_context(tcx);
 
         if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
             context.add_command_line_option("-fexceptions");

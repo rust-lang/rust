@@ -246,7 +246,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 }
 
-fn new_context<'gcc, 'tcx>(tcx: &TyCtxt<'tcx>) -> Context<'gcc> {
+fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
     let context = Context::default();
     if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
         context.add_command_line_option("-masm=intel");
@@ -268,7 +268,7 @@ fn new_context<'gcc, 'tcx>(tcx: &TyCtxt<'tcx>) -> Context<'gcc> {
 impl ExtraBackendMethods for GccCodegenBackend {
     fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) -> Self::Module {
         let mut mods = GccContext {
-            context: new_context(&tcx),
+            context: new_context(tcx),
             should_combine_object_files: false,
             temp_dir: None,
         };
