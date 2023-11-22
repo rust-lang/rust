@@ -895,6 +895,9 @@ where
 {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rust-lang/rust");
+    let mut env = env.clone();
+    setup_rustc(&mut env, args)?;
+
     walk_dir(
         "rust/tests/ui",
         |dir| {
@@ -948,8 +951,6 @@ where
     std::fs::remove_file(file)
         .map_err(|error| format!("Failed to remove `{}`: {:?}", file, error))?;
 
-    let mut env = env.clone();
-    setup_rustc(&mut env, args)?;
     if !callback()? {
         // FIXME: create a function "display_if_not_quiet" or something along the line.
         println!("Keeping all UI tests");
