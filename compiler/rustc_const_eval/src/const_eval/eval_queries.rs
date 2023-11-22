@@ -136,6 +136,10 @@ pub(super) fn op_to_const<'tcx>(
         // they can be stored as `ConstValue::Indirect`), but that's not relevant since we barely
         // ever have to do this. (`try_get_slice_bytes_for_diagnostics` exists to provide this
         // functionality.)
+        Abi::Vector {
+            element: abi::Scalar::Initialized { value: abi::Primitive::Int(..), .. },
+            ..
+        } => op.layout.size.bytes() <= 16,
         _ => false,
     };
     let immediate = if force_as_immediate {

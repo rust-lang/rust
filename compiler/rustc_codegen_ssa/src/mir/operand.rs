@@ -92,13 +92,29 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let layout = bx.layout_of(ty);
 
         let val = match val {
-            ConstValue::Scalar(x) => {
-                let Abi::Scalar(scalar) = layout.abi else {
-                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
-                };
-                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
-                OperandValue::Immediate(llval)
-            }
+            ConstValue::Scalar(x) => match layout.abi {
+                Abi::Scalar(scalar) => {
+                    let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                    OperandValue::Immediate(llval)
+                }
+                Abi::Vector {
+                    element: abi::Scalar::Initialized { value: abi::Primitive::Int(..), .. },
+                    ..
+                } if layout.size.bytes() <= 16 => {
+                    if let Scalar::Int(_) = x {
+                        let llval = bx.const_uint_big(
+                            bx.type_ix(layout.size.bits()),
+                            x.to_bits(layout.size).unwrap(),
+                        );
+                        OperandValue::Immediate(
+                            bx.const_bitcast(llval, bx.immediate_backend_type(layout)),
+                        )
+                    } else {
+                        bug!("Only Scalar::Int constant vectors are supported")
+                    }
+                }
+                _ => bug!("from_const: invalid ByVal layout: {:#?}", layout),
+            },
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
             ConstValue::Slice { data, meta } => {
                 let Abi::ScalarPair(a_scalar, _) = layout.abi else {
