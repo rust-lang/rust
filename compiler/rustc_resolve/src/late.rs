@@ -3190,11 +3190,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         self.resolve_pattern_top(&local.pat, PatternSource::Let);
     }
 
-    /// build a map from pattern identifiers to binding-info's.
-    /// this is done hygienically. This could arise for a macro
-    /// that expands into an or-pattern where one 'x' was from the
-    /// user and one 'x' came from the macro.
-    fn binding_mode_map(&mut self, pat: &Pat) -> FxIndexMap<Ident, BindingInfo> {
+    /// Build a map from pattern identifiers to binding-info's, and check the bindings are
+    /// consistent when encountering or-patterns.
+    /// This is done hygienically: this could arise for a macro that expands into an or-pattern
+    /// where one 'x' was from the user and one 'x' came from the macro.
+    fn compute_and_check_binding_map(&mut self, pat: &Pat) -> FxIndexMap<Ident, BindingInfo> {
         let mut binding_map = FxIndexMap::default();
 
         pat.walk(&mut |pat| {
@@ -3207,9 +3207,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 PatKind::Or(ref ps) => {
                     // Check the consistency of this or-pattern and
                     // then add all bindings to the larger map.
-                    for bm in self.check_consistent_bindings(ps) {
-                        binding_map.extend(bm);
-                    }
+                    let bm = self.compute_and_check_or_pat_binding_map(ps);
+                    binding_map.extend(bm);
                     return false;
                 }
                 _ => {}
@@ -3228,18 +3227,19 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         )
     }
 
-    /// Checks that all of the arms in an or-pattern have exactly the
-    /// same set of bindings, with the same binding modes for each.
-    fn check_consistent_bindings(
+    /// Compute the binding map for an or-pattern. Checks that all of the arms in the or-pattern
+    /// have exactly the same set of bindings, with the same binding modes for each.
+    /// Returns the computed binding map.
+    fn compute_and_check_or_pat_binding_map(
         &mut self,
         pats: &[P<Pat>],
-    ) -> Vec<FxIndexMap<Ident, BindingInfo>> {
-        // pats is consistent.
+    ) -> FxIndexMap<Ident, BindingInfo> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
 
         // 1) Compute the binding maps of all arms.
-        let maps = pats.iter().map(|pat| self.binding_mode_map(pat)).collect::<Vec<_>>();
+        let maps =
+            pats.iter().map(|pat| self.compute_and_check_binding_map(pat)).collect::<Vec<_>>();
 
         // 2) Record any missing bindings or binding mode inconsistencies.
         for (map_outer, pat_outer) in maps.iter().zip(pats.iter()) {
@@ -3248,13 +3248,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 .iter()
                 .zip(pats.iter())
                 .filter(|(_, pat)| pat.id != pat_outer.id)
-                .flat_map(|(map, _)| map)
-                .map(|(key, binding)| (key.name, map_outer.get(key), binding));
+                .flat_map(|(map, _)| map);
 
-            let inners = inners.collect::<Vec<_>>();
-
-            for (name, info, &binding_inner) in inners {
-                match info {
+            for (key, binding_inner) in inners {
+                let name = key.name;
+                match map_outer.get(key) {
                     None => {
                         // The inner binding is missing in the outer.
                         let binding_error =
@@ -3295,15 +3293,19 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             self.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(name, v.1));
         }
 
-        // 5) Finally bubble up all the binding maps.
-        maps
+        // 5) Bubble up the final binding map.
+        let mut binding_map = FxIndexMap::default();
+        for bm in maps {
+            binding_map.extend(bm);
+        }
+        binding_map
     }
 
-    /// Check the consistency of the outermost or-patterns.
-    fn check_consistent_bindings_top(&mut self, pat: &'ast Pat) {
+    /// Check the consistency of bindings wrt or-patterns.
+    fn check_consistent_bindings(&mut self, pat: &'ast Pat) {
         pat.walk(&mut |pat| match pat.kind {
             PatKind::Or(ref ps) => {
-                self.check_consistent_bindings(ps);
+                let _ = self.compute_and_check_or_pat_binding_map(ps);
                 false
             }
             _ => true,
@@ -3336,7 +3338,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         visit::walk_pat(self, pat);
         self.resolve_pattern_inner(pat, pat_src, bindings);
         // This has to happen *after* we determine which pat_idents are variants:
-        self.check_consistent_bindings_top(pat);
+        self.check_consistent_bindings(pat);
     }
 
     /// Resolve bindings in a pattern. This is a helper to `resolve_pattern`.
