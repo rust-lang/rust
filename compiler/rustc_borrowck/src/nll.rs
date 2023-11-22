@@ -101,26 +101,22 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(body));
 
     // Run the MIR type-checker.
-    let MirTypeckResults {
-        constraints,
-        universal_region_relations,
-        opaque_type_values,
-        live_loans,
-    } = type_check::type_check(
-        infcx,
-        param_env,
-        body,
-        promoted,
-        &universal_regions,
-        location_table,
-        borrow_set,
-        &mut all_facts,
-        flow_inits,
-        move_data,
-        elements,
-        upvars,
-        polonius_input,
-    );
+    let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
+        type_check::type_check(
+            infcx,
+            param_env,
+            body,
+            promoted,
+            &universal_regions,
+            location_table,
+            borrow_set,
+            &mut all_facts,
+            flow_inits,
+            move_data,
+            elements,
+            upvars,
+            polonius_input,
+        );
 
     // Create the region inference context, taking ownership of the
     // region inference data that was contained in `infcx`, and the
@@ -161,7 +157,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         type_tests,
         liveness_constraints,
         elements,
-        live_loans,
     );
 
     // If requested: dump NLL facts, and run legacy polonius analysis.

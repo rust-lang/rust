@@ -14,7 +14,6 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -51,8 +50,6 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
-use crate::dataflow::BorrowIndex;
-use crate::region_infer::values::PointIndex;
 use crate::session_diagnostics::{MoveUnsized, SimdShuffleLastConst};
 use crate::{
     borrow_set::BorrowSet,
@@ -166,9 +163,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    // When using `-Zpolonius=next`, liveness will record the set of live loans per point.
-    let mut live_loans = SparseBitMatrix::new(borrow_set.len());
-
     let mut borrowck_context = BorrowCheckContext {
         universal_regions,
         location_table,
@@ -176,7 +170,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
         all_facts,
         constraints: &mut constraints,
         upvars,
-        live_loans: &mut live_loans,
     };
 
     let mut checker = TypeChecker::new(
@@ -243,7 +236,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         })
         .collect();
 
-    MirTypeckResults { constraints, universal_region_relations, opaque_type_values, live_loans }
+    MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
 }
 
 fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
@@ -858,10 +851,6 @@ struct BorrowCheckContext<'a, 'tcx> {
     borrow_set: &'a BorrowSet<'tcx>,
     pub(crate) constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     upvars: &'a [&'a ty::CapturedPlace<'tcx>],
-
-    /// The set of loans that are live at a given point in the CFG, filled in by `liveness::trace`,
-    /// when using `-Zpolonius=next`.
-    pub(crate) live_loans: &'a mut SparseBitMatrix<PointIndex, BorrowIndex>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -870,9 +859,6 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) opaque_type_values: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
-
-    /// The set of loans that are live at a given point in the CFG, when using `-Zpolonius=next`.
-    pub(crate) live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
 }
 
 /// A collection of region constraints that must be satisfied for the
