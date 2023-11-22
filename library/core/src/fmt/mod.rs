@@ -1365,7 +1365,7 @@ impl<'a> Formatter<'a> {
         }
 
         // The `width` field is more of a `min-width` parameter at this point.
-        match self.width {
+        match self.width() {
             // If there's no minimum length requirements then we can just
             // write the bytes.
             None => {
@@ -1433,12 +1433,12 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad(&mut self, s: &str) -> Result {
         // Make sure there's a fast path up front
-        if self.width.is_none() && self.precision.is_none() {
+        if self.width().is_none() && self.precision().is_none() {
             return self.buf.write_str(s);
         }
         // The `precision` field can be interpreted as a `max-width` for the
         // string being formatted.
-        let s = if let Some(max) = self.precision {
+        let s = if let Some(max) = self.precision() {
             // If our string is longer that the precision, then we must have
             // truncation. However other flags like `fill`, `width` and `align`
             // must act as always.
@@ -1455,7 +1455,7 @@ impl<'a> Formatter<'a> {
             &s
         };
         // The `width` field is more of a `min-width` parameter at this point.
-        match self.width {
+        match self.width() {
             // If we're under the maximum length, and there's no minimum length
             // requirements, then we can just emit the string
             None => self.buf.write_str(s),
@@ -1501,10 +1501,10 @@ impl<'a> Formatter<'a> {
         };
 
         for _ in 0..pre_pad {
-            self.buf.write_char(self.fill)?;
+            self.buf.write_char(self.fill())?;
         }
 
-        Ok(PostPadding::new(self.fill, post_pad))
+        Ok(PostPadding::new(self.fill(), post_pad))
     }
 
     /// Takes the formatted parts and applies the padding.
@@ -1516,12 +1516,12 @@ impl<'a> Formatter<'a> {
     ///
     /// Any `numfmt::Part::Copy` parts in `formatted` must contain valid UTF-8.
     unsafe fn pad_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
-        if let Some(mut width) = self.width {
+        if let Some(mut width) = self.width() {
             // for the sign-aware zero padding, we render the sign first and
             // behave as if we had no sign from the beginning.
             let mut formatted = formatted.clone();
-            let old_fill = self.fill;
-            let old_align = self.align;
+            let old_fill = self.fill();
+            let old_align = self.align();
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = formatted.sign;
@@ -2502,7 +2502,7 @@ impl Debug for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        if f.width.is_none() && f.precision.is_none() {
+        if f.width().is_none() && f.precision().is_none() {
             f.write_char(*self)
         } else {
             f.pad(self.encode_utf8(&mut [0; 4]))
@@ -2526,8 +2526,8 @@ impl<T: ?Sized> Pointer for *const T {
 ///
 /// [problematic]: https://github.com/rust-lang/rust/issues/95489
 pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Result {
-    let old_width = f.width;
-    let old_flags = f.flags;
+    let old_width = f.width();
+    let old_flags = f.flags();
 
     // The alternate flag is already treated by LowerHex as being special-
     // it denotes whether to prefix with 0x. We use it to work out whether
@@ -2536,7 +2536,7 @@ pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Resul
     if f.alternate() {
         f.flags |= 1 << (rt::Flag::SignAwareZeroPad as u32);
 
-        if f.width.is_none() {
+        if f.width().is_none() {
             f.width = Some((usize::BITS / 4) as usize + 2);
         }
     }
