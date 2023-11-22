@@ -34,27 +34,24 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         return None;
     }
 
-    // we should use `find_node_at_offset` at `SourceFile` level to get expectant `Between`
-    let token_at_offset = ctx
-        .find_node_at_offset::<ast::SourceFile>()?
-        .syntax()
-        .token_at_offset(parens.syntax().text_range().start());
-    let need_to_add_ws = match token_at_offset {
-        syntax::TokenAtOffset::Between(before, _after) => {
-            // anyother `SyntaxKind` we missing here?
-            let tokens = vec![T![&], T![!], T!['('], T!['['], T!['{']];
-            before.kind() != SyntaxKind::WHITESPACE && !tokens.contains(&before.kind())
-        }
-        _ => false,
-    };
-    let expr = if need_to_add_ws { format!(" {}", expr) } else { expr.to_string() };
-
     let target = parens.syntax().text_range();
     acc.add(
         AssistId("remove_parentheses", AssistKind::Refactor),
         "Remove redundant parentheses",
         target,
-        |builder| builder.replace(parens.syntax().text_range(), expr),
+        |builder| {
+            let prev_token = parens.syntax().first_token().and_then(|it| it.prev_token());
+            let need_to_add_ws = match prev_token {
+                Some(it) => {
+                    let tokens = vec![T![&], T![!], T!['('], T!['['], T!['{']];
+                    it.kind() != SyntaxKind::WHITESPACE && !tokens.contains(&it.kind())
+                }
+                None => false,
+            };
+            let expr = if need_to_add_ws { format!(" {}", expr) } else { expr.to_string() };
+
+            builder.replace(parens.syntax().text_range(), expr)
+        },
     )
 }
 
