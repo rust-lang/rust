@@ -1,0 +1,14 @@
+warning: this `Deref` implementation is covered by an implicit supertrait coercion
+  --> $DIR/deref-lint-regions.rs:8:1
+   |
+LL | impl<'a> Deref for dyn Foo<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Target = dyn Bar<'a>;
+   |     -------------------------- target type is a supertrait of `dyn Foo<'_>`
+   |
+   = help: consider removing this implementation or replacing it with a method instead
+   = note: `#[warn(deref_into_dyn_supertrait)]` on by default
+
+warning: 1 warning emitted
+

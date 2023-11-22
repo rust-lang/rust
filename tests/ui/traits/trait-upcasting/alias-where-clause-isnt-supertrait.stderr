@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/alias-where-clause-isnt-supertrait.rs:27:5
+  --> $DIR/alias-where-clause-isnt-supertrait.rs:26:5
    |
 LL | fn test(x: &dyn C) -> &dyn B {
    |                       ------ expected `&dyn B` because of return type

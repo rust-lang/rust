@@ -111,7 +111,7 @@
 #![feature(slice_flatten)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
-#![feature(trait_upcasting)]
+#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
