@@ -266,7 +266,7 @@ impl io::Read for Stdin {
         let mut bytes_copied = self.incomplete_utf8.read(buf);
 
         if bytes_copied == buf.len() {
-            return Ok(bytes_copied);
+            Ok(bytes_copied)
         } else if buf.len() - bytes_copied < 4 {
             // Not enough space to get a UTF-8 byte. We will use the incomplete UTF8.
             let mut utf16_buf = [MaybeUninit::new(0); 1];
