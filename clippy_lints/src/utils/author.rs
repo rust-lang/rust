@@ -629,6 +629,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
         match pat.value.kind {
             PatKind::Wild => kind!("Wild"),
+            PatKind::Never => kind!("Never"),
             PatKind::Binding(ann, _, name, sub) => {
                 bind!(self, name);
                 opt_bind!(self, sub);
