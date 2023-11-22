@@ -736,6 +736,8 @@ impl SourceInfo {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "_{}"]
     pub struct Local {
         const RETURN_PLACE = 0;
@@ -1171,6 +1173,8 @@ rustc_index::newtype_index! {
     /// [`CriticalCallEdges`]: ../../rustc_const_eval/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "bb{}"]
     pub struct BasicBlock {
         const START_BLOCK = 0;
@@ -1305,6 +1309,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
     #[debug_format = "scope[{}]"]
     pub struct SourceScope {
         const OUTERMOST_SOURCE_SCOPE = 0;
@@ -1533,6 +1538,8 @@ impl UserTypeProjection {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "promoted[{}]"]
     pub struct Promoted {}
 }

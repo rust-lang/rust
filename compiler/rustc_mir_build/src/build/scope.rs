@@ -186,6 +186,7 @@ pub(crate) enum BreakableTarget {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     struct DropIdx {}
 }
 

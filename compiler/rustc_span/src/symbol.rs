@@ -2018,6 +2018,7 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 pub struct Symbol(SymbolIndex);
 
 rustc_index::newtype_index! {
+    #[orderable]
     struct SymbolIndex {}
 }
 

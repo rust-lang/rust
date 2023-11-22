@@ -13,6 +13,7 @@ use rustc_session::Limit;
 use std::collections::hash_map::Entry;
 
 rustc_index::newtype_index! {
+    #[orderable]
     pub struct StackDepth {}
 }
 
