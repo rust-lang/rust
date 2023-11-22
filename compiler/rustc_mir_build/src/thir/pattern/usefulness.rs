@@ -564,21 +564,21 @@ enum Usefulness<'tcx> {
     NoWitnesses { useful: bool },
     /// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
     /// pattern is unreachable.
-    WithWitnesses(Vec<WitnessStack<'tcx>>),
+    WithWitnesses(WitnessMatrix<'tcx>),
 }
 
 impl<'tcx> Usefulness<'tcx> {
     fn new_useful(preference: ArmType) -> Self {
         match preference {
             // A single (empty) witness of reachability.
-            FakeExtraWildcard => WithWitnesses(vec![WitnessStack(vec![])]),
+            FakeExtraWildcard => WithWitnesses(WitnessMatrix::unit_witness()),
             RealArm => NoWitnesses { useful: true },
         }
     }
 
     fn new_not_useful(preference: ArmType) -> Self {
         match preference {
-            FakeExtraWildcard => WithWitnesses(vec![]),
+            FakeExtraWildcard => WithWitnesses(WitnessMatrix::empty()),
             RealArm => NoWitnesses { useful: false },
         }
     }
@@ -607,53 +607,16 @@ impl<'tcx> Usefulness<'tcx> {
     /// that makes sense for the matrix pre-specialization. This new usefulness can then be merged
     /// with the results of specializing with the other constructors.
     fn apply_constructor(
-        self,
+        mut self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
         matrix: &Matrix<'_, 'tcx>, // used to compute missing ctors
         ctor: &Constructor<'tcx>,
     ) -> Self {
-        match self {
-            NoWitnesses { .. } => self,
-            WithWitnesses(ref witnesses) if witnesses.is_empty() => self,
-            WithWitnesses(witnesses) => {
-                let new_witnesses = if let Constructor::Missing { .. } = ctor {
-                    let mut missing = ConstructorSet::for_ty(pcx.cx, pcx.ty)
-                        .compute_missing(pcx, matrix.heads().map(DeconstructedPat::ctor));
-                    if missing.iter().any(|c| c.is_non_exhaustive()) {
-                        // We only report `_` here; listing other constructors would be redundant.
-                        missing = vec![Constructor::NonExhaustive];
-                    }
-
-                    // We got the special `Missing` constructor, so each of the missing constructors
-                    // gives a new pattern that is not caught by the match.
-                    // We construct for each missing constructor a version of this constructor with
-                    // wildcards for fields, i.e. that matches everything that can be built with it.
-                    // For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get
-                    // the pattern `Some(_)`.
-                    let new_patterns: Vec<WitnessPat<'_>> = missing
-                        .into_iter()
-                        .map(|missing_ctor| WitnessPat::wild_from_ctor(pcx, missing_ctor.clone()))
-                        .collect();
-
-                    witnesses
-                        .into_iter()
-                        .flat_map(|witness| {
-                            new_patterns.iter().map(move |pat| {
-                                let mut stack = witness.clone();
-                                stack.0.push(pat.clone());
-                                stack
-                            })
-                        })
-                        .collect()
-                } else {
-                    witnesses
-                        .into_iter()
-                        .map(|witness| witness.apply_constructor(pcx, ctor))
-                        .collect()
-                };
-                WithWitnesses(new_witnesses)
-            }
+        match &mut self {
+            NoWitnesses { .. } => {}
+            WithWitnesses(witnesses) => witnesses.apply_constructor(pcx, matrix, ctor),
         }
+        self
     }
 }
 
@@ -663,9 +626,9 @@ enum ArmType {
     RealArm,
 }
 
-/// A witness-tuple of non-exhaustiveness for error reporting, represented as a list of patterns (in
-/// reverse order of construction) with wildcards inside to represent elements that can take any
-/// inhabitant of the type as a value.
+/// A partially-constructed witness of non-exhaustiveness for error reporting, represented as a list
+/// of patterns (in reverse order of construction) with wildcards inside to represent elements that
+/// can take any inhabitant of the type as a value.
 ///
 /// This mirrors `PatStack`: they function similarly, except `PatStack` contains user patterns we
 /// are inspecting, and `WitnessStack` contains witnesses we are constructing.
@@ -723,30 +686,104 @@ impl<'tcx> WitnessStack<'tcx> {
         self.0.into_iter().next().unwrap()
     }
 
-    /// Constructs a partial witness for a pattern given a list of
-    /// patterns expanded by the specialization step.
-    ///
-    /// When a pattern P is discovered to be useful, this function is used bottom-up
-    /// to reconstruct a complete witness, e.g., a pattern P' that covers a subset
-    /// of values, V, where each value in that set is not covered by any previously
-    /// used patterns and is covered by the pattern P'. Examples:
-    ///
-    /// left_ty: tuple of 3 elements
-    /// pats: [10, 20, _]           => (10, 20, _)
-    ///
-    /// left_ty: struct X { a: (bool, &'static str), b: usize}
-    /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor(mut self, pcx: &PatCtxt<'_, '_, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
-        let pat = {
-            let len = self.0.len();
-            let arity = ctor.arity(pcx);
-            let fields = self.0.drain((len - arity)..).rev().collect();
-            WitnessPat::new(ctor.clone(), fields, pcx.ty)
-        };
-
+    /// Reverses specialization by the `Missing` constructor by pushing a whole new pattern.
+    fn push_pattern(&mut self, pat: WitnessPat<'tcx>) {
         self.0.push(pat);
+    }
 
-        self
+    /// Reverses specialization. Given a witness obtained after specialization, this constructs a
+    /// new witness valid for before specialization. Examples:
+    ///
+    /// ctor: tuple of 2 elements
+    /// pats: [false, "foo", _, true]
+    /// result: [(false, "foo"), _, true]
+    ///
+    /// ctor: Enum::Variant { a: (bool, &'static str), b: usize}
+    /// pats: [(false, "foo"), _, true]
+    /// result: [Enum::Variant { a: (false, "foo"), b: _ }, true]
+    fn apply_constructor(&mut self, pcx: &PatCtxt<'_, '_, 'tcx>, ctor: &Constructor<'tcx>) {
+        let len = self.0.len();
+        let arity = ctor.arity(pcx);
+        let fields = self.0.drain((len - arity)..).rev().collect();
+        let pat = WitnessPat::new(ctor.clone(), fields, pcx.ty);
+        self.0.push(pat);
+    }
+}
+
+/// Represents a set of partially-constructed witnesses of non-exhaustiveness for error reporting.
+/// This has similar invariants as `Matrix` does.
+/// Throughout the exhaustiveness phase of the algorithm, `is_useful` maintains the invariant that
+/// the union of the `Matrix` and the `WitnessMatrix` together matches the type exhaustively. By the
+/// end of the algorithm, this has a single column, which contains the patterns that are missing for
+/// the match to be exhaustive.
+#[derive(Debug, Clone)]
+pub struct WitnessMatrix<'tcx>(Vec<WitnessStack<'tcx>>);
+
+impl<'tcx> WitnessMatrix<'tcx> {
+    /// New matrix with no rows.
+    fn empty() -> Self {
+        WitnessMatrix(vec![])
+    }
+    /// New matrix with one row and no columns.
+    fn unit_witness() -> Self {
+        WitnessMatrix(vec![WitnessStack(vec![])])
+    }
+
+    /// Whether this has any rows.
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+    /// Asserts that there is a single column and returns the patterns in it.
+    fn single_column(self) -> Vec<WitnessPat<'tcx>> {
+        self.0.into_iter().map(|w| w.single_pattern()).collect()
+    }
+
+    /// Reverses specialization by the `Missing` constructor by pushing a whole new pattern.
+    fn push_pattern(&mut self, pat: &WitnessPat<'tcx>) {
+        for witness in self.0.iter_mut() {
+            witness.push_pattern(pat.clone())
+        }
+    }
+
+    /// Reverses specialization by `ctor`.
+    fn apply_constructor(
+        &mut self,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
+        matrix: &Matrix<'_, 'tcx>, // used to compute missing ctors
+        ctor: &Constructor<'tcx>,
+    ) {
+        if self.is_empty() {
+            return;
+        }
+        if matches!(ctor, Constructor::Missing { .. }) {
+            let missing_ctors = ConstructorSet::for_ty(pcx.cx, pcx.ty)
+                .compute_missing(pcx, matrix.heads().map(DeconstructedPat::ctor));
+            // We got the special `Missing` constructor, so each of the missing constructors gives a
+            // new pattern that is not caught by the match. We list those patterns and push them
+            // onto our current witnesses.
+            if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
+                // We only report `_` here; listing other constructors would be redundant.
+                let pat = WitnessPat::wild_from_ctor(pcx, Constructor::NonExhaustive);
+                self.push_pattern(&pat);
+            } else {
+                let old_witnesses = std::mem::replace(self, Self::empty());
+                for ctor in missing_ctors {
+                    let pat = WitnessPat::wild_from_ctor(pcx, ctor.clone());
+                    let mut witnesses_with_missing_ctor = old_witnesses.clone();
+                    witnesses_with_missing_ctor.push_pattern(&pat);
+                    self.extend(witnesses_with_missing_ctor)
+                }
+            }
+        } else {
+            for witness in self.0.iter_mut() {
+                witness.apply_constructor(pcx, ctor)
+            }
+        }
+    }
+
+    /// Merges the rows of two witness matrices. Their column types must match.
+    fn extend(&mut self, other: Self) {
+        self.0.extend(other.0)
     }
 }
 
@@ -1144,7 +1181,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, FakeExtraWildcard, lint_root, false, true);
     let non_exhaustiveness_witnesses: Vec<_> = match usefulness {
-        WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
+        WithWitnesses(witness_matrix) => witness_matrix.single_column(),
         NoWitnesses { .. } => bug!(),
     };
 
