@@ -61,4 +61,16 @@ fn block_in_assert() {
     );
 }
 
+// issue #11814
+fn block_in_match_expr(num: i32) -> i32 {
+    match {
+        let opt = Some(2);
+        opt
+    } {
+        Some(0) => 1,
+        Some(n) => num * 2,
+        None => 0,
+    }
+}
+
 fn main() {}

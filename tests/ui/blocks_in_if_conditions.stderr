@@ -32,5 +32,22 @@ LL |     if true && x == 3 { 6 } else { 10 }
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
 
-error: aborting due to 3 previous errors
+error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
+  --> $DIR/blocks_in_if_conditions.rs:66:5
+   |
+LL | /     match {
+LL | |         let opt = Some(2);
+LL | |         opt
+LL | |     } {
+   | |_____^
+   |
+help: try
+   |
+LL ~     let res = {
+LL +         let opt = Some(2);
+LL +         opt
+LL ~     }; match res {
+   |
+
+error: aborting due to 4 previous errors
 

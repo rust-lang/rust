@@ -5,7 +5,7 @@ use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{get_parent_expr, higher};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{BlockCheckMode, Expr, ExprKind};
+use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
@@ -52,88 +52,89 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        if let Some(higher::If { cond, .. }) = higher::If::hir(expr) {
-            if let ExprKind::Block(block, _) = &cond.kind {
-                if block.rules == BlockCheckMode::DefaultBlock {
-                    if block.stmts.is_empty() {
-                        if let Some(ex) = &block.expr {
-                            // don't dig into the expression here, just suggest that they remove
-                            // the block
-                            if expr.span.from_expansion() || ex.span.from_expansion() {
-                                return;
-                            }
-                            let mut applicability = Applicability::MachineApplicable;
-                            span_lint_and_sugg(
-                                cx,
-                                BLOCKS_IN_IF_CONDITIONS,
-                                cond.span,
-                                BRACED_EXPR_MESSAGE,
-                                "try",
-                                format!(
-                                    "{}",
-                                    snippet_block_with_applicability(
-                                        cx,
-                                        ex.span,
-                                        "..",
-                                        Some(expr.span),
-                                        &mut applicability
-                                    )
-                                ),
-                                applicability,
-                            );
-                        }
-                    } else {
-                        let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
-                        if span.from_expansion() || expr.span.from_expansion() {
+        let Some((cond, keyword)) = higher::If::hir(expr).map(|hif| (hif.cond, "if")).or(
+            if let ExprKind::Match(match_ex, _, MatchSource::Normal) = expr.kind {
+                Some((match_ex, "match"))
+            } else {
+                None
+            },
+        ) else {
+            return;
+        };
+        if let ExprKind::Block(block, _) = &cond.kind {
+            if block.rules == BlockCheckMode::DefaultBlock {
+                if block.stmts.is_empty() {
+                    if let Some(ex) = &block.expr {
+                        // don't dig into the expression here, just suggest that they remove
+                        // the block
+                        if expr.span.from_expansion() || ex.span.from_expansion() {
                             return;
                         }
-                        // move block higher
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
                             BLOCKS_IN_IF_CONDITIONS,
-                            expr.span.with_hi(cond.span.hi()),
-                            COMPLEX_BLOCK_MESSAGE,
+                            cond.span,
+                            BRACED_EXPR_MESSAGE,
                             "try",
                             format!(
-                                "let res = {}; if res",
+                                "{}",
                                 snippet_block_with_applicability(
                                     cx,
-                                    block.span,
+                                    ex.span,
                                     "..",
                                     Some(expr.span),
                                     &mut applicability
-                                ),
+                                )
                             ),
                             applicability,
                         );
                     }
+                } else {
+                    let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
+                    if span.from_expansion() || expr.span.from_expansion() {
+                        return;
+                    }
+                    // move block higher
+                    let mut applicability = Applicability::MachineApplicable;
+                    span_lint_and_sugg(
+                        cx,
+                        BLOCKS_IN_IF_CONDITIONS,
+                        expr.span.with_hi(cond.span.hi()),
+                        COMPLEX_BLOCK_MESSAGE,
+                        "try",
+                        format!(
+                            "let res = {}; {keyword} res",
+                            snippet_block_with_applicability(cx, block.span, "..", Some(expr.span), &mut applicability),
+                        ),
+                        applicability,
+                    );
                 }
-            } else {
-                let _: Option<!> = for_each_expr(cond, |e| {
-                    if let ExprKind::Closure(closure) = e.kind {
-                        // do not lint if the closure is called using an iterator (see #1141)
-                        if let Some(parent) = get_parent_expr(cx, e)
-                            && let ExprKind::MethodCall(_, self_arg, _, _) = &parent.kind
-                            && let caller = cx.typeck_results().expr_ty(self_arg)
-                            && let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
-                            && implements_trait(cx, caller, iter_id, &[])
-                        {
+            }
+        } else {
+            let _: Option<!> = for_each_expr(cond, |e| {
+                if let ExprKind::Closure(closure) = e.kind {
+                    // do not lint if the closure is called using an iterator (see #1141)
+                    if let Some(parent) = get_parent_expr(cx, e)
+                        && let ExprKind::MethodCall(_, self_arg, _, _) = &parent.kind
+                        && let caller = cx.typeck_results().expr_ty(self_arg)
+                        && let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
+                        && implements_trait(cx, caller, iter_id, &[])
+                    {
+                        return ControlFlow::Continue(Descend::No);
+                    }
+
+                    let body = cx.tcx.hir().body(closure.body);
+                    let ex = &body.value;
+                    if let ExprKind::Block(block, _) = ex.kind {
+                        if !body.value.span.from_expansion() && !block.stmts.is_empty() {
+                            span_lint(cx, BLOCKS_IN_IF_CONDITIONS, ex.span, COMPLEX_BLOCK_MESSAGE);
                             return ControlFlow::Continue(Descend::No);
                         }
-
-                        let body = cx.tcx.hir().body(closure.body);
-                        let ex = &body.value;
-                        if let ExprKind::Block(block, _) = ex.kind {
-                            if !body.value.span.from_expansion() && !block.stmts.is_empty() {
-                                span_lint(cx, BLOCKS_IN_IF_CONDITIONS, ex.span, COMPLEX_BLOCK_MESSAGE);
-                                return ControlFlow::Continue(Descend::No);
-                            }
-                        }
                     }
-                    ControlFlow::Continue(Descend::Yes)
-                });
-            }
+                }
+                ControlFlow::Continue(Descend::Yes)
+            });
         }
     }
 }
