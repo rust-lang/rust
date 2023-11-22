@@ -60,17 +60,17 @@ typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(Pass, LLVMPassRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
 
-extern "C" void LLVMTimeTraceProfilerInitialize() {
+extern "C" void LLVMRustTimeTraceProfilerInitialize() {
   timeTraceProfilerInitialize(
       /* TimeTraceGranularity */ 0,
       /* ProcName */ "rustc");
 }
 
-extern "C" void LLVMTimeTraceProfilerFinishThread() {
+extern "C" void LLVMRustTimeTraceProfilerFinishThread() {
   timeTraceProfilerFinishThread();
 }
 
-extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
+extern "C" void LLVMRustTimeTraceProfilerFinish(const char* FileName) {
   StringRef FN(FileName);
   std::error_code EC;
   raw_fd_ostream OS(FN, EC, sys::fs::CD_CreateAlways);
