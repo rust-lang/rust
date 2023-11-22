@@ -308,9 +308,6 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
                 // Nothing to elaborate in a projection predicate.
             }
-            ty::PredicateKind::ClosureKind(..) => {
-                // Nothing to elaborate when waiting for a closure's kind to be inferred.
-            }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..)) => {
                 // Currently, we do not elaborate const-evaluatable
                 // predicates.

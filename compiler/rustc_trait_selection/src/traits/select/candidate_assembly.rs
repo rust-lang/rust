@@ -288,8 +288,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                     None => {
-                        debug!("assemble_unboxed_candidates: closure_kind not yet known");
-                        candidates.vec.push(ClosureCandidate { is_const });
+                        if kind == ty::ClosureKind::FnOnce {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        } else {
+                            candidates.ambiguous = true;
+                        }
                     }
                 }
             }

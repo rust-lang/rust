@@ -129,11 +129,6 @@ pub enum PredicateKind<I: Interner> {
     /// Trait must be object-safe.
     ObjectSafe(I::DefId),
 
-    /// No direct syntax. May be thought of as `where T: FnFoo<...>`
-    /// for some generic args `...` and `T` being a closure type.
-    /// Satisfied (or refuted) once we know the closure's kind.
-    ClosureKind(I::DefId, I::GenericArgs, I::ClosureKind),
-
     /// `T1 <: T2`
     ///
     /// This obligation is created most often when we have two
@@ -173,7 +168,6 @@ where
     I::Term: Copy,
     I::CoercePredicate: Copy,
     I::SubtypePredicate: Copy,
-    I::ClosureKind: Copy,
     ClauseKind<I>: Copy,
 {
 }
@@ -183,9 +177,6 @@ impl<I: Interner> PartialEq for PredicateKind<I> {
         match (self, other) {
             (Self::Clause(l0), Self::Clause(r0)) => l0 == r0,
             (Self::ObjectSafe(l0), Self::ObjectSafe(r0)) => l0 == r0,
-            (Self::ClosureKind(l0, l1, l2), Self::ClosureKind(r0, r1, r2)) => {
-                l0 == r0 && l1 == r1 && l2 == r2
-            }
             (Self::Subtype(l0), Self::Subtype(r0)) => l0 == r0,
             (Self::Coerce(l0), Self::Coerce(r0)) => l0 == r0,
             (Self::ConstEquate(l0, l1), Self::ConstEquate(r0, r1)) => l0 == r0 && l1 == r1,
@@ -207,18 +198,12 @@ where
     I::Term: TypeFoldable<I>,
     I::CoercePredicate: TypeFoldable<I>,
     I::SubtypePredicate: TypeFoldable<I>,
-    I::ClosureKind: TypeFoldable<I>,
     ClauseKind<I>: TypeFoldable<I>,
 {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(match self {
             PredicateKind::Clause(c) => PredicateKind::Clause(c.try_fold_with(folder)?),
             PredicateKind::ObjectSafe(d) => PredicateKind::ObjectSafe(d.try_fold_with(folder)?),
-            PredicateKind::ClosureKind(d, g, k) => PredicateKind::ClosureKind(
-                d.try_fold_with(folder)?,
-                g.try_fold_with(folder)?,
-                k.try_fold_with(folder)?,
-            ),
             PredicateKind::Subtype(s) => PredicateKind::Subtype(s.try_fold_with(folder)?),
             PredicateKind::Coerce(s) => PredicateKind::Coerce(s.try_fold_with(folder)?),
             PredicateKind::ConstEquate(a, b) => {
@@ -242,18 +227,12 @@ where
     I::Term: TypeVisitable<I>,
     I::CoercePredicate: TypeVisitable<I>,
     I::SubtypePredicate: TypeVisitable<I>,
-    I::ClosureKind: TypeVisitable<I>,
     ClauseKind<I>: TypeVisitable<I>,
 {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self {
             PredicateKind::Clause(p) => p.visit_with(visitor),
             PredicateKind::ObjectSafe(d) => d.visit_with(visitor),
-            PredicateKind::ClosureKind(d, g, k) => {
-                d.visit_with(visitor)?;
-                g.visit_with(visitor)?;
-                k.visit_with(visitor)
-            }
             PredicateKind::Subtype(s) => s.visit_with(visitor),
             PredicateKind::Coerce(s) => s.visit_with(visitor),
             PredicateKind::ConstEquate(a, b) => {
@@ -312,9 +291,6 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             PredicateKind::Coerce(pair) => pair.fmt(f),
             PredicateKind::ObjectSafe(trait_def_id) => {
                 write!(f, "ObjectSafe({trait_def_id:?})")
-            }
-            PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
-                write!(f, "ClosureKind({closure_def_id:?}, {closure_args:?}, {kind:?})")
             }
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),

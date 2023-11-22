@@ -1809,13 +1809,6 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
             PredicateKind::ObjectSafe(did) => {
                 stable_mir::ty::PredicateKind::ObjectSafe(tables.trait_def(*did))
             }
-            PredicateKind::ClosureKind(did, generic_args, closure_kind) => {
-                stable_mir::ty::PredicateKind::ClosureKind(
-                    tables.closure_def(*did),
-                    generic_args.stable(tables),
-                    closure_kind.stable(tables),
-                )
-            }
             PredicateKind::Subtype(subtype_predicate) => {
                 stable_mir::ty::PredicateKind::SubType(subtype_predicate.stable(tables))
             }

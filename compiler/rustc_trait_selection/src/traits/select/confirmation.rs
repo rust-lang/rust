@@ -821,11 +821,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        let kind = self
-            .tcx()
-            .fn_trait_kind_from_def_id(obligation.predicate.def_id())
-            .unwrap_or_else(|| bug!("closure candidate for non-fn trait {:?}", obligation));
-
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
@@ -835,14 +830,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, args);
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
 
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
-
-        nested.push(obligation.with(
-            self.tcx(),
-            ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, args, kind)),
-        ));
 
         Ok(nested)
     }
