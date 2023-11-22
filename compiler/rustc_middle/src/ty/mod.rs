@@ -94,7 +94,7 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
-    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind,
     BoundVariableKind, CanonicalPolyFnSig, ClauseKind, ClosureArgs, ClosureArgsParts, ConstKind,
     CoroutineArgs, CoroutineArgsParts, EarlyParamRegion, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, GenSig, InlineConstArgs,
@@ -1517,7 +1517,35 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
+impl rustc_type_ir::Placeholder for PlaceholderRegion {
+    fn universe(&self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(&self) -> BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+}
+
 pub type PlaceholderType = Placeholder<BoundTy>;
+
+impl rustc_type_ir::Placeholder for PlaceholderType {
+    fn universe(&self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(&self) -> BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
@@ -1527,6 +1555,20 @@ pub struct BoundConst<'tcx> {
 }
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
+
+impl rustc_type_ir::Placeholder for PlaceholderConst {
+    fn universe(&self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(&self) -> BoundVar {
+        self.bound
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+}
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
