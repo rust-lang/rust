@@ -229,6 +229,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     /// by `==`.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_partialeq_eq")]
     fn eq(&self, other: &Rhs) -> bool;
 
     /// This method tests for `!=`. The default implementation is almost always
@@ -236,6 +237,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_partialeq_ne")]
     fn ne(&self, other: &Rhs) -> bool {
         !self.eq(other)
     }
