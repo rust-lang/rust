@@ -820,15 +820,15 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-        use InferTy::*;
-        match this.infcx.universe_of_ty(*this.data) {
-            None => write!(f, "{:?}", this.data),
-            Some(universe) => match *this.data {
-                TyVar(ty_vid) => write!(f, "?{}_{}t", ty_vid.index(), universe.index()),
-                IntVar(_) | FloatVar(_) | FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_) => {
-                    unreachable!()
+        match this.data {
+            InferTy::TyVar(vid) => {
+                if let Some(universe) = this.infcx.universe_of_ty(*vid) {
+                    write!(f, "?{}_{}t", vid.index(), universe.index())
+                } else {
+                    write!(f, "{:?}", this.data)
                 }
-            },
+            }
+            _ => write!(f, "{:?}", this.data),
         }
     }
 }

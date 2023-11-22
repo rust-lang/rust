@@ -162,7 +162,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
     }
 
     #[must_use]
-    pub fn with_updated_universe(self, ui: UniverseIndex) -> CanonicalVarInfo<I> {
+    pub fn with_updated_universe(&self, ui: UniverseIndex) -> CanonicalVarInfo<I> {
         CanonicalVarInfo { kind: self.kind.with_updated_universe(ui) }
     }
 
@@ -324,13 +324,13 @@ impl<I: Interner> CanonicalVarKind<I> {
     ///
     /// In case this is a float or int variable, this causes an ICE if
     /// the updated universe is not the root.
-    pub fn with_updated_universe(self, ui: UniverseIndex) -> CanonicalVarKind<I> {
+    pub fn with_updated_universe(&self, ui: UniverseIndex) -> CanonicalVarKind<I> {
         match self {
             CanonicalVarKind::Ty(CanonicalTyVarKind::General(_)) => {
                 CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
             }
             CanonicalVarKind::Region(_) => CanonicalVarKind::Region(ui),
-            CanonicalVarKind::Const(_, ty) => CanonicalVarKind::Const(ui, ty),
+            CanonicalVarKind::Const(_, ty) => CanonicalVarKind::Const(ui, ty.clone()),
 
             CanonicalVarKind::PlaceholderTy(placeholder) => {
                 CanonicalVarKind::PlaceholderTy(placeholder.with_updated_universe(ui))
@@ -339,12 +339,15 @@ impl<I: Interner> CanonicalVarKind<I> {
                 CanonicalVarKind::PlaceholderRegion(placeholder.with_updated_universe(ui))
             }
             CanonicalVarKind::PlaceholderConst(placeholder, ty) => {
-                CanonicalVarKind::PlaceholderConst(placeholder.with_updated_universe(ui), ty)
+                CanonicalVarKind::PlaceholderConst(
+                    placeholder.with_updated_universe(ui),
+                    ty.clone(),
+                )
             }
             CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float)
             | CanonicalVarKind::Effect => {
                 assert_eq!(ui, UniverseIndex::ROOT);
-                self
+                self.clone()
             }
         }
     }

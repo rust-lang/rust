@@ -1,35 +1,56 @@
-use crate::{InferConst, InferTy, Interner, UniverseIndex};
+use crate::{ConstVid, InferCtxtLike, Interner, TyVid, UniverseIndex};
 
 use core::fmt;
 use std::marker::PhantomData;
-
-pub trait InferCtxtLike {
-    type Interner: Interner;
-
-    fn universe_of_ty(&self, ty: InferTy) -> Option<UniverseIndex>;
-
-    fn universe_of_lt(
-        &self,
-        lt: <Self::Interner as Interner>::InferRegion,
-    ) -> Option<UniverseIndex>;
-
-    fn universe_of_ct(&self, ct: InferConst) -> Option<UniverseIndex>;
-}
 
 pub struct NoInfcx<I>(PhantomData<I>);
 
 impl<I: Interner> InferCtxtLike for NoInfcx<I> {
     type Interner = I;
 
-    fn universe_of_ty(&self, _ty: InferTy) -> Option<UniverseIndex> {
-        None
+    fn interner(&self) -> Self::Interner {
+        unreachable!()
     }
 
-    fn universe_of_ct(&self, _ct: InferConst) -> Option<UniverseIndex> {
+    fn universe_of_ty(&self, _ty: TyVid) -> Option<UniverseIndex> {
         None
     }
 
     fn universe_of_lt(&self, _lt: <I as Interner>::InferRegion) -> Option<UniverseIndex> {
+        None
+    }
+
+    fn universe_of_ct(&self, _ct: ConstVid) -> Option<UniverseIndex> {
+        None
+    }
+
+    fn root_ty_var(&self, vid: TyVid) -> TyVid {
+        vid
+    }
+
+    fn probe_ty_var(&self, _vid: TyVid) -> Option<<Self::Interner as Interner>::Ty> {
+        None
+    }
+
+    fn root_lt_var(
+        &self,
+        vid: <Self::Interner as Interner>::InferRegion,
+    ) -> <Self::Interner as Interner>::InferRegion {
+        vid
+    }
+
+    fn probe_lt_var(
+        &self,
+        _vid: <Self::Interner as Interner>::InferRegion,
+    ) -> Option<<Self::Interner as Interner>::Region> {
+        None
+    }
+
+    fn root_ct_var(&self, vid: ConstVid) -> ConstVid {
+        vid
+    }
+
+    fn probe_ct_var(&self, _vid: ConstVid) -> Option<<Self::Interner as Interner>::Const> {
         None
     }
 }

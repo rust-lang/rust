@@ -474,6 +474,14 @@ pub struct CReaderCacheKey {
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
+impl<'tcx> IntoKind for Ty<'tcx> {
+    type Kind = TyKind<'tcx>;
+
+    fn kind(&self) -> TyKind<'tcx> {
+        (*self).kind().clone()
+    }
+}
+
 impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
@@ -1554,8 +1562,12 @@ impl rustc_type_ir::Placeholder for PlaceholderRegion {
         self.bound.var
     }
 
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+    fn with_updated_universe(&self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..*self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::BrAnon } }
     }
 }
 
@@ -1570,8 +1582,12 @@ impl rustc_type_ir::Placeholder for PlaceholderType {
         self.bound.var
     }
 
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+    fn with_updated_universe(&self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..*self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
     }
 }
 
@@ -1593,8 +1609,12 @@ impl rustc_type_ir::Placeholder for PlaceholderConst {
         self.bound
     }
 
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+    fn with_updated_universe(&self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..*self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: var }
     }
 }
 
