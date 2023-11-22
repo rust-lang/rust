@@ -35,6 +35,7 @@ mod canonical;
 mod const_kind;
 mod debug;
 mod flags;
+mod infcx;
 mod interner;
 mod predicate_kind;
 mod region_kind;
@@ -43,8 +44,9 @@ pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
-pub use debug::{DebugWithInfcx, InferCtxtLike, WithInfcx};
+pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
+pub use infcx::InferCtxtLike;
 pub use interner::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
@@ -334,6 +336,12 @@ impl UniverseIndex {
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
         self.private < other.private
+    }
+}
+
+impl Default for UniverseIndex {
+    fn default() -> Self {
+        Self::ROOT
     }
 }
 

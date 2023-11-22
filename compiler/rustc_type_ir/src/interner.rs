@@ -2,8 +2,12 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use crate::{BoundVar, DebugWithInfcx, Mutability, UniverseIndex};
+use crate::{
+    BoundVar, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, Mutability, RegionKind,
+    TyKind, UniverseIndex,
+};
 
+#[allow(rustc::usage_of_ty_tykind)]
 pub trait Interner: Sized {
     type DefId: Clone + Debug + Hash + Ord;
     type AdtDef: Clone + Debug + Hash + Ord;
@@ -18,10 +22,15 @@ pub trait Interner: Sized {
 
     type Binder<T>;
     type TypeAndMut: Clone + Debug + Hash + Ord;
-    type CanonicalVars: Clone + Debug + Hash + Eq;
+    type CanonicalVars: Clone + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
 
     // Kinds of tys
-    type Ty: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type Ty: Clone
+        + DebugWithInfcx<Self>
+        + Hash
+        + Ord
+        + Into<Self::GenericArg>
+        + IntoKind<Kind = TyKind<Self>>;
     type Tys: Clone + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
     type AliasTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type ParamTy: Clone + Debug + Hash + Ord;
@@ -35,7 +44,13 @@ pub trait Interner: Sized {
     type AllocId: Clone + Debug + Hash + Ord;
 
     // Kinds of consts
-    type Const: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type Const: Clone
+        + DebugWithInfcx<Self>
+        + Hash
+        + Ord
+        + Into<Self::GenericArg>
+        + IntoKind<Kind = ConstKind<Self>>
+        + ConstTy<Self>;
     type AliasConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderConst: Clone + Debug + Hash + Ord + Placeholder;
     type ParamConst: Clone + Debug + Hash + Ord;
@@ -44,10 +59,15 @@ pub trait Interner: Sized {
     type ExprConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
 
     // Kinds of regions
-    type Region: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type Region: Clone
+        + DebugWithInfcx<Self>
+        + Hash
+        + Ord
+        + Into<Self::GenericArg>
+        + IntoKind<Kind = RegionKind<Self>>;
     type EarlyParamRegion: Clone + Debug + Hash + Ord;
-    type BoundRegion: Clone + Debug + Hash + Ord;
     type LateParamRegion: Clone + Debug + Hash + Ord;
+    type BoundRegion: Clone + Debug + Hash + Ord;
     type InferRegion: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + Ord + Placeholder;
 
@@ -62,6 +82,12 @@ pub trait Interner: Sized {
     type ClosureKind: Clone + Debug + Hash + Eq;
 
     fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
+
+    fn mk_canonical_var_infos(&self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+
+    fn mk_bound_ty(&self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
+    fn mk_bound_region(&self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
+    fn mk_bound_const(&self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
 }
 
 /// Common capabilities of placeholder kinds
@@ -69,7 +95,19 @@ pub trait Placeholder {
     fn universe(&self) -> UniverseIndex;
     fn var(&self) -> BoundVar;
 
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self;
+    fn with_updated_universe(&self, ui: UniverseIndex) -> Self;
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self;
+}
+
+pub trait IntoKind {
+    type Kind;
+
+    fn kind(&self) -> Self::Kind;
+}
+
+pub trait ConstTy<I: Interner> {
+    fn ty(&self) -> I::Ty;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

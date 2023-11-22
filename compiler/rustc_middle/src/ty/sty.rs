@@ -6,7 +6,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, Discr, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
+    self, AdtDef, Discr, IntoKind, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
@@ -1488,6 +1488,14 @@ impl ParamConst {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
+
+impl<'tcx> IntoKind for Region<'tcx> {
+    type Kind = RegionKind<'tcx>;
+
+    fn kind(&self) -> RegionKind<'tcx> {
+        **self
+    }
+}
 
 impl<'tcx> Region<'tcx> {
     #[inline]
