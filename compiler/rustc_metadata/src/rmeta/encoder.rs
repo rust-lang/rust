@@ -2268,11 +2268,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     file.seek(std::io::SeekFrom::Start(pos_before_seek)).unwrap();
 
     // Record metadata size for self-profiling
-    tcx.prof.artifact_size(
-        "crate_metadata",
-        "crate_metadata",
-        file.metadata().unwrap().len() as u64,
-    );
+    tcx.prof.artifact_size("crate_metadata", "crate_metadata", file.metadata().unwrap().len());
 }
 
 pub fn provide(providers: &mut Providers) {

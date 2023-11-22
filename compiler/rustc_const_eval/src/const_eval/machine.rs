@@ -493,7 +493,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 };
 
                 let ptr = ecx.allocate_ptr(
-                    Size::from_bytes(size as u64),
+                    Size::from_bytes(size),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
                 )?;

@@ -7,12 +7,14 @@
 use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy};
 use rustc_span::Symbol;
+use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::ty::{
-    AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const, FloatTy,
-    GenericArgKind, GenericArgs, IntTy, Region, RigidTy, TraitRef, Ty, UintTy,
+    AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
+    ExistentialTraitRef, FloatTy, GenericArgKind, GenericArgs, IntTy, Region, RigidTy, TraitRef,
+    Ty, UintTy,
 };
-use stable_mir::{AllocId, CrateItem, DefId};
+use stable_mir::{CrateItem, DefId};
 
 use super::RustcInternal;
 
@@ -228,6 +230,17 @@ impl<'tcx> RustcInternal<'tcx> for BoundVariableKind {
     }
 }
 
+impl<'tcx> RustcInternal<'tcx> for ExistentialTraitRef {
+    type T = rustc_ty::ExistentialTraitRef<'tcx>;
+
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        rustc_ty::ExistentialTraitRef {
+            def_id: self.def_id.0.internal(tables),
+            args: self.generic_args.internal(tables),
+        }
+    }
+}
+
 impl<'tcx> RustcInternal<'tcx> for TraitRef {
     type T = rustc_ty::TraitRef<'tcx>;
 
@@ -274,5 +287,15 @@ where
 
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         (*self).internal(tables)
+    }
+}
+impl<'tcx, T> RustcInternal<'tcx> for Option<T>
+where
+    T: RustcInternal<'tcx>,
+{
+    type T = Option<T::T>;
+
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        self.as_ref().map(|inner| inner.internal(tables))
     }
 }

@@ -1468,7 +1468,10 @@ fn opaque_type_cycle_error(
     err.emit()
 }
 
-pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_coroutine_obligations(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Coroutine));
 
     let typeck = tcx.typeck(def_id);
@@ -1482,8 +1485,9 @@ pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // typeck writeback gives us predicates with their regions erased.
         // As borrowck already has checked lifetimes, we do not need to do it again.
         .ignoring_regions()
-        // Bind opaque types to `def_id` as they should have been checked by borrowck.
-        .with_opaque_type_inference(DefiningAnchor::Bind(def_id))
+        // Bind opaque types to type checking root, as they should have been checked by borrowck,
+        // but may show up in some cases, like when (root) obligations are stalled in the new solver.
+        .with_opaque_type_inference(DefiningAnchor::Bind(typeck.hir_owner.def_id))
         .build();
 
     let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);
@@ -1513,6 +1517,16 @@ pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let errors = fulfillment_cx.select_all_or_error(&infcx);
     debug!(?errors);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
+
+    // Check that any hidden types found when checking these stalled coroutine obligations
+    // are valid.
+    for (key, ty) in infcx.take_opaque_types() {
+        let hidden_type = infcx.resolve_vars_if_possible(ty.hidden_type);
+        let key = infcx.resolve_vars_if_possible(key);
+        sanity_check_found_hidden_type(tcx, key, hidden_type)?;
+    }
+
+    Ok(())
 }

@@ -1861,7 +1861,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // method yet. So create fresh variables here for those too,
         // if there are any.
         let generics = self.tcx.generics_of(method);
-        assert_eq!(args.len(), generics.parent_count as usize);
+        assert_eq!(args.len(), generics.parent_count);
 
         let xform_fn_sig = if generics.params.is_empty() {
             fn_sig.instantiate(self.tcx, args)

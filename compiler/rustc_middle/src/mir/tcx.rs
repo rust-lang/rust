@@ -95,9 +95,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
-                    ty::Array(inner, _) if !from_end => {
-                        Ty::new_array(tcx, *inner, (to - from) as u64)
-                    }
+                    ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
                     ty::Array(inner, size) if from_end => {
                         let size = size.eval_target_usize(tcx, param_env);
                         let len = size - from - to;

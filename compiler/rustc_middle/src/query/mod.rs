@@ -567,7 +567,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query check_coroutine_obligations(key: LocalDefId) {
+    query check_coroutine_obligations(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
     }
 

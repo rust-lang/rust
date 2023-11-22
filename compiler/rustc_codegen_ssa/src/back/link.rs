@@ -2378,6 +2378,11 @@ fn add_order_independent_options(
         cmd.control_flow_guard();
     }
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
+    if sess.opts.unstable_opts.ehcont_guard {
+        cmd.ehcont_guard();
+    }
+
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 }
 

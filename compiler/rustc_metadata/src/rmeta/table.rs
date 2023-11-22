@@ -497,7 +497,7 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
         }
 
         LazyTable::from_position_and_encoded_size(
-            NonZeroUsize::new(pos as usize).unwrap(),
+            NonZeroUsize::new(pos).unwrap(),
             width,
             self.blocks.len(),
         )

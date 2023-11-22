@@ -1,8 +1,9 @@
 use super::{
     mir::Safety,
     mir::{Body, Mutability},
-    with, AllocId, DefId, Error, Symbol,
+    with, DefId, Error, Symbol,
 };
+use crate::mir::alloc::AllocId;
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 

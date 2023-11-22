@@ -121,7 +121,7 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
-        llvm::LLVMTimeTraceProfilerInitialize();
+        llvm::LLVMRustTimeTraceProfilerInitialize();
     }
 
     rustc_llvm::initialize_available_targets();
@@ -132,7 +132,7 @@ unsafe fn configure_llvm(sess: &Session) {
 pub fn time_trace_profiler_finish(file_name: &Path) {
     unsafe {
         let file_name = path_to_c_string(file_name);
-        llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
+        llvm::LLVMRustTimeTraceProfilerFinish(file_name.as_ptr());
     }
 }
 
