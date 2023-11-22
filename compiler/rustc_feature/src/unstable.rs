@@ -160,7 +160,7 @@ declare_features! (
     // no-tracking-issue-start
 
     /// Allows using the `unadjusted` ABI; perma-unstable.
-    (unstable, abi_unadjusted, "1.16.0", None, None),
+    (internal, abi_unadjusted, "1.16.0", None, None),
     /// Allows using the `vectorcall` ABI.
     (unstable, abi_vectorcall, "1.7.0", None, None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
