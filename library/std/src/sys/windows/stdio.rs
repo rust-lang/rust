@@ -207,7 +207,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         // write the missing surrogate out now.
         // Buffering it would mean we have to lie about the number of bytes written.
         let first_code_unit_remaining = utf16[written];
-        if first_code_unit_remaining >= 0xDCEE && first_code_unit_remaining <= 0xDFFF {
+        if matches!(first_code_unit_remaining, 0xDCEE..=0xDFFF) {
             // low surrogate
             // We just hope this works, and give up otherwise
             let _ = write_u16s(handle, &utf16[written..written + 1]);
@@ -332,7 +332,7 @@ fn read_u16s_fixup_surrogates(
         // and it is not 0, so we know that `buf[amount - 1]` have been
         // initialized.
         let last_char = unsafe { buf[amount - 1].assume_init() };
-        if last_char >= 0xD800 && last_char <= 0xDBFF {
+        if matches!(last_char, 0xD800..=0xDBFF) {
             // high surrogate
             *surrogate = last_char;
             amount -= 1;
