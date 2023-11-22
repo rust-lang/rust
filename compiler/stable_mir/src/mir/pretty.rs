@@ -3,6 +3,8 @@ use crate::mir::{Operand, Rvalue, StatementKind};
 use crate::ty::{DynKind, FloatTy, IntTy, RigidTy, TyKind, UintTy};
 use crate::{with, Body, CrateItem, Mutability};
 
+use super::{AssertMessage, BinOp, TerminatorKind};
+
 pub fn function_name(item: CrateItem) -> String {
     let mut pretty_name = String::new();
     let body = item.body();
@@ -68,6 +70,135 @@ pub fn pretty_statement(statement: &StatementKind) -> String {
         StatementKind::Nop => (),
     }
     pretty
+}
+
+pub fn pretty_terminator(terminator: &TerminatorKind) -> String {
+    let mut pretty = String::new();
+    match terminator {
+        TerminatorKind::Goto { .. } => format!("        goto"),
+        TerminatorKind::SwitchInt { discr, .. } => {
+            format!("        switch({})", pretty_operand(discr))
+        }
+        TerminatorKind::Resume => format!("        resume"),
+        TerminatorKind::Abort => format!("        abort"),
+        TerminatorKind::Return => format!("        return"),
+        TerminatorKind::Unreachable => format!("        unreachable"),
+        TerminatorKind::Drop { place, .. } => format!("        drop({:?})", place.local),
+        TerminatorKind::Call { func, args, destination, .. } => {
+            pretty.push_str("        ");
+            pretty.push_str(format!("{} = ", destination.local).as_str());
+            pretty.push_str(&pretty_operand(func));
+            pretty.push_str("(");
+            args.iter().enumerate().for_each(|(i, arg)| {
+                if i > 0 {
+                    pretty.push_str(", ");
+                }
+                pretty.push_str(&pretty_operand(arg));
+            });
+            pretty.push_str(")");
+            pretty
+        }
+        TerminatorKind::Assert { cond, expected, msg, target: _, unwind: _ } => {
+            pretty.push_str("        assert(");
+            if !expected {
+                pretty.push_str("!");
+            }
+            pretty.push_str(&pretty_operand(cond));
+            pretty.push_str(&pretty_assert_message(msg));
+            pretty.push_str(")");
+            pretty
+        }
+        TerminatorKind::CoroutineDrop => format!("        coroutine_drop"),
+        TerminatorKind::InlineAsm { .. } => todo!(),
+    }
+}
+
+pub fn pretty_assert_message(msg: &AssertMessage) -> String {
+    let mut pretty = String::new();
+    match msg {
+        AssertMessage::BoundsCheck { len, index } => {
+            let pretty_len = pretty_operand(len);
+            let pretty_index = pretty_operand(index);
+            pretty.push_str(format!("\"index out of bounds: the length is {{}} but the index is {{}}\", {pretty_len}, {pretty_index}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Add, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} + {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Sub, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} - {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Mul, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} * {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Div, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} / {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Rem, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} % {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Shr, _, r) => {
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(
+                format!("\"attempt to shift right by `{{}}`, which would overflow\", {pretty_r}")
+                    .as_str(),
+            );
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Shl, _, r) => {
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(
+                format!("\"attempt to shift left by `{{}}`, which would overflow\", {pretty_r}")
+                    .as_str(),
+            );
+            pretty
+        }
+        AssertMessage::OverflowNeg(op) => {
+            let pretty_op = pretty_operand(op);
+            pretty.push_str(
+                format!("\"attempt to negate `{{}}`, which would overflow\", {pretty_op}").as_str(),
+            );
+            pretty
+        }
+        AssertMessage::DivisionByZero(op) => {
+            let pretty_op = pretty_operand(op);
+            pretty.push_str(format!("\"attempt to divide `{{}}` by zero\", {pretty_op}").as_str());
+            pretty
+        }
+        AssertMessage::RemainderByZero(op) => {
+            let pretty_op = pretty_operand(op);
+            pretty.push_str(
+                format!("\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {pretty_op}").as_str(),
+            );
+            pretty
+        }
+        AssertMessage::ResumedAfterReturn(_) => {
+            format!("attempt to resume a generator after completion")
+        }
+        AssertMessage::ResumedAfterPanic(_) => format!("attempt to resume a panicked generator"),
+        AssertMessage::MisalignedPointerDereference { required, found } => {
+            let pretty_required = pretty_operand(required);
+            let pretty_found = pretty_operand(found);
+            pretty.push_str(format!("\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\",{pretty_required}, {pretty_found}").as_str());
+            pretty
+        }
+        _ => todo!(),
+    }
 }
 
 pub fn pretty_operand(operand: &Operand) -> String {

@@ -1,4 +1,4 @@
-use crate::mir::pretty::{function_body, pretty_statement};
+use crate::mir::pretty::{function_body, pretty_statement, pretty_terminator};
 use crate::ty::{
     AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
 };
@@ -83,6 +83,7 @@ impl Body {
                         Ok(())
                     })
                     .collect::<Vec<_>>();
+                writeln!(w, "{}", pretty_terminator(&block.terminator.kind))?;
                 writeln!(w, "    }}").unwrap();
                 Ok(())
             })
