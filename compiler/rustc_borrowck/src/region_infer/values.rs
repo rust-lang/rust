@@ -11,6 +11,8 @@ use rustc_middle::ty::{self, RegionVid};
 use std::fmt::Debug;
 use std::rc::Rc;
 
+use crate::dataflow::BorrowIndex;
+
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
 pub(crate) struct RegionValueElements {
     /// For each basic block, how many points are contained within?
@@ -119,8 +121,35 @@ pub(crate) enum RegionElement {
 /// When we initially compute liveness, we use an interval matrix storing
 /// liveness ranges for each region-vid.
 pub(crate) struct LivenessValues<N: Idx> {
+    /// The map from locations to points.
     elements: Rc<RegionValueElements>,
+
+    /// For each region: the points where it is live.
     points: SparseIntervalMatrix<N, PointIndex>,
+
+    /// When using `-Zpolonius=next`, for each point: the loans flowing into the live regions at
+    /// that point.
+    pub(crate) loans: Option<LiveLoans<N>>,
+}
+
+/// Data used to compute the loans that are live at a given point in the CFG, when using
+/// `-Zpolonius=next`.
+pub(crate) struct LiveLoans<N: Idx> {
+    /// The set of loans that flow into a given region. When individual regions are marked as live
+    /// in the CFG, these inflowing loans are recorded as live.
+    pub(crate) inflowing_loans: SparseBitMatrix<N, BorrowIndex>,
+
+    /// The set of loans that are live at a given point in the CFG.
+    pub(crate) live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
+}
+
+impl<N: Idx> LiveLoans<N> {
+    pub(crate) fn new(num_loans: usize) -> Self {
+        LiveLoans {
+            live_loans: SparseBitMatrix::new(num_loans),
+            inflowing_loans: SparseBitMatrix::new(num_loans),
+        }
+    }
 }
 
 impl<N: Idx> LivenessValues<N> {
@@ -128,7 +157,11 @@ impl<N: Idx> LivenessValues<N> {
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
     pub(crate) fn new(elements: Rc<RegionValueElements>) -> Self {
-        Self { points: SparseIntervalMatrix::new(elements.num_points), elements }
+        LivenessValues {
+            points: SparseIntervalMatrix::new(elements.num_points),
+            elements,
+            loans: None,
+        }
     }
 
     /// Iterate through each region that has a value in this set.
@@ -141,6 +174,14 @@ impl<N: Idx> LivenessValues<N> {
     pub(crate) fn add_element(&mut self, row: N, location: Location) -> bool {
         debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
         let index = self.elements.point_from_location(location);
+
+        // When available, record the loans flowing into this region as live at the given point.
+        if let Some(loans) = self.loans.as_mut() {
+            if let Some(inflowing) = loans.inflowing_loans.row(row) {
+                loans.live_loans.union_row(index, inflowing);
+            }
+        }
+
         self.points.insert(row, index)
     }
 
@@ -148,6 +189,18 @@ impl<N: Idx> LivenessValues<N> {
     /// region. Returns whether any of them are newly added.
     pub(crate) fn add_elements(&mut self, row: N, locations: &IntervalSet<PointIndex>) -> bool {
         debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
+
+        // When available, record the loans flowing into this region as live at the given points.
+        if let Some(loans) = self.loans.as_mut() {
+            if let Some(inflowing) = loans.inflowing_loans.row(row) {
+                if !inflowing.is_empty() {
+                    for point in locations.iter() {
+                        loans.live_loans.union_row(point, inflowing);
+                    }
+                }
+            }
+        }
+
         self.points.union_row(row, locations)
     }
 
@@ -180,6 +233,15 @@ impl<N: Idx> LivenessValues<N> {
     #[inline]
     pub(crate) fn point_from_location(&self, location: Location) -> PointIndex {
         self.elements.point_from_location(location)
+    }
+
+    /// When using `-Zpolonius=next`, returns whether the `loan_idx` is live at the given `point`.
+    pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, point: PointIndex) -> bool {
+        self.loans
+            .as_ref()
+            .expect("Accessing live loans requires `-Zpolonius=next`")
+            .live_loans
+            .contains(point, loan_idx)
     }
 }
 
