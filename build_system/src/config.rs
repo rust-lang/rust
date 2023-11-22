@@ -110,7 +110,9 @@ impl ConfigInfo {
 
         let current_dir =
             std_env::current_dir().map_err(|error| format!("`current_dir` failed: {:?}", error))?;
-        let channel = if let Some(channel) = env.get("CHANNEL") {
+        let channel = if self.sysroot_release_channel {
+            "release"
+        } else if let Some(channel) = env.get("CHANNEL") {
             channel.as_str()
         } else {
             "debug"

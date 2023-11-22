@@ -126,7 +126,6 @@ struct TestArg {
     build_only: bool,
     gcc_path: String,
     channel: Channel,
-    sysroot_channel: Channel,
     use_backend: bool,
     runners: BTreeSet<String>,
     flags: Vec<String>,
@@ -148,8 +147,11 @@ impl TestArg {
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--release" => test_arg.channel = Channel::Release,
-                "--release-sysroot" => test_arg.sysroot_channel = Channel::Release,
+                "--release" => {
+                    test_arg.channel = Channel::Release;
+                    test_arg.config_info.sysroot_release_channel = true;
+                }
+                "--release-sysroot" => test_arg.config_info.sysroot_release_channel = true,
                 "--no-default-features" => {
                     // To prevent adding it more than once.
                     if !test_arg.no_default_features {
