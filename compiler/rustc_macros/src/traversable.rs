@@ -14,7 +14,7 @@ pub trait Traversable {
     fn arms(structure: &mut synstructure::Structure<'_>) -> TokenStream;
 
     /// The body of an implementation given the match `arms`.
-    fn impl_body(arms: impl ToTokens) -> TokenStream;
+    fn impl_body(arms: impl ToTokens, attrs: impl ToTokens) -> TokenStream;
 }
 
 impl Traversable for Foldable {
@@ -52,8 +52,9 @@ impl Traversable for Foldable {
             })
         })
     }
-    fn impl_body(arms: impl ToTokens) -> TokenStream {
+    fn impl_body(arms: impl ToTokens, attrs: impl ToTokens) -> TokenStream {
         quote! {
+            #attrs
             fn try_fold_with<__F: ::rustc_middle::ty::fold::FallibleTypeFolder<::rustc_middle::ty::TyCtxt<'tcx>>>(
                 self,
                 __folder: &mut __F
@@ -94,8 +95,9 @@ impl Traversable for Visitable {
             }
         })
     }
-    fn impl_body(arms: impl ToTokens) -> TokenStream {
+    fn impl_body(arms: impl ToTokens, attrs: impl ToTokens) -> TokenStream {
         quote! {
+            #attrs
             fn visit_with<__V: ::rustc_middle::ty::visit::TypeVisitor<::rustc_middle::ty::TyCtxt<'tcx>>>(
                 &self,
                 __visitor: &mut __V
@@ -122,5 +124,12 @@ pub fn traversable_derive<T: Traversable>(
     }
 
     let arms = T::arms(&mut structure);
-    structure.bound_impl(T::traversable(), T::impl_body(arms))
+    let attrs = structure
+        .ast()
+        .attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("inline_traversals"))
+        .then_some(quote! { #[inline] });
+
+    structure.bound_impl(T::traversable(), T::impl_body(arms, attrs))
 }

@@ -74,7 +74,7 @@ decl_derive!([TyEncodable] => serialize::type_encodable_derive);
 decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
 decl_derive!(
-    [TypeFoldable, attributes(type_foldable)] =>
+    [TypeFoldable, attributes(type_foldable, inline_traversals)] =>
     /// Derives `TypeFoldable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
     /// Folds will produce a value of the same struct or enum variant as the input, with each field
@@ -97,10 +97,13 @@ decl_derive!(
     /// and
     ///
     /// `impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Bar<'tcx>`
+    ///
+    /// The annotated item may be decorated with an `#[inline_traversals]` attribute to cause the
+    /// generated folding method to be marked `#[inline]`.
     traversable::traversable_derive::<traversable::Foldable>
 );
 decl_derive!(
-    [TypeVisitable, attributes(type_visitable)] =>
+    [TypeVisitable, attributes(type_visitable, inline_traversals)] =>
     /// Derives `TypeVisitable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
     /// Each field of the struct or enum variant will be visited (in definition order) using the
@@ -123,6 +126,9 @@ decl_derive!(
     /// and
     ///
     /// `impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Bar<'tcx>`
+    ///
+    /// The annotated item may be decorated with an `#[inline_traversals]` attribute to cause the
+    /// generated folding method to be marked `#[inline]`.
     traversable::traversable_derive::<traversable::Visitable>
 );
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
