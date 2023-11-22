@@ -670,7 +670,9 @@ fn check_trait_item(
     use hir::TraitItemKind::{Const, Fn};
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
-        if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
+        if let Fn(_, hir::TraitFn::Provided(_)) = trait_item.kind {
+            worklist.push((trait_item.owner_id.def_id, ComesFromAllowExpect::No));
+        } else if let Const(_, Some(_)) = trait_item.kind
             && let Some(comes_from_allow) =
                 has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
         {
