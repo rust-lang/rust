@@ -1964,6 +1964,16 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Ccontrol-flow-guard");
         }
 
+        // If EHCont Guard is enabled, pass the `-Zehcont-guard` flag to rustc when compiling the
+        // standard library, since this might be linked into the final outputs produced by rustc.
+        // Since this mitigation is only available on Windows, only enable it for the standard
+        // library in case the compiler is run on a non-Windows platform.
+        // This is not needed for stage 0 artifacts because these will only be used for building
+        // the stage 1 compiler.
+        if cfg!(windows) && mode == Mode::Std && self.config.ehcont_guard && compiler.stage >= 1 {
+            rustflags.arg("-Zehcont-guard");
+        }
+
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         // This replaces spaces with tabs because RUSTDOCFLAGS does not
         // support arguments with regular spaces. Hopefully someday Cargo will
