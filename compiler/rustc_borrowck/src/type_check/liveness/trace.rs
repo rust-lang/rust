@@ -57,12 +57,12 @@ pub(super) fn trace<'mir, 'tcx>(
     if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
         let borrowck_context = &typeck.borrowck_context;
         let borrow_set = &borrowck_context.borrow_set;
-        let constraint_set = &borrowck_context.constraints.outlives_constraints;
+        let outlives_constraints = &borrowck_context.constraints.outlives_constraints;
 
         let num_region_vars = typeck.infcx.num_region_vars();
-        let graph = constraint_set.graph(num_region_vars);
+        let graph = outlives_constraints.graph(num_region_vars);
         let region_graph =
-            graph.region_graph(constraint_set, borrowck_context.universal_regions.fr_static);
+            graph.region_graph(outlives_constraints, borrowck_context.universal_regions.fr_static);
 
         // Traverse each issuing region's constraints, and record the loan as flowing into the
         // outlived region.
