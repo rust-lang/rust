@@ -164,7 +164,11 @@ enum FloatBinOp {
 impl FloatBinOp {
     /// Convert from the `imm` argument used to specify the comparison
     /// operation in intrinsics such as `llvm.x86.sse.cmp.ss`.
-    fn cmp_from_imm(imm: i8, intrinsic: &str) -> InterpResult<'_, Self> {
+    fn cmp_from_imm<'tcx>(
+        this: &crate::MiriInterpCx<'_, 'tcx>,
+        imm: i8,
+        intrinsic: Symbol,
+    ) -> InterpResult<'tcx, Self> {
         // Only bits 0..=4 are used, remaining should be zero.
         if imm & !0b1_1111 != 0 {
             throw_unsup_format!("invalid `imm` parameter of {intrinsic}: 0x{imm:x}");
@@ -174,7 +178,7 @@ impl FloatBinOp {
         // Bits 0..=2 specifies the operation.
         // `gt` indicates the result to be returned when the LHS is strictly
         // greater than the RHS, and so on.
-        let (gt, lt, eq, unord) = match imm & 0b111 {
+        let (gt, lt, eq, mut unord) = match imm & 0b111 {
             // Equal
             0x0 => (false, false, true, false),
             // Less-than
@@ -194,7 +198,10 @@ impl FloatBinOp {
             _ => unreachable!(),
         };
         // When bit 3 is 1 (only possible in AVX), unord is toggled.
-        let unord = unord ^ (imm & 0b1000 != 0);
+        if imm & 0b1000 != 0 {
+            this.expect_target_feature_for_intrinsic(intrinsic, "avx")?;
+            unord = !unord;
+        }
         Ok(Self::Cmp { gt, lt, eq, unord })
     }
 }

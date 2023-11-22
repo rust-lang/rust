@@ -20,6 +20,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
+        this.expect_target_feature_for_intrinsic(link_name, "sse2")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse2.").unwrap();
 
@@ -473,10 +474,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::cmp_from_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse2.cmp.sd",
-                )?;
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_first::<Double>(this, which, left, right, dest)?;
             }
@@ -492,10 +491,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::cmp_from_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse2.cmp.pd",
-                )?;
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
             }
