@@ -597,7 +597,7 @@ download-ci-llvm = false
             home = env.get("HOME").unwrap(),
             toolchain = toolchain,
             host_triple = args.config_info.host_triple,
-            llvm_filecheck = llvm_filecheck,
+            llvm_filecheck = llvm_filecheck.trim(),
         ),
     )
     .map_err(|error| format!("Failed to write into `rust/config.toml`: {:?}", error))?;
