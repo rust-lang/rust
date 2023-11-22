@@ -7,11 +7,6 @@ use crate::licenses::{License, LicenseId, LicensesInterner};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-// Some directories have too many slight license differences that'd result in a huge report, and
-// could be considered a standalone project anyway. Those directories are "condensed" into a single
-// licensing block for ease of reading, merging the licensing information.
-const CONDENSED_DIRECTORIED: &[&str] = &["./src/llvm-project/"];
-
 #[derive(serde::Serialize)]
 #[serde(rename_all = "kebab-case", tag = "type")]
 pub(crate) enum Node<L> {
@@ -310,12 +305,17 @@ pub(crate) fn build(mut input: Vec<(PathBuf, LicenseId)>) -> Node<LicenseId> {
     let mut condensed_directories = BTreeMap::new();
     'outer: for (path, license) in input {
         // Files in condensed directories are handled separately.
-        for directory in CONDENSED_DIRECTORIED {
-            if path.starts_with(directory) {
-                condensed_directories
-                    .entry(*directory)
-                    .or_insert_with(BTreeSet::new)
-                    .insert(license);
+        for (condensed_directory, allowed_file) in super::CONDENSED_DIRECTORIES {
+            if path.starts_with(condensed_directory) {
+                if path.as_path() == Path::new(allowed_file) {
+                    // The licence on our allowed file is used to represent the entire directory
+                    condensed_directories
+                        .entry(*condensed_directory)
+                        .or_insert_with(BTreeSet::new)
+                        .insert(license);
+                } else {
+                    // don't add the file
+                }
                 continue 'outer;
             }
         }
@@ -338,9 +338,9 @@ pub(crate) fn build(mut input: Vec<(PathBuf, LicenseId)>) -> Node<LicenseId> {
             name: path.file_name().unwrap().into(),
             licenses: licenses.iter().copied().collect(),
         };
-        for name in path.parent().unwrap_or_else(|| Path::new(".")).components().rev() {
+        for component in path.parent().unwrap_or_else(|| Path::new(".")).components().rev() {
             node = Node::Directory {
-                name: name.as_os_str().into(),
+                name: component.as_os_str().into(),
                 children: vec![node],
                 license: None,
             };

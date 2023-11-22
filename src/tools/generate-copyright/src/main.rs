@@ -27,7 +27,7 @@ fn render_recursive(node: &Node, buffer: &mut Vec<u8>, depth: usize) -> Result<(
             }
         }
         Node::Directory { name, children, license } => {
-            render_license(&prefix, std::iter::once(name), std::iter::once(license), buffer)?;
+            render_license(&prefix, std::iter::once(name), license.iter(), buffer)?;
             if !children.is_empty() {
                 writeln!(buffer, "{prefix}")?;
                 writeln!(buffer, "{prefix}*Exceptions:*")?;
@@ -94,7 +94,7 @@ struct Metadata {
 #[serde(rename_all = "kebab-case", tag = "type")]
 pub(crate) enum Node {
     Root { children: Vec<Node> },
-    Directory { name: String, children: Vec<Node>, license: License },
+    Directory { name: String, children: Vec<Node>, license: Option<License> },
     CondensedDirectory { name: String, licenses: Vec<License> },
     File { name: String, license: License },
     Group { files: Vec<String>, directories: Vec<String>, license: License },
