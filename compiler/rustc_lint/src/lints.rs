@@ -1830,3 +1830,10 @@ impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
         fluent::lint_async_fn_in_trait
     }
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unit_bindings)]
+pub struct UnitBindingsDiag {
+    #[label]
+    pub label: Span,
+}

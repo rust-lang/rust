@@ -85,6 +85,7 @@ mod redundant_semicolon;
 mod reference_casting;
 mod traits;
 mod types;
+mod unit_bindings;
 mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
@@ -123,6 +124,7 @@ use redundant_semicolon::*;
 use reference_casting::*;
 use traits::*;
 use types::*;
+use unit_bindings::*;
 use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
@@ -202,6 +204,7 @@ late_lint_methods!(
             InvalidReferenceCasting: InvalidReferenceCasting,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
+            UnitBindings: UnitBindings,
             NonUpperCaseGlobals: NonUpperCaseGlobals,
             NonShorthandFieldPatterns: NonShorthandFieldPatterns,
             UnusedAllocation: UnusedAllocation,

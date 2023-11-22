@@ -517,6 +517,9 @@ lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::Manual
 lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
      .label = this function will not propagate the caller location
 
+lint_unit_bindings = binding has unit type `()`
+    .label = this pattern is inferred to be the unit type `()`
+
 lint_unknown_gated_lint =
     unknown lint: `{$name}`
     .note = the `{$name}` lint is unstable
