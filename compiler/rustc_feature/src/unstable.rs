@@ -132,10 +132,12 @@ macro_rules! declare_features {
                         // Accepted/removed features aren't in this file but are never internal
                         // (a removed feature might have been internal, but that's now irrelevant).
                         // Libs features are internal if they end in `_internal` or `_internals`.
+                        // As a special exception we also consider `core_intrinsics` internal;
+                        // renaming that age-old feature is just not worth the hassle.
                         // We just always test the name; it's not a big deal if we accidentally hit
                         // an accepted/removed lang feature that way.
                         let name = feature.as_str();
-                        name.ends_with("_internal") || name.ends_with("_internals")
+                        name == "core_intrinsics" || name.ends_with("_internal") || name.ends_with("_internals")
                     }
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
