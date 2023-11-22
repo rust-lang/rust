@@ -921,7 +921,7 @@ impl Map {
     }
 
     /// Locates the given place, if it exists in the tree.
-    pub fn find_extra(
+    fn find_extra(
         &self,
         place: PlaceRef<'_>,
         extra: impl IntoIterator<Item = TrackElem>,

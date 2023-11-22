@@ -21,7 +21,7 @@ use rustc_span::Span;
 
 pub struct SanityCheck;
 
-pub fn has_rustc_mir_with(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Option<MetaItem> {
+fn has_rustc_mir_with(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Option<MetaItem> {
     for attr in tcx.get_attrs(def_id, sym::rustc_mir) {
         let items = attr.meta_item_list();
         for item in items.iter().flat_map(|l| l.iter()) {
@@ -101,10 +101,8 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 /// (If there are any calls to `rustc_peek` that do not match the
 /// expression form above, then that emits an error as well, but those
 /// errors are not intended to be used for unit tests.)
-pub fn sanity_check_via_rustc_peek<'tcx, A>(
-    tcx: TyCtxt<'tcx>,
-    mut cursor: ResultsCursor<'_, 'tcx, A>,
-) where
+fn sanity_check_via_rustc_peek<'tcx, A>(tcx: TyCtxt<'tcx>, mut cursor: ResultsCursor<'_, 'tcx, A>)
+where
     A: RustcPeekAt<'tcx>,
 {
     let def_id = cursor.body().source.def_id();
@@ -185,7 +183,7 @@ impl PeekCallKind {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct PeekCall {
+struct PeekCall {
     arg: Local,
     kind: PeekCallKind,
     span: Span,
@@ -233,7 +231,7 @@ impl PeekCall {
     }
 }
 
-pub trait RustcPeekAt<'tcx>: Analysis<'tcx> {
+trait RustcPeekAt<'tcx>: Analysis<'tcx> {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
