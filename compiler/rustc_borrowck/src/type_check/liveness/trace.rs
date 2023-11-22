@@ -49,8 +49,6 @@ pub(super) fn trace<'mir, 'tcx>(
     boring_locals: Vec<Local>,
     polonius_drop_used: Option<Vec<(Local, Location)>>,
 ) {
-    debug!("trace()");
-
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, elements, body);
 
     // When using `-Zpolonius=next`, compute the set of loans that can reach a given region.
