@@ -929,7 +929,7 @@ where
     fn file_handling(file: &Path) -> Result<(), String> {
         let path_str = file.display().to_string().replace("\\", "/");
         if !path_str.ends_with(".rs") {
-            return Ok(())
+            return Ok(());
         } else if should_not_remove_test(&path_str) {
             return Ok(());
         } else if should_remove_test(file, &path_str) {
@@ -1052,18 +1052,24 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
             Some(Path::new("rust")),
         )?;
         // Putting back only the failing ones.
-        run_command(
-            &[
-                &"xargs",
-                &"-a",
-                &"../failing-ui-tests.txt",
-                &"-d'\n'",
-                &"git",
-                &"checkout",
-                &"--",
-            ],
-            Some(Path::new("rust")),
-        )?;
+        let path = "failing-ui-tests.txt";
+        if let Ok(files) = std::fs::read_to_string(path) {
+            for file in files
+                .split('\n')
+                .map(|line| line.trim())
+                .filter(|line| !line.is_empty())
+            {
+                run_command(
+                    &[&"git", &"checkout", &"--", &file],
+                    Some(Path::new("rust")),
+                )?;
+            }
+        } else {
+            println!(
+                "Failed to read `{}`, not putting back failing ui tests",
+                path
+            );
+        }
         Ok(true)
     })
 }
@@ -1071,16 +1077,23 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
 fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
     test_rustc_inner(env, args, || {
         // Removing the failing tests.
-        run_command(
-            &[
-                &"xargs",
-                &"-a",
-                &"../failing-ui-tests.txt",
-                &"-d'\n'",
-                &"rm",
-            ],
-            Some(Path::new("rust")),
-        )?;
+        let path = "failing-ui-tests.txt";
+        if let Ok(files) = std::fs::read_to_string(path) {
+            for file in files
+                .split('\n')
+                .map(|line| line.trim())
+                .filter(|line| !line.is_empty())
+            {
+                let path = Path::new("rust").join(file);
+                std::fs::remove_file(&path)
+                    .map_err(|error| format!("failed to remove `{}`: {:?}", path.display(), error))?;
+            }
+        } else {
+            println!(
+                "Failed to read `{}`, not putting back failing ui tests",
+                path
+            );
+        }
         Ok(true)
     })
 }

@@ -196,7 +196,12 @@ fn build_sysroot_inner(
         )
     })?;
     run_command(
-        &[&"cp", &"-r", &start_dir.join("sysroot_src/library/"), &sysroot_src_path],
+        &[
+            &"cp",
+            &"-r",
+            &start_dir.join("sysroot_src/library/"),
+            &sysroot_src_path,
+        ],
         None,
     )?;
 
