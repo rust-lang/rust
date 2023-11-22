@@ -3850,9 +3850,10 @@ impl<T> RawIterRange<T> {
     /// Folds every element into an accumulator by applying an operation,
     /// returning the final result.
     ///
-    /// `fold_impl()` takes three arguments: a number of items in the table, an initial value,
-    /// and a closure with two arguments: an 'accumulator', and an element. The closure
-    /// returns the value that the accumulator should have for the next iteration.
+    /// `fold_impl()` takes three arguments: the number of items remaining in
+    /// the iterator, an initial value, and a closure with two arguments: an
+    /// 'accumulator', and an element. The closure returns the value that the
+    /// accumulator should have for the next iteration.
     ///
     /// The initial value is the value the accumulator will have on the first call.
     ///
@@ -3877,10 +3878,6 @@ impl<T> RawIterRange<T> {
     where
         F: FnMut(B, Bucket<T>) -> B,
     {
-        if n == 0 {
-            return acc;
-        }
-
         loop {
             while let Some(index) = self.current_group.next() {
                 // The returned `index` will always be in the range `0..Group::WIDTH`,
