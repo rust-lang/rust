@@ -148,7 +148,9 @@ pub(crate) fn render_field(
         .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
-    if ty.is_fn() || ty.is_closure() {
+
+    let is_field_access = matches!(dot_access.kind, DotAccessKind::Field { .. });
+    if !is_field_access || ty.is_fn() || ty.is_closure() {
         let mut builder = TextEdit::builder();
         // Using TextEdit, insert '(' before the struct name and ')' before the
         // dot access, then comes the field name and optionally insert function
