@@ -24,6 +24,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let node = loop {
                 match &pattern.kind {
                     PatKind::Wild => break hir::PatKind::Wild,
+                    PatKind::Never => break hir::PatKind::Never,
                     PatKind::Ident(binding_mode, ident, sub) => {
                         let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(s));
                         break self.lower_pat_ident(pattern, *binding_mode, *ident, lower_sub);

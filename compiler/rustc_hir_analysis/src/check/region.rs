@@ -662,6 +662,7 @@ fn resolve_local<'tcx>(
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), ..)
             | PatKind::Wild
+            | PatKind::Never
             | PatKind::Path(_)
             | PatKind::Lit(_)
             | PatKind::Range(_, _, _) => false,

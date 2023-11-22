@@ -1,0 +1,51 @@
+error[E0408]: variable `_x` is not bound in all patterns
+  --> $DIR/never_patterns.rs:12:19
+   |
+LL |     let (Ok(_x) | Err(!)) = &res;
+   |             --    ^^^^^^ pattern doesn't bind `_x`
+   |             |
+   |             variable not in all patterns
+
+error[E0408]: variable `_x` is not bound in all patterns
+  --> $DIR/never_patterns.rs:14:19
+   |
+LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
+   |             --    ^^^^^^^ pattern doesn't bind `_x`
+   |             |
+   |             variable not in all patterns
+
+error[E0408]: variable `_x` is not bound in all patterns
+  --> $DIR/never_patterns.rs:83:18
+   |
+LL |         Ok(_x) | Err(&!) => {}
+   |            --    ^^^^^^^ pattern doesn't bind `_x`
+   |            |
+   |            variable not in all patterns
+
+error[E0408]: variable `_x` is not bound in all patterns
+  --> $DIR/never_patterns.rs:86:19
+   |
+LL |     let (Ok(_x) | Err(&!)) = x;
+   |             --    ^^^^^^^ pattern doesn't bind `_x`
+   |             |
+   |             variable not in all patterns
+
+error[E0408]: variable `_b` is not bound in all patterns
+  --> $DIR/never_patterns.rs:95:9
+   |
+LL |         Ok(_a) | Err(&(_b, !)) => {}
+   |         ^^^^^^         -- variable not in all patterns
+   |         |
+   |         pattern doesn't bind `_b`
+
+error[E0408]: variable `_a` is not bound in all patterns
+  --> $DIR/never_patterns.rs:95:18
+   |
+LL |         Ok(_a) | Err(&(_b, !)) => {}
+   |            --    ^^^^^^^^^^^^^ pattern doesn't bind `_a`
+   |            |
+   |            variable not in all patterns
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0408`.

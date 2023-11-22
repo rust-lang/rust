@@ -368,8 +368,12 @@ impl<'a> Parser<'a> {
             self.recover_dotdotdot_rest_pat(lo)
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
+        } else if self.eat(&token::Not) {
+            // Parse `!`
+            self.sess.gated_spans.gate(sym::never_patterns, self.prev_token.span);
+            PatKind::Never
         } else if self.eat_keyword(kw::Underscore) {
-            // Parse _
+            // Parse `_`
             PatKind::Wild
         } else if self.eat_keyword(kw::Mut) {
             self.parse_pat_ident_mut(syntax_loc)?
