@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 use super::ITER_KV_MAP;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -21,7 +22,11 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'tcx>,  // .iter().map(|(_, v_| v))
     recv: &'tcx Expr<'tcx>,  // hashmap
     m_arg: &'tcx Expr<'tcx>, // |(_, v)| v
+    msrv: &Msrv,
 ) {
+    if map_type == "into_iter" && !msrv.meets(msrvs::INTO_KEYS) {
+        return;
+    }
     if !expr.span.from_expansion()
         && let ExprKind::Closure(c) = m_arg.kind
         && let Body {
