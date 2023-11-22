@@ -28,27 +28,38 @@
               scope 3 {
                   debug precision => _8;
                   let _8: usize;
-                  scope 5 (inlined Formatter::<'_>::precision) {
+                  scope 11 (inlined Formatter::<'_>::precision) {
+                      scope 12 (inlined FormattingOptions::get_precision) {
+                      }
                   }
               }
           }
       }
       scope 4 (inlined Formatter::<'_>::sign_plus) {
-          let mut _20: u32;
-          let mut _21: u32;
+          let _20: std::option::Option<std::fmt::Sign>;
+          scope 5 (inlined FormattingOptions::get_sign) {
+          }
+          scope 6 (inlined <Option<std::fmt::Sign> as PartialEq>::eq) {
+              let mut _21: isize;
+              scope 7 {
+                  scope 8 (inlined <std::fmt::Sign as PartialEq>::eq) {
+                      let _22: isize;
+                      scope 9 {
+                          scope 10 {
+                          }
+                      }
+                  }
+              }
+          }
       }
   
       bb0: {
           StorageLive(_4);
           StorageLive(_20);
+          _20 = copy (((*_1).0: std::fmt::FormattingOptions).0: std::option::Option<std::fmt::Sign>);
           StorageLive(_21);
-          _21 = copy ((*_1).0: u32);
-          _20 = BitAnd(move _21, const 1_u32);
-          StorageDead(_21);
-          _4 = Ne(move _20, const 0_u32);
-          StorageDead(_20);
-          StorageLive(_5);
-          switchInt(copy _4) -> [0: bb2, otherwise: bb1];
+          _21 = discriminant(_20);
+          switchInt(move _21) -> [0: bb11, 1: bb12, otherwise: bb10];
       }
   
       bb1: {
@@ -58,16 +69,16 @@
       }
   
       bb2: {
--         _5 = Minus;
-+         _5 = const Minus;
+-         _5 = core::num::flt2dec::Sign::Minus;
++         _5 = const core::num::flt2dec::Sign::Minus;
           goto -> bb3;
       }
   
       bb3: {
           StorageLive(_6);
-          _6 = copy ((*_1).4: std::option::Option<usize>);
+          _6 = copy (((*_1).0: std::fmt::FormattingOptions).6: std::option::Option<usize>);
           _7 = discriminant(_6);
-          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb9];
+          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb10];
       }
   
       bb4: {
@@ -135,7 +146,27 @@
       }
   
       bb9: {
+          StorageDead(_21);
+          StorageDead(_20);
+          StorageLive(_5);
+          switchInt(copy _4) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb10: {
           unreachable;
+      }
+  
+      bb11: {
+          _4 = const false;
+          goto -> bb9;
+      }
+  
+      bb12: {
+          StorageLive(_22);
+          _22 = discriminant(((_20 as Some).0: std::fmt::Sign));
+          _4 = Eq(copy _22, const 0_isize);
+          StorageDead(_22);
+          goto -> bb9;
       }
   }
   
