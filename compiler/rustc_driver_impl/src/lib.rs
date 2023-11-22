@@ -360,8 +360,8 @@ fn run_compiler(
     drop(default_handler);
 
     interface::run_compiler(config, |compiler| {
-        let sess = compiler.session();
-        let codegen_backend = compiler.codegen_backend();
+        let sess = &compiler.sess;
+        let codegen_backend = &*compiler.codegen_backend;
 
         // This implements `-Whelp`. It should be handled very early, like
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
@@ -453,8 +453,10 @@ fn run_compiler(
                 return early_exit();
             }
 
-            let ongoing_codegen = queries.ongoing_codegen()?;
+            let linker = queries.codegen_and_build_linker()?;
 
+            // This must run after monomorphization so that all generic types
+            // have been instantiated.
             if sess.opts.unstable_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
             }
@@ -465,10 +467,11 @@ fn run_compiler(
                 sess.code_stats.print_vtable_sizes(crate_name);
             }
 
-            let linker = queries.linker(ongoing_codegen)?;
             Ok(Some(linker))
         })?;
 
+        // Linking is done outside the `compiler.enter()` so that the
+        // `GlobalCtxt` within `Queries` can be freed as early as possible.
         if let Some(linker) = linker {
             let _timer = sess.timer("link");
             linker.link(sess, codegen_backend)?
@@ -668,7 +671,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                 };
             }
         };
-        let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
+        let result = compiler.codegen_backend.link(sess, codegen_results, &outputs);
         abort_on_err(result, sess);
     } else {
         sess.emit_fatal(RlinkNotAFile {})
