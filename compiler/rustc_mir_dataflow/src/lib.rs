@@ -25,9 +25,7 @@ pub use self::framework::{
     fmt, lattice, visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis,
     JoinSemiLattice, MaybeReachable, Results, ResultsCursor, ResultsVisitable, ResultsVisitor,
 };
-use self::framework::{
-    Backward, CloneAnalysis, Forward, ResultsClonedCursor, SwitchIntEdgeEffects,
-};
+use self::framework::{Backward, CloneAnalysis, ResultsClonedCursor, SwitchIntEdgeEffects};
 use self::move_paths::MoveData;
 
 pub mod debuginfo;

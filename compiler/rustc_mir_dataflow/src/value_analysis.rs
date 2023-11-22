@@ -332,8 +332,6 @@ pub struct ValueAnalysisWrapper<T>(pub T);
 impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper<T> {
     type Domain = State<T::Value>;
 
-    type Direction = crate::Forward;
-
     const NAME: &'static str = T::NAME;
 
     fn bottom_value(&self, _body: &Body<'tcx>) -> Self::Domain {
