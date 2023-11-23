@@ -6,10 +6,13 @@
 use rustc_middle::mir::{Body, LocalKind, Location, START_BLOCK};
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 
+use crate::borrow_set::BorrowSet;
 use crate::facts::AllFacts;
 use crate::location::LocationTable;
+use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::universal_regions::UniversalRegions;
 
-/// Emit polonius facts needed for move/init analysis: moves and assignments.
+/// Emit facts needed for move/init analysis: moves and assignments.
 pub(crate) fn emit_move_facts(
     all_facts: &mut AllFacts,
     move_data: &MoveData<'_>,
@@ -81,4 +84,45 @@ pub(crate) fn emit_move_facts(
     all_facts
         .path_moved_at_base
         .extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
+}
+
+/// Emit universal regions facts, and their relations.
+pub(crate) fn emit_universal_region_facts(
+    all_facts: &mut AllFacts,
+    borrow_set: &BorrowSet<'_>,
+    universal_regions: &UniversalRegions<'_>,
+    universal_region_relations: &UniversalRegionRelations<'_>,
+) {
+    // 1: universal regions are modeled in Polonius as a pair:
+    // - the universal region vid itself.
+    // - a "placeholder loan" associated to this universal region. Since they don't exist in
+    //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
+    //   added to the existing number of loans, as if they succeeded them in the set.
+    //
+    all_facts.universal_region.extend(universal_regions.universal_regions());
+    let borrow_count = borrow_set.len();
+    debug!(
+        "emit_universal_region_facts: polonius placeholders, num_universals={}, borrow_count={}",
+        universal_regions.len(),
+        borrow_count
+    );
+
+    for universal_region in universal_regions.universal_regions() {
+        let universal_region_idx = universal_region.index();
+        let placeholder_loan_idx = borrow_count + universal_region_idx;
+        all_facts.placeholder.push((universal_region, placeholder_loan_idx.into()));
+    }
+
+    // 2: the universal region relations `outlives` constraints are emitted as
+    //  `known_placeholder_subset` facts.
+    for (fr1, fr2) in universal_region_relations.known_outlives() {
+        if fr1 != fr2 {
+            debug!(
+                "emit_universal_region_facts: emitting polonius `known_placeholder_subset` \
+                     fr1={:?}, fr2={:?}",
+                fr1, fr2
+            );
+            all_facts.known_placeholder_subset.push((fr1, fr2));
+        }
+    }
 }
