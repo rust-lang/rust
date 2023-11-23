@@ -17,7 +17,6 @@ pub(super) fn emit_loan_kills<'tcx>(
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
     let mut visitor = LoanKillsGenerator { borrow_set, tcx, location_table, all_facts, body };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data);

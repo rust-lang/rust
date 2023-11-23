@@ -16,8 +16,42 @@ use crate::universal_regions::UniversalRegions;
 mod loan_invalidations;
 mod loan_kills;
 
+/// When requested, emit most of the facts needed by polonius:
+/// - moves and assignments
+/// - universal regions and their relations
+/// - CFG points and edges
+/// - loan kills
+/// - loan invalidations
+///
+/// The rest of the facts are emitted during typeck and liveness.
+pub(crate) fn emit_facts<'tcx>(
+    all_facts: &mut Option<AllFacts>,
+    tcx: TyCtxt<'tcx>,
+    location_table: &LocationTable,
+    body: &Body<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+    move_data: &MoveData<'_>,
+    universal_regions: &UniversalRegions<'_>,
+    universal_region_relations: &UniversalRegionRelations<'_>,
+) {
+    let Some(all_facts) = all_facts else {
+        // We don't do anything if there are no facts to fill.
+        return;
+    };
+    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
+    emit_move_facts(all_facts, move_data, location_table, body);
+    emit_universal_region_facts(
+        all_facts,
+        borrow_set,
+        &universal_regions,
+        &universal_region_relations,
+    );
+    emit_cfg_and_loan_kills_facts(all_facts, tcx, location_table, body, borrow_set);
+    emit_loan_invalidations_facts(all_facts, tcx, location_table, body, borrow_set);
+}
+
 /// Emit facts needed for move/init analysis: moves and assignments.
-pub(crate) fn emit_move_facts(
+fn emit_move_facts(
     all_facts: &mut AllFacts,
     move_data: &MoveData<'_>,
     location_table: &LocationTable,
@@ -91,7 +125,7 @@ pub(crate) fn emit_move_facts(
 }
 
 /// Emit universal regions facts, and their relations.
-pub(crate) fn emit_universal_region_facts(
+fn emit_universal_region_facts(
     all_facts: &mut AllFacts,
     borrow_set: &BorrowSet<'_>,
     universal_regions: &UniversalRegions<'_>,
@@ -132,33 +166,23 @@ pub(crate) fn emit_universal_region_facts(
 }
 
 /// Emit facts about loan invalidations.
-pub(crate) fn emit_loan_invalidations_facts<'tcx>(
+fn emit_loan_invalidations_facts<'tcx>(
+    all_facts: &mut AllFacts,
     tcx: TyCtxt<'tcx>,
-    all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    let Some(all_facts) = all_facts else {
-        // Nothing to do if we don't have any facts to fill
-        return;
-    };
-
     loan_invalidations::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
 }
 
 /// Emit facts about CFG points and edges, as well as locations where loans are killed.
-pub(crate) fn emit_cfg_and_loan_kills_facts<'tcx>(
+fn emit_cfg_and_loan_kills_facts<'tcx>(
+    all_facts: &mut AllFacts,
     tcx: TyCtxt<'tcx>,
-    all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    let Some(all_facts) = all_facts else {
-        // Nothing to do if we don't have any facts to fill
-        return;
-    };
-
     loan_kills::emit_loan_kills(tcx, all_facts, location_table, body, borrow_set);
 }

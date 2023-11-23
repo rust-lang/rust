@@ -22,7 +22,6 @@ pub(super) fn emit_loan_invalidations<'tcx>(
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
     let dominators = body.basic_blocks.dominators();
     let mut visitor =
         LoanInvalidationsGenerator { all_facts, borrow_set, tcx, location_table, body, dominators };
