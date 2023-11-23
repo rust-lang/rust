@@ -518,6 +518,8 @@ define_Conf! {
 
 [`clippy_config::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
 
+Afterwards update the documentation for the book as described in [Adding configuration to a lint](#adding-configuration-to-a-lint).
+
 ## Author lint
 
 If you have trouble implementing your lint, there is also the internal `author`
