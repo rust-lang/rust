@@ -2909,9 +2909,6 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
                 "const is compatible with trait"
             }
-            ExprAssignable => "expression is assignable",
-            IfExpression { .. } => "`if` and `else` have incompatible types",
-            IfExpressionWithNoElse => "`if` missing an `else` returns `()`",
             MainFunctionType => "`main` function has the correct type",
             StartFunctionType => "`#[start]` function has the correct type",
             LangFunctionType(_) => "lang item function has the correct type",
@@ -2932,9 +2929,6 @@ impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
             CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",
             CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => "type_compat",
             CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => "const_compat",
-            ExprAssignable => "expr_assignable",
-            IfExpression { .. } => "if_else_different",
-            IfExpressionWithNoElse => "no_else",
             MainFunctionType => "fn_main_correct_type",
             StartFunctionType => "fn_start_correct_type",
             LangFunctionType(_) => "fn_lang_correct_type",

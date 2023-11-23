@@ -340,7 +340,8 @@ pub enum ObligationCauseCode<'tcx> {
         parent_code: InternedObligationCauseCode<'tcx>,
     },
 
-    /// Error derived when matching traits/impls; see ObligationCause for more details
+    /// Error derived when checking an impl item is compatible with
+    /// its corresponding trait item's definition
     CompareImplItemObligation {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
