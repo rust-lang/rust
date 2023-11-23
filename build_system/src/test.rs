@@ -942,13 +942,15 @@ where
         Ok(())
     }
 
-    walk_dir("rust/tests/ui", dir_handling, file_handling)?;
-    let file = "rust/tests/ui/consts/const_cmp_type_id.rs";
-    std::fs::remove_file(file)
-        .map_err(|error| format!("Failed to remove `{}`: {:?}", file, error))?;
-    let file = "rust/tests/ui/consts/issue-73976-monomorphic.rs";
-    std::fs::remove_file(file)
-        .map_err(|error| format!("Failed to remove `{}`: {:?}", file, error))?;
+    let rust_path = Path::new("rust");
+
+    walk_dir(rust_path.join("tests/ui"), dir_handling, file_handling)?;
+    let file = rust_path.join("tests/ui/consts/const_cmp_type_id.rs");
+    std::fs::remove_file(&file)
+        .map_err(|error| format!("Failed to remove `{}`: {:?}", file.display(), error))?;
+    let file = rust_path.join("tests/ui/consts/issue-73976-monomorphic.rs");
+    std::fs::remove_file(&file)
+        .map_err(|error| format!("Failed to remove `{}`: {:?}", file.display(), error))?;
 
     if !callback()? {
         // FIXME: create a function "display_if_not_quiet" or something along the line.
@@ -976,7 +978,7 @@ where
                     &"-path",
                     &"*/auxiliary/*",
                 ],
-                Some(Path::new("rust")),
+                Some(rust_path),
             )?
             .stdout,
         )
@@ -997,8 +999,10 @@ where
             if pos >= start && pos <= end {
                 continue;
             }
-            std::fs::remove_file(path)
-                .map_err(|error| format!("Failed to remove `{}`: {:?}", path, error))?;
+            let test_path = rust_path.join(path);
+            std::fs::remove_file(&test_path).map_err(|error| {
+                format!("Failed to remove `{}`: {:?}", test_path.display(), error)
+            })?;
         }
     }
 
@@ -1020,7 +1024,7 @@ where
             &"--rustc-args",
             &rustc_args,
         ],
-        Some(Path::new("rust")),
+        Some(rust_path),
         Some(&env),
     )?;
     Ok(())
