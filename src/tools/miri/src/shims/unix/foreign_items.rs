@@ -15,7 +15,6 @@ use shims::unix::mem::EvalContextExt as _;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
-use shims::unix::android::foreign_items as android;
 use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
 use shims::unix::macos::foreign_items as macos;
@@ -32,11 +31,10 @@ fn is_dyn_sym(name: &str, target_os: &str) -> bool {
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match target_os {
-                "android" => android::is_dyn_sym(name),
                 "freebsd" => freebsd::is_dyn_sym(name),
                 "linux" => linux::is_dyn_sym(name),
                 "macos" => macos::is_dyn_sym(name),
-                target_os => panic!("unsupported Unix OS {target_os}"),
+                _ => false,
             },
     }
 }
@@ -706,7 +704,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ => {
                 let target_os = &*this.tcx.sess.target.os;
                 return match target_os {
-                    "android" => android::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "freebsd" => freebsd::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "linux" => linux::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "macos" => macos::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
