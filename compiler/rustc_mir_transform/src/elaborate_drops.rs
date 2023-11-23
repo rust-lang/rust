@@ -172,19 +172,13 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
-                on_all_children_bits(
-                    self.tcx(),
-                    self.body(),
-                    self.ctxt.move_data(),
-                    path,
-                    |child| {
-                        let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
-                        debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
-                        some_live |= live;
-                        some_dead |= dead;
-                        children_count += 1;
-                    },
-                );
+                on_all_children_bits(self.ctxt.move_data(), path, |child| {
+                    let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
+                    debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
+                    some_live |= live;
+                    some_dead |= dead;
+                    children_count += 1;
+                });
                 ((some_live, some_dead), children_count != 1)
             }
         };
@@ -202,13 +196,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
                 self.ctxt.set_drop_flag(loc, path, DropFlagState::Absent);
             }
             DropFlagMode::Deep => {
-                on_all_children_bits(
-                    self.tcx(),
-                    self.body(),
-                    self.ctxt.move_data(),
-                    path,
-                    |child| self.ctxt.set_drop_flag(loc, child, DropFlagState::Absent),
-                );
+                on_all_children_bits(self.ctxt.move_data(), path, |child| {
+                    self.ctxt.set_drop_flag(loc, child, DropFlagState::Absent)
+                });
             }
         }
     }
@@ -268,10 +258,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
-        let tcx = self.tcx;
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.body.span);
-        self.drop_flags[index].get_or_insert_with(|| patch.new_temp(tcx.types.bool, span));
+        self.drop_flags[index].get_or_insert_with(|| patch.new_temp(self.tcx.types.bool, span));
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
@@ -304,7 +293,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             match path {
                 LookupResult::Exact(path) => {
                     self.init_data.seek_before(self.body.terminator_loc(bb));
-                    on_all_children_bits(self.tcx, self.body, self.move_data(), path, |child| {
+                    on_all_children_bits(self.move_data(), path, |child| {
                         let (maybe_live, maybe_dead) = self.init_data.maybe_live_dead(child);
                         debug!(
                             "collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
@@ -444,7 +433,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
                 let loc = Location { block: tgt, statement_index: 0 };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
-                on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
+                on_lookup_result_bits(self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
                 });
             }
@@ -453,14 +442,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_for_args(&mut self) {
         let loc = Location::START;
-        rustc_mir_dataflow::drop_flag_effects_for_function_entry(
-            self.tcx,
-            self.body,
-            self.env,
-            |path, ds| {
-                self.set_drop_flag(loc, path, ds);
-            },
-        )
+        rustc_mir_dataflow::drop_flag_effects_for_function_entry(self.body, self.env, |path, ds| {
+            self.set_drop_flag(loc, path, ds);
+        })
     }
 
     fn drop_flags_for_locs(&mut self) {
@@ -492,7 +476,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 }
                 let loc = Location { block: bb, statement_index: i };
                 rustc_mir_dataflow::drop_flag_effects_for_location(
-                    self.tcx,
                     self.body,
                     self.env,
                     loc,
@@ -515,7 +498,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
-                on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
+                on_lookup_result_bits(self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
                 });
             }

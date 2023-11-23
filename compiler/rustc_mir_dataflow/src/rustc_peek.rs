@@ -66,7 +66,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
-            let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
+            let flow_def_inits = DefinitelyInitializedPlaces::new(body, &mdpe)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
