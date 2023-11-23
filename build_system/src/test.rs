@@ -672,17 +672,14 @@ where
     F: Fn(&[&dyn AsRef<OsStr>], Option<&Path>, &Env) -> Result<(), String>,
 {
     let toolchain = get_toolchain()?;
+    let toolchain_arg = format!("+{}", toolchain);
     let rustc_version = String::from_utf8(
         run_command_with_env(&[&args.config_info.rustc_command[0], &"-V"], cwd, Some(env))?.stdout,
     )
     .map_err(|error| format!("Failed to retrieve rustc version: {:?}", error))?;
     let rustc_toolchain_version = String::from_utf8(
         run_command_with_env(
-            &[
-                &args.config_info.rustc_command[0],
-                &format!("+{}", toolchain),
-                &"-V",
-            ],
+            &[&args.config_info.rustc_command[0], &toolchain_arg, &"-V"],
             cwd,
             Some(env),
         )?
@@ -697,7 +694,7 @@ where
         );
         eprintln!("Using `{}`.", rustc_toolchain_version);
     }
-    let mut cargo_command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &toolchain];
+    let mut cargo_command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &toolchain_arg];
     cargo_command.extend_from_slice(&command);
     callback(&cargo_command, cwd, env)
 }
