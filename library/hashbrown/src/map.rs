@@ -2469,6 +2469,14 @@ impl<K, V, A: Allocator> Iterator for IntoKeys<K, V, A> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, (k, _)| f(acc, k))
+    }
 }
 
 impl<K, V, A: Allocator> ExactSizeIterator for IntoKeys<K, V, A> {
@@ -2530,6 +2538,14 @@ impl<K, V, A: Allocator> Iterator for IntoValues<K, V, A> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, (_, v)| f(acc, v))
     }
 }
 
@@ -4722,6 +4738,17 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, x| unsafe {
+            let (k, v) = x.as_ref();
+            f(acc, (k, v))
+        })
+    }
 }
 impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -4749,6 +4776,17 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, x| unsafe {
+            let (k, v) = x.as_mut();
+            f(acc, (k, v))
+        })
     }
 }
 impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
@@ -4780,6 +4818,14 @@ impl<K, V, A: Allocator> Iterator for IntoIter<K, V, A> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
+    }
 }
 impl<K, V, A: Allocator> ExactSizeIterator for IntoIter<K, V, A> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -4810,6 +4856,14 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, (k, _)| f(acc, k))
+    }
 }
 impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -4834,6 +4888,14 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, (_, v)| f(acc, v))
+    }
 }
 impl<K, V> ExactSizeIterator for Values<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -4857,6 +4919,14 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, (_, v)| f(acc, v))
     }
 }
 impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
@@ -4885,6 +4955,14 @@ impl<'a, K, V, A: Allocator> Iterator for Drain<'a, K, V, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
     }
 }
 impl<K, V, A: Allocator> ExactSizeIterator for Drain<'_, K, V, A> {

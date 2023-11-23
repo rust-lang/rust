@@ -1696,6 +1696,14 @@ impl<'a, K> Iterator for Iter<'a, K> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, f)
+    }
 }
 impl<'a, K> ExactSizeIterator for Iter<'a, K> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1725,6 +1733,14 @@ impl<K, A: Allocator> Iterator for IntoIter<K, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, |acc, (k, ())| f(acc, k))
     }
 }
 impl<K, A: Allocator> ExactSizeIterator for IntoIter<K, A> {
@@ -1756,6 +1772,14 @@ impl<K, A: Allocator> Iterator for Drain<'_, K, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, |acc, (k, ())| f(acc, k))
     }
 }
 impl<K, A: Allocator> ExactSizeIterator for Drain<'_, K, A> {
@@ -1827,6 +1851,20 @@ where
         let (_, upper) = self.iter.size_hint();
         (0, upper)
     }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, |acc, elt| {
+            if self.other.contains(elt) {
+                f(acc, elt)
+            } else {
+                acc
+            }
+        })
+    }
 }
 
 impl<T, S, A> fmt::Debug for Intersection<'_, T, S, A>
@@ -1881,6 +1919,20 @@ where
         let (_, upper) = self.iter.size_hint();
         (0, upper)
     }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, |acc, elt| {
+            if self.other.contains(elt) {
+                acc
+            } else {
+                f(acc, elt)
+            }
+        })
+    }
 }
 
 impl<T, S, A> FusedIterator for Difference<'_, T, S, A>
@@ -1926,6 +1978,14 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, f)
     }
 }
 
@@ -1991,6 +2051,14 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, f)
     }
 }
 
