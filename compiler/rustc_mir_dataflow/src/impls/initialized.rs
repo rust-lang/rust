@@ -250,15 +250,13 @@ impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 /// }
 /// ```
 pub struct EverInitializedPlaces<'a, 'tcx> {
-    #[allow(dead_code)]
-    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> EverInitializedPlaces<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        EverInitializedPlaces { tcx, body, mdpe }
+    pub fn new(body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
+        EverInitializedPlaces { body, mdpe }
     }
 }
 
