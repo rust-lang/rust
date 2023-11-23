@@ -2621,9 +2621,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::TupleElem => {
                 err.note("only the last element of a tuple may have a dynamically sized type");
             }
-            ObligationCauseCode::ProjectionWf(data) => {
-                err.note(format!("required so that the projection `{data}` is well-formed"));
-            }
             ObligationCauseCode::ReferenceOutlivesReferent(ref_ty) => {
                 err.note(format!(
                     "required so that reference `{ref_ty}` does not outlive its referent"
