@@ -694,9 +694,12 @@ where
         );
         eprintln!("Using `{}`.", rustc_toolchain_version);
     }
+    let mut env = env.clone();
+    let rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+    env.insert("RUSTDOCFLAGS".to_string(), rustflags);
     let mut cargo_command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &toolchain_arg];
     cargo_command.extend_from_slice(&command);
-    callback(&cargo_command, cwd, env)
+    callback(&cargo_command, cwd, &env)
 }
 
 // FIXME(antoyo): linker gives multiple definitions error on Linux
