@@ -13,7 +13,7 @@ use crate::location::LocationTable;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 
-mod invalidation;
+mod loan_invalidations;
 mod loan_kills;
 
 /// Emit facts needed for move/init analysis: moves and assignments.
@@ -144,7 +144,7 @@ pub(crate) fn emit_loan_invalidations_facts<'tcx>(
         return;
     };
 
-    invalidation::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
+    loan_invalidations::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
 }
 
 /// Emit facts about CFG points and edges, as well as locations where loans are killed.

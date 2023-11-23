@@ -24,18 +24,12 @@ pub(super) fn emit_loan_invalidations<'tcx>(
 ) {
     let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
     let dominators = body.basic_blocks.dominators();
-    let mut ig = InvalidationGenerator {
-        all_facts,
-        borrow_set,
-        tcx,
-        location_table,
-        body: body,
-        dominators,
-    };
-    ig.visit_body(body);
+    let mut visitor =
+        LoanInvalidationsGenerator { all_facts, borrow_set, tcx, location_table, body, dominators };
+    visitor.visit_body(body);
 }
 
-struct InvalidationGenerator<'cx, 'tcx> {
+struct LoanInvalidationsGenerator<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
@@ -46,7 +40,7 @@ struct InvalidationGenerator<'cx, 'tcx> {
 
 /// Visits the whole MIR and generates `invalidates()` facts.
 /// Most of the code implementing this was stolen from `borrow_check/mod.rs`.
-impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         self.check_activations(location);
 
@@ -208,7 +202,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
+impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
     /// Simulates mutation of a place.
     fn mutate_place(&mut self, location: Location, place: Place<'tcx>, kind: AccessDepth) {
         self.access_place(
@@ -342,20 +336,16 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         rw: ReadOrWrite,
     ) {
         debug!(
-            "invalidation::check_access_for_conflict(location={:?}, place={:?}, sd={:?}, \
-             rw={:?})",
+            "check_access_for_conflict(location={:?}, place={:?}, sd={:?}, rw={:?})",
             location, place, sd, rw,
         );
-        let tcx = self.tcx;
-        let body = self.body;
-        let borrow_set = self.borrow_set;
         each_borrow_involving_path(
             self,
-            tcx,
-            body,
+            self.tcx,
+            self.body,
             location,
             (sd, place),
-            borrow_set,
+            self.borrow_set,
             |_| true,
             |this, borrow_index, borrow| {
                 match (rw, borrow.kind) {
