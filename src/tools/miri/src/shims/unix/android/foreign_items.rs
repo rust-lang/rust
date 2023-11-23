@@ -11,7 +11,7 @@ pub fn is_dyn_sym(_name: &str) -> bool {
 }
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    #[allow(unused, clippy::match_single_binding)] // there isn't anything here yet
+    #[allow(unused, clippy::match_single_binding)] // FIXME: there isn't anything here yet
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,

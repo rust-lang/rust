@@ -565,10 +565,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// is part of the UNIX family. It panics showing a message with the `name` of the foreign function
     /// if this is not the case.
     fn assert_target_os_is_unix(&self, name: &str) {
-        assert!(
-            target_os_is_unix(self.eval_context_ref().tcx.sess.target.os.as_ref()),
-            "`{name}` is only available for supported UNIX family targets",
-        );
+        assert!(self.target_os_is_unix(), "`{name}` is only available for unix targets",);
+    }
+
+    fn target_os_is_unix(&self) -> bool {
+        self.eval_context_ref().tcx.sess.target.families.iter().any(|f| f == "unix")
     }
 
     /// Get last error variable as a place, lazily allocating thread-local storage for it if
@@ -1141,12 +1142,6 @@ pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
         }
     }
     local_crates
-}
-
-/// Helper function used inside the shims of foreign functions to check that
-/// `target_os` is a supported UNIX OS.
-pub fn target_os_is_unix(target_os: &str) -> bool {
-    matches!(target_os, "linux" | "macos" | "freebsd" | "android")
 }
 
 pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Provenance> {

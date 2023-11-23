@@ -22,7 +22,6 @@ use rustc_target::{
 };
 
 use super::backtrace::EvalContextExt as _;
-use crate::helpers::target_os_is_unix;
 use crate::*;
 
 /// Type of dynamic symbols (for `dlsym` et al)
@@ -1058,7 +1057,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Platform-specific shims
             _ =>
                 return match this.tcx.sess.target.os.as_ref() {
-                    target_os if target_os_is_unix(target_os) =>
+                    _ if this.target_os_is_unix() =>
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
