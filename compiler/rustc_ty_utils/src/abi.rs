@@ -165,19 +165,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
 
                     assert_eq!(sig.return_ty, tcx.types.unit);
-
-                    // We have to replace the `ResumeTy` that is used for type and borrow checking
-                    // with `()` which is used in codegen.
-                    #[cfg(debug_assertions)]
-                    {
-                        if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
-                            let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
-                            assert_eq!(*resume_ty_adt, expected_adt);
-                        } else {
-                            panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
-                        };
-                    }
+                    assert_eq!(sig.resume_ty, tcx.types.unit);
 
                     (None, ret_ty)
                 }
