@@ -4,6 +4,7 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

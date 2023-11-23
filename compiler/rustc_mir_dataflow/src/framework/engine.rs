@@ -271,29 +271,31 @@ where
             );
         }
 
-        let mut results = Results { analysis, entry_sets, _marker: PhantomData };
+        let results = Results { analysis, entry_sets, _marker: PhantomData };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, body, &mut results, pass_name);
+            let (res, results) = write_graphviz_results(tcx, body, results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }
+            results
+        } else {
+            results
         }
-
-        results
     }
 }
 
 // Graphviz
 
 /// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
-/// `rustc_mir` attributes and `-Z dump-mir-dataflow`.
+/// `rustc_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
+/// the same.
 fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
-    results: &mut Results<'tcx, A>,
+    results: Results<'tcx, A>,
     pass_name: Option<&'static str>,
-) -> std::io::Result<()>
+) -> (std::io::Result<()>, Results<'tcx, A>)
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -304,23 +306,30 @@ where
     let def_id = body.source.def_id();
     let Ok(attrs) = RustcMirAttrs::parse(tcx, def_id) else {
         // Invalid `rustc_mir` attrs are reported in `RustcMirAttrs::parse`
-        return Ok(());
+        return (Ok(()), results);
     };
 
-    let mut file = match attrs.output_path(A::NAME) {
-        Some(path) => {
-            debug!("printing dataflow results for {:?} to {}", def_id, path.display());
-            if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent)?;
+    let file = try {
+        match attrs.output_path(A::NAME) {
+            Some(path) => {
+                debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let f = fs::File::create(&path)?;
+                io::BufWriter::new(f)
             }
-            io::BufWriter::new(fs::File::create(&path)?)
-        }
 
-        None if dump_enabled(tcx, A::NAME, def_id) => {
-            create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
-        }
+            None if dump_enabled(tcx, A::NAME, def_id) => {
+                create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
+            }
 
-        _ => return Ok(()),
+            _ => return (Ok(()), results),
+        }
+    };
+    let mut file = match file {
+        Ok(f) => f,
+        Err(e) => return (Err(e), results),
     };
 
     let style = match attrs.formatter {
@@ -336,11 +345,14 @@ where
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
-    with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts)?);
+    let r = with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts));
 
-    file.write_all(&buf)?;
+    let lhs = try {
+        r?;
+        file.write_all(&buf)?;
+    };
 
-    Ok(())
+    (lhs, graphviz.into_results())
 }
 
 #[derive(Default)]
