@@ -390,7 +390,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &args.config_info.target_triple,
     ]);
     if !args.no_default_features {
-        command.push(&"--cfg feature=\"master\"");
+        command.extend_from_slice(&[&"--cfg", &"feature=\"master\""]);
     }
     run_command_with_env(&command, None, Some(env))?;
 
@@ -454,7 +454,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &args.config_info.target_triple,
     ]);
     if !args.no_default_features {
-        command.push(&"--cfg feature=\"master\"");
+        command.extend_from_slice(&[&"--cfg", &"feature=\"master\""]);
     }
     run_command_with_env(&command, None, Some(env))?;
     run_command_in_vm(
@@ -1085,8 +1085,9 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
                 .filter(|line| !line.is_empty())
             {
                 let path = Path::new("rust").join(file);
-                std::fs::remove_file(&path)
-                    .map_err(|error| format!("failed to remove `{}`: {:?}", path.display(), error))?;
+                std::fs::remove_file(&path).map_err(|error| {
+                    format!("failed to remove `{}`: {:?}", path.display(), error)
+                })?;
             }
         } else {
             println!(
