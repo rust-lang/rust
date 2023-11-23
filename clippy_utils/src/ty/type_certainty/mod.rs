@@ -170,7 +170,7 @@ fn qpath_certainty(cx: &LateContext<'_>, qpath: &QPath<'_>, resolves_to_type: bo
             path_segment_certainty(cx, type_certainty(cx, ty), path_segment, resolves_to_type)
         },
 
-        QPath::LangItem(lang_item, _, _) => {
+        QPath::LangItem(lang_item, ..) => {
             cx.tcx
                 .lang_items()
                 .get(*lang_item)
