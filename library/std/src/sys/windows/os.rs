@@ -297,7 +297,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     let k = to_u16s(k).ok()?;
     super::fill_utf16_buf(
         |buf, sz| unsafe { c::GetEnvironmentVariableW(k.as_ptr(), buf, sz) },
-        |buf| OsStringExt::from_wide(buf),
+        OsStringExt::from_wide,
     )
     .ok()
 }
@@ -356,7 +356,7 @@ pub fn home_dir() -> Option<PathBuf> {
     crate::env::var_os("HOME")
         .or_else(|| crate::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
-        .or_else(|| home_dir_crt())
+        .or_else(home_dir_crt)
 }
 
 pub fn exit(code: i32) -> ! {
@@ -364,5 +364,5 @@ pub fn exit(code: i32) -> ! {
 }
 
 pub fn getpid() -> u32 {
-    unsafe { c::GetCurrentProcessId() as u32 }
+    unsafe { c::GetCurrentProcessId() }
 }
