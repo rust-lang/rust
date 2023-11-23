@@ -2,16 +2,17 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 //! The entry point of the NLL borrow checker.
 
+use polonius_engine::{Algorithm, Output};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
-use rustc_middle::mir::{
-    Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location, Promoted,
-    START_BLOCK,
-};
+use rustc_middle::mir::{Body, ClosureOutlivesSubject, ClosureRegionRequirements, Promoted};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::symbol::sym;
 use std::env;
 use std::io;
@@ -19,11 +20,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use polonius_engine::{Algorithm, Output};
-
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
-use rustc_mir_dataflow::ResultsCursor;
+mod polonius;
 
 use crate::{
     borrow_set::BorrowSet,
@@ -76,81 +73,6 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     dump_mir(infcx.tcx, false, "renumber", &0, body, |_, _| Ok(()));
 
     universal_regions
-}
-
-// This function populates an AllFacts instance with base facts related to
-// MovePaths and needed for the move analysis.
-fn populate_polonius_move_facts(
-    all_facts: &mut AllFacts,
-    move_data: &MoveData<'_>,
-    location_table: &LocationTable,
-    body: &Body<'_>,
-) {
-    all_facts
-        .path_is_var
-        .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(l, r)| (r, l)));
-
-    for (child, move_path) in move_data.move_paths.iter_enumerated() {
-        if let Some(parent) = move_path.parent {
-            all_facts.child_path.push((child, parent));
-        }
-    }
-
-    let fn_entry_start =
-        location_table.start_index(Location { block: START_BLOCK, statement_index: 0 });
-
-    // initialized_at
-    for init in move_data.inits.iter() {
-        match init.location {
-            InitLocation::Statement(location) => {
-                let block_data = &body[location.block];
-                let is_terminator = location.statement_index == block_data.statements.len();
-
-                if is_terminator && init.kind == InitKind::NonPanicPathOnly {
-                    // We are at the terminator of an init that has a panic path,
-                    // and where the init should not happen on panic
-
-                    for successor in block_data.terminator().successors() {
-                        if body[successor].is_cleanup {
-                            continue;
-                        }
-
-                        // The initialization happened in (or rather, when arriving at)
-                        // the successors, but not in the unwind block.
-                        let first_statement = Location { block: successor, statement_index: 0 };
-                        all_facts
-                            .path_assigned_at_base
-                            .push((init.path, location_table.start_index(first_statement)));
-                    }
-                } else {
-                    // In all other cases, the initialization just happens at the
-                    // midpoint, like any other effect.
-                    all_facts
-                        .path_assigned_at_base
-                        .push((init.path, location_table.mid_index(location)));
-                }
-            }
-            // Arguments are initialized on function entry
-            InitLocation::Argument(local) => {
-                assert!(body.local_kind(local) == LocalKind::Arg);
-                all_facts.path_assigned_at_base.push((init.path, fn_entry_start));
-            }
-        }
-    }
-
-    for (local, path) in move_data.rev_lookup.iter_locals_enumerated() {
-        if body.local_kind(local) != LocalKind::Arg {
-            // Non-arguments start out deinitialised; we simulate this with an
-            // initial move:
-            all_facts.path_moved_at_base.push((path, fn_entry_start));
-        }
-    }
-
-    // moved_out_at
-    // deinitialisation is assumed to always happen!
-    all_facts
-        .path_moved_at_base
-        .extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
 }
 
 /// Computes the (non-lexical) regions from the input MIR.
@@ -206,7 +128,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     if let Some(all_facts) = &mut all_facts {
         let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
         all_facts.universal_region.extend(universal_regions.universal_regions());
-        populate_polonius_move_facts(all_facts, move_data, location_table, body);
+        polonius::emit_move_facts(all_facts, move_data, location_table, body);
 
         // Emit universal regions facts, and their relations, for Polonius.
         //
