@@ -202,7 +202,7 @@ pub fn provide(providers: &mut Providers) {
             span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", def_id);
         }
     };
-    providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id);
+    providers.def_kind = |tcx, def_id| tcx.hir().def_kind(def_id);
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());

@@ -12,7 +12,6 @@ use measureme::StringId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_data_structures::sync::WorkerLocal;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -667,22 +666,6 @@ mod sealed {
 }
 
 pub use sealed::IntoQueryParam;
-
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
-        let def_id = def_id.into_query_param();
-        self.opt_def_kind(def_id)
-            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
-    }
-}
-
-impl<'tcx> TyCtxtAt<'tcx> {
-    pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
-        let def_id = def_id.into_query_param();
-        self.opt_def_kind(def_id)
-            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
-    }
-}
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct CyclePlaceholder(pub ErrorGuaranteed);

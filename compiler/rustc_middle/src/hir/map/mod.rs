@@ -174,21 +174,18 @@ impl<'hir> Map<'hir> {
     }
 
     /// Do not call this function directly. The query should be called.
-    pub(super) fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
+    pub(super) fn def_kind(self, local_def_id: LocalDefId) -> DefKind {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
         let node = match self.find(hir_id) {
             Some(node) => node,
             None => match self.def_key(local_def_id).disambiguated_data.data {
-                // FIXME: Some anonymous constants do not have corresponding HIR nodes,
-                // so many local queries will panic on their def ids. `None` is currently
-                // returned here instead of `DefKind::{Anon,Inline}Const` to avoid such panics.
-                // Ideally all def ids should have `DefKind`s, we need to create the missing
-                // HIR nodes or feed relevant query results to achieve that.
-                DefPathData::AnonConst => return None,
+                // FIXME: Some anonymous constants produced by `#[rustc_legacy_const_generics]`
+                // do not have corresponding HIR nodes, but they are still anonymous constants.
+                DefPathData::AnonConst => return DefKind::AnonConst,
                 _ => bug!("no HIR node for def id {local_def_id:?}"),
             },
         };
-        let def_kind = match node {
+        match node {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(_, mt, _) => DefKind::Static(mt),
                 ItemKind::Const(..) => DefKind::Const,
@@ -266,8 +263,7 @@ impl<'hir> Map<'hir> {
                 self.span(hir_id),
                 "unexpected node with def id {local_def_id:?}: {node:?}"
             ),
-        };
-        Some(def_kind)
+        }
     }
 
     /// Finds the id of the parent node to this one.
@@ -895,7 +891,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     fn opt_ident(self, id: HirId) -> Option<Ident> {
-        match self.get(id) {
+        match self.find(id)? {
             Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::opt_span`.

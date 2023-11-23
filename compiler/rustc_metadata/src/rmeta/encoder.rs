@@ -1354,9 +1354,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         for local_id in tcx.iter_local_def_id() {
             let def_id = local_id.to_def_id();
-            let def_kind = tcx.opt_def_kind(local_id);
-            let Some(def_kind) = def_kind else { continue };
-            self.tables.opt_def_kind.set_some(def_id.index, def_kind);
+            let def_kind = tcx.def_kind(local_id);
+            self.tables.def_kind.set_some(def_id.index, def_kind);
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
                 record!(self.tables.def_span[def_id] <- def_span);
@@ -1393,7 +1392,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_fn_sig(def_kind) {
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             }
-            if should_encode_generics(def_kind) {
+            // FIXME: Some anonymous constants produced by `#[rustc_legacy_const_generics]`
+            // do not have corresponding HIR nodes, so some queries usually making sense for
+            // anonymous constants will not work on them and panic. It's not clear whether it
+            // can cause any observable issues or not.
+            let anon_const_without_hir = def_kind == DefKind::AnonConst
+                && tcx.hir().find(tcx.local_def_id_to_hir_id(local_id)).is_none();
+            if should_encode_generics(def_kind) && !anon_const_without_hir {
                 let g = tcx.generics_of(def_id);
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
@@ -1407,7 +1412,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            if should_encode_type(tcx, local_id, def_kind) {
+            if should_encode_type(tcx, local_id, def_kind) && !anon_const_without_hir {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
             if should_encode_constness(def_kind) {
@@ -1785,7 +1790,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.proc_macro_quoted_spans.set_some(i, span);
             }
 
-            self.tables.opt_def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
+            self.tables.def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             let vis = tcx.local_visibility(CRATE_DEF_ID).map_id(|def_id| def_id.local_def_index);
@@ -1833,7 +1838,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                self.tables.opt_def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
+                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
                 self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);

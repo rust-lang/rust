@@ -231,7 +231,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
     unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
-    opt_def_kind => { table_direct }
+    def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     impl_polarity => { table_direct }
     defaultness => { table_direct }
