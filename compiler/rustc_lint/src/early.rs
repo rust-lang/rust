@@ -350,7 +350,7 @@ impl<'a> EarlyCheckNode<'a> for (&'a ast::Crate, &'a [ast::Attribute]) {
     where
         'a: 'b,
     {
-        &self.1
+        self.1
     }
     fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
     where

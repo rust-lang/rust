@@ -290,7 +290,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
-                let r1 = icx.astconv().ast_region_to_region(&region_pred.lifetime, None);
+                let r1 = icx.astconv().ast_region_to_region(region_pred.lifetime, None);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
                         hir::GenericBound::Outlives(lt) => {
@@ -714,9 +714,9 @@ pub(super) fn type_param_predicates(
 
     let item_hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
     let ast_generics = match tcx.hir().get(item_hir_id) {
-        Node::TraitItem(item) => &item.generics,
+        Node::TraitItem(item) => item.generics,
 
-        Node::ImplItem(item) => &item.generics,
+        Node::ImplItem(item) => item.generics,
 
         Node::Item(item) => {
             match item.kind {

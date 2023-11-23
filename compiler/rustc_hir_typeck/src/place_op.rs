@@ -283,9 +283,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Gather up expressions we want to munge.
         let mut exprs = vec![expr];
 
-        while let hir::ExprKind::Field(ref expr, _)
-        | hir::ExprKind::Index(ref expr, _, _)
-        | hir::ExprKind::Unary(hir::UnOp::Deref, ref expr) = exprs.last().unwrap().kind
+        while let hir::ExprKind::Field(expr, _)
+        | hir::ExprKind::Index(expr, _, _)
+        | hir::ExprKind::Unary(hir::UnOp::Deref, expr) = exprs.last().unwrap().kind
         {
             exprs.push(expr);
         }

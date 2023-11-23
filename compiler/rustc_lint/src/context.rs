@@ -385,7 +385,7 @@ impl LintStore {
                         };
                     }
                     Some(LintGroup { lint_ids, .. }) => {
-                        return CheckLintNameResult::Tool(Ok(&lint_ids));
+                        return CheckLintNameResult::Tool(Ok(lint_ids));
                     }
                 },
                 Some(Id(id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
@@ -406,12 +406,12 @@ impl LintStore {
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
                         return if *silent {
-                            CheckLintNameResult::Ok(&lint_ids)
+                            CheckLintNameResult::Ok(lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
                         };
                     }
-                    CheckLintNameResult::Ok(&lint_ids)
+                    CheckLintNameResult::Ok(lint_ids)
                 }
             },
             Some(Id(id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
@@ -458,12 +458,12 @@ impl LintStore {
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
                         return if *silent {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
                         };
                     }
-                    CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
+                    CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                 }
             },
             Some(Id(id)) => {
@@ -739,6 +739,8 @@ pub trait LintContext {
                         } else {
                             db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
                         }
+                    } else if name == sym::feature && std::env::var_os("CARGO").is_some() {
+                        db.help("consider defining some features in `Cargo.toml`");
                     } else if !possibilities.is_empty() {
                         let mut possibilities = possibilities.iter()
                             .map(Symbol::as_str)
@@ -1051,7 +1053,7 @@ impl<'a> EarlyContext<'a> {
 impl<'tcx> LintContext for LateContext<'tcx> {
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     #[rustc_lint_diagnostics]
@@ -1080,7 +1082,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
 impl LintContext for EarlyContext<'_> {
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.builder.sess()
+        self.builder.sess()
     }
 
     #[rustc_lint_diagnostics]
@@ -1127,7 +1129,7 @@ impl<'tcx> LateContext<'tcx> {
     /// bodies (e.g. for paths in `hir::Ty`), without any risk of ICE-ing.
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .maybe_typeck_results()
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)

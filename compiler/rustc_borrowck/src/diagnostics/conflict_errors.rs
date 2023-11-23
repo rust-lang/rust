@@ -490,7 +490,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut spans = vec![];
         for init_idx in inits {
             let init = &self.move_data.inits[*init_idx];
-            let span = init.span(&self.body);
+            let span = init.span(self.body);
             if !span.is_dummy() {
                 spans.push(span);
             }
@@ -518,7 +518,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let body = map.body(body_id);
 
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
-        visitor.visit_body(&body);
+        visitor.visit_body(body);
 
         let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
@@ -614,7 +614,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             let mut visitor = LetVisitor { decl_span, sugg_span: None };
-            visitor.visit_body(&body);
+            visitor.visit_body(body);
             if let Some(span) = visitor.sugg_span {
                 self.suggest_assign_value(&mut err, moved_place, span);
             }
@@ -779,7 +779,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         // Try to find predicates on *generic params* that would allow copying `ty`
-        let ocx = ObligationCtxt::new(&self.infcx);
+        let ocx = ObligationCtxt::new(self.infcx);
         let copy_did = tcx.require_lang_item(LangItem::Copy, Some(span));
         let cause = ObligationCause::misc(span, self.mir_def_id());
 
@@ -856,7 +856,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 &self.local_names,
                 &mut err,
                 "",
@@ -903,7 +903,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 &self.local_names,
                 &mut err,
                 "",
@@ -1174,7 +1174,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             first_borrow_desc,
@@ -1932,7 +1932,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let place_desc = self.describe_place(borrow.borrowed_place.as_ref());
 
         let kind_place = kind.filter(|_| place_desc.is_some()).map(|k| (k, place_span.0));
-        let explanation = self.explain_why_borrow_contains_point(location, &borrow, kind_place);
+        let explanation = self.explain_why_borrow_contains_point(location, borrow, kind_place);
 
         debug!(?place_desc, ?explanation);
 
@@ -2001,14 +2001,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             (Some(name), explanation) => self.report_local_value_does_not_live_long_enough(
                 location,
                 &name,
-                &borrow,
+                borrow,
                 drop_span,
                 borrow_spans,
                 explanation,
             ),
             (None, explanation) => self.report_temporary_value_does_not_live_long_enough(
                 location,
-                &borrow,
+                borrow,
                 drop_span,
                 borrow_spans,
                 proper_span,
@@ -2098,7 +2098,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } else {
                 explanation.add_explanation_to_diagnostic(
                     self.infcx.tcx,
-                    &self.body,
+                    self.body,
                     &self.local_names,
                     &mut err,
                     "",
@@ -2119,7 +2119,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             explanation.add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 &self.local_names,
                 &mut err,
                 "",
@@ -2180,7 +2180,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             "",
@@ -2365,7 +2365,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             "",
@@ -2842,7 +2842,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         self.explain_why_borrow_contains_point(location, loan, None).add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             "",
@@ -3020,7 +3020,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let mut visitor = FakeReadCauseFinder { place, cause: None };
-        visitor.visit_body(&self.body);
+        visitor.visit_body(self.body);
         match visitor.cause {
             Some(FakeReadCause::ForMatchGuard) => Some("match guard"),
             Some(FakeReadCause::ForIndex) => Some("indexing expression"),

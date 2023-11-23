@@ -45,7 +45,7 @@ pub fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
+    let msvc_tool = windows_registry::find_tool(sess.opts.target_triple.triple(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -78,7 +78,7 @@ pub fn get_linker<'a>(
     if matches!(flavor, LinkerFlavor::Msvc(..)) && t.vendor == "uwp" {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
-            if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
+            if let Some(root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_ref() {
                     "x86_64" => Some("x64"),
                     "x86" => Some("x86"),
@@ -185,6 +185,7 @@ pub trait Linker {
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
     fn control_flow_guard(&mut self);
+    fn ehcont_guard(&mut self);
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
@@ -519,7 +520,7 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = find_native_static_library(lib, verbatim, search_path, &self.sess);
+            let lib = find_native_static_library(lib, verbatim, search_path, self.sess);
             self.linker_arg(&lib);
         }
     }
@@ -604,6 +605,8 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn control_flow_guard(&mut self) {}
+
+    fn ehcont_guard(&mut self) {}
 
     fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         // MacOS linker doesn't support stripping symbols directly anymore.
@@ -914,6 +917,12 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/guard:cf");
     }
 
+    fn ehcont_guard(&mut self) {
+        if self.sess.target.pointer_width == 64 {
+            self.cmd.arg("/guard:ehcont");
+        }
+    }
+
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
         match strip {
             Strip::None => {
@@ -1127,6 +1136,8 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
         // Preserve names or generate source maps depending on debug info
         // For more information see https://emscripten.org/docs/tools_reference/emcc.html#emcc-g
@@ -1319,6 +1330,8 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn no_crt_objects(&mut self) {}
 
     fn no_default_libraries(&mut self) {}
@@ -1472,6 +1485,8 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn no_crt_objects(&mut self) {}
 }
 
@@ -1590,7 +1605,7 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn link_whole_staticlib(&mut self, lib: &str, verbatim: bool, search_path: &[PathBuf]) {
         self.hint_static();
-        let lib = find_native_static_library(lib, verbatim, search_path, &self.sess);
+        let lib = find_native_static_library(lib, verbatim, search_path, self.sess);
         self.cmd.arg(format!("-bkeepfile:{}", lib.to_str().unwrap()));
     }
 
@@ -1612,6 +1627,8 @@ impl<'a> Linker for AixLinker<'a> {
     fn pgo_gen(&mut self) {}
 
     fn control_flow_guard(&mut self) {}
+
+    fn ehcont_guard(&mut self) {}
 
     fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         match strip {
@@ -1835,6 +1852,8 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {}
 
     fn subsystem(&mut self, _subsystem: &str) {}
@@ -1930,6 +1949,8 @@ impl<'a> Linker for BpfLinker<'a> {
     fn no_default_libraries(&mut self) {}
 
     fn control_flow_guard(&mut self) {}
+
+    fn ehcont_guard(&mut self) {}
 
     fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("symbols");

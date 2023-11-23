@@ -83,7 +83,7 @@ pub fn rustc_allow_const_fn_unstable(
     feature_gate: Symbol,
 ) -> bool {
     let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
-    attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
+    attr::rustc_allow_const_fn_unstable(tcx.sess, attrs).any(|name| name == feature_gate)
 }
 
 /// Returns `true` if the given `const fn` is "const-stable".

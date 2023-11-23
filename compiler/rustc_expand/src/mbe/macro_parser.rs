@@ -483,7 +483,7 @@ impl TtParser {
                     if matches!(t, Token { kind: DocComment(..), .. }) {
                         mp.idx += 1;
                         self.cur_mps.push(mp);
-                    } else if token_name_eq(&t, token) {
+                    } else if token_name_eq(t, token) {
                         mp.idx += 1;
                         self.next_mps.push(mp);
                     }

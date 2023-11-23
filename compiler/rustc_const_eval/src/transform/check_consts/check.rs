@@ -60,9 +60,9 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, body)
                 .iterate_to_fixpoint()
-                .into_results_cursor(&body)
+                .into_results_cursor(body)
         });
 
         needs_drop.seek_before_primary_effect(location);
@@ -122,9 +122,9 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, body)
                 .iterate_to_fixpoint()
-                .into_results_cursor(&body)
+                .into_results_cursor(body)
         });
 
         has_mut_interior.seek_before_primary_effect(location);
@@ -170,9 +170,9 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
             hir::ConstContext::Const { .. } | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, &ccx.body)
+                    .into_engine(ccx.tcx, ccx.body)
                     .iterate_to_fixpoint()
-                    .into_results_cursor(&ccx.body);
+                    .into_results_cursor(ccx.body);
 
                 cursor.seek_after_primary_effect(return_loc);
                 cursor.get().contains(RETURN_PLACE)
@@ -225,7 +225,7 @@ impl<'mir, 'tcx> Deref for Checker<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.ccx
+        self.ccx
     }
 }
 
@@ -272,7 +272,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
-            self.visit_body(&body);
+            self.visit_body(body);
         }
 
         // If we got through const-checking without emitting any "primary" errors, emit any
@@ -503,7 +503,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake, place)
             | Rvalue::AddressOf(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
-                    &self.ccx,
+                    self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
                     place.as_ref(),
                 );

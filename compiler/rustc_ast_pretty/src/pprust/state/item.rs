@@ -1,8 +1,8 @@
 use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::delimited::IterDelimited;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 use ast::StaticItem;
+use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::GenericBound;
 use rustc_ast::ModKind;
@@ -20,7 +20,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub(crate) fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
+    fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -368,7 +368,7 @@ impl<'a> State<'a> {
                 self.nbsp();
                 if !bounds.is_empty() {
                     self.word_nbsp("=");
-                    self.print_type_bounds(&bounds);
+                    self.print_type_bounds(bounds);
                 }
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");
@@ -518,7 +518,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub(crate) fn print_assoc_item(&mut self, item: &ast::AssocItem) {
+    fn print_assoc_item(&mut self, item: &ast::AssocItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -621,7 +621,7 @@ impl<'a> State<'a> {
         self.print_where_clause_parts(where_clause.has_where_token, &where_clause.predicates);
     }
 
-    pub(crate) fn print_where_clause_parts(
+    fn print_where_clause_parts(
         &mut self,
         has_where_token: bool,
         predicates: &[ast::WherePredicate],
@@ -668,7 +668,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_where_bound_predicate(
+    pub(crate) fn print_where_bound_predicate(
         &mut self,
         where_bound_predicate: &ast::WhereBoundPredicate,
     ) {
@@ -712,9 +712,10 @@ impl<'a> State<'a> {
                     self.word("{");
                     self.zerobreak();
                     self.ibox(0);
-                    for use_tree in items.iter().delimited() {
+                    for (pos, use_tree) in items.iter().with_position() {
+                        let is_last = matches!(pos, Position::Last | Position::Only);
                         self.print_use_tree(&use_tree.0);
-                        if !use_tree.is_last {
+                        if !is_last {
                             self.word(",");
                             if let ast::UseTreeKind::Nested(_) = use_tree.0.kind {
                                 self.hardbreak();

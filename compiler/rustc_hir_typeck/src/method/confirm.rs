@@ -93,16 +93,16 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
-        let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
+        let self_ty = self.adjust_self_ty(unadjusted_self_ty, pick);
 
         // Create substitutions for the method's type parameters.
-        let rcvr_args = self.fresh_receiver_args(self_ty, &pick);
-        let all_args = self.instantiate_method_args(&pick, segment, rcvr_args);
+        let rcvr_args = self.fresh_receiver_args(self_ty, pick);
+        let all_args = self.instantiate_method_args(pick, segment, rcvr_args);
 
         debug!("rcvr_args={rcvr_args:?}, all_args={all_args:?}");
 
         // Create the final signature for the method, replacing late-bound regions.
-        let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_args);
+        let (method_sig, method_predicates) = self.instantiate_method_sig(pick, all_args);
 
         // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
         // something which derefs to `Self` actually implements the trait and the caller
@@ -129,14 +129,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
         );
-        self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_args);
+        self.unify_receivers(self_ty, method_sig_rcvr, pick, all_args);
 
         let (method_sig, method_predicates) =
             self.normalize(self.span, (method_sig, method_predicates));
         let method_sig = ty::Binder::dummy(method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
-        self.enforce_illegal_method_limitations(&pick);
+        self.enforce_illegal_method_limitations(pick);
 
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use

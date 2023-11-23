@@ -2271,7 +2271,7 @@ impl<'a> Parser<'a> {
             } else {
                 &[token::Semi, token::OpenDelim(Delimiter::Brace)]
             };
-            if let Err(mut err) = self.expected_one_of_not_found(&[], &expected) {
+            if let Err(mut err) = self.expected_one_of_not_found(&[], expected) {
                 if self.token.kind == token::CloseDelim(Delimiter::Brace) {
                     // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
                     // the AST for typechecking.

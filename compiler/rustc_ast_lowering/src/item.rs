@@ -276,19 +276,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
                     let asyncness = header.asyncness;
-                    let body_id = this.lower_maybe_async_body(
-                        span,
-                        hir_id,
-                        &decl,
-                        asyncness,
-                        body.as_deref(),
-                    );
+                    let body_id =
+                        this.lower_maybe_async_body(span, hir_id, decl, asyncness, body.as_deref());
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
                         this.lower_generics(generics, header.constness, id, &itctx, |this| {
                             let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(&decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
+                            this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
                         });
                     let sig = hir::FnSig {
                         decl,
@@ -744,7 +739,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (generics, kind, has_default) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => {
                 let (generics, kind) = self.lower_generics(
-                    &generics,
+                    generics,
                     Const::No,
                     i.id,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -775,7 +770,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), .. }) => {
                 let asyncness = sig.header.asyncness;
                 let body_id =
-                    self.lower_maybe_async_body(i.span, hir_id, &sig.decl, asyncness, Some(&body));
+                    self.lower_maybe_async_body(i.span, hir_id, &sig.decl, asyncness, Some(body));
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
@@ -857,7 +852,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => self.lower_generics(
-                &generics,
+                generics,
                 Const::No,
                 i.id,
                 &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),

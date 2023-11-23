@@ -136,7 +136,7 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attr
         attrs.push(llvm::CreateAttrStringValue(
             cx.llcx,
             "instrument-function-entry-inlined",
-            &mcount_name,
+            mcount_name,
         ));
     }
     if let Some(options) = &cx.sess().opts.unstable_opts.instrument_xray {
@@ -459,7 +459,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // If this function is an import from the environment but the wasm
         // import has a specific module/name, apply them here.
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", &module));
+            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", module));
 
             let name =
                 codegen_fn_attrs.link_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));

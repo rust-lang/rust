@@ -19,7 +19,6 @@ rustc_infer = { path = "../rustc_infer" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }

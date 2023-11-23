@@ -12,7 +12,7 @@ impl<'tcx> MirLint<'tcx> for CheckPackedRef {
         let param_env = tcx.param_env(body.source.def_id());
         let source_info = SourceInfo::outermost(body.span);
         let mut checker = PackedRefChecker { body, tcx, param_env, source_info };
-        checker.visit_body(&body);
+        checker.visit_body(body);
     }
 }
 

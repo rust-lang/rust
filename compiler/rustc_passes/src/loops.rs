@@ -39,7 +39,7 @@ struct CheckLoopVisitor<'a, 'hir> {
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
-        &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal },
+        &mut CheckLoopVisitor { sess: tcx.sess, hir_map: tcx.hir(), cx: Normal },
     );
 }
 
@@ -84,7 +84,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
         match e.kind {
             hir::ExprKind::Loop(ref b, _, source, _) => {
-                self.with_context(Loop(source), |v| v.visit_block(&b));
+                self.with_context(Loop(source), |v| v.visit_block(b));
             }
             hir::ExprKind::Closure(&hir::Closure {
                 ref fn_decl,
@@ -98,19 +98,19 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 } else {
                     Closure(fn_decl_span)
                 };
-                self.visit_fn_decl(&fn_decl);
+                self.visit_fn_decl(fn_decl);
                 self.with_context(cx, |v| v.visit_nested_body(body));
             }
             hir::ExprKind::Block(ref b, Some(_label)) => {
-                self.with_context(LabeledBlock, |v| v.visit_block(&b));
+                self.with_context(LabeledBlock, |v| v.visit_block(b));
             }
             hir::ExprKind::Block(ref b, None) if matches!(self.cx, Fn) => {
-                self.with_context(Normal, |v| v.visit_block(&b));
+                self.with_context(Normal, |v| v.visit_block(b));
             }
             hir::ExprKind::Block(ref b, None)
                 if matches!(self.cx, Normal | Constant | UnlabeledBlock(_)) =>
             {
-                self.with_context(UnlabeledBlock(b.span.shrink_to_lo()), |v| v.visit_block(&b));
+                self.with_context(UnlabeledBlock(b.span.shrink_to_lo()), |v| v.visit_block(b));
             }
             hir::ExprKind::Break(break_label, ref opt_expr) => {
                 if let Some(e) = opt_expr {

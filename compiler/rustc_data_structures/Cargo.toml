@@ -10,7 +10,7 @@ bitflags = "1.2.1"
 elsa = "=1.7.1"
 ena = "0.14.2"
 indexmap = { version = "2.0.0" }
-itertools = "0.10.1"
+itertools = "0.11"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
 measureme = "10.0.0"

@@ -648,7 +648,7 @@ impl<'tcx> Usefulness<'tcx> {
                 } else {
                     witnesses
                         .into_iter()
-                        .map(|witness| witness.apply_constructor(pcx, &ctor))
+                        .map(|witness| witness.apply_constructor(pcx, ctor))
                         .collect()
                 };
                 WithWitnesses(new_witnesses)
@@ -934,7 +934,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         let relevant_patterns =
             self.patterns.iter().filter(|pat| ctor.is_covered_by(pcx, pat.ctor()));
         for pat in relevant_patterns {
-            let specialized = pat.specialize(pcx, &ctor);
+            let specialized = pat.specialize(pcx, ctor);
             for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
                 if subpat.is_or_pat() {
                     column.patterns.extend(subpat.flatten_or_pat())

@@ -132,7 +132,7 @@ pub fn set_file_information_by_handle<T: SetFileInformation>(
         size: u32,
     ) -> Result<(), WinError> {
         let result = c::SetFileInformationByHandle(handle, class, info, size);
-        (result != 0).then_some(()).ok_or_else(|| get_last_error())
+        (result != 0).then_some(()).ok_or_else(get_last_error)
     }
     // SAFETY: The `SetFileInformation` trait ensures that this is safe.
     unsafe { set_info(handle, T::CLASS, info.as_ptr(), info.size()) }

@@ -51,7 +51,7 @@ impl<'tcx> Cx<'tcx> {
                 let hir_id = stmt.hir_id;
                 let opt_dxn_ext = self.region_scope_tree.opt_destruction_scope(hir_id.local_id);
                 match stmt.kind {
-                    hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
+                    hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => {
                         let stmt = Stmt {
                             kind: StmtKind::Expr {
                                 scope: region::Scope {
@@ -68,7 +68,7 @@ impl<'tcx> Cx<'tcx> {
                         // ignore for purposes of the MIR
                         None
                     }
-                    hir::StmtKind::Local(ref local) => {
+                    hir::StmtKind::Local(local) => {
                         let remainder_scope = region::Scope {
                             id: block_id,
                             data: region::ScopeData::Remainder(region::FirstStatementIndex::new(

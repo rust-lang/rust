@@ -307,7 +307,7 @@ fn compare_method_predicate_entailment<'tcx>(
         debug!(?impl_sig, ?trait_sig, ?terr, "sub_types failed");
 
         let emitted = report_trait_method_mismatch(
-            &infcx,
+            infcx,
             cause,
             terr,
             (trait_m, trait_sig),
@@ -1140,7 +1140,7 @@ fn report_trait_method_mismatch<'tcx>(
 ) -> ErrorGuaranteed {
     let tcx = infcx.tcx;
     let (impl_err_span, trait_err_span) =
-        extract_spans_for_error_reporting(&infcx, terr, &cause, impl_m, trait_m);
+        extract_spans_for_error_reporting(infcx, terr, &cause, impl_m, trait_m);
 
     let mut diag = struct_span_err!(
         tcx.sess,

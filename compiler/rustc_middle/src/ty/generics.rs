@@ -354,7 +354,7 @@ impl<'tcx> Generics {
         args: &'tcx [ty::GenericArg<'tcx>],
     ) -> &'tcx [ty::GenericArg<'tcx>] {
         let own = &args[self.parent_count..][..self.params.len()];
-        if self.has_self && self.parent.is_none() { &own[1..] } else { &own }
+        if self.has_self && self.parent.is_none() { &own[1..] } else { own }
     }
 }
 

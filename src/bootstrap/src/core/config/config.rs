@@ -248,6 +248,7 @@ pub struct Config {
     pub local_rebuild: bool,
     pub jemalloc: bool,
     pub control_flow_guard: bool,
+    pub ehcont_guard: bool,
 
     // dist misc
     pub dist_sign_folder: Option<PathBuf>,
@@ -1019,6 +1020,7 @@ define_config! {
         test_compare_mode: Option<bool> = "test-compare-mode",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         control_flow_guard: Option<bool> = "control-flow-guard",
+        ehcont_guard: Option<bool> = "ehcont-guard",
         new_symbol_mangling: Option<bool> = "new-symbol-mangling",
         profile_generate: Option<String> = "profile-generate",
         profile_use: Option<String> = "profile-use",
@@ -1452,6 +1454,7 @@ impl Config {
             config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
             set(&mut config.control_flow_guard, rust.control_flow_guard);
+            set(&mut config.ehcont_guard, rust.ehcont_guard);
             config.llvm_libunwind_default = rust
                 .llvm_libunwind
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));

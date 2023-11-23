@@ -17,12 +17,16 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
-use stable_mir::mir::mono::InstanceDef;
-use stable_mir::mir::{Body, CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
+use stable_mir::mir::alloc::GlobalAlloc;
+use stable_mir::mir::mono::{InstanceDef, StaticDef};
+use stable_mir::mir::{
+    Body, ConstOperand, CopyNonOverlapping, Statement, UserTypeProjection, VarDebugInfoFragment,
+    VariantIdx,
+};
 use stable_mir::ty::{
-    AdtDef, AdtKind, ClosureDef, ClosureKind, Const, ConstId, ConstantKind, EarlyParamRegion,
-    FloatTy, FnDef, GenericArgs, GenericParamDef, IntTy, LineInfo, Movability, RigidTy, Span,
-    TyKind, UintTy,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, ConstId, ConstantKind,
+    EarlyParamRegion, FloatTy, FnDef, GenericArgs, GenericParamDef, IntTy, LineInfo, Movability,
+    RigidTy, Span, TyKind, UintTy,
 };
 use stable_mir::{self, opaque, Context, CrateItem, Error, Filename, ItemKind};
 use std::cell::RefCell;
@@ -69,15 +73,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn get_filename(&self, span: &Span) -> Filename {
         let tables = self.0.borrow();
-        opaque(
-            &tables
-                .tcx
-                .sess
-                .source_map()
-                .span_to_filename(tables[*span])
-                .display(rustc_span::FileNameDisplayPreference::Local)
-                .to_string(),
-        )
+        tables
+            .tcx
+            .sess
+            .source_map()
+            .span_to_filename(tables[*span])
+            .display(rustc_span::FileNameDisplayPreference::Local)
+            .to_string()
     }
 
     fn get_lines(&self, span: &Span) -> LineInfo {
@@ -317,6 +319,30 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
 
+    fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error> {
+        let mut tables = self.0.borrow_mut();
+        let def_id = def.0.internal(&mut *tables);
+        tables.tcx.eval_static_initializer(def_id).stable(&mut *tables)
+    }
+
+    fn global_alloc(&self, alloc: stable_mir::mir::alloc::AllocId) -> GlobalAlloc {
+        let mut tables = self.0.borrow_mut();
+        let alloc_id = alloc.internal(&mut *tables);
+        tables.tcx.global_alloc(alloc_id).stable(&mut *tables)
+    }
+
+    fn vtable_allocation(
+        &self,
+        global_alloc: &GlobalAlloc,
+    ) -> Option<stable_mir::mir::alloc::AllocId> {
+        let mut tables = self.0.borrow_mut();
+        let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else { return None };
+        let alloc_id = tables
+            .tcx
+            .vtable_allocation((ty.internal(&mut *tables), trait_ref.internal(&mut *tables)));
+        Some(alloc_id.stable(&mut *tables))
+    }
+
     fn usize_to_const(&self, val: u64) -> Result<Const, Error> {
         let mut tables = self.0.borrow_mut();
         let ty = tables.tcx.types.usize;
@@ -341,7 +367,7 @@ pub(crate) struct TablesWrapper<'tcx>(pub(crate) RefCell<Tables<'tcx>>);
 pub struct Tables<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) def_ids: IndexMap<DefId, stable_mir::DefId>,
-    pub(crate) alloc_ids: IndexMap<AllocId, stable_mir::AllocId>,
+    pub(crate) alloc_ids: IndexMap<AllocId, stable_mir::mir::alloc::AllocId>,
     pub(crate) spans: IndexMap<rustc_span::Span, Span>,
     pub(crate) types: IndexMap<Ty<'tcx>, stable_mir::ty::Ty>,
     pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
@@ -444,7 +470,21 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                 })
                 .collect(),
             self.arg_count,
+            self.var_debug_info.iter().map(|info| info.stable(tables)).collect(),
         )
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::VarDebugInfo<'tcx> {
+    type T = stable_mir::mir::VarDebugInfo;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::mir::VarDebugInfo {
+            name: self.name.to_string(),
+            source_info: self.source_info.stable(tables),
+            composite: self.composite.as_ref().map(|composite| composite.stable(tables)),
+            value: self.value.stable(tables),
+            argument_index: self.argument_index,
+        }
     }
 }
 
@@ -452,6 +492,42 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     type T = stable_mir::mir::Statement;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         Statement { kind: self.kind.stable(tables), span: self.source_info.span.stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::SourceInfo {
+    type T = stable_mir::mir::SourceInfo;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::mir::SourceInfo { span: self.span.stable(tables), scope: self.scope.into() }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::VarDebugInfoFragment<'tcx> {
+    type T = stable_mir::mir::VarDebugInfoFragment;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        VarDebugInfoFragment {
+            ty: self.ty.stable(tables),
+            projection: self.projection.iter().map(|e| e.stable(tables)).collect(),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::VarDebugInfoContents<'tcx> {
+    type T = stable_mir::mir::VarDebugInfoContents;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            mir::VarDebugInfoContents::Place(place) => {
+                stable_mir::mir::VarDebugInfoContents::Place(place.stable(tables))
+            }
+            mir::VarDebugInfoContents::Const(const_operand) => {
+                let op = ConstOperand {
+                    span: const_operand.span.stable(tables),
+                    user_ty: const_operand.user_ty.map(|index| index.as_usize()),
+                    const_: const_operand.const_.stable(tables),
+                };
+                stable_mir::mir::VarDebugInfoContents::Const(op)
+            }
+        }
     }
 }
 
@@ -1539,6 +1615,14 @@ impl<'tcx> Stable<'tcx> for ty::BoundTy {
     }
 }
 
+impl<'tcx> Stable<'tcx> for mir::interpret::ConstAllocation<'tcx> {
+    type T = Allocation;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        self.inner().stable(tables)
+    }
+}
+
 impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
@@ -1548,6 +1632,32 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
             alloc_range(rustc_target::abi::Size::ZERO, self.size()),
             tables,
         )
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::interpret::AllocId {
+    type T = stable_mir::mir::alloc::AllocId;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.create_alloc_id(*self)
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
+    type T = GlobalAlloc;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            mir::interpret::GlobalAlloc::Function(instance) => {
+                GlobalAlloc::Function(instance.stable(tables))
+            }
+            mir::interpret::GlobalAlloc::VTable(ty, trait_ref) => {
+                GlobalAlloc::VTable(ty.stable(tables), trait_ref.stable(tables))
+            }
+            mir::interpret::GlobalAlloc::Static(def) => {
+                GlobalAlloc::Static(tables.static_def(*def))
+            }
+            mir::interpret::GlobalAlloc::Memory(alloc) => GlobalAlloc::Memory(alloc.stable(tables)),
+        }
     }
 }
 
@@ -1931,6 +2041,14 @@ impl<'tcx> Stable<'tcx> for MonoItem<'tcx> {
     }
 }
 
+impl<'tcx> Stable<'tcx> for mir::interpret::ErrorHandled {
+    type T = Error;
+
+    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        Error::new(format!("{self:?}"))
+    }
+}
+
 impl<'tcx, T> Stable<'tcx> for &T
 where
     T: Stable<'tcx>,
@@ -1950,5 +2068,20 @@ where
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         self.as_ref().map(|value| value.stable(tables))
+    }
+}
+
+impl<'tcx, T, E> Stable<'tcx> for Result<T, E>
+where
+    T: Stable<'tcx>,
+    E: Stable<'tcx>,
+{
+    type T = Result<T::T, E::T>;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            Ok(val) => Ok(val.stable(tables)),
+            Err(error) => Err(error.stable(tables)),
+        }
     }
 }

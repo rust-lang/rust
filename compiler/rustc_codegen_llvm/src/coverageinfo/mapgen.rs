@@ -176,7 +176,7 @@ impl GlobalFileTable {
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
         use rustc_session::RemapFileNameExt;
-        let working_dir: &str = &tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy();
+        let working_dir: &str = &tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
 
         llvm::build_byte_buffer(|buffer| {
             coverageinfo::write_filenames_section_to_buffer(
@@ -189,8 +189,6 @@ impl GlobalFileTable {
 }
 
 rustc_index::newtype_index! {
-    // Tell the newtype macro to not generate `Encode`/`Decode` impls.
-    #[custom_encodable]
     struct LocalFileId {}
 }
 

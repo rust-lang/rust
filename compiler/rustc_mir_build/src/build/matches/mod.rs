@@ -212,7 +212,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
-        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, &arms);
+        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, arms);
 
         let match_has_guard = arm_candidates.iter().any(|(_, candidate)| candidate.has_guard);
         let mut candidates =
@@ -424,7 +424,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.source_scope = source_scope;
                     }
 
-                    this.expr_into_dest(destination, arm_block, &&this.thir[arm.body])
+                    this.expr_into_dest(destination, arm_block, &this.thir[arm.body])
                 })
             })
             .collect();
@@ -505,7 +505,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let binding_end = self.bind_and_guard_matched_candidate(
                         leaf_candidate,
                         parent_bindings,
-                        &fake_borrow_temps,
+                        fake_borrow_temps,
                         scrutinee_span,
                         arm_match_scope,
                         schedule_drops,
@@ -613,7 +613,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => {
                 let place_builder =
                     unpack!(block = self.lower_scrutinee(block, initializer, initializer.span));
-                self.place_into_pattern(block, &irrefutable_pat, place_builder, true)
+                self.place_into_pattern(block, irrefutable_pat, place_builder, true)
             }
         }
     }
@@ -625,7 +625,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        let mut candidate = Candidate::new(initializer.clone(), &irrefutable_pat, false, self);
+        let mut candidate = Candidate::new(initializer.clone(), irrefutable_pat, false, self);
         let fake_borrow_temps = self.lower_match_tree(
             block,
             irrefutable_pat.span,
@@ -700,7 +700,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
         self.visit_primary_bindings(
-            &pattern,
+            pattern,
             UserTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
@@ -1843,7 +1843,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
         let wildcard = Pat::wildcard_from_ty(pat.ty);
-        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false, self);
+        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), pat, false, self);
         let mut otherwise_candidate =
             Candidate::new(expr_place_builder.clone(), &wildcard, false, self);
         let fake_borrow_temps = self.lower_match_tree(

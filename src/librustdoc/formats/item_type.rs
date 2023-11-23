@@ -16,6 +16,13 @@ use crate::clean;
 /// Consequently, every change to this type should be synchronized to
 /// the `itemTypes` mapping table in `html/static/js/search.js`.
 ///
+/// The search engine in search.js also uses item type numbers as a tie breaker when
+/// sorting results. Keywords and primitives are given first because we want them to be easily
+/// found by new users who don't know about advanced features like type filters. The rest are
+/// mostly in an arbitrary order, but it's easier to test the search engine when
+/// it's deterministic, and these are strictly finer-grained than language namespaces, so
+/// using the path and the item type together to sort ensures that search sorting is stable.
+///
 /// In addition, code in `html::render` uses this enum to generate CSS classes, page prefixes, and
 /// module headings. If you are adding to this enum and want to ensure that the sidebar also prints
 /// a heading, edit the listing in `html/render.rs`, function `sidebar_module`. This uses an
@@ -23,28 +30,28 @@ use crate::clean;
 #[derive(Copy, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 #[repr(u8)]
 pub(crate) enum ItemType {
-    Module = 0,
-    ExternCrate = 1,
-    Import = 2,
-    Struct = 3,
-    Enum = 4,
-    Function = 5,
-    TypeAlias = 6,
-    Static = 7,
-    Trait = 8,
-    Impl = 9,
-    TyMethod = 10,
-    Method = 11,
-    StructField = 12,
-    Variant = 13,
-    Macro = 14,
-    Primitive = 15,
-    AssocType = 16,
-    Constant = 17,
-    AssocConst = 18,
-    Union = 19,
-    ForeignType = 20,
-    Keyword = 21,
+    Keyword = 0,
+    Primitive = 1,
+    Module = 2,
+    ExternCrate = 3,
+    Import = 4,
+    Struct = 5,
+    Enum = 6,
+    Function = 7,
+    TypeAlias = 8,
+    Static = 9,
+    Trait = 10,
+    Impl = 11,
+    TyMethod = 12,
+    Method = 13,
+    StructField = 14,
+    Variant = 15,
+    Macro = 16,
+    AssocType = 17,
+    Constant = 18,
+    AssocConst = 19,
+    Union = 20,
+    ForeignType = 21,
     OpaqueTy = 22,
     ProcAttribute = 23,
     ProcDerive = 24,

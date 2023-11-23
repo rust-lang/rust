@@ -372,10 +372,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // ```
             FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. }) => {
                 if self.tcx.features().impl_trait_in_fn_trait_return {
-                    self.lower_ty(&ty, itctx)
+                    self.lower_ty(ty, itctx)
                 } else {
                     self.lower_ty(
-                        &ty,
+                        ty,
                         &ImplTraitContext::FeatureGated(
                             ImplTraitPosition::FnTraitReturn,
                             sym::impl_trait_in_fn_trait_return,
@@ -384,7 +384,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
             FnRetTy::Ty(ty) => {
-                self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
+                self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
             }
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };

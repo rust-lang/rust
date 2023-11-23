@@ -64,7 +64,7 @@ pub(super) fn trace<'mir, 'tcx>(
         let num_region_vars = typeck.infcx.num_region_vars();
         let graph = constraint_set.graph(num_region_vars);
         let region_graph =
-            graph.region_graph(&constraint_set, borrowck_context.universal_regions.fr_static);
+            graph.region_graph(constraint_set, borrowck_context.universal_regions.fr_static);
 
         // Traverse each issuing region's constraints, and record the loan as flowing into the
         // outlived region.
@@ -489,7 +489,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         }
 
         let move_paths = &self.flow_inits.analysis().move_data().move_paths;
-        move_paths[mpi].find_descendant(&move_paths, |mpi| state.contains(mpi)).is_some()
+        move_paths[mpi].find_descendant(move_paths, |mpi| state.contains(mpi)).is_some()
     }
 
     /// Returns `true` if the local variable (or some part of it) is initialized in
@@ -522,7 +522,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
 
         Self::make_all_regions_live(
             self.elements,
-            &mut self.typeck,
+            self.typeck,
             value,
             live_at,
             &self.inflowing_loans,
@@ -579,13 +579,13 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         for &kind in &drop_data.dropck_result.kinds {
             Self::make_all_regions_live(
                 self.elements,
-                &mut self.typeck,
+                self.typeck,
                 kind,
                 live_at,
                 &self.inflowing_loans,
             );
 
-            polonius::add_drop_of_var_derefs_origin(&mut self.typeck, dropped_local, &kind);
+            polonius::add_drop_of_var_derefs_origin(self.typeck, dropped_local, &kind);
         }
     }
 

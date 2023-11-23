@@ -2574,7 +2574,7 @@ pub enum AttrStyle {
 }
 
 rustc_index::newtype_index! {
-    #[custom_encodable]
+    #[orderable]
     #[debug_format = "AttrId({})"]
     pub struct AttrId {}
 }

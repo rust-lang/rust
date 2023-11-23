@@ -2,6 +2,7 @@
 use crate as rustc_index;
 
 crate::newtype_index! {
+    #[orderable]
     #[max = 0xFFFF_FFFA]
     struct MyIdx {}
 }

@@ -20,7 +20,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         right: &ImmTy<'tcx, M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        let (val, overflowed) = self.overflowing_binary_op(op, &left, &right)?;
+        let (val, overflowed) = self.overflowing_binary_op(op, left, right)?;
         debug_assert_eq!(
             Ty::new_tup(self.tcx.tcx, &[val.layout.ty, self.tcx.types.bool]),
             dest.layout.ty,

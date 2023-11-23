@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use crate::{DebugWithInfcx, Mutability};
+use crate::{BoundVar, DebugWithInfcx, Mutability, UniverseIndex};
 
 pub trait Interner: Sized {
     type DefId: Clone + Debug + Hash + Ord;
@@ -26,7 +26,7 @@ pub trait Interner: Sized {
     type AliasTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type ParamTy: Clone + Debug + Hash + Ord;
     type BoundTy: Clone + Debug + Hash + Ord;
-    type PlaceholderTy: Clone + Debug + Hash + Ord;
+    type PlaceholderTy: Clone + Debug + Hash + Ord + Placeholder;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Clone + Debug + Hash + Ord;
@@ -37,7 +37,7 @@ pub trait Interner: Sized {
     // Kinds of consts
     type Const: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type AliasConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type PlaceholderConst: Clone + Debug + Hash + Ord;
+    type PlaceholderConst: Clone + Debug + Hash + Ord + Placeholder;
     type ParamConst: Clone + Debug + Hash + Ord;
     type BoundConst: Clone + Debug + Hash + Ord;
     type ValueConst: Clone + Debug + Hash + Ord;
@@ -49,7 +49,7 @@ pub trait Interner: Sized {
     type BoundRegion: Clone + Debug + Hash + Ord;
     type LateParamRegion: Clone + Debug + Hash + Ord;
     type InferRegion: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type PlaceholderRegion: Clone + Debug + Hash + Ord;
+    type PlaceholderRegion: Clone + Debug + Hash + Ord + Placeholder;
 
     // Predicates
     type Predicate: Clone + Debug + Hash + Eq;
@@ -62,6 +62,14 @@ pub trait Interner: Sized {
     type ClosureKind: Clone + Debug + Hash + Eq;
 
     fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
+}
+
+/// Common capabilities of placeholder kinds
+pub trait Placeholder {
+    fn universe(&self) -> UniverseIndex;
+    fn var(&self) -> BoundVar;
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
