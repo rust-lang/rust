@@ -39,17 +39,6 @@ where
 {
     type EntrySets = E;
 }
-impl<'a, 'tcx, A, E> AnalysisResults<'tcx, A> for &'a mut Results<'tcx, A, E>
-where
-    A: Analysis<'tcx>,
-    E: Borrow<EntrySets<'tcx, A>>,
-{
-    type EntrySets = E;
-}
-
-/// A `ResultsCursor` that borrows the underlying `Results`.
-pub type ResultsRefCursor<'res, 'mir, 'tcx, A> =
-    ResultsCursor<'mir, 'tcx, A, &'res mut Results<'tcx, A>>;
 
 /// A `ResultsCursor` which uses a cloned `Analysis` while borrowing the underlying `Results`. This
 /// allows multiple cursors over the same `Results`.
@@ -62,9 +51,6 @@ pub type ResultsClonedCursor<'res, 'mir, 'tcx, A> =
 /// the same order as the `DIRECTION` of the analysis. In the worst case—when statements are
 /// visited in *reverse* order—performance will be quadratic in the number of statements in the
 /// block. The order in which basic blocks are inspected has no impact on performance.
-///
-/// A `ResultsCursor` can either own (the default) or borrow the dataflow results it inspects. The
-/// type of ownership is determined by `R` (see `ResultsRefCursor` above).
 pub struct ResultsCursor<'mir, 'tcx, A, R = Results<'tcx, A>>
 where
     A: Analysis<'tcx>,

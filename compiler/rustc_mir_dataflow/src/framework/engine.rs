@@ -25,7 +25,7 @@ use super::fmt::DebugWithContext;
 use super::graphviz;
 use super::{
     visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis, GenKillSet,
-    JoinSemiLattice, ResultsClonedCursor, ResultsCursor, ResultsRefCursor, ResultsVisitor,
+    JoinSemiLattice, ResultsClonedCursor, ResultsCursor, ResultsVisitor,
 };
 
 pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
@@ -77,19 +77,6 @@ where
     ) {
         let blocks = mir::traversal::reachable(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
-    }
-}
-
-impl<'tcx, A> Results<'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    /// Creates a `ResultsCursor` that can inspect these `Results`.
-    pub fn as_results_cursor<'a, 'mir>(
-        &'a mut self,
-        body: &'mir mir::Body<'tcx>,
-    ) -> ResultsRefCursor<'a, 'mir, 'tcx, A> {
-        ResultsCursor::new(body, self)
     }
 }
 
