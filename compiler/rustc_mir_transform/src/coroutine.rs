@@ -617,6 +617,22 @@ fn replace_resume_ty_local<'tcx>(
     }
 }
 
+/// Transforms the `body` of the coroutine applying the following transform:
+///
+/// - Remove the `resume` argument.
+///
+/// Ideally the async lowering would not add the `resume` argument.
+///
+/// The async lowering step and the type / lifetime inference / checking are
+/// still using the `resume` argument for the time being. After this transform,
+/// the coroutine body doesn't have the `resume` argument.
+fn transform_gen_context<'tcx>(_tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    // This leaves the local representing the `resume` argument in place,
+    // but turns it into a regular local variable. This is cheaper than
+    // adjusting all local references in the body after removing it.
+    body.arg_count = 1;
+}
+
 struct LivenessInfo {
     /// Which locals are live across any suspension point.
     saved_locals: CoroutineSavedLocals,
@@ -1337,7 +1353,15 @@ fn create_coroutine_resume_function<'tcx>(
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
 
     make_coroutine_state_argument_indirect(tcx, body);
-    make_coroutine_state_argument_pinned(tcx, body);
+
+    match coroutine_kind {
+        // Iterator::next doesn't accept a pinned argument,
+        // unlike for all other coroutine kinds.
+        CoroutineKind::Gen(_) => {}
+        _ => {
+            make_coroutine_state_argument_pinned(tcx, body);
+        }
+    }
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
@@ -1504,6 +1528,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         };
 
         let is_async_kind = matches!(body.coroutine_kind(), Some(CoroutineKind::Async(_)));
+        let is_gen_kind = matches!(body.coroutine_kind(), Some(CoroutineKind::Gen(_)));
         let (state_adt_ref, state_args) = match body.coroutine_kind().unwrap() {
             CoroutineKind::Async(_) => {
                 // Compute Poll<return_ty>
@@ -1608,6 +1633,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Update our MIR struct to reflect the changes we've made
         body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
+
+        // Remove the context argument within generator bodies.
+        if is_gen_kind {
+            transform_gen_context(tcx, body);
+        }
 
         // The original arguments to the function are no longer arguments, mark them as such.
         // Otherwise they'll conflict with our new arguments, which although they don't have

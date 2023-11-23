@@ -112,7 +112,13 @@ fn fn_sig_for_fn_abi<'tcx>(
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_args = tcx.mk_args(&[env_ty.into()]);
-            let env_ty = Ty::new_adt(tcx, pin_adt_ref, pin_args);
+            let env_ty = if tcx.coroutine_is_gen(did) {
+                // Iterator::next doesn't accept a pinned argument,
+                // unlike for all other coroutine kinds.
+                env_ty
+            } else {
+                Ty::new_adt(tcx, pin_adt_ref, pin_args)
+            };
 
             let sig = sig.skip_binder();
             // The `FnSig` and the `ret_ty` here is for a coroutines main
@@ -121,6 +127,8 @@ fn fn_sig_for_fn_abi<'tcx>(
             // function in case this is a special coroutine backing an async construct.
             let (resume_ty, ret_ty) = if tcx.coroutine_is_async(did) {
                 // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
+                assert_eq!(sig.yield_ty, tcx.types.unit);
+
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
                 let poll_adt_ref = tcx.adt_def(poll_did);
                 let poll_args = tcx.mk_args(&[sig.return_ty.into()]);
@@ -140,7 +148,30 @@ fn fn_sig_for_fn_abi<'tcx>(
                 }
                 let context_mut_ref = Ty::new_task_context(tcx);
 
-                (context_mut_ref, ret_ty)
+                (Some(context_mut_ref), ret_ty)
+            } else if tcx.coroutine_is_gen(did) {
+                // The signature should be `Iterator::next(_) -> Option<Yield>`
+                let option_did = tcx.require_lang_item(LangItem::Option, None);
+                let option_adt_ref = tcx.adt_def(option_did);
+                let option_args = tcx.mk_args(&[sig.yield_ty.into()]);
+                let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
+
+                assert_eq!(sig.return_ty, tcx.types.unit);
+
+                // We have to replace the `ResumeTy` that is used for type and borrow checking
+                // with `()` which is used in codegen.
+                #[cfg(debug_assertions)]
+                {
+                    if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
+                        let expected_adt =
+                            tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+                        assert_eq!(*resume_ty_adt, expected_adt);
+                    } else {
+                        panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
+                    };
+                }
+
+                (None, ret_ty)
             } else {
                 // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
                 let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
@@ -148,19 +179,28 @@ fn fn_sig_for_fn_abi<'tcx>(
                 let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
                 let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
 
-                (sig.resume_ty, ret_ty)
+                (Some(sig.resume_ty), ret_ty)
             };
 
-            ty::Binder::bind_with_vars(
+            let fn_sig = if let Some(resume_ty) = resume_ty {
                 tcx.mk_fn_sig(
                     [env_ty, resume_ty],
                     ret_ty,
                     false,
                     hir::Unsafety::Normal,
                     rustc_target::spec::abi::Abi::Rust,
-                ),
-                bound_vars,
-            )
+                )
+            } else {
+                // `Iterator::next` doesn't have a `resume` argument.
+                tcx.mk_fn_sig(
+                    [env_ty],
+                    ret_ty,
+                    false,
+                    hir::Unsafety::Normal,
+                    rustc_target::spec::abi::Abi::Rust,
+                )
+            };
+            ty::Binder::bind_with_vars(fn_sig, bound_vars)
         }
         _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
     }
