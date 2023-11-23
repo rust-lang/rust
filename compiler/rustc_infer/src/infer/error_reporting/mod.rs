@@ -155,7 +155,7 @@ impl TypeErrCtxt<'_, '_> {
 impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
     type Target = InferCtxt<'tcx>;
     fn deref(&self) -> &InferCtxt<'tcx> {
-        &self.infcx
+        self.infcx
     }
 }
 
@@ -1019,8 +1019,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// ```
     fn cmp_type_arg(
         &self,
-        mut t1_out: &mut DiagnosticStyledString,
-        mut t2_out: &mut DiagnosticStyledString,
+        t1_out: &mut DiagnosticStyledString,
+        t2_out: &mut DiagnosticStyledString,
         path: String,
         sub: &'tcx [ty::GenericArg<'tcx>],
         other_path: String,
@@ -1031,13 +1031,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let sub = self.tcx.mk_args(sub);
         for (i, ta) in sub.types().enumerate() {
             if ta == other_ty {
-                self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);
+                self.highlight_outer(t1_out, t2_out, path, sub, i, other_ty);
                 return Some(());
             }
             if let ty::Adt(def, _) = ta.kind() {
                 let path_ = self.tcx.def_path_str(def.did());
                 if path_ == other_path {
-                    self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);
+                    self.highlight_outer(t1_out, t2_out, path, sub, i, other_ty);
                     return Some(());
                 }
             }

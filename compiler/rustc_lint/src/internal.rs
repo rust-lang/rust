@@ -196,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                     }
                 } else if !ty.span.from_expansion()
                     && path.segments.len() > 1
-                    && let Some(ty) = is_ty_or_ty_ctxt(cx, &path)
+                    && let Some(ty) = is_ty_or_ty_ctxt(cx, path)
                 {
                     cx.emit_spanned_lint(
                         USAGE_OF_QUALIFIED_TY,

@@ -499,7 +499,7 @@ fn lock_directory(
 }
 
 fn delete_session_dir_lock_file(sess: &Session, lock_file_path: &Path) {
-    if let Err(err) = safe_remove_file(&lock_file_path) {
+    if let Err(err) = safe_remove_file(lock_file_path) {
         sess.emit_warning(errors::DeleteLock { path: lock_file_path, err });
     }
 }
@@ -847,10 +847,10 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
 fn delete_old(sess: &Session, path: &Path) {
     debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
-    if let Err(err) = safe_remove_dir_all(&path) {
-        sess.emit_warning(errors::SessionGcFailed { path: &path, err });
+    if let Err(err) = safe_remove_dir_all(path) {
+        sess.emit_warning(errors::SessionGcFailed { path: path, err });
     } else {
-        delete_session_dir_lock_file(sess, &lock_file_path(&path));
+        delete_session_dir_lock_file(sess, &lock_file_path(path));
     }
 }
 

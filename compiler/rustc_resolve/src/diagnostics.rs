@@ -979,7 +979,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     path_span: path.span,
                     // intentionally converting to String, as the text would also be used as
                     // in suggestion context
-                    path_str: pprust::path_to_string(&path),
+                    path_str: pprust::path_to_string(path),
                 })
             }
             VisResolutionError::AncestorOnly(span) => {
@@ -1444,7 +1444,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::All(ns),
-                &parent_scope,
+                parent_scope,
                 None,
                 false,
                 None,
@@ -1855,6 +1855,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some((
                         vec![(ident.span, pprust::path_to_string(&candidate.path))],
                         String::from("a similar path exists"),
+                        Applicability::MaybeIncorrect,
+                    )),
+                )
+            } else if ident.name == sym::core {
+                (
+                    format!("maybe a missing crate `{ident}`?"),
+                    Some((
+                        vec![(ident.span, "std".to_string())],
+                        "try using `std` instead of `core`".to_string(),
                         Applicability::MaybeIncorrect,
                     )),
                 )

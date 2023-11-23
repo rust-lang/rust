@@ -736,7 +736,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here
-                let pattern_test = self.test(&match_pair);
+                let pattern_test = self.test(match_pair);
                 if pattern_test.kind == test.kind {
                     self.candidate_without_match_pair(match_pair_index, candidate);
                     Some(0)

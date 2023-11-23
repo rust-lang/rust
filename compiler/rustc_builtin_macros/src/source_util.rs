@@ -133,7 +133,7 @@ pub fn expand_include<'cx>(
             let r = base::parse_expr(&mut self.p)?;
             if self.p.token != token::Eof {
                 self.p.sess.buffer_lint(
-                    &INCOMPLETE_INCLUDE,
+                    INCOMPLETE_INCLUDE,
                     self.p.token.span,
                     self.node_id,
                     "include macro expected single expression in source",
@@ -189,7 +189,7 @@ pub fn expand_include_str(
     match cx.source_map().load_binary_file(&file) {
         Ok(bytes) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
-                let interned_src = Symbol::intern(&src);
+                let interned_src = Symbol::intern(src);
                 base::MacEager::expr(cx.expr_str(sp, interned_src))
             }
             Err(_) => {

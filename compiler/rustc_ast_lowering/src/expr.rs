@@ -959,7 +959,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 e
             });
             let coroutine_option =
-                this.coroutine_movability_for_fn(&decl, fn_decl_span, coroutine_kind, movability);
+                this.coroutine_movability_for_fn(decl, fn_decl_span, coroutine_kind, movability);
             this.current_item = prev;
             (body_id, coroutine_option)
         });
@@ -1057,7 +1057,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let body_id = this.lower_fn_body(&outer_decl, |this| {
                 let async_ret_ty = if let FnRetTy::Ty(ty) = &decl.output {
                     let itctx = ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock);
-                    Some(hir::FnRetTy::Return(this.lower_ty(&ty, &itctx)))
+                    Some(hir::FnRetTy::Return(this.lower_ty(ty, &itctx)))
                 } else {
                     None
                 };
@@ -1156,7 +1156,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
 
         // Wrap everything in a block.
-        hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
+        hir::ExprKind::Block(self.block_all(whole_span, stmts, None), None)
     }
 
     /// If the given expression is a path to a tuple struct, returns that path.
@@ -1413,7 +1413,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fields = self.arena.alloc_from_iter(
             e1.iter().map(|e| (sym::start, e)).chain(e2.iter().map(|e| (sym::end, e))).map(
                 |(s, e)| {
-                    let expr = self.lower_expr(&e);
+                    let expr = self.lower_expr(e);
                     let ident = Ident::new(s, self.lower_span(e.span));
                     self.expr_field(ident, expr, e.span)
                 },

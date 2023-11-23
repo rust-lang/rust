@@ -127,7 +127,7 @@ impl BorrowedSocket<'_> {
                 info.iAddressFamily,
                 info.iSocketType,
                 info.iProtocol,
-                &mut info,
+                &info,
                 0,
                 sys::c::WSA_FLAG_OVERLAPPED | sys::c::WSA_FLAG_NO_HANDLE_INHERIT,
             )
@@ -147,7 +147,7 @@ impl BorrowedSocket<'_> {
                     info.iAddressFamily,
                     info.iSocketType,
                     info.iProtocol,
-                    &mut info,
+                    &info,
                     0,
                     sys::c::WSA_FLAG_OVERLAPPED,
                 )

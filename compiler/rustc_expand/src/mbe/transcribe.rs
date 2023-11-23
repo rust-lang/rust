@@ -90,7 +90,7 @@ pub(super) fn transcribe<'a>(
 
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
     // we have yet to expand/are still expanding. We start the stack off with the whole RHS.
-    let mut stack: SmallVec<[Frame<'_>; 1]> = smallvec![Frame::new(&src, src_span)];
+    let mut stack: SmallVec<[Frame<'_>; 1]> = smallvec![Frame::new(src, src_span)];
 
     // As we descend in the RHS, we will need to be able to match nested sequences of matchers.
     // `repeats` keeps track of where we are in matching at each level, with the last element being
@@ -166,7 +166,7 @@ pub(super) fn transcribe<'a>(
             // and the matches in `interp` have the same shape. Otherwise, either the caller or the
             // macro writer has made a mistake.
             seq @ mbe::TokenTree::Sequence(_, delimited) => {
-                match lockstep_iter_size(&seq, interp, &repeats) {
+                match lockstep_iter_size(seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
                         return Err(cx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
@@ -250,7 +250,7 @@ pub(super) fn transcribe<'a>(
 
             // Replace meta-variable expressions with the result of their expansion.
             mbe::TokenTree::MetaVarExpr(sp, expr) => {
-                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, &sp)?;
+                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, sp)?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -529,7 +529,7 @@ fn transcribe_metavar_expr<'a>(
     match *expr {
         MetaVarExpr::Count(original_ident, depth_opt) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
-            let count = count_repetitions(cx, depth_opt, matched, &repeats, sp)?;
+            let count = count_repetitions(cx, depth_opt, matched, repeats, sp)?;
             let tt = TokenTree::token_alone(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
                 visited_span(),

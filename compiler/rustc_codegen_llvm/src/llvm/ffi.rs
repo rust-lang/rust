@@ -823,11 +823,7 @@ pub type GetSymbolsCallback = unsafe extern "C" fn(*mut c_void, *const c_char) -
 pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 
 extern "C" {
-    pub fn LLVMRustInstallFatalErrorHandler();
-    pub fn LLVMRustDisableSystemDialogsOnCrash();
-
     // Create and destroy contexts.
-    pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
     pub fn LLVMContextDispose(C: &'static mut Context);
     pub fn LLVMGetMDKindIDInContext(C: &Context, Name: *const c_char, SLen: c_uint) -> c_uint;
 
@@ -842,9 +838,6 @@ extern "C" {
 
     /// See Module::setModuleInlineAsm.
     pub fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
-
-    /// See llvm::LLVMTypeKind::getTypeID.
-    pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
 
     // Operations on integer types
     pub fn LLVMInt1TypeInContext(C: &Context) -> &Type;
@@ -879,7 +872,6 @@ extern "C" {
     ) -> &'a Type;
 
     // Operations on array, pointer, and vector types (sequence types)
-    pub fn LLVMRustArrayType(ElementType: &Type, ElementCount: u64) -> &Type;
     pub fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
@@ -898,10 +890,8 @@ extern "C" {
     pub fn LLVMReplaceAllUsesWith<'a>(OldVal: &'a Value, NewVal: &'a Value);
     pub fn LLVMSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Node: &'a Value);
     pub fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
-    pub fn LLVMRustGlobalAddMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
     pub fn LLVMIsAFunction(Val: &Value) -> Option<&Value>;
-    pub fn LLVMRustIsNonGVFunctionPointerTy(Val: &Value) -> bool;
 
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: &Type) -> &Value;
@@ -931,13 +921,6 @@ extern "C" {
     pub fn LLVMConstInt(IntTy: &Type, N: c_ulonglong, SignExtend: Bool) -> &Value;
     pub fn LLVMConstIntOfArbitraryPrecision(IntTy: &Type, Wn: c_uint, Ws: *const u64) -> &Value;
     pub fn LLVMConstReal(RealTy: &Type, N: f64) -> &Value;
-    pub fn LLVMRustConstIntGetZExtValue(ConstantVal: &ConstantInt, Value: &mut u64) -> bool;
-    pub fn LLVMRustConstInt128Get(
-        ConstantVal: &ConstantInt,
-        SExt: bool,
-        high: &mut u64,
-        low: &mut u64,
-    ) -> bool;
 
     // Operations on composite constants
     pub fn LLVMConstStringInContext(
@@ -977,12 +960,7 @@ extern "C" {
 
     // Operations on global variables, functions, and aliases (globals)
     pub fn LLVMIsDeclaration(Global: &Value) -> Bool;
-    pub fn LLVMRustGetLinkage(Global: &Value) -> Linkage;
-    pub fn LLVMRustSetLinkage(Global: &Value, RustLinkage: Linkage);
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
-    pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
-    pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
-    pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: &Value, C: DLLStorageClass);
@@ -991,13 +969,6 @@ extern "C" {
     pub fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
     pub fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
-    pub fn LLVMRustGetOrInsertGlobal<'a>(
-        M: &'a Module,
-        Name: *const c_char,
-        NameLen: size_t,
-        T: &'a Type,
-    ) -> &'a Value;
-    pub fn LLVMRustInsertPrivateGlobal<'a>(M: &'a Module, T: &'a Type) -> &'a Value;
     pub fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
     pub fn LLVMDeleteGlobal(GlobalVar: &Value);
@@ -1007,16 +978,9 @@ extern "C" {
     pub fn LLVMSetThreadLocalMode(GlobalVar: &Value, Mode: ThreadLocalMode);
     pub fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
-    pub fn LLVMRustGetNamedValue(
-        M: &Module,
-        Name: *const c_char,
-        NameLen: size_t,
-    ) -> Option<&Value>;
     pub fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
-    pub fn LLVMRustSetTailCallKind(CallInst: &Value, TKC: TailCallKind);
 
     // Operations on attributes
-    pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
     pub fn LLVMCreateStringAttribute(
         C: &Context,
         Name: *const c_char,
@@ -1024,31 +988,9 @@ extern "C" {
         Value: *const c_char,
         ValueLen: c_uint,
     ) -> &Attribute;
-    pub fn LLVMRustCreateAlignmentAttr(C: &Context, bytes: u64) -> &Attribute;
-    pub fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
-    pub fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
-    pub fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub fn LLVMRustCreateElementTypeAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
-    pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
-    pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
-    pub fn LLVMRustCreateMemoryEffectsAttr(C: &Context, effects: MemoryEffects) -> &Attribute;
 
     // Operations on functions
-    pub fn LLVMRustGetOrInsertFunction<'a>(
-        M: &'a Module,
-        Name: *const c_char,
-        NameLen: size_t,
-        FunctionTy: &'a Type,
-    ) -> &'a Value;
     pub fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
-    pub fn LLVMRustAddFunctionAttributes<'a>(
-        Fn: &'a Value,
-        index: c_uint,
-        Attrs: *const &'a Attribute,
-        AttrsLen: size_t,
-    );
 
     // Operations on parameters
     pub fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
@@ -1069,12 +1011,6 @@ extern "C" {
 
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
-    pub fn LLVMRustAddCallSiteAttributes<'a>(
-        Instr: &'a Value,
-        index: c_uint,
-        Attrs: *const &'a Attribute,
-        AttrsLen: size_t,
-    );
 
     // Operations on load/store instructions (only)
     pub fn LLVMSetVolatile(MemoryAccessInst: &Value, volatile: Bool);
@@ -1111,18 +1047,6 @@ extern "C" {
         V: &'a Value,
         Else: &'a BasicBlock,
         NumCases: c_uint,
-    ) -> &'a Value;
-    pub fn LLVMRustBuildInvoke<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        Then: &'a BasicBlock,
-        Catch: &'a BasicBlock,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-        Name: *const c_char,
     ) -> &'a Value;
     pub fn LLVMBuildLandingPad<'a>(
         B: &Builder<'a>,
@@ -1337,7 +1261,6 @@ extern "C" {
     pub fn LLVMBuildNeg<'a>(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
     pub fn LLVMBuildFNeg<'a>(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
     pub fn LLVMBuildNot<'a>(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
-    pub fn LLVMRustSetFastMath(Instr: &Value);
 
     // Memory
     pub fn LLVMBuildAlloca<'a>(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
@@ -1485,42 +1408,6 @@ extern "C" {
 
     // Miscellaneous instructions
     pub fn LLVMBuildPhi<'a>(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
-    pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
-    pub fn LLVMRustBuildCall<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-    ) -> &'a Value;
-    pub fn LLVMRustBuildMemCpy<'a>(
-        B: &Builder<'a>,
-        Dst: &'a Value,
-        DstAlign: c_uint,
-        Src: &'a Value,
-        SrcAlign: c_uint,
-        Size: &'a Value,
-        IsVolatile: bool,
-    ) -> &'a Value;
-    pub fn LLVMRustBuildMemMove<'a>(
-        B: &Builder<'a>,
-        Dst: &'a Value,
-        DstAlign: c_uint,
-        Src: &'a Value,
-        SrcAlign: c_uint,
-        Size: &'a Value,
-        IsVolatile: bool,
-    ) -> &'a Value;
-    pub fn LLVMRustBuildMemSet<'a>(
-        B: &Builder<'a>,
-        Dst: &'a Value,
-        DstAlign: c_uint,
-        Val: &'a Value,
-        Size: &'a Value,
-        IsVolatile: bool,
-    ) -> &'a Value;
     pub fn LLVMBuildSelect<'a>(
         B: &Builder<'a>,
         If: &'a Value,
@@ -1566,6 +1453,202 @@ extern "C" {
         EltVal: &'a Value,
         Index: c_uint,
         Name: *const c_char,
+    ) -> &'a Value;
+
+    // Atomic Operations
+    pub fn LLVMBuildAtomicCmpXchg<'a>(
+        B: &Builder<'a>,
+        LHS: &'a Value,
+        CMP: &'a Value,
+        RHS: &'a Value,
+        Order: AtomicOrdering,
+        FailureOrder: AtomicOrdering,
+        SingleThreaded: Bool,
+    ) -> &'a Value;
+
+    pub fn LLVMSetWeak(CmpXchgInst: &Value, IsWeak: Bool);
+
+    pub fn LLVMBuildAtomicRMW<'a>(
+        B: &Builder<'a>,
+        Op: AtomicRmwBinOp,
+        LHS: &'a Value,
+        RHS: &'a Value,
+        Order: AtomicOrdering,
+        SingleThreaded: Bool,
+    ) -> &'a Value;
+
+    pub fn LLVMBuildFence<'a>(
+        B: &Builder<'a>,
+        Order: AtomicOrdering,
+        SingleThreaded: Bool,
+        Name: *const c_char,
+    ) -> &'a Value;
+
+    /// Writes a module to the specified path. Returns 0 on success.
+    pub fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
+
+    /// Creates a legacy pass manager -- only used for final codegen.
+    pub fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
+
+    pub fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
+
+    pub fn LLVMGetHostCPUFeatures() -> *mut c_char;
+
+    pub fn LLVMDisposeMessage(message: *mut c_char);
+
+    pub fn LLVMIsMultithreaded() -> Bool;
+
+    pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> &Type;
+
+    pub fn LLVMStructSetBody<'a>(
+        StructTy: &'a Type,
+        ElementTypes: *const &'a Type,
+        ElementCount: c_uint,
+        Packed: Bool,
+    );
+
+    pub fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
+
+    pub fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
+
+    pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
+}
+
+#[link(name = "llvm-wrapper", kind = "static")]
+extern "C" {
+    pub fn LLVMRustInstallFatalErrorHandler();
+    pub fn LLVMRustDisableSystemDialogsOnCrash();
+
+    // Create and destroy contexts.
+    pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
+
+    /// See llvm::LLVMTypeKind::getTypeID.
+    pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
+
+    // Operations on array, pointer, and vector types (sequence types)
+    pub fn LLVMRustArrayType(ElementType: &Type, ElementCount: u64) -> &Type;
+
+    // Operations on all values
+    pub fn LLVMRustGlobalAddMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
+    pub fn LLVMRustIsNonGVFunctionPointerTy(Val: &Value) -> bool;
+
+    // Operations on scalar constants
+    pub fn LLVMRustConstIntGetZExtValue(ConstantVal: &ConstantInt, Value: &mut u64) -> bool;
+    pub fn LLVMRustConstInt128Get(
+        ConstantVal: &ConstantInt,
+        SExt: bool,
+        high: &mut u64,
+        low: &mut u64,
+    ) -> bool;
+
+    // Operations on global variables, functions, and aliases (globals)
+    pub fn LLVMRustGetLinkage(Global: &Value) -> Linkage;
+    pub fn LLVMRustSetLinkage(Global: &Value, RustLinkage: Linkage);
+    pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
+    pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
+    pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
+
+    // Operations on global variables
+    pub fn LLVMRustGetOrInsertGlobal<'a>(
+        M: &'a Module,
+        Name: *const c_char,
+        NameLen: size_t,
+        T: &'a Type,
+    ) -> &'a Value;
+    pub fn LLVMRustInsertPrivateGlobal<'a>(M: &'a Module, T: &'a Type) -> &'a Value;
+    pub fn LLVMRustGetNamedValue(
+        M: &Module,
+        Name: *const c_char,
+        NameLen: size_t,
+    ) -> Option<&Value>;
+    pub fn LLVMRustSetTailCallKind(CallInst: &Value, TKC: TailCallKind);
+
+    // Operations on attributes
+    pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
+    pub fn LLVMRustCreateAlignmentAttr(C: &Context, bytes: u64) -> &Attribute;
+    pub fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
+    pub fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
+    pub fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub fn LLVMRustCreateElementTypeAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
+    pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
+    pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
+    pub fn LLVMRustCreateMemoryEffectsAttr(C: &Context, effects: MemoryEffects) -> &Attribute;
+
+    // Operations on functions
+    pub fn LLVMRustGetOrInsertFunction<'a>(
+        M: &'a Module,
+        Name: *const c_char,
+        NameLen: size_t,
+        FunctionTy: &'a Type,
+    ) -> &'a Value;
+    pub fn LLVMRustAddFunctionAttributes<'a>(
+        Fn: &'a Value,
+        index: c_uint,
+        Attrs: *const &'a Attribute,
+        AttrsLen: size_t,
+    );
+
+    // Operations on call sites
+    pub fn LLVMRustAddCallSiteAttributes<'a>(
+        Instr: &'a Value,
+        index: c_uint,
+        Attrs: *const &'a Attribute,
+        AttrsLen: size_t,
+    );
+
+    pub fn LLVMRustBuildInvoke<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Then: &'a BasicBlock,
+        Catch: &'a BasicBlock,
+        OpBundles: *const &OperandBundleDef<'a>,
+        NumOpBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+
+    pub fn LLVMRustSetFastMath(Instr: &Value);
+
+    // Miscellaneous instructions
+    pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
+    pub fn LLVMRustBuildCall<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        OpBundles: *const &OperandBundleDef<'a>,
+        NumOpBundles: c_uint,
+    ) -> &'a Value;
+    pub fn LLVMRustBuildMemCpy<'a>(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Src: &'a Value,
+        SrcAlign: c_uint,
+        Size: &'a Value,
+        IsVolatile: bool,
+    ) -> &'a Value;
+    pub fn LLVMRustBuildMemMove<'a>(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Src: &'a Value,
+        SrcAlign: c_uint,
+        Size: &'a Value,
+        IsVolatile: bool,
+    ) -> &'a Value;
+    pub fn LLVMRustBuildMemSet<'a>(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Val: &'a Value,
+        Size: &'a Value,
+        IsVolatile: bool,
     ) -> &'a Value;
 
     pub fn LLVMRustBuildVectorReduceFAdd<'a>(
@@ -1623,53 +1706,11 @@ extern "C" {
         Order: AtomicOrdering,
     ) -> &'a Value;
 
-    pub fn LLVMBuildAtomicCmpXchg<'a>(
-        B: &Builder<'a>,
-        LHS: &'a Value,
-        CMP: &'a Value,
-        RHS: &'a Value,
-        Order: AtomicOrdering,
-        FailureOrder: AtomicOrdering,
-        SingleThreaded: Bool,
-    ) -> &'a Value;
+    pub fn LLVMRustTimeTraceProfilerInitialize();
 
-    pub fn LLVMSetWeak(CmpXchgInst: &Value, IsWeak: Bool);
+    pub fn LLVMRustTimeTraceProfilerFinishThread();
 
-    pub fn LLVMBuildAtomicRMW<'a>(
-        B: &Builder<'a>,
-        Op: AtomicRmwBinOp,
-        LHS: &'a Value,
-        RHS: &'a Value,
-        Order: AtomicOrdering,
-        SingleThreaded: Bool,
-    ) -> &'a Value;
-
-    pub fn LLVMBuildFence<'a>(
-        B: &Builder<'a>,
-        Order: AtomicOrdering,
-        SingleThreaded: Bool,
-        Name: *const c_char,
-    ) -> &'a Value;
-
-    /// Writes a module to the specified path. Returns 0 on success.
-    pub fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
-
-    /// Creates a legacy pass manager -- only used for final codegen.
-    pub fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
-
-    pub fn LLVMTimeTraceProfilerInitialize();
-
-    pub fn LLVMTimeTraceProfilerFinishThread();
-
-    pub fn LLVMTimeTraceProfilerFinish(FileName: *const c_char);
-
-    pub fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
-
-    pub fn LLVMGetHostCPUFeatures() -> *mut c_char;
-
-    pub fn LLVMDisposeMessage(message: *mut c_char);
-
-    pub fn LLVMIsMultithreaded() -> Bool;
+    pub fn LLVMRustTimeTraceProfilerFinish(FileName: *const c_char);
 
     /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
@@ -1679,15 +1720,6 @@ extern "C" {
 
     /// Print the statistics since static dtors aren't picking them up.
     pub fn LLVMRustPrintStatistics(size: *const size_t) -> *const c_char;
-
-    pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> &Type;
-
-    pub fn LLVMStructSetBody<'a>(
-        StructTy: &'a Type,
-        ElementTypes: *const &'a Type,
-        ElementCount: c_uint,
-        Packed: Bool,
-    );
 
     /// Prepares inline assembly.
     pub fn LLVMRustInlineAsm(
@@ -1760,8 +1792,6 @@ extern "C" {
         value: u32,
     );
     pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
-
-    pub fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
 
@@ -2052,8 +2082,6 @@ extern "C" {
         UniqueIdLen: size_t,
     ) -> &'a DIDerivedType;
 
-    pub fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
-
     pub fn LLVMRustDIBuilderCreateTemplateTypeParameter<'a>(
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIScope>,
@@ -2091,8 +2119,6 @@ extern "C" {
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
-
-    pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 

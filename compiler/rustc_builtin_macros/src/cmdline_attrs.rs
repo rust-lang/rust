@@ -11,7 +11,7 @@ pub fn inject(krate: &mut ast::Crate, parse_sess: &ParseSess, attrs: &[String]) 
     for raw_attr in attrs {
         let mut parser = rustc_parse::new_parser_from_source_str(
             parse_sess,
-            FileName::cli_crate_attr_source_code(&raw_attr),
+            FileName::cli_crate_attr_source_code(raw_attr),
             raw_attr.clone(),
         );
 

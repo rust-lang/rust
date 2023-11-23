@@ -31,7 +31,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
             }
             Err(err) => {
                 sess.emit_warning(errors::CopyWorkProductToCache {
-                    from: &path,
+                    from: path,
                     to: &path_in_incr_dir,
                     err,
                 });

@@ -409,7 +409,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         }
 
         let enum_ = discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
+            switch_on_enum_discriminant(self.tcx, self.body, &self.body[block], discr)
         });
 
         let Some((enum_place, enum_def)) = enum_ else {
@@ -540,7 +540,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         }
 
         let enum_ = discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
+            switch_on_enum_discriminant(self.tcx, self.body, &self.body[block], discr)
         });
 
         let Some((enum_place, enum_def)) = enum_ else {

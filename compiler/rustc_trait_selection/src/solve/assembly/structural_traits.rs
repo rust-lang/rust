@@ -50,14 +50,14 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::Array(element_ty, _) | ty::Slice(element_ty) => Ok(vec![element_ty]),
 
-        ty::Tuple(ref tys) => {
+        ty::Tuple(tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
             Ok(tys.iter().collect())
         }
 
-        ty::Closure(_, ref args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
+        ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Coroutine(_, ref args, _) => {
+        ty::Coroutine(_, args, _) => {
             let coroutine_args = args.as_coroutine();
             Ok(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()])
         }

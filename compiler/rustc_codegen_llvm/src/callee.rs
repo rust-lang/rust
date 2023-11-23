@@ -62,7 +62,7 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             // exemption for MinGW for backwards compatibility.
             let llfn = cx.declare_fn(
                 &common::i686_decorated_name(
-                    &dllimport,
+                    dllimport,
                     common::is_mingw_gnu_toolchain(&tcx.sess.target),
                     true,
                 ),

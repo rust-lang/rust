@@ -511,7 +511,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
-            visitor.visit_body(&body);
+            visitor.visit_body(body);
             if visitor.result {
                 return Some(TypeErrorAdditionalDiags::AddLetForLetChains {
                     span: span.shrink_to_lo(),
@@ -636,10 +636,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return None;
         }
         let last_stmt = blk.stmts.last()?;
-        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
+        let hir::StmtKind::Semi(last_expr) = last_stmt.kind else {
             return None;
         };
-        let last_expr_ty = self.typeck_results.as_ref()?.expr_ty_opt(*last_expr)?;
+        let last_expr_ty = self.typeck_results.as_ref()?.expr_ty_opt(last_expr)?;
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
             _ if last_expr_ty.references_error() => return None,
             _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {

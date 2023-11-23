@@ -373,10 +373,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.repr_has_repr_c = def.repr().c();
                     self.repr_has_repr_simd = def.repr().simd();
 
-                    intravisit::walk_item(self, &item)
+                    intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
-                _ => intravisit::walk_item(self, &item),
+                _ => intravisit::walk_item(self, item),
             },
             Node::TraitItem(trait_item) => {
                 intravisit::walk_trait_item(self, trait_item);
@@ -403,7 +403,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 intravisit::walk_impl_item(self, impl_item);
             }
             Node::ForeignItem(foreign_item) => {
-                intravisit::walk_foreign_item(self, &foreign_item);
+                intravisit::walk_foreign_item(self, foreign_item);
             }
             _ => {}
         }
@@ -459,9 +459,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprKind::Field(ref lhs, ..) => {
-                self.handle_field_access(&lhs, expr.hir_id);
+                self.handle_field_access(lhs, expr.hir_id);
             }
-            hir::ExprKind::Struct(ref qpath, ref fields, _) => {
+            hir::ExprKind::Struct(qpath, fields, _) => {
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                 self.handle_res(res);
                 if let ty::Adt(adt, _) = self.typeck_results().expr_ty(expr).kind() {
@@ -493,7 +493,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         self.in_pat = true;
         match pat.kind {
-            PatKind::Struct(ref path, ref fields, _) => {
+            PatKind::Struct(ref path, fields, _) => {
                 let res = self.typeck_results().qpath_res(path, pat.hir_id);
                 self.handle_field_pattern_match(pat, res, fields);
             }
@@ -501,7 +501,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
                 self.handle_res(res);
             }
-            PatKind::TupleStruct(ref qpath, ref fields, dotdot) => {
+            PatKind::TupleStruct(ref qpath, fields, dotdot) => {
                 let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
                 self.handle_tuple_field_pattern_match(pat, res, fields, dotdot);
             }
@@ -1011,7 +1011,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                         let def_id = field.did.expect_local();
                         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                         if let ShouldWarnAboutField::Yes(is_pos) =
-                            visitor.should_warn_about_field(&field)
+                            visitor.should_warn_about_field(field)
                         {
                             let level = tcx
                                 .lint_level_at_node(

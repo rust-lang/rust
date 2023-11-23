@@ -1,5 +1,3 @@
-#![feature(trait_upcasting)]
-
 trait Foo<'a>: Bar<'a, 'a> {}
 trait Bar<'a, 'b> {
     fn get_b(&self) -> Option<&'a u32> {

@@ -129,7 +129,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                             tcx,
                             generics,
                             err,
-                            &param_ty.name.as_str(),
+                            param_ty.name.as_str(),
                             &constraint,
                             None,
                             None,

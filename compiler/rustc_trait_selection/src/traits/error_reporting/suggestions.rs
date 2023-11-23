@@ -99,7 +99,7 @@ impl<'tcx, 'a> CoroutineData<'tcx, 'a> {
             .awaits
             .into_iter()
             .map(|id| hir.expect_expr(id))
-            .find(|await_expr| ty_matches(ty::Binder::dummy(self.0.expr_ty_adjusted(&await_expr))))
+            .find(|await_expr| ty_matches(ty::Binder::dummy(self.0.expr_ty_adjusted(await_expr))))
             .map(|expr| expr.span)
     }
 }
@@ -501,7 +501,7 @@ pub fn suggest_restriction<'tcx>(
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn suggest_restricting_param_bound(
         &self,
-        mut err: &mut Diagnostic,
+        err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
         mut body_id: LocalDefId,
@@ -533,7 +533,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     suggest_restriction(
                         self.tcx,
                         body_id,
-                        &generics,
+                        generics,
                         "`Self`",
                         err,
                         None,
@@ -552,7 +552,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
-                        self.tcx, body_id, &generics, "`Self`", err, None, projection, trait_pred,
+                        self.tcx, body_id, generics, "`Self`", err, None, projection, trait_pred,
                         None,
                     );
                     return;
@@ -575,7 +575,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     suggest_restriction(
                         self.tcx,
                         body_id,
-                        &generics,
+                        generics,
                         "the associated type",
                         err,
                         Some(fn_sig),
@@ -595,7 +595,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     suggest_restriction(
                         self.tcx,
                         body_id,
-                        &generics,
+                        generics,
                         "the associated type",
                         err,
                         None,
@@ -662,7 +662,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if suggest_constraining_type_param(
                         self.tcx,
                         generics,
-                        &mut err,
+                        err,
                         &param_name,
                         &constraint,
                         Some(trait_pred.def_id()),
@@ -690,7 +690,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if suggest_arbitrary_trait_bound(
                         self.tcx,
                         generics,
-                        &mut err,
+                        err,
                         trait_pred,
                         associated_ty,
                     ) {
@@ -1273,7 +1273,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
             obligation.cause.code()
         {
-            &parent_code
+            parent_code
         } else if let ObligationCauseCode::ItemObligation(_)
         | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
         {
@@ -1867,7 +1867,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(obligation.cause.body_id));
 
         let mut visitor = ReturnsVisitor::default();
-        visitor.visit_body(&body);
+        visitor.visit_body(body);
 
         let mut sugg =
             vec![(span.shrink_to_lo(), "Box<".to_string()), (span.shrink_to_hi(), ">".to_string())];
@@ -1922,7 +1922,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let body = hir.body(*body_id);
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
-            visitor.visit_body(&body);
+            visitor.visit_body(body);
             let typeck_results = self.typeck_results.as_ref().unwrap();
             for expr in &visitor.returns {
                 if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
@@ -2300,7 +2300,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // cycles. If we can't use resolved types because the coroutine comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
         let coroutine_data = match &self.typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == coroutine_did_root => CoroutineData(&t),
+            Some(t) if t.hir_owner.to_def_id() == coroutine_did_root => CoroutineData(t),
             _ if coroutine_did.is_local() => {
                 CoroutineData(self.tcx.typeck(coroutine_did.expect_local()))
             }
@@ -2344,7 +2344,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         if interior_or_upvar_span.is_none() {
             interior_or_upvar_span =
-                coroutine_data.try_get_upvar_span(&self, coroutine_did, ty_matches);
+                coroutine_data.try_get_upvar_span(self, coroutine_did, ty_matches);
         }
 
         if interior_or_upvar_span.is_none() && !coroutine_did.is_local() {
@@ -2517,7 +2517,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             CoroutineInteriorOrUpvar::Upvar(upvar_span) => {
                 // `Some((ref_ty, is_mut))` if `target_ty` is `&T` or `&mut T` and fails to impl `Send`
                 let non_send = match target_ty.kind() {
-                    ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(&obligation) {
+                    ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(obligation) {
                         Ok(eval) if !eval.may_apply() => Some((ref_ty, mutability.is_mut())),
                         _ => None,
                     },
@@ -3305,7 +3305,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err,
                         predicate,
                         param_env,
-                        &parent_code,
+                        parent_code,
                         obligated_types,
                         seen_requirements,
                     )
@@ -3660,9 +3660,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // If the expression we're calling on is a binding, we want to point at the
                 // `let` when talking about the type. Otherwise we'll point at every part
                 // of the method chain with the type.
-                self.point_at_chain(binding_expr, &typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(binding_expr, typeck_results, type_diffs, param_env, err);
             } else {
-                self.point_at_chain(expr, &typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(expr, typeck_results, type_diffs, param_env, err);
             }
         }
         let call_node = hir.find(call_hir_id);
@@ -3856,7 +3856,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         suggest_restriction(
                             tcx,
                             hir.body_owner_def_id(body_id),
-                            &generics,
+                            generics,
                             &format!("type parameter `{ty}`"),
                             err,
                             node.fn_sig(),

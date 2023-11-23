@@ -853,7 +853,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
 
     use rustc_session::RemapFileNameExt;
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy();
+    let work_dir = tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
     let flags = "\0";
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {

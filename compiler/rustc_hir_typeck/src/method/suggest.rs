@@ -484,7 +484,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.note_internal_mutation_in_method(
                 &mut err,
                 rcvr_expr,
-                expected.to_option(&self),
+                expected.to_option(self),
                 rcvr_ty,
             );
         }
@@ -509,7 +509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if static_candidates.len() == 1 {
             self.suggest_associated_call_syntax(
                 &mut err,
-                &static_candidates,
+                static_candidates,
                 rcvr_ty,
                 source,
                 item_name,
@@ -969,7 +969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "the following trait bounds were not satisfied:\n{bound_list}"
                     ));
                 }
-                self.suggest_derive(&mut err, &unsatisfied_predicates);
+                self.suggest_derive(&mut err, unsatisfied_predicates);
 
                 unsatisfied_bounds = true;
             }
@@ -1170,8 +1170,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args.map(|args| args.len() + 1),
                 source,
                 no_match_data.out_of_scope_traits.clone(),
-                &unsatisfied_predicates,
-                &static_candidates,
+                unsatisfied_predicates,
+                static_candidates,
                 unsatisfied_bounds,
                 expected.only_has_type(self),
                 trait_missing_method,
@@ -1722,7 +1722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
                 if let Node::Expr(parent_expr) = parent {
                     let lang_item = match parent_expr.kind {
-                        ExprKind::Struct(ref qpath, _, _) => match **qpath {
+                        ExprKind::Struct(qpath, _, _) => match *qpath {
                             QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
                             QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
                             QPath::LangItem(LangItem::RangeToInclusive, ..) => {
@@ -1730,7 +1730,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             _ => None,
                         },
-                        ExprKind::Call(ref func, _) => match func.kind {
+                        ExprKind::Call(func, _) => match func.kind {
                             // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
                             ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)) => {
                                 Some(LangItem::RangeInclusiveStruct)
@@ -1749,7 +1749,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             eps.len() > 0 && eps.last().is_some_and(|ep| ep.span.contains(span))
                         }
                         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-                        hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
+                        hir::ExprKind::Call(func, ..) => func.span.contains(span),
                         _ => false,
                     };
 
@@ -1843,7 +1843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             let concrete_type = if actual.is_integral() { "i32" } else { "f32" };
             match expr.kind {
-                ExprKind::Lit(ref lit) => {
+                ExprKind::Lit(lit) => {
                     // numeric literal
                     let snippet = tcx
                         .sess
@@ -1947,7 +1947,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut visitor = LetVisitor { result: None, ident_name: seg1.ident.name };
-        visitor.visit_body(&body);
+        visitor.visit_body(body);
 
         let parent = self.tcx.hir().parent_id(seg1.hir_id);
         if let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent)

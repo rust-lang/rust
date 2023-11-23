@@ -681,17 +681,13 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         for constraint in self.data.constraints.keys() {
             match *constraint {
                 Constraint::VarSubVar(a_id, b_id) => {
-                    graph.add_edge(
-                        NodeIndex(a_id.index() as usize),
-                        NodeIndex(b_id.index() as usize),
-                        *constraint,
-                    );
+                    graph.add_edge(NodeIndex(a_id.index()), NodeIndex(b_id.index()), *constraint);
                 }
                 Constraint::RegSubVar(_, b_id) => {
-                    graph.add_edge(dummy_source, NodeIndex(b_id.index() as usize), *constraint);
+                    graph.add_edge(dummy_source, NodeIndex(b_id.index()), *constraint);
                 }
                 Constraint::VarSubReg(a_id, _) => {
-                    graph.add_edge(NodeIndex(a_id.index() as usize), dummy_sink, *constraint);
+                    graph.add_edge(NodeIndex(a_id.index()), dummy_sink, *constraint);
                 }
                 Constraint::RegSubReg(..) => {
                     // this would be an edge from `dummy_source` to
@@ -878,7 +874,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         ) {
             debug!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
-            let source_node_index = NodeIndex(source_vid.index() as usize);
+            let source_node_index = NodeIndex(source_vid.index());
             for (_, edge) in graph.adjacent_edges(source_node_index, dir) {
                 match edge.data {
                     Constraint::VarSubVar(from_vid, to_vid) => {

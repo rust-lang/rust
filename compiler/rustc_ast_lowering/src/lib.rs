@@ -1157,7 +1157,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::GenericArg<'hir> {
         match arg {
-            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
+            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
                 match &ty.kind {
                     TyKind::Infer if self.tcx.features().generic_arg_infer => {
@@ -1221,10 +1221,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     _ => {}
                 }
-                GenericArg::Type(self.lower_ty(&ty, itctx))
+                GenericArg::Type(self.lower_ty(ty, itctx))
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                value: self.lower_anon_const(&ct),
+                value: self.lower_anon_const(ct),
                 span: self.lower_span(ct.value.span),
                 is_desugared_from_effects: false,
             }),
@@ -1267,7 +1267,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime_bound = this.elided_dyn_bound(t.span);
                 (bounds, lifetime_bound)
             });
-            let kind = hir::TyKind::TraitObject(bounds, &lifetime_bound, TraitObjectSyntax::None);
+            let kind = hir::TyKind::TraitObject(bounds, lifetime_bound, TraitObjectSyntax::None);
             return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
         }
 
@@ -1551,7 +1551,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
                     // example, we only need to duplicate lifetimes that appear in the
                     // bounds, since those are the only ones that are captured by the opaque.
-                    lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
+                    lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
                 }
             }
             hir::OpaqueTyOrigin::AsyncFn(..) => {
@@ -2067,10 +2067,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
             GenericParamKind::Const { ty, kw_span: _, default } => {
-                let ty = self.lower_ty(
-                    &ty,
-                    &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
-                );
+                let ty = self
+                    .lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
                 let default = default.as_ref().map(|def| self.lower_anon_const(def));
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),

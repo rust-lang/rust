@@ -211,7 +211,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
                 self.items.push((ItemKind::NonAsm, span));
             }
 
-            ExprKind::InlineAsm(ref asm) => {
+            ExprKind::InlineAsm(asm) => {
                 self.items.push((ItemKind::Asm, span));
                 self.check_inline_asm(asm, span);
             }
@@ -282,13 +282,13 @@ impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
             StmtKind::Local(..) => {
                 self.items.push((ItemKind::NonAsm, stmt.span));
             }
-            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
                 self.check_expr(expr, stmt.span);
             }
         }
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        self.check_expr(&expr, expr.span);
+        self.check_expr(expr, expr.span);
     }
 }

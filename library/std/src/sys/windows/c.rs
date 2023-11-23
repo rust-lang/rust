@@ -3,6 +3,7 @@
 #![allow(nonstandard_style)]
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
+#![allow(clippy::style)]
 
 use crate::ffi::CStr;
 use crate::mem;
@@ -81,7 +82,7 @@ pub fn nt_success(status: NTSTATUS) -> bool {
 
 impl UNICODE_STRING {
     pub fn from_ref(slice: &[u16]) -> Self {
-        let len = slice.len() * mem::size_of::<u16>();
+        let len = mem::size_of_val(slice);
         Self { Length: len as _, MaximumLength: len as _, Buffer: slice.as_ptr() as _ }
     }
 }

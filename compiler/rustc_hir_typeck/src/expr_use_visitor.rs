@@ -147,7 +147,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             self.walk_irrefutable_pat(&param_place, param.pat);
         }
 
-        self.consume_expr(&body.value);
+        self.consume_expr(body.value);
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -237,10 +237,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprKind::If(ref cond_expr, ref then_expr, ref opt_else_expr) => {
+            hir::ExprKind::If(cond_expr, then_expr, ref opt_else_expr) => {
                 self.consume_expr(cond_expr);
                 self.consume_expr(then_expr);
-                if let Some(ref else_expr) = *opt_else_expr {
+                if let Some(else_expr) = *opt_else_expr {
                     self.consume_expr(else_expr);
                 }
             }
@@ -249,7 +249,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.walk_local(init, pat, None, |t| t.borrow_expr(init, ty::ImmBorrow))
             }
 
-            hir::ExprKind::Match(ref discr, arms, _) => {
+            hir::ExprKind::Match(discr, arms, _) => {
                 let discr_place = return_if_err!(self.mc.cat_expr(discr));
                 return_if_err!(self.maybe_read_scrutinee(
                     discr,
@@ -267,7 +267,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprKind::AddrOf(_, m, ref base) => {
+            hir::ExprKind::AddrOf(_, m, base) => {
                 // &base
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
@@ -379,7 +379,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // only the fn body we were given.
             }
 
-            hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
+            hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => {
                 self.consume_expr(expr);
             }
         }
@@ -505,7 +505,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             ));
             self.walk_block(els)
         }
-        self.walk_irrefutable_pat(&expr_place, &pat);
+        self.walk_irrefutable_pat(&expr_place, pat);
     }
 
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
@@ -517,7 +517,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             self.walk_stmt(stmt);
         }
 
-        if let Some(ref tail_expr) = blk.expr {
+        if let Some(tail_expr) = blk.expr {
             self.consume_expr(tail_expr);
         }
     }
@@ -665,8 +665,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.walk_pat(discr_place, arm.pat, arm.guard.is_some());
 
         match arm.guard {
-            Some(hir::Guard::If(ref e)) => self.consume_expr(e),
-            Some(hir::Guard::IfLet(ref l)) => {
+            Some(hir::Guard::If(e)) => self.consume_expr(e),
+            Some(hir::Guard::IfLet(l)) => {
                 self.walk_local(l.init, l.pat, None, |t| t.borrow_expr(l.init, ty::ImmBorrow))
             }
             None => {}

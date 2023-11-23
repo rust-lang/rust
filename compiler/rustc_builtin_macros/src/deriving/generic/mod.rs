@@ -467,7 +467,7 @@ impl<'a> TraitDef<'a> {
         match item {
             Annotatable::Item(item) => {
                 let is_packed = item.attrs.iter().any(|attr| {
-                    for r in attr::find_repr_attrs(&cx.sess, attr) {
+                    for r in attr::find_repr_attrs(cx.sess, attr) {
                         if let attr::ReprPacked(_) = r {
                             return true;
                         }
@@ -478,7 +478,7 @@ impl<'a> TraitDef<'a> {
                 let newitem = match &item.kind {
                     ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
                         cx,
-                        &struct_def,
+                        struct_def,
                         item.ident,
                         generics,
                         from_scratch,
@@ -496,7 +496,7 @@ impl<'a> TraitDef<'a> {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
-                                &struct_def,
+                                struct_def,
                                 item.ident,
                                 generics,
                                 from_scratch,

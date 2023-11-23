@@ -159,7 +159,7 @@ impl<'tcx> Place<'tcx> {
 
     #[inline]
     pub fn as_ref(&self) -> PlaceRef<'tcx> {
-        PlaceRef { local: self.local, projection: &self.projection }
+        PlaceRef { local: self.local, projection: self.projection }
     }
 
     /// Iterate over the projections in evaluation order, i.e., the first element is the base with

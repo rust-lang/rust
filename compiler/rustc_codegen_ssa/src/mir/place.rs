@@ -474,27 +474,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     cg_base.project_index(bx, llindex)
                 }
                 mir::ProjectionElem::ConstantIndex { offset, from_end: false, min_length: _ } => {
-                    let lloffset = bx.cx().const_usize(offset as u64);
+                    let lloffset = bx.cx().const_usize(offset);
                     cg_base.project_index(bx, lloffset)
                 }
                 mir::ProjectionElem::ConstantIndex { offset, from_end: true, min_length: _ } => {
-                    let lloffset = bx.cx().const_usize(offset as u64);
+                    let lloffset = bx.cx().const_usize(offset);
                     let lllen = cg_base.len(bx.cx());
                     let llindex = bx.sub(lllen, lloffset);
                     cg_base.project_index(bx, llindex)
                 }
                 mir::ProjectionElem::Subslice { from, to, from_end } => {
-                    let mut subslice = cg_base.project_index(bx, bx.cx().const_usize(from as u64));
+                    let mut subslice = cg_base.project_index(bx, bx.cx().const_usize(from));
                     let projected_ty =
                         PlaceTy::from_ty(cg_base.layout.ty).projection_ty(tcx, *elem).ty;
                     subslice.layout = bx.cx().layout_of(self.monomorphize(projected_ty));
 
                     if subslice.layout.is_unsized() {
                         assert!(from_end, "slice subslices should be `from_end`");
-                        subslice.llextra = Some(bx.sub(
-                            cg_base.llextra.unwrap(),
-                            bx.cx().const_usize((from as u64) + (to as u64)),
-                        ));
+                        subslice.llextra =
+                            Some(bx.sub(cg_base.llextra.unwrap(), bx.cx().const_usize(from + to)));
                     }
 
                     subslice

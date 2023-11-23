@@ -606,7 +606,7 @@ impl CanConstProp {
         for arg in body.args_iter() {
             cpv.found_assignment.insert(arg);
         }
-        cpv.visit_body(&body);
+        cpv.visit_body(body);
         cpv.can_const_prop
     }
 }

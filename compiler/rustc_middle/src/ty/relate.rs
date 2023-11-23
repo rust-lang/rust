@@ -482,7 +482,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_closure(tcx, a_id, &args))
+            Ok(Ty::new_closure(tcx, a_id, args))
         }
 
         (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {

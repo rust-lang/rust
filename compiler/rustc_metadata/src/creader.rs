@@ -427,7 +427,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
-            &self.cstore,
+            self.cstore,
             metadata,
             crate_root,
             raw_proc_macros,
@@ -515,7 +515,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             Err(err) => {
                 let missing_core =
                     self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
-                err.report(&self.sess, span, missing_core);
+                err.report(self.sess, span, missing_core);
                 None
             }
         }
@@ -987,7 +987,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         self.report_unused_deps(krate);
 
-        info!("{:?}", CrateDump(&self.cstore));
+        info!("{:?}", CrateDump(self.cstore));
     }
 
     pub fn process_extern_crate(

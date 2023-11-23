@@ -414,11 +414,11 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             // then we'll assign too low a count to any `yield` expressions
             // we encounter in 'right_expression' - they should really occur after all of the
             // expressions in 'left_expression'.
-            visitor.visit_expr(&right_expr);
+            visitor.visit_expr(right_expr);
             visitor.pessimistic_yield = prev_pessimistic;
 
             debug!("resolve_expr - restoring pessimistic_yield to {}", prev_pessimistic);
-            visitor.visit_expr(&left_expr);
+            visitor.visit_expr(left_expr);
             debug!("resolve_expr - fixing up counts to {}", visitor.expr_and_pat_count);
 
             // Remove and process any scopes pushed by the visitor
@@ -582,7 +582,7 @@ fn resolve_local<'tcx>(
     // due to rule C.
 
     if let Some(expr) = init {
-        record_rvalue_scope_if_borrow_expr(visitor, &expr, blk_scope);
+        record_rvalue_scope_if_borrow_expr(visitor, expr, blk_scope);
 
         if let Some(pat) = pat {
             if is_binding_pat(pat) {
@@ -645,21 +645,19 @@ fn resolve_local<'tcx>(
         match pat.kind {
             PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes, _), ..) => true,
 
-            PatKind::Struct(_, field_pats, _) => {
-                field_pats.iter().any(|fp| is_binding_pat(&fp.pat))
-            }
+            PatKind::Struct(_, field_pats, _) => field_pats.iter().any(|fp| is_binding_pat(fp.pat)),
 
             PatKind::Slice(pats1, pats2, pats3) => {
-                pats1.iter().any(|p| is_binding_pat(&p))
-                    || pats2.iter().any(|p| is_binding_pat(&p))
-                    || pats3.iter().any(|p| is_binding_pat(&p))
+                pats1.iter().any(|p| is_binding_pat(p))
+                    || pats2.iter().any(|p| is_binding_pat(p))
+                    || pats3.iter().any(|p| is_binding_pat(p))
             }
 
             PatKind::Or(subpats)
             | PatKind::TupleStruct(_, subpats, _)
-            | PatKind::Tuple(subpats, _) => subpats.iter().any(|p| is_binding_pat(&p)),
+            | PatKind::Tuple(subpats, _) => subpats.iter().any(|p| is_binding_pat(p)),
 
-            PatKind::Box(subpat) => is_binding_pat(&subpat),
+            PatKind::Box(subpat) => is_binding_pat(subpat),
 
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), ..)
@@ -700,20 +698,20 @@ fn resolve_local<'tcx>(
             }
             hir::ExprKind::Struct(_, fields, _) => {
                 for field in fields {
-                    record_rvalue_scope_if_borrow_expr(visitor, &field.expr, blk_id);
+                    record_rvalue_scope_if_borrow_expr(visitor, field.expr, blk_id);
                 }
             }
             hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
                 for subexpr in subexprs {
-                    record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
+                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
                 }
             }
             hir::ExprKind::Cast(subexpr, _) => {
-                record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id)
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id)
             }
             hir::ExprKind::Block(block, _) => {
                 if let Some(subexpr) = block.expr {
-                    record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
+                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
                 }
             }
             hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) => {
@@ -795,13 +793,13 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         // The arguments and `self` are parented to the fn.
         self.cx.var_parent = self.cx.parent.take();
         for param in body.params {
-            self.visit_pat(&param.pat);
+            self.visit_pat(param.pat);
         }
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
         if self.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
-            self.visit_expr(&body.value)
+            self.visit_expr(body.value)
         } else {
             // Only functions have an outer terminating (drop) scope, while
             // temporaries in constant initializers may be 'static, but only
@@ -822,7 +820,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             // (i.e., `'static`), which means that after `g` returns, it drops,
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
-            resolve_local(self, None, Some(&body.value));
+            resolve_local(self, None, Some(body.value));
         }
 
         if body.coroutine_kind.is_some() {
@@ -849,7 +847,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         resolve_expr(self, ex);
     }
     fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
-        resolve_local(self, Some(&l.pat), l.init)
+        resolve_local(self, Some(l.pat), l.init)
     }
 }
 

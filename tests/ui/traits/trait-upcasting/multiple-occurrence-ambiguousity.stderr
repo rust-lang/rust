@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/multiple-occurrence-ambiguousity.rs:20:26
+  --> $DIR/multiple-occurrence-ambiguousity.rs:19:26
    |
 LL |     let t: &dyn Bar<_> = s;
    |            -----------   ^ expected trait `Bar`, found trait `Foo`

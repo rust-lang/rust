@@ -298,7 +298,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             tcx: self.tcx,
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
-            pattern_arena: &self.pattern_arena,
+            pattern_arena: self.pattern_arena,
             match_span,
             refutable,
         }

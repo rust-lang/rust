@@ -477,9 +477,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     )
                     .emit();
                     InlineAttr::None
-                } else if list_contains_name(&items, sym::always) {
+                } else if list_contains_name(items, sym::always) {
                     InlineAttr::Always
-                } else if list_contains_name(&items, sym::never) {
+                } else if list_contains_name(items, sym::never) {
                     InlineAttr::Never
                 } else {
                     struct_span_err!(
@@ -514,9 +514,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 if items.len() != 1 {
                     err(attr.span, "expected one argument");
                     OptimizeAttr::None
-                } else if list_contains_name(&items, sym::size) {
+                } else if list_contains_name(items, sym::size) {
                     OptimizeAttr::Size
-                } else if list_contains_name(&items, sym::speed) {
+                } else if list_contains_name(items, sym::speed) {
                     OptimizeAttr::Speed
                 } else {
                     err(items[0].span(), "invalid argument");

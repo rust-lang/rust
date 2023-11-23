@@ -56,7 +56,6 @@ struct LintLevelSets {
 }
 
 rustc_index::newtype_index! {
-    #[custom_encodable] // we don't need encoding
     struct LintStackIndex {
         const COMMAND_LINE = 0;
     }
@@ -123,7 +122,7 @@ impl LintLevelSets {
 }
 
 fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExpectation)> {
-    let store = unerased_lint_store(&tcx.sess);
+    let store = unerased_lint_store(tcx.sess);
 
     let mut builder = LintLevelsBuilder {
         sess: tcx.sess,
@@ -138,7 +137,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
         },
         warn_about_weird_lints: false,
         store,
-        registered_tools: &tcx.registered_tools(()),
+        registered_tools: tcx.registered_tools(()),
     };
 
     builder.add_command_line();
@@ -152,7 +151,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
 
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
-    let store = unerased_lint_store(&tcx.sess);
+    let store = unerased_lint_store(tcx.sess);
     let attrs = tcx.hir_attrs(owner);
 
     let mut levels = LintLevelsBuilder {
@@ -167,7 +166,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         },
         warn_about_weird_lints: false,
         store,
-        registered_tools: &tcx.registered_tools(()),
+        registered_tools: tcx.registered_tools(()),
     };
 
     if owner == hir::CRATE_OWNER_ID {
@@ -605,7 +604,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             let orig_level = level;
             let lint_flag_val = Symbol::intern(lint_name);
 
-            let Ok(ids) = self.store.find_lints(&lint_name) else {
+            let Ok(ids) = self.store.find_lints(lint_name) else {
                 // errors already handled above
                 continue;
             };
@@ -629,7 +628,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// (e.g. if a forbid was already inserted on the same scope), then emits a
     /// diagnostic with no change to `specs`.
     fn insert_spec(&mut self, id: LintId, (mut level, src): LevelAndSource) {
-        let (old_level, old_src) = self.provider.get_lint_level(id.lint, &self.sess);
+        let (old_level, old_src) = self.provider.get_lint_level(id.lint, self.sess);
         if let Level::Expect(id) = &mut level
             && let LintExpectationId::Stable { .. } = id
         {
@@ -929,12 +928,12 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                     DeprecatedLintName {
                                         name,
                                         suggestion: sp,
-                                        replace: &new_lint_name,
+                                        replace: new_lint_name,
                                     },
                                 );
 
                                 let src = LintLevelSource::Node {
-                                    name: Symbol::intern(&new_lint_name),
+                                    name: Symbol::intern(new_lint_name),
                                     span: sp,
                                     reason,
                                 };

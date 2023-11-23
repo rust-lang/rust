@@ -26,5 +26,5 @@ ENV \
 
 ENV HOSTS=powerpc64-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-profiler --disable-docs
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

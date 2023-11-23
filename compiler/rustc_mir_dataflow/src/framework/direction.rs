@@ -196,7 +196,7 @@ impl Direction for Backward {
     {
         results.reset_to_block_entry(state, block);
 
-        vis.visit_block_end(results, &state, block_data, block);
+        vis.visit_block_end(results, state, block_data, block);
 
         // Terminator
         let loc = Location { block, statement_index: block_data.statements.len() };

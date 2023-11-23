@@ -95,7 +95,7 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
 
             let cost = CostChecker::new(tcx, param_env, None, body);
 
-            let mut state = State::new(ConditionSet::default(), &finder.map);
+            let mut state = State::new(ConditionSet::default(), finder.map);
 
             let conds = if let Some((value, then, else_)) = targets.as_static_if() {
                 let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) else {
@@ -112,7 +112,7 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
                 }))
             };
             let conds = ConditionSet(conds);
-            state.insert_value_idx(discr, conds, &finder.map);
+            state.insert_value_idx(discr, conds, finder.map);
 
             finder.find_opportunity(bb, state, cost, 0);
         }

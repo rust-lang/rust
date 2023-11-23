@@ -27,10 +27,10 @@ pub(crate) fn thir_body(
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
     }
-    let expr = cx.mirror_expr(&body.value);
+    let expr = cx.mirror_expr(body.value);
 
     let owner_id = hir.local_def_id_to_hir_id(owner_def);
-    if let Some(ref fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
+    if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
         let explicit_params = cx.explicit_params(owner_id, fn_decl, body);
         cx.thir.params = closure_env_param.into_iter().chain(explicit_params).collect();
