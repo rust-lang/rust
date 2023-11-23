@@ -200,7 +200,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     Scalar::from_u16(min_index.try_into().unwrap()),
                     &this.project_index(&dest, 1)?,
                 )?;
-                // Fill remaining with zeros
+                // Fill remainder with zeros
                 for i in 2..dest_len {
                     this.write_scalar(Scalar::from_u16(0), &this.project_index(&dest, i)?)?;
                 }
