@@ -109,7 +109,6 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
                 let source_deque = unsafe { self.0.deque.as_mut() };
 
-                let drain_start = source_deque.len();
                 let drain_len = self.0.drain_len;
                 let new_len = self.0.new_len;
 
@@ -119,40 +118,32 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                     return;
                 }
 
-                let head_len = drain_start;
+                let head_len = source_deque.len();
                 let tail_len = new_len - head_len;
 
-                match (head_len, tail_len) {
-                    (0, 0) => {
-                        source_deque.head = 0;
-                        source_deque.len = 0;
+                if head_len != 0 && tail_len != 0 {
+                    let (src, dst, len);
+                    if head_len < tail_len {
+                        src = source_deque.head;
+                        dst = source_deque.to_physical_idx(drain_len);
+                        len = head_len;
+                    } else {
+                        src = source_deque.to_physical_idx(head_len + drain_len);
+                        dst = source_deque.to_physical_idx(head_len);
+                        len = tail_len;
+                    };
+
+                    unsafe {
+                        source_deque.wrap_copy(src, dst, len);
                     }
-                    (0, _) => {
-                        source_deque.head = source_deque.to_physical_idx(drain_len);
-                        source_deque.len = new_len;
-                    }
-                    (_, 0) => {
-                        source_deque.len = new_len;
-                    }
-                    _ => unsafe {
-                        if head_len <= tail_len {
-                            source_deque.wrap_copy(
-                                source_deque.head,
-                                source_deque.to_physical_idx(drain_len),
-                                head_len,
-                            );
-                            source_deque.head = source_deque.to_physical_idx(drain_len);
-                            source_deque.len = new_len;
-                        } else {
-                            source_deque.wrap_copy(
-                                source_deque.to_physical_idx(head_len + drain_len),
-                                source_deque.to_physical_idx(head_len),
-                                tail_len,
-                            );
-                            source_deque.len = new_len;
-                        }
-                    },
                 }
+
+                if new_len == 0 {
+                    source_deque.head = 0;
+                } else if head_len < tail_len {
+                    source_deque.head = source_deque.to_physical_idx(drain_len);
+                }
+                source_deque.len = new_len;
             }
         }
 
