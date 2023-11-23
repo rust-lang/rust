@@ -1,6 +1,6 @@
 //! Random access inspection of the results of a dataflow analysis.
 
-use crate::{framework::BitSetExt, CloneAnalysis};
+use crate::framework::BitSetExt;
 
 use std::borrow::{Borrow, BorrowMut};
 use std::cmp::Ordering;
@@ -101,17 +101,6 @@ where
     /// Unwraps this cursor, returning the underlying `Results`.
     pub fn into_results(self) -> R {
         self.results
-    }
-}
-
-impl<'res, 'mir, 'tcx, A> ResultsClonedCursor<'res, 'mir, 'tcx, A>
-where
-    A: Analysis<'tcx> + CloneAnalysis,
-{
-    /// Creates a new cursor over the same `Results`. Note that the cursor's position is *not*
-    /// copied.
-    pub fn new_cursor(&self) -> Self {
-        Self::new(self.body, self.results.reclone_analysis())
     }
 }
 

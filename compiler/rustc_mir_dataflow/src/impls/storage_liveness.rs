@@ -18,12 +18,6 @@ impl<'a> MaybeStorageLive<'a> {
     }
 }
 
-impl crate::CloneAnalysis for MaybeStorageLive<'_> {
-    fn clone_analysis(&self) -> Self {
-        self.clone()
-    }
-}
-
 impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
     type Domain = BitSet<Local>;
 
@@ -170,12 +164,6 @@ pub struct MaybeRequiresStorage<'res, 'mir, 'tcx> {
 impl<'res, 'mir, 'tcx> MaybeRequiresStorage<'res, 'mir, 'tcx> {
     pub fn new(borrowed_locals: BorrowedLocalsResults<'res, 'mir, 'tcx>) -> Self {
         MaybeRequiresStorage { borrowed_locals }
-    }
-}
-
-impl crate::CloneAnalysis for MaybeRequiresStorage<'_, '_, '_> {
-    fn clone_analysis(&self) -> Self {
-        Self { borrowed_locals: self.borrowed_locals.new_cursor() }
     }
 }
 

@@ -116,20 +116,6 @@ where
     }
 }
 
-impl<'res, 'tcx, A> ResultsCloned<'res, 'tcx, A>
-where
-    A: Analysis<'tcx> + CloneAnalysis,
-{
-    /// Creates a new `Results` type with a cloned `Analysis` and borrowed entry sets.
-    pub fn reclone_analysis(&self) -> Self {
-        Results {
-            analysis: self.analysis.clone_analysis(),
-            entry_sets: self.entry_sets,
-            _marker: PhantomData,
-        }
-    }
-}
-
 /// A solver for dataflow problems.
 pub struct Engine<'mir, 'tcx, A>
 where
