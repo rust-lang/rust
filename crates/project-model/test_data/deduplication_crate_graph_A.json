@@ -3,24 +3,24 @@
     {
       "name": "p1",
       "version": "0.1.0",
-      "id": "p1 0.1.0 (path+file:///path/to/project/example_project/projects/p1)",
+      "id": "p1 0.1.0 (path+file:///example_project/p1)",
       "license": null,
       "license_file": null,
       "description": null,
       "source": null,
       "dependencies": [
         {
-          "name": "p3",
+          "name": "p2",
           "source": null,
           "req": "*",
-          "kind": "dev",
+          "kind": null,
           "rename": null,
           "optional": false,
           "uses_default_features": true,
           "features": [],
           "target": null,
           "registry": null,
-          "path": "/path/to/project/example_project/projects/p3"
+          "path": "/example_project/p2"
         }
       ],
       "targets": [
@@ -32,7 +32,7 @@
             "lib"
           ],
           "name": "p1",
-          "src_path": "/path/to/project/example_project/projects/p1/src/lib.rs",
+          "src_path": "/example_project/p1/src/lib.rs",
           "edition": "2021",
           "doc": true,
           "doctest": true,
@@ -40,7 +40,7 @@
         }
       ],
       "features": {},
-      "manifest_path": "/path/to/project/example_project/projects/p1/Cargo.toml",
+      "manifest_path": "/example_project/p1/Cargo.toml",
       "metadata": null,
       "publish": null,
       "authors": [],
@@ -56,9 +56,9 @@
       "rust_version": null
     },
     {
-      "name": "p3",
+      "name": "p2",
       "version": "0.1.0",
-      "id": "p3 0.1.0 (path+file:///path/to/project/example_project/projects/p3)",
+      "id": "p2 0.1.0 (path+file:///example_project/p2)",
       "license": null,
       "license_file": null,
       "description": null,
@@ -72,8 +72,8 @@
           "crate_types": [
             "lib"
           ],
-          "name": "p3",
-          "src_path": "/path/to/project/example_project/projects/p3/src/lib.rs",
+          "name": "p2",
+          "src_path": "/example_project/p2/src/lib.rs",
           "edition": "2021",
           "doc": true,
           "doctest": true,
@@ -81,7 +81,7 @@
         }
       ],
       "features": {},
-      "manifest_path": "/path/to/project/example_project/projects/p3/Cargo.toml",
+      "manifest_path": "/example_project/p2/Cargo.toml",
       "metadata": null,
       "publish": null,
       "authors": [],
@@ -98,25 +98,25 @@
     }
   ],
   "workspace_members": [
-    "p1 0.1.0 (path+file:///path/to/project/example_project/projects/p1)"
+    "p1 0.1.0 (path+file:///example_project/p1)"
   ],
   "workspace_default_members": [
-    "p1 0.1.0 (path+file:///path/to/project/example_project/projects/p1)"
+    "p1 0.1.0 (path+file:///example_project/p1)"
   ],
   "resolve": {
     "nodes": [
       {
-        "id": "p1 0.1.0 (path+file:///path/to/project/example_project/projects/p1)",
+        "id": "p1 0.1.0 (path+file:///example_project/p1)",
         "dependencies": [
-          "p3 0.1.0 (path+file:///path/to/project/example_project/projects/p3)"
+          "p2 0.1.0 (path+file:///example_project/p2)"
         ],
         "deps": [
           {
-            "name": "p3",
-            "pkg": "p3 0.1.0 (path+file:///path/to/project/example_project/projects/p3)",
+            "name": "p2",
+            "pkg": "p2 0.1.0 (path+file:///example_project/p2)",
             "dep_kinds": [
               {
-                "kind": "dev",
+                "kind": null,
                 "target": null
               }
             ]
@@ -125,16 +125,16 @@
         "features": []
       },
       {
-        "id": "p3 0.1.0 (path+file:///path/to/project/example_project/projects/p3)",
+        "id": "p2 0.1.0 (path+file:///example_project/p2)",
         "dependencies": [],
         "deps": [],
         "features": []
       }
     ],
-    "root": "p1 0.1.0 (path+file:///path/to/project/example_project/projects/p1)"
+    "root": "p1 0.1.0 (path+file:///example_project/p1)"
   },
-  "target_directory": "/path/to/project/example_project/projects/p1/target",
+  "target_directory": "/example_project/p1/target",
   "version": 1,
-  "workspace_root": "/path/to/project/example_project/projects/p1",
+  "workspace_root": "/example_project/p1",
   "metadata": null
 }

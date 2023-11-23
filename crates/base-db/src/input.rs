@@ -668,7 +668,7 @@ impl CrateGraph {
                         // If the origins differ, check if the two crates are equal without
                         // considering the dev dependencies, if they are, they most likely are in
                         // different loaded workspaces which may cause issues. We keep the local
-                        //  version and discard the library one as the local version may have
+                        // version and discard the library one as the local version may have
                         // dev-dependencies that we want to keep resolving. See #15656 for more
                         // information.
                         if data.eq_ignoring_origin_and_deps(&crate_data, true) {

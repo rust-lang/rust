@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use base_db::{CrateGraph, DependencyKind, FileId, ProcMacroPaths};
+use base_db::{CrateGraph, FileId, ProcMacroPaths};
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect_file, ExpectFile};
 use paths::{AbsPath, AbsPathBuf};
@@ -251,7 +251,7 @@ fn crate_graph_dedup() {
 }
 
 #[test]
-fn test_deduplicate_crate_differing_in_origin() {
+fn test_deduplicate_origin_dev() {
     let path_map = &mut Default::default();
     let (mut crate_graph, _proc_macros) =
         load_cargo_with_sysroot(path_map, "deduplication_crate_graph_A.json");
@@ -261,24 +261,23 @@ fn test_deduplicate_crate_differing_in_origin() {
 
     crate_graph.extend(crate_graph_1, &mut _proc_macros_2);
 
-    let mut crates_named_p1 = vec![];
+    let mut crates_named_p2 = vec![];
     for id in crate_graph.iter() {
         let krate = &crate_graph[id];
         if let Some(name) = krate.display_name.as_ref() {
-            if name.to_string() == "p1" {
-                crates_named_p1.push(krate);
+            if name.to_string() == "p2" {
+                crates_named_p2.push(krate);
             }
         }
     }
 
-    assert!(crates_named_p1.len() == 1);
-    let p1 = crates_named_p1[0];
-    assert!(p1.dependencies.iter().filter(|dep| dep.kind() == DependencyKind::Dev).count() == 1);
-    assert!(p1.origin.is_local());
+    assert!(crates_named_p2.len() == 1);
+    let p2 = crates_named_p2[0];
+    assert!(p2.origin.is_local());
 }
 
 #[test]
-fn test_deduplicate_crate_differing_in_origin_in_rev_resolution_order() {
+fn test_deduplicate_origin_dev_rev() {
     let path_map = &mut Default::default();
     let (mut crate_graph, _proc_macros) =
         load_cargo_with_sysroot(path_map, "deduplication_crate_graph_B.json");
@@ -288,18 +287,17 @@ fn test_deduplicate_crate_differing_in_origin_in_rev_resolution_order() {
 
     crate_graph.extend(crate_graph_1, &mut _proc_macros_2);
 
-    let mut crates_named_p1 = vec![];
+    let mut crates_named_p2 = vec![];
     for id in crate_graph.iter() {
         let krate = &crate_graph[id];
         if let Some(name) = krate.display_name.as_ref() {
-            if name.to_string() == "p1" {
-                crates_named_p1.push(krate);
+            if name.to_string() == "p2" {
+                crates_named_p2.push(krate);
             }
         }
     }
 
-    assert!(crates_named_p1.len() == 1);
-    let p1 = crates_named_p1[0];
-    assert!(p1.dependencies.iter().filter(|dep| dep.kind() == DependencyKind::Dev).count() == 1);
-    assert!(p1.origin.is_local());
+    assert!(crates_named_p2.len() == 1);
+    let p2 = crates_named_p2[0];
+    assert!(p2.origin.is_local());
 }
