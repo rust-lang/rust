@@ -651,7 +651,7 @@ fn locals_live_across_suspend_points<'tcx>(
     always_live_locals: &BitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
-    let body_ref: &Body<'_> = &body;
+    let body_ref: &Body<'_> = body;
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
@@ -742,7 +742,7 @@ fn locals_live_across_suspend_points<'tcx>(
     // saving.
     let live_locals_at_suspension_points = live_locals_at_suspension_points
         .iter()
-        .map(|live_here| saved_locals.renumber_bitset(&live_here))
+        .map(|live_here| saved_locals.renumber_bitset(live_here))
         .collect();
 
     let storage_conflicts = compute_storage_conflicts(
@@ -778,7 +778,7 @@ impl CoroutineSavedLocals {
     /// Transforms a `BitSet<Local>` that contains only locals saved across yield points to the
     /// equivalent `BitSet<CoroutineSavedLocal>`.
     fn renumber_bitset(&self, input: &BitSet<Local>) -> BitSet<CoroutineSavedLocal> {
-        assert!(self.superset(&input), "{:?} not a superset of {:?}", self.0, input);
+        assert!(self.superset(input), "{:?} not a superset of {:?}", self.0, input);
         let mut out = BitSet::new_empty(self.count());
         for (saved_local, local) in self.iter_enumerated() {
             if input.contains(local) {
@@ -829,7 +829,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     // Compute the storage conflicts for all eligible locals.
     let mut visitor = StorageConflictVisitor {
         body,
-        saved_locals: &saved_locals,
+        saved_locals: saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
     };
 
@@ -1128,7 +1128,7 @@ fn create_coroutine_drop_shim<'tcx>(
     // The returned state and the poisoned state fall through to the default
     // case which is just to return
 
-    insert_switch(&mut body, cases, &transform, TerminatorKind::Return);
+    insert_switch(&mut body, cases, transform, TerminatorKind::Return);
 
     for block in body.basic_blocks_mut() {
         let kind = &mut block.terminator_mut().kind;
@@ -1465,7 +1465,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
 
     // The witness simply contains all locals live across suspend points.
 
-    let always_live_locals = always_storage_live_locals(&body);
+    let always_live_locals = always_storage_live_locals(body);
     let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
     // Extract locals which are live across suspension point into `layout`
@@ -1473,7 +1473,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // `storage_liveness` tells us which locals have live storage at suspension points
     let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
 
-    check_suspend_tys(tcx, &coroutine_layout, &body);
+    check_suspend_tys(tcx, &coroutine_layout, body);
 
     Some(coroutine_layout)
 }
@@ -1564,7 +1564,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             },
         );
 
-        let always_live_locals = always_storage_live_locals(&body);
+        let always_live_locals = always_storage_live_locals(body);
 
         let liveness_info =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);

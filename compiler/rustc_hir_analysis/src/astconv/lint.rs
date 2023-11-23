@@ -106,7 +106,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     );
                 }
                 // check if the impl trait that we are considering is a impl of a local trait
-                self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
+                self.maybe_lint_blanket_trait_impl(self_ty, &mut diag);
                 diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
@@ -121,7 +121,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             sugg,
                             Applicability::MachineApplicable,
                         );
-                        self.maybe_lint_blanket_trait_impl(&self_ty, lint);
+                        self.maybe_lint_blanket_trait_impl(self_ty, lint);
                         lint
                     },
                 );

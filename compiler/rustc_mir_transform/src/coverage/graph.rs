@@ -38,7 +38,7 @@ impl CoverageGraph {
                 }
                 let bcb_data = &bcbs[bcb];
                 let mut bcb_successors = Vec::new();
-                for successor in bcb_filtered_successors(&mir_body, bcb_data.last_bb())
+                for successor in bcb_filtered_successors(mir_body, bcb_data.last_bb())
                     .filter_map(|successor_bb| bb_to_bcb[successor_bb])
                 {
                     if !seen[successor] {
@@ -264,6 +264,7 @@ impl graph::WithPredecessors for CoverageGraph {
 
 rustc_index::newtype_index! {
     /// A node in the control-flow graph of CoverageGraph.
+    #[orderable]
     #[debug_format = "bcb{}"]
     pub(super) struct BasicCoverageBlock {
         const START_BCB = 0;

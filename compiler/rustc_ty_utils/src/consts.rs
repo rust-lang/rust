@@ -375,7 +375,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
 
 impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
     fn thir(&self) -> &'a thir::Thir<'tcx> {
-        &self.thir
+        self.thir
     }
 
     #[instrument(skip(self), level = "debug")]

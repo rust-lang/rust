@@ -391,7 +391,7 @@ impl MetaItemKind {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
             }
             Some(TokenTree::Token(token, _)) => {
-                MetaItemLit::from_token(&token).map(MetaItemKind::NameValue)
+                MetaItemLit::from_token(token).map(MetaItemKind::NameValue)
             }
             _ => None,
         }

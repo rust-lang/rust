@@ -94,7 +94,7 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
-    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind,
     BoundVariableKind, CanonicalPolyFnSig, ClauseKind, ClosureArgs, ClosureArgsParts, ConstKind,
     CoroutineArgs, CoroutineArgsParts, EarlyParamRegion, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, GenSig, InlineConstArgs,
@@ -1372,7 +1372,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 
     pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        (&self).into_iter()
+        self.into_iter()
     }
 }
 
@@ -1513,7 +1513,35 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
+impl rustc_type_ir::Placeholder for PlaceholderRegion {
+    fn universe(&self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(&self) -> BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+}
+
 pub type PlaceholderType = Placeholder<BoundTy>;
+
+impl rustc_type_ir::Placeholder for PlaceholderType {
+    fn universe(&self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(&self) -> BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
@@ -1523,6 +1551,20 @@ pub struct BoundConst<'tcx> {
 }
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
+
+impl rustc_type_ir::Placeholder for PlaceholderConst {
+    fn universe(&self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(&self) -> BoundVar {
+        self.bound
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+}
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
@@ -2016,7 +2058,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         for attr in self.get_attrs(did, sym::repr) {
-            for r in attr::parse_repr_attr(&self.sess, attr) {
+            for r in attr::parse_repr_attr(self.sess, attr) {
                 flags.insert(match r {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
@@ -2282,7 +2324,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         'tcx: 'attr,
     {
-        let filter_fn = move |a: &&ast::Attribute| a.path_matches(&attr);
+        let filter_fn = move |a: &&ast::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
@@ -2494,7 +2536,7 @@ impl<'tcx> TyCtxt<'tcx> {
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<LocalDefId> {
     let def_id = def_id.as_local()?;
     if let Node::Item(item) = tcx.hir().get_by_def_id(def_id) {
-        if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
+        if let hir::ItemKind::OpaqueTy(opaque_ty) = item.kind {
             return match opaque_ty.origin {
                 hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
                     Some(parent)

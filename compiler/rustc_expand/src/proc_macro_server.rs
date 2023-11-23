@@ -784,6 +784,6 @@ impl server::Server for Rustc<'_, '_> {
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        f(&symbol.as_str())
+        f(symbol.as_str())
     }
 }

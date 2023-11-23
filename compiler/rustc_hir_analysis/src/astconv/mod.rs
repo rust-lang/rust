@@ -1666,7 +1666,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .copied()
                 .filter(|&(impl_, _)| {
                     infcx.probe(|_| {
-                        let ocx = ObligationCtxt::new(&infcx);
+                        let ocx = ObligationCtxt::new(infcx);
                         ocx.register_obligations(obligations.clone());
 
                         let impl_args = infcx.fresh_args_for_item(span, impl_);
@@ -1979,7 +1979,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     types_and_spans[..types_and_spans.len() - 1]
                         .iter()
                         .map(|(x, _)| x.as_str())
-                        .intersperse(&", ")
+                        .intersperse(", ")
                         .collect::<String>()
                 ),
                 [(only, _)] => only.to_string(),

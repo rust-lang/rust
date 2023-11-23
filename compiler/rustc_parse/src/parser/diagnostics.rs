@@ -1281,11 +1281,11 @@ impl<'a> Parser<'a> {
                 (BinOpKind::Ge, AssocOp::GreaterEqual | AssocOp::Greater) => {
                     let expr_to_str = |e: &Expr| {
                         self.span_to_snippet(e.span)
-                            .unwrap_or_else(|_| pprust::expr_to_string(&e))
+                            .unwrap_or_else(|_| pprust::expr_to_string(e))
                     };
                     err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::SplitComparison {
                         span: inner_op.span.shrink_to_hi(),
-                        middle_term: expr_to_str(&r1),
+                        middle_term: expr_to_str(r1),
                     });
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
@@ -1506,7 +1506,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
         if impl_dyn_multi {
-            self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(&ty), span: ty.span });
+            self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(ty), span: ty.span });
         }
     }
 
@@ -1939,7 +1939,7 @@ impl<'a> Parser<'a> {
         self.sess.emit_err(IncorrectAwait {
             span,
             sugg_span: (span, applicability),
-            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr)),
+            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(expr)),
             question_mark: if is_question { "?" } else { "" },
         });
 

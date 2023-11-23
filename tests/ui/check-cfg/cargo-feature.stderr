@@ -1,0 +1,11 @@
+warning: unexpected `cfg` condition name: `feature`
+  --> $DIR/cargo-feature.rs:10:7
+   |
+LL | #[cfg(feature = "serde")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider defining some features in `Cargo.toml`
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

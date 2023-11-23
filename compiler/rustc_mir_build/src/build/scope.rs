@@ -186,6 +186,7 @@ pub(crate) enum BreakableTarget {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     struct DropIdx {}
 }
 
@@ -995,7 +996,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             if scope.region_scope == region_scope {
-                let region_scope_span = region_scope.span(self.tcx, &self.region_scope_tree);
+                let region_scope_span = region_scope.span(self.tcx, self.region_scope_tree);
                 // Attribute scope exit drops to scope's closing brace.
                 let scope_end = self.tcx.sess.source_map().end_point(region_scope_span);
 

@@ -34,7 +34,7 @@ pub(super) fn generate_invalidates<'tcx>(
             borrow_set,
             tcx,
             location_table,
-            body: &body,
+            body: body,
             dominators,
         };
         ig.visit_body(body);
@@ -383,7 +383,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
                     (Read(_), BorrowKind::Mut { .. }) => {
                         // Reading from mere reservations of mutable-borrows is OK.
-                        if !is_active(&this.dominators, borrow, location) {
+                        if !is_active(this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
                             assert!(allow_two_phase_borrow(borrow.kind));
                             return Control::Continue;

@@ -547,7 +547,7 @@ fn make_format_args(
                 span: arg_name.span.into(),
                 msg: format!("named argument `{}` is not used by name", arg_name.name).into(),
                 node_id: rustc_ast::CRATE_NODE_ID,
-                lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
+                lint_id: LintId::of(NAMED_ARGUMENTS_USED_POSITIONALLY),
                 diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally {
                     position_sp_to_replace,
                     position_sp_for_msg,
@@ -632,8 +632,7 @@ fn report_missing_placeholders(
         .collect::<Vec<_>>();
 
     if !placeholders.is_empty() {
-        if let Some(mut new_diag) =
-            report_redundant_format_arguments(ecx, &args, used, placeholders)
+        if let Some(mut new_diag) = report_redundant_format_arguments(ecx, args, used, placeholders)
         {
             diag.cancel();
             new_diag.emit();

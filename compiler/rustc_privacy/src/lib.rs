@@ -664,7 +664,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.impl_trait_pass
-            && let hir::ItemKind::OpaqueTy(ref opaque) = item.kind
+            && let hir::ItemKind::OpaqueTy(opaque) = item.kind
             && !opaque.in_trait
         {
             // FIXME: This is some serious pessimization intended to workaround deficiencies
@@ -688,7 +688,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             | hir::ItemKind::GlobalAsm(..) => {}
             // The interface is empty, and all nested items are processed by `visit_item`.
             hir::ItemKind::Mod(..) | hir::ItemKind::OpaqueTy(..) => {}
-            hir::ItemKind::Macro(ref macro_def, _) => {
+            hir::ItemKind::Macro(macro_def, _) => {
                 if let Some(item_ev) = item_ev {
                     self.update_reachability_from_macro(item.owner_id.def_id, macro_def, item_ev);
                 }
@@ -727,7 +727,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.owner_id.def_id, item_ev).generics().predicates();
                 }
             }
-            hir::ItemKind::Impl(ref impl_) => {
+            hir::ItemKind::Impl(impl_) => {
                 // Type inference is very smart sometimes. It can make an impl reachable even some
                 // components of its type or trait are unreachable. E.g. methods of
                 // `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
@@ -1741,7 +1741,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
             // Subitems of trait impls have inherited publicity.
             DefKind::Impl { .. } => {
                 let item = tcx.hir().item(id);
-                if let hir::ItemKind::Impl(ref impl_) = item.kind {
+                if let hir::ItemKind::Impl(impl_) = item.kind {
                     let impl_vis = ty::Visibility::of_impl::<false>(
                         item.owner_id.def_id,
                         tcx,

@@ -99,7 +99,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(SerializedDepGraph, WorkProduct
 
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
-    let path = dep_graph_path(&sess);
+    let path = dep_graph_path(sess);
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = UnordMap::default();

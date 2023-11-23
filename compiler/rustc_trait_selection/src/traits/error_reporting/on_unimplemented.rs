@@ -482,7 +482,7 @@ impl<'tcx> OnUnimplementedDirective {
                     match Self::parse(
                         tcx,
                         item_def_id,
-                        &items,
+                        items,
                         item.span(),
                         false,
                         is_diagnostic_namespace_variant,
@@ -875,7 +875,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                     // don't break messages using these two arguments incorrectly
                                     &empty_string
                                 } else if s == sym::ItemContext {
-                                    &item_context
+                                    item_context
                                 } else if s == sym::integral {
                                     "{integral}"
                                 } else if s == sym::integer_ {

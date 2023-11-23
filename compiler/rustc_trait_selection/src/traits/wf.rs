@@ -624,7 +624,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // Note that we handle the len is implicitly checked while walking `arg`.
                 }
 
-                ty::Tuple(ref tys) => {
+                ty::Tuple(tys) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for &elem in rest {
                             self.require_sized(elem, traits::TupleElem);

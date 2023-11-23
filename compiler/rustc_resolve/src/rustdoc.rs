@@ -404,7 +404,7 @@ pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<s
 fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
     let mut event_iter = Parser::new_with_broken_link_callback(
-        &doc,
+        doc,
         main_body_opts(),
         Some(&mut broken_link_callback),
     )

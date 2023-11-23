@@ -182,7 +182,7 @@ impl Bounds {
         let params = self
             .bounds
             .iter()
-            .map(|&(name, ref bounds)| mk_ty_param(cx, span, name, &bounds, self_ty, self_generics))
+            .map(|&(name, ref bounds)| mk_ty_param(cx, span, name, bounds, self_ty, self_generics))
             .collect();
 
         Generics {

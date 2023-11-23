@@ -213,7 +213,7 @@ fn expand_macro<'cx>(
             let arm_span = rhses[i].span();
 
             // rhs has holes ( `$id` and `$(...)` that need filled)
-            let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
+            let mut tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
                 Ok(tts) => tts,
                 Err(mut err) => {
                     err.emit();
@@ -511,7 +511,7 @@ pub fn compile_declarative_macro(
                     )
                     .pop()
                     .unwrap();
-                    valid &= check_lhs_nt_follows(&sess.parse_sess, &def, &tt);
+                    valid &= check_lhs_nt_follows(&sess.parse_sess, def, &tt);
                     return tt;
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
@@ -927,7 +927,7 @@ impl<'tt> TtHandle<'tt> {
     fn get(&'tt self) -> &'tt mbe::TokenTree {
         match self {
             TtHandle::TtRef(tt) => tt,
-            TtHandle::Token(token_tt) => &token_tt,
+            TtHandle::Token(token_tt) => token_tt,
         }
     }
 }
@@ -1170,7 +1170,7 @@ fn check_matcher_core<'tt>(
                             Some(NonterminalKind::PatParam { inferred: false }),
                         ));
                         sess.buffer_lint_with_diagnostic(
-                            &RUST_2021_INCOMPATIBLE_OR_PATTERNS,
+                            RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
                             "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",
@@ -1407,7 +1407,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
 
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match tt {
-        mbe::TokenTree::Token(token) => pprust::token_to_string(&token).into(),
+        mbe::TokenTree::Token(token) => pprust::token_to_string(token).into(),
         mbe::TokenTree::MetaVar(_, name) => format!("${name}"),
         mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${name}:{kind}"),
         mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${name}:"),

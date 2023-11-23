@@ -88,7 +88,7 @@ impl<'a> PostExpansionVisitor<'a> {
             }
         }
 
-        match abi::is_enabled(&self.features, span, symbol_unescaped.as_str()) {
+        match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
             Err(abi::AbiDisabled::Unstable { feature, explain }) => {
                 feature_err_issue(
@@ -182,7 +182,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ..
         }) = attr_info
         {
-            gate_alt!(self, has_feature(&self.features), *name, attr.span, *descr);
+            gate_alt!(self, has_feature(self.features), *name, attr.span, *descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
@@ -300,7 +300,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ty), .. }) => {
-                self.check_impl_trait(&ty, false)
+                self.check_impl_trait(ty, false)
             }
 
             _ => {}

@@ -320,7 +320,7 @@ fn layout_of_uncached<'tcx>(
 
         ty::Coroutine(def_id, args, _) => coroutine_layout(cx, ty, def_id, args)?,
 
-        ty::Closure(_, ref args) => {
+        ty::Closure(_, args) => {
             let tys = args.as_closure().upvar_tys();
             univariant(
                 &tys.iter()
@@ -728,7 +728,7 @@ fn coroutine_layout<'tcx>(
     let Some(info) = tcx.coroutine_layout(def_id) else {
         return Err(error(cx, LayoutError::Unknown(ty)));
     };
-    let (ineligible_locals, assignments) = coroutine_saved_local_eligibility(&info);
+    let (ineligible_locals, assignments) = coroutine_saved_local_eligibility(info);
 
     // Build a prefix layout, including "promoting" all ineligible
     // locals as part of the prefix. We compute the layout of all of

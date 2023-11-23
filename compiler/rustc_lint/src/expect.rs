@@ -24,7 +24,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
         // This check will always be true, since `lint_expectations` only
         // holds stable ids
         if let LintExpectationId::Stable { hir_id, .. } = id {
-            if !fulfilled_expectations.contains(&id)
+            if !fulfilled_expectations.contains(id)
                 && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
             {
                 let rationale = expectation.reason.map(|rationale| ExpectationNote { rationale });

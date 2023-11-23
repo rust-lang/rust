@@ -88,7 +88,7 @@ pub(super) fn build_custom_mir<'tcx>(
     };
 
     let res: PResult<_> = try {
-        pctxt.parse_args(&params)?;
+        pctxt.parse_args(params)?;
         pctxt.parse_body(expr)?;
     };
     if let Err(err) = res {

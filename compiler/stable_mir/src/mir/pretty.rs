@@ -93,7 +93,7 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
     match rval {
         Rvalue::AddressOf(muta, addr) => {
             pretty.push_str("&raw ");
-            pretty.push_str(&ret_mutability(&muta));
+            pretty.push_str(&ret_mutability(muta));
             pretty.push_str(format!("(*_{})", addr.local).as_str());
         }
         Rvalue::Aggregate(aggregatekind, operands) => {
@@ -155,7 +155,7 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
         }
         Rvalue::NullaryOp(nul, ty) => {
             pretty.push_str(format!("{:#?}", nul).as_str());
-            pretty.push_str(&&pretty_ty(ty.kind()));
+            pretty.push_str(&pretty_ty(ty.kind()));
             pretty.push_str(" ");
         }
         Rvalue::UnaryOp(un, op) => {

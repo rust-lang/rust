@@ -69,9 +69,8 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     interface::run_compiler(config, |compiler| {
         let linker = compiler.enter(|queries| {
             queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
-            let ongoing_codegen = queries.ongoing_codegen()?;
-            queries.linker(ongoing_codegen)
+            queries.codegen_and_build_linker()
         });
-        linker.unwrap().link(compiler.session(), compiler.codegen_backend()).unwrap();
+        linker.unwrap().link(&compiler.sess, &*compiler.codegen_backend).unwrap();
     });
 }

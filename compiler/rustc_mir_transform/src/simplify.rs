@@ -74,7 +74,7 @@ pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn name(&self) -> &'static str {
-        &self.name()
+        self.name()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

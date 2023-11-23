@@ -61,8 +61,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     .params
                     .iter()
                     .map(|arg| {
-                        if let hir::Pat { kind: hir::PatKind::Tuple(ref args, _), span, .. } =
-                            *arg.pat
+                        if let hir::Pat { kind: hir::PatKind::Tuple(args, _), span, .. } = *arg.pat
                         {
                             Some(ArgKind::Tuple(
                                 Some(span),
@@ -92,7 +91,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     .inputs
                     .iter()
                     .map(|arg| match arg.kind {
-                        hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
+                        hir::TyKind::Tup(tys) => ArgKind::Tuple(
                             Some(arg.span),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
                         ),
@@ -100,7 +99,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     })
                     .collect::<Vec<ArgKind>>(),
             ),
-            Node::Ctor(ref variant_data) => {
+            Node::Ctor(variant_data) => {
                 let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
                 (span, None, vec![ArgKind::empty(); variant_data.fields().len()])
             }

@@ -38,18 +38,12 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing [`Config`] to [`run_compiler`].
 pub struct Compiler {
-    sess: Session,
-    codegen_backend: Box<dyn CodegenBackend>,
+    pub sess: Session,
+    pub codegen_backend: Box<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
 }
 
 impl Compiler {
-    pub fn session(&self) -> &Session {
-        &self.sess
-    }
-    pub fn codegen_backend(&self) -> &dyn CodegenBackend {
-        &*self.codegen_backend
-    }
     pub fn build_output_filenames(
         &self,
         sess: &Session,

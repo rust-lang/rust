@@ -63,7 +63,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .add_to_diagnostic(err);
             }
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
-                self.note_region_origin(err, &parent);
+                self.note_region_origin(err, parent);
             }
             infer::AscribeUserTypeProvePredicate(span) => {
                 RegionOriginNote::Plain {

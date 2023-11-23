@@ -938,12 +938,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     scope = self.declare_bindings(
                         scope,
                         expr.span,
-                        &pat,
+                        pat,
                         None,
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(block = self.place_into_pattern(block, &pat, place_builder, false));
+                    unpack!(block = self.place_into_pattern(block, pat, place_builder, false));
                 }
             }
             self.source_scope = original_source_scope;
@@ -954,7 +954,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_scope = source_scope;
         }
 
-        self.expr_into_dest(Place::return_place(), block, &expr)
+        self.expr_into_dest(Place::return_place(), block, expr)
     }
 
     fn set_correct_source_scope_for_arg(

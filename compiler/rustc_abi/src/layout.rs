@@ -111,8 +111,8 @@ pub trait LayoutCalculator {
                             alt_tail_space,
                             layout.fields.count(),
                             prefer_alt_layout,
-                            format_field_niches(&layout, &fields, &dl),
-                            format_field_niches(&alt_layout, &fields, &dl),
+                            format_field_niches(layout, fields, dl),
+                            format_field_niches(&alt_layout, fields, dl),
                         );
 
                         if prefer_alt_layout {
@@ -1025,7 +1025,7 @@ fn univariant<
     // At the bottom of this function, we invert `inverse_memory_index` to
     // produce `memory_index` (see `invert_mapping`).
     let mut sized = true;
-    let mut offsets = IndexVec::from_elem(Size::ZERO, &fields);
+    let mut offsets = IndexVec::from_elem(Size::ZERO, fields);
     let mut offset = Size::ZERO;
     let mut largest_niche = None;
     let mut largest_niche_available = 0;

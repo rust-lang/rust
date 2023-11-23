@@ -75,7 +75,7 @@ pub(crate) fn parse_token_trees<'a>(
 
             let mut buffer = Vec::with_capacity(1);
             for unmatched in unmatched_delims {
-                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
+                if let Some(err) = make_unclosed_delims_error(unmatched, sess) {
                     err.buffer(&mut buffer);
                 }
             }
@@ -362,7 +362,7 @@ impl<'a> StringReader<'a> {
         if contains_text_flow_control_chars(content) {
             let span = self.mk_sp(start, self.pos);
             self.sess.buffer_lint_with_diagnostic(
-                &TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+                TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
                 "unicode codepoint changing visible direction of text present in comment",
@@ -683,7 +683,7 @@ impl<'a> StringReader<'a> {
         } else {
             // Before Rust 2021, only emit a lint for migration.
             self.sess.buffer_lint_with_diagnostic(
-                &RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+                RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
                 format!("prefix `{prefix}` is unknown"),

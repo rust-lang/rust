@@ -84,7 +84,7 @@ fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
                 span,
             ) = violation
             {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
+                lint_object_unsafe_trait(tcx, *span, trait_def_id, violation);
             }
         }
         return true;

@@ -650,6 +650,6 @@ fn buffer_lint(
 ) {
     // Macros loaded from other crates have dummy node ids.
     if node_id != DUMMY_NODE_ID {
-        sess.buffer_lint(&META_VARIABLE_MISUSE, span, node_id, message);
+        sess.buffer_lint(META_VARIABLE_MISUSE, span, node_id, message);
     }
 }

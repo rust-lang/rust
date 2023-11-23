@@ -686,7 +686,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n) | ImplSource::Builtin(_, n) => &n,
+            ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
@@ -956,13 +956,26 @@ pub enum CodegenObligationError {
     FulfillmentError,
 }
 
+/// Defines the treatment of opaque types in a given inference context.
+///
+/// This affects both what opaques are allowed to be defined, but also whether
+/// opaques are replaced with inference vars eagerly in the old solver (e.g.
+/// in projection, and in the signature during function type-checking).
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum DefiningAnchor {
-    /// `DefId` of the item.
+    /// Define opaques which are in-scope of the `LocalDefId`. Also, eagerly
+    /// replace opaque types in `replace_opaque_types_with_inference_vars`.
     Bind(LocalDefId),
-    /// When opaque types are not resolved, we `Bubble` up, meaning
-    /// return the opaque/hidden type pair from query, for caller of query to handle it.
+    /// In contexts where we don't currently know what opaques are allowed to be
+    /// defined, such as (old solver) canonical queries, we will simply allow
+    /// opaques to be defined, but "bubble" them up in the canonical response or
+    /// otherwise treat them to be handled later.
+    ///
+    /// We do not eagerly replace opaque types in `replace_opaque_types_with_inference_vars`,
+    /// which may affect what predicates pass and fail in the old trait solver.
     Bubble,
-    /// Used to catch type mismatch errors when handling opaque types.
+    /// Do not allow any opaques to be defined. This is used to catch type mismatch
+    /// errors when handling opaque types, and also should be used when we would
+    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
     Error,
 }

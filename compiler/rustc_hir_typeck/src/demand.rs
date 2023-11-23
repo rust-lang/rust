@@ -184,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_predicates(obligations);
                 None
             }
-            Err(e) => Some(self.err_ctxt().report_mismatched_types(&cause, expected, actual, e)),
+            Err(e) => Some(self.err_ctxt().report_mismatched_types(cause, expected, actual, e)),
         }
     }
 

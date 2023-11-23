@@ -906,7 +906,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
 
             // If the trait has a single item (which wasn't matched by the algorithm), suggest it
-            let suggestion = self.get_single_associated_item(&path, &source, is_expected);
+            let suggestion = self.get_single_associated_item(path, &source, is_expected);
             if !self.r.add_typo_suggestion(err, suggestion, ident_span) {
                 fallback = !self.let_binding_suggestion(err, ident_span);
             }
@@ -1397,7 +1397,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             match source {
                 PathSource::Expr(Some(
                     parent @ Expr { kind: ExprKind::Field(..) | ExprKind::MethodCall(..), .. },
-                )) if path_sep(this, err, &parent, DefKind::Struct) => {}
+                )) if path_sep(this, err, parent, DefKind::Struct) => {}
                 PathSource::Expr(
                     None
                     | Some(Expr {
@@ -1556,7 +1556,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 Res::Def(kind @ (DefKind::Mod | DefKind::Trait), _),
                 PathSource::Expr(Some(parent)),
             ) => {
-                if !path_sep(self, err, &parent, kind) {
+                if !path_sep(self, err, parent, kind) {
                     return false;
                 }
             }

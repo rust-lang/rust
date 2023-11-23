@@ -200,7 +200,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                 &caller
                     .file
                     .name
-                    .for_scope(&self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
+                    .for_scope(self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
                     .to_string_lossy(),
             ),
             u32::try_from(caller.line).unwrap(),
@@ -493,7 +493,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 };
 
                 let ptr = ecx.allocate_ptr(
-                    Size::from_bytes(size as u64),
+                    Size::from_bytes(size),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
                 )?;

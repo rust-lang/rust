@@ -42,7 +42,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // If there exists a local definition that dominates all uses of that local,
     // the definition should be visited first. Traverse blocks in an order that
     // is a topological sort of dominance partial order.
-    for (bb, data) in traversal::reverse_postorder(&mir) {
+    for (bb, data) in traversal::reverse_postorder(mir) {
         analyzer.visit_basic_block_data(bb, data);
     }
 
@@ -202,7 +202,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             ) => match &mut self.locals[local] {
                 LocalKind::ZST => {}
                 LocalKind::Memory => {}
-                LocalKind::SSA(def) if def.dominates(location, &self.dominators) => {}
+                LocalKind::SSA(def) if def.dominates(location, self.dominators) => {}
                 // Reads from uninitialized variables (e.g., in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.
                 // N.B., there can be uninitialized reads of a local visited after

@@ -90,6 +90,7 @@ impl RegionValueElements {
 rustc_index::newtype_index! {
     /// A single integer representing a `Location` in the MIR control-flow
     /// graph. Constructed efficiently from `RegionValueElements`.
+    #[orderable]
     #[debug_format = "PointIndex({})"]
     pub struct PointIndex {}
 }

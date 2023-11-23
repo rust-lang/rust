@@ -1297,7 +1297,7 @@ impl EmitterWriter {
                     buffer.append(line_number, line, style_or_override(*style, override_style));
                 }
             } else {
-                buffer.append(line_number, &text, style_or_override(*style, override_style));
+                buffer.append(line_number, text, style_or_override(*style, override_style));
             }
         }
     }
@@ -1931,7 +1931,7 @@ impl EmitterWriter {
                 self.draw_code_line(
                     &mut buffer,
                     &mut row_num,
-                    &highlight_parts,
+                    highlight_parts,
                     line_pos + line_start,
                     line,
                     show_code_change,
@@ -2338,7 +2338,7 @@ impl FileWithAnnotatedLines {
         let mut output = vec![];
         let mut multiline_annotations = vec![];
 
-        if let Some(ref sm) = emitter.source_map() {
+        if let Some(sm) = emitter.source_map() {
             for SpanLabel { span, is_primary, label } in msp.span_labels() {
                 // If we don't have a useful span, pick the primary span if that exists.
                 // Worst case we'll just print an error at the top of the main file.
@@ -2362,7 +2362,7 @@ impl FileWithAnnotatedLines {
 
                 let label = label.as_ref().map(|m| {
                     normalize_whitespace(
-                        &emitter.translate_message(m, &args).map_err(Report::new).unwrap(),
+                        &emitter.translate_message(m, args).map_err(Report::new).unwrap(),
                     )
                 });
 

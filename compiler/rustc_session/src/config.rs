@@ -857,7 +857,7 @@ impl OutFileName {
     pub fn as_path(&self) -> &Path {
         match *self {
             OutFileName::Real(ref path) => path.as_ref(),
-            OutFileName::Stdout => &Path::new("stdout"),
+            OutFileName::Stdout => Path::new("stdout"),
         }
     }
 
@@ -1443,9 +1443,8 @@ impl CheckCfg {
         let relocation_model_values = RelocModel::all();
 
         // Unknown possible values:
-        //  - `feature`
         //  - `target_feature`
-        for name in [sym::feature, sym::target_feature] {
+        for name in [sym::target_feature] {
             self.expecteds.entry(name).or_insert(ExpectedValues::Any);
         }
 

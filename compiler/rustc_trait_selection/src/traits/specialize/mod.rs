@@ -107,7 +107,7 @@ pub fn translate_args_with_cause<'tcx>(
         param_env, source_impl, source_args, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, &source_args);
+        infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, source_args);
 
     // translate the Self and Param parts of the substitution, since those
     // vary across impls
@@ -197,25 +197,22 @@ fn fulfill_implication<'tcx>(
         param_env, source_trait_ref, target_impl
     );
 
-    let source_trait_ref = match traits::fully_normalize(
-        &infcx,
-        ObligationCause::dummy(),
-        param_env,
-        source_trait_ref,
-    ) {
-        Ok(source_trait_ref) => source_trait_ref,
-        Err(_errors) => {
-            infcx.tcx.sess.delay_span_bug(
-                infcx.tcx.def_span(source_impl),
-                format!("failed to fully normalize {source_trait_ref}"),
-            );
-            source_trait_ref
-        }
-    };
+    let source_trait_ref =
+        match traits::fully_normalize(infcx, ObligationCause::dummy(), param_env, source_trait_ref)
+        {
+            Ok(source_trait_ref) => source_trait_ref,
+            Err(_errors) => {
+                infcx.tcx.sess.delay_span_bug(
+                    infcx.tcx.def_span(source_impl),
+                    format!("failed to fully normalize {source_trait_ref}"),
+                );
+                source_trait_ref
+            }
+        };
 
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
-    let selcx = &mut SelectionContext::new(&infcx);
+    let selcx = &mut SelectionContext::new(infcx);
     let target_args = infcx.fresh_args_for_item(DUMMY_SP, target_impl);
     let (target_trait, obligations) =
         util::impl_subject_and_oblig(selcx, param_env, target_impl, target_args, error_cause);

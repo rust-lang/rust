@@ -321,7 +321,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let deref_base = match deref_target_place.projection.as_ref() {
             [proj_base @ .., ProjectionElem::Deref] => {
-                PlaceRef { local: deref_target_place.local, projection: &proj_base }
+                PlaceRef { local: deref_target_place.local, projection: proj_base }
             }
             _ => bug!("deref_target_place is not a deref projection"),
         };
@@ -583,7 +583,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
                     ty: bind_to.ty,
-                    place: &place_desc,
+                    place: place_desc,
                     span: binding_span,
                 });
             }

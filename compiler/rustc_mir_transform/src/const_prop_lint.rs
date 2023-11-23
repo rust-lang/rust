@@ -453,7 +453,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         cond: &Operand<'tcx>,
         location: Location,
     ) -> Option<!> {
-        let value = &self.eval_operand(&cond, location)?;
+        let value = &self.eval_operand(cond, location)?;
         trace!("assertion on {:?} should be {:?}", value, expected);
 
         let expected = Scalar::from_bool(expected);
@@ -626,7 +626,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 self.check_assertion(*expected, msg, cond, location);
             }
             TerminatorKind::SwitchInt { ref discr, ref targets } => {
-                if let Some(ref value) = self.eval_operand(&discr, location)
+                if let Some(ref value) = self.eval_operand(discr, location)
                     && let Some(value_const) =
                         self.use_ecx(location, |this| this.ecx.read_scalar(value))
                     && let Ok(constant) = value_const.try_to_int()

@@ -494,7 +494,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResu
     let param_env = tcx.param_env(def);
 
     let mut checker = UnsafetyChecker::new(body, def, tcx, param_env);
-    checker.visit_body(&body);
+    checker.visit_body(body);
 
     let unused_unsafes = (!tcx.is_typeck_child(def.to_def_id()))
         .then(|| check_unused_unsafe(tcx, def, &checker.used_unsafe_blocks));

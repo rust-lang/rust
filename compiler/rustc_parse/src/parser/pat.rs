@@ -541,7 +541,7 @@ impl<'a> Parser<'a> {
         }
 
         self.sess
-            .emit_err(AmbiguousRangePattern { span: pat.span, pat: pprust::pat_to_string(&pat) });
+            .emit_err(AmbiguousRangePattern { span: pat.span, pat: pprust::pat_to_string(pat) });
     }
 
     /// Parse `&pat` / `&mut pat`.
@@ -641,7 +641,7 @@ impl<'a> Parser<'a> {
         self.sess.emit_err(if changed_any_binding {
             InvalidMutInPattern::NestedIdent {
                 span: lo.to(pat.span),
-                pat: pprust::pat_to_string(&pat),
+                pat: pprust::pat_to_string(pat),
             }
         } else {
             InvalidMutInPattern::NonIdent { span: lo.until(pat.span) }

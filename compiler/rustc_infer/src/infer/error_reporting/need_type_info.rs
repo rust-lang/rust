@@ -419,7 +419,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
-        let mut local_visitor = FindInferSourceVisitor::new(&self, typeck_results, arg);
+        let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(
             self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
         ) {

@@ -387,7 +387,7 @@ fn valtree_into_mplace<'tcx>(
 
                 debug!(?place_inner);
                 valtree_into_mplace(ecx, &place_inner, *inner_valtree);
-                dump_place(&ecx, &place_inner);
+                dump_place(ecx, &place_inner);
             }
 
             debug!("dump of place_adjusted:");

@@ -351,6 +351,16 @@ pub unsafe fn create_module<'ll>(
         );
     }
 
+    // Set module flag to enable Windows EHCont Guard (/guard:ehcont).
+    if sess.opts.unstable_opts.ehcont_guard {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Warning,
+            "ehcontguard\0".as_ptr() as *const _,
+            1,
+        )
+    }
+
     // Insert `llvm.ident` metadata.
     //
     // On the wasm targets it will get hooked up to the "producer" sections

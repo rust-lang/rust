@@ -1,8 +1,9 @@
 use super::{
     mir::Safety,
     mir::{Body, Mutability},
-    with, AllocId, DefId, Error, Symbol,
+    with, DefId, Error, Symbol,
 };
+use crate::mir::alloc::AllocId;
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -138,7 +139,7 @@ impl Span {
 
     /// Return lines that corespond to this `Span`
     pub fn get_lines(&self) -> LineInfo {
-        with(|c| c.get_lines(&self))
+        with(|c| c.get_lines(self))
     }
 }
 
