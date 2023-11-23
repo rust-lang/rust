@@ -2607,7 +2607,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::BinOp { .. }
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
             | ObligationCauseCode::DropImpl
-            | ObligationCauseCode::ConstParam(_) => {}
+            | ObligationCauseCode::ConstParam(_)
+            | ObligationCauseCode::ReferenceOutlivesReferent(..)
+            | ObligationCauseCode::ObjectTypeBound(..) => {}
             ObligationCauseCode::RustCall => {
                 if let Some(pred) = predicate.to_opt_poly_trait_pred()
                     && Some(pred.def_id()) == self.tcx.lang_items().sized_trait()
@@ -2620,16 +2622,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::TupleElem => {
                 err.note("only the last element of a tuple may have a dynamically sized type");
-            }
-            ObligationCauseCode::ReferenceOutlivesReferent(ref_ty) => {
-                err.note(format!(
-                    "required so that reference `{ref_ty}` does not outlive its referent"
-                ));
-            }
-            ObligationCauseCode::ObjectTypeBound(object_ty, region) => {
-                err.note(format!(
-                    "required so that the lifetime bound of `{region}` for `{object_ty}` is satisfied",
-                ));
             }
             ObligationCauseCode::ItemObligation(_)
             | ObligationCauseCode::ExprItemObligation(..) => {
