@@ -44,11 +44,9 @@ pub(super) fn check<'tcx>(
 
         // lint message
         let msg = if is_option {
-            "called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling \
-            `map_or_else(<g>, <f>)` instead"
+            "called `map(<f>).unwrap_or_else(<g>)` on an `Option` value"
         } else {
-            "called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling \
-            `.map_or_else(<g>, <f>)` instead"
+            "called `map(<f>).unwrap_or_else(<g>)` on a `Result` value"
         };
         // get snippets for args to map() and unwrap_or_else()
         let map_snippet = snippet(cx, map_arg.span, "..");

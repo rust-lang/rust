@@ -1,4 +1,4 @@
-error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `map(..)` instead
+error: called `map_or(None, ..)` on an `Option` value
   --> $DIR/option_map_or_none.rs:10:26
    |
 LL |     let _: Option<i32> = opt.map_or(None, |x| Some(x + 1));
@@ -7,7 +7,7 @@ LL |     let _: Option<i32> = opt.map_or(None, |x| Some(x + 1));
    = note: `-D clippy::option-map-or-none` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_map_or_none)]`
 
-error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `map(..)` instead
+error: called `map_or(None, ..)` on an `Option` value
   --> $DIR/option_map_or_none.rs:13:26
    |
 LL |       let _: Option<i32> = opt.map_or(None, |x| {
@@ -16,13 +16,13 @@ LL | |                         Some(x + 1)
 LL | |                        });
    | |_________________________^ help: try using `map` instead: `opt.map(|x| x + 1)`
 
-error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
+error: called `map_or(None, ..)` on an `Option` value
   --> $DIR/option_map_or_none.rs:17:26
    |
 LL |     let _: Option<i32> = opt.map_or(None, bar);
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `opt.and_then(bar)`
 
-error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
+error: called `map_or(None, ..)` on an `Option` value
   --> $DIR/option_map_or_none.rs:18:26
    |
 LL |       let _: Option<i32> = opt.map_or(None, |x| {
@@ -42,7 +42,7 @@ LL +         Some(offset + height)
 LL ~     });
    |
 
-error: called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling `ok()` instead
+error: called `map_or(None, Some)` on a `Result` value
   --> $DIR/option_map_or_none.rs:25:26
    |
 LL |     let _: Option<i32> = r.map_or(None, Some);
