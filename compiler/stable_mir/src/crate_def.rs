@@ -1,4 +1,5 @@
-//! Module that define a common trait for things that represent a crate definition.
+//! Module that define a common trait for things that represent a crate definition,
+//! such as, a function, a trait, an enum, and any other definitions.
 
 use crate::ty::Span;
 use crate::{with, Crate, Symbol};
@@ -7,21 +8,23 @@ use crate::{with, Crate, Symbol};
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(pub(crate) usize);
 
-/// A trait for retrieving information about a crate definition.
+/// A trait for retrieving information about a particular definition.
 ///
 /// Implementors must provide the implementation of `def_id` which will be used to retrieve
-/// information about its definition.
+/// information about a crate's definition.
 pub trait CrateDef {
-    /// Retrieve the unique identifier for the given definition.
+    /// Retrieve the unique identifier for the current definition.
     fn def_id(&self) -> DefId;
 
-    /// Return the fully qualified name of the given definition.
+    /// Return the fully qualified name of the current definition.
     fn name(&self) -> Symbol {
         let def_id = self.def_id();
         with(|cx| cx.def_name(def_id, false))
     }
 
-    /// Return a trimmed name of the given definition.
+    /// Return a trimmed name of this definition.
+    ///
+    /// This can be used to print more user friendly diagnostic messages.
     ///
     /// If a symbol name can only be imported from one place for a type, and as
     /// long as it was not glob-imported anywhere in the current crate, we trim its

@@ -256,6 +256,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.tcx.symbol_name(instance).name.to_string()
     }
 
+    /// Retrieve the instance name for diagnostic messages.
+    ///
+    /// This will return the specialized name, e.g., `Vec<char>::new`.
     fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol {
         let tables = self.0.borrow_mut();
         let instance = tables.instances[def];

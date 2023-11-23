@@ -48,10 +48,16 @@ impl Instance {
         with(|context| context.instance_ty(self.def))
     }
 
+    /// Retrieve the instance's mangled name used for calling the given instance.
+    ///
+    /// This will also look up the correct name of instances from upstream crates.
     pub fn mangled_name(&self) -> Symbol {
         with(|context| context.instance_mangled_name(self.def))
     }
 
+    /// Retrieve the instance name for diagnostic messages.
+    ///
+    /// This will return the specialized name, e.g., `std::vec::Vec<u8>::new`.
     pub fn name(&self) -> Symbol {
         with(|context| context.instance_name(self.def, false))
     }
@@ -118,8 +124,8 @@ impl TryFrom<CrateItem> for Instance {
 
     fn try_from(item: CrateItem) -> Result<Self, Self::Error> {
         with(|context| {
-            /// FIXME(celinval):
-            /// - Check `has_body`.
+            // FIXME(celinval):
+            // - Return `Err` if instance does not have a body.
             if !context.requires_monomorphization(item.0) {
                 Ok(context.mono_instance(item))
             } else {
