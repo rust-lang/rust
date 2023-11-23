@@ -13,8 +13,8 @@ use crate::location::LocationTable;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 
-mod constraint_generation;
 mod invalidation;
+mod loan_kills;
 
 /// Emit facts needed for move/init analysis: moves and assignments.
 pub(crate) fn emit_move_facts(
@@ -160,5 +160,5 @@ pub(crate) fn emit_cfg_and_loan_kills_facts<'tcx>(
         return;
     };
 
-    constraint_generation::generate_constraints(tcx, all_facts, location_table, body, borrow_set);
+    loan_kills::emit_loan_kills(tcx, all_facts, location_table, body, borrow_set);
 }

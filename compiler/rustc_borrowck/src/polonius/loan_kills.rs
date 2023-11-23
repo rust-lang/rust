@@ -3,13 +3,14 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind,
-    Terminator, TerminatorKind, UserTypeProjection,
+    Terminator, TerminatorKind,
 };
-use rustc_middle::ty::{TyCtxt, Variance};
+use rustc_middle::ty::TyCtxt;
 
 use crate::{borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, places_conflict};
 
-pub(super) fn generate_constraints<'tcx>(
+/// Emit `loan_killed_at` and `cfg_edge` facts at the same time.
+pub(super) fn emit_loan_kills<'tcx>(
     tcx: TyCtxt<'tcx>,
     all_facts: &mut AllFacts,
     location_table: &LocationTable,
@@ -17,23 +18,23 @@ pub(super) fn generate_constraints<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-    let mut cg = ConstraintGeneration { borrow_set, tcx, location_table, all_facts, body };
+    let mut visitor = LoanKillsGenerator { borrow_set, tcx, location_table, all_facts, body };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
-        cg.visit_basic_block_data(bb, data);
+        visitor.visit_basic_block_data(bb, data);
     }
 }
 
-/// 'cg = the duration of the constraint generation process itself.
-struct ConstraintGeneration<'cg, 'tcx> {
+struct LoanKillsGenerator<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    all_facts: &'cg mut AllFacts,
-    location_table: &'cg LocationTable,
-    borrow_set: &'cg BorrowSet<'tcx>,
-    body: &'cg Body<'tcx>,
+    all_facts: &'cx mut AllFacts,
+    location_table: &'cx LocationTable,
+    borrow_set: &'cx BorrowSet<'tcx>,
+    body: &'cx Body<'tcx>,
 }
 
-impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for LoanKillsGenerator<'cx, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        // Also record CFG facts here.
         self.all_facts.cfg_edge.push((
             self.location_table.start_index(location),
             self.location_table.mid_index(location),
@@ -56,11 +57,11 @@ impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
         // When we see `X = ...`, then kill borrows of
         // `(*X).foo` and so forth.
         self.record_killed_borrows_for_place(*place, location);
-
         self.super_assign(place, rvalue, location);
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        // Also record CFG facts here.
         self.all_facts.cfg_edge.push((
             self.location_table.start_index(location),
             self.location_table.mid_index(location),
@@ -83,20 +84,11 @@ impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
 
         self.super_terminator(terminator, location);
     }
-
-    fn visit_ascribe_user_ty(
-        &mut self,
-        _place: &Place<'tcx>,
-        _variance: Variance,
-        _user_ty: &UserTypeProjection,
-        _location: Location,
-    ) {
-    }
 }
 
-impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
-    /// When recording facts for Polonius, records the borrows on the specified place
-    /// as `killed`. For example, when assigning to a local, or on a call's return destination.
+impl<'tcx> LoanKillsGenerator<'_, 'tcx> {
+    /// Records the borrows on the specified place as `killed`. For example, when assigning to a
+    /// local, or on a call's return destination.
     fn record_killed_borrows_for_place(&mut self, place: Place<'tcx>, location: Location) {
         // Depending on the `Place` we're killing:
         // - if it's a local, or a single deref of a local,
@@ -143,7 +135,7 @@ impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
         }
     }
 
-    /// When recording facts for Polonius, records the borrows on the specified local as `killed`.
+    /// Records the borrows on the specified local as `killed`.
     fn record_killed_borrows_for_local(&mut self, local: Local, location: Location) {
         if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
             let location_index = self.location_table.mid_index(location);
