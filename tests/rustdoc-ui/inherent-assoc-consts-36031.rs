@@ -1,4 +1,5 @@
 // aux-build:issue-36031.rs
+// check-pass
 // build-aux-docs
 // ignore-cross-compile
 

@@ -1,3 +1,4 @@
+// check-pass
 // This should not ICE
 
 // https://github.com/rust-lang/rust/issues/47639
