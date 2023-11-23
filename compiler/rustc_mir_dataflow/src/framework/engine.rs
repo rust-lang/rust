@@ -80,6 +80,7 @@ where
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
     }
 }
+
 impl<'tcx, A> Results<'tcx, A>
 where
     A: Analysis<'tcx>,
@@ -92,6 +93,7 @@ where
         ResultsCursor::new(body, self)
     }
 }
+
 impl<'tcx, A> Results<'tcx, A>
 where
     A: Analysis<'tcx> + CloneAnalysis,
@@ -113,7 +115,8 @@ where
         self.clone_analysis().into_results_cursor(body)
     }
 }
-impl<'res, 'tcx, A> Results<'tcx, A, &'res EntrySets<'tcx, A>>
+
+impl<'res, 'tcx, A> ResultsCloned<'res, 'tcx, A>
 where
     A: Analysis<'tcx> + CloneAnalysis,
 {

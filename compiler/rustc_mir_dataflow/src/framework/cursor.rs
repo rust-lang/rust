@@ -104,7 +104,7 @@ where
     }
 }
 
-impl<'res, 'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A, ResultsCloned<'res, 'tcx, A>>
+impl<'res, 'mir, 'tcx, A> ResultsClonedCursor<'res, 'mir, 'tcx, A>
 where
     A: Analysis<'tcx> + CloneAnalysis,
 {
