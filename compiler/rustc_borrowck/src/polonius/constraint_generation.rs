@@ -1,38 +1,23 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::mir::visit::TyContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue, SourceInfo, Statement,
-    StatementKind, Terminator, TerminatorKind, UserTypeProjection,
+    Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind, UserTypeProjection,
 };
-use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{self};
 
-use crate::{
-    borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, places_conflict,
-    region_infer::values::LivenessValues,
-};
+use crate::{borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, places_conflict};
 
 pub(super) fn generate_constraints<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    let mut cg = ConstraintGeneration {
-        borrow_set,
-        infcx,
-        liveness_constraints,
-        location_table,
-        all_facts,
-        body,
-    };
-
+    let mut cg = ConstraintGeneration { borrow_set, infcx, location_table, all_facts, body };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
         cg.visit_basic_block_data(bb, data);
     }
@@ -43,44 +28,11 @@ struct ConstraintGeneration<'cg, 'tcx> {
     infcx: &'cg InferCtxt<'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
-    liveness_constraints: &'cg mut LivenessValues<RegionVid>,
     borrow_set: &'cg BorrowSet<'tcx>,
     body: &'cg Body<'tcx>,
 }
 
 impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
-    /// We sometimes have `args` within an rvalue, or within a
-    /// call. Make them live at the location where they appear.
-    fn visit_args(&mut self, args: &GenericArgsRef<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*args, location);
-        self.super_args(args);
-    }
-
-    /// We sometimes have `region` within an rvalue, or within a
-    /// call. Make them live at the location where they appear.
-    fn visit_region(&mut self, region: ty::Region<'tcx>, location: Location) {
-        self.add_regular_live_constraint(region, location);
-        self.super_region(region);
-    }
-
-    /// We sometimes have `ty` within an rvalue, or within a
-    /// call. Make them live at the location where they appear.
-    fn visit_ty(&mut self, ty: Ty<'tcx>, ty_context: TyContext) {
-        match ty_context {
-            TyContext::ReturnTy(SourceInfo { span, .. })
-            | TyContext::YieldTy(SourceInfo { span, .. })
-            | TyContext::UserTy(span)
-            | TyContext::LocalDecl { source_info: SourceInfo { span, .. }, .. } => {
-                span_bug!(span, "should not be visiting outside of the CFG: {:?}", ty_context);
-            }
-            TyContext::Location(location) => {
-                self.add_regular_live_constraint(ty, location);
-            }
-        }
-
-        self.super_ty(ty);
-    }
-
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         if let Some(all_facts) = self.all_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
@@ -155,22 +107,6 @@ impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
 }
 
 impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
-    /// Some variable with type `live_ty` is "regular live" at
-    /// `location` -- i.e., it may be used later. This means that all
-    /// regions appearing in the type `live_ty` must be live at
-    /// `location`.
-    fn add_regular_live_constraint<T>(&mut self, live_ty: T, location: Location)
-    where
-        T: TypeVisitable<TyCtxt<'tcx>>,
-    {
-        debug!("add_regular_live_constraint(live_ty={:?}, location={:?})", live_ty, location);
-
-        self.infcx.tcx.for_each_free_region(&live_ty, |live_region| {
-            let vid = live_region.as_var();
-            self.liveness_constraints.add_element(vid, location);
-        });
-    }
-
     /// When recording facts for Polonius, records the borrows on the specified place
     /// as `killed`. For example, when assigning to a local, or on a call's return destination.
     fn record_killed_borrows_for_place(&mut self, place: Place<'tcx>, location: Location) {

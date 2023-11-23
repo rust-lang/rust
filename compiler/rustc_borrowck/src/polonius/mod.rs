@@ -5,13 +5,12 @@
 
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{Body, LocalKind, Location, START_BLOCK};
-use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 
 use crate::borrow_set::BorrowSet;
 use crate::facts::AllFacts;
 use crate::location::LocationTable;
-use crate::region_infer::values::LivenessValues;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 
@@ -152,18 +151,10 @@ pub(crate) fn emit_loan_invalidations_facts<'tcx>(
 /// Emit facts about CFG points and edges, as well as locations where loans are killed.
 pub(crate) fn emit_cfg_and_loan_kills_facts<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    constraint_generation::generate_constraints(
-        infcx,
-        liveness_constraints,
-        all_facts,
-        location_table,
-        body,
-        borrow_set,
-    );
+    constraint_generation::generate_constraints(infcx, all_facts, location_table, body, borrow_set);
 }

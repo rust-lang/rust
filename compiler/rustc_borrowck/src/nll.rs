@@ -159,7 +159,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     );
     polonius::emit_cfg_and_loan_kills_facts(
         infcx,
-        &mut liveness_constraints,
         &mut all_facts,
         location_table,
         body,
