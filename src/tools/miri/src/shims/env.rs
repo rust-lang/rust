@@ -9,7 +9,6 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::Ty;
 use rustc_target::abi::Size;
 
-use crate::helpers::target_os_is_unix;
 use crate::*;
 
 /// Check whether an operation that writes to a target buffer was successful.
@@ -53,16 +52,15 @@ impl<'tcx> EnvVars<'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
         config: &MiriConfig,
     ) -> InterpResult<'tcx> {
-        let target_os = ecx.tcx.sess.target.os.as_ref();
-
+        // Initialize the `env_vars` map.
         // Skip the loop entirely if we don't want to forward anything.
         if ecx.machine.communicate() || !config.forwarded_env_vars.is_empty() {
             for (name, value) in &config.env {
                 let forward = ecx.machine.communicate()
                     || config.forwarded_env_vars.iter().any(|v| **v == *name);
                 if forward {
-                    let var_ptr = match target_os {
-                        target if target_os_is_unix(target) =>
+                    let var_ptr = match ecx.tcx.sess.target.os.as_ref() {
+                        _ if ecx.target_os_is_unix() =>
                             alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx)?,
                         "windows" => alloc_env_var_as_wide_str(name.as_ref(), value.as_ref(), ecx)?,
                         unsupported =>
@@ -75,7 +73,17 @@ impl<'tcx> EnvVars<'tcx> {
                 }
             }
         }
-        ecx.update_environ()
+
+        // Initialize the `environ` pointer when needed.
+        if ecx.target_os_is_unix() {
+            // This is memory backing an extern static, hence `ExternStatic`, not `Env`.
+            let layout = ecx.machine.layouts.mut_raw_ptr;
+            let place = ecx.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
+            ecx.write_null(&place)?;
+            ecx.machine.env_vars.environ = Some(place);
+            ecx.update_environ()?;
+        }
+        Ok(())
     }
 
     pub(crate) fn cleanup<'mir>(
@@ -87,9 +95,11 @@ impl<'tcx> EnvVars<'tcx> {
             ecx.deallocate_ptr(ptr, None, MiriMemoryKind::Runtime.into())?;
         }
         // Deallocate environ var list.
-        let environ = ecx.machine.env_vars.environ.as_ref().unwrap();
-        let old_vars_ptr = ecx.read_pointer(environ)?;
-        ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
+        if ecx.target_os_is_unix() {
+            let environ = ecx.machine.env_vars.environ.as_ref().unwrap();
+            let old_vars_ptr = ecx.read_pointer(environ)?;
+            ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
+        }
         Ok(())
     }
 }
@@ -127,6 +137,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let name_ptr = this.read_pointer(name_op)?;
         let name = this.read_os_str_from_c_str(name_ptr)?;
+        this.read_environ()?;
         Ok(match this.machine.env_vars.map.get(name) {
             Some(var_ptr) => {
                 // The offset is used to strip the "{name}=" part of the string.
@@ -275,7 +286,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Delete environment variable `{name}`
             if let Some(var) = this.machine.env_vars.map.remove(&name) {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
-                this.update_environ()?;
             }
             Ok(this.eval_windows("c", "TRUE"))
         } else {
@@ -284,7 +294,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
             }
-            this.update_environ()?;
             Ok(this.eval_windows("c", "TRUE"))
         }
     }
@@ -431,15 +440,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn update_environ(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // Deallocate the old environ list, if any.
-        if let Some(environ) = this.machine.env_vars.environ.as_ref() {
-            let old_vars_ptr = this.read_pointer(environ)?;
+        let environ = this.machine.env_vars.environ.as_ref().unwrap().clone();
+        let old_vars_ptr = this.read_pointer(&environ)?;
+        if !this.ptr_is_null(old_vars_ptr)? {
             this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
-        } else {
-            // No `environ` allocated yet, let's do that.
-            // This is memory backing an extern static, hence `ExternStatic`, not `Env`.
-            let layout = this.machine.layouts.mut_raw_ptr;
-            let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
-            this.machine.env_vars.environ = Some(place);
         }
 
         // Collect all the pointers to each variable in a vector.
@@ -459,8 +463,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let place = this.project_field(&vars_place, idx)?;
             this.write_pointer(var, &place)?;
         }
-        this.write_pointer(vars_place.ptr(), &this.machine.env_vars.environ.clone().unwrap())?;
+        this.write_pointer(vars_place.ptr(), &environ)?;
 
+        Ok(())
+    }
+
+    /// Reads from the `environ` static.
+    /// We don't actually care about the result, but we care about this potentially causing a data race.
+    fn read_environ(&self) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        let environ = this.machine.env_vars.environ.as_ref().unwrap();
+        let _vars_ptr = this.read_pointer(environ)?;
         Ok(())
     }
 
