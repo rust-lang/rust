@@ -583,11 +583,23 @@ message = "The list of allowed third-party dependencies may have been modified! 
 cc = ["@davidtwco", "@wesleywiser"]
 
 [mentions."src/bootstrap/src/core/config"]
-message = "This PR modifies `src/bootstrap/src/core/config`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+message = """
+This PR modifies `src/bootstrap/src/core/config`.
+
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+"""
 [mentions."src/bootstrap/defaults"]
-message = "This PR modifies `src/bootstrap/defaults`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+message = """
+This PR modifies `src/bootstrap/defaults`.
+
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+"""
 [mentions."config.example.toml"]
-message = "This PR changes `config.example.toml`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+message = """
+This PR modifies `config.example.toml`.
+
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+"""
 
 [mentions."src/bootstrap/defaults/config.compiler.toml"]
 message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."

@@ -4,6 +4,7 @@
 
 pub(crate) mod cache;
 pub(crate) mod cc_detect;
+pub(crate) mod change_tracker;
 pub(crate) mod channel;
 pub(crate) mod dylib;
 pub(crate) mod exec;
