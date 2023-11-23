@@ -2592,11 +2592,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
             | ObligationCauseCode::UnifyReceiver(..)
-            | ObligationCauseCode::OpaqueType
             | ObligationCauseCode::MiscObligation
             | ObligationCauseCode::WellFormed(..)
             | ObligationCauseCode::MatchImpl(..)
-            | ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(..)
             | ObligationCauseCode::AwaitableExpr(_)
@@ -2973,9 +2971,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err.note(format!(
                     "all values live across `{what}` must have a statically known size"
                 ));
-            }
-            ObligationCauseCode::ConstPatternStructural => {
-                err.note("constants used for pattern-matching must derive `PartialEq` and `Eq`");
             }
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");

@@ -1448,7 +1448,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::ExprItemObligation(..)
                         | ObligationCauseCode::ExprBindingObligation(..)
                         | ObligationCauseCode::Coercion { .. }
-                        | ObligationCauseCode::OpaqueType
                 );
 
                 // constrain inference variables a bit more to nested obligations from normalize so

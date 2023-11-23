@@ -370,9 +370,6 @@ pub enum ObligationCauseCode<'tcx> {
         origin_expr: bool,
     },
 
-    /// Constants in patterns must have `Structural` type.
-    ConstPatternStructural,
-
     /// Computing common supertype in an if expression
     IfExpression(Box<IfExpressionCause<'tcx>>),
 
@@ -405,9 +402,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// `return` with an expression
     ReturnValue(hir::HirId),
 
-    /// Return type of this function
-    ReturnType,
-
     /// Opaque return type of this function
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
@@ -416,9 +410,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
-
-    /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
-    OpaqueType,
 
     AwaitableExpr(hir::HirId),
 
