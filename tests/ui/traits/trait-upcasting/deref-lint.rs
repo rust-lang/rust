@@ -8,6 +8,7 @@ trait B: A {}
 
 impl<'a> Deref for dyn 'a + B {
     //~^ WARN this `Deref` implementation is covered by an implicit supertrait coercion
+
     type Target = dyn A;
     fn deref(&self) -> &Self::Target {
         todo!()

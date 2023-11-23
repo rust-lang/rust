@@ -10,7 +10,9 @@ use rustc_errors::{
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{inhabitedness::InhabitedPredicate, Clause, Ty, TyCtxt};
+use rustc_middle::ty::{
+    inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
+};
 use rustc_session::parse::ParseSess;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
@@ -556,13 +558,17 @@ pub enum BuiltinSpecialModuleNameUsed {
 #[diag(lint_supertrait_as_deref_target)]
 #[help]
 pub struct SupertraitAsDerefTarget<'a> {
-    pub t: Ty<'a>,
+    pub self_ty: Ty<'a>,
+    pub supertrait_principal: PolyExistentialTraitRef<'a>,
+    pub target_principal: PolyExistentialTraitRef<'a>,
+    #[label]
+    pub label: Span,
     #[subdiagnostic]
-    pub label: Option<SupertraitAsDerefTargetLabel>,
+    pub label2: Option<SupertraitAsDerefTargetLabel>,
 }
 
 #[derive(Subdiagnostic)]
-#[label(lint_label)]
+#[label(lint_label2)]
 pub struct SupertraitAsDerefTargetLabel {
     #[primary_span]
     pub label: Span,
