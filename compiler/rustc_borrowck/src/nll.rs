@@ -20,16 +20,14 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
-mod polonius;
-
 use crate::{
     borrow_set::BorrowSet,
     constraint_generation,
     consumers::ConsumerOptions,
     diagnostics::RegionErrors,
     facts::{AllFacts, AllFactsExt, RustcFacts},
-    invalidation,
     location::LocationTable,
+    polonius,
     region_infer::{values::RegionValueElements, RegionInferenceContext},
     renumber,
     type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
@@ -176,7 +174,13 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     );
 
     // Generate various additional constraints.
-    invalidation::generate_invalidates(infcx.tcx, &mut all_facts, location_table, body, borrow_set);
+    polonius::emit_loan_invalidations_facts(
+        infcx.tcx,
+        &mut all_facts,
+        location_table,
+        body,
+        borrow_set,
+    );
 
     let def_id = body.source.def_id();
 

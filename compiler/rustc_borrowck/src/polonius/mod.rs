@@ -4,6 +4,7 @@
 //! parity.
 
 use rustc_middle::mir::{Body, LocalKind, Location, START_BLOCK};
+use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 
 use crate::borrow_set::BorrowSet;
@@ -11,6 +12,8 @@ use crate::facts::AllFacts;
 use crate::location::LocationTable;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
+
+mod invalidation;
 
 /// Emit facts needed for move/init analysis: moves and assignments.
 pub(crate) fn emit_move_facts(
@@ -125,4 +128,20 @@ pub(crate) fn emit_universal_region_facts(
             all_facts.known_placeholder_subset.push((fr1, fr2));
         }
     }
+}
+
+/// Emit facts about loan invalidations
+pub(crate) fn emit_loan_invalidations_facts<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    all_facts: &mut Option<AllFacts>,
+    location_table: &LocationTable,
+    body: &Body<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+) {
+    let Some(all_facts) = all_facts else {
+        // Nothing to do if we don't have any facts to fill
+        return;
+    };
+
+    invalidation::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
 }

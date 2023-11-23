@@ -14,31 +14,25 @@ use crate::{
     ReadOrWrite, Reservation, Shallow, Write, WriteKind,
 };
 
-pub(super) fn generate_invalidates<'tcx>(
+/// Emit `loan_invalidated_at` facts.
+pub(super) fn emit_loan_invalidations<'tcx>(
     tcx: TyCtxt<'tcx>,
-    all_facts: &mut Option<AllFacts>,
+    all_facts: &mut AllFacts,
     location_table: &LocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    if all_facts.is_none() {
-        // Nothing to do if we don't have any facts
-        return;
-    }
-
-    if let Some(all_facts) = all_facts {
-        let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-        let dominators = body.basic_blocks.dominators();
-        let mut ig = InvalidationGenerator {
-            all_facts,
-            borrow_set,
-            tcx,
-            location_table,
-            body: body,
-            dominators,
-        };
-        ig.visit_body(body);
-    }
+    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
+    let dominators = body.basic_blocks.dominators();
+    let mut ig = InvalidationGenerator {
+        all_facts,
+        borrow_set,
+        tcx,
+        location_table,
+        body: body,
+        dominators,
+    };
+    ig.visit_body(body);
 }
 
 struct InvalidationGenerator<'cx, 'tcx> {
