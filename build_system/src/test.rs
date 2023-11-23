@@ -794,6 +794,7 @@ fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rust-lang/regex tests");
     let mut env = env.clone();
+    // newer aho_corasick versions throw a deprecation warning
     env.insert("CG_RUSTFLAGS".to_string(), "--cap-lints warn".to_string());
     run_cargo_command(
         &[
