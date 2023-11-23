@@ -22,7 +22,6 @@ use std::str::FromStr;
 
 use crate::{
     borrow_set::BorrowSet,
-    constraint_generation,
     consumers::ConsumerOptions,
     diagnostics::RegionErrors,
     facts::{AllFacts, AllFactsExt, RustcFacts},
@@ -141,7 +140,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     let MirTypeckRegionConstraints {
         placeholder_indices,
         placeholder_index_to_region: _,
-        mut liveness_constraints,
+        liveness_constraints,
         outlives_constraints,
         member_constraints,
         universe_causes,
@@ -149,7 +148,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     } = constraints;
     let placeholder_indices = Rc::new(placeholder_indices);
 
-    constraint_generation::generate_constraints(infcx.tcx, &mut liveness_constraints, body);
     polonius::emit_cfg_and_loan_kills_facts(
         infcx.tcx,
         &mut all_facts,
