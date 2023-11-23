@@ -121,7 +121,27 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                 let head_len = source_deque.len();
                 let tail_len = new_len - head_len;
 
+                // When draining at the front (`.drain(..n)`) or at the back (`.drain(n..)`),
+                // we don't need to copy any data.
+                // Outlining this function helps LLVM to eliminate the copies in these cases.
                 if head_len != 0 && tail_len != 0 {
+                    copy_data(source_deque, drain_len, head_len, tail_len);
+                }
+
+                if new_len == 0 {
+                    source_deque.head = 0;
+                } else if head_len < tail_len {
+                    source_deque.head = source_deque.to_physical_idx(drain_len);
+                }
+                source_deque.len = new_len;
+
+                #[cold]
+                fn copy_data<T, A: Allocator>(
+                    source_deque: &mut VecDeque<T, A>,
+                    drain_len: usize,
+                    head_len: usize,
+                    tail_len: usize,
+                ) {
                     let (src, dst, len);
                     if head_len < tail_len {
                         src = source_deque.head;
@@ -137,13 +157,6 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                         source_deque.wrap_copy(src, dst, len);
                     }
                 }
-
-                if new_len == 0 {
-                    source_deque.head = 0;
-                } else if head_len < tail_len {
-                    source_deque.head = source_deque.to_physical_idx(drain_len);
-                }
-                source_deque.len = new_len;
             }
         }
 
