@@ -20,7 +20,7 @@
           "features": [],
           "target": null,
           "registry": null,
-          "path": "/example_project/p2"
+          "path": "$ROOT$example_project/p2"
         }
       ],
       "targets": [
@@ -32,7 +32,7 @@
             "lib"
           ],
           "name": "p1",
-          "src_path": "/example_project/p1/src/lib.rs",
+          "src_path": "$ROOT$example_project/p1/src/lib.rs",
           "edition": "2021",
           "doc": true,
           "doctest": true,
@@ -40,7 +40,7 @@
         }
       ],
       "features": {},
-      "manifest_path": "/example_project/p1/Cargo.toml",
+      "manifest_path": "$ROOT$example_project/p1/Cargo.toml",
       "metadata": null,
       "publish": null,
       "authors": [],
@@ -73,7 +73,7 @@
             "lib"
           ],
           "name": "p2",
-          "src_path": "/example_project/p2/src/lib.rs",
+          "src_path": "$ROOT$example_project/p2/src/lib.rs",
           "edition": "2021",
           "doc": true,
           "doctest": true,
@@ -81,7 +81,7 @@
         }
       ],
       "features": {},
-      "manifest_path": "/example_project/p2/Cargo.toml",
+      "manifest_path": "$ROOT$example_project/p2/Cargo.toml",
       "metadata": null,
       "publish": null,
       "authors": [],
@@ -133,8 +133,8 @@
     ],
     "root": "p1 0.1.0 (path+file:///example_project/p1)"
   },
-  "target_directory": "/example_project/p1/target",
+  "target_directory": "$ROOT$example_project/p1/target",
   "version": 1,
-  "workspace_root": "/example_project/p1",
+  "workspace_root": "$ROOT$example_project/p1",
   "metadata": null
 }
