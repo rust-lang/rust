@@ -147,45 +147,20 @@ will match these queries:
 * `Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Error, Vec>`
 * `Read -> Result<Vec<u8>>`
+* `Read -> u8`
 
 But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
 
 ### Primitives with Special Syntax
 
-<table>
-<thead>
-  <tr>
-    <th>Shorthand</th>
-    <th>Explicit names</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td><code>[]</code></td>
-    <td><code>primitive:slice</code> and/or <code>primitive:array</code></td>
-  </tr>
-  <tr>
-    <td><code>[T]</code></td>
-    <td><code>primitive:slice&lt;T&gt;</code> and/or <code>primitive:array&lt;T&gt;</code></td>
-  </tr>
-  <tr>
-    <td><code>()</code></td>
-    <td><code>primitive:unit</code> and/or <code>primitive:tuple</code></td>
-  </tr>
-  <tr>
-    <td><code>(T)</code></td>
-    <td><code>T</code></td>
-  </tr>
-  <tr>
-    <td><code>(T,)</code></td>
-    <td><code>primitive:tuple&lt;T&gt;</code></td>
-  </tr>
-  <tr>
-    <td><code>!</code></td>
-    <td><code>primitive:never</code></td>
-  </tr>
-</tbody>
-</table>
+| Shorthand | Explicit names                                   |
+| --------- | ------------------------------------------------ |
+| `[]`      | `primitive:slice` and/or `primitive:array`       |
+| `[T]`     | `primitive:slice<T>` and/or `primitive:array<T>` |
+| `()`      | `primitive:unit` and/or `primitive:tuple`        |
+| `(T)`     | `T`                                              |
+| `(T,)`    | `primitive:tuple<T>`                             |
+| `!`       | `primitive:never`                                |
 
 When searching for `[]`, Rustdoc will return search results with either slices
 or arrays. If you know which one you want, you can force it to return results
@@ -199,6 +174,11 @@ A single type expression wrapped in parens is the same as that type expression,
 since parens act as the grouping operator. If they're empty, though, they will
 match both `unit` and `tuple`, and if there's more than one type (or a trailing
 or leading comma) it is the same as `primitive:tuple<...>`.
+
+However, since items can be left out of the query, `(T)` will still return
+results for types that match tuples, even though it also matches the type on
+its own. That is, `(u32)` matches `(u32,)` for the exact same reason that it
+also matches `Result<u32, Error>`.
 
 ### Limitations and quirks of type-based search
 
