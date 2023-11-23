@@ -435,8 +435,6 @@ pub enum TraitBoundModifier {
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
-    // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
-    LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
     Outlives(&'hir Lifetime),
 }
 
@@ -451,7 +449,6 @@ impl GenericBound<'_> {
     pub fn span(&self) -> Span {
         match self {
             GenericBound::Trait(t, ..) => t.span,
-            GenericBound::LangItemTrait(_, span, ..) => *span,
             GenericBound::Outlives(l) => l.ident.span,
         }
     }

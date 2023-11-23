@@ -766,6 +766,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_import_res(id).present_items()
     }
 
+    fn make_lang_item_path(
+        &mut self,
+        lang_item: hir::LangItem,
+        span: Span,
+        args: Option<&'hir hir::GenericArgs<'hir>>,
+    ) -> &'hir hir::Path<'hir> {
+        let def_id = self.tcx.require_lang_item(lang_item, Some(span));
+        let def_kind = self.tcx.def_kind(def_id);
+        let res = Res::Def(def_kind, def_id);
+        self.arena.alloc(hir::Path {
+            span,
+            res,
+            segments: self.arena.alloc_from_iter([hir::PathSegment {
+                ident: Ident::new(lang_item.name(), span),
+                hir_id: self.next_id(),
+                res,
+                args,
+                infer_args: false,
+            }]),
+        })
+    }
+
     /// Reuses the span but adds information like the kind of the desugaring and features that are
     /// allowed inside this span.
     fn mark_span_with_reason(
@@ -1977,18 +1999,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncIterator),
         };
 
-        let future_args = self.arena.alloc(hir::GenericArgs {
+        let bound_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
             bindings: arena_vec![self; self.assoc_ty_binding(assoc_ty_name, opaque_ty_span, output_ty)],
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
 
-        hir::GenericBound::LangItemTrait(
-            trait_lang_item,
-            opaque_ty_span,
-            self.next_id(),
-            future_args,
+        hir::GenericBound::Trait(
+            hir::PolyTraitRef {
+                bound_generic_params: &[],
+                trait_ref: hir::TraitRef {
+                    path: self.make_lang_item_path(
+                        trait_lang_item,
+                        opaque_ty_span,
+                        Some(bound_args),
+                    ),
+                    hir_ref_id: self.next_id(),
+                },
+                span: opaque_ty_span,
+            },
+            hir::TraitBoundModifier::None,
         )
     }
 

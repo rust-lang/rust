@@ -791,6 +791,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
 
+        // TODO: inline
         self.instantiate_poly_trait_ref_inner(
             hir_id,
             span,
@@ -807,42 +808,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             only_self_bounds,
         )
-    }
-
-    pub(crate) fn instantiate_lang_item_trait_ref(
-        &self,
-        lang_item: hir::LangItem,
-        span: Span,
-        hir_id: hir::HirId,
-        args: &GenericArgs<'_>,
-        self_ty: Ty<'tcx>,
-        bounds: &mut Bounds<'tcx>,
-        only_self_bounds: OnlySelfBounds,
-    ) {
-        let binding_span = Some(span);
-        let constness = ty::BoundConstness::NotConst;
-        let speculative = false;
-        let trait_ref_span = span;
-        let trait_def_id = self.tcx().require_lang_item(lang_item, Some(span));
-        let trait_segment = &hir::PathSegment::invalid();
-        let infer_args = false;
-
-        self.instantiate_poly_trait_ref_inner(
-            hir_id,
-            span,
-            binding_span,
-            constness,
-            ty::ImplPolarity::Positive,
-            bounds,
-            speculative,
-            trait_ref_span,
-            trait_def_id,
-            trait_segment,
-            args,
-            infer_args,
-            self_ty,
-            only_self_bounds,
-        );
     }
 
     fn ast_path_to_mono_trait_ref(

@@ -2088,11 +2088,6 @@ impl<'a> State<'a> {
                     }
                     self.print_poly_trait_ref(tref);
                 }
-                GenericBound::LangItemTrait(lang_item, span, ..) => {
-                    self.word("#[lang = \"");
-                    self.print_ident(Ident::new(lang_item.name(), *span));
-                    self.word("\"]");
-                }
                 GenericBound::Outlives(lt) => {
                     self.print_lifetime(lt);
                 }
