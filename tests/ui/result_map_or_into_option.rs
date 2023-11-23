@@ -3,7 +3,7 @@
 fn main() {
     let opt: Result<u32, &str> = Ok(1);
     let _ = opt.map_or(None, Some);
-    //~^ ERROR: called `map_or(None, Some)` on a `Result` value.
+    //~^ ERROR: called `map_or(None, Some)` on a `Result` value
     let _ = opt.map_or_else(|_| None, Some);
     //~^ ERROR: called `map_or_else(|_| None, Some)` on a `Result` value
     #[rustfmt::skip]
