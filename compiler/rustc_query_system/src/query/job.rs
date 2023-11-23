@@ -545,7 +545,7 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
         if query_map.len() == 0 {
             panic!("deadlock detected without any query!")
         } else {
-            panic!("deadlock detected! current query map:\n{:?}", query_map);
+            panic!("deadlock detected! current query map:\n{:#?}", query_map);
         }
     }
 
