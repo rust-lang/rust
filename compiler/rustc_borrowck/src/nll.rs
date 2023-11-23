@@ -182,11 +182,10 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         borrow_set,
     );
 
-    let def_id = body.source.def_id();
-
-    // Dump facts if requested.
+    // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = all_facts.as_ref().and_then(|all_facts| {
         if infcx.tcx.sess.opts.unstable_opts.nll_facts {
+            let def_id = body.source.def_id();
             let def_path = infcx.tcx.def_path(def_id);
             let dir_path = PathBuf::from(&infcx.tcx.sess.opts.unstable_opts.nll_facts_dir)
                 .join(def_path.to_filename_friendly_no_crate());
