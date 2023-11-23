@@ -1,6 +1,7 @@
 use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
+use core::error::Error;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
@@ -2750,7 +2751,7 @@ impl<K: Debug, V: Debug> Debug for Cursor<'_, K, V> {
 /// references is tied to its own lifetime, instead of just the underlying map. This means
 /// cursors cannot yield multiple elements at once.
 ///
-/// Cursors always point to a gao between two elements in the map, and can
+/// Cursors always point to a gap between two elements in the map, and can
 /// operate on the two immediately adjacent elements.
 ///
 /// A `CursorMut` is created with the [`BTreeMap::lower_bound_mut`] and [`BTreeMap::upper_bound_mut`]
@@ -2780,7 +2781,7 @@ impl<K: Debug, V: Debug, A> Debug for CursorMut<'_, K, V, A> {
 /// references is tied to its own lifetime, instead of just the underlying map. This means
 /// cursors cannot yield multiple elements at once.
 ///
-/// Cursors always point to a gao between two elements in the map, and can
+/// Cursors always point to a gap between two elements in the map, and can
 /// operate on the two immediately adjacent elements.
 ///
 /// A `CursorMutKey` is created from a [`CursorMut`] with the
@@ -3142,20 +3143,21 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
     /// - the given key compares greater than or equal to the next element (if
     ///   any).
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn insert_after(&mut self, key: K, value: V) {
+    pub fn insert_after(&mut self, key: K, value: V) -> Result<(), UnorderedKeyError> {
         if let Some((prev, _)) = self.peek_prev() {
             if &key <= prev {
-                panic!("key must be ordered above the previous element");
+                return Err(UnorderedKeyError {});
             }
         }
         if let Some((next, _)) = self.peek_next() {
             if &key >= next {
-                panic!("key must be ordered below the next element");
+                return Err(UnorderedKeyError {});
             }
         }
         unsafe {
             self.insert_after_unchecked(key, value);
         }
+        Ok(())
     }
 
     /// Inserts a new element into the `BTreeMap` in the gap that the
@@ -3172,20 +3174,21 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
     /// - the given key compares less than or equal to the previous element (if
     ///   any).
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn insert_before(&mut self, key: K, value: V) {
+    pub fn insert_before(&mut self, key: K, value: V) -> Result<(), UnorderedKeyError> {
         if let Some((prev, _)) = self.peek_prev() {
             if &key <= prev {
-                panic!("key must be ordered above the previous element");
+                return Err(UnorderedKeyError {});
             }
         }
         if let Some((next, _)) = self.peek_next() {
             if &key >= next {
-                panic!("key must be ordered below the next element");
+                return Err(UnorderedKeyError {});
             }
         }
         unsafe {
             self.insert_before_unchecked(key, value);
         }
+        Ok(())
     }
 
     /// Removes the next element from the `BTreeMap`.
@@ -3286,7 +3289,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
     /// - the given key compares greater than or equal to the next element (if
     ///   any).
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn insert_after(&mut self, key: K, value: V) {
+    pub fn insert_after(&mut self, key: K, value: V) -> Result<(), UnorderedKeyError> {
         self.inner.insert_after(key, value)
     }
 
@@ -3304,7 +3307,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
     /// - the given key compares less than or equal to the previous element (if
     ///   any).
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn insert_before(&mut self, key: K, value: V) {
+    pub fn insert_before(&mut self, key: K, value: V) -> Result<(), UnorderedKeyError> {
         self.inner.insert_before(key, value)
     }
 
@@ -3326,6 +3329,23 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
         self.inner.remove_prev()
     }
 }
+
+/// Error type returned by [`CursorMut::insert_before`] and
+/// [`CursorMut::insert_after`] if the key being inserted is not properly
+/// ordered with regards to adjacent keys.
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "btree_cursors", issue = "107540")]
+pub struct UnorderedKeyError {}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl fmt::Display for UnorderedKeyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "key is not properly ordered relative to neighbors")
+    }
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl Error for UnorderedKeyError {}
 
 #[cfg(test)]
 mod tests;
