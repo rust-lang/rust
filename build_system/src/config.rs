@@ -149,9 +149,11 @@ impl ConfigInfo {
                 .extend_from_slice(&["--sysroot".to_string(), sysroot_path.display().to_string()]);
         };
 
+        // This environment variable is useful in case we want to change options of rustc commands.
         if let Some(cg_rustflags) = env.get("CG_RUSTFLAGS") {
             rustflags.extend_from_slice(&split_args(&cg_rustflags));
         }
+
         if let Some(linker) = linker {
             rustflags.push(linker.to_string());
         }
