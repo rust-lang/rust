@@ -47,7 +47,7 @@ impl MultiItemModifier for Expander {
         let template = AttributeTemplate { list: Some("path"), ..Default::default() };
         validate_attr::check_builtin_meta_item(
             &ecx.sess.parse_sess,
-            &meta_item,
+            meta_item,
             ast::AttrStyle::Outer,
             sym::cfg_accessible,
             template,

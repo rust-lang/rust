@@ -97,7 +97,7 @@ impl<'a> TokenTreesReader<'a> {
             report_suspicious_mismatch_block(
                 &mut err,
                 &self.diag_info,
-                &self.string_reader.sess.source_map(),
+                self.string_reader.sess.source_map(),
                 *delim,
             )
         }
@@ -164,7 +164,7 @@ impl<'a> TokenTreesReader<'a> {
                         unclosed_delimiter = Some(sp);
                     };
                     for (brace, brace_span) in &self.diag_info.open_braces {
-                        if same_indentation_level(&sm, self.token.span, *brace_span)
+                        if same_indentation_level(sm, self.token.span, *brace_span)
                             && brace == &close_delim
                         {
                             // high likelihood of these two corresponding
@@ -271,7 +271,7 @@ impl<'a> TokenTreesReader<'a> {
         report_suspicious_mismatch_block(
             &mut err,
             &self.diag_info,
-            &self.string_reader.sess.source_map(),
+            self.string_reader.sess.source_map(),
             delim,
         );
         err.span_label(self.token.span, "unexpected closing delimiter");

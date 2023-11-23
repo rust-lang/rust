@@ -63,7 +63,7 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
     // exists, we have to call it ourselves.
-    thread::Thread::set_name(&CStr::from_bytes_with_nul_unchecked(b"main\0"));
+    thread::Thread::set_name(CStr::from_bytes_with_nul_unchecked(b"main\0"));
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -150,7 +150,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
 
 pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
     let ptr = haystack.as_ptr();
-    let mut start = &haystack[..];
+    let mut start = haystack;
 
     // For performance reasons unfold the loop eight times.
     while start.len() >= 8 {

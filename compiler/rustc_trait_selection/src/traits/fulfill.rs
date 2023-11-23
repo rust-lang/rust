@@ -350,7 +350,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
                 | ty::PredicateKind::ObjectSafe(_)
-                | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
@@ -408,19 +407,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ProcessResult::Error(CodeSelectionError(Unimplemented))
                     } else {
                         ProcessResult::Changed(vec![])
-                    }
-                }
-
-                ty::PredicateKind::ClosureKind(_, closure_args, kind) => {
-                    match self.selcx.infcx.closure_kind(closure_args) {
-                        Some(closure_kind) => {
-                            if closure_kind.extends(kind) {
-                                ProcessResult::Changed(vec![])
-                            } else {
-                                ProcessResult::Error(CodeSelectionError(Unimplemented))
-                            }
-                        }
-                        None => ProcessResult::Unchanged,
                     }
                 }
 

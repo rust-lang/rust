@@ -35,7 +35,7 @@ impl MultiItemModifier for Expander {
                     AttributeTemplate { list: Some("Trait1, Trait2, ..."), ..Default::default() };
                 validate_attr::check_builtin_meta_item(
                     &sess.parse_sess,
-                    &meta_item,
+                    meta_item,
                     ast::AttrStyle::Outer,
                     sym::derive,
                     template,
@@ -48,14 +48,14 @@ impl MultiItemModifier for Expander {
                                 NestedMetaItem::MetaItem(meta) => Some(meta),
                                 NestedMetaItem::Lit(lit) => {
                                     // Reject `#[derive("Debug")]`.
-                                    report_unexpected_meta_item_lit(sess, &lit);
+                                    report_unexpected_meta_item_lit(sess, lit);
                                     None
                                 }
                             })
                             .map(|meta| {
                                 // Reject `#[derive(Debug = "value", Debug(abc))]`, but recover the
                                 // paths.
-                                report_path_args(sess, &meta);
+                                report_path_args(sess, meta);
                                 meta.path.clone()
                             })
                             .map(|path| (path, dummy_annotatable(), None, self.0))

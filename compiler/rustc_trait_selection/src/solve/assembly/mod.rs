@@ -97,7 +97,7 @@ pub(super) trait GoalKind<'tcx>:
                 bug!("expected object type in `consider_object_bound_candidate`");
             };
             ecx.add_goals(structural_traits::predicates_for_object_candidate(
-                &ecx,
+                ecx,
                 goal.param_env,
                 goal.predicate.trait_ref(tcx),
                 bounds,

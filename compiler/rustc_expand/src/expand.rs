@@ -1096,7 +1096,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             ModKind::Loaded(_, inline, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
-                    &ecx.sess,
+                    ecx.sess,
                     ident,
                     &attrs,
                     &ecx.current_expansion.module,
@@ -1111,7 +1111,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                 let old_attrs_len = attrs.len();
                 let ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership } =
                     parse_external_mod(
-                        &ecx.sess,
+                        ecx.sess,
                         ident,
                         span,
                         &ecx.current_expansion.module,
@@ -1168,14 +1168,14 @@ impl InvocationCollectorNode for P<ast::Item> {
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested(nested) => {
                         for (ut, _) in nested {
-                            collect_use_tree_leaves(&ut, idents);
+                            collect_use_tree_leaves(ut, idents);
                         }
                     }
                 }
             }
 
             let mut idents = Vec::new();
-            collect_use_tree_leaves(&ut, &mut idents);
+            collect_use_tree_leaves(ut, &mut idents);
             return idents;
         }
 
@@ -1531,7 +1531,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
         }
     }
     fn pre_flat_map_node_collect_attr(cfg: &StripUnconfigured<'_>, attr: &ast::Attribute) {
-        cfg.maybe_emit_expr_attr_err(&attr);
+        cfg.maybe_emit_expr_attr_err(attr);
     }
 }
 
@@ -1580,7 +1580,7 @@ struct InvocationCollector<'a, 'b> {
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn cfg(&self) -> StripUnconfigured<'_> {
         StripUnconfigured {
-            sess: &self.cx.sess,
+            sess: self.cx.sess,
             features: Some(self.cx.ecfg.features),
             config_tokens: false,
             lint_node_id: self.cx.current_expansion.lint_node_id,
@@ -1693,7 +1693,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
             if attr.is_doc_comment() {
                 self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
-                    &UNUSED_DOC_COMMENTS,
+                    UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
                     "unused doc comment",
@@ -1705,7 +1705,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 // eagerly evaluated.
                 if attr_name != sym::cfg && attr_name != sym::cfg_attr {
                     self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
-                        &UNUSED_ATTRIBUTES,
+                        UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
                         format!("unused attribute `{attr_name}`"),

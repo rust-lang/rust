@@ -1,8 +1,6 @@
 // compile-flags: -Ztrait-solver=next
 // check-pass
 
-#![feature(trait_upcasting)]
-
 trait A {}
 trait B: A {}
 

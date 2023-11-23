@@ -132,6 +132,7 @@ pub struct UnsafetyCheckResult {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
     #[debug_format = "_{}"]
     pub struct CoroutineSavedLocal {}
 }

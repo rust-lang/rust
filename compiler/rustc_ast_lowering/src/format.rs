@@ -338,8 +338,8 @@ fn make_format_spec<'hir>(
         | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
         | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
     let flags = ctx.expr_u32(sp, flags);
-    let precision = make_count(ctx, sp, &precision, argmap);
-    let width = make_count(ctx, sp, &width, argmap);
+    let precision = make_count(ctx, sp, precision, argmap);
+    let width = make_count(ctx, sp, width, argmap);
     let format_placeholder_new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
         sp,
         hir::LangItem::FormatPlaceholder,

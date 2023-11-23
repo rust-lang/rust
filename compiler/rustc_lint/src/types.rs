@@ -623,7 +623,7 @@ fn lint_nan<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
                 // Propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != Some(e.hir_id) {
                     self.negated_expr_id = Some(expr.hir_id);
@@ -632,14 +632,14 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) {
-                    if !check_limits(cx, binop, &l, &r) {
+                    if !check_limits(cx, binop, l, r) {
                         cx.emit_spanned_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
                     }
                 }
             }
-            hir::ExprKind::Lit(ref lit) => lint_literal(cx, self, e, lit),
+            hir::ExprKind::Lit(lit) => lint_literal(cx, self, e, lit),
             _ => {}
         };
 
@@ -685,7 +685,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
-                        hir::ExprKind::Lit(ref li) => match li.node {
+                        hir::ExprKind::Lit(li) => match li.node {
                             ast::LitKind::Int(
                                 v,
                                 ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
@@ -699,7 +699,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 ty::Uint(uint_ty) => {
                     let (min, max): (u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.kind {
-                        hir::ExprKind::Lit(ref li) => match li.node {
+                        hir::ExprKind::Lit(li) => match li.node {
                             ast::LitKind::Int(v, _) => v,
                             _ => return true,
                         },
@@ -1015,7 +1015,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            all_phantom &= match self.check_field_type_for_ffi(cache, &field, args) {
+            all_phantom &= match self.check_field_type_for_ffi(cache, field, args) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -1399,7 +1399,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
+        if let hir::FnRetTy::Return(ret_hir) = decl.output {
             for (fn_ptr_ty, span) in self.find_fn_ptr_ty_with_external_abi(ret_hir, sig.output()) {
                 self.check_type_for_ffi_and_report_errors(span, fn_ptr_ty, false, true);
             }
@@ -1415,7 +1415,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             self.check_type_for_ffi_and_report_errors(input_hir.span, *input_ty, false, false);
         }
 
-        if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
+        if let hir::FnRetTy::Return(ret_hir) = decl.output {
             self.check_type_for_ffi_and_report_errors(ret_hir.span, sig.output(), false, true);
         }
     }
@@ -1487,13 +1487,13 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(ref decl, _, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Fn(decl, _, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_fn(it.owner_id.def_id, decl);
             }
-            hir::ForeignItemKind::Static(ref ty, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Static(ty, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
-            hir::ForeignItemKind::Fn(ref decl, _, _) => vis.check_fn(it.owner_id.def_id, decl),
+            hir::ForeignItemKind::Fn(decl, _, _) => vis.check_fn(it.owner_id.def_id, decl),
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
     }
@@ -1705,7 +1705,7 @@ impl InvalidAtomicOrdering {
             sym::AtomicI64,
             sym::AtomicI128,
         ];
-        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind
+        if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
@@ -1766,7 +1766,7 @@ impl InvalidAtomicOrdering {
     }
 
     fn check_memory_fence(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if let ExprKind::Call(ref func, ref args) = expr.kind
+        if let ExprKind::Call(func, args) = expr.kind
             && let ExprKind::Path(ref func_qpath) = func.kind
             && let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id()
             && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence))

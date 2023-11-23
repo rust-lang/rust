@@ -86,7 +86,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
                 continue;
             }
 
-            let Some(discriminant_ty) = get_switched_on_type(&bb_data, tcx, body) else { continue };
+            let Some(discriminant_ty) = get_switched_on_type(bb_data, tcx, body) else { continue };
 
             let layout = tcx.layout_of(
                 tcx.param_env_reveal_all_normalized(body.source.def_id()).and(discriminant_ty),

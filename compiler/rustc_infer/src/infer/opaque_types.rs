@@ -447,7 +447,7 @@ where
         }
 
         match ty.kind() {
-            ty::Closure(_, ref args) => {
+            ty::Closure(_, args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
                 for upvar in args.as_closure().upvar_tys() {
@@ -456,7 +456,7 @@ where
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Coroutine(_, ref args, _) => {
+            ty::Coroutine(_, args, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
@@ -468,7 +468,7 @@ where
                 args.as_coroutine().resume_ty().visit_with(self);
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref args, .. }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(*def_id);
 
@@ -575,7 +575,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
             if let Some(prev) = prev {
                 obligations.extend(
-                    self.at(&cause, param_env)
+                    self.at(cause, param_env)
                         .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
                         .obligations,
                 );

@@ -58,7 +58,7 @@ fn do_orphan_check_impl<'tcx>(
                 tr.path.span,
                 trait_ref,
                 impl_.self_ty.span,
-                &impl_.generics,
+                impl_.generics,
                 err,
             )?
         }

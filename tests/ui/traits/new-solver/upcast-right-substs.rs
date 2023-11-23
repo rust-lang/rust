@@ -1,8 +1,6 @@
 // compile-flags: -Ztrait-solver=next
 // check-pass
 
-#![feature(trait_upcasting)]
-
 trait Foo: Bar<i32> + Bar<u32> {}
 
 trait Bar<T> {}

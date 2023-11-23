@@ -74,7 +74,7 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
         if let PatKind::Or { pats } = &pat.kind {
             for pat in pats.iter() {
-                expand(&pat, vec);
+                expand(pat, vec);
             }
         } else {
             vec.push(pat)
@@ -1099,7 +1099,7 @@ impl ConstructorSet {
 
                 for variant in visible_variants {
                     let ctor = Variant(*variant);
-                    if seen_set.contains(&variant) {
+                    if seen_set.contains(variant) {
                         present.push(ctor);
                     } else {
                         missing.push(ctor);
@@ -1108,7 +1108,7 @@ impl ConstructorSet {
 
                 for variant in hidden_variants {
                     let ctor = Variant(*variant);
-                    if seen_set.contains(&variant) {
+                    if seen_set.contains(variant) {
                         present.push(ctor);
                     } else {
                         skipped_a_hidden_variant = true;

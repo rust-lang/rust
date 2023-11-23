@@ -622,6 +622,8 @@ pub struct FloatVarValue(pub FloatTy);
 
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
     #[debug_format = "?{}t"]
     #[gate_rustc_only]
     pub struct TyVid {}
@@ -629,6 +631,8 @@ rustc_index::newtype_index! {
 
 rustc_index::newtype_index! {
     /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
     #[debug_format = "?{}i"]
     #[gate_rustc_only]
     pub struct IntVid {}
@@ -636,6 +640,8 @@ rustc_index::newtype_index! {
 
 rustc_index::newtype_index! {
     /// A **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
     #[debug_format = "?{}f"]
     #[gate_rustc_only]
     pub struct FloatVid {}

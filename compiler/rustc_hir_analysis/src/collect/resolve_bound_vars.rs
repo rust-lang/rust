@@ -565,7 +565,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 let mut bound_vars = FxIndexMap::default();
                 debug!(?generics.params);
                 for param in generics.params {
-                    let (def_id, reg) = ResolvedArg::early(&param);
+                    let (def_id, reg) = ResolvedArg::early(param);
                     bound_vars.insert(def_id, reg);
                 }
 
@@ -684,7 +684,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     lifetime: self.map.defs.get(&lifetime_ref.hir_id).cloned(),
                     s: self.scope,
                 };
-                self.with(scope, |this| this.visit_ty(&mt.ty));
+                self.with(scope, |this| this.visit_ty(mt.ty));
             }
             hir::TyKind::OpaqueDef(item_id, lifetimes, _in_trait) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
@@ -775,7 +775,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
             Type(bounds, ty) => {
                 self.visit_early(trait_item.hir_id(), trait_item.generics, |this| {
-                    this.visit_generics(&trait_item.generics);
+                    this.visit_generics(trait_item.generics);
                     for bound in bounds {
                         this.visit_param_bound(bound);
                     }
@@ -847,7 +847,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             hir::FnRetTy::DefaultReturn(_) => None,
             hir::FnRetTy::Return(ty) => Some(ty),
         };
-        self.visit_fn_like_elision(&fd.inputs, output, matches!(fk, intravisit::FnKind::Closure));
+        self.visit_fn_like_elision(fd.inputs, output, matches!(fk, intravisit::FnKind::Closure));
         intravisit::walk_fn_kind(self, fk);
         self.visit_nested_body(body_id)
     }
@@ -894,7 +894,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 };
                 self.with(scope, |this| {
                     walk_list!(this, visit_generic_param, bound_generic_params);
-                    this.visit_ty(&bounded_ty);
+                    this.visit_ty(bounded_ty);
                     walk_list!(this, visit_param_bound, bounds);
                 })
             }
@@ -1061,7 +1061,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     {
         let BoundVarContext { tcx, map, .. } = self;
         let mut this = BoundVarContext { tcx: *tcx, map, scope: &wrap_scope };
-        let span = debug_span!("scope", scope = ?TruncatedScopeDebug(&this.scope));
+        let span = debug_span!("scope", scope = ?TruncatedScopeDebug(this.scope));
         {
             let _enter = span.enter();
             f(&mut this);

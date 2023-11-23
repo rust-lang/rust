@@ -980,7 +980,7 @@ impl CrateError {
                     for CrateMismatch { path, .. } in mismatches {
                         sess.emit_err(errors::CrateLocationUnknownType {
                             span,
-                            path: &path,
+                            path: path,
                             crate_name,
                         });
                         sess.emit_err(errors::LibFilenameForm {

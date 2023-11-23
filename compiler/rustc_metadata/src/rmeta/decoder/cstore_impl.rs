@@ -394,7 +394,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
-                .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
+                .filter(|lib| native_libs::relevant_lib(tcx.sess, lib))
                 .find(|lib| {
                     let Some(fm_id) = lib.foreign_module else {
                         return false;

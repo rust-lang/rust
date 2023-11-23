@@ -552,7 +552,7 @@ fn encode_ty<'tcx>(
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
                     if !value_str.to_string().trim().is_empty() {
-                        s.push_str(&value_str.to_string().trim());
+                        s.push_str(value_str.to_string().trim());
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
@@ -604,7 +604,7 @@ fn encode_ty<'tcx>(
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
                     if !value_str.to_string().trim().is_empty() {
-                        s.push_str(&value_str.to_string().trim());
+                        s.push_str(value_str.to_string().trim());
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
@@ -1145,5 +1145,5 @@ pub fn typeid_for_instance<'tcx>(
         }
     }
 
-    typeid_for_fnabi(tcx, &fn_abi, options)
+    typeid_for_fnabi(tcx, fn_abi, options)
 }

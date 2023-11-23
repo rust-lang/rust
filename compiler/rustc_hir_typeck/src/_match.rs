@@ -42,7 +42,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // #55810: Type check patterns first so we get types for all bindings.
         let scrut_span = scrut.span.find_ancestor_inside(expr.span).unwrap_or(scrut.span);
         for arm in arms {
-            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut_span), Some(scrut), None);
+            self.check_pat_top(arm.pat, scrutinee_ty, Some(scrut_span), Some(scrut), None);
         }
 
         // Now typecheck the blocks.
@@ -92,7 +92,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             self.diverges.set(Diverges::Maybe);
 
-            let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
+            let arm_ty = self.check_expr_with_expectation(arm.body, expected);
             all_arms_diverge &= self.diverges.get();
 
             let opt_suggest_box_span = prior_arm.and_then(|(_, prior_arm_ty, _)| {
@@ -137,7 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             coercion.coerce_inner(
                 self,
                 &cause,
-                Some(&arm.body),
+                Some(arm.body),
                 arm_ty,
                 |err| self.suggest_removing_semicolon_for_coerce(err, expr, arm_ty, prior_arm),
                 false,

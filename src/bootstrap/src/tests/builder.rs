@@ -1,6 +1,6 @@
 use super::*;
-use crate::core::config::{Config, DryRun, TargetSelection};
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::config::{Config, DryRun, TargetSelection};
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {

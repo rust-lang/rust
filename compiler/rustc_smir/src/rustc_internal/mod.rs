@@ -118,7 +118,7 @@ impl<'tcx> Tables<'tcx> {
         self.def_ids.create_or_fetch(did)
     }
 
-    fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
+    pub(crate) fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::mir::alloc::AllocId {
         self.alloc_ids.create_or_fetch(aid)
     }
 

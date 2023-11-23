@@ -740,7 +740,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.monomorphize(fn_ty);
-                visit_fn_use(self.tcx, fn_ty, false, span, &mut self.output);
+                visit_fn_use(self.tcx, fn_ty, false, span, self.output);
             }
             mir::Rvalue::Cast(
                 mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
@@ -816,7 +816,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
                 self.check_fn_args_move_size(callee_ty, args, location);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
+                visit_fn_use(self.tcx, callee_ty, true, source, self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -828,7 +828,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
                             let fn_ty = self.monomorphize(value.const_.ty());
-                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output);
+                            visit_fn_use(self.tcx, fn_ty, false, source, self.output);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
@@ -1118,7 +1118,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 ) {
     assert!(!trait_ty.has_escaping_bound_vars() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind() {
+    if let ty::Dynamic(trait_ty, ..) = trait_ty.kind() {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());
@@ -1191,7 +1191,7 @@ impl<'v> RootCollector<'_, 'v> {
 
                 // but even just declaring them must collect the items they refer to
                 if let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id()) {
-                    collect_const_value(self.tcx, val, &mut self.output);
+                    collect_const_value(self.tcx, val, self.output);
                 }
             }
             DefKind::Impl { .. } => {
@@ -1422,14 +1422,14 @@ fn collect_used_items<'tcx>(
     // and abort compilation if any of them errors.
     MirUsedCollector {
         tcx,
-        body: &body,
+        body: body,
         output,
         instance,
         move_size_spans: vec![],
         visiting_call_terminator: false,
         skip_move_check_fns: None,
     }
-    .visit_body(&body);
+    .visit_body(body);
 }
 
 #[instrument(skip(tcx, output), level = "debug")]

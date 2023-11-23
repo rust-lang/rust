@@ -899,13 +899,13 @@ where
                 ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
 
                 // Tuples, coroutines and closures.
-                ty::Closure(_, ref args) => field_ty_or_layout(
+                ty::Closure(_, args) => field_ty_or_layout(
                     TyAndLayout { ty: args.as_closure().tupled_upvars_ty(), ..this },
                     cx,
                     i,
                 ),
 
-                ty::Coroutine(def_id, ref args, _) => match this.variants {
+                ty::Coroutine(def_id, args, _) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)

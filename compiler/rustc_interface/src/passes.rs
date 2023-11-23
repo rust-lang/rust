@@ -114,7 +114,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
     }
 }
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
+/// Runs the "early phases" of the compiler: initial `cfg` processing,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
@@ -127,7 +127,7 @@ fn configure_and_expand(
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
-    let lint_store = unerased_lint_store(&tcx.sess);
+    let lint_store = unerased_lint_store(tcx.sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
     pre_expansion_lint(
@@ -150,7 +150,7 @@ fn configure_and_expand(
         )
     });
 
-    util::check_attr_crate_type(sess, pre_configured_attrs, &mut resolver.lint_buffer());
+    util::check_attr_crate_type(sess, pre_configured_attrs, resolver.lint_buffer());
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -284,16 +284,16 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        eprintln!("Post-expansion node count: {}", count_nodes(&krate));
+        eprintln!("Post-expansion node count: {}", count_nodes(krate));
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS", "ast-stats-2");
+        hir_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
-        rustc_ast_passes::feature_gate::check_crate(&krate, sess, tcx.features());
+        rustc_ast_passes::feature_gate::check_crate(krate, sess, tcx.features());
     });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
@@ -319,7 +319,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         }
     });
 
-    let lint_store = unerased_lint_store(&tcx.sess);
+    let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         sess,
         tcx.features(),
@@ -521,11 +521,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             if sess.opts.json_artifact_notifications {
                 sess.parse_sess
                     .span_diagnostic
-                    .emit_artifact_notification(&deps_filename, "dep-info");
+                    .emit_artifact_notification(deps_filename, "dep-info");
             }
         }
         Err(error) => {
-            sess.emit_fatal(errors::ErrorWritingDependencies { path: &deps_filename, error });
+            sess.emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
         }
     }
 }
@@ -564,12 +564,12 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
         generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
-    if let Some(ref input_path) = sess.io.input.opt_path() {
+    if let Some(input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
                 sess.emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
             }
-            if let Some(ref dir_path) = output_conflicts_with_dir(&output_paths) {
+            if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
                 sess.emit_fatal(errors::GeneratedFileConflictsWithDirectory {
                     input_path,
                     dir_path,
@@ -645,10 +645,10 @@ pub fn create_global_ctxt<'tcx>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let sess = &compiler.session();
+    let sess = &compiler.sess;
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
-    let codegen_backend = compiler.codegen_backend();
+    let codegen_backend = &compiler.codegen_backend;
     let mut providers = *DEFAULT_QUERY_PROVIDERS;
     codegen_backend.provide(&mut providers);
 

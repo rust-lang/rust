@@ -159,7 +159,7 @@ pub fn expand_concat_bytes(
                     accumulator.push(val);
                 }
                 Ok(ast::LitKind::ByteStr(ref bytes, _)) => {
-                    accumulator.extend_from_slice(&bytes);
+                    accumulator.extend_from_slice(bytes);
                 }
                 _ => {
                     if !has_errors {

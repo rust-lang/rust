@@ -98,6 +98,12 @@ pub trait TypeErrCtxtExt<'tcx> {
         error: &SelectionError<'tcx>,
     );
 
+    fn emit_specialized_closure_kind_error(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Option<ErrorGuaranteed>;
+
     fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool;
 
     fn report_const_param_not_wf(
@@ -411,6 +417,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
+                        let trait_ref = trait_predicate.to_poly_trait_ref();
+
+                        if let Some(_guar) = self.emit_specialized_closure_kind_error(&obligation, trait_ref) {
+                            return;
+                        }
 
                         // FIXME(effects)
                         let predicate_is_const = false;
@@ -425,7 +436,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // reported on the binding definition (#56607).
                             return;
                         }
-                        let trait_ref = trait_predicate.to_poly_trait_ref();
                         let (post_message, pre_message, type_def, file_note) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
@@ -511,7 +521,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         if Some(trait_ref.def_id()) == tcx.lang_items().tuple_trait() {
                             self.add_tuple_trait_message(
-                                &obligation.cause.code().peel_derives(),
+                                obligation.cause.code().peel_derives(),
                                 &mut err,
                             );
                         }
@@ -569,7 +579,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
                                 self.suggest_borrowing_for_object_cast(
                                     &mut err,
-                                    &root_obligation,
+                                    root_obligation,
                                     source,
                                     target,
                                 );
@@ -786,11 +796,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
-                    ty::PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
-                        let found_kind = self.closure_kind(closure_args).unwrap();
-                        self.report_closure_error(&obligation, closure_def_id, found_kind, kind)
-                    }
-
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
                         let ty = self.resolve_vars_if_possible(ty);
                         match self.tcx.sess.opts.unstable_opts.trait_solver {
@@ -925,6 +930,38 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit();
+    }
+
+    fn emit_specialized_closure_kind_error(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Option<ErrorGuaranteed> {
+        if let ty::Closure(closure_def_id, closure_args) = *trait_ref.self_ty().skip_binder().kind()
+            && let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id())
+            && let Some(found_kind) = self.closure_kind(closure_args)
+            && !found_kind.extends(expected_kind)
+            && let sig = closure_args.as_closure().sig()
+            && self.can_sub(
+                obligation.param_env,
+                trait_ref,
+                sig.map_bound(|sig| {
+                    ty::TraitRef::new(
+                        self.tcx,
+                        trait_ref.def_id(),
+                        [trait_ref.self_ty().skip_binder(), sig.inputs()[0]],
+                    )
+                }),
+            )
+        {
+            let mut err =
+                self.report_closure_error(&obligation, closure_def_id, found_kind, expected_kind);
+            self.note_obligation_cause(&mut err, &obligation);
+            self.point_at_returns_when_relevant(&mut err, &obligation);
+            Some(err.emit())
+        } else {
+            None
+        }
     }
 
     fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool {
@@ -1965,7 +2002,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                self.get_parent_trait_ref(&parent_code)
+                self.get_parent_trait_ref(parent_code)
             }
             _ => None,
         }
@@ -2180,7 +2217,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span);
-                    expr_finder.visit_expr(&self.tcx.hir().body(body_id).value);
+                    expr_finder.visit_expr(self.tcx.hir().body(body_id).value);
 
                     if let Some(hir::Expr {
                         kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
@@ -2932,7 +2969,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 obligation.param_env,
             ) {
                 self.report_similar_impl_candidates_for_root_obligation(
-                    &obligation,
+                    obligation,
                     *trait_predicate,
                     body_def_id,
                     err,
@@ -3044,13 +3081,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 (ty::ClosureKind::FnOnce, Some((span, place))) => {
                     err.fn_once_label = Some(ClosureFnOnceLabel {
                         span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                        place: ty::place_to_string_for_capture(self.tcx, place),
                     })
                 }
                 (ty::ClosureKind::FnMut, Some((span, place))) => {
                     err.fn_mut_label = Some(ClosureFnMutLabel {
                         span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                        place: ty::place_to_string_for_capture(self.tcx, place),
                     })
                 }
                 _ => {}
@@ -3162,7 +3199,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut not_tupled = false;
 
         let found = match found_trait_ref.skip_binder().args.type_at(1).kind() {
-            ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
+            ty::Tuple(tys) => vec![ArgKind::empty(); tys.len()],
             _ => {
                 not_tupled = true;
                 vec![ArgKind::empty()]
@@ -3171,7 +3208,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let expected_ty = expected_trait_ref.skip_binder().args.type_at(1);
         let expected = match expected_ty.kind() {
-            ty::Tuple(ref tys) => {
+            ty::Tuple(tys) => {
                 tys.iter().map(|t| ArgKind::from_expected_ty(t, Some(span))).collect()
             }
             _ => {

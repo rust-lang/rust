@@ -222,11 +222,11 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.owner_id.def_id, args, span, &origin).is_err() {
+    if check_opaque_for_cycles(tcx, item.owner_id.def_id, args, span, origin).is_err() {
         return;
     }
 
-    let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, &origin);
+    let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, origin);
 }
 
 /// Checks that an opaque type does not contain cycles.
@@ -518,7 +518,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         DefKind::TyAlias => {
             let pty_ty = tcx.type_of(id.owner_id).instantiate_identity();
             let generics = tcx.generics_of(id.owner_id);
-            check_type_params_are_used(tcx, &generics, pty_ty);
+            check_type_params_are_used(tcx, generics, pty_ty);
         }
         DefKind::ForeignMod => {
             let it = tcx.hir().item(id);
@@ -900,7 +900,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
         for attr in tcx.get_attrs(def.did(), sym::repr) {
-            for r in attr::parse_repr_attr(&tcx.sess, attr) {
+            for r in attr::parse_repr_attr(tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
                     && pack as u64 != repr_pack.bytes()
@@ -1150,8 +1150,8 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let has_disr = |var: &ty::VariantDef| matches!(var.discr, ty::VariantDiscr::Explicit(_));
 
         let has_non_units = def.variants().iter().any(|var| !is_unit(var));
-        let disr_units = def.variants().iter().any(|var| is_unit(&var) && has_disr(&var));
-        let disr_non_unit = def.variants().iter().any(|var| !is_unit(&var) && has_disr(&var));
+        let disr_units = def.variants().iter().any(|var| is_unit(var) && has_disr(var));
+        let disr_non_unit = def.variants().iter().any(|var| !is_unit(var) && has_disr(var));
 
         if disr_non_unit || (disr_units && has_non_units) {
             let mut err = struct_span_err!(
@@ -1468,7 +1468,10 @@ fn opaque_type_cycle_error(
     err.emit()
 }
 
-pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_coroutine_obligations(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Coroutine));
 
     let typeck = tcx.typeck(def_id);
@@ -1482,8 +1485,9 @@ pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // typeck writeback gives us predicates with their regions erased.
         // As borrowck already has checked lifetimes, we do not need to do it again.
         .ignoring_regions()
-        // Bind opaque types to `def_id` as they should have been checked by borrowck.
-        .with_opaque_type_inference(DefiningAnchor::Bind(def_id))
+        // Bind opaque types to type checking root, as they should have been checked by borrowck,
+        // but may show up in some cases, like when (root) obligations are stalled in the new solver.
+        .with_opaque_type_inference(DefiningAnchor::Bind(typeck.hir_owner.def_id))
         .build();
 
     let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);
@@ -1513,6 +1517,16 @@ pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let errors = fulfillment_cx.select_all_or_error(&infcx);
     debug!(?errors);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
+
+    // Check that any hidden types found when checking these stalled coroutine obligations
+    // are valid.
+    for (key, ty) in infcx.take_opaque_types() {
+        let hidden_type = infcx.resolve_vars_if_possible(ty.hidden_type);
+        let key = infcx.resolve_vars_if_possible(key);
+        sanity_check_found_hidden_type(tcx, key, hidden_type)?;
+    }
+
+    Ok(())
 }

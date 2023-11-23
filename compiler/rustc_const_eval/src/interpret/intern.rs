@@ -259,7 +259,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 // to avoid could be expensive: on the potentially larger types, arrays and slices,
                 // rather than on all aggregates unconditionally.
                 if matches!(mplace.layout.ty.kind(), ty::Array(..) | ty::Slice(..)) {
-                    let Some((size, _align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+                    let Some((size, _align)) = self.ecx.size_and_align_of_mplace(mplace)? else {
                         // We do the walk if we can't determine the size of the mplace: we may be
                         // dealing with extern types here in the future.
                         return Ok(true);

@@ -1,7 +1,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::mem;
-use crate::ptr::{null, null_mut};
+use crate::ptr::null;
 use crate::sys::c;
 use crate::sys_common::IntoInner;
 use crate::time::Duration;
@@ -240,7 +240,7 @@ impl WaitableTimer {
                 c::TIMER_ALL_ACCESS,
             )
         };
-        if handle != null_mut() { Ok(Self { handle }) } else { Err(()) }
+        if !handle.is_null() { Ok(Self { handle }) } else { Err(()) }
     }
     pub fn set(&self, duration: Duration) -> Result<(), ()> {
         // Convert the Duration to a format similar to FILETIME.

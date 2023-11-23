@@ -182,7 +182,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }
 
     let no_generics = hir::Generics::empty();
-    let ast_generics = node.generics().unwrap_or(&no_generics);
+    let ast_generics = node.generics().unwrap_or(no_generics);
     let (opt_self, allow_defaults) = match node {
         Node::Item(item) => {
             match item.kind {
@@ -458,11 +458,11 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     match node {
         Node::TraitItem(item) => match &item.kind {
-            hir::TraitItemKind::Fn(sig, _) => has_late_bound_regions(tcx, &item.generics, sig.decl),
+            hir::TraitItemKind::Fn(sig, _) => has_late_bound_regions(tcx, item.generics, sig.decl),
             _ => None,
         },
         Node::ImplItem(item) => match &item.kind {
-            hir::ImplItemKind::Fn(sig, _) => has_late_bound_regions(tcx, &item.generics, sig.decl),
+            hir::ImplItemKind::Fn(sig, _) => has_late_bound_regions(tcx, item.generics, sig.decl),
             _ => None,
         },
         Node::ForeignItem(item) => match item.kind {

@@ -303,7 +303,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             Locations::All(span),
             span,
             ConstraintCategory::Internal,
-            &mut self.constraints,
+            self.constraints,
         )
         .convert_all(data);
     }

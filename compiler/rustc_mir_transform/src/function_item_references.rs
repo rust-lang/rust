@@ -14,7 +14,7 @@ pub struct FunctionItemReferences;
 impl<'tcx> MirLint<'tcx> for FunctionItemReferences {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = FunctionItemRefChecker { tcx, body };
-        checker.visit_body(&body);
+        checker.visit_body(body);
     }
 }
 
@@ -47,12 +47,12 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
                     for inner_ty in arg_ty.walk().filter_map(|arg| arg.as_type()) {
                         if let Some((fn_id, fn_args)) = FunctionItemRefChecker::is_fn_ref(inner_ty)
                         {
-                            let span = self.nth_arg_span(&args, 0);
+                            let span = self.nth_arg_span(args, 0);
                             self.emit_lint(fn_id, fn_args, source_info, span);
                         }
                     }
                 } else {
-                    self.check_bound_args(def_id, args_ref, &args, source_info);
+                    self.check_bound_args(def_id, args_ref, args, source_info);
                 }
             }
         }

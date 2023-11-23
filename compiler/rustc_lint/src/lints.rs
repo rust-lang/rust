@@ -10,9 +10,7 @@ use rustc_errors::{
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{
-    inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
-};
+use rustc_middle::ty::{inhabitedness::InhabitedPredicate, Clause, Ty, TyCtxt};
 use rustc_session::parse::ParseSess;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
@@ -250,7 +248,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
-            &self.parse_sess,
+            self.parse_sess,
             sym::async_fn_track_caller,
         );
         diag
@@ -556,9 +554,9 @@ pub enum BuiltinSpecialModuleNameUsed {
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]
+#[help]
 pub struct SupertraitAsDerefTarget<'a> {
     pub t: Ty<'a>,
-    pub target_principal: PolyExistentialTraitRef<'a>,
     #[subdiagnostic]
     pub label: Option<SupertraitAsDerefTargetLabel>,
 }
@@ -1829,4 +1827,11 @@ impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
         fluent::lint_async_fn_in_trait
     }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unit_bindings)]
+pub struct UnitBindingsDiag {
+    #[label]
+    pub label: Span,
 }

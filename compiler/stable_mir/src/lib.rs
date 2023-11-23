@@ -17,7 +17,7 @@
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
 
-use crate::mir::mono::InstanceDef;
+use crate::mir::mono::{InstanceDef, StaticDef};
 use crate::mir::Body;
 use std::fmt;
 use std::fmt::Debug;
@@ -37,9 +37,10 @@ pub mod mir;
 pub mod ty;
 pub mod visitor;
 
+use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::pretty::function_name;
 use crate::mir::Mutability;
-use crate::ty::{AdtDef, AdtKind, ClosureDef, ClosureKind, Const, RigidTy};
+use crate::ty::{AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, RigidTy};
 pub use error::*;
 use mir::mono::Instance;
 use ty::{FnDef, GenericArgs};
@@ -73,19 +74,6 @@ impl IndexedVal for DefId {
     }
 }
 
-/// A unique identification number for each provenance
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AllocId(usize);
-
-impl IndexedVal for AllocId {
-    fn to_val(index: usize) -> Self {
-        AllocId(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
-    }
-}
-
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;
 
@@ -110,7 +98,7 @@ pub enum ItemKind {
     Const,
 }
 
-pub type Filename = Opaque;
+pub type Filename = String;
 
 /// Holds information about an item in the crate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -139,6 +127,10 @@ impl CrateItem {
 
     pub fn ty(&self) -> Ty {
         with(|cx| cx.def_ty(self.0))
+    }
+
+    pub fn is_foreign_item(&self) -> bool {
+        with(|cx| cx.is_foreign_item(*self))
     }
 
     pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
@@ -190,6 +182,8 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
     with(|cx| cx.trait_impl(trait_impl))
 }
 
+/// This trait defines the interface between stable_mir and the Rust compiler.
+/// Do not use this directly.
 pub trait Context {
     fn entry_fn(&self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
@@ -291,6 +285,15 @@ pub trait Context {
         args: &GenericArgs,
         kind: ClosureKind,
     ) -> Option<Instance>;
+
+    /// Evaluate a static's initializer.
+    fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error>;
+
+    /// Retrieve global allocation for the given allocation ID.
+    fn global_alloc(&self, id: AllocId) -> GlobalAlloc;
+
+    /// Retrieve the id for the virtual table.
+    fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

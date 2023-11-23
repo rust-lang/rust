@@ -32,6 +32,7 @@ use std::fmt;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
+use rustc_type_ir::BoundVar;
 use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::CollectAndApply;
 use rustc_type_ir::ConstKind as IrConstKind;
@@ -1590,7 +1591,7 @@ impl<'tcx> Deref for Region<'tcx> {
 
     #[inline]
     fn deref(&self) -> &RegionKind<'tcx> {
-        &self.0.0
+        self.0.0
     }
 }
 
@@ -1611,6 +1612,8 @@ impl fmt::Debug for EarlyParamRegion {
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "'?{}"]
     pub struct RegionVid {}
 }
@@ -1619,12 +1622,6 @@ impl Atom for RegionVid {
     fn index(self) -> usize {
         Idx::index(self)
     }
-}
-
-rustc_index::newtype_index! {
-    #[derive(HashStable)]
-    #[debug_format = "{}"]
-    pub struct BoundVar {}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
@@ -2114,7 +2111,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_tup(tcx: TyCtxt<'tcx>, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(&ts))) }
+        if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(ts))) }
     }
 
     pub fn new_tup_from_iter<I, T>(tcx: TyCtxt<'tcx>, iter: I) -> T::Output
@@ -2270,7 +2267,7 @@ impl<'tcx> Ty<'tcx> {
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
-        &self.0.0
+        self.0.0
     }
 
     #[inline(always)]
@@ -2281,7 +2278,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_unit(self) -> bool {
         match self.kind() {
-            Tuple(ref tys) => tys.is_empty(),
+            Tuple(tys) => tys.is_empty(),
             _ => false,
         }
     }

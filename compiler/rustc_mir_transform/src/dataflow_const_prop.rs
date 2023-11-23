@@ -362,7 +362,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     && let Ok(rhs_layout) = self.tcx.layout_of(self.param_env.and(rhs_ty))
                 {
                     let op = ImmTy::from_scalar(pointer, rhs_layout).into();
-                    self.assign_constant(state, place, op, &rhs.projection);
+                    self.assign_constant(state, place, op, rhs.projection);
                 }
             }
             Operand::Constant(box constant) => {
