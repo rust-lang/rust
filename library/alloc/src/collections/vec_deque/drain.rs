@@ -27,8 +27,8 @@ pub struct Drain<
     drain_len: usize,
     // index into the logical array, not the physical one (always lies in [0..deque.len))
     idx: usize,
-    // number of elements after the drain range
-    tail_len: usize,
+    // number of elements remaining after dropping the drain
+    new_len: usize,
     remaining: usize,
     // Needed to make Drain covariant over T
     _marker: PhantomData<&'a T>,
@@ -41,12 +41,12 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
         drain_len: usize,
     ) -> Self {
         let orig_len = mem::replace(&mut deque.len, drain_start);
-        let tail_len = orig_len - drain_start - drain_len;
+        let new_len = orig_len - drain_len;
         Drain {
             deque: NonNull::from(deque),
             drain_len,
             idx: drain_start,
-            tail_len,
+            new_len,
             remaining: drain_len,
             _marker: PhantomData,
         }
@@ -79,7 +79,7 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
         f.debug_tuple("Drain")
             .field(&self.drain_len)
             .field(&self.idx)
-            .field(&self.tail_len)
+            .field(&self.new_len)
             .field(&self.remaining)
             .finish()
     }
@@ -111,18 +111,16 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
                 let drain_start = source_deque.len();
                 let drain_len = self.0.drain_len;
-                let drain_end = drain_start + drain_len;
-
-                let orig_len = self.0.tail_len + drain_end;
+                let new_len = self.0.new_len;
 
                 if T::IS_ZST {
                     // no need to copy around any memory if T is a ZST
-                    source_deque.len = orig_len - drain_len;
+                    source_deque.len = new_len;
                     return;
                 }
 
                 let head_len = drain_start;
-                let tail_len = self.0.tail_len;
+                let tail_len = new_len - head_len;
 
                 match (head_len, tail_len) {
                     (0, 0) => {
@@ -131,10 +129,10 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                     }
                     (0, _) => {
                         source_deque.head = source_deque.to_physical_idx(drain_len);
-                        source_deque.len = orig_len - drain_len;
+                        source_deque.len = new_len;
                     }
                     (_, 0) => {
-                        source_deque.len = orig_len - drain_len;
+                        source_deque.len = new_len;
                     }
                     _ => unsafe {
                         if head_len <= tail_len {
@@ -144,14 +142,14 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                                 head_len,
                             );
                             source_deque.head = source_deque.to_physical_idx(drain_len);
-                            source_deque.len = orig_len - drain_len;
+                            source_deque.len = new_len;
                         } else {
                             source_deque.wrap_copy(
                                 source_deque.to_physical_idx(head_len + drain_len),
                                 source_deque.to_physical_idx(head_len),
                                 tail_len,
                             );
-                            source_deque.len = orig_len - drain_len;
+                            source_deque.len = new_len;
                         }
                     },
                 }
