@@ -149,14 +149,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     } = constraints;
     let placeholder_indices = Rc::new(placeholder_indices);
 
-    constraint_generation::generate_constraints(
-        infcx,
-        &mut liveness_constraints,
-        &mut all_facts,
-        location_table,
-        body,
-        borrow_set,
-    );
+    constraint_generation::generate_constraints(infcx.tcx, &mut liveness_constraints, body);
     polonius::emit_cfg_and_loan_kills_facts(
         infcx.tcx,
         &mut all_facts,
