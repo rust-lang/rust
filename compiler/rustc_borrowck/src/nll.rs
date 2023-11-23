@@ -157,6 +157,14 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         body,
         borrow_set,
     );
+    polonius::emit_cfg_and_loan_kills_facts(
+        infcx,
+        &mut liveness_constraints,
+        &mut all_facts,
+        location_table,
+        body,
+        borrow_set,
+    );
 
     let mut regioncx = RegionInferenceContext::new(
         infcx,
