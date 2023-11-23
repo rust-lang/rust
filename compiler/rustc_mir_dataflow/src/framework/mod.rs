@@ -246,21 +246,6 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     }
 }
 
-/// Defines an `Analysis` which can be cloned for use in multiple `ResultsCursor`s or
-/// `ResultsVisitor`s. Note this need not be a full clone, only enough of one to be used with a new
-/// `ResultsCursor` or `ResultsVisitor`
-pub trait CloneAnalysis {
-    fn clone_analysis(&self) -> Self;
-}
-impl<'tcx, A> CloneAnalysis for A
-where
-    A: Analysis<'tcx> + Copy,
-{
-    fn clone_analysis(&self) -> Self {
-        *self
-    }
-}
-
 /// A gen/kill dataflow problem.
 ///
 /// Each method in this trait has a corresponding one in `Analysis`. However, these methods only

@@ -24,9 +24,8 @@ use rustc_span::symbol::{sym, Symbol};
 use super::fmt::DebugWithContext;
 use super::graphviz;
 use super::{
-    visit_results, Analysis, AnalysisDomain, CloneAnalysis, Direction, GenKill, GenKillAnalysis,
-    GenKillSet, JoinSemiLattice, ResultsClonedCursor, ResultsCursor, ResultsRefCursor,
-    ResultsVisitor,
+    visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis, GenKillSet,
+    JoinSemiLattice, ResultsClonedCursor, ResultsCursor, ResultsRefCursor, ResultsVisitor,
 };
 
 pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
@@ -96,23 +95,15 @@ where
 
 impl<'tcx, A> Results<'tcx, A>
 where
-    A: Analysis<'tcx> + CloneAnalysis,
+    A: Analysis<'tcx> + Copy,
 {
-    /// Creates a new `Results` type with a cloned `Analysis` and borrowed entry sets.
-    pub fn clone_analysis(&self) -> ResultsCloned<'_, 'tcx, A> {
-        Results {
-            analysis: self.analysis.clone_analysis(),
-            entry_sets: &self.entry_sets,
-            _marker: PhantomData,
-        }
-    }
-
     /// Creates a `ResultsCursor` that can inspect these `Results`.
     pub fn cloned_results_cursor<'mir>(
         &self,
         body: &'mir mir::Body<'tcx>,
     ) -> ResultsClonedCursor<'_, 'mir, 'tcx, A> {
-        self.clone_analysis().into_results_cursor(body)
+        Results { analysis: self.analysis, entry_sets: &self.entry_sets, _marker: PhantomData }
+            .into_results_cursor(body)
     }
 }
 
