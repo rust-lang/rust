@@ -127,18 +127,17 @@ fn extract_default_variant<'a>(
         [first, rest @ ..] => {
             let suggs = default_variants
                 .iter()
-                .map(|variant| {
-                    let spans = default_variants
+                .filter_map(|variant| {
+                    let keep = attr::find_by_name(&variant.attrs, kw::Default)?.span;
+                    let spans: Vec<Span> = default_variants
                         .iter()
-                        .filter_map(|v| {
-                            if v.span == variant.span {
-                                None
-                            } else {
-                                Some(attr::find_by_name(&v.attrs, kw::Default)?.span)
-                            }
+                        .flat_map(|v| {
+                            attr::filter_by_name(&v.attrs, kw::Default)
+                                .filter_map(|attr| (attr.span != keep).then_some(attr.span))
                         })
                         .collect();
-                    errors::MultipleDefaultsSugg { spans, ident: variant.ident }
+                    (!spans.is_empty())
+                        .then_some(errors::MultipleDefaultsSugg { spans, ident: variant.ident })
                 })
                 .collect();
             cx.emit_err(errors::MultipleDefaults {

@@ -2,8 +2,8 @@ warning: this `Deref` implementation is covered by an implicit supertrait coerci
   --> $DIR/deref-lint.rs:9:1
    |
 LL | impl<'a> Deref for dyn 'a + B {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn B` implements `Deref<Target = dyn A>` which conflicts with supertrait `A`
+...
 LL |     type Target = dyn A;
    |     -------------------- target type is a supertrait of `dyn B`
    |
