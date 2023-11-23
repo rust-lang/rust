@@ -1,4 +1,4 @@
-use rustc_middle::mir;
+use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -326,6 +326,43 @@ fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
 
         let res = bin_op_float::<F>(this, which, &left, &right)?;
         this.write_scalar(res, &dest)?;
+    }
+
+    Ok(())
+}
+
+/// Converts each element of `op` from floating point to signed integer.
+///
+/// When the input value is NaN or out of range, fall back to minimum value.
+///
+/// If `op` has more elements than `dest`, extra elements are ignored. If `op`
+/// has less elements than `dest`, the rest is filled with zeros.
+fn convert_float_to_int<'tcx>(
+    this: &mut crate::MiriInterpCx<'_, 'tcx>,
+    op: &OpTy<'tcx, Provenance>,
+    rnd: rustc_apfloat::Round,
+    dest: &PlaceTy<'tcx, Provenance>,
+) -> InterpResult<'tcx, ()> {
+    let (op, op_len) = this.operand_to_simd(op)?;
+    let (dest, dest_len) = this.place_to_simd(dest)?;
+
+    // Output must be *signed* integers.
+    assert!(matches!(dest.layout.field(this, 0).ty.kind(), ty::Int(_)));
+
+    for i in 0..op_len.min(dest_len) {
+        let op = this.read_immediate(&this.project_index(&op, i)?)?;
+        let dest = this.project_index(&dest, i)?;
+
+        let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
+            // Fallback to minimum acording to SSE/AVX semantics.
+            ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
+        });
+        this.write_immediate(*res, &dest)?;
+    }
+    // Fill remainder with zeros
+    for i in op_len..dest_len {
+        let dest = this.project_index(&dest, i)?;
+        this.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
     }
 
     Ok(())
