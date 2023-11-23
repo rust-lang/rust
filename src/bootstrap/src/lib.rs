@@ -124,6 +124,11 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Default value of `download-ci-llvm` was changed for `codegen` profile.",
     },
+    ChangeInfo {
+        change_id: 117813,
+        severity: ChangeSeverity::Info,
+        summary: "Use of the `if-available` value for `download-ci-llvm` is deprecated; prefer using the new `if-unchanged` value.",
+    },
 ];
 
 /// Extra --check-cfg to add when building
