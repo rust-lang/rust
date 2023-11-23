@@ -2717,7 +2717,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 ///
 /// A `Cursor` is like an iterator, except that it can freely seek back-and-forth.
 ///
-/// Cursors always point to a gao between two elements in the map, and can
+/// Cursors always point to a gap between two elements in the map, and can
 /// operate on the two immediately adjacent elements.
 ///
 /// A `Cursor` is created with the [`BTreeMap::lower_bound`] and [`BTreeMap::upper_bound`] methods.
