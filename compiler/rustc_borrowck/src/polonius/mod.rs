@@ -3,7 +3,6 @@
 //! Will be removed in the future, once the in-tree `-Zpolonius=next` implementation reaches feature
 //! parity.
 
-use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{Body, LocalKind, Location, START_BLOCK};
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
@@ -150,11 +149,16 @@ pub(crate) fn emit_loan_invalidations_facts<'tcx>(
 
 /// Emit facts about CFG points and edges, as well as locations where loans are killed.
 pub(crate) fn emit_cfg_and_loan_kills_facts<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    constraint_generation::generate_constraints(infcx, all_facts, location_table, body, borrow_set);
+    let Some(all_facts) = all_facts else {
+        // Nothing to do if we don't have any facts to fill
+        return;
+    };
+
+    constraint_generation::generate_constraints(tcx, all_facts, location_table, body, borrow_set);
 }
