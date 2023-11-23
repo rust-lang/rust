@@ -96,8 +96,9 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
 
         impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
+            #[inline]
             fn drop(&mut self) {
-                if self.0.remaining != 0 {
+                if mem::needs_drop::<T>() && self.0.remaining != 0 {
                     unsafe {
                         // SAFETY: We just checked that `self.remaining != 0`.
                         let (front, back) = self.0.as_slices();
@@ -158,7 +159,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         }
 
         let guard = DropGuard(self);
-        if guard.0.remaining != 0 {
+        if mem::needs_drop::<T>() && guard.0.remaining != 0 {
             unsafe {
                 // SAFETY: We just checked that `self.remaining != 0`.
                 let (front, back) = guard.0.as_slices();
