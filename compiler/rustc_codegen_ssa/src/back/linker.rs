@@ -295,9 +295,15 @@ impl<'a> GccLinker<'a> {
 
     fn push_linker_plugin_lto_args(&mut self, plugin_path: Option<&OsStr>) {
         if let Some(plugin_path) = plugin_path {
-            let mut arg = OsString::from("-plugin=");
-            arg.push(plugin_path);
-            self.linker_arg(&arg);
+            // Note that LLD silently ignores these flags.
+            // It will always use the LLVM it was built with to perform LTO.
+            if self.sess.target.is_like_osx {
+                self.linker_args(&[OsStr::new("-lto_library"), plugin_path]);
+            } else {
+                let mut arg = OsString::from("-plugin=");
+                arg.push(plugin_path);
+                self.linker_arg(&arg);
+            }
         }
 
         let opt_level = match self.sess.opts.optimize {
@@ -307,13 +313,30 @@ impl<'a> GccLinker<'a> {
             config::OptLevel::Aggressive => "O3",
         };
 
-        if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
-            self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
-        };
-        self.linker_args(&[
-            &format!("-plugin-opt={opt_level}"),
-            &format!("-plugin-opt=mcpu={}", self.target_cpu),
-        ]);
+        if self.sess.target.is_like_osx {
+            // Apple clang 15 passes -O3 through to ld64. We will do the same.
+            self.linker_arg(&format!("-{opt_level}"));
+
+            // Apple clang 15 does not seem to tell the linker about -mcpu. Unlike -O3 etc,
+            // ld64 does not accept -mcpu or GNU-style -plugin-opt=mcpu=.
+            // But it surely can't hurt to tell cc about -mcpu anyway.
+            //
+            // It's possible this has something to do with platform minimum versions AKA
+            // deployment targets; Apple drops support for CPU subfamilies at defined iOS
+            // versions, for example. Either that or ld64 is meant to infer a target CPU
+            // from the object files.
+            if !self.is_ld {
+                self.cmd.args(&[&format!("-mcpu={}", self.target_cpu)]);
+            }
+        } else {
+            if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
+                self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
+            }
+            self.linker_args(&[
+                &format!("-plugin-opt={opt_level}"),
+                &format!("-plugin-opt=mcpu={}", self.target_cpu),
+            ]);
+        }
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
