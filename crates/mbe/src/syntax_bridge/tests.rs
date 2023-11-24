@@ -7,12 +7,14 @@ use tt::{
     Leaf, Punct, Spacing, SpanAnchor, SyntaxContext,
 };
 
+use crate::SpanMapper;
+
 use super::syntax_node_to_token_tree;
 
 fn check_punct_spacing(fixture: &str) {
     type SpanData = tt::SpanData<DummyFile, DummyCtx>;
 
-    #[derive(PartialEq, Eq, Clone, Copy, Debug)]
+    #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
     struct DummyFile;
     impl SpanAnchor for DummyFile {
         const DUMMY: Self = DummyFile;
@@ -24,9 +26,16 @@ fn check_punct_spacing(fixture: &str) {
         const DUMMY: Self = DummyCtx;
     }
 
+    struct NoOpMap;
+
+    impl SpanMapper<SpanData> for NoOpMap {
+        fn span_for(&self, range: syntax::TextRange) -> SpanData {
+            SpanData { range, anchor: DummyFile, ctx: DummyCtx }
+        }
+    }
+
     let source_file = ast::SourceFile::parse(fixture).ok().unwrap();
-    let subtree =
-        syntax_node_to_token_tree(source_file.syntax(), DummyFile, 0.into(), &Default::default());
+    let subtree = syntax_node_to_token_tree(source_file.syntax(), NoOpMap);
     let mut annotations: HashMap<_, _> = extract_annotations(fixture)
         .into_iter()
         .map(|(range, annotation)| {

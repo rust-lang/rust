@@ -7,10 +7,7 @@ mod tests;
 
 use std::{hash::Hash, ops, slice::Iter as SliceIter};
 
-use base_db::{
-    span::{ErasedFileAstId, SpanAnchor},
-    CrateId,
-};
+use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -31,8 +28,8 @@ use crate::{
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemLoc, AttrDefId, EnumId, GenericDefId, GenericParamId, ItemLoc,
-    LocalEnumVariantId, LocalFieldId, Lookup, MacroId, VariantId,
+    AdtId, AssocItemLoc, AttrDefId, EnumId, GenericParamId, ItemLoc, LocalEnumVariantId,
+    LocalFieldId, Lookup, MacroId, VariantId,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -419,43 +416,30 @@ impl AttrsWithOwner {
             AttrDefId::FunctionId(it) => attrs_from_item_tree_assoc(db, it),
             AttrDefId::TypeAliasId(it) => attrs_from_item_tree_assoc(db, it),
             AttrDefId::GenericParamId(it) => {
-                let ast_id = |p| match p {
-                    GenericDefId::AdtId(AdtId::StructId(it)) => {
-                        erased_ast_id_from_item_tree(db, it)
-                    }
-                    GenericDefId::AdtId(AdtId::EnumId(it)) => erased_ast_id_from_item_tree(db, it),
-                    GenericDefId::AdtId(AdtId::UnionId(it)) => erased_ast_id_from_item_tree(db, it),
-                    GenericDefId::TraitId(it) => erased_ast_id_from_item_tree(db, it),
-                    GenericDefId::TraitAliasId(it) => erased_ast_id_from_item_tree(db, it),
-                    GenericDefId::ImplId(it) => erased_ast_id_from_item_tree(db, it),
-                    GenericDefId::EnumVariantId(it) => erased_ast_id_from_item_tree(db, it.parent),
-                    GenericDefId::TypeAliasId(it) => erased_ast_id_from_item_tree_assoc(db, it),
-                    GenericDefId::FunctionId(it) => erased_ast_id_from_item_tree_assoc(db, it),
-                    GenericDefId::ConstId(it) => erased_ast_id_from_item_tree_assoc(db, it),
-                };
+                // FIXME: we could probably just make these relative to the params?
                 match it {
                     GenericParamId::ConstParamId(it) => {
                         let src = it.parent().child_source(db);
                         RawAttrs::from_attrs_owner(
                             db.upcast(),
-                            SpanAnchor { file_id: src.file_id, ast_id: ast_id(it.parent()) },
                             src.with_value(&src.value[it.local_id()]),
+                            db.span_map(src.file_id).as_ref(),
                         )
                     }
                     GenericParamId::TypeParamId(it) => {
                         let src = it.parent().child_source(db);
                         RawAttrs::from_attrs_owner(
                             db.upcast(),
-                            SpanAnchor { file_id: src.file_id, ast_id: ast_id(it.parent()) },
                             src.with_value(&src.value[it.local_id()]),
+                            db.span_map(src.file_id).as_ref(),
                         )
                     }
                     GenericParamId::LifetimeParamId(it) => {
                         let src = it.parent.child_source(db);
                         RawAttrs::from_attrs_owner(
                             db.upcast(),
-                            SpanAnchor { file_id: src.file_id, ast_id: ast_id(it.parent) },
                             src.with_value(&src.value[it.local_id]),
+                            db.span_map(src.file_id).as_ref(),
                         )
                     }
                 }
@@ -661,26 +645,6 @@ fn any_has_attrs(
     id: impl Lookup<Data = impl HasSource<Value = impl ast::HasAttrs>>,
 ) -> InFile<ast::AnyHasAttrs> {
     id.lookup(db).source(db).map(ast::AnyHasAttrs::new)
-}
-
-fn erased_ast_id_from_item_tree<N: ItemTreeNode>(
-    db: &dyn DefDatabase,
-    lookup: impl Lookup<Data = ItemLoc<N>>,
-) -> ErasedFileAstId {
-    let id = lookup.lookup(db).id;
-    let tree = id.item_tree(db);
-    let mod_item = N::id_to_mod_item(id.value);
-    mod_item.ast_id(&tree).erase()
-}
-
-fn erased_ast_id_from_item_tree_assoc<N: ItemTreeNode>(
-    db: &dyn DefDatabase,
-    lookup: impl Lookup<Data = AssocItemLoc<N>>,
-) -> ErasedFileAstId {
-    let id = lookup.lookup(db).id;
-    let tree = id.item_tree(db);
-    let mod_item = N::id_to_mod_item(id.value);
-    mod_item.ast_id(&tree).erase()
 }
 
 fn attrs_from_item_tree<N: ItemTreeNode>(db: &dyn DefDatabase, id: ItemTreeId<N>) -> RawAttrs {

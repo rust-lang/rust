@@ -401,11 +401,11 @@ fn bar() {
 //- /lib.rs
 macro_rules! define_fn {
     () => (fn foo() {})
-            //^^^
+
 }
 
   define_fn!();
-
+//^^^^^^^^^^^^^
 fn bar() {
    $0foo();
 }

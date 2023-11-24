@@ -112,6 +112,7 @@ pub struct ItemScope {
 #[derive(Debug, PartialEq, Eq)]
 struct DeriveMacroInvocation {
     attr_id: AttrId,
+    /// The `#[derive]` call
     attr_call_id: MacroCallId,
     derive_call_ids: SmallVec<[Option<MacroCallId>; 1]>,
 }
@@ -399,6 +400,14 @@ impl ItemScope {
                 }),
             )
         })
+    }
+
+    pub fn derive_macro_invoc(
+        &self,
+        ast_id: AstId<ast::Adt>,
+        attr_id: AttrId,
+    ) -> Option<MacroCallId> {
+        Some(self.derive_macros.get(&ast_id)?.iter().find(|it| it.attr_id == attr_id)?.attr_call_id)
     }
 
     // FIXME: This is only used in collection, we should move the relevant parts of it out of ItemScope

@@ -166,6 +166,7 @@ fn hover_simple(
     } else {
         sema.descend_into_macros_with_same_text(original_token.clone(), offset)
     };
+    dbg!(&descended);
     let descended = || descended.iter();
 
     let result = descended()

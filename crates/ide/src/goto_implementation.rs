@@ -249,7 +249,7 @@ impl T for &Foo {}
             r#"
 //- minicore: copy, derive
   #[derive(Copy)]
-//^^^^^^^^^^^^^^^
+         //^^^^
 struct Foo$0;
 "#,
         );

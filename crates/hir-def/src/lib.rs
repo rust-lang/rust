@@ -75,7 +75,7 @@ use hir_expand::{
     name::Name,
     proc_macro::ProcMacroExpander,
     AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
-    MacroDefId, MacroDefKind, UnresolvedMacro,
+    MacroDefId, MacroDefKind,
 };
 use item_tree::ExternBlock;
 use la_arena::Idx;
@@ -1166,15 +1166,14 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let span_map = db.span_map(self.file_id);
-        let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &span_map));
+        let path =
+            self.value.path().and_then(|path| path::ModPath::from_src(db, path, span_map.as_ref()));
 
         let Some(path) = path else {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
 
-        let call_site = span_map
-            .span_for_range(self.value.syntax().text_range())
-            .map_or(SyntaxContextId::ROOT, |s| s.ctx);
+        let call_site = span_map.span_for_range(self.value.syntax().text_range()).ctx;
 
         macro_call_as_call_id_with_eager(
             db,
@@ -1228,7 +1227,7 @@ fn macro_call_as_call_id_with_eager(
     let res = match def.kind {
         MacroDefKind::BuiltInEager(..) => {
             let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
-            expand_eager_macro_input(db, krate, macro_call, def, &|path| {
+            expand_eager_macro_input(db, krate, macro_call, def, call_site, &|path| {
                 eager_resolver(path).filter(MacroDefId::is_fn_like)
             })
         }
@@ -1370,6 +1369,12 @@ fn attr_macro_as_call_id(
         macro_attr.ctxt,
     )
 }
+
+#[derive(Debug)]
+pub struct UnresolvedMacro {
+    pub path: hir_expand::mod_path::ModPath,
+}
+
 intern::impl_internable!(
     crate::type_ref::TypeRef,
     crate::type_ref::TraitRef,

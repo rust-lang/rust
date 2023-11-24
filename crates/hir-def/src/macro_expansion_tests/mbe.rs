@@ -23,12 +23,9 @@ macro_rules! f {
     };
 }
 
-// +spans
+// +spans+syntaxctxt
 f!(struct MyTraitMap2);
 "#,
-        // FIXME: #SpanAnchor(FileId(0), 1)@91..92\2# why is there whitespace annotated with a span
-        // here? Presumably because the leading `::` is getting two spans instead of one? Sounds
-        // liek glueing might be failing here
         expect![[r#"
 macro_rules! f {
     ( struct $ident:ident ) => {
@@ -38,8 +35,8 @@ macro_rules! f {
     };
 }
 
-struct#FileId(0):1@58..64\2# MyTraitMap2#FileId(0):2@20..31\0# {#FileId(0):1@72..73\2#
-    map#FileId(0):1@86..89\2#:#FileId(0):1@89..90\2# #FileId(0):1@91..92\2#::#FileId(0):1@92..93\2#std#FileId(0):1@93..96\2#::#FileId(0):1@97..98\2#collections#FileId(0):1@98..109\2#::#FileId(0):1@110..111\2#HashSet#FileId(0):1@111..118\2#<#FileId(0):1@118..119\2#(#FileId(0):1@119..120\2#)#FileId(0):1@120..121\2#>#FileId(0):1@121..122\2#,#FileId(0):1@122..123\2#
+struct#FileId(0):1@58..64\2# MyTraitMap2#FileId(0):2@31..42\0# {#FileId(0):1@72..73\2#
+    map#FileId(0):1@86..89\2#:#FileId(0):1@89..90\2# #FileId(0):1@89..90\2#::#FileId(0):1@92..93\2#std#FileId(0):1@93..96\2#::#FileId(0):1@97..98\2#collections#FileId(0):1@98..109\2#::#FileId(0):1@110..111\2#HashSet#FileId(0):1@111..118\2#<#FileId(0):1@118..119\2#(#FileId(0):1@119..120\2#)#FileId(0):1@120..121\2#>#FileId(0):1@121..122\2#,#FileId(0):1@122..123\2#
 }#FileId(0):1@132..133\2#
 "#]],
     );
@@ -51,14 +48,14 @@ fn token_mapping_floats() {
     // (and related issues)
     check(
         r#"
-// +spans
+// +spans+syntaxctxt
 macro_rules! f {
     ($($tt:tt)*) => {
         $($tt)*
     };
 }
 
-// +spans
+// +spans+syntaxctxt
 f! {
     fn main() {
         1;
@@ -71,19 +68,19 @@ f! {
 
 "#,
         expect![[r#"
-// +spans
+// +spans+syntaxctxt
 macro_rules! f {
     ($($tt:tt)*) => {
         $($tt)*
     };
 }
 
-fn#FileId(0):2@19..21\0# main#FileId(0):2@22..26\0#(#FileId(0):2@26..27\0#)#FileId(0):2@27..28\0# {#FileId(0):2@29..30\0#
-    1#FileId(0):2@39..40\0#;#FileId(0):2@40..41\0#
-    1.0#FileId(0):2@50..53\0#;#FileId(0):2@53..54\0#
-    (#FileId(0):2@63..64\0#(#FileId(0):2@64..65\0#1#FileId(0):2@65..66\0#,#FileId(0):2@66..67\0# )#FileId(0):2@67..68\0#,#FileId(0):2@68..69\0# )#FileId(0):2@69..70\0#.#FileId(0):2@70..71\0#0#FileId(0):2@71..74\0#.#FileId(0):2@71..74\0#0#FileId(0):2@71..74\0#;#FileId(0):2@74..75\0#
-    let#FileId(0):2@84..87\0# x#FileId(0):2@88..89\0# =#FileId(0):2@90..91\0# 1#FileId(0):2@92..93\0#;#FileId(0):2@93..94\0#
-}#FileId(0):2@99..100\0#
+fn#FileId(0):2@30..32\0# main#FileId(0):2@33..37\0#(#FileId(0):2@37..38\0#)#FileId(0):2@38..39\0# {#FileId(0):2@40..41\0#
+    1#FileId(0):2@50..51\0#;#FileId(0):2@51..52\0#
+    1.0#FileId(0):2@61..64\0#;#FileId(0):2@64..65\0#
+    (#FileId(0):2@74..75\0#(#FileId(0):2@75..76\0#1#FileId(0):2@76..77\0#,#FileId(0):2@77..78\0# )#FileId(0):2@78..79\0#,#FileId(0):2@79..80\0# )#FileId(0):2@80..81\0#.#FileId(0):2@81..82\0#0#FileId(0):2@82..85\0#.#FileId(0):2@82..85\0#0#FileId(0):2@82..85\0#;#FileId(0):2@85..86\0#
+    let#FileId(0):2@95..98\0# x#FileId(0):2@99..100\0# =#FileId(0):2@101..102\0# 1#FileId(0):2@103..104\0#;#FileId(0):2@104..105\0#
+}#FileId(0):2@110..111\0#
 
 
 "#]],
@@ -127,7 +124,7 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    format_args/*+spans*/!("{} {} {}", format_args!("{}", 0), foo, identity!(10), "bar")
+    format_args/*+spans+syntaxctxt*/!("{} {} {}", format_args!("{}", 0), foo, identity!(10), "bar")
 }
 
 "#,
@@ -141,7 +138,7 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    builtin#FileId(0):0@0..0\0# ##FileId(0):0@0..0\0#format_args#FileId(0):0@0..0\0# (#FileId(0):6@22..23\0#"{} {} {}"#FileId(0):6@23..33\0#,#FileId(0):6@33..34\0# format_args#FileId(0):6@35..46\0#!#FileId(0):6@46..47\0#(#FileId(0):6@47..48\0#"{}"#FileId(0):6@48..52\0#,#FileId(0):6@52..53\0# 0#FileId(0):6@54..55\0#)#FileId(0):6@55..56\0#,#FileId(0):6@56..57\0# foo#FileId(0):6@58..61\0#,#FileId(0):6@61..62\0# identity#FileId(0):6@63..71\0#!#FileId(0):6@71..72\0#(#FileId(0):6@72..73\0#10#FileId(0):6@73..75\0#)#FileId(0):6@75..76\0#,#FileId(0):6@76..77\0# "bar"#FileId(0):6@78..83\0#)#FileId(0):6@83..84\0#
+    builtin#FileId(0):0@0..0\0# ##FileId(0):0@0..0\0#format_args#FileId(0):0@0..0\0# (#FileId(0):3@56..57\0#"{} {} {}"#FileId(0):3@57..67\0#,#FileId(0):3@67..68\0# format_args#FileId(0):3@69..80\0#!#FileId(0):3@80..81\0#(#FileId(0):3@81..82\0#"{}"#FileId(0):3@82..86\0#,#FileId(0):3@86..87\0# 0#FileId(0):3@88..89\0#)#FileId(0):3@89..90\0#,#FileId(0):3@90..91\0# foo#FileId(0):3@92..95\0#,#FileId(0):3@95..96\0# identity#FileId(0):3@97..105\0#!#FileId(0):3@105..106\0#(#FileId(0):3@106..107\0#10#FileId(0):3@107..109\0#)#FileId(0):3@109..110\0#,#FileId(0):3@110..111\0# "bar"#FileId(0):3@112..117\0#)#FileId(0):3@117..118\0#
 }
 
 "##]],
@@ -156,7 +153,7 @@ fn token_mapping_across_files() {
 #[macro_use]
 mod foo;
 
-mk_struct/*+spans*/!(Foo with u32);
+mk_struct/*+spans+syntaxctxt*/!(Foo with u32);
 //- /foo.rs
 macro_rules! mk_struct {
     ($foo:ident with $ty:ty) => { struct $foo($ty); }
@@ -166,7 +163,7 @@ macro_rules! mk_struct {
 #[macro_use]
 mod foo;
 
-struct#FileId(1):1@59..65\2# Foo#FileId(0):2@21..24\0#(#FileId(1):1@70..71\2#u32#FileId(0):2@30..33\0#)#FileId(1):1@74..75\2#;#FileId(1):1@75..76\2#
+struct#FileId(1):1@59..65\2# Foo#FileId(0):2@32..35\0#(#FileId(1):1@70..71\2#u32#FileId(0):2@41..44\0#)#FileId(1):1@74..75\2#;#FileId(1):1@75..76\2#
 "#]],
     );
 }

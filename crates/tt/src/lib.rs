@@ -45,20 +45,32 @@ pub struct SpanData<Anchor, Ctx> {
 }
 
 impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
+    type Anchor = Anchor;
     const DUMMY: Self = SpanData {
         range: TextRange::empty(TextSize::new(0)),
         anchor: Anchor::DUMMY,
         ctx: Ctx::DUMMY,
     };
+    fn anchor(self) -> Self::Anchor {
+        self.anchor
+    }
+    fn mk(anchor: Self::Anchor, range: TextRange) -> Self {
+        SpanData { anchor, range, ctx: Ctx::DUMMY }
+    }
 }
 
-pub trait SpanAnchor: std::fmt::Debug + Copy + Sized + Eq {
+pub trait SpanAnchor:
+    std::fmt::Debug + Copy + Sized + Eq + Copy + fmt::Debug + std::hash::Hash
+{
     const DUMMY: Self;
 }
 
 // FIXME: Get rid of this trait?
 pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
     const DUMMY: Self;
+    type Anchor: Copy + fmt::Debug + Eq + std::hash::Hash;
+    fn anchor(self) -> Self::Anchor;
+    fn mk(anchor: Self::Anchor, range: TextRange) -> Self;
 }
 
 pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {

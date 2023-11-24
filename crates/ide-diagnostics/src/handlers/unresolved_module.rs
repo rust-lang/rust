@@ -152,9 +152,7 @@ mod baz {}
                         main_node: Some(
                             InFile {
                                 file_id: FileId(
-                                    FileId(
-                                        0,
-                                    ),
+                                    0,
                                 ),
                                 value: MODULE@0..8
                                   MOD_KW@0..3 "mod"

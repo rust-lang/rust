@@ -1752,6 +1752,7 @@ dependencies = [
  "always-assert",
  "backtrace",
  "crossbeam-channel",
+ "itertools 0.12.0",
  "jod-thread",
  "libc",
  "miow",

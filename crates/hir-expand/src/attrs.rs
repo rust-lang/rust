@@ -1,11 +1,7 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 use std::{fmt, ops};
 
-use ::tt::SpanAnchor as _;
-use base_db::{
-    span::{SpanAnchor, SyntaxContextId},
-    CrateId,
-};
+use base_db::{span::SyntaxContextId, CrateId};
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
@@ -17,8 +13,9 @@ use triomphe::Arc;
 use crate::{
     db::ExpandDatabase,
     mod_path::ModPath,
+    span::SpanMapRef,
     tt::{self, Subtree},
-    InFile, SpanMap,
+    InFile,
 };
 
 /// Syntactical attributes, without filtering of `cfg_attr`s.
@@ -44,22 +41,19 @@ impl RawAttrs {
 
     pub fn new(
         db: &dyn ExpandDatabase,
-        span_anchor: SpanAnchor,
         owner: &dyn ast::HasAttrs,
-        hygiene: &SpanMap,
+        hygiene: SpanMapRef<'_>,
     ) -> Self {
         let entries = collect_attrs(owner)
             .filter_map(|(id, attr)| match attr {
                 Either::Left(attr) => {
-                    attr.meta().and_then(|meta| Attr::from_src(db, span_anchor, meta, hygiene, id))
+                    attr.meta().and_then(|meta| Attr::from_src(db, meta, hygiene, id))
                 }
                 Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
                     id,
                     input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                     path: Interned::new(ModPath::from(crate::name!(doc))),
-                    ctxt: hygiene
-                        .span_for_range(comment.syntax().text_range())
-                        .map_or(SyntaxContextId::ROOT, |s| s.ctx),
+                    ctxt: hygiene.span_for_range(comment.syntax().text_range()).ctx,
                 }),
             })
             .collect::<Vec<_>>();
@@ -71,10 +65,10 @@ impl RawAttrs {
 
     pub fn from_attrs_owner(
         db: &dyn ExpandDatabase,
-        span_anchor: SpanAnchor,
         owner: InFile<&dyn ast::HasAttrs>,
+        hygiene: SpanMapRef<'_>,
     ) -> Self {
-        Self::new(db, span_anchor, owner.value, &db.span_map(owner.file_id))
+        Self::new(db, owner.value, hygiene)
     }
 
     pub fn merge(&self, other: Self) -> Self {
@@ -221,9 +215,8 @@ impl fmt::Display for AttrInput {
 impl Attr {
     fn from_src(
         db: &dyn ExpandDatabase,
-        span_anchor: SpanAnchor,
         ast: ast::Meta,
-        hygiene: &SpanMap,
+        hygiene: SpanMapRef<'_>,
         id: AttrId,
     ) -> Option<Attr> {
         let path = Interned::new(ModPath::from_src(db, ast.path()?, hygiene)?);
@@ -234,31 +227,20 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            // FIXME: We could also allocate ids for attributes and use the attribute itself as an anchor
-            let offset =
-                db.ast_id_map(span_anchor.file_id).get_raw(span_anchor.ast_id).text_range().start();
-            let tree = syntax_node_to_token_tree(tt.syntax(), span_anchor, offset, hygiene);
+            let tree = syntax_node_to_token_tree(tt.syntax(), hygiene);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
         };
-        Some(Attr {
-            id,
-            path,
-            input,
-            ctxt: hygiene
-                .span_for_range(ast.syntax().text_range())
-                .map_or(SyntaxContextId::ROOT, |s| s.ctx),
-        })
+        Some(Attr { id, path, input, ctxt: hygiene.span_for_range(ast.syntax().text_range()).ctx })
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {
         // FIXME: Unecessary roundtrip tt -> ast -> tt
-        let (parse, _map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MetaItem);
+        let (parse, map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MetaItem);
         let ast = ast::Meta::cast(parse.syntax_node())?;
 
-        // FIXME: we discard spans here!
-        Self::from_src(db, SpanAnchor::DUMMY, ast, &SpanMap::default(), id)
+        Self::from_src(db, ast, SpanMapRef::ExpansionSpanMap(&map), id)
     }
 
     pub fn path(&self) -> &ModPath {
@@ -331,7 +313,10 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
-                Some((ModPath::from_src(db, path, &span_map)?, call_site))
+                Some((
+                    ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(&span_map))?,
+                    call_site,
+                ))
             });
 
         Some(paths)

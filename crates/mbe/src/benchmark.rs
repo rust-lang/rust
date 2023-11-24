@@ -10,12 +10,12 @@ use tt::{Span, SpanAnchor, SyntaxContext};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro,
+    syntax_node_to_token_tree, DeclarativeMacro, SpanMapper,
 };
 
 type SpanData = tt::SpanData<DummyFile, DummyCtx>;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 struct DummyFile;
 impl SpanAnchor for DummyFile {
     const DUMMY: Self = DummyFile;
@@ -25,6 +25,14 @@ impl SpanAnchor for DummyFile {
 struct DummyCtx;
 impl SyntaxContext for DummyCtx {
     const DUMMY: Self = DummyCtx;
+}
+
+struct NoOpMap;
+
+impl SpanMapper<SpanData> for NoOpMap {
+    fn span_for(&self, range: syntax::TextRange) -> SpanData {
+        SpanData { range, anchor: DummyFile, ctx: DummyCtx }
+    }
 }
 
 #[test]
@@ -79,12 +87,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<SpanData>> {
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let def_tt = syntax_node_to_token_tree(
-                rule.token_tree().unwrap().syntax(),
-                DummyFile,
-                0.into(),
-                &Default::default(),
-            );
+            let def_tt = syntax_node_to_token_tree(rule.token_tree().unwrap().syntax(), NoOpMap);
             (id, def_tt)
         })
         .collect()

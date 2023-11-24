@@ -3,7 +3,8 @@ use std::cell::OnceCell;
 
 use hir_expand::{
     ast_id_map::{AstIdMap, AstIdNode},
-    AstId, HirFileId, InFile, SpanMap,
+    span::{SpanMap, SpanMapRef},
+    AstId, HirFileId, InFile,
 };
 use syntax::ast;
 use triomphe::Arc;
@@ -12,13 +13,13 @@ use crate::{db::DefDatabase, path::Path};
 
 pub struct LowerCtx<'a> {
     pub db: &'a dyn DefDatabase,
-    hygiene: Arc<SpanMap>,
+    hygiene: SpanMap,
     // FIXME: This optimization is probably pointless, ast id map should pretty much always exist anyways.
     ast_id_map: Option<(HirFileId, OnceCell<Arc<AstIdMap>>)>,
 }
 
 impl<'a> LowerCtx<'a> {
-    pub fn new(db: &'a dyn DefDatabase, hygiene: Arc<SpanMap>, file_id: HirFileId) -> Self {
+    pub fn new(db: &'a dyn DefDatabase, hygiene: SpanMap, file_id: HirFileId) -> Self {
         LowerCtx { db, hygiene, ast_id_map: Some((file_id, OnceCell::new())) }
     }
 
@@ -26,12 +27,12 @@ impl<'a> LowerCtx<'a> {
         LowerCtx { db, hygiene: db.span_map(file_id), ast_id_map: Some((file_id, OnceCell::new())) }
     }
 
-    pub fn with_hygiene(db: &'a dyn DefDatabase, hygiene: Arc<SpanMap>) -> Self {
+    pub fn with_hygiene(db: &'a dyn DefDatabase, hygiene: SpanMap) -> Self {
         LowerCtx { db, hygiene, ast_id_map: None }
     }
 
-    pub(crate) fn span_map(&self) -> &SpanMap {
-        &self.hygiene
+    pub(crate) fn span_map(&self) -> SpanMapRef<'_> {
+        self.hygiene.as_ref()
     }
 
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {

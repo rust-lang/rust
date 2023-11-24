@@ -7,7 +7,7 @@ use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId, ModuleDefId, ModuleId,
     TraitId,
 };
-use hir_expand::{HirFileId, InFile};
+use hir_expand::{files::ascend_range_up_macros, HirFileId, InFile};
 use hir_ty::db::HirDatabase;
 use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
 
@@ -50,13 +50,9 @@ impl DeclarationLocation {
         node.as_ref().original_file_range(db.upcast())
     }
 
-    pub fn original_name_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
-        if let Some(file_id) = self.hir_file_id.file_id() {
-            // fast path to prevent parsing
-            return Some(FileRange { file_id, range: self.name_ptr.text_range() });
-        }
-        let node = resolve_node(db, self.hir_file_id, &self.name_ptr);
-        node.as_ref().original_file_range_opt(db.upcast())
+    pub fn original_name_range(&self, db: &dyn HirDatabase) -> FileRange {
+        let mapping = InFile::new(self.hir_file_id, self.name_ptr.text_range());
+        ascend_range_up_macros(db.upcast(), mapping).0
     }
 }
 

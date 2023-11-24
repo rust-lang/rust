@@ -60,9 +60,6 @@ macro_rules! compile_error { () => {} }
 
     #[test]
     fn eager_macro_concat() {
-        // FIXME: this is incorrectly handling `$crate`, resulting in a wrong diagnostic.
-        // See: https://github.com/rust-lang/rust-analyzer/issues/10300
-
         check_diagnostics(
             r#"
 //- /lib.rs crate:lib deps:core
@@ -80,7 +77,6 @@ macro_rules! m {
 
 fn f() {
     m!();
-  //^^^^ error: unresolved macro $crate::private::concat
 }
 
 //- /core.rs crate:core

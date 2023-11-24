@@ -35,11 +35,15 @@ impl SyntaxContextId {
     // FIXME: This is very much UB, salsa exposes no way to create an InternId in a const context
     // currently (which kind of makes sense but we need it here!)
     pub const SELF_REF: Self = SyntaxContextId(unsafe { core::mem::transmute(!0u32) });
+
+    pub fn is_root(self) -> bool {
+        self == Self::ROOT
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SpanAnchor {
-    pub file_id: HirFileId,
+    pub file_id: FileId,
     pub ast_id: ErasedFileAstId,
 }
 
@@ -50,7 +54,7 @@ impl fmt::Debug for SpanAnchor {
 }
 
 impl tt::SpanAnchor for SpanAnchor {
-    const DUMMY: Self = SpanAnchor { file_id: HirFileId(0), ast_id: ROOT_ERASED_FILE_AST_ID };
+    const DUMMY: Self = SpanAnchor { file_id: FileId(0), ast_id: ROOT_ERASED_FILE_AST_ID };
 }
 
 /// Input to the analyzer is a set of files, where each file is identified by
@@ -101,7 +105,6 @@ impl fmt::Debug for HirFileId {
 pub struct MacroFile {
     pub macro_call_id: MacroCallId,
 }
-
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

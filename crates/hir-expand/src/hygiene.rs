@@ -2,7 +2,9 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
-use base_db::span::{MacroCallId, SyntaxContextId};
+use std::iter;
+
+use base_db::span::{MacroCallId, SpanData, SyntaxContextId};
 
 use crate::db::ExpandDatabase;
 
@@ -48,6 +50,39 @@ pub enum Transparency {
     Opaque,
 }
 
+pub fn span_with_def_site_ctxt(
+    db: &dyn ExpandDatabase,
+    span: SpanData,
+    expn_id: MacroCallId,
+) -> SpanData {
+    span_with_ctxt_from_mark(db, span, expn_id, Transparency::Opaque)
+}
+
+pub fn span_with_call_site_ctxt(
+    db: &dyn ExpandDatabase,
+    span: SpanData,
+    expn_id: MacroCallId,
+) -> SpanData {
+    span_with_ctxt_from_mark(db, span, expn_id, Transparency::Transparent)
+}
+
+pub fn span_with_mixed_site_ctxt(
+    db: &dyn ExpandDatabase,
+    span: SpanData,
+    expn_id: MacroCallId,
+) -> SpanData {
+    span_with_ctxt_from_mark(db, span, expn_id, Transparency::SemiTransparent)
+}
+
+fn span_with_ctxt_from_mark(
+    db: &dyn ExpandDatabase,
+    span: SpanData,
+    expn_id: MacroCallId,
+    transparency: Transparency,
+) -> SpanData {
+    SpanData { ctx: db.apply_mark(SyntaxContextId::ROOT, expn_id, transparency), ..span }
+}
+
 pub(super) fn apply_mark(
     db: &dyn ExpandDatabase,
     ctxt: SyntaxContextId,
@@ -65,7 +100,7 @@ pub(super) fn apply_mark(
         call_site_ctxt.normalize_to_macro_rules(db)
     };
 
-    if call_site_ctxt.is_root(db) {
+    if call_site_ctxt.is_root() {
         return apply_mark_internal(db, ctxt, Some(call_id), transparency);
     }
 
@@ -131,7 +166,6 @@ fn apply_mark_internal(
     })
 }
 pub trait SyntaxContextExt {
-    fn is_root(self, db: &dyn ExpandDatabase) -> bool;
     fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> Self;
     fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> Self;
     fn parent_ctxt(self, db: &dyn ExpandDatabase) -> Self;
@@ -148,9 +182,6 @@ fn handle_self_ref(p: SyntaxContextId, n: SyntaxContextId) -> SyntaxContextId {
 }
 
 impl SyntaxContextExt for SyntaxContextId {
-    fn is_root(self, db: &dyn ExpandDatabase) -> bool {
-        db.lookup_intern_syntax_context(self).outer_expn.is_none()
-    }
     fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> Self {
         handle_self_ref(self, db.lookup_intern_syntax_context(self).opaque_and_semitransparent)
     }
@@ -164,20 +195,20 @@ impl SyntaxContextExt for SyntaxContextId {
         let data = db.lookup_intern_syntax_context(self);
         (data.outer_expn, data.outer_transparency)
     }
-    fn marks(mut self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)> {
-        let mut marks = Vec::new();
-        while self != SyntaxContextId::ROOT {
-            marks.push(self.outer_mark(db));
-            self = self.parent_ctxt(db);
-        }
+    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)> {
+        let mut marks = marks_rev(self, db).collect::<Vec<_>>();
         marks.reverse();
         marks
     }
 }
 
-// pub(super) fn with_ctxt_from_mark(db: &ExpandDatabase, file_id: HirFileId) {
-//     self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
-// }
-// pub(super) fn with_call_site_ctxt(db: &ExpandDatabase, file_id: HirFileId) {
-//     self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
-// }
+// FIXME: Make this a SyntaxContextExt method once we have RPIT
+pub fn marks_rev(
+    ctxt: SyntaxContextId,
+    db: &dyn ExpandDatabase,
+) -> impl Iterator<Item = (Option<MacroCallId>, Transparency)> + '_ {
+    iter::successors(Some(ctxt), move |&mark| {
+        Some(mark.parent_ctxt(db)).filter(|&it| it != SyntaxContextId::ROOT)
+    })
+    .map(|ctx| ctx.outer_mark(db))
+}

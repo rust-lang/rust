@@ -43,10 +43,7 @@ use std::{
 };
 
 use ast::{AstNode, HasName, StructKind};
-use base_db::{
-    span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
-    CrateId,
-};
+use base_db::{span::SyntaxContextId, CrateId};
 use either::Either;
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
@@ -121,7 +118,7 @@ impl ItemTree {
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(db.upcast(), SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID }, &file, ctx.span_map()));
+                    top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.span_map()));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {
@@ -780,8 +777,8 @@ impl Use {
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
         let hygiene = db.span_map(file_id);
-        let (_, source_map) =
-            lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree");
+        let (_, source_map) = lower::lower_use_tree(db, hygiene.as_ref(), ast_use_tree)
+            .expect("failed to lower use tree");
         source_map[index].clone()
     }
     /// Maps a `UseTree` contained in this import back to its AST node.
@@ -795,7 +792,9 @@ impl Use {
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
         let hygiene = db.span_map(file_id);
-        lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree").1
+        lower::lower_use_tree(db, hygiene.as_ref(), ast_use_tree)
+            .expect("failed to lower use tree")
+            .1
     }
 }
 

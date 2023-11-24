@@ -2,7 +2,7 @@
 
 use std::hash::Hash;
 
-use stdx::never;
+use stdx::itertools::Itertools;
 use syntax::TextRange;
 use tt::Span;
 
@@ -15,23 +15,29 @@ use tt::Span;
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 // FIXME: Rename to SpanMap
-pub struct TokenMap<S> {
+pub struct TokenMap<S: Span> {
     // FIXME: This needs to be sorted by (FileId, AstId)
     // Then we can do a binary search on the file id,
     // then a bin search on the ast id
     pub span_map: Vec<(TextRange, S)>,
     // span_map2: rustc_hash::FxHashMap<TextRange, usize>,
-    pub real_file: bool,
-}
-
-impl<S> Default for TokenMap<S> {
-    fn default() -> Self {
-        Self { span_map: Vec::new(), real_file: true }
-    }
 }
 
 impl<S: Span> TokenMap<S> {
-    pub(crate) fn shrink_to_fit(&mut self) {
+    pub fn empty() -> Self {
+        Self { span_map: Vec::new() }
+    }
+
+    pub fn finish(&mut self) {
+        debug_assert_eq!(
+            self.span_map
+                .iter()
+                .sorted_by_key(|it| (it.0.start(), it.0.end()))
+                .tuple_windows()
+                .find(|(range, next)| range.0.end() != next.0.start()),
+            None,
+            "span map has holes!"
+        );
         self.span_map.shrink_to_fit();
     }
 
@@ -40,6 +46,8 @@ impl<S: Span> TokenMap<S> {
     }
 
     pub fn ranges_with_span(&self, span: S) -> impl Iterator<Item = TextRange> + '_ {
+        // FIXME: linear search
+        // FIXME: Disregards resolving spans to get more matches! See ExpansionInfo::map_token_down
         self.span_map.iter().filter_map(
             move |(range, s)| {
                 if s == &span {
@@ -51,20 +59,31 @@ impl<S: Span> TokenMap<S> {
         )
     }
 
-    // FIXME: Should be infallible
-    pub fn span_for_range(&self, range: TextRange) -> Option<S> {
+    // FIXME: We need APIs for fetching the span of a token as well as for a whole node. The node
+    // one *is* fallible though.
+    // Token span fetching technically only needs an offset really, as the entire file span is
+    // populated, where node fetching is more like fetching the spans at all source positions, and
+    // then we need to verify that all those positions have the same context, if not we fail! But
+    // how do we handle them having different span ranges?
+
+    pub fn span_for_range(&self, range: TextRange) -> S {
         // TODO FIXME: make this proper
         self.span_map
             .iter()
-            .filter_map(|(r, s)| Some((r, s, r.intersect(range)?)))
+            .filter_map(|(r, s)| Some((r, s, r.intersect(range).filter(|it| !it.is_empty())?)))
             .max_by_key(|(_, _, intersection)| intersection.len())
-            .map(|(_, &s, _)| s)
-            .or_else(|| {
-                if !self.real_file {
-                    never!("no span for range {:?} in {:#?}", range, self.span_map);
-                }
-                None
-            })
+            .map_or_else(
+                || panic!("no span for range {:?} in {:#?}", range, self.span_map),
+                |(_, &s, _)| s,
+            )
+    }
+
+    pub fn spans_for_node_range(&self, range: TextRange) -> impl Iterator<Item = S> + '_ {
+        // TODO FIXME: make this proper
+        self.span_map
+            .iter()
+            .filter(move |(r, _)| r.intersect(range).filter(|it| !it.is_empty()).is_some())
+            .map(|&(_, s)| s)
     }
 
     // pub fn ranges_by_token(

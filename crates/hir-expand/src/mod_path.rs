@@ -7,9 +7,9 @@ use std::{
 
 use crate::{
     db::ExpandDatabase,
-    hygiene::{SyntaxContextExt, Transparency},
+    hygiene::{marks_rev, SyntaxContextExt, Transparency},
     name::{known, AsName, Name},
-    SpanMap,
+    span::SpanMapRef,
 };
 use base_db::{span::SyntaxContextId, CrateId};
 use smallvec::SmallVec;
@@ -47,7 +47,7 @@ impl ModPath {
     pub fn from_src(
         db: &dyn ExpandDatabase,
         path: ast::Path,
-        hygiene: &SpanMap,
+        hygiene: SpanMapRef<'_>,
     ) -> Option<ModPath> {
         convert_path(db, None, path, hygiene)
     }
@@ -194,7 +194,7 @@ fn convert_path(
     db: &dyn ExpandDatabase,
     prefix: Option<ModPath>,
     path: ast::Path,
-    hygiene: &SpanMap,
+    hygiene: SpanMapRef<'_>,
 ) -> Option<ModPath> {
     let prefix = match path.qualifier() {
         Some(qual) => Some(convert_path(db, prefix, qual, hygiene)?),
@@ -208,14 +208,14 @@ fn convert_path(
                 if prefix.is_some() {
                     return None;
                 }
-                resolve_crate_root(
-                    db,
-                    hygiene
-                        .span_for_range(name_ref.syntax().text_range())
-                        .map_or(SyntaxContextId::ROOT, |s| s.ctx),
+                ModPath::from_kind(
+                    resolve_crate_root(
+                        db,
+                        hygiene.span_for_range(name_ref.syntax().text_range()).ctx,
+                    )
+                    .map(PathKind::DollarCrate)
+                    .unwrap_or(PathKind::Crate),
                 )
-                .map(PathKind::DollarCrate)
-                .map(ModPath::from_kind)?
             } else {
                 let mut res = prefix.unwrap_or_else(|| {
                     ModPath::from_kind(
@@ -265,13 +265,12 @@ fn convert_path(
     // We follow what it did anyway :)
     if mod_path.segments.len() == 1 && mod_path.kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctx = hygiene
-                .span_for_range(segment.syntax().text_range())
-                .map_or(SyntaxContextId::ROOT, |s| s.ctx);
+            let syn_ctx = hygiene.span_for_range(segment.syntax().text_range()).ctx;
             if let Some(macro_call_id) = db.lookup_intern_syntax_context(syn_ctx).outer_expn {
                 if db.lookup_intern_macro_call(macro_call_id).def.local_inner {
-                    if let Some(crate_root) = resolve_crate_root(db, syn_ctx) {
-                        mod_path.kind = PathKind::DollarCrate(crate_root);
+                    mod_path.kind = match resolve_crate_root(db, syn_ctx) {
+                        Some(crate_root) => PathKind::DollarCrate(crate_root),
+                        None => PathKind::Crate,
                     }
                 }
             }
@@ -289,30 +288,19 @@ pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) ->
     // definitions actually produced by `macro` and `macro` definitions produced by
     // `macro_rules!`, but at least such configurations are not stable yet.
     ctxt = ctxt.normalize_to_macro_rules(db);
-    let mut iter = ctxt.marks(db).into_iter().rev().peekable();
+    let mut iter = marks_rev(ctxt, db).peekable();
     let mut result_mark = None;
     // Find the last opaque mark from the end if it exists.
-    while let Some(&(mark, transparency)) = iter.peek() {
-        if transparency == Transparency::Opaque {
-            result_mark = Some(mark);
-            iter.next();
-        } else {
-            break;
-        }
+    while let Some(&(mark, Transparency::Opaque)) = iter.peek() {
+        result_mark = Some(mark);
+        iter.next();
     }
     // Then find the last semi-transparent mark from the end if it exists.
-    for (mark, transparency) in iter {
-        if transparency == Transparency::SemiTransparent {
-            result_mark = Some(mark);
-        } else {
-            break;
-        }
+    while let Some((mark, Transparency::SemiTransparent)) = iter.next() {
+        result_mark = Some(mark);
     }
 
-    match result_mark {
-        Some(Some(call)) => Some(db.lookup_intern_macro_call(call.into()).def.krate),
-        Some(None) | None => None,
-    }
+    result_mark.flatten().map(|call| db.lookup_intern_macro_call(call.into()).def.krate)
 }
 
 pub use crate::name as __name;

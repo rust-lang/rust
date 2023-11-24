@@ -4,7 +4,6 @@ use std::iter;
 
 use crate::{lower::LowerCtx, type_ref::ConstRef};
 
-use base_db::span::SyntaxContextId;
 use hir_expand::{
     mod_path::resolve_crate_root,
     name::{name, AsName},
@@ -40,11 +39,11 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                 let name = if name_ref.text() == "$crate" {
                     kind = resolve_crate_root(
                         ctx.db.upcast(),
-                        hygiene
-                            .span_for_range(name_ref.syntax().text_range())
-                            .map_or(SyntaxContextId::ROOT, |s| s.ctx),
+                        hygiene.span_for_range(name_ref.syntax().text_range()).ctx,
                     )
-                    .map(PathKind::DollarCrate)?;
+                    .map(PathKind::DollarCrate)
+                    .unwrap_or(PathKind::Crate);
+
                     break;
                 } else {
                     name_ref.as_name()
@@ -160,14 +159,12 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctxt = hygiene
-                .span_for_range(path.segment()?.syntax().text_range())
-                .map_or(SyntaxContextId::ROOT, |s| s.ctx);
+            let syn_ctxt = hygiene.span_for_range(path.segment()?.syntax().text_range()).ctx;
             if let Some(macro_call_id) = ctx.db.lookup_intern_syntax_context(syn_ctxt).outer_expn {
                 if ctx.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
-                    dbg!("local_inner_macros");
-                    if let Some(crate_root) = resolve_crate_root(ctx.db.upcast(), syn_ctxt) {
-                        kind = PathKind::DollarCrate(crate_root);
+                    kind = match resolve_crate_root(ctx.db.upcast(), syn_ctxt) {
+                        Some(crate_root) => PathKind::DollarCrate(crate_root),
+                        None => PathKind::Crate,
                     }
                 }
             }

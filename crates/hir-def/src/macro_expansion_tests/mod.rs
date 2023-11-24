@@ -18,7 +18,7 @@ use std::{iter, ops::Range, sync};
 
 use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
 use expect_test::Expect;
-use hir_expand::{db::ExpandDatabase, HirFileIdExt, InFile, MacroFile, SpanMap};
+use hir_expand::{db::ExpandDatabase, span::SpanMapRef, HirFileIdExt, InFile, MacroFile};
 use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -104,10 +104,12 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let mut tree = false;
         let mut expect_errors = false;
         let mut show_spans = false;
+        let mut show_ctxt = false;
         for comment in call.syntax().children_with_tokens().filter(|it| it.kind() == COMMENT) {
             tree |= comment.to_string().contains("+tree");
             expect_errors |= comment.to_string().contains("+errors");
             show_spans |= comment.to_string().contains("+spans");
+            show_ctxt |= comment.to_string().contains("+syntaxctxt");
         }
 
         let mut expn_text = String::new();
@@ -128,8 +130,12 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
                 parse.syntax_node(),
             );
         }
-        let pp =
-            pretty_print_macro_expansion(parse.syntax_node(), show_spans.then_some(&*token_map));
+        let pp = pretty_print_macro_expansion(
+            parse.syntax_node(),
+            SpanMapRef::ExpansionSpanMap(&token_map),
+            show_spans,
+            show_ctxt,
+        );
         let indent = IndentLevel::from_node(call.syntax());
         let pp = reindent(indent, pp);
         format_to!(expn_text, "{}", pp);
@@ -169,12 +175,16 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             if src.file_id.is_attr_macro(&db) || src.file_id.is_custom_derive(&db) {
                 let call = src.file_id.call_node(&db).expect("macro file");
                 let mut show_spans = false;
+                let mut show_ctxt = false;
                 for comment in call.value.children_with_tokens().filter(|it| it.kind() == COMMENT) {
                     show_spans |= comment.to_string().contains("+spans");
+                    show_ctxt |= comment.to_string().contains("+syntaxctxt");
                 }
                 let pp = pretty_print_macro_expansion(
                     src.value,
-                    show_spans.then_some(&db.span_map(src.file_id)),
+                    db.span_map(src.file_id).as_ref(),
+                    show_spans,
+                    show_ctxt,
                 );
                 format_to!(expanded_text, "\n{}", pp)
             }
@@ -184,7 +194,12 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
         if src.file_id.is_builtin_derive(&db) {
-            let pp = pretty_print_macro_expansion(src.value.syntax().clone(), None);
+            let pp = pretty_print_macro_expansion(
+                src.value.syntax().clone(),
+                db.span_map(src.file_id).as_ref(),
+                false,
+                false,
+            );
             format_to!(expanded_text, "\n{}", pp)
         }
     }
@@ -209,7 +224,12 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
     res
 }
 
-fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&SpanMap>) -> String {
+fn pretty_print_macro_expansion(
+    expn: SyntaxNode,
+    map: SpanMapRef<'_>,
+    show_spans: bool,
+    show_ctxt: bool,
+) -> String {
     let mut res = String::new();
     let mut prev_kind = EOF;
     let mut indent_level = 0;
@@ -255,17 +275,22 @@ fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&SpanMap>) -> Stri
         }
         prev_kind = curr_kind;
         format_to!(res, "{}", token);
-        if let Some(map) = map {
-            if let Some(span) = map.span_for_range(token.text_range()) {
+        if show_spans || show_ctxt {
+            let span = map.span_for_range(token.text_range());
+            format_to!(res, "#");
+            if show_spans {
                 format_to!(
                     res,
-                    "#{:?}:{:?}@{:?}\\{}#",
+                    "{:?}:{:?}@{:?}",
                     span.anchor.file_id,
                     span.anchor.ast_id.into_raw(),
                     span.range,
-                    span.ctx
                 );
             }
+            if show_ctxt {
+                format_to!(res, "\\{}", span.ctx);
+            }
+            format_to!(res, "#");
         }
     }
     res

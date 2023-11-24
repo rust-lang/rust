@@ -2,6 +2,7 @@
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::{base_db::FileId, famous_defs::FamousDefs};
+use stdx::TupleExt;
 use syntax::ast::{self, AstNode};
 use text_edit::{TextRange, TextSize};
 
@@ -73,7 +74,9 @@ pub(super) fn hints(
                 capture.display_place(sema.db)
             ),
             None,
-            source.name().and_then(|name| name.syntax().original_file_range_opt(sema.db)),
+            source.name().and_then(|name| {
+                name.syntax().original_file_range_opt(sema.db).map(TupleExt::head)
+            }),
         );
         acc.push(InlayHint {
             needs_resolve: label.needs_resolve(),

@@ -1,28 +1,24 @@
 //! Macro expansion utilities.
 
-use base_db::{
-    span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID},
-    CrateId,
-};
+use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
-    attrs::RawAttrs, mod_path::ModPath, ExpandError, ExpandResult, HirFileId, InFile, MacroCallId,
-    SpanMap, UnresolvedMacro,
+    attrs::RawAttrs, mod_path::ModPath, span::SpanMap, ExpandError, ExpandResult, HirFileId,
+    InFile, MacroCallId,
 };
 use limit::Limit;
 use syntax::{ast, Parse, SyntaxNode};
-use triomphe::Arc;
 
 use crate::{
     attr::Attrs, db::DefDatabase, lower::LowerCtx, macro_id_to_def_id, path::Path, AsMacroCall,
-    MacroId, ModuleId,
+    MacroId, ModuleId, UnresolvedMacro,
 };
 
 #[derive(Debug)]
 pub struct Expander {
     cfg_options: CfgOptions,
-    hygiene: Arc<SpanMap>,
+    hygiene: SpanMap,
     krate: CrateId,
     pub(crate) current_file_id: HirFileId,
     pub(crate) module: ModuleId,
@@ -122,17 +118,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        Attrs::filter(
-            db,
-            self.krate,
-            RawAttrs::new(
-                db.upcast(),
-                // Usin `ROOT_ERASED_FILE_AST_ID` here is fine as this is only used for cfg checking
-                SpanAnchor { file_id: self.current_file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-                owner,
-                &self.hygiene,
-            ),
-        )
+        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, self.hygiene.as_ref()))
     }
 
     pub(crate) fn cfg_options(&self) -> &CfgOptions {

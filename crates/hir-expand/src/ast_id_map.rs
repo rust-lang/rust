@@ -19,6 +19,33 @@ use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 pub use base_db::span::ErasedFileAstId;
 
+use crate::db;
+
+/// `AstId` points to an AST node in any file.
+///
+/// It is stable across reparses, and can be used as salsa key/value.
+pub type AstId<N> = crate::InFile<FileAstId<N>>;
+
+impl<N: AstIdNode> AstId<N> {
+    pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> N {
+        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
+    }
+    pub fn to_in_file_node(&self, db: &dyn db::ExpandDatabase) -> crate::InFile<N> {
+        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
+    }
+    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> AstPtr<N> {
+        db.ast_id_map(self.file_id).get(self.value)
+    }
+}
+
+pub type ErasedAstId = crate::InFile<ErasedFileAstId>;
+
+impl ErasedAstId {
+    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> SyntaxNodePtr {
+        db.ast_id_map(self.file_id).get_erased(self.value)
+    }
+}
+
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstIdNode> {
     raw: ErasedFileAstId,
@@ -141,9 +168,9 @@ impl AstIdMap {
         bdfs(node, |it| {
             if should_alloc_id(it.kind()) {
                 res.alloc(&it);
-                true
+                TreeOrder::BreadthFirst
             } else {
-                false
+                TreeOrder::DepthFirst
             }
         });
         res.map = hashbrown::HashMap::with_capacity_and_hasher(res.arena.len(), ());
@@ -174,7 +201,7 @@ impl AstIdMap {
         AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
     }
 
-    pub fn get_raw(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
+    pub fn get_erased(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
         self.arena[id].clone()
     }
 
@@ -202,14 +229,20 @@ fn hash_ptr(ptr: &SyntaxNodePtr) -> u64 {
     hasher.finish()
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum TreeOrder {
+    BreadthFirst,
+    DepthFirst,
+}
+
 /// Walks the subtree in bdfs order, calling `f` for each node. What is bdfs
 /// order? It is a mix of breadth-first and depth first orders. Nodes for which
-/// `f` returns true are visited breadth-first, all the other nodes are explored
-/// depth-first.
+/// `f` returns [`TreeOrder::BreadthFirst`] are visited breadth-first, all the other nodes are explored
+/// [`TreeOrder::DepthFirst`].
 ///
 /// In other words, the size of the bfs queue is bound by the number of "true"
 /// nodes.
-fn bdfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode) -> bool) {
+fn bdfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode) -> TreeOrder) {
     let mut curr_layer = vec![node.clone()];
     let mut next_layer = vec![];
     while !curr_layer.is_empty() {
@@ -218,7 +251,7 @@ fn bdfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode) -> bool) {
             while let Some(event) = preorder.next() {
                 match event {
                     syntax::WalkEvent::Enter(node) => {
-                        if f(node.clone()) {
+                        if f(node.clone()) == TreeOrder::BreadthFirst {
                             next_layer.extend(node.children());
                             preorder.skip_subtree();
                         }

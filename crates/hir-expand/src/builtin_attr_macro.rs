@@ -79,9 +79,8 @@ fn dummy_attr_expand(
 ///
 /// As such, we expand `#[derive(Foo, bar::Bar)]` into
 /// ```
-///  #[Foo]
-///  #[bar::Bar]
-///  ();
+///  #![Foo]
+///  #![bar::Bar]
 /// ```
 /// which allows fallback path resolution in hir::Semantics to properly identify our derives.
 /// Since we do not expand the attribute in nameres though, we keep the original item.
@@ -124,12 +123,10 @@ pub fn pseudo_derive_attr_expansion(
         .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))))
     {
         token_trees.push(mk_leaf('#'));
+        token_trees.push(mk_leaf('!'));
         token_trees.push(mk_leaf('['));
         token_trees.extend(tt.iter().cloned());
         token_trees.push(mk_leaf(']'));
     }
-    token_trees.push(mk_leaf('('));
-    token_trees.push(mk_leaf(')'));
-    token_trees.push(mk_leaf(';'));
     ExpandResult::ok(tt::Subtree { delimiter: tt.delimiter, token_trees })
 }

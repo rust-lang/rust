@@ -556,9 +556,10 @@ pub(crate) fn include_arg_to_tt(
     let path = parse_string(&arg.0)?;
     let file_id = relative_file(db, *arg_id, &path, false)?;
 
+    // why are we not going through a SyntaxNode here?
     let subtree = parse_to_token_tree(
+        SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
         &db.file_text(file_id),
-        SpanAnchor { file_id: file_id.into(), ast_id: ROOT_ERASED_FILE_AST_ID },
     )
     .ok_or(mbe::ExpandError::ConversionError)?;
     Ok((triomphe::Arc::new(subtree), file_id))

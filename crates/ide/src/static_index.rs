@@ -242,6 +242,7 @@ mod tests {
         }
     }
 
+    #[track_caller]
     fn check_definitions(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis);

@@ -19,7 +19,7 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::{
-    span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
+    span::{SpanAnchor, SyntaxContextId},
     CrateId,
 };
 use rustc_hash::FxHashMap;
@@ -30,8 +30,9 @@ use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
     mod_path::ModPath,
-    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, InFile, MacroCallId, MacroCallKind,
-    MacroCallLoc, MacroDefId, MacroDefKind, SpanMap,
+    span::{RealSpanMap, SpanMapRef},
+    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, MacroCallId,
+    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
 pub fn expand_eager_macro_input(
@@ -39,6 +40,7 @@ pub fn expand_eager_macro_input(
     krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
+    call_site: SyntaxContextId,
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let ast_map = db.ast_id_map(macro_call.file_id);
@@ -55,18 +57,10 @@ pub fn expand_eager_macro_input(
         krate,
         eager: None,
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
-        // FIXME
-        call_site: SyntaxContextId::ROOT,
+        call_site,
     });
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         db.parse_macro_expansion(arg_id.as_macro_file());
-    // we need this map here as the expansion of the eager input fake file loses whitespace ...
-    // let mut ws_mapping = FxHashMap::default();
-    // if let Some((tm)) = db.macro_arg(arg_id).value.as_deref() {
-    //     ws_mapping.extend(tm.entries().filter_map(|(id, range)| {
-    //         Some((arg_exp_map.first_range_by_token(id, syntax::SyntaxKind::TOMBSTONE)?, range))
-    //     }));
-    // }
 
     let ExpandResult { value: expanded_eager_input, err } = {
         eager_macro_recur(
@@ -74,6 +68,7 @@ pub fn expand_eager_macro_input(
             &arg_exp_map,
             InFile::new(arg_id.as_file(), arg_exp.syntax_node()),
             krate,
+            call_site,
             resolver,
         )
     };
@@ -83,44 +78,12 @@ pub fn expand_eager_macro_input(
         return ExpandResult { value: None, err };
     };
 
+    // FIXME: Spans!
     let mut subtree = mbe::syntax_node_to_token_tree(
         &expanded_eager_input,
-        // is this right?
-        SpanAnchor { file_id: arg_id.as_file(), ast_id: ROOT_ERASED_FILE_AST_ID },
-        TextSize::new(0),
-        // FIXME: Spans! `eager_macro_recur` needs to fill out a span map for us
-        &Default::default(),
+        RealSpanMap::empty(<SpanAnchor as tt::SpanAnchor>::DUMMY.file_id),
     );
 
-    // let og_tmap = if let Some(tt) = macro_call.value.token_tree() {
-    //     let mut ids_used = FxHashSet::default();
-    //     let mut og_tmap = mbe::syntax_node_to_token_map(tt.syntax());
-    //     // The tokenmap and ids of subtree point into the expanded syntax node, but that is inaccessible from the outside
-    //     // so we need to remap them to the original input of the eager macro.
-    //     subtree.visit_ids(&mut |id| {
-    //         // Note: we discard all token ids of braces and the like here, but that's not too bad and only a temporary fix
-
-    //         if let Some(range) = expanded_eager_input_token_map
-    //             .first_range_by_token(id, syntax::SyntaxKind::TOMBSTONE)
-    //         {
-    //             // remap from expanded eager input to eager input expansion
-    //             if let Some(og_range) = mapping.get(&range) {
-    //                 // remap from eager input expansion to original eager input
-    //                 if let Some(&og_range) = ws_mapping.get(og_range) {
-    //                     if let Some(og_token) = og_tmap.token_by_range(og_range) {
-    //                         ids_used.insert(og_token);
-    //                         return og_token;
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         tt::TokenId::UNSPECIFIED
-    //     });
-    //     og_tmap.filter(|id| ids_used.contains(&id));
-    //     og_tmap
-    // } else {
-    //     Default::default()
-    // };
     subtree.delimiter = crate::tt::Delimiter::UNSPECIFIED;
 
     let loc = MacroCallLoc {
@@ -132,8 +95,7 @@ pub fn expand_eager_macro_input(
             error: err.clone(),
         })),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
-        // FIXME
-        call_site: SyntaxContextId::ROOT,
+        call_site,
     };
 
     ExpandResult { value: Some(db.intern_macro_call(loc)), err }
@@ -144,7 +106,8 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
-) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<SpanMap>)> {
+    call_site: SyntaxContextId,
+) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<ExpansionSpanMap>)> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
@@ -153,8 +116,8 @@ fn lazy_expand(
         db,
         krate,
         MacroCallKind::FnLike { ast_id, expand_to },
-        // FIXME
-        SyntaxContextId::ROOT,
+        // FIXME: This is wrong
+        call_site,
     );
     let macro_file = id.as_macro_file();
 
@@ -164,9 +127,10 @@ fn lazy_expand(
 
 fn eager_macro_recur(
     db: &dyn ExpandDatabase,
-    hygiene: &SpanMap,
+    hygiene: &ExpansionSpanMap,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
+    call_site: SyntaxContextId,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<(SyntaxNode, FxHashMap<TextRange, TextRange>)>> {
     let original = curr.value.clone_for_update();
@@ -204,7 +168,10 @@ fn eager_macro_recur(
                 continue;
             }
         };
-        let def = match call.path().and_then(|path| ModPath::from_src(db, path, hygiene)) {
+        let def = match call
+            .path()
+            .and_then(|path| ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(hygiene)))
+        {
             Some(path) => match macro_resolver(path.clone()) {
                 Some(def) => def,
                 None => {
@@ -225,6 +192,8 @@ fn eager_macro_recur(
                     krate,
                     curr.with_value(call.clone()),
                     def,
+                    // FIXME: This call site is not quite right I think? We probably need to mark it?
+                    call_site,
                     macro_resolver,
                 );
                 match value {
@@ -260,7 +229,7 @@ fn eager_macro_recur(
             | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(..) => {
                 let ExpandResult { value: (parse, tm), err } =
-                    lazy_expand(db, &def, curr.with_value(call.clone()), krate);
+                    lazy_expand(db, &def, curr.with_value(call.clone()), krate, call_site);
 
                 // replace macro inside
                 let ExpandResult { value, err: error } = eager_macro_recur(
@@ -269,6 +238,7 @@ fn eager_macro_recur(
                     // FIXME: We discard parse errors here
                     parse.as_ref().map(|it| it.syntax_node()),
                     krate,
+                    call_site,
                     macro_resolver,
                 );
                 let err = err.or(error);

@@ -2,8 +2,7 @@
 
 use std::collections::hash_map::Entry;
 
-use base_db::span::ErasedFileAstId;
-use hir_expand::{ast_id_map::AstIdMap, HirFileId, SpanMap};
+use hir_expand::{ast_id_map::AstIdMap, span::SpanMapRef, HirFileId};
 use syntax::ast::{self, HasModuleItem, HasTypeBounds};
 
 use crate::{
@@ -23,7 +22,6 @@ pub(super) struct Ctx<'a> {
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::lower::LowerCtx<'a>,
-    file: HirFileId,
 }
 
 impl<'a> Ctx<'a> {
@@ -33,11 +31,10 @@ impl<'a> Ctx<'a> {
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::lower::LowerCtx::with_file_id(db, file),
-            file,
         }
     }
 
-    pub(super) fn span_map(&self) -> &SpanMap {
+    pub(super) fn span_map(&self) -> SpanMapRef<'_> {
         self.body_ctx.span_map()
     }
 
@@ -81,18 +78,9 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
-        self.tree.attrs.insert(
-            AttrOwner::TopLevel,
-            RawAttrs::new(
-                self.db.upcast(),
-                SpanAnchor {
-                    file_id: self.file,
-                    ast_id: self.source_ast_id_map.ast_id(block).erase(),
-                },
-                block,
-                self.span_map(),
-            ),
-        );
+        self.tree
+            .attrs
+            .insert(AttrOwner::TopLevel, RawAttrs::new(self.db.upcast(), block, self.span_map()));
         self.tree.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
@@ -141,12 +129,7 @@ impl<'a> Ctx<'a> {
             ast::Item::MacroDef(ast) => self.lower_macro_def(ast)?.into(),
             ast::Item::ExternBlock(ast) => self.lower_extern_block(ast).into(),
         };
-        let attrs = RawAttrs::new(
-            self.db.upcast(),
-            SpanAnchor { file_id: self.file, ast_id: mod_item.ast_id(&self.tree).erase() },
-            item,
-            self.span_map(),
-        );
+        let attrs = RawAttrs::new(self.db.upcast(), item, self.span_map());
         self.add_attrs(mod_item.into(), attrs);
 
         Some(mod_item)
@@ -170,12 +153,7 @@ impl<'a> Ctx<'a> {
             ast::AssocItem::Const(ast) => Some(self.lower_const(ast).into()),
             ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
         }?;
-        let attrs = RawAttrs::new(
-            self.db.upcast(),
-            SpanAnchor { file_id: self.file, ast_id: item.ast_id(&self.tree).erase() },
-            item_node,
-            self.span_map(),
-        );
+        let attrs = RawAttrs::new(self.db.upcast(), item_node, self.span_map());
         self.add_attrs(
             match item {
                 AssocItem::Function(it) => AttrOwner::ModItem(ModItem::Function(it)),
@@ -192,7 +170,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(strukt);
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, strukt, ast_id.erase());
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, strukt);
         let fields = self.lower_fields(&strukt.kind());
         let res = Struct { name, visibility, generic_params, fields, ast_id };
         Some(id(self.data().structs.alloc(res)))
@@ -216,19 +194,10 @@ impl<'a> Ctx<'a> {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
-                let ast_id = match data.ast_id {
-                    FieldAstId::Record(it) => it.erase(),
-                    FieldAstId::Tuple(it) => it.erase(),
-                };
                 let idx = self.data().fields.alloc(data);
                 self.add_attrs(
                     idx.into(),
-                    RawAttrs::new(
-                        self.db.upcast(),
-                        SpanAnchor { file_id: self.file, ast_id },
-                        &field,
-                        self.span_map(),
-                    ),
+                    RawAttrs::new(self.db.upcast(), &field, self.span_map()),
                 );
             }
         }
@@ -249,20 +218,8 @@ impl<'a> Ctx<'a> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
-            let ast_id = match data.ast_id {
-                FieldAstId::Record(it) => it.erase(),
-                FieldAstId::Tuple(it) => it.erase(),
-            };
             let idx = self.data().fields.alloc(data);
-            self.add_attrs(
-                idx.into(),
-                RawAttrs::new(
-                    self.db.upcast(),
-                    SpanAnchor { file_id: self.file, ast_id },
-                    &field,
-                    self.span_map(),
-                ),
-            );
+            self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &field, self.span_map()));
         }
         let end = self.next_field_idx();
         IdxRange::new(start..end)
@@ -280,7 +237,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(union);
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, union, ast_id.erase());
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, union);
         let fields = match union.record_field_list() {
             Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
             None => Fields::Record(IdxRange::new(self.next_field_idx()..self.next_field_idx())),
@@ -293,7 +250,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(enum_);
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_, ast_id.erase());
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
             None => IdxRange::new(self.next_variant_idx()..self.next_variant_idx()),
@@ -306,16 +263,10 @@ impl<'a> Ctx<'a> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
-                let ast_id = data.ast_id.erase();
                 let idx = self.data().variants.alloc(data);
                 self.add_attrs(
                     idx.into(),
-                    RawAttrs::new(
-                        self.db.upcast(),
-                        SpanAnchor { file_id: self.file, ast_id },
-                        &variant,
-                        self.span_map(),
-                    ),
+                    RawAttrs::new(self.db.upcast(), &variant, self.span_map()),
                 );
             }
         }
@@ -366,12 +317,7 @@ impl<'a> Ctx<'a> {
                 });
                 self.add_attrs(
                     idx.into(),
-                    RawAttrs::new(
-                        self.db.upcast(),
-                        SpanAnchor { file_id: self.file, ast_id: ast_id.erase() },
-                        &self_param,
-                        self.span_map(),
-                    ),
+                    RawAttrs::new(self.db.upcast(), &self_param, self.span_map()),
                 );
                 has_self_param = true;
             }
@@ -392,12 +338,7 @@ impl<'a> Ctx<'a> {
                 };
                 self.add_attrs(
                     idx.into(),
-                    RawAttrs::new(
-                        self.db.upcast(),
-                        SpanAnchor { file_id: self.file, ast_id: ast_id.erase() },
-                        &param,
-                        self.span_map(),
-                    ),
+                    RawAttrs::new(self.db.upcast(), &param, self.span_map()),
                 );
             }
         }
@@ -455,8 +396,7 @@ impl<'a> Ctx<'a> {
             ast_id,
             flags,
         };
-        res.explicit_generic_params =
-            self.lower_generic_params(HasImplicitSelf::No, func, ast_id.erase());
+        res.explicit_generic_params = self.lower_generic_params(HasImplicitSelf::No, func);
 
         Some(id(self.data().functions.alloc(res)))
     }
@@ -470,8 +410,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(type_alias);
         let bounds = self.lower_type_bounds(type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
-        let generic_params =
-            self.lower_generic_params(HasImplicitSelf::No, type_alias, ast_id.erase());
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, type_alias);
         let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
         Some(id(self.data().type_aliases.alloc(res)))
     }
@@ -520,11 +459,8 @@ impl<'a> Ctx<'a> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
-        let generic_params = self.lower_generic_params(
-            HasImplicitSelf::Yes(trait_def.type_bound_list()),
-            trait_def,
-            ast_id.erase(),
-        );
+        let generic_params =
+            self.lower_generic_params(HasImplicitSelf::Yes(trait_def.type_bound_list()), trait_def);
         let is_auto = trait_def.auto_token().is_some();
         let is_unsafe = trait_def.unsafe_token().is_some();
 
@@ -549,7 +485,6 @@ impl<'a> Ctx<'a> {
         let generic_params = self.lower_generic_params(
             HasImplicitSelf::Yes(trait_alias_def.type_bound_list()),
             trait_alias_def,
-            ast_id.erase(),
         );
 
         let alias = TraitAlias { name, visibility, generic_params, ast_id };
@@ -560,8 +495,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
         // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
         // type alias rather than a type parameter, so this is handled by the resolver.
-        let generic_params =
-            self.lower_generic_params(HasImplicitSelf::No, impl_def, ast_id.erase());
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, impl_def);
         // FIXME: If trait lowering fails, due to a non PathType for example, we treat this impl
         // as if it was an non-trait impl. Ideally we want to create a unique missing ref that only
         // equals itself.
@@ -615,9 +549,7 @@ impl<'a> Ctx<'a> {
             path,
             ast_id,
             expand_to,
-            call_site: span_map
-                .span_for_range(m.syntax().text_range())
-                .map_or(SyntaxContextId::ROOT, |s| s.ctx),
+            call_site: span_map.span_for_range(m.syntax().text_range()).ctx,
         };
         Some(id(self.data().macro_calls.alloc(res)))
     }
@@ -656,15 +588,7 @@ impl<'a> Ctx<'a> {
                         ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?.into(),
                         ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?.into(),
                     };
-                    let attrs = RawAttrs::new(
-                        self.db.upcast(),
-                        SpanAnchor {
-                            file_id: self.file,
-                            ast_id: mod_item.ast_id(&self.tree).erase(),
-                        },
-                        &item,
-                        self.span_map(),
-                    );
+                    let attrs = RawAttrs::new(self.db.upcast(), &item, self.span_map());
                     self.add_attrs(mod_item.into(), attrs);
                     Some(mod_item)
                 })
@@ -679,7 +603,6 @@ impl<'a> Ctx<'a> {
         &mut self,
         has_implicit_self: HasImplicitSelf,
         node: &dyn ast::HasGenericParams,
-        owner_ast_id: ErasedFileAstId,
     ) -> Interned<GenericParams> {
         let mut generics = GenericParams::default();
 
@@ -701,12 +624,7 @@ impl<'a> Ctx<'a> {
 
         let add_param_attrs = |item: Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
                                param| {
-            let attrs = RawAttrs::new(
-                self.db.upcast(),
-                SpanAnchor { file_id: self.file, ast_id: owner_ast_id },
-                &param,
-                self.body_ctx.span_map(),
-            );
+            let attrs = RawAttrs::new(self.db.upcast(), &param, self.body_ctx.span_map());
             // This is identical to the body of `Ctx::add_attrs()` but we can't call that here
             // because it requires `&mut self` and the call to `generics.fill()` below also
             // references `self`.
@@ -817,7 +735,7 @@ fn lower_abi(abi: ast::Abi) -> Interned<str> {
 
 struct UseTreeLowering<'a> {
     db: &'a dyn DefDatabase,
-    hygiene: &'a SpanMap,
+    hygiene: SpanMapRef<'a>,
     mapping: Arena<ast::UseTree>,
 }
 
@@ -885,7 +803,7 @@ impl UseTreeLowering<'_> {
 
 pub(crate) fn lower_use_tree(
     db: &dyn DefDatabase,
-    hygiene: &SpanMap,
+    hygiene: SpanMapRef<'_>,
     tree: ast::UseTree,
 ) -> Option<(UseTree, Arena<ast::UseTree>)> {
     let mut lowering = UseTreeLowering { db, hygiene, mapping: Arena::new() };

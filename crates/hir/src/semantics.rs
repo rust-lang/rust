@@ -19,6 +19,7 @@ use hir_expand::{db::ExpandDatabase, name::AsName, ExpansionInfo, HirFileIdExt, 
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
+use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody},
@@ -529,11 +530,11 @@ impl<'db> SemanticsImpl<'db> {
         token: SyntaxToken,
         // FIXME: We might want this to be Option<TextSize> to be able to opt out of subrange
         // mapping, specifically for node downmapping
-        offset: TextSize,
+        _offset: TextSize,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> bool,
     ) {
+        // FIXME: Clean this up
         let _p = profile::span("descend_into_macros");
-        let relative_token_offset = token.text_range().start().checked_sub(offset);
         let parent = match token.parent() {
             Some(it) => it,
             None => return,
@@ -543,13 +544,35 @@ impl<'db> SemanticsImpl<'db> {
             None => return,
         };
         let def_map = sa.resolver.def_map();
+        let absolute_range = match sa.file_id.repr() {
+            base_db::span::HirFileIdRepr::FileId(file_id) => {
+                FileRange { file_id, range: token.text_range() }
+            }
+            base_db::span::HirFileIdRepr::MacroFile(m) => {
+                let span =
+                    self.db.parse_macro_expansion(m).value.1.span_for_range(token.text_range());
+                let range = span.range
+                    + self
+                        .db
+                        .ast_id_map(span.anchor.file_id.into())
+                        .get_erased(span.anchor.ast_id)
+                        .text_range()
+                        .start();
+                FileRange { file_id: span.anchor.file_id, range }
+            }
+        };
+
+        // fetch span information of token in real file, then use that look through expansions of
+        // calls the token is in and afterwards recursively with the same span.
+        // what about things where spans change? Due to being joined etc, that is we don't find the
+        // exact span anymore?
 
         let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
         let mut mcache = self.macro_call_cache.borrow_mut();
 
         let mut process_expansion_for_token =
-            |stack: &mut SmallVec<_>, macro_file, token: InFile<&_>| {
+            |stack: &mut SmallVec<_>, macro_file, _token: InFile<&_>| {
                 let expansion_info = cache
                     .entry(macro_file)
                     .or_insert_with(|| macro_file.expansion_info(self.db.upcast()))
@@ -560,11 +583,8 @@ impl<'db> SemanticsImpl<'db> {
                     self.cache(value, file_id);
                 }
 
-                let mapped_tokens = expansion_info.map_token_down(
-                    self.db.upcast(),
-                    token,
-                    relative_token_offset,
-                )?;
+                let mapped_tokens =
+                    expansion_info.map_range_down(self.db.upcast(), absolute_range, None)?;
                 let len = stack.len();
 
                 // requeue the tokens we got from mapping our current token down
@@ -728,6 +748,8 @@ impl<'db> SemanticsImpl<'db> {
     pub fn original_range_opt(&self, node: &SyntaxNode) -> Option<FileRange> {
         let node = self.find_file(node);
         node.original_file_range_opt(self.db.upcast())
+            .filter(|(_, ctx)| ctx.is_root())
+            .map(TupleExt::head)
     }
 
     /// Attempts to map the node out of macro expanded files.

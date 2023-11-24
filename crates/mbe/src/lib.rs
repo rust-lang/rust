@@ -30,12 +30,12 @@ use crate::{
 
 // FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
 pub use ::parser::TopEntryPoint;
-pub use tt::{Delimiter, DelimiterKind, Punct};
+pub use tt::{Delimiter, DelimiterKind, Punct, SyntaxContext};
 
 pub use crate::{
     syntax_bridge::{
         map_from_syntax_node, parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
-        syntax_node_to_token_tree_censored, token_tree_to_syntax_node,
+        syntax_node_to_token_tree_censored, token_tree_to_syntax_node, SpanMapper,
     },
     token_map::TokenMap,
 };

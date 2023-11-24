@@ -1219,7 +1219,7 @@ impl DefCollector<'_> {
                     };
                     if matches!(
                         def,
-                        MacroDefId { kind:MacroDefKind::BuiltInAttr(expander, _),.. }
+                        MacroDefId { kind: MacroDefKind::BuiltInAttr(expander, _),.. }
                         if expander.is_derive()
                     ) {
                         // Resolved to `#[derive]`
