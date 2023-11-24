@@ -147,7 +147,7 @@ where
     }
 
     /// Returns the underlying `Results`.
-    pub fn results(&mut self) -> &Results<'tcx, A, R::EntrySets> {
+    pub fn results(&self) -> &Results<'tcx, A, R::EntrySets> {
         self.results.borrow()
     }
 
