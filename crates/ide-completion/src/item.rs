@@ -26,7 +26,7 @@ use crate::{
 pub struct CompletionItem {
     /// Label in the completion pop up which identifies completion.
     pub label: SmolStr,
-    /// Addition label details in the completion pop up that are
+    /// Additional label details in the completion pop up that are
     /// displayed and aligned on the right side after the label.
     pub label_detail: Option<SmolStr>,
 
