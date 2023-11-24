@@ -5,9 +5,7 @@ use crate::errors::{
 };
 use crate::framework::BitSetExt;
 
-use std::borrow::Borrow;
 use std::ffi::OsString;
-use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use rustc_ast as ast;
@@ -32,31 +30,29 @@ pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::
 
 /// A dataflow analysis that has converged to fixpoint.
 #[derive(Clone)]
-pub struct Results<'tcx, A, E = EntrySets<'tcx, A>>
+pub struct Results<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     pub analysis: A,
-    pub(super) entry_sets: E,
-    pub(super) _marker: PhantomData<&'tcx ()>,
+    pub(super) entry_sets: EntrySets<'tcx, A>,
 }
 
-impl<'tcx, A, E> Results<'tcx, A, E>
+impl<'tcx, A> Results<'tcx, A>
 where
     A: Analysis<'tcx>,
-    E: Borrow<EntrySets<'tcx, A>>,
 {
     /// Creates a `ResultsCursor` that can inspect these `Results`.
     pub fn into_results_cursor<'mir>(
         self,
         body: &'mir mir::Body<'tcx>,
-    ) -> ResultsCursor<'mir, 'tcx, A, Self> {
+    ) -> ResultsCursor<'mir, 'tcx, A> {
         ResultsCursor::new(body, self)
     }
 
     /// Gets the dataflow state for the given block.
     pub fn entry_set_for_block(&self, block: BasicBlock) -> &A::Domain {
-        &self.entry_sets.borrow()[block]
+        &self.entry_sets[block]
     }
 
     pub fn visit_with<'mir>(
@@ -242,7 +238,7 @@ where
             );
         }
 
-        let results = Results { analysis, entry_sets, _marker: PhantomData };
+        let results = Results { analysis, entry_sets };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
             let (res, results) = write_graphviz_results(tcx, body, results, pass_name);
