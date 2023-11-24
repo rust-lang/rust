@@ -31,6 +31,7 @@ use build_helper::exit;
 use build_helper::util::fail;
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
+use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::channel::GitInfo;
 
@@ -1917,4 +1918,46 @@ pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
         .skip(index + 1) // Skip the current_id and IDs before it
         .cloned()
         .collect()
+}
+
+/// Computes a hash representing the state of a repository/submodule and additional input.
+///
+/// It uses `git diff` for the actual changes, and `git status` for including the untracked
+/// files in the specified directory. The additional input is also incorporated into the
+/// computation of the hash.
+///
+/// # Parameters
+///
+/// - `dir`: A reference to the directory path of the target repository/submodule.
+/// - `additional_input`: An additional input to be included in the hash.
+///
+/// # Panics
+///
+/// In case of errors during `git` command execution (e.g., in tarball sources), default values
+/// are used to prevent panics.
+pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
+    let diff = Command::new("git")
+        .current_dir(dir)
+        .arg("diff")
+        .output()
+        .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
+        .unwrap_or_default();
+
+    let status = Command::new("git")
+        .current_dir(dir)
+        .arg("status")
+        .arg("--porcelain")
+        .arg("-z")
+        .arg("--untracked-files=normal")
+        .output()
+        .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
+        .unwrap_or_default();
+
+    let mut hasher = sha2::Sha256::new();
+
+    hasher.update(diff);
+    hasher.update(status);
+    hasher.update(additional_input);
+
+    hex::encode(hasher.finalize().as_slice())
 }

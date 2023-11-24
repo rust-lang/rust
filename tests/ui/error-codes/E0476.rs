@@ -1,3 +1,5 @@
+// revisions: old next
+//[next] compile-flags: -Ztrait-solver=next-coherence
 #![feature(coerce_unsized)]
 #![feature(unsize)]
 

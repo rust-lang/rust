@@ -1,3 +1,4 @@
+use crate::crate_def::CrateDef;
 use crate::mir::{Operand, Rvalue, StatementKind};
 use crate::ty::{DynKind, FloatTy, IntTy, RigidTy, TyKind, UintTy};
 use crate::{with, Body, CrateItem, Mutability};

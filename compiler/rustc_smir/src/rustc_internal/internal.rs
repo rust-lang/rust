@@ -11,8 +11,8 @@ use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::ty::{
     AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
-    ExistentialTraitRef, FloatTy, GenericArgKind, GenericArgs, IntTy, Region, RigidTy, TraitRef,
-    Ty, UintTy,
+    ExistentialTraitRef, FloatTy, GenericArgKind, GenericArgs, IntTy, Region, RigidTy, Span,
+    TraitRef, Ty, UintTy,
 };
 use stable_mir::{CrateItem, DefId};
 
@@ -276,6 +276,14 @@ impl<'tcx> RustcInternal<'tcx> for AdtDef {
     type T = rustc_ty::AdtDef<'tcx>;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables.tcx.adt_def(self.0.internal(&mut *tables))
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for Span {
+    type T = rustc_span::Span;
+
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables[*self]
     }
 }
 
