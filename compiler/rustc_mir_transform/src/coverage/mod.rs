@@ -22,7 +22,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, SourceFile, Span, Symbol};
 
@@ -43,18 +43,9 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         // be transformed, so it should never see promoted MIR.
         assert!(mir_source.promoted.is_none());
 
-        let is_fn_like =
-            tcx.hir().get_by_def_id(mir_source.def_id().expect_local()).fn_kind().is_some();
-
-        // Only instrument functions, methods, and closures (not constants since they are evaluated
-        // at compile time by Miri).
-        // FIXME(#73156): Handle source code coverage in const eval, but note, if and when const
-        // expressions get coverage spans, we will probably have to "carve out" space for const
-        // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
-        // be tricky if const expressions have no corresponding statements in the enclosing MIR.
-        // Closures are carved out by their initial `Assign` statement.)
-        if !is_fn_like {
-            trace!("InstrumentCoverage skipped for {:?} (not an fn-like)", mir_source.def_id());
+        let def_id = mir_source.def_id().expect_local();
+        if !is_eligible_for_coverage(tcx, def_id) {
+            trace!("InstrumentCoverage skipped for {def_id:?} (not eligible)");
             return;
         }
 
@@ -66,14 +57,9 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             _ => {}
         }
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(mir_source.def_id());
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-            return;
-        }
-
-        trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage starting for {def_id:?}");
         Instrumentor::new(tcx, mir_body).inject_counters();
-        trace!("InstrumentCoverage done for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage done for {def_id:?}");
     }
 }
 
@@ -317,6 +303,28 @@ fn make_code_region(
         end_line: end_line as u32,
         end_col: end_col as u32,
     }
+}
+
+fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let is_fn_like = tcx.hir().get_by_def_id(def_id).fn_kind().is_some();
+
+    // Only instrument functions, methods, and closures (not constants since they are evaluated
+    // at compile time by Miri).
+    // FIXME(#73156): Handle source code coverage in const eval, but note, if and when const
+    // expressions get coverage spans, we will probably have to "carve out" space for const
+    // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
+    // be tricky if const expressions have no corresponding statements in the enclosing MIR.
+    // Closures are carved out by their initial `Assign` statement.)
+    if !is_fn_like {
+        return false;
+    }
+
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+        return false;
+    }
+
+    true
 }
 
 fn fn_sig_and_body(
