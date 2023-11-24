@@ -329,7 +329,13 @@ impl<'tcx> CValue<'tcx> {
                 let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
             }
-            ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Ref(..) | ty::RawPtr(..) => {
+            ty::Bool
+            | ty::Char
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Ref(..)
+            | ty::RawPtr(..)
+            | ty::FnPtr(..) => {
                 let raw_val = const_val.size().truncate(const_val.to_bits(layout.size).unwrap());
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
