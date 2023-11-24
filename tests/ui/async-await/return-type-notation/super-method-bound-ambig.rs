@@ -23,7 +23,7 @@ impl Foo for () {}
 fn test<T>()
 where
     T: Foo<test(): Send>,
-    //~^ ERROR ambiguous associated function `test` for `Foo`
+    //~^ ERROR ambiguous associated function `test` in bounds of `Foo`
 {
 }
 

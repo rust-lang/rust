@@ -11,13 +11,12 @@ impl Foo for Bar {
   const N: usize = 3;
 }
 
-
-fn foo1<F: Foo<Z=3>>() {}
-//~^ ERROR associated type
-fn foo2<F: Foo<Z=usize>>() {}
-//~^ ERROR associated type
-fn foo3<F: Foo<Z=5>>() {}
-//~^ ERROR associated type
+fn foo1<F: Foo<Z = 3>>() {}
+//~^ ERROR associated constant `Z` not found for `Foo`
+fn foo2<F: Foo<Z = usize>>() {}
+//~^ ERROR associated type `Z` not found for `Foo`
+fn foo3<F: Foo<Z = 5>>() {}
+//~^ ERROR associated constant `Z` not found for `Foo`
 
 fn main() {
   foo1::<Bar>();
