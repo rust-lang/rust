@@ -181,7 +181,7 @@ where
         instances: IndexMap::default(),
         constants: IndexMap::default(),
     }));
-    stable_mir::run(&tables, || init(&tables, f))
+    stable_mir::compiler_interface::run(&tables, || init(&tables, f))
 }
 
 #[macro_export]

@@ -1,4 +1,4 @@
-//! Implementation of `[stable_mir::compiler::Context]` trait.
+//! Implementation of `[stable_mir::compiler_interface::Context]` trait.
 //!
 //! This trait is currently the main interface between the Rust compiler,
 //! and the `stable_mir` crate.
@@ -6,6 +6,7 @@
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{GenericPredicates, Instance, ParamEnv, ScalarInt, ValTree};
 use rustc_span::def_id::LOCAL_CRATE;
+use stable_mir::compiler_interface::Context;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::Body;
@@ -13,7 +14,7 @@ use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs, LineInfo,
     RigidTy, Span, TyKind,
 };
-use stable_mir::{self, Context, Crate, CrateItem, Error, Filename, ItemKind, Symbol};
+use stable_mir::{self, Crate, CrateItem, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
 
 use crate::rustc_internal::{internal, RustcInternal};
