@@ -1,4 +1,4 @@
-use super::EvalCtxt;
+use super::{EvalCtxt, NestedGoals};
 use crate::solve::inspect;
 use rustc_middle::traits::query::NoSolution;
 
@@ -14,7 +14,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             predefined_opaques_in_body: self.predefined_opaques_in_body,
             max_input_universe: self.max_input_universe,
             search_graph: self.search_graph,
-            nested_goals: self.nested_goals.clone(),
+            nested_goals: NestedGoals::new(),
             tainted: self.tainted,
             inspect: self.inspect.new_probe(),
         };
@@ -32,7 +32,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 tainted,
                 inspect,
             } = nested_ecx;
-            self.nested_goals = nested_goals;
+            self.nested_goals.extend(nested_goals);
             self.tainted = tainted;
             self.inspect.integrate_snapshot(inspect);
         } else {
