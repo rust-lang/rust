@@ -245,7 +245,7 @@ fn overlap<'tcx>(
                                     let trait_ref = infcx.resolve_vars_if_possible(trait_ref);
                                     format!(
                                         "of `{}` for `{}`",
-                                        trait_ref.print_only_trait_path(),
+                                        trait_ref.print_trait_sugared(),
                                         trait_ref.self_ty()
                                     )
                                 }

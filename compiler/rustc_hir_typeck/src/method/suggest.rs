@@ -2299,7 +2299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let msg = if preds.len() == 1 {
                 format!(
                     "an implementation of `{}` might be missing for `{}`",
-                    preds[0].trait_ref.print_only_trait_path(),
+                    preds[0].trait_ref.print_trait_sugared(),
                     preds[0].self_ty()
                 )
             } else {
