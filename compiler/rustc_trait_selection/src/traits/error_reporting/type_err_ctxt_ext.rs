@@ -1854,7 +1854,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
             err.help(format!(
                 "the following {other}types implement trait `{}`:{}{}",
-                trait_ref.print_only_trait_path(),
+                trait_ref.print_trait_sugared(),
                 candidates[..end].join(""),
                 if candidates.len() > 9 {
                     format!("\nand {} others", candidates.len() - 8)

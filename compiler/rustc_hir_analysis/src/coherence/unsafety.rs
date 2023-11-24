@@ -23,7 +23,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     tcx.def_span(def_id),
                     E0199,
                     "implementing the trait `{}` is not unsafe",
-                    trait_ref.print_only_trait_path()
+                    trait_ref.print_trait_sugared()
                 )
                 .span_suggestion_verbose(
                     item.span.with_hi(item.span.lo() + rustc_span::BytePos(7)),
@@ -40,13 +40,13 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     tcx.def_span(def_id),
                     E0200,
                     "the trait `{}` requires an `unsafe impl` declaration",
-                    trait_ref.print_only_trait_path()
+                    trait_ref.print_trait_sugared()
                 )
                 .note(format!(
                     "the trait `{}` enforces invariants that the compiler can't check. \
                     Review the trait documentation and make sure this implementation \
                     upholds those invariants before adding the `unsafe` keyword",
-                    trait_ref.print_only_trait_path()
+                    trait_ref.print_trait_sugared()
                 ))
                 .span_suggestion_verbose(
                     item.span.shrink_to_lo(),
@@ -69,7 +69,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "the trait `{}` enforces invariants that the compiler can't check. \
                     Review the trait documentation and make sure this implementation \
                     upholds those invariants before adding the `unsafe` keyword",
-                    trait_ref.print_only_trait_path()
+                    trait_ref.print_trait_sugared()
                 ))
                 .span_suggestion_verbose(
                     item.span.shrink_to_lo(),

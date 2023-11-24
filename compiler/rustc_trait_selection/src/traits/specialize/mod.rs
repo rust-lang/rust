@@ -412,7 +412,7 @@ fn report_conflicting_impls<'tcx>(
     let msg = DelayDm(|| {
         format!(
             "conflicting implementations of trait `{}`{}{}",
-            overlap.trait_ref.print_only_trait_path(),
+            overlap.trait_ref.print_trait_sugared(),
             overlap.self_ty.map_or_else(String::new, |ty| format!(" for type `{ty}`")),
             match used_to_be_allowed {
                 Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
