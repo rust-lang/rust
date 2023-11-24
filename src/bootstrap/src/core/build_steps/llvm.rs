@@ -20,7 +20,7 @@ use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::channel;
 use crate::utils::helpers::{self, exe, get_clang_cl_resource_dir, output, t, up_to_date};
-use crate::{CLang, GitRepo, Kind};
+use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_merge_base;
@@ -105,8 +105,13 @@ pub fn prebuilt_llvm_config(
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
     let res = LlvmResult { llvm_config: build_llvm_config, llvm_cmake_dir };
 
+    let smart_stamp_hash = generate_smart_stamp_hash(
+        &builder.config.src.join("src/llvm-project"),
+        &builder.in_tree_llvm_info.sha().unwrap_or_default(),
+    );
+
     let stamp = out_dir.join("llvm-finished-building");
-    let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+    let stamp = HashStamp::new(stamp, Some(&smart_stamp_hash));
 
     if stamp.is_done() {
         if stamp.hash.is_none() {
