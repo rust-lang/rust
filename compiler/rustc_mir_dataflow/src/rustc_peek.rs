@@ -139,7 +139,8 @@ where
             ) => {
                 let loc = Location { block: bb, statement_index };
                 cursor.seek_before_primary_effect(loc);
-                let (state, analysis) = cursor.get_with_analysis();
+                let state = cursor.get();
+                let analysis = cursor.analysis();
                 analysis.peek_at(tcx, *place, state, call);
             }
 

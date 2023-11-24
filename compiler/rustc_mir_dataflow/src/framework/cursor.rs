@@ -166,11 +166,6 @@ where
         &mut self.results.borrow_mut().analysis
     }
 
-    /// Returns both the dataflow state at the current location and the `Analysis`.
-    pub fn get_with_analysis(&mut self) -> (&A::Domain, &mut A) {
-        (&self.state, &mut self.results.borrow_mut().analysis)
-    }
-
     /// Resets the cursor to hold the entry set for the given basic block.
     ///
     /// For forward dataflow analyses, this is the dataflow state prior to the first statement.
