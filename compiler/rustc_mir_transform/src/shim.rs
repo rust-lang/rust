@@ -283,6 +283,7 @@ fn new_body<'tcx>(
         None,
         // FIXME(compiler-errors): is this correct?
         None,
+        None,
     )
 }
 

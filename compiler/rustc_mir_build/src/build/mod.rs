@@ -693,6 +693,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         span,
         coroutine_kind,
         Some(guar),
+        None,
     );
 
     body.coroutine.as_mut().map(|gen| gen.yield_ty = yield_ty);
@@ -775,6 +776,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        let coverage_hir_info = if self.tcx.sess.instrument_coverage() {
+            coverageinfo::make_coverage_hir_info_if_eligible(self.tcx, self.def_id)
+        } else {
+            None
+        };
+
         Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
@@ -786,6 +793,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.fn_span,
             self.coroutine_kind,
             None,
+            coverage_hir_info,
         )
     }
 
@@ -1056,6 +1064,7 @@ pub(crate) fn parse_float_into_scalar(
 
 mod block;
 mod cfg;
+mod coverageinfo;
 mod custom;
 mod expr;
 mod matches;

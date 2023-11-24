@@ -346,6 +346,13 @@ pub struct Body<'tcx> {
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 
+    /// Extra information about this function's source code captured during MIR
+    /// building, for use by coverage instrumentation.
+    ///
+    /// If `-Cinstrument-coverage` is not active, or if an individual function
+    /// is not eligible for coverage, then this should always be `None`.
+    pub coverage_hir_info: Option<Box<coverage::HirInfo>>,
+
     /// Per-function coverage information added by the `InstrumentCoverage`
     /// pass, to be used in conjunction with the coverage statements injected
     /// into this body's blocks.
@@ -367,6 +374,7 @@ impl<'tcx> Body<'tcx> {
         span: Span,
         coroutine_kind: Option<CoroutineKind>,
         tainted_by_errors: Option<ErrorGuaranteed>,
+        coverage_hir_info: Option<Box<coverage::HirInfo>>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
@@ -400,6 +408,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
+            coverage_hir_info,
             function_coverage_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -429,6 +438,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors: None,
+            coverage_hir_info: None,
             function_coverage_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
