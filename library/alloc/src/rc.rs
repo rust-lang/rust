@@ -659,6 +659,59 @@ impl<T> Rc<T> {
     }
 }
 
+impl<T: ?Sized> Rc<T> {
+    /// See [`Rc::new_cyclic`]
+    ///
+    /// The only difference is that the closure is allowed to return a type
+    /// that can be [`Unsize`]d to `T`.
+    #[cfg(not(no_global_oom_handling))]
+    #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
+    pub fn new_cyclic_unsize<F, U>(data_fn: F) -> Rc<T>
+    where
+        F: FnOnce(&Weak<T>) -> U,
+        U: Unsize<T>,
+    {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let uninit_ptr: NonNull<_> = Box::leak(Box::new(RcBox {
+            strong: Cell::new(0),
+            weak: Cell::new(1),
+            value: mem::MaybeUninit::<U>::uninit(),
+        }))
+        .into();
+
+        let init_ptr: NonNull<RcBox<U>> = uninit_ptr.cast();
+
+        // unsize
+        let weak: Weak<T> = Weak { ptr: init_ptr, alloc: Global };
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        let data = data_fn(&weak);
+
+        let strong = unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(ptr::addr_of_mut!((*inner).value), data);
+
+            let prev_value = (*inner).strong.get();
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+            (*inner).strong.set(1);
+
+            Rc::from_inner(init_ptr)
+        };
+
+        // Strong references should collectively own a shared weak reference,
+        // so don't run the destructor for our old weak reference.
+        mem::forget(weak);
+        // unsize
+        strong
+    }
+}
+
 impl<T, A: Allocator> Rc<T, A> {
     /// Returns a reference to the underlying allocator.
     ///
