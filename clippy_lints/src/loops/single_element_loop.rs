@@ -96,7 +96,7 @@ pub(super) fn check<'tcx>(
                 "for loop over a single range inside an array, rather than iterating over the elements in the range directly",
                 "did you mean to iterate over the range instead?",
                 sugg.to_string(),
-                applicability,
+                Applicability::Unspecified,
             );
         } else {
             span_lint_and_sugg(
