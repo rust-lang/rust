@@ -1050,8 +1050,10 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
         let mut ambiguity_cause = None;
         for cand in goal.candidates() {
             // FIXME: boiiii, using string comparisions here sure is scuffed.
-            if let inspect::ProbeKind::MiscCandidate { name: "coherence unknowable", result: _ } =
-                cand.kind()
+            if let inspect::ProbeKind::MiscCandidate {
+                name: "coherence unknowable",
+                result: Ok(_),
+            } = cand.kind()
             {
                 let lazily_normalize_ty = |ty: Ty<'tcx>| {
                     let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx);
