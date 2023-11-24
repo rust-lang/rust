@@ -1,5 +1,5 @@
 //! Conversion of internal Rust compiler `mir` items to stable ones.
-use crate::rustc_smir::{alloc, Stable, Tables};
+
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::alloc_range;
 use rustc_middle::mir::mono::MonoItem;
@@ -7,6 +7,8 @@ use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
 use stable_mir::ty::{Allocation, Const, ConstantKind};
 use stable_mir::{opaque, Error};
+
+use crate::rustc_smir::{alloc, Stable, Tables};
 
 impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = stable_mir::mir::Body;

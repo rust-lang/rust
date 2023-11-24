@@ -1,12 +1,13 @@
 //! Conversion of internal Rust compiler `ty` items to stable ones.
 
-use crate::rustc_smir::{alloc, Stable, Tables};
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use stable_mir::ty::{
     AdtKind, Const, ConstantKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy,
     TyKind, UintTy,
 };
+
+use crate::rustc_smir::{alloc, Stable, Tables};
 
 impl<'tcx> Stable<'tcx> for ty::AliasKind {
     type T = stable_mir::ty::AliasKind;

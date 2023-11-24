@@ -3,6 +3,8 @@
 //! StableMIR users should not use any of the items in this module directly.
 //! These APIs have no stability guarantee.
 
+use std::cell::Cell;
+
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
@@ -15,7 +17,6 @@ use crate::{
     mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
     TraitDecls,
 };
-use std::cell::Cell;
 
 /// This trait defines the interface between stable_mir and the Rust compiler.
 /// Do not use this directly.

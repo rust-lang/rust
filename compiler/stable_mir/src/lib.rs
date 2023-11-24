@@ -17,20 +17,21 @@
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
 
-use self::ty::{ImplDef, ImplTrait, IndexedVal, Span, TraitDecl, TraitDef, Ty};
-pub(crate) use crate::compiler_interface::with;
-pub use crate::crate_def::CrateDef;
-pub use crate::crate_def::DefId;
-use crate::mir::pretty::function_name;
-use crate::mir::Body;
-use crate::mir::Mutability;
-pub use error::*;
+#[macro_use]
+extern crate scoped_tls;
+
 use std::fmt;
 use std::fmt::Debug;
 use std::io;
 
-#[macro_use]
-extern crate scoped_tls;
+use crate::compiler_interface::with;
+pub use crate::crate_def::CrateDef;
+pub use crate::crate_def::DefId;
+pub use crate::error::*;
+use crate::mir::pretty::function_name;
+use crate::mir::Body;
+use crate::mir::Mutability;
+use crate::ty::{ImplDef, ImplTrait, IndexedVal, Span, TraitDecl, TraitDef, Ty};
 
 #[macro_use]
 pub mod crate_def;

@@ -1,7 +1,9 @@
 //! Conversion of internal Rust compiler items to stable ones.
-use crate::rustc_smir::{Stable, Tables};
+
 use rustc_target::abi::FieldIdx;
 use stable_mir::mir::VariantIdx;
+
+use crate::rustc_smir::{Stable, Tables};
 
 mod mir;
 mod ty;
