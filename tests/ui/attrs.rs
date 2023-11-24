@@ -36,6 +36,9 @@ pub const ANOTHER_CONST: u8 = 23;
 #[deprecated(since = "0.1.1")]
 pub const YET_ANOTHER_CONST: u8 = 0;
 
+#[deprecated(since = "TBD")]
+pub const GONNA_DEPRECATE_THIS_LATER: u8 = 0;
+
 fn main() {
     test_attr_lint();
     if false {
