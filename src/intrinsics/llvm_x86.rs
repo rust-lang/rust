@@ -22,6 +22,11 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             // Spin loop hint
         }
 
+        "llvm.x86.avx.vzeroupper" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_zeroupper&ig_expand=7218
+            // Do nothing. It is a perf hint anyway.
+        }
+
         // Used by is_x86_feature_detected!();
         "llvm.x86.xgetbv" => {
             intrinsic_args!(fx, args => (xcr_no); intrinsic);
