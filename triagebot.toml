@@ -533,6 +533,12 @@ message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/rust-analyzer"]
+message = """
+rust-analyzer is developed in its own repository. If possible, consider making \
+this change to [rust-lang/rust-analyzer] instead.
+
+[rust-lang/rust-analyzer]: https://github.com/rust-lang/rust-analyzer
+"""
 cc = ["@rust-lang/rust-analyzer"]
 
 [mentions."src/tools/rustfmt"]
