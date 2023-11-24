@@ -14,6 +14,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
@@ -28,7 +29,7 @@ use stable_mir::ty::{
     EarlyParamRegion, FloatTy, FnDef, GenericArgs, GenericParamDef, IntTy, LineInfo, Movability,
     RigidTy, Span, TyKind, UintTy,
 };
-use stable_mir::{self, opaque, Context, CrateItem, Error, Filename, ItemKind};
+use stable_mir::{self, opaque, Context, Crate, CrateItem, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
 use tracing::debug;
 
@@ -61,9 +62,18 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         crates
     }
 
-    fn name_of_def_id(&self, def_id: stable_mir::DefId) -> String {
+    fn def_name(&self, def_id: stable_mir::DefId, trimmed: bool) -> Symbol {
         let tables = self.0.borrow();
-        tables.tcx.def_path_str(tables[def_id])
+        if trimmed {
+            with_forced_trimmed_paths!(tables.tcx.def_path_str(tables[def_id]))
+        } else {
+            with_no_trimmed_paths!(tables.tcx.def_path_str(tables[def_id]))
+        }
+    }
+
+    fn krate(&self, def_id: stable_mir::DefId) -> Crate {
+        let tables = self.0.borrow();
+        smir_crate(tables.tcx, tables[def_id].krate)
     }
 
     fn span_to_string(&self, span: stable_mir::ty::Span) -> String {
@@ -240,10 +250,27 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.create_def_id(def_id)
     }
 
-    fn instance_mangled_name(&self, def: InstanceDef) -> String {
+    fn instance_mangled_name(&self, instance: InstanceDef) -> Symbol {
+        let tables = self.0.borrow_mut();
+        let instance = tables.instances[instance];
+        tables.tcx.symbol_name(instance).name.to_string()
+    }
+
+    /// Retrieve the instance name for diagnostic messages.
+    ///
+    /// This will return the specialized name, e.g., `Vec<char>::new`.
+    fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol {
         let tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        tables.tcx.symbol_name(instance).name.to_string()
+        if trimmed {
+            with_forced_trimmed_paths!(
+                tables.tcx.def_path_str_with_args(instance.def_id(), instance.args)
+            )
+        } else {
+            with_no_trimmed_paths!(
+                tables.tcx.def_path_str_with_args(instance.def_id(), instance.args)
+            )
+        }
     }
 
     fn mono_instance(&self, item: stable_mir::CrateItem) -> stable_mir::mir::mono::Instance {
