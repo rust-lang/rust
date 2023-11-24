@@ -14,9 +14,9 @@ use std::{
     io::{self, IsTerminal},
 };
 
-#[cfg(all(any(unix, windows), not(target_os = "solaris")))]
-use bootstrap::t;
-use bootstrap::{find_recent_config_change_ids, Build, Config, Subcommand, CONFIG_CHANGE_HISTORY};
+use bootstrap::{
+    find_recent_config_change_ids, t, Build, Config, Subcommand, CONFIG_CHANGE_HISTORY,
+};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
