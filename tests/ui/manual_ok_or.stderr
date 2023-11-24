@@ -13,6 +13,15 @@ error: this pattern reimplements `Option::ok_or`
 LL |     foo.map_or(Err("error"), Ok);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
 
+error: called `map_or(Err(_), Ok)` on an `Option` value
+  --> $DIR/manual_ok_or.rs:14:5
+   |
+LL |     foo.map_or(Err("error"), Ok);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `ok_or` instead: `foo.ok_or("error")`
+   |
+   = note: `-D clippy::option-map-or-err-ok` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_map_or_err_ok)]`
+
 error: this pattern reimplements `Option::ok_or`
   --> $DIR/manual_ok_or.rs:17:5
    |
@@ -38,5 +47,5 @@ LL +         "{}{}{}{}{}{}{}",
 LL ~         "Alice", "Bob", "Sarah", "Marc", "Sandra", "Eric", "Jenifer"));
    |
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
