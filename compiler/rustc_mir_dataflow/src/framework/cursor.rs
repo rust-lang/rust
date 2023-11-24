@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Direction, Effect, EffectIndex, EntrySets, Results, ResultsCloned};
+use super::{Analysis, Direction, Effect, EffectIndex, EntrySets, Results};
 
 // `AnalysisResults` is needed as an impl such as the following has an unconstrained type
 // parameter:
@@ -39,11 +39,6 @@ where
 {
     type EntrySets = E;
 }
-
-/// A `ResultsCursor` which uses a cloned `Analysis` while borrowing the underlying `Results`. This
-/// allows multiple cursors over the same `Results`.
-pub type ResultsClonedCursor<'res, 'mir, 'tcx, A> =
-    ResultsCursor<'mir, 'tcx, A, ResultsCloned<'res, 'tcx, A>>;
 
 /// Allows random access inspection of the results of a dataflow analysis.
 ///

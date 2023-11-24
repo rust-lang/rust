@@ -45,9 +45,9 @@ pub mod graphviz;
 pub mod lattice;
 mod visitor;
 
-pub use self::cursor::{ResultsClonedCursor, ResultsCursor};
+pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
-pub use self::engine::{Engine, EntrySets, Results, ResultsCloned};
+pub use self::engine::{Engine, EntrySets, Results};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
 pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 

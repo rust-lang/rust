@@ -25,7 +25,7 @@ use super::fmt::DebugWithContext;
 use super::graphviz;
 use super::{
     visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis, GenKillSet,
-    JoinSemiLattice, ResultsClonedCursor, ResultsCursor, ResultsVisitor,
+    JoinSemiLattice, ResultsCursor, ResultsVisitor,
 };
 
 pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
@@ -40,9 +40,6 @@ where
     pub(super) entry_sets: E,
     pub(super) _marker: PhantomData<&'tcx ()>,
 }
-
-/// `Results` type with a cloned `Analysis` and borrowed entry sets.
-pub type ResultsCloned<'res, 'tcx, A> = Results<'tcx, A, &'res EntrySets<'tcx, A>>;
 
 impl<'tcx, A, E> Results<'tcx, A, E>
 where
@@ -78,20 +75,6 @@ where
     ) {
         let blocks = mir::traversal::reachable(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
-    }
-}
-
-impl<'tcx, A> Results<'tcx, A>
-where
-    A: Analysis<'tcx> + Copy,
-{
-    /// Creates a `ResultsCursor` that can inspect these `Results`.
-    pub fn cloned_results_cursor<'mir>(
-        &self,
-        body: &'mir mir::Body<'tcx>,
-    ) -> ResultsClonedCursor<'_, 'mir, 'tcx, A> {
-        Results { analysis: self.analysis, entry_sets: &self.entry_sets, _marker: PhantomData }
-            .into_results_cursor(body)
     }
 }
 
