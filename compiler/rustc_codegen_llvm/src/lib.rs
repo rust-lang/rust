@@ -4,16 +4,17 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+#![doc(rust_logo)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(hash_raw_entry)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(slice_group_by)]
 #![feature(impl_trait_in_assoc_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
@@ -103,7 +104,7 @@ struct TimeTraceProfiler {
 impl TimeTraceProfiler {
     fn new(enabled: bool) -> Self {
         if enabled {
-            unsafe { llvm::LLVMTimeTraceProfilerInitialize() }
+            unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() }
         }
         TimeTraceProfiler { enabled }
     }
@@ -112,7 +113,7 @@ impl TimeTraceProfiler {
 impl Drop for TimeTraceProfiler {
     fn drop(&mut self) {
         if self.enabled {
-            unsafe { llvm::LLVMTimeTraceProfilerFinishThread() }
+            unsafe { llvm::LLVMRustTimeTraceProfilerFinishThread() }
         }
     }
 }

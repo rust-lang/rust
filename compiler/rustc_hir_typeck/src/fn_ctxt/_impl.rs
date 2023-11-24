@@ -26,7 +26,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, GenericParamDefKind, Ty, TyCtxt, UserType,
+    self, AdtKind, CanonicalUserType, GenericParamDefKind, IsIdentity, Ty, TyCtxt, UserType,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef, UserArgs, UserSelfTy};
 use rustc_session::lint;
@@ -207,6 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         debug!("fcx {}", self.tag());
 
+        // FIXME: is_identity being on `UserType` and not `Canonical<UserType>` is awkward
         if !canonical_user_type_annotation.is_identity() {
             self.typeck_results
                 .borrow_mut()
@@ -504,7 +505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn resolve_rvalue_scopes(&self, def_id: DefId) {
         let scope_tree = self.tcx.region_scope_tree(def_id);
-        let rvalue_scopes = { rvalue_scopes::resolve_rvalue_scopes(self, &scope_tree, def_id) };
+        let rvalue_scopes = { rvalue_scopes::resolve_rvalue_scopes(self, scope_tree, def_id) };
         let mut typeck_results = self.inh.typeck_results.borrow_mut();
         typeck_results.rvalue_scopes = rvalue_scopes;
     }
@@ -661,7 +662,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this closure yet; this is exactly why the other
                 // code is looking for a self type of an unresolved
                 // inference variable.
-                | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Ambiguous
                  => None,
             },
@@ -796,13 +796,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
             qpath, hir_id, span
         );
         let (ty, qself, item_segment) = match *qpath {
-            QPath::Resolved(ref opt_qself, ref path) => {
+            QPath::Resolved(ref opt_qself, path) => {
                 return (
                     path.res,
                     opt_qself.as_ref().map(|qself| self.to_ty(qself)),
@@ -897,7 +898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         item_name,
                         SelfSource::QPath(qself),
                         error,
-                        None,
+                        args,
                         Expectation::NoExpectation,
                         trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
                     ) {
@@ -1184,7 +1185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx,
                 span,
                 def_id,
-                &generics,
+                generics,
                 seg,
                 IsMethodCall::No,
             );
@@ -1276,7 +1277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // going to infer the arguments for better error messages.
                     if !self.infer_args_for_err.contains(&index) {
                         // Check whether the user has provided generic arguments.
-                        if let Some(ref data) = self.segments[index].args {
+                        if let Some(data) = self.segments[index].args {
                             return (Some(data), self.segments[index].infer_args);
                         }
                     }
@@ -1404,7 +1405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Normalize only after registering type annotations.
         let args = self.normalize(span, args_raw);
 
-        self.add_required_obligations_for_hir(span, def_id, &args, hir_id);
+        self.add_required_obligations_for_hir(span, def_id, args, hir_id);
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
@@ -1471,7 +1472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let param_env = self.param_env;
 
-        let bounds = self.instantiate_bounds(span, def_id, &args);
+        let bounds = self.instantiate_bounds(span, def_id, args);
 
         for obligation in traits::predicates_for_generics(
             |idx, predicate_span| {

@@ -53,6 +53,7 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_lint_defs;
+extern crate rustc_log;
 extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
@@ -74,6 +75,7 @@ extern crate jemalloc_sys;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::process;
+use std::sync::{atomic::AtomicBool, Arc};
 
 use rustc_driver::abort_on_err;
 use rustc_errors::ErrorGuaranteed;
@@ -157,7 +159,7 @@ pub fn main() {
 
     let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
 
-    rustc_driver::install_ice_hook(
+    let using_internal_features = rustc_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md",
         |_| (),
@@ -174,10 +176,10 @@ pub fn main() {
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
 
     init_logging(&handler);
-    rustc_driver::init_env_logger(&handler, "RUSTDOC_LOG");
+    rustc_driver::init_logger(&handler, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&handler) {
-        Some(args) => main_args(&mut handler, &args),
+        Some(args) => main_args(&mut handler, &args, using_internal_features),
         _ =>
         {
             #[allow(deprecated)]
@@ -701,7 +703,11 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     }
 }
 
-fn main_args(handler: &mut EarlyErrorHandler, at_args: &[String]) -> MainResult {
+fn main_args(
+    handler: &mut EarlyErrorHandler,
+    at_args: &[String],
+    using_internal_features: Arc<AtomicBool>,
+) -> MainResult {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
     // passing empty argument array to execve under some platforms,
@@ -752,7 +758,7 @@ fn main_args(handler: &mut EarlyErrorHandler, at_args: &[String]) -> MainResult 
         (false, true) => {
             let input = options.input.clone();
             let edition = options.edition;
-            let config = core::create_config(handler, options, &render_options);
+            let config = core::create_config(options, &render_options, using_internal_features);
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
@@ -785,20 +791,13 @@ fn main_args(handler: &mut EarlyErrorHandler, at_args: &[String]) -> MainResult 
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
-    let config = core::create_config(handler, options, &render_options);
+    let config = core::create_config(options, &render_options, using_internal_features);
 
     interface::run_compiler(config, |compiler| {
-        let sess = compiler.session();
+        let sess = &compiler.sess;
 
         if sess.opts.describe_lints {
-            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
-            let registered_lints = if let Some(register_lints) = compiler.register_lints() {
-                register_lints(sess, &mut lint_store);
-                true
-            } else {
-                false
-            };
-            rustc_driver::describe_lints(sess, &lint_store, registered_lints);
+            rustc_driver::describe_lints(sess);
             return Ok(());
         }
 

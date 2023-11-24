@@ -25,7 +25,6 @@ fn main() {
         || target.contains("vxworks")
         || target.contains("wasm32")
         || target.contains("wasm64")
-        || target.contains("asmjs")
         || target.contains("espidf")
         || target.contains("solid")
         || target.contains("nintendo-3ds")

@@ -1,16 +1,11 @@
 error: expected one of `extern` or `fn`, found keyword `async`
   --> $DIR/no-unsafe-async.rs:7:12
    |
-LL | impl S {
-   |        - while parsing this item list starting here
-LL |     #[cfg(FALSE)]
 LL |     unsafe async fn g() {}
    |     -------^^^^^
    |     |      |
    |     |      expected one of `extern` or `fn`
    |     help: `async` must come before `unsafe`: `async unsafe`
-LL | }
-   | - the item list ends here
    |
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 

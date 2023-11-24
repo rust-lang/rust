@@ -1,0 +1,11 @@
+error[E0015]: cannot call non-const fn `<() as Foo>::foo` in constant functions
+  --> $DIR/const_closure-const_trait_impl-ice-113381.rs:13:22
+   |
+LL |     (const || { (()).foo() })();
+   |                      ^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

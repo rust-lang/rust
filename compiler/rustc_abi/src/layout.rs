@@ -111,8 +111,8 @@ pub trait LayoutCalculator {
                             alt_tail_space,
                             layout.fields.count(),
                             prefer_alt_layout,
-                            format_field_niches(&layout, &fields, &dl),
-                            format_field_niches(&alt_layout, &fields, &dl),
+                            format_field_niches(layout, fields, dl),
+                            format_field_niches(&alt_layout, fields, dl),
                         );
 
                         if prefer_alt_layout {
@@ -539,6 +539,7 @@ pub trait LayoutCalculator {
         // Align the maximum variant size to the largest alignment.
         size = size.align_to(align.abi);
 
+        // FIXME(oli-obk): deduplicate and harden these checks
         if size.bytes() >= dl.obj_size_bound() {
             return None;
         }
@@ -905,9 +906,8 @@ fn univariant<
                 use rand::{seq::SliceRandom, SeedableRng};
                 // `ReprOptions.layout_seed` is a deterministic seed we can use to randomize field
                 // ordering.
-                let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
-                    repr.field_shuffle_seed.as_u64(),
-                );
+                let mut rng =
+                    rand_xoshiro::Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
 
                 // Shuffle the ordering of the fields.
                 optimizing.shuffle(&mut rng);
@@ -1025,7 +1025,7 @@ fn univariant<
     // At the bottom of this function, we invert `inverse_memory_index` to
     // produce `memory_index` (see `invert_mapping`).
     let mut sized = true;
-    let mut offsets = IndexVec::from_elem(Size::ZERO, &fields);
+    let mut offsets = IndexVec::from_elem(Size::ZERO, fields);
     let mut offset = Size::ZERO;
     let mut largest_niche = None;
     let mut largest_niche_available = 0;
@@ -1103,6 +1103,10 @@ fn univariant<
         inverse_memory_index.into_iter().map(|it| it.index() as u32).collect()
     };
     let size = min_size.align_to(align.abi);
+    // FIXME(oli-obk): deduplicate and harden these checks
+    if size.bytes() >= dl.obj_size_bound() {
+        return None;
+    }
     let mut layout_of_single_non_zst_field = None;
     let mut abi = Abi::Aggregate { sized };
     // Try to make this a Scalar/ScalarPair.

@@ -199,6 +199,9 @@ fn compare() {
     let v6_1 = "[2001:db8:f00::1002]:23456".parse::<SocketAddrV6>().unwrap();
     let v6_2 = "[2001:db8:f00::2001]:12345".parse::<SocketAddrV6>().unwrap();
     let v6_3 = "[2001:db8:f00::2001]:23456".parse::<SocketAddrV6>().unwrap();
+    let v6_4 = "[2001:db8:f00::2001%42]:23456".parse::<SocketAddrV6>().unwrap();
+    let mut v6_5 = "[2001:db8:f00::2001]:23456".parse::<SocketAddrV6>().unwrap();
+    v6_5.set_flowinfo(17);
 
     // equality
     assert_eq!(v4_1, v4_1);
@@ -207,6 +210,8 @@ fn compare() {
     assert_eq!(SocketAddr::V6(v6_1), SocketAddr::V6(v6_1));
     assert!(v4_1 != v4_2);
     assert!(v6_1 != v6_2);
+    assert!(v6_3 != v6_4);
+    assert!(v6_3 != v6_5);
 
     // compare different addresses
     assert!(v4_1 < v4_2);
@@ -225,6 +230,12 @@ fn compare() {
     assert!(v6_1 < v6_3);
     assert!(v4_3 > v4_1);
     assert!(v6_3 > v6_1);
+
+    // compare the same address with different scope_id
+    assert!(v6_3 < v6_4);
+
+    // compare the same address with different flowinfo
+    assert!(v6_3 < v6_5);
 
     // compare with an inferred right-hand side
     assert_eq!(v4_1, "224.120.45.1:23456".parse().unwrap());

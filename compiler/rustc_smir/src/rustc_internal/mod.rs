@@ -3,24 +3,33 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
-use crate::rustc_internal;
-use crate::rustc_smir::Tables;
+use crate::rustc_smir::{Stable, Tables, TablesWrapper};
 use rustc_data_structures::fx;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_driver::{Callbacks, Compilation, RunCompiler};
-use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
+use scoped_tls::scoped_thread_local;
 use stable_mir::ty::IndexedVal;
-use stable_mir::CompilerError;
+use stable_mir::Error;
+use std::cell::Cell;
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::{ControlFlow, Index};
+use std::ops::Index;
 
 mod internal;
+pub mod pretty;
+
+pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
+    with_tables(|tables| item.stable(tables))
+}
+
+pub fn internal<'tcx, S: RustcInternal<'tcx>>(item: S) -> S::T {
+    with_tables(|tables| item.internal(tables))
+}
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     type Output = DefId;
@@ -97,6 +106,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::RegionDef(self.create_def_id(did))
     }
 
+    pub fn coroutine_witness_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineWitnessDef {
+        stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
+    }
+
     pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }
@@ -105,7 +118,7 @@ impl<'tcx> Tables<'tcx> {
         self.def_ids.create_or_fetch(did)
     }
 
-    fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
+    pub(crate) fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::mir::alloc::AllocId {
         self.alloc_ids.create_or_fetch(aid)
     }
 
@@ -129,77 +142,124 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
     item.id.into()
 }
 
-pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    stable_mir::run(
-        Tables {
-            tcx,
-            def_ids: IndexMap::default(),
-            alloc_ids: IndexMap::default(),
-            spans: IndexMap::default(),
-            types: vec![],
-            instances: IndexMap::default(),
-        },
-        f,
-    );
+// A thread local variable that stores a pointer to the tables mapping between TyCtxt
+// datastructures and stable MIR datastructures
+scoped_thread_local! (static TLV: Cell<*const ()>);
+
+pub(crate) fn init<'tcx, F, T>(tables: &TablesWrapper<'tcx>, f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    assert!(!TLV.is_set());
+    let ptr = tables as *const _ as *const ();
+    TLV.set(&Cell::new(ptr), || f())
 }
 
-pub struct StableMir<B = (), C = ()>
-where
-    B: Send,
-    C: Send,
-{
-    args: Vec<String>,
-    callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>,
-    result: Option<ControlFlow<B, C>>,
+/// Loads the current context and calls a function with it.
+/// Do not nest these, as that will ICE.
+pub(crate) fn with_tables<'tcx, R>(f: impl FnOnce(&mut Tables<'tcx>) -> R) -> R {
+    assert!(TLV.is_set());
+    TLV.with(|tlv| {
+        let ptr = tlv.get();
+        assert!(!ptr.is_null());
+        let wrapper = ptr as *const TablesWrapper<'tcx>;
+        let mut tables = unsafe { (*wrapper).0.borrow_mut() };
+        f(&mut *tables)
+    })
 }
 
-impl<B, C> StableMir<B, C>
+pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
 where
-    B: Send,
-    C: Send,
+    F: FnOnce() -> T,
 {
-    /// Creates a new `StableMir` instance, with given test_function and arguments.
-    pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>) -> Self {
-        StableMir { args, callback, result: None }
-    }
+    let tables = TablesWrapper(RefCell::new(Tables {
+        tcx,
+        def_ids: IndexMap::default(),
+        alloc_ids: IndexMap::default(),
+        spans: IndexMap::default(),
+        types: IndexMap::default(),
+        instances: IndexMap::default(),
+        constants: IndexMap::default(),
+    }));
+    stable_mir::run(&tables, || init(&tables, f))
+}
 
-    /// Runs the compiler against given target and tests it with `test_function`
-    pub fn run(&mut self) -> Result<C, CompilerError<B>> {
-        let compiler_result =
-            rustc_driver::catch_fatal_errors(|| RunCompiler::new(&self.args.clone(), self).run());
-        match (compiler_result, self.result.take()) {
-            (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
-            (Ok(Ok(())), Some(ControlFlow::Break(value))) => Err(CompilerError::Interrupted(value)),
-            (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
-            (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
-            (Err(_), _) => Err(CompilerError::ICE),
+#[macro_export]
+macro_rules! run {
+    ($args:expr, $callback:expr) => {
+        run!($args, tcx, $callback)
+    };
+    ($args:expr, $tcx:ident, $callback:expr) => {{
+        use rustc_driver::{Callbacks, Compilation, RunCompiler};
+        use rustc_interface::{interface, Queries};
+        use stable_mir::CompilerError;
+        use std::ops::ControlFlow;
+
+        pub struct StableMir<B = (), C = ()>
+        where
+            B: Send,
+            C: Send,
+        {
+            args: Vec<String>,
+            callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>,
+            result: Option<ControlFlow<B, C>>,
         }
-    }
-}
 
-impl<B, C> Callbacks for StableMir<B, C>
-where
-    B: Send,
-    C: Send,
-{
-    /// Called after analysis. Return value instructs the compiler whether to
-    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    fn after_analysis<'tcx>(
-        &mut self,
-        _compiler: &interface::Compiler,
-        queries: &'tcx Queries<'tcx>,
-    ) -> Compilation {
-        queries.global_ctxt().unwrap().enter(|tcx| {
-            rustc_internal::run(tcx, || {
-                self.result = Some((self.callback)(tcx));
-            });
-            if self.result.as_ref().is_some_and(|val| val.is_continue()) {
-                Compilation::Continue
-            } else {
-                Compilation::Stop
+        impl<B, C> StableMir<B, C>
+        where
+            B: Send,
+            C: Send,
+        {
+            /// Creates a new `StableMir` instance, with given test_function and arguments.
+            pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>) -> Self {
+                StableMir { args, callback, result: None }
             }
-        })
-    }
+
+            /// Runs the compiler against given target and tests it with `test_function`
+            pub fn run(&mut self) -> Result<C, CompilerError<B>> {
+                let compiler_result = rustc_driver::catch_fatal_errors(|| {
+                    RunCompiler::new(&self.args.clone(), self).run()
+                });
+                match (compiler_result, self.result.take()) {
+                    (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
+                    (Ok(Ok(())), Some(ControlFlow::Break(value))) => {
+                        Err(CompilerError::Interrupted(value))
+                    }
+                    (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
+                    (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
+                    (Err(_), _) => Err(CompilerError::ICE),
+                }
+            }
+        }
+
+        impl<B, C> Callbacks for StableMir<B, C>
+        where
+            B: Send,
+            C: Send,
+        {
+            /// Called after analysis. Return value instructs the compiler whether to
+            /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+            fn after_analysis<'tcx>(
+                &mut self,
+                _compiler: &interface::Compiler,
+                queries: &'tcx Queries<'tcx>,
+            ) -> Compilation {
+                queries.global_ctxt().unwrap().enter(|tcx| {
+                    rustc_internal::run(tcx, || {
+                        self.result = Some((self.callback)(tcx));
+                    })
+                    .unwrap();
+                    if self.result.as_ref().is_some_and(|val| val.is_continue()) {
+                        Compilation::Continue
+                    } else {
+                        Compilation::Stop
+                    }
+                })
+            }
+        }
+
+        StableMir::new($args, |$tcx| $callback).run()
+    }};
 }
 
 /// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
@@ -237,7 +297,7 @@ impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V
 /// Trait used to translate a stable construct to its rustc counterpart.
 ///
 /// This is basically a mirror of [crate::rustc_smir::Stable].
-pub(crate) trait RustcInternal<'tcx> {
+pub trait RustcInternal<'tcx> {
     type T;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T;
 }

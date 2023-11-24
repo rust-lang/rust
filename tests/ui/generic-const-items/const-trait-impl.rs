@@ -7,8 +7,8 @@
 #![allow(incomplete_features)]
 #![crate_type = "lib"]
 
-// FIXME(generic_const_items): Interpret `~const` as always-const.
-const CREATE<T: ~const Create>: T = T::create();
+// FIXME(generic_const_items, effects): Introduce `const` bounds to make this work.
+const CREATE<T: Create>: T = T::create();
 
 pub const K0: i32 = CREATE::<i32>;
 pub const K1: i32 = CREATE; // arg inferred

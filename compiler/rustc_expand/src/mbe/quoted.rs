@@ -116,7 +116,7 @@ pub(super) fn parse(
 fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &ParseSess, span: Span) {
     if !features.macro_metavar_expr {
         let msg = "meta-variable expressions are unstable";
-        feature_err(&sess, sym::macro_metavar_expr, span, msg).emit();
+        feature_err(sess, sym::macro_metavar_expr, span, msg).emit();
     }
 }
 
@@ -174,7 +174,7 @@ fn parse_tree<'a>(
                                 // The delimiter is `{`. This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
-                                match MetaVarExpr::parse(&tts, delim_span.entire(), sess) {
+                                match MetaVarExpr::parse(tts, delim_span.entire(), sess) {
                                     Err(mut err) => {
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
@@ -242,10 +242,8 @@ fn parse_tree<'a>(
 
                 // `tree` is followed by some other token. This is an error.
                 Some(tokenstream::TokenTree::Token(token, _)) => {
-                    let msg = format!(
-                        "expected identifier, found `{}`",
-                        pprust::token_to_string(&token),
-                    );
+                    let msg =
+                        format!("expected identifier, found `{}`", pprust::token_to_string(token),);
                     sess.span_diagnostic.span_err(token.span, msg);
                     TokenTree::MetaVar(token.span, Ident::empty())
                 }
@@ -291,7 +289,7 @@ fn parse_kleene_op<'a>(
     span: Span,
 ) -> Result<Result<(KleeneOp, Span), Token>, Span> {
     match input.next() {
-        Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(&token) {
+        Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(token) {
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(token.clone())),
         },

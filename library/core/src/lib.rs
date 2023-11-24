@@ -26,7 +26,8 @@
 //!   assumptions about their semantics: For `memcpy`, `memmove`, `memset`, `memcmp`, and `bcmp`, if
 //!   the `n` parameter is 0, the function is assumed to not be UB. Furthermore, for `memcpy`, if
 //!   source and target pointer are equal, the function is assumed to not be UB.
-//!   (Note that these are [standard assumptions](https://reviews.llvm.org/D86993) among compilers.)
+//!   (Note that these are standard assumptions among compilers:
+//!   [clang](https://reviews.llvm.org/D86993) and [GCC](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=32667) do the same.)
 //!   These functions are often provided by the system libc, but can also be provided by the
 //!   [compiler-builtins crate](https://crates.io/crates/compiler_builtins).
 //!   Note that the library does not guarantee that it will always make these assumptions, so Rust
@@ -68,7 +69,7 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![doc(rust_logo)]
 #![doc(cfg_hide(
     not(test),
     any(not(feature = "miri-test-libstd"), test, doctest),
@@ -125,7 +126,6 @@
 #![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
 #![feature(const_char_from_u32_unchecked)]
-#![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
 #![feature(const_float_bits_conv)]
@@ -134,7 +134,6 @@
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_index_range_slice_index)]
-#![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
@@ -148,7 +147,6 @@
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
-#![feature(const_pointer_byte_offsets)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
@@ -180,6 +178,8 @@
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(offset_of)]
+#![feature(offset_of_enum)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
@@ -189,6 +189,8 @@
 #![feature(str_split_inclusive_remainder)]
 #![feature(str_split_remainder)]
 #![feature(strict_provenance)]
+#![feature(unchecked_math)]
+#![feature(unchecked_shifts)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
 #![feature(variant_count)]
@@ -219,6 +221,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
+#![feature(effects)]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]
@@ -253,6 +256,7 @@
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
+#![feature(with_negative_coherence)]
 // tidy-alphabetical-end
 //
 // Target features:
@@ -290,6 +294,9 @@ pub mod assert_matches {
     #[unstable(feature = "assert_matches", issue = "82775")]
     pub use crate::macros::{assert_matches, debug_assert_matches};
 }
+
+#[unstable(feature = "cfg_match", issue = "115585")]
+pub use crate::macros::cfg_match;
 
 #[macro_use]
 mod internal_macros;
@@ -365,6 +372,8 @@ pub mod async_iter;
 pub mod cell;
 pub mod char;
 pub mod ffi;
+#[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
+pub mod io;
 pub mod iter;
 pub mod net;
 pub mod option;

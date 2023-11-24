@@ -75,8 +75,7 @@ ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7m-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabihf
 
-ENV TARGETS=asmjs-unknown-emscripten
-ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
+ENV TARGETS=wasm32-unknown-emscripten
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi

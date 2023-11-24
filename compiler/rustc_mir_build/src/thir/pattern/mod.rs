@@ -17,16 +17,17 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::Idx;
-use rustc_middle::mir::interpret::{
-    ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
-};
+use rustc_middle::mir::interpret::{ErrorHandled, GlobalId, LitToConstError, LitToConstInput};
 use rustc_middle::mir::{self, BorrowKind, Const, Mutability, UserTypeProjection};
-use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
+use rustc_middle::thir::{
+    Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, AdtDef, CanonicalUserTypeAnnotation, GenericArg, GenericArgsRef, Region, Ty, TyCtxt,
     TypeVisitableExt, UserType,
 };
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::abi::{FieldIdx, Integer};
 
@@ -88,15 +89,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range_endpoint(
         &mut self,
         expr: Option<&'tcx hir::Expr<'tcx>>,
-    ) -> Result<(Option<mir::Const<'tcx>>, Option<Ascription<'tcx>>), ErrorGuaranteed> {
+    ) -> Result<
+        (Option<PatRangeBoundary<'tcx>>, Option<Ascription<'tcx>>, Option<LocalDefId>),
+        ErrorGuaranteed,
+    > {
         match expr {
-            None => Ok((None, None)),
+            None => Ok((None, None, None)),
             Some(expr) => {
-                let (kind, ascr) = match self.lower_lit(expr) {
-                    PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
-                        (kind, Some(ascription))
+                let (kind, ascr, inline_const) = match self.lower_lit(expr) {
+                    PatKind::InlineConstant { subpattern, def } => {
+                        (subpattern.kind, None, Some(def))
                     }
-                    kind => (kind, None),
+                    PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
+                        (kind, Some(ascription), None)
+                    }
+                    kind => (kind, None, None),
                 };
                 let value = if let PatKind::Constant { value } = kind {
                     value
@@ -106,7 +113,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     );
                     return Err(self.tcx.sess.delay_span_bug(expr.span, msg));
                 };
-                Ok((Some(value), ascr))
+                Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
             }
         }
     }
@@ -177,35 +184,28 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             return Err(self.tcx.sess.delay_span_bug(span, msg));
         }
 
-        let (lo, lo_ascr) = self.lower_pattern_range_endpoint(lo_expr)?;
-        let (hi, hi_ascr) = self.lower_pattern_range_endpoint(hi_expr)?;
+        let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;
+        let (hi, hi_ascr, hi_inline) = self.lower_pattern_range_endpoint(hi_expr)?;
 
-        let lo = lo.unwrap_or_else(|| {
-            // Unwrap is ok because the type is known to be numeric.
-            let lo = ty.numeric_min_val(self.tcx).unwrap();
-            mir::Const::from_ty_const(lo, self.tcx)
-        });
-        let hi = hi.unwrap_or_else(|| {
-            // Unwrap is ok because the type is known to be numeric.
-            let hi = ty.numeric_max_val(self.tcx).unwrap();
-            mir::Const::from_ty_const(hi, self.tcx)
-        });
-        assert_eq!(lo.ty(), ty);
-        assert_eq!(hi.ty(), ty);
+        let lo = lo.unwrap_or(PatRangeBoundary::NegInfinity);
+        let hi = hi.unwrap_or(PatRangeBoundary::PosInfinity);
 
-        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env);
-        let mut kind = match (end, cmp) {
+        let cmp = lo.compare_with(hi, ty, self.tcx, self.param_env);
+        let mut kind = PatKind::Range(Box::new(PatRange { lo, hi, end, ty }));
+        match (end, cmp) {
             // `x..y` where `x < y`.
-            // Non-empty because the range includes at least `x`.
-            (RangeEnd::Excluded, Some(Ordering::Less)) => {
-                PatKind::Range(Box::new(PatRange { lo, hi, end }))
-            }
-            // `x..=y` where `x == y`.
-            (RangeEnd::Included, Some(Ordering::Equal)) => PatKind::Constant { value: lo },
+            (RangeEnd::Excluded, Some(Ordering::Less)) => {}
             // `x..=y` where `x < y`.
-            (RangeEnd::Included, Some(Ordering::Less)) => {
-                PatKind::Range(Box::new(PatRange { lo, hi, end }))
+            (RangeEnd::Included, Some(Ordering::Less)) => {}
+            // `x..=y` where `x == y` and `x` and `y` are finite.
+            (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
+                kind = PatKind::Constant { value: lo.as_finite().unwrap() };
             }
+            // `..=x` where `x == ty::MIN`.
+            (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}
+            // `x..` where `x == ty::MAX` (yes, `x..` gives `RangeEnd::Included` since it is meant
+            // to include `ty::MAX`).
+            (RangeEnd::Included, Some(Ordering::Equal)) if !hi.is_finite() => {}
             // `x..y` where `x >= y`, or `x..=y` where `x > y`. The range is empty => error.
             _ => {
                 // Emit a more appropriate message if there was overflow.
@@ -224,7 +224,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 };
                 return Err(e);
             }
-        };
+        }
 
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
@@ -235,6 +235,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ascription,
                     subpattern: Box::new(Pat { span, ty, kind }),
                 };
+            }
+        }
+        for inline_const in [lo_inline, hi_inline] {
+            if let Some(def) = inline_const {
+                kind =
+                    PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
             }
         }
         Ok(kind)
@@ -260,16 +266,16 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 return self.lower_path(qpath, pat.hir_id, pat.span);
             }
 
-            hir::PatKind::Ref(ref subpattern, _) | hir::PatKind::Box(ref subpattern) => {
+            hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
             }
 
-            hir::PatKind::Slice(ref prefix, ref slice, ref suffix) => {
+            hir::PatKind::Slice(prefix, ref slice, suffix) => {
                 self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }
 
-            hir::PatKind::Tuple(ref pats, ddpos) => {
-                let ty::Tuple(ref tys) = ty.kind() else {
+            hir::PatKind::Tuple(pats, ddpos) => {
+                let ty::Tuple(tys) = ty.kind() else {
                     span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty);
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
@@ -319,7 +325,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
             }
 
-            hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
+            hir::PatKind::TupleStruct(ref qpath, pats, ddpos) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let ty::Adt(adt_def, _) = ty.kind() else {
                     span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty);
@@ -329,20 +335,20 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
-            hir::PatKind::Struct(ref qpath, ref fields, _) => {
+            hir::PatKind::Struct(ref qpath, fields, _) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
                         field: self.typeck_results.field_index(field.hir_id),
-                        pattern: self.lower_pattern(&field.pat),
+                        pattern: self.lower_pattern(field.pat),
                     })
                     .collect();
 
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
-            hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
+            hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
         Box::new(Pat { span, ty, kind })
@@ -599,11 +605,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // const eval path below.
         // FIXME: investigate the performance impact of removing this.
         let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
+            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
+                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: true }),
                 _ => None,
             },
             _ => None,
@@ -633,13 +637,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
-            self.const_to_pat(
+            let subpattern = self.const_to_pat(
                 Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
                 id,
                 span,
                 None,
-            )
-            .kind
+            );
+            PatKind::InlineConstant { subpattern, def: def_id }
         } else {
             // If that fails, convert it to an opaque constant pattern.
             match tcx.const_eval_resolve(self.param_env, uneval, Some(span)) {
@@ -822,6 +826,9 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                 PatKind::Deref { subpattern: subpattern.fold_with(folder) }
             }
             PatKind::Constant { value } => PatKind::Constant { value },
+            PatKind::InlineConstant { def, subpattern: ref pattern } => {
+                PatKind::InlineConstant { def, subpattern: pattern.fold_with(folder) }
+            }
             PatKind::Range(ref range) => PatKind::Range(range.clone()),
             PatKind::Slice { ref prefix, ref slice, ref suffix } => PatKind::Slice {
                 prefix: prefix.fold_with(folder),
@@ -835,61 +842,5 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
             },
             PatKind::Or { ref pats } => PatKind::Or { pats: pats.fold_with(folder) },
         }
-    }
-}
-
-#[instrument(skip(tcx), level = "debug")]
-pub(crate) fn compare_const_vals<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    a: mir::Const<'tcx>,
-    b: mir::Const<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> Option<Ordering> {
-    assert_eq!(a.ty(), b.ty());
-
-    let ty = a.ty();
-
-    // This code is hot when compiling matches with many ranges. So we
-    // special-case extraction of evaluated scalars for speed, for types where
-    // raw data comparisons are appropriate. E.g. `unicode-normalization` has
-    // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
-    // in this way.
-    match ty.kind() {
-        ty::Float(_) | ty::Int(_) => {} // require special handling, see below
-        _ => match (a, b) {
-            (
-                mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(a)), _a_ty),
-                mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(b)), _b_ty),
-            ) => return Some(a.cmp(&b)),
-            (mir::Const::Ty(a), mir::Const::Ty(b)) => {
-                return Some(a.kind().cmp(&b.kind()));
-            }
-            _ => {}
-        },
-    }
-
-    let a = a.eval_bits(tcx, param_env);
-    let b = b.eval_bits(tcx, param_env);
-
-    use rustc_apfloat::Float;
-    match *ty.kind() {
-        ty::Float(ty::FloatTy::F32) => {
-            let a = rustc_apfloat::ieee::Single::from_bits(a);
-            let b = rustc_apfloat::ieee::Single::from_bits(b);
-            a.partial_cmp(&b)
-        }
-        ty::Float(ty::FloatTy::F64) => {
-            let a = rustc_apfloat::ieee::Double::from_bits(a);
-            let b = rustc_apfloat::ieee::Double::from_bits(b);
-            a.partial_cmp(&b)
-        }
-        ty::Int(ity) => {
-            use rustc_middle::ty::layout::IntegerExt;
-            let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
-            let a = size.sign_extend(a);
-            let b = size.sign_extend(b);
-            Some((a as i128).cmp(&(b as i128)))
-        }
-        _ => Some(a.cmp(&b)),
     }
 }

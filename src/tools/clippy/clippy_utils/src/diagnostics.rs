@@ -11,7 +11,7 @@
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use std::env;
 
 fn docs_link(diag: &mut Diagnostic, lint: &'static Lint) {
@@ -46,6 +46,7 @@ fn docs_link(diag: &mut Diagnostic, lint: &'static Lint) {
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
 pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
+    #[expect(clippy::disallowed_methods)]
     cx.struct_span_lint(lint, sp, msg.to_string(), |diag| {
         docs_link(diag, lint);
         diag
@@ -80,6 +81,7 @@ pub fn span_lint_and_help<T: LintContext>(
     help_span: Option<Span>,
     help: &str,
 ) {
+    #[expect(clippy::disallowed_methods)]
     cx.struct_span_lint(lint, span, msg.to_string(), |diag| {
         let help = help.to_string();
         if let Some(help_span) = help_span {
@@ -123,6 +125,7 @@ pub fn span_lint_and_note<T: LintContext>(
     note_span: Option<Span>,
     note: &str,
 ) {
+    #[expect(clippy::disallowed_methods)]
     cx.struct_span_lint(lint, span, msg.to_string(), |diag| {
         let note = note.to_string();
         if let Some(note_span) = note_span {
@@ -145,6 +148,7 @@ where
     S: Into<MultiSpan>,
     F: FnOnce(&mut Diagnostic),
 {
+    #[expect(clippy::disallowed_methods)]
     cx.struct_span_lint(lint, sp, msg.to_string(), |diag| {
         f(diag);
         docs_link(diag, lint);
@@ -153,6 +157,7 @@ where
 }
 
 pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
+    #[expect(clippy::disallowed_methods)]
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg.to_string(), |diag| {
         docs_link(diag, lint);
         diag
@@ -167,6 +172,7 @@ pub fn span_lint_hir_and_then(
     msg: &str,
     f: impl FnOnce(&mut Diagnostic),
 ) {
+    #[expect(clippy::disallowed_methods)]
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg.to_string(), |diag| {
         f(diag);
         docs_link(diag, lint);
@@ -193,7 +199,7 @@ pub fn span_lint_hir_and_then(
 ///     |
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// ```
-#[cfg_attr(feature = "internal", allow(clippy::collapsible_span_lint_calls))]
+#[expect(clippy::collapsible_span_lint_calls)]
 pub fn span_lint_and_sugg<T: LintContext>(
     cx: &T,
     lint: &'static Lint,

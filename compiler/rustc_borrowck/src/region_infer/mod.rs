@@ -22,11 +22,10 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
 
+use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::dataflow::BorrowIndex;
 use crate::{
-    constraints::{
-        graph::NormalConstraintGraph, ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
-    },
+    constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet},
     diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo},
     member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
     nll::PoloniusOutput,
@@ -152,6 +151,7 @@ pub(crate) struct AppliedMemberConstraint {
     pub(crate) member_constraint_index: NllMemberConstraintIndex,
 }
 
+#[derive(Debug)]
 pub(crate) struct RegionDefinition<'tcx> {
     /// What kind of variable is this -- a free region? existential
     /// variable? etc. (See the `NllRegionVariableOrigin` for more
@@ -644,11 +644,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_universes[scc]
     }
 
-    /// Once region solving has completed, this function will return
-    /// the member constraints that were applied to the value of a given
-    /// region `r`. See `AppliedMemberConstraint`.
-    pub(crate) fn applied_member_constraints(&self, r: RegionVid) -> &[AppliedMemberConstraint] {
-        let scc = self.constraint_sccs.scc(r);
+    /// Once region solving has completed, this function will return the member constraints that
+    /// were applied to the value of a given SCC `scc`. See `AppliedMemberConstraint`.
+    pub(crate) fn applied_member_constraints(
+        &self,
+        scc: ConstraintSccIndex,
+    ) -> &[AppliedMemberConstraint] {
         binary_search_util::binary_search_slice(
             &self.member_constraints_applied,
             |applied| applied.member_region_scc,
@@ -687,6 +688,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             &mut errors_buffer,
         );
 
+        debug!(?errors_buffer);
+        debug!(?outlives_requirements);
+
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
         // constraints were too strong, and if so, emit or propagate those errors.
@@ -700,9 +704,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.check_universal_regions(outlives_requirements.as_mut(), &mut errors_buffer);
         }
 
+        debug!(?errors_buffer);
+
         if errors_buffer.is_empty() {
             self.check_member_constraints(infcx, &mut errors_buffer);
         }
+
+        debug!(?errors_buffer);
 
         let outlives_requirements = outlives_requirements.unwrap_or_default();
 
@@ -1457,6 +1465,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         for (fr, fr_definition) in self.definitions.iter_enumerated() {
+            debug!(?fr, ?fr_definition);
             match fr_definition.origin {
                 NllRegionVariableOrigin::FreeRegion => {
                     // Go through each of the universal regions `fr` and check that
@@ -1945,7 +1954,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Member constraints can also give rise to `'r: 'x` edges that
             // were not part of the graph initially, so watch out for those.
             // (But they are extremely rare; this loop is very cold.)
-            for constraint in self.applied_member_constraints(r) {
+            for constraint in self.applied_member_constraints(self.constraint_sccs.scc(r)) {
                 let p_c = &self.member_constraints[constraint.member_constraint_index];
                 let constraint = OutlivesConstraint {
                     sup: r,
@@ -2292,24 +2301,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.constraint_sccs.as_ref()
     }
 
-    /// Returns whether the given SCC has any member constraints.
-    pub(crate) fn scc_has_member_constraints(&self, scc: ConstraintSccIndex) -> bool {
-        self.member_constraints.indices(scc).next().is_some()
+    /// Access to the region graph, built from the outlives constraints.
+    pub(crate) fn region_graph(&self) -> RegionGraph<'_, 'tcx, graph::Normal> {
+        self.constraint_graph.region_graph(&self.constraints, self.universal_regions.fr_static)
     }
 
-    /// Returns whether the given SCC is live at all points: whether the representative is a
+    /// Returns whether the given region is considered live at all points: whether it is a
     /// placeholder or a free region.
-    pub(crate) fn scc_is_live_at_all_points(&self, scc: ConstraintSccIndex) -> bool {
+    pub(crate) fn is_region_live_at_all_points(&self, region: RegionVid) -> bool {
         // FIXME: there must be a cleaner way to find this information. At least, when
         // higher-ranked subtyping is abstracted away from the borrowck main path, we'll only
         // need to check whether this is a universal region.
-        let representative = self.scc_representatives[scc];
-        let origin = self.var_infos[representative].origin;
+        let origin = self.region_definition(region).origin;
         let live_at_all_points = matches!(
             origin,
-            RegionVariableOrigin::Nll(
-                NllRegionVariableOrigin::Placeholder(_) | NllRegionVariableOrigin::FreeRegion
-            )
+            NllRegionVariableOrigin::Placeholder(_) | NllRegionVariableOrigin::FreeRegion
         );
         live_at_all_points
     }

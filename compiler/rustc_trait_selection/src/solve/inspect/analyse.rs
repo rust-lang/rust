@@ -17,7 +17,7 @@ use rustc_middle::traits::solve::{Certainty, Goal};
 use rustc_middle::ty;
 
 use crate::solve::inspect::ProofTreeBuilder;
-use crate::solve::{GenerateProofTree, InferCtxtEvalExt, UseGlobalCache};
+use crate::solve::{GenerateProofTree, InferCtxtEvalExt};
 
 pub struct InspectGoal<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
@@ -58,7 +58,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
         // HACK: An arbitrary cutoff to avoid dealing with overflow and cycles.
-        if self.goal.depth >= 10 {
+        if self.goal.depth <= 10 {
             let infcx = self.goal.infcx;
             infcx.probe(|_| {
                 let mut instantiated_goals = vec![];
@@ -82,8 +82,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 }
 
                 for &goal in &instantiated_goals {
-                    let (_, proof_tree) =
-                        infcx.evaluate_root_goal(goal, GenerateProofTree::Yes(UseGlobalCache::No));
+                    let (_, proof_tree) = infcx.evaluate_root_goal(goal, GenerateProofTree::Yes);
                     let proof_tree = proof_tree.unwrap();
                     visitor.visit_goal(&InspectGoal::new(
                         infcx,
@@ -121,7 +120,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         for step in &probe.steps {
             match step {
                 &inspect::ProbeStep::AddGoal(goal) => nested_goals.push(goal),
-                inspect::ProbeStep::EvaluateGoals(_) => (),
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     // Nested probes have to prove goals added in their parent
                     // but do not leak them, so we truncate the added goals
@@ -130,13 +128,17 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     self.candidates_recur(candidates, nested_goals, probe);
                     nested_goals.truncate(num_goals);
                 }
+                inspect::ProbeStep::EvaluateGoals(_)
+                | inspect::ProbeStep::CommitIfOkStart
+                | inspect::ProbeStep::CommitIfOkSuccess => (),
             }
         }
 
         match probe.kind {
             inspect::ProbeKind::NormalizedSelfTyAssembly
             | inspect::ProbeKind::UnsizeAssembly
-            | inspect::ProbeKind::UpcastProjectionCompatibility => (),
+            | inspect::ProbeKind::UpcastProjectionCompatibility
+            | inspect::ProbeKind::CommitIfOk => (),
             // We add a candidate for the root evaluation if there
             // is only one way to prove a given goal, e.g. for `WellFormed`.
             //
@@ -169,11 +171,11 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         let mut candidates = vec![];
         let last_eval_step = match self.evaluation.evaluation.kind {
             inspect::CanonicalGoalEvaluationKind::Overflow
-            | inspect::CanonicalGoalEvaluationKind::CacheHit(_) => {
+            | inspect::CanonicalGoalEvaluationKind::CycleInStack => {
                 warn!("unexpected root evaluation: {:?}", self.evaluation);
                 return vec![];
             }
-            inspect::CanonicalGoalEvaluationKind::Uncached { ref revisions } => {
+            inspect::CanonicalGoalEvaluationKind::Evaluation { revisions } => {
                 if let Some(last) = revisions.last() {
                     last
                 } else {
@@ -227,8 +229,7 @@ impl<'tcx> ProofTreeInferCtxtExt<'tcx> for InferCtxt<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
-        let (_, proof_tree) =
-            self.evaluate_root_goal(goal, GenerateProofTree::Yes(UseGlobalCache::No));
+        let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
         let proof_tree = proof_tree.unwrap();
         visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
     }

@@ -409,8 +409,7 @@ impl<T> Cell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set(&self, val: T) {
-        let old = self.replace(val);
-        drop(old);
+        self.replace(val);
     }
 
     /// Swaps the values of two `Cell`s.
@@ -755,7 +754,7 @@ impl Display for BorrowMutError {
 }
 
 // This ensures the panicking code is outlined from `borrow_mut` for `RefCell`.
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]
 #[cold]
 fn panic_already_borrowed(err: BorrowMutError) -> ! {
@@ -763,7 +762,7 @@ fn panic_already_borrowed(err: BorrowMutError) -> ! {
 }
 
 // This ensures the panicking code is outlined from `borrow` for `RefCell`.
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]
 #[cold]
 fn panic_already_mutably_borrowed(err: BorrowError) -> ! {

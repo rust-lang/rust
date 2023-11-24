@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// this lint is not clever enough to analyze it.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let infinite_iter = 0..;
     /// # #[allow(unused)]
     /// [0..].iter().zip(infinite_iter.take_while(|x| *x > 5));

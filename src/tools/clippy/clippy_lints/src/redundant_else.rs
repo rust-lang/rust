@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// Some may prefer to keep the `else` block for clarity.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn my_func(count: u32) {
     ///     if count == 0 {
     ///         print!("Nothing to do");
@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn my_func(count: u32) {
     ///     if count == 0 {
     ///         print!("Nothing to do");

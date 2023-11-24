@@ -1,10 +1,9 @@
 use crate::llvm;
 
-use crate::abi::Abi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
-use crate::coverageinfo::map_data::FunctionCoverage;
+use crate::coverageinfo::map_data::FunctionCoverageCollector;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
@@ -12,17 +11,12 @@ use rustc_codegen_ssa::traits::{
     StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{CounterId, CoverageKind, FunctionCoverageInfo};
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::Coverage;
-use rustc_middle::ty;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_middle::ty::GenericArgs;
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::Ty;
 
 use std::cell::RefCell;
 
@@ -30,14 +24,13 @@ pub(crate) mod ffi;
 pub(crate) mod map_data;
 pub mod mapgen;
 
-const UNUSED_FUNCTION_COUNTER_ID: CounterId = CounterId::START;
-
 const VAR_ALIGN_BYTES: usize = 8;
 
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
+    pub(crate) function_coverage_map:
+        RefCell<FxHashMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
 }
 
@@ -49,7 +42,9 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
         }
     }
 
-    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
+    pub fn take_function_coverage_map(
+        &self,
+    ) -> FxHashMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
         self.function_coverage_map.replace(FxHashMap::default())
     }
 }
@@ -76,25 +71,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             bug!("Could not get the `coverage_context`");
         }
     }
-
-    /// Functions with MIR-based coverage are normally codegenned _only_ if
-    /// called. LLVM coverage tools typically expect every function to be
-    /// defined (even if unused), with at least one call to LLVM intrinsic
-    /// `instrprof.increment`.
-    ///
-    /// Codegen a small function that will never be called, with one counter
-    /// that will never be incremented.
-    ///
-    /// For used/called functions, the coverageinfo was already added to the
-    /// `function_coverage_map` (keyed by function `Instance`) during codegen.
-    /// But in this case, since the unused function was _not_ previously
-    /// codegenned, collect the function coverage info from MIR and add an
-    /// "unused" entry to the function coverage map.
-    fn define_unused_fn(&self, def_id: DefId, function_coverage_info: &'tcx FunctionCoverageInfo) {
-        let instance = declare_unused_fn(self, def_id);
-        codegen_unused_fn_and_counter(self, instance);
-        add_unused_function_coverage(self, instance, function_coverage_info);
-    }
 }
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
@@ -120,7 +96,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
         let func_coverage = coverage_map
             .entry(instance)
-            .or_insert_with(|| FunctionCoverage::new(instance, function_coverage_info));
+            .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
 
         let Coverage { kind } = coverage;
         match *kind {
@@ -156,76 +132,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 func_coverage.mark_expression_id_seen(id);
             }
         }
-    }
-}
-
-fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<'tcx> {
-    let tcx = cx.tcx;
-
-    let instance = Instance::new(
-        def_id,
-        GenericArgs::for_item(tcx, def_id, |param, _| {
-            if let ty::GenericParamDefKind::Lifetime = param.kind {
-                tcx.lifetimes.re_erased.into()
-            } else {
-                tcx.mk_param_from_def(param)
-            }
-        }),
-    );
-
-    let llfn = cx.declare_fn(
-        tcx.symbol_name(instance).name,
-        cx.fn_abi_of_fn_ptr(
-            ty::Binder::dummy(tcx.mk_fn_sig(
-                [Ty::new_unit(tcx)],
-                Ty::new_unit(tcx),
-                false,
-                hir::Unsafety::Unsafe,
-                Abi::Rust,
-            )),
-            ty::List::empty(),
-        ),
-        None,
-    );
-
-    llvm::set_linkage(llfn, llvm::Linkage::PrivateLinkage);
-    llvm::set_visibility(llfn, llvm::Visibility::Default);
-
-    assert!(cx.instances.borrow_mut().insert(instance, llfn).is_none());
-
-    instance
-}
-
-fn codegen_unused_fn_and_counter<'tcx>(cx: &CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
-    let llfn = cx.get_fn(instance);
-    let llbb = Builder::append_block(cx, llfn, "unused_function");
-    let mut bx = Builder::build(cx, llbb);
-    let fn_name = bx.get_pgo_func_name_var(instance);
-    let hash = bx.const_u64(0);
-    let num_counters = bx.const_u32(1);
-    let index = bx.const_u32(u32::from(UNUSED_FUNCTION_COUNTER_ID));
-    debug!(
-        "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?},
-            index={:?}) for unused function: {:?}",
-        fn_name, hash, num_counters, index, instance
-    );
-    bx.instrprof_increment(fn_name, hash, num_counters, index);
-    bx.ret_void();
-}
-
-fn add_unused_function_coverage<'tcx>(
-    cx: &CodegenCx<'_, 'tcx>,
-    instance: Instance<'tcx>,
-    function_coverage_info: &'tcx FunctionCoverageInfo,
-) {
-    // An unused function's mappings will automatically be rewritten to map to
-    // zero, because none of its counters/expressions are marked as seen.
-    let function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
-
-    if let Some(coverage_context) = cx.coverage_context() {
-        coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
-    } else {
-        bug!("Could not get the `coverage_context`");
     }
 }
 

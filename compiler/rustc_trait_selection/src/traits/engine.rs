@@ -37,10 +37,10 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
             (TraitSolver::Classic, false) | (TraitSolver::NextCoherence, false) => {
                 Box::new(FulfillmentContext::new(infcx))
             }
-            (TraitSolver::Next | TraitSolver::NextCoherence, true) => {
+            (TraitSolver::Classic | TraitSolver::Next | TraitSolver::NextCoherence, true) => {
                 Box::new(NextFulfillmentCtxt::new(infcx))
             }
-            _ => bug!(
+            (TraitSolver::Next, false) => bug!(
                 "incompatible combination of -Ztrait-solver flag ({:?}) and InferCtxt::next_trait_solver ({:?})",
                 infcx.tcx.sess.opts.unstable_opts.trait_solver,
                 infcx.next_trait_solver()
@@ -108,7 +108,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         value: T,
     ) -> T {
-        let infer_ok = self.infcx.at(&cause, param_env).normalize(value);
+        let infer_ok = self.infcx.at(cause, param_env).normalize(value);
         self.register_infer_ok_obligations(infer_ok)
     }
 
@@ -204,7 +204,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
-        let errors = self.infcx.resolve_regions(&outlives_env);
+        let errors = self.infcx.resolve_regions(outlives_env);
         if errors.is_empty() {
             Ok(())
         } else {

@@ -226,7 +226,7 @@ impl CodeStats {
         }
     }
 
-    pub fn print_vtable_sizes(&self, crate_name: &str) {
+    pub fn print_vtable_sizes(&self, crate_name: Symbol) {
         let mut infos =
             std::mem::take(&mut *self.vtable_sizes.lock()).into_values().collect::<Vec<_>>();
 

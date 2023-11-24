@@ -37,7 +37,7 @@ fn main() -> () {
         StorageLive(_1);
         StorageLive(_2);
         _2 = Option::<i32>::Some(const 1_i32);
-        FakeRead(ForMatchedPlace(None), _2);
+        PlaceMention(_2);
         _4 = discriminant(_2);
         switchInt(move _4) -> [1: bb2, otherwise: bb1];
     }
@@ -78,7 +78,7 @@ fn main() -> () {
     bb8: {
         StorageLive(_7);
         _7 = &((_2 as Some).0: i32);
-        _5 = &shallow _2;
+        _5 = &fake _2;
         StorageLive(_8);
         _8 = guard() -> [return: bb9, unwind: bb20];
     }
@@ -120,7 +120,7 @@ fn main() -> () {
     bb14: {
         StorageLive(_11);
         _11 = &((_2 as Some).0: i32);
-        _5 = &shallow _2;
+        _5 = &fake _2;
         StorageLive(_12);
         StorageLive(_13);
         _13 = (*_11);

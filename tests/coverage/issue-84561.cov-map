@@ -1,0 +1,232 @@
+Function name: <issue_84561::Foo as core::cmp::PartialEq>::eq
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 04, 0a, 00, 13]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 4, 10) to (start + 0, 19)
+
+Function name: <issue_84561::Foo as core::fmt::Debug>::fmt
+Raw bytes (29): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 88, 01, 05, 01, 25, 05, 01, 25, 00, 26, 02, 01, 09, 00, 0f, 07, 01, 05, 00, 06]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 136, 5) to (start + 1, 37)
+- Code(Counter(1)) at (prev + 1, 37) to (start + 0, 38)
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 5) to (start + 0, 6)
+    = (c1 + (c0 - c1))
+
+Function name: issue_84561::main
+Raw bytes (10): 0x[01, 01, 00, 01, 01, b2, 01, 01, 04, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 178, 1) to (start + 4, 2)
+
+Function name: issue_84561::test1
+Raw bytes (78): 0x[01, 01, 0e, 05, 06, 01, 05, 09, 36, 03, 09, 0d, 2e, 33, 0d, 09, 36, 03, 09, 11, 26, 2b, 11, 0d, 2e, 33, 0d, 09, 36, 03, 09, 09, 01, 98, 01, 01, 01, 0b, 05, 01, 0c, 00, 1e, 03, 01, 05, 00, 0b, 09, 00, 0c, 00, 1e, 33, 01, 0d, 01, 0b, 0d, 01, 0c, 00, 1e, 2b, 01, 05, 03, 0b, 11, 03, 0c, 00, 1e, 23, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 14
+- expression 0 operands: lhs = Counter(1), rhs = Expression(1, Sub)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 2 operands: lhs = Counter(2), rhs = Expression(13, Sub)
+- expression 3 operands: lhs = Expression(0, Add), rhs = Counter(2)
+- expression 4 operands: lhs = Counter(3), rhs = Expression(11, Sub)
+- expression 5 operands: lhs = Expression(12, Add), rhs = Counter(3)
+- expression 6 operands: lhs = Counter(2), rhs = Expression(13, Sub)
+- expression 7 operands: lhs = Expression(0, Add), rhs = Counter(2)
+- expression 8 operands: lhs = Counter(4), rhs = Expression(9, Sub)
+- expression 9 operands: lhs = Expression(10, Add), rhs = Counter(4)
+- expression 10 operands: lhs = Counter(3), rhs = Expression(11, Sub)
+- expression 11 operands: lhs = Expression(12, Add), rhs = Counter(3)
+- expression 12 operands: lhs = Counter(2), rhs = Expression(13, Sub)
+- expression 13 operands: lhs = Expression(0, Add), rhs = Counter(2)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 152, 1) to (start + 1, 11)
+- Code(Counter(1)) at (prev + 1, 12) to (start + 0, 30)
+- Code(Expression(0, Add)) at (prev + 1, 5) to (start + 0, 11)
+    = (c1 + (c0 - c1))
+- Code(Counter(2)) at (prev + 0, 12) to (start + 0, 30)
+- Code(Expression(12, Add)) at (prev + 1, 13) to (start + 1, 11)
+    = (c2 + ((c1 + (c0 - c1)) - c2))
+- Code(Counter(3)) at (prev + 1, 12) to (start + 0, 30)
+- Code(Expression(10, Add)) at (prev + 1, 5) to (start + 3, 11)
+    = (c3 + ((c2 + ((c1 + (c0 - c1)) - c2)) - c3))
+- Code(Counter(4)) at (prev + 3, 12) to (start + 0, 30)
+- Code(Expression(8, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c4 + ((c3 + ((c2 + ((c1 + (c0 - c1)) - c2)) - c3)) - c4))
+
+Function name: issue_84561::test2
+Raw bytes (24): 0x[01, 01, 02, 05, 06, 01, 05, 03, 01, ae, 01, 01, 01, 10, 05, 01, 11, 00, 23, 03, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(1), rhs = Expression(1, Sub)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 174, 1) to (start + 1, 16)
+- Code(Counter(1)) at (prev + 1, 17) to (start + 0, 35)
+- Code(Expression(0, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c1 + (c0 - c1))
+
+Function name: issue_84561::test2::call_print
+Raw bytes (10): 0x[01, 01, 00, 01, 01, a5, 01, 09, 02, 0a]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 165, 9) to (start + 2, 10)
+
+Function name: issue_84561::test3
+Raw bytes (436): 0x[01, 01, 41, 05, 09, 0d, 00, 15, 19, 12, 00, 15, 19, 21, 00, 1e, 00, 21, 00, 31, 00, 3d, 41, 2e, 45, 3d, 41, 42, 49, 45, 00, 3f, 51, 42, 49, 45, 00, 5d, 8a, 01, 8f, 01, 5d, 92, 01, 55, 51, 00, 92, 01, 55, 51, 00, 8f, 01, 5d, 92, 01, 55, 51, 00, 87, 01, 61, 5d, 8a, 01, 8f, 01, 5d, 92, 01, 55, 51, 00, 82, 01, 65, 87, 01, 61, 5d, 8a, 01, 8f, 01, 5d, 92, 01, 55, 51, 00, 75, f6, 01, fb, 01, 79, 71, fe, 01, 82, 02, 71, 69, 6d, 71, fe, 01, 82, 02, 71, 69, 6d, 69, 6d, 82, 02, 71, 69, 6d, fb, 01, 79, 71, fe, 01, 82, 02, 71, 69, 6d, f3, 01, 7d, 75, f6, 01, fb, 01, 79, 71, fe, 01, 82, 02, 71, 69, 6d, ee, 01, 00, f3, 01, 7d, 75, f6, 01, fb, 01, 79, 71, fe, 01, 82, 02, 71, 69, 6d, 33, 01, 06, 01, 03, 1c, 05, 04, 09, 01, 1c, 02, 02, 05, 04, 1f, 0d, 05, 05, 00, 1f, 06, 01, 05, 00, 1f, 15, 01, 09, 01, 1c, 12, 02, 05, 00, 1f, 0e, 01, 05, 00, 0f, 00, 00, 20, 00, 30, 21, 01, 05, 03, 0f, 00, 03, 20, 00, 30, 00, 00, 33, 00, 41, 00, 00, 4b, 00, 5a, 1e, 01, 05, 00, 0f, 00, 05, 09, 03, 10, 00, 05, 0d, 00, 1b, 00, 02, 0d, 00, 1c, 1a, 04, 09, 05, 06, 31, 06, 05, 03, 06, 22, 04, 05, 03, 06, 3d, 04, 09, 04, 06, 2e, 05, 08, 00, 0f, 45, 01, 09, 03, 0a, 2a, 05, 09, 03, 0a, 3f, 05, 08, 00, 0f, 51, 01, 09, 00, 13, 00, 03, 0d, 00, 1d, 3a, 03, 09, 00, 13, 00, 03, 0d, 00, 1d, 87, 01, 03, 05, 00, 0f, 8f, 01, 01, 0c, 00, 13, 5d, 01, 0d, 00, 13, 8a, 01, 02, 0d, 00, 13, 82, 01, 04, 05, 02, 13, 65, 03, 0d, 00, 13, 7e, 02, 0d, 00, 13, f3, 01, 03, 05, 00, 0f, 69, 01, 0c, 00, 13, 6d, 01, 0d, 03, 0e, 75, 04, 0d, 00, 13, fb, 01, 02, 0d, 00, 17, 82, 02, 01, 14, 00, 1b, 71, 01, 15, 00, 1b, fe, 01, 02, 15, 00, 1b, f6, 01, 04, 0d, 00, 13, 7d, 03, 09, 00, 19, ee, 01, 02, 05, 00, 0f, ea, 01, 03, 09, 00, 22, 00, 02, 05, 00, 0f, 00, 03, 09, 00, 2c, 00, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 65
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(3), rhs = Zero
+- expression 2 operands: lhs = Counter(5), rhs = Counter(6)
+- expression 3 operands: lhs = Expression(4, Sub), rhs = Zero
+- expression 4 operands: lhs = Counter(5), rhs = Counter(6)
+- expression 5 operands: lhs = Counter(8), rhs = Zero
+- expression 6 operands: lhs = Expression(7, Sub), rhs = Zero
+- expression 7 operands: lhs = Counter(8), rhs = Zero
+- expression 8 operands: lhs = Counter(12), rhs = Zero
+- expression 9 operands: lhs = Counter(15), rhs = Counter(16)
+- expression 10 operands: lhs = Expression(11, Sub), rhs = Counter(17)
+- expression 11 operands: lhs = Counter(15), rhs = Counter(16)
+- expression 12 operands: lhs = Expression(16, Sub), rhs = Counter(18)
+- expression 13 operands: lhs = Counter(17), rhs = Zero
+- expression 14 operands: lhs = Expression(15, Add), rhs = Counter(20)
+- expression 15 operands: lhs = Expression(16, Sub), rhs = Counter(18)
+- expression 16 operands: lhs = Counter(17), rhs = Zero
+- expression 17 operands: lhs = Counter(23), rhs = Expression(34, Sub)
+- expression 18 operands: lhs = Expression(35, Add), rhs = Counter(23)
+- expression 19 operands: lhs = Expression(36, Sub), rhs = Counter(21)
+- expression 20 operands: lhs = Counter(20), rhs = Zero
+- expression 21 operands: lhs = Expression(36, Sub), rhs = Counter(21)
+- expression 22 operands: lhs = Counter(20), rhs = Zero
+- expression 23 operands: lhs = Expression(35, Add), rhs = Counter(23)
+- expression 24 operands: lhs = Expression(36, Sub), rhs = Counter(21)
+- expression 25 operands: lhs = Counter(20), rhs = Zero
+- expression 26 operands: lhs = Expression(33, Add), rhs = Counter(24)
+- expression 27 operands: lhs = Counter(23), rhs = Expression(34, Sub)
+- expression 28 operands: lhs = Expression(35, Add), rhs = Counter(23)
+- expression 29 operands: lhs = Expression(36, Sub), rhs = Counter(21)
+- expression 30 operands: lhs = Counter(20), rhs = Zero
+- expression 31 operands: lhs = Expression(32, Sub), rhs = Counter(25)
+- expression 32 operands: lhs = Expression(33, Add), rhs = Counter(24)
+- expression 33 operands: lhs = Counter(23), rhs = Expression(34, Sub)
+- expression 34 operands: lhs = Expression(35, Add), rhs = Counter(23)
+- expression 35 operands: lhs = Expression(36, Sub), rhs = Counter(21)
+- expression 36 operands: lhs = Counter(20), rhs = Zero
+- expression 37 operands: lhs = Counter(29), rhs = Expression(61, Sub)
+- expression 38 operands: lhs = Expression(62, Add), rhs = Counter(30)
+- expression 39 operands: lhs = Counter(28), rhs = Expression(63, Sub)
+- expression 40 operands: lhs = Expression(64, Sub), rhs = Counter(28)
+- expression 41 operands: lhs = Counter(26), rhs = Counter(27)
+- expression 42 operands: lhs = Counter(28), rhs = Expression(63, Sub)
+- expression 43 operands: lhs = Expression(64, Sub), rhs = Counter(28)
+- expression 44 operands: lhs = Counter(26), rhs = Counter(27)
+- expression 45 operands: lhs = Counter(26), rhs = Counter(27)
+- expression 46 operands: lhs = Expression(64, Sub), rhs = Counter(28)
+- expression 47 operands: lhs = Counter(26), rhs = Counter(27)
+- expression 48 operands: lhs = Expression(62, Add), rhs = Counter(30)
+- expression 49 operands: lhs = Counter(28), rhs = Expression(63, Sub)
+- expression 50 operands: lhs = Expression(64, Sub), rhs = Counter(28)
+- expression 51 operands: lhs = Counter(26), rhs = Counter(27)
+- expression 52 operands: lhs = Expression(60, Add), rhs = Counter(31)
+- expression 53 operands: lhs = Counter(29), rhs = Expression(61, Sub)
+- expression 54 operands: lhs = Expression(62, Add), rhs = Counter(30)
+- expression 55 operands: lhs = Counter(28), rhs = Expression(63, Sub)
+- expression 56 operands: lhs = Expression(64, Sub), rhs = Counter(28)
+- expression 57 operands: lhs = Counter(26), rhs = Counter(27)
+- expression 58 operands: lhs = Expression(59, Sub), rhs = Zero
+- expression 59 operands: lhs = Expression(60, Add), rhs = Counter(31)
+- expression 60 operands: lhs = Counter(29), rhs = Expression(61, Sub)
+- expression 61 operands: lhs = Expression(62, Add), rhs = Counter(30)
+- expression 62 operands: lhs = Counter(28), rhs = Expression(63, Sub)
+- expression 63 operands: lhs = Expression(64, Sub), rhs = Counter(28)
+- expression 64 operands: lhs = Counter(26), rhs = Counter(27)
+Number of file 0 mappings: 51
+- Code(Counter(0)) at (prev + 6, 1) to (start + 3, 28)
+- Code(Counter(1)) at (prev + 4, 9) to (start + 1, 28)
+- Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 4, 31)
+    = (c1 - c2)
+- Code(Counter(3)) at (prev + 5, 5) to (start + 0, 31)
+- Code(Expression(1, Sub)) at (prev + 1, 5) to (start + 0, 31)
+    = (c3 - Zero)
+- Code(Counter(5)) at (prev + 1, 9) to (start + 1, 28)
+- Code(Expression(4, Sub)) at (prev + 2, 5) to (start + 0, 31)
+    = (c5 - c6)
+- Code(Expression(3, Sub)) at (prev + 1, 5) to (start + 0, 15)
+    = ((c5 - c6) - Zero)
+- Code(Zero) at (prev + 0, 32) to (start + 0, 48)
+- Code(Counter(8)) at (prev + 1, 5) to (start + 3, 15)
+- Code(Zero) at (prev + 3, 32) to (start + 0, 48)
+- Code(Zero) at (prev + 0, 51) to (start + 0, 65)
+- Code(Zero) at (prev + 0, 75) to (start + 0, 90)
+- Code(Expression(7, Sub)) at (prev + 1, 5) to (start + 0, 15)
+    = (c8 - Zero)
+- Code(Zero) at (prev + 5, 9) to (start + 3, 16)
+- Code(Zero) at (prev + 5, 13) to (start + 0, 27)
+- Code(Zero) at (prev + 2, 13) to (start + 0, 28)
+- Code(Expression(6, Sub)) at (prev + 4, 9) to (start + 5, 6)
+    = ((c8 - Zero) - Zero)
+- Code(Counter(12)) at (prev + 6, 5) to (start + 3, 6)
+- Code(Expression(8, Sub)) at (prev + 4, 5) to (start + 3, 6)
+    = (c12 - Zero)
+- Code(Counter(15)) at (prev + 4, 9) to (start + 4, 6)
+- Code(Expression(11, Sub)) at (prev + 5, 8) to (start + 0, 15)
+    = (c15 - c16)
+- Code(Counter(17)) at (prev + 1, 9) to (start + 3, 10)
+- Code(Expression(10, Sub)) at (prev + 5, 9) to (start + 3, 10)
+    = ((c15 - c16) - c17)
+- Code(Expression(15, Add)) at (prev + 5, 8) to (start + 0, 15)
+    = ((c17 - Zero) + c18)
+- Code(Counter(20)) at (prev + 1, 9) to (start + 0, 19)
+- Code(Zero) at (prev + 3, 13) to (start + 0, 29)
+- Code(Expression(14, Sub)) at (prev + 3, 9) to (start + 0, 19)
+    = (((c17 - Zero) + c18) - c20)
+- Code(Zero) at (prev + 3, 13) to (start + 0, 29)
+- Code(Expression(33, Add)) at (prev + 3, 5) to (start + 0, 15)
+    = (c23 + (((c20 - Zero) + c21) - c23))
+- Code(Expression(35, Add)) at (prev + 1, 12) to (start + 0, 19)
+    = ((c20 - Zero) + c21)
+- Code(Counter(23)) at (prev + 1, 13) to (start + 0, 19)
+- Code(Expression(34, Sub)) at (prev + 2, 13) to (start + 0, 19)
+    = (((c20 - Zero) + c21) - c23)
+- Code(Expression(32, Sub)) at (prev + 4, 5) to (start + 2, 19)
+    = ((c23 + (((c20 - Zero) + c21) - c23)) - c24)
+- Code(Counter(25)) at (prev + 3, 13) to (start + 0, 19)
+- Code(Expression(31, Sub)) at (prev + 2, 13) to (start + 0, 19)
+    = (((c23 + (((c20 - Zero) + c21) - c23)) - c24) - c25)
+- Code(Expression(60, Add)) at (prev + 3, 5) to (start + 0, 15)
+    = (c29 + ((c28 + ((c26 - c27) - c28)) - c30))
+- Code(Counter(26)) at (prev + 1, 12) to (start + 0, 19)
+- Code(Counter(27)) at (prev + 1, 13) to (start + 3, 14)
+- Code(Counter(29)) at (prev + 4, 13) to (start + 0, 19)
+- Code(Expression(62, Add)) at (prev + 2, 13) to (start + 0, 23)
+    = (c28 + ((c26 - c27) - c28))
+- Code(Expression(64, Sub)) at (prev + 1, 20) to (start + 0, 27)
+    = (c26 - c27)
+- Code(Counter(28)) at (prev + 1, 21) to (start + 0, 27)
+- Code(Expression(63, Sub)) at (prev + 2, 21) to (start + 0, 27)
+    = ((c26 - c27) - c28)
+- Code(Expression(61, Sub)) at (prev + 4, 13) to (start + 0, 19)
+    = ((c28 + ((c26 - c27) - c28)) - c30)
+- Code(Counter(31)) at (prev + 3, 9) to (start + 0, 25)
+- Code(Expression(59, Sub)) at (prev + 2, 5) to (start + 0, 15)
+    = ((c29 + ((c28 + ((c26 - c27) - c28)) - c30)) - c31)
+- Code(Expression(58, Sub)) at (prev + 3, 9) to (start + 0, 34)
+    = (((c29 + ((c28 + ((c26 - c27) - c28)) - c30)) - c31) - Zero)
+- Code(Zero) at (prev + 2, 5) to (start + 0, 15)
+- Code(Zero) at (prev + 3, 9) to (start + 0, 44)
+- Code(Zero) at (prev + 2, 1) to (start + 0, 2)
+

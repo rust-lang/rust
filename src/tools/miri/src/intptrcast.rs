@@ -27,9 +27,9 @@ pub type GlobalState = RefCell<GlobalStateInner>;
 #[derive(Clone, Debug)]
 pub struct GlobalStateInner {
     /// This is used as a map between the address of each allocation and its `AllocId`. It is always
-    /// sorted. We cannot use a `HashMap` since we can be given an address that is offset from the
-    /// base address, and we need to find the `AllocId` it belongs to.
-    /// This is not the *full* inverse of `base_addr`; dead allocations have been removed.
+    /// sorted by address. We cannot use a `HashMap` since we can be given an address that is offset
+    /// from the base address, and we need to find the `AllocId` it belongs to. This is not the
+    /// *full* inverse of `base_addr`; dead allocations have been removed.
     int_to_ptr_map: Vec<(u64, AllocId)>,
     /// The base address for each allocation.  We cannot put that into
     /// `AllocExtra` because function pointers also have a base address, and
@@ -46,9 +46,21 @@ pub struct GlobalStateInner {
     provenance_mode: ProvenanceMode,
 }
 
-impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // Nothing to visit here.
+impl VisitProvenance for GlobalStateInner {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        let GlobalStateInner {
+            int_to_ptr_map: _,
+            base_addr: _,
+            exposed: _,
+            next_base_addr: _,
+            provenance_mode: _,
+        } = self;
+        // Though base_addr, int_to_ptr_map, and exposed contain AllocIds, we do not want to visit them.
+        // int_to_ptr_map and exposed must contain only live allocations, and those
+        // are never garbage collected.
+        // base_addr is only relevant if we have a pointer to an AllocId and need to look up its
+        // base address; so if an AllocId is not reachable from somewhere else we can remove it
+        // here.
     }
 }
 
@@ -61,6 +73,12 @@ impl GlobalStateInner {
             next_base_addr: stack_addr,
             provenance_mode: config.provenance_mode,
         }
+    }
+
+    pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_, '_>) {
+        // `exposed` and `int_to_ptr_map` are cleared immediately when an allocation
+        // is freed, so `base_addr` is the only one we have to clean up based on the GC.
+        self.base_addr.retain(|id, _| allocs.is_live(*id));
     }
 }
 
@@ -107,7 +125,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We only use this provenance if it has been exposed.
         if global_state.exposed.contains(&alloc_id) {
             // This must still be live, since we remove allocations from `int_to_ptr_map` when they get freed.
-            debug_assert!(!matches!(ecx.get_alloc_info(alloc_id).2, AllocKind::Dead));
+            debug_assert!(ecx.is_alloc_live(alloc_id));
             Some(alloc_id)
         } else {
             None
@@ -181,12 +199,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let ecx = self.eval_context_mut();
         let global_state = ecx.machine.intptrcast.get_mut();
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
-        if global_state.provenance_mode != ProvenanceMode::Strict {
-            trace!("Exposing allocation id {alloc_id:?}");
-            global_state.exposed.insert(alloc_id);
-            if ecx.machine.borrow_tracker.is_some() {
-                ecx.expose_tag(alloc_id, tag)?;
-            }
+        if global_state.provenance_mode == ProvenanceMode::Strict {
+            return Ok(());
+        }
+        // Exposing a dead alloc is a no-op, because it's not possible to get a dead allocation
+        // via int2ptr.
+        if !ecx.is_alloc_live(alloc_id) {
+            return Ok(());
+        }
+        trace!("Exposing allocation id {alloc_id:?}");
+        let global_state = ecx.machine.intptrcast.get_mut();
+        global_state.exposed.insert(alloc_id);
+        if ecx.machine.borrow_tracker.is_some() {
+            ecx.expose_tag(alloc_id, tag)?;
         }
         Ok(())
     }
@@ -285,7 +310,12 @@ impl GlobalStateInner {
         // However, we *can* remove it from `int_to_ptr_map`, since any wildcard pointers that exist
         // can no longer actually be accessing that address. This ensures `alloc_id_from_addr` never
         // returns a dead allocation.
-        self.int_to_ptr_map.retain(|&(_, id)| id != dead_id);
+        // To avoid a linear scan we first look up the address in `base_addr`, and then find it in
+        // `int_to_ptr_map`.
+        let addr = *self.base_addr.get(&dead_id).unwrap();
+        let pos = self.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr).unwrap();
+        let removed = self.int_to_ptr_map.remove(pos);
+        assert_eq!(removed, (addr, dead_id)); // double-check that we removed the right thing
         // We can also remove it from `exposed`, since this allocation can anyway not be returned by
         // `alloc_id_from_addr` any more.
         self.exposed.remove(&dead_id);

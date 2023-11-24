@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) Write on thread `<unnamed>` and (2) Write on thread `main` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) non-atomic write on thread `main` at ALLOC. (2) just happened here
   --> $DIR/fence_after_load.rs:LL:CC
    |
 LL |     unsafe { V = 2 }
-   |              ^^^^^ Data race detected between (1) Write on thread `<unnamed>` and (2) Write on thread `main` at ALLOC. (2) just happened here
+   |              ^^^^^ Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) non-atomic write on thread `main` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
   --> $DIR/fence_after_load.rs:LL:CC

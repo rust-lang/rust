@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::root_macro_call;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, in_constant};
 use rustc_ast::ast::RangeLimits;
@@ -15,19 +15,21 @@ use rustc_span::{sym, Span};
 declare_clippy_lint! {
     /// ### What it does
     /// Suggests to use dedicated built-in methods,
-    /// `is_ascii_(lowercase|uppercase|digit)` for checking on corresponding ascii range
+    /// `is_ascii_(lowercase|uppercase|digit|hexdigit)` for checking on corresponding
+    /// ascii range
     ///
     /// ### Why is this bad?
     /// Using the built-in functions is more readable and makes it
     /// clear that it's not a specific subset of characters, but all
-    /// ASCII (lowercase|uppercase|digit) characters.
+    /// ASCII (lowercase|uppercase|digit|hexdigit) characters.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!(matches!('x', 'a'..='z'));
     ///     assert!(matches!(b'X', b'A'..=b'Z'));
     ///     assert!(matches!('2', '0'..='9'));
     ///     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+    ///     assert!(matches!('C', '0'..='9' | 'a'..='f' | 'A'..='F'));
     ///
     ///     ('0'..='9').contains(&'0');
     ///     ('a'..='z').contains(&'a');
@@ -35,12 +37,13 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!('x'.is_ascii_lowercase());
     ///     assert!(b'X'.is_ascii_uppercase());
     ///     assert!('2'.is_ascii_digit());
     ///     assert!('x'.is_ascii_alphabetic());
+    ///     assert!('C'.is_ascii_hexdigit());
     ///
     ///     '0'.is_ascii_digit();
     ///     'a'.is_ascii_lowercase();
@@ -75,6 +78,12 @@ enum CharRange {
     FullChar,
     /// '0..=9'
     Digit,
+    /// 'a..=f'
+    LowerHexLetter,
+    /// 'A..=F'
+    UpperHexLetter,
+    /// '0..=9' | 'a..=f' | 'A..=F'
+    HexDigit,
     Otherwise,
 }
 
@@ -89,15 +98,20 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
         }
 
         if let Some(macro_call) = root_macro_call(expr.span)
-            && is_matches_macro(cx, macro_call.def_id) {
+            && is_matches_macro(cx, macro_call.def_id)
+        {
             if let ExprKind::Match(recv, [arm, ..], _) = expr.kind {
                 let range = check_pat(&arm.pat.kind);
                 check_is_ascii(cx, macro_call.span, recv, &range);
             }
         } else if let ExprKind::MethodCall(path, receiver, [arg], ..) = expr.kind
             && path.ident.name == sym!(contains)
-            && let Some(higher::Range { start: Some(start), end: Some(end), limits: RangeLimits::Closed })
-            = higher::Range::hir(receiver) {
+            && let Some(higher::Range {
+                start: Some(start),
+                end: Some(end),
+                limits: RangeLimits::Closed,
+            }) = higher::Range::hir(receiver)
+        {
             let range = check_range(start, end);
             if let ExprKind::AddrOf(BorrowKind::Ref, _, e) = arg.kind {
                 check_is_ascii(cx, expr.span, e, &range);
@@ -116,7 +130,8 @@ fn check_is_ascii(cx: &LateContext<'_>, span: Span, recv: &Expr<'_>, range: &Cha
         CharRange::LowerChar => Some("is_ascii_lowercase"),
         CharRange::FullChar => Some("is_ascii_alphabetic"),
         CharRange::Digit => Some("is_ascii_digit"),
-        CharRange::Otherwise => None,
+        CharRange::HexDigit => Some("is_ascii_hexdigit"),
+        CharRange::Otherwise | CharRange::LowerHexLetter | CharRange::UpperHexLetter => None,
     } {
         let default_snip = "..";
         let mut app = Applicability::MachineApplicable;
@@ -141,6 +156,12 @@ fn check_pat(pat_kind: &PatKind<'_>) -> CharRange {
 
             if ranges.len() == 2 && ranges.contains(&CharRange::UpperChar) && ranges.contains(&CharRange::LowerChar) {
                 CharRange::FullChar
+            } else if ranges.len() == 3
+                && ranges.contains(&CharRange::Digit)
+                && ranges.contains(&CharRange::LowerHexLetter)
+                && ranges.contains(&CharRange::UpperHexLetter)
+            {
+                CharRange::HexDigit
             } else {
                 CharRange::Otherwise
             }
@@ -152,10 +173,13 @@ fn check_pat(pat_kind: &PatKind<'_>) -> CharRange {
 
 fn check_range(start: &Expr<'_>, end: &Expr<'_>) -> CharRange {
     if let ExprKind::Lit(start_lit) = &start.kind
-        && let ExprKind::Lit(end_lit) = &end.kind {
+        && let ExprKind::Lit(end_lit) = &end.kind
+    {
         match (&start_lit.node, &end_lit.node) {
             (Char('a'), Char('z')) | (Byte(b'a'), Byte(b'z')) => CharRange::LowerChar,
             (Char('A'), Char('Z')) | (Byte(b'A'), Byte(b'Z')) => CharRange::UpperChar,
+            (Char('a'), Char('f')) | (Byte(b'a'), Byte(b'f')) => CharRange::LowerHexLetter,
+            (Char('A'), Char('F')) | (Byte(b'A'), Byte(b'F')) => CharRange::UpperHexLetter,
             (Char('0'), Char('9')) | (Byte(b'0'), Byte(b'9')) => CharRange::Digit,
             _ => CharRange::Otherwise,
         }

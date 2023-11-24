@@ -99,13 +99,23 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.mod_bench", "example/mod_bench.rs", &[]),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
+    TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
+    TestCase::custom("aot.gen_block_iterate", &|runner| {
+        runner.run_rustc([
+            "example/gen_block_iterate.rs",
+            "--edition",
+            "2024",
+            "-Zunstable-options",
+        ]);
+        runner.run_out_command("gen_block_iterate", &[]);
+    }),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rust-random",
     "rand",
-    "f3dd0b885c4597b9617ca79987a0dd899ab29fcb",
-    "3f869e4fcd602b66",
+    "9a02c819cc1e4ec6959ae25eafbb5cf6acb68234",
+    "4934f0afb1d1c2ca",
     "rand",
 );
 
@@ -125,7 +135,7 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
     "4825b2a64d765317066948867e8714674419359b",
-    "8b188cc41f5af835",
+    "9e67d07c00f5fb0b",
     "portable-simd",
 );
 
@@ -456,6 +466,8 @@ impl<'a> TestRunner<'a> {
         cmd.arg("--target");
         cmd.arg(&self.target_compiler.triple);
         cmd.arg("-Cpanic=abort");
+        cmd.arg("--check-cfg=cfg(no_unstable_features)");
+        cmd.arg("--check-cfg=cfg(jit)");
         cmd.args(args);
         cmd
     }

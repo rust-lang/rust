@@ -44,11 +44,11 @@ pub(super) fn check(cx: &LateContext<'_>, receiver: &Expr<'_>, call_span: Span) 
 
                 diag.note(
                     "this returns the type id of the literal type `Box<dyn Any>` instead of the \
-                    type id of the boxed value, which is most likely not what you want"
+                    type id of the boxed value, which is most likely not what you want",
                 )
                 .note(
                     "if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, \
-                    which makes it more clear"
+                    which makes it more clear",
                 )
                 .span_suggestion(
                     receiver.span,

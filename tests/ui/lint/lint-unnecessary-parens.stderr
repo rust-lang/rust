@@ -267,5 +267,77 @@ LL -     _a += (1);
 LL +     _a += 1;
    |
 
-error: aborting due to 22 previous errors
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:87:8
+   |
+LL |     let(mut _a) = 3;
+   |        ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let(mut _a) = 3;
+LL +     let mut _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:88:9
+   |
+LL |     let (mut _a) = 3;
+   |         ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let (mut _a) = 3;
+LL +     let mut _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:89:8
+   |
+LL |     let( mut _a) = 3;
+   |        ^^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let( mut _a) = 3;
+LL +     let mut _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:91:8
+   |
+LL |     let(_a) = 3;
+   |        ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let(_a) = 3;
+LL +     let _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:92:9
+   |
+LL |     let (_a) = 3;
+   |         ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let (_a) = 3;
+LL +     let _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:93:8
+   |
+LL |     let( _a) = 3;
+   |        ^^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let( _a) = 3;
+LL +     let _a = 3;
+   |
+
+error: aborting due to 28 previous errors
 

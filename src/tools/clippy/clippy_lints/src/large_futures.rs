@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// large size of a `Future` may cause stack overflows.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// async fn large_future(_x: [u8; 16 * 1024]) {}
     ///
     /// pub async fn trigger() {
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     ///
     /// `Box::pin` the big future instead.
     ///
-    /// ```rust
+    /// ```no_run
     /// async fn large_future(_x: [u8; 16 * 1024]) {}
     ///
     /// pub async fn trigger() {

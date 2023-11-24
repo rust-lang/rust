@@ -23,6 +23,7 @@ struct PreOrderFrame<Iter> {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     struct PreorderIndex {}
 }
 

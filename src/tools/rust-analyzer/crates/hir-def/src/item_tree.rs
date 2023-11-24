@@ -613,10 +613,17 @@ pub struct Function {
     pub(crate) flags: FnFlags,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Param {
-    Normal(Interned<TypeRef>),
-    Varargs,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Param {
+    /// This is [`None`] for varargs
+    pub type_ref: Option<Interned<TypeRef>>,
+    pub ast_id: ParamAstId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParamAstId {
+    Param(FileAstId<ast::Param>),
+    SelfParam(FileAstId<ast::SelfParam>),
 }
 
 bitflags::bitflags! {
@@ -702,6 +709,7 @@ pub struct Impl {
     pub target_trait: Option<Interned<TraitRef>>,
     pub self_ty: Interned<TypeRef>,
     pub is_negative: bool,
+    pub is_unsafe: bool,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Impl>,
 }

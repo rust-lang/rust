@@ -12,6 +12,6 @@ pub mod __hidden {
 
 // @has foo/trait.Clone.html
 // @!hasraw - 'Foo'
-// @has implementors/core/clone/trait.Clone.js
+// @has trait.impl/core/clone/trait.Clone.js
 // @!hasraw - 'Foo'
 pub use std::clone::Clone;

@@ -3,7 +3,6 @@ use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_con
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, path_to_local};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -26,13 +25,13 @@ declare_clippy_lint! {
     /// Redundant code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // format!() returns a `String`
     /// let s: String = format!("hello").into();
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let s: String = format!("hello");
     /// ```
     #[clippy::version = "1.45.0"]
@@ -215,20 +214,19 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                     did,
                                     args,
                                     cx.typeck_results().node_args(recv.hir_id),
-                                    MethodOrFunction::Function
+                                    MethodOrFunction::Function,
                                 ))
-                            }
+                            },
                             ExprKind::MethodCall(.., args, _) => {
-                                cx.typeck_results().type_dependent_def_id(parent.hir_id)
-                                    .map(|did| {
-                                        return (
-                                            did,
-                                            args,
-                                            cx.typeck_results().node_args(parent.hir_id),
-                                            MethodOrFunction::Method
-                                        );
-                                    })
-                            }
+                                cx.typeck_results().type_dependent_def_id(parent.hir_id).map(|did| {
+                                    return (
+                                        did,
+                                        args,
+                                        cx.typeck_results().node_args(parent.hir_id),
+                                        MethodOrFunction::Method,
+                                    );
+                                })
+                            },
                             _ => None,
                         };
 
@@ -244,7 +242,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                 into_iter_did,
                                 cx.typeck_results().expr_ty(into_iter_recv),
                                 param.index,
-                                node_args
+                                node_args,
                             )
                             && self.expn_depth == 0
                         {
@@ -255,26 +253,38 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
                             let plural = if depth == 0 { "" } else { "s" };
                             let mut applicability = Applicability::MachineApplicable;
-                            let sugg = snippet_with_applicability(cx, into_iter_recv.span.source_callsite(), "<expr>", &mut applicability).into_owned();
-                            span_lint_and_then(cx, USELESS_CONVERSION, e.span, "explicit call to `.into_iter()` in function argument accepting `IntoIterator`", |diag| {
-                                diag.span_suggestion(
-                                    e.span,
-                                    format!("consider removing the `.into_iter()`{plural}"),
-                                    sugg,
-                                    applicability,
-                                );
-                                diag.span_note(span, "this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`");
-                            });
+                            let sugg = snippet_with_applicability(
+                                cx,
+                                into_iter_recv.span.source_callsite(),
+                                "<expr>",
+                                &mut applicability,
+                            )
+                            .into_owned();
+                            span_lint_and_then(
+                                cx,
+                                USELESS_CONVERSION,
+                                e.span,
+                                "explicit call to `.into_iter()` in function argument accepting `IntoIterator`",
+                                |diag| {
+                                    diag.span_suggestion(
+                                        e.span,
+                                        format!("consider removing the `.into_iter()`{plural}"),
+                                        sugg,
+                                        applicability,
+                                    );
+                                    diag.span_note(span, "this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`");
+                                },
+                            );
 
                             // Early return to avoid linting again with contradicting suggestions
                             return;
                         }
                     }
 
-                    if let Some(id) = path_to_local(recv) &&
-                       let Node::Pat(pat) = cx.tcx.hir().get(id) &&
-                       let PatKind::Binding(ann, ..) = pat.kind &&
-                       ann != BindingAnnotation::MUT
+                    if let Some(id) = path_to_local(recv)
+                        && let Node::Pat(pat) = cx.tcx.hir().get(id)
+                        && let PatKind::Binding(ann, ..) = pat.kind
+                        && ann != BindingAnnotation::MUT
                     {
                         // Do not remove .into_iter() applied to a non-mutable local variable used in
                         // a larger expression context as it would differ in mutability.
@@ -300,76 +310,63 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if_chain! {
-                    if is_trait_method(cx, e, sym::TryInto) && name.ident.name == sym::try_into;
-                    let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(recv);
-                    if is_type_diagnostic_item(cx, a, sym::Result);
-                    if let ty::Adt(_, args) = a.kind();
-                    if let Some(a_type) = args.types().next();
-                    if same_type_and_consts(a_type, b);
+                if is_trait_method(cx, e, sym::TryInto)
+                    && name.ident.name == sym::try_into
+                    && let a = cx.typeck_results().expr_ty(e)
+                    && let b = cx.typeck_results().expr_ty(recv)
+                    && is_type_diagnostic_item(cx, a, sym::Result)
+                    && let ty::Adt(_, args) = a.kind()
+                    && let Some(a_type) = args.types().next()
+                    && same_type_and_consts(a_type, b)
+                {
+                    span_lint_and_help(
+                        cx,
+                        USELESS_CONVERSION,
+                        e.span,
+                        &format!("useless conversion to the same type: `{b}`"),
+                        None,
+                        "consider removing `.try_into()`",
+                    );
+                }
+            },
 
-                    then {
+            ExprKind::Call(path, [arg]) => {
+                if let ExprKind::Path(ref qpath) = path.kind
+                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+                    && !is_ty_alias(qpath)
+                {
+                    let a = cx.typeck_results().expr_ty(e);
+                    let b = cx.typeck_results().expr_ty(arg);
+                    if cx.tcx.is_diagnostic_item(sym::try_from_fn, def_id)
+                        && is_type_diagnostic_item(cx, a, sym::Result)
+                        && let ty::Adt(_, args) = a.kind()
+                        && let Some(a_type) = args.types().next()
+                        && same_type_and_consts(a_type, b)
+                    {
+                        let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
                         span_lint_and_help(
                             cx,
                             USELESS_CONVERSION,
                             e.span,
                             &format!("useless conversion to the same type: `{b}`"),
                             None,
-                            "consider removing `.try_into()`",
+                            &hint,
                         );
                     }
-                }
-            },
 
-            ExprKind::Call(path, [arg]) => {
-                if_chain! {
-                    if let ExprKind::Path(ref qpath) = path.kind;
-                    if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
-                    if !is_ty_alias(qpath);
-                    then {
-                        let a = cx.typeck_results().expr_ty(e);
-                        let b = cx.typeck_results().expr_ty(arg);
-                        if_chain! {
-                            if cx.tcx.is_diagnostic_item(sym::try_from_fn, def_id);
-                            if is_type_diagnostic_item(cx, a, sym::Result);
-                            if let ty::Adt(_, args) = a.kind();
-                            if let Some(a_type) = args.types().next();
-                            if same_type_and_consts(a_type, b);
-
-                            then {
-                                let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
-                                span_lint_and_help(
-                                    cx,
-                                    USELESS_CONVERSION,
-                                    e.span,
-                                    &format!("useless conversion to the same type: `{b}`"),
-                                    None,
-                                    &hint,
-                                );
-                            }
-                        }
-
-                        if_chain! {
-                            if cx.tcx.is_diagnostic_item(sym::from_fn, def_id);
-                            if same_type_and_consts(a, b);
-
-                            then {
-                                let mut app = Applicability::MachineApplicable;
-                                let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_par();
-                                let sugg_msg =
-                                    format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
-                                span_lint_and_sugg(
-                                    cx,
-                                    USELESS_CONVERSION,
-                                    e.span,
-                                    &format!("useless conversion to the same type: `{b}`"),
-                                    &sugg_msg,
-                                    sugg.to_string(),
-                                    app,
-                                );
-                            }
-                        }
+                    if cx.tcx.is_diagnostic_item(sym::from_fn, def_id) && same_type_and_consts(a, b) {
+                        let mut app = Applicability::MachineApplicable;
+                        let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_par();
+                        let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
+                        span_lint_and_sugg(
+                            cx,
+                            USELESS_CONVERSION,
+                            e.span,
+                            &format!("useless conversion to the same type: `{b}`"),
+                            &sugg_msg,
+                            sugg.to_string(),
+                            app,
+                        );
                     }
                 }
             },

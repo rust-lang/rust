@@ -1,0 +1,57 @@
+- // MIR for `simple` before UninhabitedEnumBranching
++ // MIR for `simple` after UninhabitedEnumBranching
+  
+  fn simple() -> () {
+      let mut _0: ();
+      let _1: &str;
+      let mut _2: Test1;
+      let mut _3: isize;
+      let _4: &str;
+      let _5: &str;
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Test1::C;
+          _3 = discriminant(_2);
+-         switchInt(move _3) -> [0: bb3, 1: bb4, 2: bb1, otherwise: bb2];
++         switchInt(move _3) -> [0: bb6, 1: bb6, 2: bb1, otherwise: bb6];
+      }
+  
+      bb1: {
+          StorageLive(_5);
+          _5 = const "C";
+          _1 = &(*_5);
+          StorageDead(_5);
+          goto -> bb5;
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+          _1 = const "A(Empty)";
+          goto -> bb5;
+      }
+  
+      bb4: {
+          StorageLive(_4);
+          _4 = const "B(Empty)";
+          _1 = &(*_4);
+          StorageDead(_4);
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
++     }
++ 
++     bb6: {
++         unreachable;
+      }
+  }
+  

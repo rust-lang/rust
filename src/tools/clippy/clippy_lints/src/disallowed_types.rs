@@ -1,5 +1,5 @@
+use clippy_config::types::DisallowedPath;
 use clippy_utils::diagnostics::span_lint_and_then;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
@@ -7,8 +7,6 @@ use rustc_hir::{Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-
-use crate::utils::conf;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -50,15 +48,16 @@ declare_clippy_lint! {
     style,
     "use of disallowed types"
 }
+
 #[derive(Clone, Debug)]
 pub struct DisallowedTypes {
-    conf_disallowed: Vec<conf::DisallowedPath>,
+    conf_disallowed: Vec<DisallowedPath>,
     def_ids: FxHashMap<DefId, usize>,
     prim_tys: FxHashMap<PrimTy, usize>,
 }
 
 impl DisallowedTypes {
-    pub fn new(conf_disallowed: Vec<conf::DisallowedPath>) -> Self {
+    pub fn new(conf_disallowed: Vec<DisallowedPath>) -> Self {
         Self {
             conf_disallowed,
             def_ids: FxHashMap::default(),
@@ -123,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     }
 }
 
-fn emit(cx: &LateContext<'_>, name: &str, span: Span, conf: &conf::DisallowedPath) {
+fn emit(cx: &LateContext<'_>, name: &str, span: Span, conf: &DisallowedPath) {
     span_lint_and_then(
         cx,
         DISALLOWED_TYPES,

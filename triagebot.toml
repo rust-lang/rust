@@ -23,10 +23,10 @@ allow-unauthenticated = [
     "needs-triage",
 ]
 
-[review-submitted] 
-# This label is added when a "request changes" review is submitted. 
-reviewed_label = "S-waiting-on-author" 
-# These labels are removed when a "request changes" review is submitted. 
+[review-submitted]
+# This label is added when a "request changes" review is submitted.
+reviewed_label = "S-waiting-on-author"
+# These labels are removed when a "request changes" review is submitted.
 review_labels = ["S-waiting-on-review"]
 
 [review-requested]
@@ -415,7 +415,7 @@ Issue #{number} "{title}" has been added.
 """
 
 [no-merges]
-exclude_titles = ["Rollup of", "subtree update"]
+exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [github-releases]
@@ -554,13 +554,9 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 message = "`rustc_macros::diagnostics` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
-[mentions."compiler/rustc_smir"]
-message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
-
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino"]
+cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -583,20 +579,22 @@ Otherwise, you can ignore this comment.
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
 [mentions."src/tools/tidy/src/deps.rs"]
-message = "Third-party dependency whitelist may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
+message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
-[mentions."src/bootstrap/config.rs"]
-message = "This PR changes `src/bootstrap/config.rs`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs` and `change-id` in `config.example.toml`."
+[mentions."src/bootstrap/src/core/config"]
+message = "This PR modifies `src/bootstrap/src/core/config`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+[mentions."src/bootstrap/defaults"]
+message = "This PR modifies `src/bootstrap/defaults`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
 [mentions."config.example.toml"]
-message = "This PR changes `config.example.toml`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs` and `change-id` in `config.example.toml`."
+message = "This PR changes `config.example.toml`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
 
 [mentions."src/bootstrap/defaults/config.compiler.toml"]
 message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
 [mentions."src/bootstrap/defaults/config.codegen.toml"]
 message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
 
-[mentions."src/bootstrap/llvm.rs"]
+[mentions."src/bootstrap/src/core/build_steps/llvm.rs"]
 message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
 
 [mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
@@ -610,19 +608,19 @@ cc = ["@nnethercote"]
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
-users_on_vacation = ["jyn514", "jackh726", "WaffleLapkin"]
+users_on_vacation = ["jyn514", "WaffleLapkin", "oli-obk"]
 
 [assign.adhoc_groups]
 compiler-team = [
     "@cjgillot",
+    "@compiler-errors",
     "@petrochenkov",
     "@davidtwco",
     "@oli-obk",
     "@wesleywiser",
 ]
 compiler-team-contributors = [
-    "@compiler-errors",
-    "@jackh726",
+    "@TaKO8Ki",
     "@WaffleLapkin",
     "@b-naber",
 ]
@@ -669,6 +667,7 @@ diagnostics = [
     "@compiler-errors",
     "@davidtwco",
     "@oli-obk",
+    "@TaKO8Ki",
 ]
 parser = [
     "@compiler-errors",
@@ -714,6 +713,13 @@ style-team = [
     "@yaahc",
 ]
 
+project-stable-mir = [
+    "@celinval",
+    "@oli-obk",
+    "@spastorino",
+    "@ouz-a",
+]
+
 [assign.owners]
 "/.github/workflows" =                       ["infra-ci"]
 "/Cargo.lock" =                              ["@Mark-Simulacrum"]
@@ -730,6 +736,7 @@ style-team = [
 "/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" = ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/build" =      ["compiler", "mir"]
+"/compiler/rustc_smir" =                     ["project-stable-mir"]
 "/compiler/rustc_parse" =                    ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =          ["compiler", "lexer"]
 "/compiler/rustc_query_impl" =               ["compiler", "query-system"]
@@ -737,6 +744,7 @@ style-team = [
 "/compiler/rustc_trait_selection" =          ["compiler", "types"]
 "/compiler/rustc_traits" =                   ["compiler", "types"]
 "/compiler/rustc_type_ir" =                  ["compiler", "types"]
+"/compiler/stable_mir" =                     ["project-stable-mir"]
 "/library/alloc" =                           ["libs"]
 "/library/core" =                            ["libs"]
 "/library/panic_abort" =                     ["libs"]

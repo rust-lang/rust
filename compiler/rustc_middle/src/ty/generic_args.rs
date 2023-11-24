@@ -70,7 +70,7 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
+                (CONST_TAG, ct.0.0 as *const WithCachedTypeInfo<ty::ConstData<'tcx>> as usize)
             }
         };
 
@@ -86,7 +86,7 @@ impl<'tcx> Ord for GenericArg<'tcx> {
 
 impl<'tcx> PartialOrd for GenericArg<'tcx> {
     fn partial_cmp(&self, other: &GenericArg<'tcx>) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -136,7 +136,7 @@ impl<'tcx> GenericArg<'tcx> {
                     &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::ConstData<'tcx>),
+                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
                 ))),
                 _ => intrinsics::unreachable(),
             }
@@ -809,7 +809,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         #[cold]
         #[inline(never)]
-        fn region_param_out_of_range(data: ty::EarlyBoundRegion, args: &[GenericArg<'_>]) -> ! {
+        fn region_param_out_of_range(data: ty::EarlyParamRegion, args: &[GenericArg<'_>]) -> ! {
             bug!(
                 "Region parameter out of range when substituting in region {} (index={}, args = {:?})",
                 data.name,
@@ -820,7 +820,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 
         #[cold]
         #[inline(never)]
-        fn region_param_invalid(data: ty::EarlyBoundRegion, other: GenericArgKind<'_>) -> ! {
+        fn region_param_invalid(data: ty::EarlyParamRegion, other: GenericArgKind<'_>) -> ! {
             bug!(
                 "Unexpected parameter {:?} when substituting in region {} (index={})",
                 other,
@@ -835,7 +835,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         // regions that appear in a function signature is done using
         // the specialized routine `ty::replace_late_regions()`.
         match *r {
-            ty::ReEarlyBound(data) => {
+            ty::ReEarlyParam(data) => {
                 let rk = self.args.get(data.index as usize).map(|k| k.unpack());
                 match rk {
                     Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
@@ -843,8 +843,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
                     None => region_param_out_of_range(data, self.args),
                 }
             }
-            ty::ReLateBound(..)
-            | ty::ReFree(_)
+            ty::ReBound(..)
+            | ty::ReLateParam(_)
             | ty::ReStatic
             | ty::RePlaceholder(_)
             | ty::ReErased

@@ -15,9 +15,9 @@ pub use rustc_ast::Attribute;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
-use rustc_data_structures::profiling::{duration_to_secs_str, SelfProfiler, SelfProfilerRef};
+use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    AtomicU64, AtomicUsize, Lock, Lrc, OneThread, Ordering, Ordering::SeqCst,
+    AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread, Ordering::SeqCst,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
@@ -31,22 +31,22 @@ use rustc_errors::{
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap, Span};
-use rustc_span::{SourceFileHashAlgorithm, Symbol};
+use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
+use rustc_span::{SourceFileHashAlgorithm, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
     DebuginfoKind, SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
+use std::any::Any;
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
+use std::sync::{atomic::AtomicBool, Arc};
 
 pub struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -157,9 +157,6 @@ pub struct Session {
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
 
-    /// Some measurements that are being gathered during compilation.
-    pub perf_stats: PerfStats,
-
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
 
@@ -172,6 +169,15 @@ pub struct Session {
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
     pub jobserver: Client,
+
+    /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
+    ///
+    /// FIXME(Centril): consider `dyn LintStoreMarker` once
+    /// we can upcast to `Any` for some additional type safety.
+    pub lint_store: Option<Lrc<dyn Any + DynSync + DynSend>>,
+
+    /// Should be set if any lints are registered in `lint_store`.
+    pub registered_lints: bool,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -202,22 +208,17 @@ pub struct Session {
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
 
+    /// The inner atomic value is set to true when a feature marked as `internal` is
+    /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
+    /// internal features are wontfix, and they are usually the cause of the ICEs.
+    /// None signifies that this is not tracked.
+    pub using_internal_features: Arc<AtomicBool>,
+
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
     /// This is mainly useful for other tools that reads that debuginfo to figure out
     /// how to call the compiler with the same arguments.
     pub expanded_args: Vec<String>,
-}
-
-pub struct PerfStats {
-    /// The accumulated time spent on computing symbol hashes.
-    pub symbol_hash_time: Lock<Duration>,
-    /// Total number of values canonicalized queries constructed.
-    pub queries_canonicalized: AtomicUsize,
-    /// Number of times this query is invoked.
-    pub normalize_generic_arg_after_erasing_regions: AtomicUsize,
-    /// Number of times this query is invoked.
-    pub normalize_projection_ty: AtomicUsize,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -702,6 +703,10 @@ impl Session {
         self.opts.cg.instrument_coverage() != InstrumentCoverage::Off
     }
 
+    pub fn instrument_coverage_branch(&self) -> bool {
+        self.opts.cg.instrument_coverage() == InstrumentCoverage::Branch
+    }
+
     pub fn instrument_coverage_except_unused_generics(&self) -> bool {
         self.opts.cg.instrument_coverage() == InstrumentCoverage::ExceptUnusedGenerics
     }
@@ -803,7 +808,7 @@ impl Session {
 
     /// Returns a list of directories where target-specific tool binaries are located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let rustlib_path = rustc_target::target_rustlib_path(&self.sysroot, &config::host_triple());
+        let rustlib_path = rustc_target::target_rustlib_path(&self.sysroot, config::host_triple());
         let p = PathBuf::from_iter([
             Path::new(&self.sysroot),
             Path::new(&rustlib_path),
@@ -871,25 +876,6 @@ impl Session {
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
         self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
-    }
-
-    pub fn print_perf_stats(&self) {
-        eprintln!(
-            "Total time spent computing symbol hashes:      {}",
-            duration_to_secs_str(*self.perf_stats.symbol_hash_time.lock())
-        );
-        eprintln!(
-            "Total queries canonicalized:                   {}",
-            self.perf_stats.queries_canonicalized.load(Ordering::Relaxed)
-        );
-        eprintln!(
-            "normalize_generic_arg_after_erasing_regions:   {}",
-            self.perf_stats.normalize_generic_arg_after_erasing_regions.load(Ordering::Relaxed)
-        );
-        eprintln!(
-            "normalize_projection_ty:                       {}",
-            self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed)
-        );
     }
 
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
@@ -1385,6 +1371,7 @@ pub fn build_session(
     target_override: Option<Target>,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
+    using_internal_features: Arc<AtomicBool>,
     expanded_args: Vec<String>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -1504,16 +1491,12 @@ pub fn build_session(
         io,
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         prof,
-        perf_stats: PerfStats {
-            symbol_hash_time: Lock::new(Duration::from_secs(0)),
-            queries_canonicalized: AtomicUsize::new(0),
-            normalize_generic_arg_after_erasing_regions: AtomicUsize::new(0),
-            normalize_projection_ty: AtomicUsize::new(0),
-        },
         code_stats: Default::default(),
         optimization_fuel,
         print_fuel,
         jobserver: jobserver::client(),
+        lint_store: None,
+        registered_lints: false,
         driver_lint_caps,
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
@@ -1521,6 +1504,7 @@ pub fn build_session(
         target_features: Default::default(),
         unstable_target_features: Default::default(),
         cfg_version,
+        using_internal_features,
         expanded_args,
     };
 

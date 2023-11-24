@@ -12,7 +12,7 @@ error[E0609]: no field `hey` on type `B`
 LL |     doc_hidden_fields::B::default().hey;
    |                                     ^^^ unknown field
    |
-   = note: available fields are: `bye`
+   = note: available field is: `bye`
 
 error[E0609]: no field `hey` on type `C`
   --> $DIR/dont-suggest-doc-hidden-fields.rs:34:18

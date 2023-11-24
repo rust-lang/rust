@@ -8,6 +8,7 @@ use crate::core::build_steps::toolstate::ToolState;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
@@ -108,8 +109,8 @@ impl Step for ToolBuild {
         );
 
         let mut cargo = Command::from(cargo);
-        #[allow(deprecated)] // we check this in `is_optional_tool` in a second
-        let is_expected = builder.config.try_run(&mut cargo).is_ok();
+        // we check this in `is_optional_tool` in a second
+        let is_expected = builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure());
 
         builder.save_toolstate(
             tool,
@@ -202,6 +203,16 @@ pub fn prepare_tool_cargo(
     if !features.is_empty() {
         cargo.arg("--features").arg(&features.join(", "));
     }
+
+    // Enable internal lints for clippy and rustdoc
+    // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
+    // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
+    //
+    // NOTE: We unconditionally set this here to avoid recompiling tools between `x check $tool`
+    // and `x test $tool` executions.
+    // See https://github.com/rust-lang/rust/issues/116538
+    cargo.rustflag("-Zunstable-options");
+
     cargo
 }
 
@@ -421,7 +432,7 @@ impl Step for Rustdoc {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustdoc {
-            // Note: this is somewhat unique in that we actually want a *target*
+            // NOTE: this is somewhat unique in that we actually want a *target*
             // compiler here, because rustdoc *is* a compiler. We won't be using
             // this as the compiler to build with, but rather this is "what
             // compiler are we producing"?
@@ -453,7 +464,7 @@ impl Step for Rustdoc {
         // compiler, since you do just as much work.
         if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
-                "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
+                "WARNING: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
             );
         }
 
@@ -602,8 +613,7 @@ pub struct RustAnalyzer {
 }
 
 impl RustAnalyzer {
-    pub const ALLOW_FEATURES: &'static str =
-        "proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
+    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
 }
 
 impl Step for RustAnalyzer {
@@ -635,7 +645,7 @@ impl Step for RustAnalyzer {
             compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolRustc,
             path: "src/tools/rust-analyzer",
             extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
             is_optional_tool: false,
@@ -786,9 +796,9 @@ macro_rules! tool_extended {
     }
 }
 
-// Note: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
+// NOTE: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
 // to make `./x.py build <tool>` work.
-// Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
+// NOTE: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;

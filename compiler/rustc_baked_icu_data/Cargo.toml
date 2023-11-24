@@ -4,11 +4,16 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+# tidy-alphabetical-start
 icu_list = "1.2"
 icu_locid = "1.2"
+icu_locid_transform = "1.3.2"
 icu_provider = "1.2"
 icu_provider_adapters = "1.2"
-zerovec = "0.9.4"
+zerovec = "0.10.0"
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 rustc_use_parallel_compiler = ['icu_provider/sync']
+# tidy-alphabetical-end

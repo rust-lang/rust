@@ -115,7 +115,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     /// Update effective visibilities of bindings in the given module,
     /// including their whole reexport chains.
     fn set_bindings_effective_visibilities(&mut self, module_id: LocalDefId) {
-        assert!(self.r.module_map.contains_key(&&module_id.to_def_id()));
+        assert!(self.r.module_map.contains_key(&module_id.to_def_id()));
         let module = self.r.get_module(module_id.to_def_id()).unwrap();
         let resolutions = self.r.resolutions(module);
 

@@ -785,7 +785,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             CoroutineDrop => write!(fmt, "coroutine_drop"),
             UnwindResume => write!(fmt, "resume"),
             UnwindTerminate(reason) => {
-                write!(fmt, "abort({})", reason.as_short_str())
+                write!(fmt, "terminate({})", reason.as_short_str())
             }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
@@ -942,7 +942,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
-                    BorrowKind::Shallow => "shallow ",
+                    BorrowKind::Fake => "fake ",
                     BorrowKind::Mut { .. } => "mut ",
                 };
 
@@ -998,9 +998,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         ty::tls::with(|tcx| {
                             let variant_def = &tcx.adt_def(adt_did).variant(variant);
                             let args = tcx.lift(args).expect("could not lift for printing");
-                            let name = FmtPrinter::new(tcx, Namespace::ValueNS)
-                                .print_def_path(variant_def.def_id, args)?
-                                .into_buffer();
+                            let name = FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| {
+                                cx.print_def_path(variant_def.def_id, args)
+                            })?;
 
                             match variant_def.ctor_kind() {
                                 Some(CtorKind::Const) => fmt.write_str(&name),
@@ -1337,7 +1337,7 @@ pub fn write_allocations<'tcx>(
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
     ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.inner().provenance().ptrs().values().map(|id| *id)
+        alloc.inner().provenance().ptrs().values().copied()
     }
 
     fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
@@ -1713,7 +1713,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
             let ct = tcx.lift(ct).unwrap();
             let ty = tcx.lift(ty).unwrap();
-            if let Some(contents) = tcx.try_destructure_mir_constant_for_diagnostics(ct, ty) {
+            if let Some(contents) = tcx.try_destructure_mir_constant_for_user_output(ct, ty) {
                 let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
                 match *ty.kind() {
                     ty::Array(..) => {
@@ -1740,7 +1740,7 @@ fn pretty_print_const_value_tcx<'tcx>(
                         let args = tcx.lift(args).unwrap();
                         let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                         cx.print_alloc_ids = true;
-                        let cx = cx.print_value_path(variant_def.def_id, args)?;
+                        cx.print_value_path(variant_def.def_id, args)?;
                         fmt.write_str(&cx.into_buffer())?;
 
                         match variant_def.ctor_kind() {
@@ -1775,14 +1775,14 @@ fn pretty_print_const_value_tcx<'tcx>(
             let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
             cx.print_alloc_ids = true;
             let ty = tcx.lift(ty).unwrap();
-            cx = cx.pretty_print_const_scalar(scalar, ty)?;
+            cx.pretty_print_const_scalar(scalar, ty)?;
             fmt.write_str(&cx.into_buffer())?;
             return Ok(());
         }
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
             cx.print_alloc_ids = true;
-            let cx = cx.print_value_path(*d, s)?;
+            cx.print_value_path(*d, s)?;
             fmt.write_str(&cx.into_buffer())?;
             return Ok(());
         }

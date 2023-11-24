@@ -3,6 +3,7 @@ use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
+use rustc_middle::middle::lib_features::FeatureStability;
 use table::TableBuilder;
 
 use rustc_ast as ast;
@@ -263,7 +264,7 @@ pub(crate) struct CrateRoot {
 
     crate_deps: LazyArray<CrateDep>,
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,
-    lib_features: LazyArray<(Symbol, Option<Symbol>)>,
+    lib_features: LazyArray<(Symbol, FeatureStability)>,
     stability_implications: LazyArray<(Symbol, Symbol)>,
     lang_items: LazyArray<(DefIndex, LangItem)>,
     lang_items_missing: LazyArray<LangItem>,

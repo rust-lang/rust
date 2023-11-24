@@ -157,7 +157,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [ 0. Pre-match ]
     ///        |
     /// [ 1. Evaluate Scrutinee (expression being matched on) ]
-    /// [ (fake read of scrutinee) ]
+    /// [ (PlaceMention of scrutinee) ]
     ///        |
     /// [ 2. Decision tree -- check discriminants ] <--------+
     ///        |                                             |
@@ -184,7 +184,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// We generate MIR in the following steps:
     ///
-    /// 1. Evaluate the scrutinee and add the fake read of it ([Builder::lower_scrutinee]).
+    /// 1. Evaluate the scrutinee and add the PlaceMention of it ([Builder::lower_scrutinee]).
     /// 2. Create the decision tree ([Builder::lower_match_tree]).
     /// 3. Determine the fake borrows that are needed from the places that were
     ///    matched against and create the required temporaries for them
@@ -212,7 +212,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
-        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, &arms);
+        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, arms);
 
         let match_has_guard = arm_candidates.iter().any(|(_, candidate)| candidate.has_guard);
         let mut candidates =
@@ -223,6 +223,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let fake_borrow_temps = self.lower_match_tree(
             block,
             scrutinee_span,
+            &scrutinee_place,
             match_start_span,
             match_has_guard,
             &mut candidates,
@@ -238,7 +239,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         )
     }
 
-    /// Evaluate the scrutinee and add the fake read of it.
+    /// Evaluate the scrutinee and add the PlaceMention for it.
     fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
@@ -246,26 +247,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee));
-        // Matching on a `scrutinee_place` with an uninhabited type doesn't
-        // generate any memory reads by itself, and so if the place "expression"
-        // contains unsafe operations like raw pointer dereferences or union
-        // field projections, we wouldn't know to require an `unsafe` block
-        // around a `match` equivalent to `std::intrinsics::unreachable()`.
-        // See issue #47412 for this hole being discovered in the wild.
-        //
-        // HACK(eddyb) Work around the above issue by adding a dummy inspection
-        // of `scrutinee_place`, specifically by applying `ReadForMatch`.
-        //
-        // NOTE: ReadForMatch also checks that the scrutinee is initialized.
-        // This is currently needed to not allow matching on an uninitialized,
-        // uninhabited value. If we get never patterns, those will check that
-        // the place is initialized, and so this read would only be used to
-        // check safety.
-        let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
-        let source_info = self.source_info(scrutinee_span);
-
         if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
-            self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
+            let source_info = self.source_info(scrutinee_span);
+            self.cfg.push_place_mention(block, source_info, scrutinee_place);
         }
 
         block.and(scrutinee_place_builder)
@@ -304,6 +288,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         scrutinee_span: Span,
+        scrutinee_place_builder: &PlaceBuilder<'tcx>,
         match_start_span: Span,
         match_has_guard: bool,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
@@ -331,6 +316,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // otherwise block. Match checking will ensure this is actually
             // unreachable.
             let source_info = self.source_info(scrutinee_span);
+
+            // Matching on a `scrutinee_place` with an uninhabited type doesn't
+            // generate any memory reads by itself, and so if the place "expression"
+            // contains unsafe operations like raw pointer dereferences or union
+            // field projections, we wouldn't know to require an `unsafe` block
+            // around a `match` equivalent to `std::intrinsics::unreachable()`.
+            // See issue #47412 for this hole being discovered in the wild.
+            //
+            // HACK(eddyb) Work around the above issue by adding a dummy inspection
+            // of `scrutinee_place`, specifically by applying `ReadForMatch`.
+            //
+            // NOTE: ReadForMatch also checks that the scrutinee is initialized.
+            // This is currently needed to not allow matching on an uninitialized,
+            // uninhabited value. If we get never patterns, those will check that
+            // the place is initialized, and so this read would only be used to
+            // check safety.
+            let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
+
+            if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
+                self.cfg.push_fake_read(
+                    otherwise_block,
+                    source_info,
+                    cause_matched_place,
+                    scrutinee_place,
+                );
+            }
+
             self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
         }
 
@@ -412,7 +424,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.source_scope = source_scope;
                     }
 
-                    this.expr_into_dest(destination, arm_block, &&this.thir[arm.body])
+                    this.expr_into_dest(destination, arm_block, &this.thir[arm.body])
                 })
             })
             .collect();
@@ -493,7 +505,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let binding_end = self.bind_and_guard_matched_candidate(
                         leaf_candidate,
                         parent_bindings,
-                        &fake_borrow_temps,
+                        fake_borrow_temps,
                         scrutinee_span,
                         arm_match_scope,
                         schedule_drops,
@@ -599,14 +611,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             _ => {
-                let place_builder = unpack!(block = self.as_place_builder(block, initializer));
-
-                if let Some(place) = place_builder.try_to_place(self) {
-                    let source_info = self.source_info(initializer.span);
-                    self.cfg.push_place_mention(block, source_info, place);
-                }
-
-                self.place_into_pattern(block, &irrefutable_pat, place_builder, true)
+                let place_builder =
+                    unpack!(block = self.lower_scrutinee(block, initializer, initializer.span));
+                self.place_into_pattern(block, irrefutable_pat, place_builder, true)
             }
         }
     }
@@ -618,10 +625,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        let mut candidate = Candidate::new(initializer.clone(), &irrefutable_pat, false, self);
+        let mut candidate = Candidate::new(initializer.clone(), irrefutable_pat, false, self);
         let fake_borrow_temps = self.lower_match_tree(
             block,
             irrefutable_pat.span,
+            &initializer,
             irrefutable_pat.span,
             false,
             &mut [&mut candidate],
@@ -692,7 +700,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
         self.visit_primary_bindings(
-            &pattern,
+            pattern,
             UserTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
@@ -845,6 +853,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let subpattern_user_ty =
                     pattern_user_ty.push_projection(&projection, annotation.span);
                 self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
+            }
+
+            PatKind::InlineConstant { ref subpattern, .. } => {
+                self.visit_primary_bindings(subpattern, pattern_user_ty, f)
             }
 
             PatKind::Leaf { ref subpatterns } => {
@@ -1023,7 +1035,7 @@ enum TestKind<'tcx> {
         ty: Ty<'tcx>,
     },
 
-    /// Test whether the value falls within an inclusive or exclusive range
+    /// Test whether the value falls within an inclusive or exclusive range.
     Range(Box<PatRange<'tcx>>),
 
     /// Test that the length of the slice is equal to `len`.
@@ -1831,12 +1843,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
         let wildcard = Pat::wildcard_from_ty(pat.ty);
-        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false, self);
+        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), pat, false, self);
         let mut otherwise_candidate =
             Candidate::new(expr_place_builder.clone(), &wildcard, false, self);
         let fake_borrow_temps = self.lower_match_tree(
             block,
             pat.span,
+            &expr_place_builder,
             pat.span,
             false,
             &mut [&mut guard_candidate, &mut otherwise_candidate],
@@ -2008,7 +2021,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
             for &(place, temp) in fake_borrows {
-                let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, place);
+                let borrow = Rvalue::Ref(re_erased, BorrowKind::Fake, place);
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
@@ -2338,6 +2351,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let fake_borrow_temps = this.lower_match_tree(
                 block,
                 initializer_span,
+                &scrutinee,
                 pattern.span,
                 false,
                 &mut [&mut candidate, &mut wildcard],

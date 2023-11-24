@@ -8,8 +8,8 @@
       let mut _6: u8;
       let mut _7: u8;
       let mut _8: u8;
-      let mut _12: u32;
-      let mut _13: u32;
+      let mut _14: u32;
+      let mut _15: u32;
       scope 1 {
 -         debug x => _1;
 +         debug x => const 1_u8;
@@ -29,29 +29,19 @@
                       scope 5 {
 -                         debug s => _9;
 +                         debug s => const "hello, world!";
-                          let _14: bool;
-                          let _15: bool;
-                          let _16: u32;
+                          let _10: (bool, bool, u32);
                           scope 6 {
--                             debug ((f: (bool, bool, u32)).0: bool) => _14;
--                             debug ((f: (bool, bool, u32)).1: bool) => _15;
--                             debug ((f: (bool, bool, u32)).2: u32) => _16;
-+                             debug ((f: (bool, bool, u32)).0: bool) => const true;
-+                             debug ((f: (bool, bool, u32)).1: bool) => const false;
-+                             debug ((f: (bool, bool, u32)).2: u32) => const 123_u32;
-                              let _10: std::option::Option<u16>;
+                              debug f => _10;
+                              let _11: std::option::Option<u16>;
                               scope 7 {
-                                  debug o => _10;
-                                  let _17: u32;
-                                  let _18: u32;
+                                  debug o => _11;
+                                  let _12: Point;
                                   scope 8 {
--                                     debug ((p: Point).0: u32) => _17;
--                                     debug ((p: Point).1: u32) => _18;
-+                                     debug ((p: Point).0: u32) => const 32_u32;
-+                                     debug ((p: Point).1: u32) => const 32_u32;
-                                      let _11: u32;
+-                                     debug p => _12;
++                                     debug p => const Point {{ x: 32_u32, y: 32_u32 }};
+                                      let _13: u32;
                                       scope 9 {
--                                         debug a => _11;
+-                                         debug a => _13;
 +                                         debug a => const 64_u32;
                                       }
                                   }
@@ -64,36 +54,57 @@
       }
   
       bb0: {
+          StorageLive(_1);
           _1 = const 1_u8;
+          StorageLive(_2);
           _2 = const 2_u8;
+          StorageLive(_3);
           _3 = const 3_u8;
           StorageLive(_4);
           StorageLive(_5);
+          StorageLive(_6);
+          _6 = const 1_u8;
+          StorageLive(_7);
+          _7 = const 2_u8;
           _5 = const 3_u8;
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageLive(_8);
+          _8 = const 3_u8;
           _4 = const 6_u8;
+          StorageDead(_8);
           StorageDead(_5);
           StorageLive(_9);
           _9 = const "hello, world!";
-          StorageLive(_14);
-          StorageLive(_15);
-          StorageLive(_16);
-          _14 = const true;
-          _15 = const false;
-          _16 = const 123_u32;
           StorageLive(_10);
-          _10 = Option::<u16>::Some(const 99_u16);
-          _17 = const 32_u32;
-          _18 = const 32_u32;
+          _10 = (const true, const false, const 123_u32);
           StorageLive(_11);
-          _11 = const 64_u32;
+          _11 = Option::<u16>::Some(const 99_u16);
+          StorageLive(_12);
+          _12 = const Point {{ x: 32_u32, y: 32_u32 }};
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = const 32_u32;
+          StorageLive(_15);
+          _15 = const 32_u32;
+          _13 = const 64_u32;
+          StorageDead(_15);
+          StorageDead(_14);
+          _0 = const ();
+          StorageDead(_13);
+          StorageDead(_12);
           StorageDead(_11);
           StorageDead(_10);
-          StorageDead(_14);
-          StorageDead(_15);
-          StorageDead(_16);
           StorageDead(_9);
           StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
           return;
       }
+  }
+  
+  ALLOC0 (size: 8, align: 4) {
+      20 00 00 00 20 00 00 00                         │  ... ...
   }
   

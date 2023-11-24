@@ -270,7 +270,7 @@ fn encode_region<'tcx>(
     // u6region[I[<region-disambiguator>][<region-index>]E] as vendor extended type
     let mut s = String::new();
     match region.kind() {
-        RegionKind::ReLateBound(debruijn, r) => {
+        RegionKind::ReBound(debruijn, r) => {
             s.push_str("u6regionI");
             // Debruijn index, which identifies the binder, as region disambiguator
             let num = debruijn.index() as u64;
@@ -282,11 +282,12 @@ fn encode_region<'tcx>(
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReEarlyBound(..) | RegionKind::ReErased => {
+        // FIXME(@lcnr): Why is `ReEarlyParam` reachable here.
+        RegionKind::ReEarlyParam(..) | RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReFree(..)
+        RegionKind::ReLateParam(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
@@ -551,7 +552,7 @@ fn encode_ty<'tcx>(
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
                     if !value_str.to_string().trim().is_empty() {
-                        s.push_str(&value_str.to_string().trim());
+                        s.push_str(value_str.to_string().trim());
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
@@ -603,7 +604,7 @@ fn encode_ty<'tcx>(
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
                     if !value_str.to_string().trim().is_empty() {
-                        s.push_str(&value_str.to_string().trim());
+                        s.push_str(value_str.to_string().trim());
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
@@ -1144,5 +1145,5 @@ pub fn typeid_for_instance<'tcx>(
         }
     }
 
-    typeid_for_fnabi(tcx, &fn_abi, options)
+    typeid_for_fnabi(tcx, fn_abi, options)
 }

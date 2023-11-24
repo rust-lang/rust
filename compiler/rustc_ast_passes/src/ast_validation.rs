@@ -40,6 +40,9 @@ enum SelfSemantic {
 enum DisallowTildeConstContext<'a> {
     TraitObject,
     Fn(FnKind<'a>),
+    Trait(Span),
+    Impl(Span),
+    Item,
 }
 
 struct AstValidator<'a> {
@@ -110,18 +113,6 @@ impl<'a> AstValidator<'a> {
         self.disallow_tilde_const = old;
     }
 
-    fn with_tilde_const_allowed(&mut self, f: impl FnOnce(&mut Self)) {
-        self.with_tilde_const(None, f)
-    }
-
-    fn with_banned_tilde_const(
-        &mut self,
-        ctx: DisallowTildeConstContext<'a>,
-        f: impl FnOnce(&mut Self),
-    ) {
-        self.with_tilde_const(Some(ctx), f)
-    }
-
     fn check_type_alias_where_clause_location(
         &mut self,
         ty_alias: &TyAlias,
@@ -173,7 +164,7 @@ impl<'a> AstValidator<'a> {
                 self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
             }
             TyKind::TraitObject(..) => self
-                .with_banned_tilde_const(DisallowTildeConstContext::TraitObject, |this| {
+                .with_tilde_const(Some(DisallowTildeConstContext::TraitObject), |this| {
                     visit::walk_ty(this, t)
                 }),
             TyKind::Path(qself, path) => {
@@ -230,7 +221,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn err_handler(&self) -> &rustc_errors::Handler {
-        &self.session.diagnostic()
+        self.session.diagnostic()
     }
 
     fn check_lifetime(&self, ident: Ident) {
@@ -482,9 +473,36 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Reject C-variadic type unless the function is foreign,
-    /// or free and `unsafe extern "C"` semantically.
+    /// Reject invalid C-variadic types.
+    ///
+    /// C-variadics must be:
+    /// - Non-const
+    /// - Either foreign, or free and `unsafe extern "C"` semantically
     fn check_c_variadic_type(&self, fk: FnKind<'a>) {
+        let variadic_spans: Vec<_> = fk
+            .decl()
+            .inputs
+            .iter()
+            .filter(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+            .map(|arg| arg.span)
+            .collect();
+
+        if variadic_spans.is_empty() {
+            return;
+        }
+
+        if let Some(header) = fk.header() {
+            if let Const::Yes(const_span) = header.constness {
+                let mut spans = variadic_spans.clone();
+                spans.push(const_span);
+                self.err_handler().emit_err(errors::ConstAndCVariadic {
+                    spans,
+                    const_span,
+                    variadic_spans: variadic_spans.clone(),
+                });
+            }
+        }
+
         match (fk.ctxt(), fk.header()) {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
@@ -499,11 +517,7 @@ impl<'a> AstValidator<'a> {
             _ => {}
         };
 
-        for Param { ty, span, .. } in &fk.decl().inputs {
-            if let TyKind::CVarArgs = ty.kind {
-                self.err_handler().emit_err(errors::BadCVariadic { span: *span });
-            }
-        }
+        self.err_handler().emit_err(errors::BadCVariadic { span: variadic_spans });
     }
 
     fn check_item_named(&self, ident: Ident, kind: &str) {
@@ -608,7 +622,7 @@ impl<'a> AstValidator<'a> {
             data: data.span,
             constraint_spans: errors::EmptyLabelManySpans(constraint_spans),
             arg_spans2: errors::EmptyLabelManySpans(arg_spans),
-            suggestion: self.correct_generic_order_suggestion(&data),
+            suggestion: self.correct_generic_order_suggestion(data),
             constraint_len,
             args_len,
         });
@@ -724,7 +738,7 @@ fn validate_generic_param_order(
 
             if !bounds.is_empty() {
                 ordered_params += ": ";
-                ordered_params += &pprust::bounds_to_string(&bounds);
+                ordered_params += &pprust::bounds_to_string(bounds);
             }
 
             match kind {
@@ -822,11 +836,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
-                    if let Const::Yes(_) = constness {
-                        this.with_tilde_const_allowed(|this| this.visit_generics(generics));
-                    } else {
-                        this.visit_generics(generics);
-                    }
+                    let disallowed = matches!(constness, Const::No)
+                        .then(|| DisallowTildeConstContext::Impl(item.span));
+                    this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
                     this.visit_trait_ref(t);
                     this.visit_ty(self_ty);
 
@@ -840,10 +852,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 polarity,
                 defaultness,
                 constness,
-                generics: _,
+                generics,
                 of_trait: None,
                 self_ty,
-                items: _,
+                items,
             }) => {
                 let error =
                     |annotation_span, annotation, only_trait: bool| errors::InherentImplCannot {
@@ -875,6 +887,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if let &Const::Yes(span) = constness {
                     self.err_handler().emit_err(error(span, "`const`", true));
                 }
+
+                self.visit_vis(&item.vis);
+                self.visit_ident(item.ident);
+                self.with_tilde_const(None, |this| this.visit_generics(generics));
+                self.visit_ty(self_ty);
+                walk_list!(self, visit_assoc_item, items, AssocCtxt::Impl);
+                walk_list!(self, visit_attribute, &item.attrs);
+                return; // Avoid visiting again.
             }
             ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
                 self.check_defaultness(item.span, *defaultness);
@@ -955,8 +975,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // context for the supertraits.
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
-                    this.visit_generics(generics);
-                    this.with_tilde_const_allowed(|this| {
+                    let disallowed =
+                        (!is_const_trait).then(|| DisallowTildeConstContext::Trait(item.span));
+                    this.with_tilde_const(disallowed, |this| {
+                        this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                     });
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
@@ -976,16 +998,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::Struct(vdata, generics) => match vdata {
-                // Duplicating the `Visitor` logic allows catching all cases
-                // of `Anonymous(Struct, Union)` outside of a field struct or union.
-                //
-                // Inside `visit_ty` the validator catches every `Anonymous(Struct, Union)` it
-                // encounters, and only on `ItemKind::Struct` and `ItemKind::Union`
-                // it uses `visit_ty_common`, which doesn't contain that specific check.
                 VariantData::Struct(fields, ..) => {
                     self.visit_vis(&item.vis);
                     self.visit_ident(item.ident);
                     self.visit_generics(generics);
+                    // Permit `Anon{Struct,Union}` as field type.
                     walk_list!(self, visit_struct_field_def, fields);
                     walk_list!(self, visit_attribute, &item.attrs);
                     return;
@@ -1001,6 +1018,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.visit_vis(&item.vis);
                         self.visit_ident(item.ident);
                         self.visit_generics(generics);
+                        // Permit `Anon{Struct,Union}` as field type.
                         walk_list!(self, visit_struct_field_def, fields);
                         walk_list!(self, visit_attribute, &item.attrs);
                         return;
@@ -1189,15 +1207,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let Some(reason) = &self.disallow_tilde_const =>
                 {
                     let reason = match reason {
-                        DisallowTildeConstContext::TraitObject => {
-                            errors::TildeConstReason::TraitObject
-                        }
                         DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
                             errors::TildeConstReason::Closure
                         }
                         DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
                             errors::TildeConstReason::Function { ident: ident.span }
                         }
+                        &DisallowTildeConstContext::Trait(span) => {
+                            errors::TildeConstReason::Trait { span }
+                        }
+                        &DisallowTildeConstContext::Impl(span) => {
+                            errors::TildeConstReason::Impl { span }
+                        }
+                        DisallowTildeConstContext::TraitObject => {
+                            errors::TildeConstReason::TraitObject
+                        }
+                        DisallowTildeConstContext::Item => errors::TildeConstReason::Item,
                     };
                     self.err_handler()
                         .emit_err(errors::TildeConstDisallowed { span: bound.span(), reason });
@@ -1305,7 +1330,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)) if self.in_const_trait_or_impl);
 
         let disallowed = (!tilde_const_allowed).then(|| DisallowTildeConstContext::Fn(fk));
-
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }
 
@@ -1374,18 +1398,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         match &item.kind {
-            AssocItemKind::Type(box TyAlias { generics, bounds, ty, .. })
-                if ctxt == AssocCtxt::Trait =>
-            {
-                self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                walk_list!(self, visit_attribute, &item.attrs);
-                self.with_tilde_const_allowed(|this| {
-                    this.visit_generics(generics);
-                    walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
-                });
-                walk_list!(self, visit_ty, ty);
-            }
             AssocItemKind::Fn(box Fn { sig, generics, body, .. })
                 if self.in_const_trait_or_impl
                     || ctxt == AssocCtxt::Trait
@@ -1419,62 +1431,48 @@ fn deny_equality_constraints(
     let mut err = errors::EqualityInWhere { span: predicate.span, assoc: None, assoc2: None };
 
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
-    if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind {
-        if let TyKind::Path(None, path) = &qself.ty.kind {
-            match &path.segments[..] {
-                [PathSegment { ident, args: None, .. }] => {
-                    for param in &generics.params {
-                        if param.ident == *ident {
-                            let param = ident;
-                            match &full_path.segments[qself.position..] {
-                                [PathSegment { ident, args, .. }] => {
-                                    // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
-                                    let mut assoc_path = full_path.clone();
-                                    // Remove `Bar` from `Foo::Bar`.
-                                    assoc_path.segments.pop();
-                                    let len = assoc_path.segments.len() - 1;
-                                    let gen_args = args.as_deref().cloned();
-                                    // Build `<Bar = RhsTy>`.
-                                    let arg = AngleBracketedArg::Constraint(AssocConstraint {
-                                        id: rustc_ast::node_id::DUMMY_NODE_ID,
-                                        ident: *ident,
-                                        gen_args,
-                                        kind: AssocConstraintKind::Equality {
-                                            term: predicate.rhs_ty.clone().into(),
-                                        },
-                                        span: ident.span,
-                                    });
-                                    // Add `<Bar = RhsTy>` to `Foo`.
-                                    match &mut assoc_path.segments[len].args {
-                                        Some(args) => match args.deref_mut() {
-                                            GenericArgs::Parenthesized(_) => continue,
-                                            GenericArgs::AngleBracketed(args) => {
-                                                args.args.push(arg);
-                                            }
-                                        },
-                                        empty_args => {
-                                            *empty_args = Some(
-                                                AngleBracketedArgs {
-                                                    span: ident.span,
-                                                    args: thin_vec![arg],
-                                                }
-                                                .into(),
-                                            );
-                                        }
-                                    }
-                                    err.assoc = Some(errors::AssociatedSuggestion {
-                                        span: predicate.span,
-                                        ident: *ident,
-                                        param: *param,
-                                        path: pprust::path_to_string(&assoc_path),
-                                    })
-                                }
-                                _ => {}
-                            };
+    if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
+        && let TyKind::Path(None, path) = &qself.ty.kind
+        && let [PathSegment { ident, args: None, .. }] = &path.segments[..]
+    {
+        for param in &generics.params {
+            if param.ident == *ident
+                && let [PathSegment { ident, args, .. }] = &full_path.segments[qself.position..]
+            {
+                // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
+                let mut assoc_path = full_path.clone();
+                // Remove `Bar` from `Foo::Bar`.
+                assoc_path.segments.pop();
+                let len = assoc_path.segments.len() - 1;
+                let gen_args = args.as_deref().cloned();
+                // Build `<Bar = RhsTy>`.
+                let arg = AngleBracketedArg::Constraint(AssocConstraint {
+                    id: rustc_ast::node_id::DUMMY_NODE_ID,
+                    ident: *ident,
+                    gen_args,
+                    kind: AssocConstraintKind::Equality { term: predicate.rhs_ty.clone().into() },
+                    span: ident.span,
+                });
+                // Add `<Bar = RhsTy>` to `Foo`.
+                match &mut assoc_path.segments[len].args {
+                    Some(args) => match args.deref_mut() {
+                        GenericArgs::Parenthesized(_) => continue,
+                        GenericArgs::AngleBracketed(args) => {
+                            args.args.push(arg);
                         }
+                    },
+                    empty_args => {
+                        *empty_args = Some(
+                            AngleBracketedArgs { span: ident.span, args: thin_vec![arg] }.into(),
+                        );
                     }
                 }
-                _ => {}
+                err.assoc = Some(errors::AssociatedSuggestion {
+                    span: predicate.span,
+                    ident: *ident,
+                    param: param.ident,
+                    path: pprust::path_to_string(&assoc_path),
+                })
             }
         }
     }
@@ -1537,7 +1535,7 @@ pub fn check_crate(
         in_const_trait_or_impl: false,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
-        disallow_tilde_const: None,
+        disallow_tilde_const: Some(DisallowTildeConstContext::Item),
         is_impl_trait_banned: false,
         lint_buffer: lints,
     };

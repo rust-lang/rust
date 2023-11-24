@@ -4,6 +4,7 @@
 use std::{
     fs,
     io::Write as _,
+    path::PathBuf,
     process::{self, Stdio},
 };
 
@@ -1995,13 +1996,33 @@ fn run_rustfmt(
             cmd
         }
         RustfmtConfig::CustomCommand { command, args } => {
-            let mut cmd = process::Command::new(command);
+            let cmd = PathBuf::from(&command);
+            let workspace = CargoTargetSpec::for_file(&snap, file_id)?;
+            let mut cmd = match workspace {
+                Some(spec) => {
+                    // approach: if the command name contains a path separator, join it with the workspace root.
+                    // however, if the path is absolute, joining will result in the absolute path being preserved.
+                    // as a fallback, rely on $PATH-based discovery.
+                    let cmd_path =
+                        if cfg!(windows) && command.contains(&[std::path::MAIN_SEPARATOR, '/']) {
+                            spec.workspace_root.join(cmd).into()
+                        } else if command.contains(std::path::MAIN_SEPARATOR) {
+                            spec.workspace_root.join(cmd).into()
+                        } else {
+                            cmd
+                        };
+                    process::Command::new(cmd_path)
+                }
+                None => process::Command::new(cmd),
+            };
 
             cmd.envs(snap.config.extra_env());
             cmd.args(args);
             cmd
         }
     };
+
+    tracing::debug!(?command, "created format command");
 
     // try to chdir to the file so we can respect `rustfmt.toml`
     // FIXME: use `rustfmt --config-path` once

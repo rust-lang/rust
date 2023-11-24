@@ -40,7 +40,7 @@ pub fn main() {
 
             sleep(Duration::from_millis(200));
 
-            stack_var //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Read on thread `<unnamed>`
+            stack_var //~ ERROR: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) non-atomic read on thread `<unnamed>`
         });
 
         let j2 = spawn(move || {

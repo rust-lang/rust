@@ -24,7 +24,9 @@ error[E0308]: mismatched types
   --> $DIR/struct-path-self-type-mismatch.rs:13:9
    |
 LL |   impl<T> Foo<T> {
-   |        - found type parameter
+   |        -  ------ this is the type of the `Self` literal
+   |        |
+   |        found type parameter
 LL |       fn new<U>(u: U) -> Foo<U> {
    |              -           ------ expected `Foo<U>` because of return type
    |              |
@@ -40,6 +42,10 @@ LL | |         }
               found struct `Foo<T>`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+help: use the type name directly
+   |
+LL |         Foo::<U> {
+   |         ~~~~~~~~
 
 error: aborting due to 3 previous errors
 

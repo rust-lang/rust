@@ -68,12 +68,10 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Folds over the substructure of a type, visiting its component
 /// types and all regions that occur *free* within it.
 ///
-/// That is, `Ty` can contain function or method types that bind
-/// regions at the call site (`ReLateBound`), and occurrences of
-/// regions (aka "lifetimes") that are bound within a type are not
-/// visited by this folder; only regions that occur free will be
+/// That is, function pointer types and trait object can introduce
+/// new bound regions which are not visited by this visitors as
+/// they are not free; only regions that occur free will be
 /// visited by `fld_r`.
-
 pub struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
 
@@ -117,7 +115,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     #[instrument(skip(self), level = "debug", ret)]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(debruijn, _) if debruijn < self.current_index => {
+            ty::ReBound(debruijn, _) if debruijn < self.current_index => {
                 debug!(?self.current_index, "skipped bound region");
                 r
             }
@@ -205,15 +203,15 @@ where
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
+            ty::ReBound(debruijn, br) if debruijn == self.current_index => {
                 let region = self.delegate.replace_region(br);
-                if let ty::ReLateBound(debruijn1, br) = *region {
-                    // If the callback returns a late-bound region,
+                if let ty::ReBound(debruijn1, br) = *region {
+                    // If the callback returns a bound region,
                     // that region should always use the INNERMOST
                     // debruijn index. Then we adjust it to the
                     // correct depth.
                     assert_eq!(debruijn1, ty::INNERMOST);
-                    ty::Region::new_late_bound(self.tcx, debruijn, br)
+                    ty::Region::new_bound(self.tcx, debruijn, br)
                 } else {
                     region
                 }
@@ -252,7 +250,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// This method only replaces late bound regions. Any types or
     /// constants bound by `value` will cause an ICE.
-    pub fn replace_late_bound_regions<T, F>(
+    pub fn instantiate_bound_regions<T, F>(
         self,
         value: Binder<'tcx, T>,
         mut fld_r: F,
@@ -263,11 +261,11 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let mut region_map = BTreeMap::new();
         let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
-        let value = self.replace_late_bound_regions_uncached(value, real_fld_r);
+        let value = self.instantiate_bound_regions_uncached(value, real_fld_r);
         (value, region_map)
     }
 
-    pub fn replace_late_bound_regions_uncached<T, F>(
+    pub fn instantiate_bound_regions_uncached<T, F>(
         self,
         value: Binder<'tcx, T>,
         mut replace_regions: F,
@@ -327,8 +325,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.replace_late_bound_regions_uncached(value, |br| {
-            ty::Region::new_free(self, all_outlive_scope, br.kind)
+        self.instantiate_bound_regions_uncached(value, |br| {
+            ty::Region::new_late_param(self, all_outlive_scope, br.kind)
         })
     }
 
@@ -341,7 +339,7 @@ impl<'tcx> TyCtxt<'tcx> {
             value,
             FnMutDelegate {
                 regions: &mut |r: ty::BoundRegion| {
-                    ty::Region::new_late_bound(
+                    ty::Region::new_bound(
                         self,
                         ty::INNERMOST,
                         ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
@@ -363,11 +361,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
     /// method lookup and a few other places where precise region relationships are not required.
-    pub fn erase_late_bound_regions<T>(self, value: Binder<'tcx, T>) -> T
+    pub fn instantiate_bound_regions_with_erased<T>(self, value: Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.replace_late_bound_regions(value, |_| self.lifetimes.re_erased).0
+        self.instantiate_bound_regions(value, |_| self.lifetimes.re_erased).0
     }
 
     /// Anonymize all bound variables in `value`, this is mostly used to improve caching.
@@ -388,7 +386,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     .or_insert_with(|| ty::BoundVariableKind::Region(ty::BrAnon))
                     .expect_region();
                 let br = ty::BoundRegion { var, kind };
-                ty::Region::new_late_bound(self.tcx, ty::INNERMOST, br)
+                ty::Region::new_bound(self.tcx, ty::INNERMOST, br)
             }
             fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
                 let entry = self.map.entry(bt.var);
@@ -454,9 +452,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(debruijn, br) if debruijn >= self.current_index => {
+            ty::ReBound(debruijn, br) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                ty::Region::new_late_bound(self.tcx, debruijn, br)
+                ty::Region::new_bound(self.tcx, debruijn, br)
             }
             _ => r,
         }
@@ -496,8 +494,8 @@ pub fn shift_region<'tcx>(
     amount: u32,
 ) -> ty::Region<'tcx> {
     match *region {
-        ty::ReLateBound(debruijn, br) if amount > 0 => {
-            ty::Region::new_late_bound(tcx, debruijn.shifted_in(amount), br)
+        ty::ReBound(debruijn, br) if amount > 0 => {
+            ty::Region::new_bound(tcx, debruijn.shifted_in(amount), br)
         }
         _ => region,
     }

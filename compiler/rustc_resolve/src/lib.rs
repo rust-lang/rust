@@ -7,8 +7,8 @@
 //! Type-relative name resolution (methods, fields, associated items) happens in `rustc_hir_analysis`.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(extract_if)]

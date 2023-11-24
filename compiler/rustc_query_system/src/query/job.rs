@@ -38,7 +38,7 @@ pub struct QueryInfo {
 pub type QueryMap = FxHashMap<QueryJobId, QueryJobInfo>;
 
 /// A value uniquely identifying an active query job.
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct QueryJobId(pub NonZeroU64);
 
 impl QueryJobId {
@@ -62,14 +62,14 @@ impl QueryJobId {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct QueryJobInfo {
     pub query: QueryStackFrame,
     pub job: QueryJob,
 }
 
 /// Represents an active query job.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct QueryJob {
     pub id: QueryJobId,
 
@@ -182,6 +182,7 @@ impl QueryJobId {
 }
 
 #[cfg(parallel_compiler)]
+#[derive(Debug)]
 struct QueryWaiter {
     query: Option<QueryJobId>,
     condvar: Condvar,
@@ -198,13 +199,14 @@ impl QueryWaiter {
 }
 
 #[cfg(parallel_compiler)]
+#[derive(Debug)]
 struct QueryLatchInfo {
     complete: bool,
     waiters: Vec<Arc<QueryWaiter>>,
 }
 
 #[cfg(parallel_compiler)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct QueryLatch {
     info: Arc<Mutex<QueryLatchInfo>>,
 }
@@ -540,7 +542,11 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
     // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
     // only considers the true dependency and won't detect a cycle.
     if !found_cycle {
-        panic!("deadlock detected");
+        if query_map.len() == 0 {
+            panic!("deadlock detected without any query!")
+        } else {
+            panic!("deadlock detected! current query map:\n{:#?}", query_map);
+        }
     }
 
     // FIXME: Ensure this won't cause a deadlock before we return

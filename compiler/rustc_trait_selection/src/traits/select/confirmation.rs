@@ -9,7 +9,7 @@
 use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
+use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{BuiltinImplSource, SelectionOutputTypeParameterMismatch};
 use rustc_middle::ty::{
@@ -91,6 +91,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             FutureCandidate => {
                 let vtable_future = self.confirm_future_candidate(obligation)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_future)
+            }
+
+            IteratorCandidate => {
+                let vtable_iterator = self.confirm_iterator_candidate(obligation)?;
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_iterator)
             }
 
             FnPointerCandidate { is_const } => {
@@ -322,8 +327,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // care about other regions. Erasing late-bound regions is equivalent
         // to instantiating the binder with placeholders then erasing those
         // placeholder regions.
-        let predicate =
-            self.tcx().erase_regions(self.tcx().erase_late_bound_regions(obligation.predicate));
+        let predicate = self
+            .tcx()
+            .erase_regions(self.tcx().instantiate_bound_regions_with_erased(obligation.predicate));
 
         let Some(assume) = rustc_transmute::Assume::from_const(
             self.infcx.tcx,
@@ -388,7 +394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.recursion_depth + 1,
                 obligation.param_env,
                 trait_def_id,
-                &trait_ref.args,
+                trait_ref.args,
                 obligation.predicate,
             );
 
@@ -449,7 +455,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             recursion_depth,
             param_env,
             impl_def_id,
-            &args.value,
+            args.value,
             parent_trait_pred,
         );
 
@@ -587,7 +593,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                             let bound_var = ty::BoundVariableKind::Region(kind);
                             bound_vars.push(bound_var);
-                            ty::Region::new_late_bound(
+                            ty::Region::new_bound(
                                 tcx,
                                 ty::INNERMOST,
                                 ty::BoundRegion {
@@ -702,7 +708,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.recursion_depth,
             obligation.param_env,
             trait_def_id,
-            &args,
+            args,
             obligation.predicate,
         );
 
@@ -725,7 +731,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_coroutine_candidate");
 
-        let gen_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().poly_sig();
 
         // NOTE: The self-type is a coroutine type and hence is
         // in fact unparameterized (or at least does not reference any
@@ -740,7 +746,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
-            gen_sig,
+            coroutine_sig,
         )
         .map_bound(|(trait_ref, ..)| trait_ref);
 
@@ -764,13 +770,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_future_candidate");
 
-        let gen_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().poly_sig();
 
         let trait_ref = super::util::future_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.no_bound_vars().expect("future has no bound vars").self_ty(),
-            gen_sig,
+            coroutine_sig,
         )
         .map_bound(|(trait_ref, ..)| trait_ref);
 
@@ -780,16 +786,41 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(nested)
     }
 
+    fn confirm_iterator_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // Okay to skip binder because the args on coroutine types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters.
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+            bug!("closure candidate for non-closure {:?}", obligation);
+        };
+
+        debug!(?obligation, ?coroutine_def_id, ?args, "confirm_iterator_candidate");
+
+        let gen_sig = args.as_coroutine().poly_sig();
+
+        let trait_ref = super::util::iterator_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.no_bound_vars().expect("iterator has no bound vars").self_ty(),
+            gen_sig,
+        )
+        .map_bound(|(trait_ref, ..)| trait_ref);
+
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        debug!(?trait_ref, ?nested, "iterator candidate obligations");
+
+        Ok(nested)
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn confirm_closure_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        let kind = self
-            .tcx()
-            .fn_trait_kind_from_def_id(obligation.predicate.def_id())
-            .unwrap_or_else(|| bug!("closure candidate for non-fn trait {:?}", obligation));
-
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
@@ -799,14 +830,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, args);
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
 
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
-
-        nested.push(obligation.with(
-            self.tcx(),
-            ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, args, kind)),
-        ));
 
         Ok(nested)
     }
@@ -950,7 +976,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         Ok(match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
-            (&ty::Dynamic(ref data_a, r_a, dyn_a), &ty::Dynamic(ref data_b, r_b, dyn_b))
+            (&ty::Dynamic(data_a, r_a, dyn_a), &ty::Dynamic(data_b, r_b, dyn_b))
                 if dyn_a == dyn_b =>
             {
                 // See `assemble_candidates_for_unsizing` for more info.
@@ -995,7 +1021,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(ref data, r, ty::Dyn)) => {
+            (_, &ty::Dynamic(data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
@@ -1242,7 +1268,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let tcx = self.tcx();
                     stack.extend(tcx.coroutine_hidden_types(def_id).map(|bty| {
                         let ty = bty.instantiate(tcx, args);
-                        debug_assert!(!ty.has_late_bound_regions());
+                        debug_assert!(!ty.has_bound_regions());
                         ty
                     }))
                 }

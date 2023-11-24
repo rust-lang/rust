@@ -2,7 +2,7 @@
 
 use crate::source::{get_source_text, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
-use if_chain::if_chain;
+
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
@@ -372,27 +372,25 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             ExprKind::Binary(op, left, right) => self.binop(op, left, right),
             ExprKind::Call(callee, args) => {
                 // We only handle a few const functions for now.
-                if_chain! {
-                    if args.is_empty();
-                    if let ExprKind::Path(qpath) = &callee.kind;
-                    let res = self.typeck_results.qpath_res(qpath, callee.hir_id);
-                    if let Some(def_id) = res.opt_def_id();
-                    let def_path = self.lcx.get_def_path(def_id);
-                    let def_path: Vec<&str> = def_path.iter().take(4).map(Symbol::as_str).collect();
-                    if let ["core", "num", int_impl, "max_value"] = *def_path;
-                    then {
-                        let value = match int_impl {
-                            "<impl i8>" => i8::MAX as u128,
-                            "<impl i16>" => i16::MAX as u128,
-                            "<impl i32>" => i32::MAX as u128,
-                            "<impl i64>" => i64::MAX as u128,
-                            "<impl i128>" => i128::MAX as u128,
-                            _ => return None,
-                        };
-                        Some(Constant::Int(value))
-                    } else {
-                        None
-                    }
+                if args.is_empty()
+                    && let ExprKind::Path(qpath) = &callee.kind
+                    && let res = self.typeck_results.qpath_res(qpath, callee.hir_id)
+                    && let Some(def_id) = res.opt_def_id()
+                    && let def_path = self.lcx.get_def_path(def_id)
+                    && let def_path = def_path.iter().take(4).map(Symbol::as_str).collect::<Vec<_>>()
+                    && let ["core", "num", int_impl, "max_value"] = *def_path
+                {
+                    let value = match int_impl {
+                        "<impl i8>" => i8::MAX as u128,
+                        "<impl i16>" => i16::MAX as u128,
+                        "<impl i32>" => i32::MAX as u128,
+                        "<impl i64>" => i64::MAX as u128,
+                        "<impl i128>" => i128::MAX as u128,
+                        _ => return None,
+                    };
+                    Some(Constant::Int(value))
+                } else {
+                    None
                 }
             },
             ExprKind::Index(arr, index, _) => self.index(arr, index),
@@ -405,8 +403,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     && let Some(desired_field) = field_of_struct(*adt_def, self.lcx, *constant, field)
                 {
                     mir_to_const(self.lcx, desired_field)
-                }
-                else {
+                } else {
                     result
                 }
             },
@@ -462,11 +459,15 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 // Check if this constant is based on `cfg!(..)`,
                 // which is NOT constant for our purposes.
                 if let Some(node) = self.lcx.tcx.hir().get_if_local(def_id)
-                    && let Node::Item(Item { kind: ItemKind::Const(.., body_id), .. }) = node
-                    && let Node::Expr(Expr { kind: ExprKind::Lit(_), span, .. }) = self.lcx
-                        .tcx
-                        .hir()
-                        .get(body_id.hir_id)
+                    && let Node::Item(Item {
+                        kind: ItemKind::Const(.., body_id),
+                        ..
+                    }) = node
+                    && let Node::Expr(Expr {
+                        kind: ExprKind::Lit(_),
+                        span,
+                        ..
+                    }) = self.lcx.tcx.hir().get(body_id.hir_id)
                     && is_direct_expn_of(*span, "cfg").is_some()
                 {
                     return None;
@@ -504,7 +505,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             },
             (Some(Constant::Vec(vec)), _) => {
                 if !vec.is_empty() && vec.iter().all(|x| *x == vec[0]) {
-                    match vec.get(0) {
+                    match vec.first() {
                         Some(Constant::F32(x)) => Some(Constant::F32(*x)),
                         Some(Constant::F64(x)) => Some(Constant::F64(*x)),
                         _ => None,
@@ -531,7 +532,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     && let Some(src) = get_source_text(self.lcx, span.lo..expr_lo)
                     && let Some(src) = src.as_str()
                 {
-                    use rustc_lexer::TokenKind::{Whitespace, LineComment, BlockComment, Semi, OpenBrace};
+                    use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
                     if !tokenize(src)
                         .map(|t| t.kind)
                         .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))
@@ -710,15 +711,14 @@ fn field_of_struct<'tcx>(
     field: &Ident,
 ) -> Option<mir::Const<'tcx>> {
     if let mir::Const::Val(result, ty) = result
-        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_diagnostics(result, ty)
+        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_user_output(result, ty)
         && let Some(dc_variant) = dc.variant
         && let Some(variant) = adt_def.variants().get(dc_variant)
         && let Some(field_idx) = variant.fields.iter().position(|el| el.name == field.name)
         && let Some(&(val, ty)) = dc.fields.get(field_idx)
     {
         Some(mir::Const::Val(val, ty))
-    }
-    else {
+    } else {
         None
     }
 }

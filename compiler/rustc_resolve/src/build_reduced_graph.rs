@@ -123,7 +123,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     .map(|parent_id| self.get_nearest_non_block_module(parent_id));
                 // Query `expn_that_defined` is not used because
                 // hashing spans in its result is expensive.
-                let expn_id = self.cstore().expn_that_defined_untracked(def_id, &self.tcx.sess);
+                let expn_id = self.cstore().expn_that_defined_untracked(def_id, self.tcx.sess);
                 return Some(self.new_module(
                     parent,
                     ModuleKind::Def(def_kind, def_id, self.tcx.item_name(def_id)),

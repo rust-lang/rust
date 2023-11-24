@@ -1,7 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
 #![feature(associated_type_defaults)]
 #![feature(rustc_private)]
 #![feature(try_blocks)]
@@ -210,22 +210,7 @@ where
                     }
                 }
             }
-            ty::Alias(ty::Weak, alias) => {
-                self.def_id_visitor.visit_def_id(alias.def_id, "type alias", &ty);
-            }
-            ty::Alias(ty::Projection, proj) => {
-                if V::SKIP_ASSOC_TYS {
-                    // Visitors searching for minimal visibility/reachability want to
-                    // conservatively approximate associated types like `<Type as Trait>::Alias`
-                    // as visible/reachable even if both `Type` and `Trait` are private.
-                    // Ideally, associated types should be substituted in the same way as
-                    // free type aliases, but this isn't done yet.
-                    return ControlFlow::Continue(());
-                }
-                // This will also visit args if necessary, so we don't need to recurse.
-                return self.visit_projection_ty(proj);
-            }
-            ty::Alias(ty::Inherent, data) => {
+            ty::Alias(kind @ (ty::Inherent | ty::Weak | ty::Projection), data) => {
                 if V::SKIP_ASSOC_TYS {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -235,9 +220,14 @@ where
                     return ControlFlow::Continue(());
                 }
 
+                let kind = match kind {
+                    ty::Inherent | ty::Projection => "associated type",
+                    ty::Weak => "type alias",
+                    ty::Opaque => unreachable!(),
+                };
                 self.def_id_visitor.visit_def_id(
                     data.def_id,
-                    "associated type",
+                    kind,
                     &LazyDefPathStr { def_id: data.def_id, tcx },
                 )?;
 
@@ -674,7 +664,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.impl_trait_pass
-            && let hir::ItemKind::OpaqueTy(ref opaque) = item.kind
+            && let hir::ItemKind::OpaqueTy(opaque) = item.kind
             && !opaque.in_trait
         {
             // FIXME: This is some serious pessimization intended to workaround deficiencies
@@ -698,7 +688,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             | hir::ItemKind::GlobalAsm(..) => {}
             // The interface is empty, and all nested items are processed by `visit_item`.
             hir::ItemKind::Mod(..) | hir::ItemKind::OpaqueTy(..) => {}
-            hir::ItemKind::Macro(ref macro_def, _) => {
+            hir::ItemKind::Macro(macro_def, _) => {
                 if let Some(item_ev) = item_ev {
                     self.update_reachability_from_macro(item.owner_id.def_id, macro_def, item_ev);
                 }
@@ -737,7 +727,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.owner_id.def_id, item_ev).generics().predicates();
                 }
             }
-            hir::ItemKind::Impl(ref impl_) => {
+            hir::ItemKind::Impl(impl_) => {
                 // Type inference is very smart sometimes. It can make an impl reachable even some
                 // components of its type or trait are unreachable. E.g. methods of
                 // `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
@@ -1751,7 +1741,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
             // Subitems of trait impls have inherited publicity.
             DefKind::Impl { .. } => {
                 let item = tcx.hir().item(id);
-                if let hir::ItemKind::Impl(ref impl_) = item.kind {
+                if let hir::ItemKind::Impl(impl_) = item.kind {
                     let impl_vis = ty::Visibility::of_impl::<false>(
                         item.owner_id.def_id,
                         tcx,
@@ -1766,7 +1756,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
                     //     fn from(_: Priv) -> Pub {...}
                     // }
                     //
-                    // lints shouldn't be emmited even if `from` effective visibility
+                    // lints shouldn't be emitted even if `from` effective visibility
                     // is larger than `Priv` nominal visibility and if `Priv` can leak
                     // in some scenarios due to type inference.
                     let impl_ev = EffectiveVisibility::of_impl::<false>(

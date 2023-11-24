@@ -27,7 +27,7 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 pub use rustc_middle::infer::canonical::*;
 pub use substitute::CanonicalExt;
@@ -152,7 +152,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
                 .into(),
             CanonicalVarKind::Effect => {
-                let vid = self.inner.borrow_mut().effect_unification_table().new_key(None);
+                let vid = self.inner.borrow_mut().effect_unification_table().new_key(None).vid;
                 ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(vid), self.tcx.types.bool)
                     .into()
             }

@@ -4,15 +4,17 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+# tidy-alphabetical-start
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_hir = { path = "../rustc_hir" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 tracing = "0.1"
+# tidy-alphabetical-end

@@ -91,6 +91,10 @@ x--expand-yaml-anchors--remove:
     os: macos-13 # We use the standard runner for now
     <<: *base-job
 
+  - &job-macos-m1
+    os: macos-13-xlarge
+    <<: *base-job
+
   - &job-windows-8c
     os: windows-2019-8core-32gb
     <<: *base-job
@@ -153,6 +157,10 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/dump-environment.sh
         <<: *step
 
+      - name: install awscli
+        run: src/ci/scripts/install-awscli.sh
+        <<: *step
+
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         <<: *step
@@ -163,6 +171,10 @@ x--expand-yaml-anchors--remove:
 
       - name: install clang
         run: src/ci/scripts/install-clang.sh
+        <<: *step
+
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
         <<: *step
 
       - name: install WIX
@@ -323,6 +335,8 @@ jobs:
             <<: *job-linux-4c
 
           - name: x86_64-gnu-llvm-15
+            env:
+              ENABLE_GCC_CODEGEN: "1"
             <<: *job-linux-16c
 
           - name: x86_64-gnu-tools
@@ -351,6 +365,8 @@ jobs:
             <<: *job-linux-8c
 
           - name: dist-aarch64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-8c
 
           - name: dist-android
@@ -403,14 +419,19 @@ jobs:
 
           - &dist-x86_64-linux
             name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
           - name: dist-x86_64-musl
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-8c
 
           - name: dist-x86_64-netbsd
@@ -455,6 +476,11 @@ jobs:
           - name: x86_64-gnu-distcheck
             <<: *job-linux-8c
 
+          - name: x86_64-gnu-llvm-17
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-8c
+
           - name: x86_64-gnu-llvm-16
             env:
               RUST_BACKTRACE: 1
@@ -488,6 +514,7 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-macos-xl
 
           - name: dist-apple-various
@@ -523,15 +550,32 @@ jobs:
           # This target only needs to support 11.0 and up as nothing else supports the hardware
           - name: dist-aarch64-apple
             env:
-              SCRIPT: ./x.py dist bootstrap --include-default-paths --stage 2
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
               RUST_CONFIGURE_ARGS: >-
-                --build=x86_64-apple-darwin
-                --host=aarch64-apple-darwin
-                --target=aarch64-apple-darwin
                 --enable-full-tools
                 --enable-sanitizers
                 --enable-profiler
-                --disable-docs
+                --set rust.jemalloc
+                --set llvm.ninja=false
+                --set rust.lto=thin
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-macos-m1
+
+          # This target only needs to support 11.0 and up as nothing else supports the hardware
+          - name: aarch64-apple
+            env:
+              SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+              RUST_CONFIGURE_ARGS: >-
+                --enable-sanitizers
+                --enable-profiler
                 --set rust.jemalloc
                 --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
@@ -542,16 +586,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-              DIST_REQUIRE_ALL_TOOLS: 1
-              # Corresponds to 16K page size
-              #
-              # Shouldn't be needed if jemalloc-sys is updated to
-              # handle this platform like iOS or if we build on
-              # aarch64-apple-darwin itself.
-              #
-              # https://github.com/gnzlbg/jemallocator/blob/c27a859e98e3cb790dc269773d9da71a1e918458/jemalloc-sys/build.rs#L237
-              JEMALLOC_SYS_WITH_LG_PAGE: 14
-            <<: *job-macos-xl
+            <<: *job-macos-m1
 
           ######################
           #  Windows Builders  #
@@ -572,6 +607,7 @@ jobs:
           - name: x86_64-msvc-ext
             env:
               SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+              HOST_TARGET: x86_64-pc-windows-msvc
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
               DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
             <<: *job-windows-8c
@@ -695,6 +731,8 @@ jobs:
         include:
           - &dist-x86_64-linux
             name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
   master:

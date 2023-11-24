@@ -679,7 +679,7 @@ impl InferenceContext<'_> {
             | Pat::Range { .. } => {
                 update_result(CaptureKind::ByRef(BorrowKind::Shared));
             }
-            Pat::Bind { id, .. } => match self.result.binding_modes[*id] {
+            Pat::Bind { id, .. } => match self.result.binding_modes[p] {
                 crate::BindingMode::Move => {
                     if self.is_ty_copy(self.result.type_of_binding[*id].clone()) {
                         update_result(CaptureKind::ByRef(BorrowKind::Shared));
@@ -733,6 +733,32 @@ impl InferenceContext<'_> {
 
     fn select_from_expr(&mut self, expr: ExprId) {
         self.walk_expr(expr);
+    }
+
+    fn restrict_precision_for_unsafe(&mut self) {
+        for capture in &mut self.current_captures {
+            let mut ty = self.table.resolve_completely(self.result[capture.place.local].clone());
+            if ty.as_raw_ptr().is_some() || ty.is_union() {
+                capture.kind = CaptureKind::ByRef(BorrowKind::Shared);
+                capture.place.projections.truncate(0);
+                continue;
+            }
+            for (i, p) in capture.place.projections.iter().enumerate() {
+                ty = p.projected_ty(
+                    ty,
+                    self.db,
+                    |_, _, _| {
+                        unreachable!("Closure field only happens in MIR");
+                    },
+                    self.owner.module(self.db.upcast()).krate(),
+                );
+                if ty.as_raw_ptr().is_some() || ty.is_union() {
+                    capture.kind = CaptureKind::ByRef(BorrowKind::Shared);
+                    capture.place.projections.truncate(i + 1);
+                    break;
+                }
+            }
+        }
     }
 
     fn adjust_for_move_closure(&mut self) {
@@ -838,8 +864,8 @@ impl InferenceContext<'_> {
             | Pat::ConstBlock(_)
             | Pat::Path(_)
             | Pat::Lit(_) => self.consume_place(place, pat.into()),
-            Pat::Bind { id, subpat: _ } => {
-                let mode = self.result.binding_modes[*id];
+            Pat::Bind { id: _, subpat: _ } => {
+                let mode = self.result.binding_modes[pat];
                 let capture_kind = match mode {
                     BindingMode::Move => {
                         self.consume_place(place, pat.into());
@@ -924,6 +950,7 @@ impl InferenceContext<'_> {
                 self.result.mutated_bindings_in_closure.insert(item.place.local);
             }
         }
+        self.restrict_precision_for_unsafe();
         // closure_kind should be done before adjust_for_move_closure
         let closure_kind = self.closure_kind();
         match capture_by {

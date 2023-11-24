@@ -271,7 +271,7 @@ pub struct ExternItemAscii {
 #[diag(ast_passes_bad_c_variadic)]
 pub struct BadCVariadic {
     #[primary_span]
-    pub span: Span,
+    pub span: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -551,8 +551,6 @@ pub struct TildeConstDisallowed {
 
 #[derive(Subdiagnostic)]
 pub enum TildeConstReason {
-    #[note(ast_passes_trait)]
-    TraitObject,
     #[note(ast_passes_closure)]
     Closure,
     #[note(ast_passes_function)]
@@ -560,6 +558,20 @@ pub enum TildeConstReason {
         #[primary_span]
         ident: Span,
     },
+    #[note(ast_passes_trait)]
+    Trait {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_impl)]
+    Impl {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_object)]
+    TraitObject,
+    #[note(ast_passes_item)]
+    Item,
 }
 
 #[derive(Diagnostic)]
@@ -581,6 +593,17 @@ pub struct ConstAndAsync {
     pub aspan: Span,
     #[label]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_const_and_c_variadic)]
+pub struct ConstAndCVariadic {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[label(ast_passes_const)]
+    pub const_span: Span,
+    #[label(ast_passes_variadic)]
+    pub variadic_spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

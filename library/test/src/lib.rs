@@ -16,8 +16,8 @@
 
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(internal_output_capture)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
@@ -264,8 +264,8 @@ pub fn run_tests<F>(
 where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
-    use std::collections::{self, HashMap};
-    use std::hash::BuildHasherDefault;
+    use std::collections::HashMap;
+    use std::hash::{BuildHasherDefault, DefaultHasher};
     use std::sync::mpsc::RecvTimeoutError;
 
     struct RunningTest {
@@ -286,8 +286,7 @@ where
     }
 
     // Use a deterministic hasher
-    type TestMap =
-        HashMap<TestId, RunningTest, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
+    type TestMap = HashMap<TestId, RunningTest, BuildHasherDefault<DefaultHasher>>;
 
     struct TimeoutEntry {
         id: TestId,

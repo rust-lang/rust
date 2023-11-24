@@ -273,9 +273,9 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![feature(rustdoc_internals)]
+#![doc(rust_logo)]
+#![allow(internal_features)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

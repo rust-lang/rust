@@ -567,10 +567,10 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             (self, e, e.kind, Id::None, ast, Expr, ExprKind),
             [
                 Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
-                If, While, ForLoop, Loop, Match, Closure, Block, Async, Await, TryBlock, Assign,
+                If, While, ForLoop, Loop, Match, Closure, Block, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Err
+                Become, IncludedBytes, Gen, Err
             ]
         );
         ast_visit::walk_expr(self, e)

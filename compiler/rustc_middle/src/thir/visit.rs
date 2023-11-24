@@ -66,8 +66,9 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         Use { source } => visitor.visit_expr(&visitor.thir()[source]),
         NeverToAny { source } => visitor.visit_expr(&visitor.thir()[source]),
         PointerCoercion { source, cast: _ } => visitor.visit_expr(&visitor.thir()[source]),
-        Let { expr, .. } => {
+        Let { expr, ref pat } => {
             visitor.visit_expr(&visitor.thir()[expr]);
+            visitor.visit_pat(pat);
         }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
         Match { scrutinee, ref arms, .. } => {
@@ -225,7 +226,7 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             ty: _,
             is_primary: _,
             name: _,
-        } => visitor.visit_pat(&subpattern),
+        } => visitor.visit_pat(subpattern),
         Binding { .. } | Wild | Error(_) => {}
         Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {
@@ -233,21 +234,22 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             }
         }
         Constant { value: _ } => {}
+        InlineConstant { def: _, subpattern } => visitor.visit_pat(subpattern),
         Range(_) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
             for subpattern in prefix.iter() {
-                visitor.visit_pat(&subpattern);
+                visitor.visit_pat(subpattern);
             }
             if let Some(pat) = slice {
-                visitor.visit_pat(&pat);
+                visitor.visit_pat(pat);
             }
             for subpattern in suffix.iter() {
-                visitor.visit_pat(&subpattern);
+                visitor.visit_pat(subpattern);
             }
         }
         Or { pats } => {
             for pat in pats.iter() {
-                visitor.visit_pat(&pat);
+                visitor.visit_pat(pat);
             }
         }
     };

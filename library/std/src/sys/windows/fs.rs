@@ -19,7 +19,7 @@ use crate::thread;
 use core::ffi::c_void;
 
 use super::path::maybe_verbatim;
-use super::to_u16s;
+use super::{api, to_u16s, IoResult};
 
 pub struct File {
     handle: Handle,
@@ -123,7 +123,7 @@ impl Iterator for ReadDir {
             let mut wfd = mem::zeroed();
             loop {
                 if c::FindNextFileW(self.handle.0, &mut wfd) == 0 {
-                    if c::GetLastError() == c::ERROR_NO_MORE_FILES {
+                    if api::get_last_error().code == c::ERROR_NO_MORE_FILES {
                         return None;
                     } else {
                         return Some(Err(Error::last_os_error()));
@@ -156,7 +156,7 @@ impl DirEntry {
     }
 
     pub fn path(&self) -> PathBuf {
-        self.root.join(&self.file_name())
+        self.root.join(self.file_name())
     }
 
     pub fn file_name(&self) -> OsString {
@@ -318,17 +318,8 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        let mut info = c::FILE_END_OF_FILE_INFO { EndOfFile: size as c::LARGE_INTEGER };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileEndOfFileInfo,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        let info = c::FILE_END_OF_FILE_INFO { EndOfFile: size as i64 };
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     #[cfg(not(target_vendor = "uwp"))]
@@ -557,7 +548,7 @@ impl File {
                 let user = super::args::from_wide_to_user_path(
                     subst.iter().copied().chain([0]).collect(),
                 )?;
-                Ok(PathBuf::from(OsString::from_wide(&user.strip_suffix(&[0]).unwrap_or(&user))))
+                Ok(PathBuf::from(OsString::from_wide(user.strip_suffix(&[0]).unwrap_or(&user))))
             } else {
                 Ok(PathBuf::from(OsString::from_wide(subst)))
             }
@@ -565,23 +556,14 @@ impl File {
     }
 
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
-        let mut info = c::FILE_BASIC_INFO {
+        let info = c::FILE_BASIC_INFO {
             CreationTime: 0,
             LastAccessTime: 0,
             LastWriteTime: 0,
             ChangeTime: 0,
             FileAttributes: perm.attrs,
         };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileBasicInfo,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
@@ -641,38 +623,20 @@ impl File {
     /// If the operation is not supported for this filesystem or OS version
     /// then errors will be `ERROR_NOT_SUPPORTED` or `ERROR_INVALID_PARAMETER`.
     fn posix_delete(&self) -> io::Result<()> {
-        let mut info = c::FILE_DISPOSITION_INFO_EX {
+        let info = c::FILE_DISPOSITION_INFO_EX {
             Flags: c::FILE_DISPOSITION_FLAG_DELETE
                 | c::FILE_DISPOSITION_FLAG_POSIX_SEMANTICS
                 | c::FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE,
         };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileDispositionInfoEx,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     /// Delete a file using win32 semantics. The file won't actually be deleted
     /// until all file handles are closed. However, marking a file for deletion
     /// will prevent anyone from opening a new handle to the file.
     fn win32_delete(&self) -> io::Result<()> {
-        let mut info = c::FILE_DISPOSITION_INFO { DeleteFile: c::TRUE as _ };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileDispositionInfo,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        let info = c::FILE_DISPOSITION_INFO { DeleteFile: c::TRUE as _ };
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     /// Fill the given buffer with as many directory entries as will fit.
@@ -822,7 +786,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
         // tricked into following a symlink. However, it may not be available in
         // earlier versions of Windows.
         static ATTRIBUTES: AtomicU32 = AtomicU32::new(c::OBJ_DONT_REPARSE);
-        let mut object = c::OBJECT_ATTRIBUTES {
+        let object = c::OBJECT_ATTRIBUTES {
             ObjectName: &mut name_str,
             RootDirectory: parent.as_raw_handle(),
             Attributes: ATTRIBUTES.load(Ordering::Relaxed),
@@ -831,7 +795,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
         let status = c::NtCreateFile(
             &mut handle,
             access,
-            &mut object,
+            &object,
             &mut io_status,
             crate::ptr::null_mut(),
             0,
@@ -910,7 +874,7 @@ impl fmt::Debug for File {
         // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.as_raw_handle());
-        if let Ok(path) = get_path(&self) {
+        if let Ok(path) = get_path(self) {
             b.field("path", &path);
         }
         b.finish()
@@ -1066,6 +1030,14 @@ impl DirBuilder {
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    // We push a `*` to the end of the path which cause the empty path to be
+    // treated as the current directory. So, for consistency with other platforms,
+    // we explicitly error on the empty path.
+    if p.as_os_str().is_empty() {
+        // Return an error code consistent with other ways of opening files.
+        // E.g. fs::metadata or File::open.
+        return Err(io::Error::from_raw_os_error(c::ERROR_PATH_NOT_FOUND as i32));
+    }
     let root = p.to_path_buf();
     let star = p.join("*");
     let path = maybe_verbatim(&star)?;
@@ -1221,7 +1193,7 @@ pub fn readlink(path: &Path) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
     opts.access_mode(0);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = File::open(&path, &opts)?;
+    let file = File::open(path, &opts)?;
     file.readlink()
 }
 
@@ -1435,7 +1407,7 @@ pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(
 #[allow(dead_code)]
 fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
-    d.mkdir(&junction)?;
+    d.mkdir(junction)?;
 
     let mut opts = OpenOptions::new();
     opts.write(true);

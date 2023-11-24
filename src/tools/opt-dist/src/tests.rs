@@ -84,6 +84,8 @@ llvm-config = "{llvm_config}"
         env.python_binary(),
         x_py.as_str(),
         "test",
+        "--build",
+        env.host_triple(),
         "--stage",
         "0",
         "tests/assembly",

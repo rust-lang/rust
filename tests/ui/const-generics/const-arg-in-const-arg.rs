@@ -1,5 +1,5 @@
 // revisions: min
-// we use a single revision because t his shoudl have a `full` revision
+// we use a single revision because this should have a `full` revision
 // but right now that ICEs and I(@BoxyUwU) could not get stderr normalization to work
 
 #![cfg_attr(full, feature(generic_const_exprs))]

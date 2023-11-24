@@ -31,4 +31,9 @@ async fn with_macros() {
     f!(());
 }
 
+// Regression test for issue #117014.
+async fn desugaring_span_ctxt() {
+    for x in [] {}.await //~ ERROR `()` is not a future
+}
+
 fn main() {}

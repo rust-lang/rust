@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// grouping some parameters into a new type.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # struct Color;
     /// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b: f32) {
     ///     // ..
@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// multiple functions.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn im_too_long() {
     ///     println!("");
     ///     // ... 100 more LoC
@@ -129,7 +129,7 @@ declare_clippy_lint! {
     /// a remnant of a refactoring that removed the return type.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// #[must_use]
     /// fn useless() { }
     /// ```
@@ -151,7 +151,7 @@ declare_clippy_lint! {
     /// attribute to improve the lint message.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// #[must_use]
     /// fn double_must_use() -> Result<(), ()> {
     ///     unimplemented!();
@@ -183,7 +183,7 @@ declare_clippy_lint! {
     /// `#[must_use]`.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// // this could be annotated with `#[must_use]`.
     /// pub fn id<T>(t: T) -> T { t }
     /// ```
@@ -211,7 +211,7 @@ declare_clippy_lint! {
     /// instead.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// pub fn read_u8() -> Result<u8, ()> { Err(()) }
     /// ```
     /// should become
@@ -262,7 +262,7 @@ declare_clippy_lint! {
     /// The size determined by Clippy is platform-dependent.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// pub enum ParseError {
     ///     UnparsedBytes([u8; 512]),
     ///     UnexpectedEof,
@@ -274,7 +274,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// should be
-    /// ```
+    /// ```no_run
     /// pub enum ParseError {
     ///     UnparsedBytes(Box<[u8; 512]>),
     ///     UnexpectedEof,
@@ -301,7 +301,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
 
-    /// ```rust
+    /// ```no_run
     /// struct A {
     ///     a: String,
     ///     b: String,
@@ -315,7 +315,7 @@ declare_clippy_lint! {
 
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct A {
     ///     a: String,
     ///     b: String,
@@ -340,14 +340,14 @@ declare_clippy_lint! {
     /// Turbofish syntax (`::<>`) cannot be used when `impl Trait` is being used, making `impl Trait` less powerful. Readability may also be a factor.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// trait MyTrait {}
     /// fn foo(a: impl MyTrait) {
     /// 	// [...]
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// trait MyTrait {}
     /// fn foo<T: MyTrait>(a: T) {
     /// 	// [...]
@@ -360,18 +360,26 @@ declare_clippy_lint! {
 }
 
 #[derive(Copy, Clone)]
+#[allow(clippy::struct_field_names)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,
     large_error_threshold: u64,
+    avoid_breaking_exported_api: bool,
 }
 
 impl Functions {
-    pub fn new(too_many_arguments_threshold: u64, too_many_lines_threshold: u64, large_error_threshold: u64) -> Self {
+    pub fn new(
+        too_many_arguments_threshold: u64,
+        too_many_lines_threshold: u64,
+        large_error_threshold: u64,
+        avoid_breaking_exported_api: bool,
+    ) -> Self {
         Self {
             too_many_arguments_threshold,
             too_many_lines_threshold,
             large_error_threshold,
+            avoid_breaking_exported_api,
         }
     }
 }
@@ -415,6 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         must_use::check_impl_item(cx, item);
         result::check_impl_item(cx, item, self.large_error_threshold);
+        impl_trait_in_params::check_impl_item(cx, item);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
@@ -422,5 +431,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         not_unsafe_ptr_arg_deref::check_trait_item(cx, item);
         must_use::check_trait_item(cx, item);
         result::check_trait_item(cx, item, self.large_error_threshold);
+        impl_trait_in_params::check_trait_item(cx, item, self.avoid_breaking_exported_api);
     }
 }

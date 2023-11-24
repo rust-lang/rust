@@ -362,6 +362,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 .collect(),
         );
 
+        // FIXME(#42940): This should use the `FreeRegionsVisitor`, but that's
+        // not currently sound until we have existential regions.
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
             op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
@@ -430,7 +432,7 @@ where
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => ControlFlow::Continue(()),
+            ty::ReBound(_, _) => ControlFlow::Continue(()),
             _ => {
                 (self.op)(r);
                 ControlFlow::Continue(())
@@ -445,7 +447,7 @@ where
         }
 
         match ty.kind() {
-            ty::Closure(_, ref args) => {
+            ty::Closure(_, args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
                 for upvar in args.as_closure().upvar_tys() {
@@ -454,7 +456,7 @@ where
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Coroutine(_, ref args, _) => {
+            ty::Coroutine(_, args, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
@@ -466,7 +468,7 @@ where
                 args.as_coroutine().resume_ty().visit_with(self);
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref args, .. }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(*def_id);
 
@@ -573,7 +575,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
             if let Some(prev) = prev {
                 obligations.extend(
-                    self.at(&cause, param_env)
+                    self.at(cause, param_env)
                         .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
                         .obligations,
                 );

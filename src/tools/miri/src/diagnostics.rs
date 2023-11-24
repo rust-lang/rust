@@ -4,7 +4,7 @@ use std::num::NonZeroU64;
 use log::trace;
 
 use rustc_errors::DiagnosticMessage;
-use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
+use rustc_span::{SpanData, Symbol, DUMMY_SP};
 use rustc_target::abi::{Align, Size};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
@@ -43,9 +43,11 @@ pub enum TerminationInfo {
         span: SpanData,
     },
     DataRace {
+        involves_non_atomic: bool,
+        ptr: Pointer,
         op1: RacingOp,
         op2: RacingOp,
-        ptr: Pointer,
+        extra: Option<&'static str>,
     },
 }
 
@@ -74,11 +76,15 @@ impl fmt::Display for TerminationInfo {
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
                 write!(f, "found `{link_name}` symbol definition that clashes with a built-in shim",),
-            DataRace { ptr, op1, op2 } =>
+            DataRace { involves_non_atomic, ptr, op1, op2, .. } =>
                 write!(
                     f,
-                    "Data race detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (2) just happened here",
-                    op1.action, op1.thread_info, op2.action, op2.thread_info
+                    "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (2) just happened here",
+                    if *involves_non_atomic { "Data race" } else { "Race condition" },
+                    op1.action,
+                    op1.thread_info,
+                    op2.action,
+                    op2.thread_info
                 ),
         }
     }
@@ -261,12 +267,17 @@ pub fn report_error<'tcx, 'mir>(
                 vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
             Int2PtrWithStrictProvenance =>
                 vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
-            DataRace { op1, .. } =>
-                vec![
-                    (Some(op1.span), format!("and (1) occurred earlier here")),
-                    (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
-                    (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
-                ],
+            DataRace { op1, extra, .. } => {
+                let mut helps = vec![(Some(op1.span), format!("and (1) occurred earlier here"))];
+                if let Some(extra) = extra {
+                    helps.push((None, format!("{extra}")));
+                    helps.push((None, format!("see https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#memory-model-for-atomic-accesses for more information about the Rust memory model")));
+                }
+                helps.push((None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")));
+                helps.push((None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")));
+                helps
+            }
+                ,
             _ => vec![],
         };
         (title, helps)

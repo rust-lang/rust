@@ -1,14 +1,10 @@
-error: Undefined Behavior: atomic operations cannot be performed on read-only memory
-       many platforms require atomic read-modify-write instructions to be performed on writeable memory, even if the operation fails (and is hence nominally read-only)
-       some platforms implement (some) atomic loads via compare-exchange, which means they do not work on read-only memory; it is possible that we could have an exception permitting this for specific kinds of loads
-       please report an issue at <https://github.com/rust-lang/miri/issues> if this is a problem for you
+error: Undefined Behavior: atomic store and read-modify-write operations cannot be performed on read-only memory
+       see <https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#atomic-accesses-to-read-only-memory> for more information
   --> $DIR/read_only_atomic_cmpxchg.rs:LL:CC
    |
 LL |     x.compare_exchange(1, 2, Ordering::Relaxed, Ordering::Relaxed).unwrap_err();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ atomic operations cannot be performed on read-only memory
-many platforms require atomic read-modify-write instructions to be performed on writeable memory, even if the operation fails (and is hence nominally read-only)
-some platforms implement (some) atomic loads via compare-exchange, which means they do not work on read-only memory; it is possible that we could have an exception permitting this for specific kinds of loads
-please report an issue at <https://github.com/rust-lang/miri/issues> if this is a problem for you
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ atomic store and read-modify-write operations cannot be performed on read-only memory
+see <https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#atomic-accesses-to-read-only-memory> for more information
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

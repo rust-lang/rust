@@ -105,7 +105,6 @@ use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
-use rustc_middle::mir;
 use rustc_middle::mir::mono::{
     CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
     Visibility,
@@ -437,12 +436,12 @@ fn merge_codegen_units<'tcx>(
         for cgu in codegen_units.iter_mut() {
             if let Some(new_cgu_name) = new_cgu_names.get(&cgu.name()) {
                 if cx.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
-                    cgu.set_name(Symbol::intern(&new_cgu_name));
+                    cgu.set_name(Symbol::intern(new_cgu_name));
                 } else {
                     // If we don't require CGU names to be human-readable,
                     // we use a fixed length hash of the composite CGU name
                     // instead.
-                    let new_cgu_name = CodegenUnit::mangle_name(&new_cgu_name);
+                    let new_cgu_name = CodegenUnit::mangle_name(new_cgu_name);
                     cgu.set_name(Symbol::intern(&new_cgu_name));
                 }
             }
@@ -1141,7 +1140,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     // Output monomorphization stats per def_id
     if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
         if let Err(err) =
-            dump_mono_items_stats(tcx, &codegen_units, path, tcx.crate_name(LOCAL_CRATE))
+            dump_mono_items_stats(tcx, codegen_units, path, tcx.crate_name(LOCAL_CRATE))
         {
             tcx.sess.emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
         }
@@ -1279,38 +1278,8 @@ fn dump_mono_items_stats<'tcx>(
     Ok(())
 }
 
-fn codegened_and_inlined_items(tcx: TyCtxt<'_>, (): ()) -> &DefIdSet {
-    let (items, cgus) = tcx.collect_and_partition_mono_items(());
-    let mut visited = DefIdSet::default();
-    let mut result = items.clone();
-
-    for cgu in cgus {
-        for item in cgu.items().keys() {
-            if let MonoItem::Fn(ref instance) = item {
-                let did = instance.def_id();
-                if !visited.insert(did) {
-                    continue;
-                }
-                let body = tcx.instance_mir(instance.def);
-                for block in body.basic_blocks.iter() {
-                    for statement in &block.statements {
-                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
-                        let scope = statement.source_info.scope;
-                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
-                            result.insert(inlined.def_id());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    tcx.arena.alloc(result)
-}
-
 pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
-    providers.codegened_and_inlined_items = codegened_and_inlined_items;
 
     providers.is_codegened_item = |tcx, def_id| {
         let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());

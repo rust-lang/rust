@@ -206,7 +206,7 @@ where
 
     #[inline]
     fn try_from(slice: &[T]) -> Result<[T; N], TryFromSliceError> {
-        <&Self>::try_from(slice).map(|r| *r)
+        <&Self>::try_from(slice).copied()
     }
 }
 
@@ -297,7 +297,7 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
 /// ```
 /// use std::hash::BuildHasher;
 ///
-/// let b = std::collections::hash_map::RandomState::new();
+/// let b = std::hash::RandomState::new();
 /// let a: [u8; 3] = [0xa8, 0x3c, 0x09];
 /// let s: &[u8] = &[0xa8, 0x3c, 0x09];
 /// assert_eq!(b.hash_one(a), b.hash_one(s));

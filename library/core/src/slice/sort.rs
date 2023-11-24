@@ -628,9 +628,14 @@ where
     let _pivot_guard = InsertionHole { src: &*tmp, dest: pivot };
     let pivot = &*tmp;
 
+    let len = v.len();
+    if len == 0 {
+        return 0;
+    }
+
     // Now partition the slice.
     let mut l = 0;
-    let mut r = v.len();
+    let mut r = len;
     loop {
         // SAFETY: The unsafety below involves indexing an array.
         // For the first one: We already do the bounds checking here with `l < r`.
@@ -643,8 +648,11 @@ where
             }
 
             // Find the last element equal to the pivot.
-            while l < r && is_less(pivot, v.get_unchecked(r - 1)) {
+            loop {
                 r -= 1;
+                if l >= r || !is_less(pivot, v.get_unchecked(r)) {
+                    break;
+                }
             }
 
             // Are we done?
@@ -653,7 +661,6 @@ where
             }
 
             // Swap the found pair of out-of-order elements.
-            r -= 1;
             let ptr = v.as_mut_ptr();
             ptr::swap(ptr.add(l), ptr.add(r));
             l += 1;

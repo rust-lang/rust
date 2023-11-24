@@ -1,4 +1,4 @@
-error[E0191]: the value of the associated types `IntoIter` (from trait `IntoIterator`), `IntoIter` (from trait `IntoIterator`), `Item` (from trait `IntoIterator`), `Item` (from trait `IntoIterator`) must be specified
+error[E0191]: the value of the associated types `Item`, `Item`, `IntoIter` and `IntoIter` in `IntoIterator` must be specified
   --> $DIR/overlaping-bound-suggestion.rs:7:13
    |
 LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,

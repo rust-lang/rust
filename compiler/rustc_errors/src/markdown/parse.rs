@@ -329,7 +329,7 @@ fn parse_with_end_pat<'a>(
     end_sep: &[u8],
     ignore_esc: bool,
 ) -> Option<(&'a [u8], &'a [u8])> {
-    // Find positions that start with the end seperator
+    // Find positions that start with the end separator
     for idx in (0..buf.len()).filter(|idx| buf[*idx..].starts_with(end_sep)) {
         if !ignore_esc && idx > 0 && buf[idx - 1] == b'\\' {
             continue;

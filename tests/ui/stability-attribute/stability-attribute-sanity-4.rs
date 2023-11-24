@@ -17,11 +17,12 @@ mod bogus_attribute_types_2 {
     #[stable = "a"] //~ ERROR malformed `stable` attribute
     fn f4() { }
 
-    #[stable(feature = "a", since = "b")]
+    #[stable(feature = "a", since = "3.3.3")]
     #[deprecated] //~ ERROR missing 'since'
+    //~^ ERROR missing 'note'
     fn f5() { }
 
-    #[stable(feature = "a", since = "b")]
+    #[stable(feature = "a", since = "3.3.3")]
     #[deprecated = "a"] //~ ERROR missing 'since'
     fn f6() { }
 }

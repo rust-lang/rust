@@ -1,0 +1,10 @@
+error: `gen` functions are not yet implemented
+  --> $DIR/gen_fn.rs:4:1
+   |
+LL | gen fn foo() {}
+   | ^^^
+   |
+   = help: for now you can use `gen {}` blocks and return `impl Iterator` instead
+
+error: aborting due to previous error
+

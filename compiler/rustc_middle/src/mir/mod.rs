@@ -578,6 +578,40 @@ impl<'tcx> Body<'tcx> {
     pub fn is_custom_mir(&self) -> bool {
         self.injection_phase.is_some()
     }
+
+    /// For a `Location` in this scope, determine what the "caller location" at that point is. This
+    /// is interesting because of inlining: the `#[track_caller]` attribute of inlined functions
+    /// must be honored. Falls back to the `tracked_caller` value for `#[track_caller]` functions,
+    /// or the function's scope.
+    pub fn caller_location_span<T>(
+        &self,
+        mut source_info: SourceInfo,
+        caller_location: Option<T>,
+        tcx: TyCtxt<'tcx>,
+        from_span: impl FnOnce(Span) -> T,
+    ) -> T {
+        loop {
+            let scope_data = &self.source_scopes[source_info.scope];
+
+            if let Some((callee, callsite_span)) = scope_data.inlined {
+                // Stop inside the most nested non-`#[track_caller]` function,
+                // before ever reaching its caller (which is irrelevant).
+                if !callee.def.requires_caller_location(tcx) {
+                    return from_span(source_info.span);
+                }
+                source_info.span = callsite_span;
+            }
+
+            // Skip past all of the parents with `inlined: None`.
+            match scope_data.inlined_parent_scope {
+                Some(parent) => source_info.scope = parent,
+                None => break,
+            }
+        }
+
+        // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
+        caller_location.unwrap_or_else(|| from_span(source_info.span))
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -702,6 +736,8 @@ impl SourceInfo {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "_{}"]
     pub struct Local {
         const RETURN_PLACE = 0;
@@ -939,7 +975,7 @@ pub enum LocalInfo<'tcx> {
 
 impl<'tcx> LocalDecl<'tcx> {
     pub fn local_info(&self) -> &LocalInfo<'tcx> {
-        &self.local_info.as_ref().assert_crate_local()
+        self.local_info.as_ref().assert_crate_local()
     }
 
     /// Returns `true` only if local is a binding that can itself be
@@ -1137,6 +1173,8 @@ rustc_index::newtype_index! {
     /// [`CriticalCallEdges`]: ../../rustc_const_eval/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "bb{}"]
     pub struct BasicBlock {
         const START_BLOCK = 0;
@@ -1271,6 +1309,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
     #[debug_format = "scope[{}]"]
     pub struct SourceScope {
         const OUTERMOST_SOURCE_SCOPE = 0;
@@ -1499,6 +1538,8 @@ impl UserTypeProjection {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "promoted[{}]"]
     pub struct Promoted {}
 }
@@ -1577,14 +1618,29 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DefLocation {
     Argument,
-    Body(Location),
+    Assignment(Location),
+    CallReturn { call: BasicBlock, target: Option<BasicBlock> },
 }
 
 impl DefLocation {
     pub fn dominates(self, location: Location, dominators: &Dominators<BasicBlock>) -> bool {
         match self {
             DefLocation::Argument => true,
-            DefLocation::Body(def) => def.successor_within_block().dominates(location, dominators),
+            DefLocation::Assignment(def) => {
+                def.successor_within_block().dominates(location, dominators)
+            }
+            DefLocation::CallReturn { target: None, .. } => false,
+            DefLocation::CallReturn { call, target: Some(target) } => {
+                // The definition occurs on the call -> target edge. The definition dominates a use
+                // if and only if the edge is on all paths from the entry to the use.
+                //
+                // Note that a call terminator has only one edge that can reach the target, so when
+                // the call strongly dominates the target, all paths from the entry to the target
+                // go through the call -> target edge.
+                call != target
+                    && dominators.dominates(call, target)
+                    && dominators.dominates(target, location.block)
+            }
         }
     }
 }

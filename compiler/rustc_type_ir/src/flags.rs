@@ -8,7 +8,7 @@ bitflags! {
         // required.
         /// Does this have `Param`?
         const HAS_TY_PARAM                = 1 << 0;
-        /// Does this have `ReEarlyBound`?
+        /// Does this have `ReEarlyParam`?
         const HAS_RE_PARAM                = 1 << 1;
         /// Does this have `ConstKind::Param`?
         const HAS_CT_PARAM                = 1 << 2;
@@ -85,20 +85,20 @@ bitflags! {
         const HAS_ERROR                   = 1 << 14;
 
         /// Does this have any region that "appears free" in the type?
-        /// Basically anything but `ReLateBound` and `ReErased`.
+        /// Basically anything but `ReBound` and `ReErased`.
         const HAS_FREE_REGIONS            = 1 << 15;
 
-        /// Does this have any `ReLateBound` regions?
-        const HAS_RE_LATE_BOUND           = 1 << 16;
+        /// Does this have any `ReBound` regions?
+        const HAS_RE_BOUND                = 1 << 16;
         /// Does this have any `Bound` types?
-        const HAS_TY_LATE_BOUND           = 1 << 17;
+        const HAS_TY_BOUND                = 1 << 17;
         /// Does this have any `ConstKind::Bound` consts?
-        const HAS_CT_LATE_BOUND           = 1 << 18;
+        const HAS_CT_BOUND                = 1 << 18;
         /// Does this have any bound variables?
         /// Used to check if a global bound is safe to evaluate.
-        const HAS_LATE_BOUND              = TypeFlags::HAS_RE_LATE_BOUND.bits
-                                          | TypeFlags::HAS_TY_LATE_BOUND.bits
-                                          | TypeFlags::HAS_CT_LATE_BOUND.bits;
+        const HAS_BOUND_VARS              = TypeFlags::HAS_RE_BOUND.bits
+                                          | TypeFlags::HAS_TY_BOUND.bits
+                                          | TypeFlags::HAS_CT_BOUND.bits;
 
         /// Does this have any `ReErased` regions?
         const HAS_RE_ERASED               = 1 << 19;
@@ -113,7 +113,10 @@ bitflags! {
         /// Does this value have `InferConst::Fresh`?
         const HAS_CT_FRESH                = 1 << 22;
 
-        /// Does this have `Generator` or `GeneratorWitness`?
-        const HAS_TY_GENERATOR            = 1 << 23;
+        /// Does this have `Coroutine` or `CoroutineWitness`?
+        const HAS_TY_COROUTINE            = 1 << 23;
+
+        /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
+        const HAS_BINDER_VARS             = 1 << 24;
     }
 }

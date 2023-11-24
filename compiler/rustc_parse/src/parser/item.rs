@@ -22,9 +22,9 @@ use rustc_errors::{
 };
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, Span};
+use rustc_span::source_map;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use std::fmt::Write;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtItem(item) = &**nt
+            && let token::NtItem(item) = &nt.0
         {
             let mut item = item.clone();
             self.bump();
@@ -2271,13 +2271,25 @@ impl<'a> Parser<'a> {
             } else {
                 &[token::Semi, token::OpenDelim(Delimiter::Brace)]
             };
-            if let Err(mut err) = self.expected_one_of_not_found(&[], &expected) {
+            if let Err(mut err) = self.expected_one_of_not_found(&[], expected) {
                 if self.token.kind == token::CloseDelim(Delimiter::Brace) {
                     // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
                     // the AST for typechecking.
                     err.span_label(ident.span, "while parsing this `fn`");
                     err.emit();
                 } else {
+                    // check for typo'd Fn* trait bounds such as
+                    // fn foo<F>() where F: FnOnce -> () {}
+                    if self.token.kind == token::RArrow {
+                        let machine_applicable = [sym::FnOnce, sym::FnMut, sym::Fn]
+                            .into_iter()
+                            .any(|s| self.prev_token.is_ident_named(s));
+
+                        err.subdiagnostic(errors::FnTraitMissingParen {
+                            span: self.prev_token.span,
+                            machine_applicable,
+                        });
+                    }
                     return Err(err);
                 }
             }
@@ -2297,9 +2309,9 @@ impl<'a> Parser<'a> {
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
         // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
-            &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         } else {
-            &[kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         };
         self.check_keyword_case(kw::Fn, case) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
@@ -2353,6 +2365,9 @@ impl<'a> Parser<'a> {
         let async_start_sp = self.token.span;
         let asyncness = self.parse_asyncness(case);
 
+        let _gen_start_sp = self.token.span;
+        let genness = self.parse_genness(case);
+
         let unsafe_start_sp = self.token.span;
         let unsafety = self.parse_unsafety(case);
 
@@ -2366,6 +2381,10 @@ impl<'a> Parser<'a> {
                     help: errors::HelpUseLatestEdition::new(),
                 });
             }
+        }
+
+        if let Gen::Yes { span, .. } = genness {
+            self.sess.emit_err(errors::GenFn { span });
         }
 
         if !self.eat_keyword_case(kw::Fn, case) {
@@ -2382,22 +2401,39 @@ impl<'a> Parser<'a> {
                         Misplaced(Span),
                     }
 
+                    // We may be able to recover
+                    let mut recover_constness = constness;
+                    let mut recover_asyncness = asyncness;
+                    let mut recover_unsafety = unsafety;
                     // This will allow the machine fix to directly place the keyword in the correct place or to indicate
                     // that the keyword is already present and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(kw::Const) {
                         match constness {
                             Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Const::No => Some(WrongKw::Misplaced(async_start_sp)),
+                            Const::No => {
+                                recover_constness = Const::Yes(self.token.span);
+                                Some(WrongKw::Misplaced(async_start_sp))
+                            }
                         }
                     } else if self.check_keyword(kw::Async) {
                         match asyncness {
                             Async::Yes { span, .. } => Some(WrongKw::Duplicated(span)),
-                            Async::No => Some(WrongKw::Misplaced(unsafe_start_sp)),
+                            Async::No => {
+                                recover_asyncness = Async::Yes {
+                                    span: self.token.span,
+                                    closure_id: DUMMY_NODE_ID,
+                                    return_impl_trait_id: DUMMY_NODE_ID,
+                                };
+                                Some(WrongKw::Misplaced(unsafe_start_sp))
+                            }
                         }
                     } else if self.check_keyword(kw::Unsafe) {
                         match unsafety {
                             Unsafe::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Unsafe::No => Some(WrongKw::Misplaced(ext_start_sp)),
+                            Unsafe::No => {
+                                recover_unsafety = Unsafe::Yes(self.token.span);
+                                Some(WrongKw::Misplaced(ext_start_sp))
+                            }
                         }
                     } else {
                         None
@@ -2467,6 +2503,23 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
+
+                    if wrong_kw.is_some()
+                        && self.may_recover()
+                        && self.look_ahead(1, |tok| tok.is_keyword_case(kw::Fn, case))
+                    {
+                        // Advance past the misplaced keyword and `fn`
+                        self.bump();
+                        self.bump();
+                        err.emit();
+                        return Ok(FnHeader {
+                            constness: recover_constness,
+                            unsafety: recover_unsafety,
+                            asyncness: recover_asyncness,
+                            ext,
+                        });
+                    }
+
                     return Err(err);
                 }
             }
@@ -2492,11 +2545,23 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, ThinVec<Param>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
+        if self.token.kind != TokenKind::OpenDelim(Delimiter::Parenthesis)
+        // might be typo'd trait impl, handled elsewhere
+        && !self.token.is_keyword(kw::For)
+        {
+            // recover from missing argument list, e.g. `fn main -> () {}`
+            self.sess
+                .emit_err(errors::MissingFnParams { span: self.prev_token.span.shrink_to_hi() });
+            return Ok(ThinVec::new());
+        }
+
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_diff_marker();
+            let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(req_name, first_param).or_else(|mut e| {
                 e.emit();
                 let lo = p.prev_token.span;
+                p.restore_snapshot(snapshot);
                 // Skip every token until next possible arg or end.
                 p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(Delimiter::Parenthesis)]);
                 // Create a placeholder argument for proper arg count (issue #34264).
@@ -2685,7 +2750,7 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match &self.token.kind {
-            token::Interpolated(nt) => match **nt {
+            token::Interpolated(nt) => match &nt.0 {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
                 _ => 0,
             },

@@ -53,10 +53,7 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
-    // Ensure unsafeck and abstract const building is ran before we steal the THIR.
-    tcx.ensure_with_value()
-        .thir_check_unsafety(tcx.typeck_root_def_id(def.to_def_id()).expect_local());
+fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     tcx.ensure_with_value().thir_abstract_const(def);
     if let Err(e) = tcx.check_match(def) {
         return construct_error(tcx, def, e);
@@ -65,20 +62,27 @@ fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     let body = match tcx.thir_body(def) {
         Err(error_reported) => construct_error(tcx, def, error_reported),
         Ok((thir, expr)) => {
-            // We ran all queries that depended on THIR at the beginning
-            // of `mir_build`, so now we can steal it
-            let thir = thir.steal();
+            let build_mir = |thir: &Thir<'tcx>| match thir.body_type {
+                thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, thir, expr, fn_sig),
+                thir::BodyTy::Const(ty) => construct_const(tcx, def, thir, expr, ty),
+            };
 
-            tcx.ensure().check_match(def);
             // this must run before MIR dump, because
             // "not all control paths return a value" is reported here.
             //
             // maybe move the check to a MIR pass?
             tcx.ensure().check_liveness(def);
 
-            match thir.body_type {
-                thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, &thir, expr, fn_sig),
-                thir::BodyTy::Const(ty) => construct_const(tcx, def, &thir, expr, ty),
+            if tcx.sess.opts.unstable_opts.thir_unsafeck {
+                // Don't steal here if THIR unsafeck is being used. Instead
+                // steal in unsafeck. This is so that pattern inline constants
+                // can be evaluated as part of building the THIR of the parent
+                // function without a cycle.
+                build_mir(&thir.borrow())
+            } else {
+                // We ran all queries that depended on THIR at the beginning
+                // of `mir_build`, so now we can steal it
+                build_mir(&thir.steal())
             }
         }
     };
@@ -479,14 +483,14 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let (yield_ty, return_ty) = if coroutine_kind.is_some() {
-        let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
-        let gen_sig = match gen_ty.kind() {
+        let coroutine_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
+        let coroutine_sig = match coroutine_ty.kind() {
             ty::Coroutine(_, gen_args, ..) => gen_args.as_coroutine().sig(),
             _ => {
-                span_bug!(span, "coroutine w/o coroutine type: {:?}", gen_ty)
+                span_bug!(span, "coroutine w/o coroutine type: {:?}", coroutine_ty)
             }
         };
-        (Some(gen_sig.yield_ty), gen_sig.return_ty)
+        (Some(coroutine_sig.yield_ty), coroutine_sig.return_ty)
     } else {
         (None, fn_sig.output())
     };
@@ -616,29 +620,53 @@ fn construct_const<'a, 'tcx>(
 ///
 /// This is required because we may still want to run MIR passes on an item
 /// with type errors, but normal MIR construction can't handle that in general.
-fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Body<'_> {
-    let span = tcx.def_span(def);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
-    let coroutine_kind = tcx.coroutine_kind(def);
-    let body_owner_kind = tcx.hir().body_owner_kind(def);
+fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -> Body<'_> {
+    let span = tcx.def_span(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let coroutine_kind = tcx.coroutine_kind(def_id);
 
-    let ty = Ty::new_error(tcx, err);
-    let num_params = match body_owner_kind {
-        hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
-        hir::BodyOwnerKind::Closure => {
-            let ty = tcx.type_of(def).instantiate_identity();
-            match ty.kind() {
-                ty::Closure(_, args) => 1 + args.as_closure().sig().inputs().skip_binder().len(),
-                ty::Coroutine(..) => 2,
-                _ => bug!("expected closure or coroutine, found {ty:?}"),
-            }
+    let (inputs, output, yield_ty) = match tcx.def_kind(def_id) {
+        DefKind::Const
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::Static(_) => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
+            let sig = tcx.liberate_late_bound_regions(
+                def_id.to_def_id(),
+                tcx.fn_sig(def_id).instantiate_identity(),
+            );
+            (sig.inputs().to_vec(), sig.output(), None)
         }
-        hir::BodyOwnerKind::Const { .. } => 0,
-        hir::BodyOwnerKind::Static(_) => 0,
+        DefKind::Closure => {
+            let closure_ty = tcx.type_of(def_id).instantiate_identity();
+            let ty::Closure(_, args) = closure_ty.kind() else { bug!() };
+            let args = args.as_closure();
+            let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), args.sig());
+            let self_ty = match args.kind() {
+                ty::ClosureKind::Fn => Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, closure_ty),
+                ty::ClosureKind::FnMut => Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, closure_ty),
+                ty::ClosureKind::FnOnce => closure_ty,
+            };
+            ([self_ty].into_iter().chain(sig.inputs().to_vec()).collect(), sig.output(), None)
+        }
+        DefKind::Coroutine => {
+            let coroutine_ty = tcx.type_of(def_id).instantiate_identity();
+            let ty::Coroutine(_, args, _) = coroutine_ty.kind() else { bug!() };
+            let args = args.as_coroutine();
+            let yield_ty = args.yield_ty();
+            let return_ty = args.return_ty();
+            (vec![coroutine_ty, args.resume_ty()], return_ty, Some(yield_ty))
+        }
+        dk => bug!("{:?} is not a body: {:?}", def_id, dk),
     };
+
+    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let local_decls = IndexVec::from_iter(
+        [output].iter().chain(&inputs).map(|ty| LocalDecl::with_source_info(*ty, source_info)),
+    );
     let mut cfg = CFG { basic_blocks: IndexVec::new() };
     let mut source_scopes = IndexVec::new();
-    let mut local_decls = IndexVec::from_elem_n(LocalDecl::new(ty, span), 1);
 
     cfg.start_new_block();
     source_scopes.push(SourceScopeData {
@@ -651,28 +679,24 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
             safety: Safety::Safe,
         }),
     });
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
 
-    // Some MIR passes will expect the number of parameters to match the
-    // function declaration.
-    for _ in 0..num_params {
-        local_decls.push(LocalDecl::with_source_info(ty, source_info));
-    }
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
     let mut body = Body::new(
-        MirSource::item(def.to_def_id()),
+        MirSource::item(def_id.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
         local_decls,
         IndexVec::new(),
-        num_params,
+        inputs.len(),
         vec![],
         span,
         coroutine_kind,
-        Some(err),
+        Some(guar),
     );
-    body.coroutine.as_mut().map(|gen| gen.yield_ty = Some(ty));
+
+    body.coroutine.as_mut().map(|gen| gen.yield_ty = yield_ty);
+
     body
 }
 
@@ -914,12 +938,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     scope = self.declare_bindings(
                         scope,
                         expr.span,
-                        &pat,
+                        pat,
                         None,
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(block = self.place_into_pattern(block, &pat, place_builder, false));
+                    unpack!(block = self.place_into_pattern(block, pat, place_builder, false));
                 }
             }
             self.source_scope = original_source_scope;
@@ -930,7 +954,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_scope = source_scope;
         }
 
-        self.expr_into_dest(Place::return_place(), block, &expr)
+        self.expr_into_dest(Place::return_place(), block, expr)
     }
 
     fn set_correct_source_scope_for_arg(

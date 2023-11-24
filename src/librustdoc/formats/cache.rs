@@ -50,8 +50,8 @@ pub(crate) struct Cache {
     /// Unlike 'paths', this mapping ignores any renames that occur
     /// due to 'use' statements.
     ///
-    /// This map is used when writing out the special 'implementors'
-    /// javascript file. By using the exact path that the type
+    /// This map is used when writing out the `impl.trait` and `impl.type`
+    /// javascript files. By using the exact path that the type
     /// is declared with, we ensure that each path will be identical
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
@@ -230,8 +230,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
-        if let clean::ImplItem(ref i) = *item.kind &&
-            (self.cache.masked_crates.contains(&item.item_id.krate())
+        if let clean::ImplItem(ref i) = *item.kind
+            && (self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
                     .map_or(false, |t| is_from_private_dep(self.tcx, self.cache, t.def_id()))
@@ -249,9 +249,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
 
         // Collect all the implementors of traits.
-        if let clean::ImplItem(ref i) = *item.kind &&
-            let Some(trait_) = &i.trait_ &&
-            !i.kind.is_blanket()
+        if let clean::ImplItem(ref i) = *item.kind
+            && let Some(trait_) = &i.trait_
+            && !i.kind.is_blanket()
         {
             self.cache
                 .implementors
@@ -264,8 +264,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if let Some(s) = item.name.or_else(|| {
             if item.is_stripped() {
                 None
-            } else if let clean::ImportItem(ref i) = *item.kind &&
-                let clean::ImportKind::Simple(s) = i.kind {
+            } else if let clean::ImportItem(ref i) = *item.kind
+                && let clean::ImportKind::Simple(s) = i.kind
+            {
                 Some(s)
             } else {
                 None
@@ -357,7 +358,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             desc,
                             parent,
                             parent_idx: None,
-                            impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) = self.cache.parent_stack.last() {
+                            impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) =
+                                self.cache.parent_stack.last()
+                            {
                                 item_id.as_def_id()
                             } else {
                                 None
@@ -366,6 +369,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                                 &item,
                                 self.tcx,
                                 clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
+                                parent,
                                 self.cache,
                             ),
                             aliases: item.attrs.get_doc_aliases(),
@@ -493,9 +497,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 clean::Type::Path { ref path }
                 | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. } => {
                     dids.insert(path.def_id());
-                    if let Some(generics) = path.generics() &&
-                        let ty::Adt(adt, _) = self.tcx.type_of(path.def_id()).instantiate_identity().kind() &&
-                        adt.is_fundamental() {
+                    if let Some(generics) = path.generics()
+                        && let ty::Adt(adt, _) =
+                            self.tcx.type_of(path.def_id()).instantiate_identity().kind()
+                        && adt.is_fundamental()
+                    {
                         for ty in generics {
                             if let Some(did) = ty.def_id(self.cache) {
                                 dids.insert(did);

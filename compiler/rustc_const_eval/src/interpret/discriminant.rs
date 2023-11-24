@@ -1,7 +1,8 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
-use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
-use rustc_middle::{mir, ty};
+use rustc_middle::mir;
+use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
@@ -118,7 +119,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if matches!(ty.kind(), ty::Adt(def, ..) if def.variants().is_empty()) {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
-                    // For consisteny with `write_discriminant`, and to make sure that
+                    // For consistency with `write_discriminant`, and to make sure that
                     // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
                     // for uninhabited variants.
                     if op.layout().for_variant(self, index).abi.is_uninhabited() {
@@ -235,7 +236,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 variant
             }
         };
-        // For consisteny with `write_discriminant`, and to make sure that `project_downcast` cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
+        // For consistency with `write_discriminant`, and to make sure that `project_downcast` cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
         if op.layout().for_variant(self, index).abi.is_uninhabited() {
             throw_ub!(UninhabitedEnumVariantRead(index))
         }
@@ -244,11 +245,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn discriminant_for_variant(
         &self,
-        layout: TyAndLayout<'tcx>,
+        ty: Ty<'tcx>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        let discr_layout = self.layout_of(layout.ty.discriminant_ty(*self.tcx))?;
-        let discr_value = match layout.ty.discriminant_for_variant(*self.tcx, variant) {
+        let discr_layout = self.layout_of(ty.discriminant_ty(*self.tcx))?;
+        let discr_value = match ty.discriminant_for_variant(*self.tcx, variant) {
             Some(discr) => {
                 // This type actually has discriminants.
                 assert_eq!(discr.ty, discr_layout.ty);

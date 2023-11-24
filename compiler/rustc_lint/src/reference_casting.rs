@@ -155,7 +155,7 @@ fn is_cast_from_const_to_mut<'tcx>(
 
     let start_ty = cx.typeck_results().node_type(e.hir_id);
     if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
-        // If an UnsafeCell method is involved we need to additionaly check the
+        // If an UnsafeCell method is involved we need to additionally check the
         // inner type for the presence of the Freeze trait (ie does NOT contain
         // an UnsafeCell), since in that case we would incorrectly lint on valid casts.
         //

@@ -209,25 +209,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     )?;
                 }
             }
-            // Used to implement the _mm_movemask_ps function.
-            // Returns a scalar integer where the i-th bit is the highest
-            // bit of the i-th component of `op`.
-            // https://www.felixcloutier.com/x86/movmskps
-            "movmsk.ps" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
-
-                let mut res = 0;
-                for i in 0..op_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?;
-                    let op = op.to_u32()?;
-
-                    // Extract the highest bit of `op` and place it in the `i`-th bit of `res`
-                    res |= (op >> 31) << i;
-                }
-
-                this.write_scalar(Scalar::from_u32(res), dest)?;
-            }
             _ => return Ok(EmulateForeignItemResult::NotSupported),
         }
         Ok(EmulateForeignItemResult::NeedsJumping)

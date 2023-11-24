@@ -12,5 +12,5 @@ fn main() {
     const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
 
     // Don't lint, not a diagnostic or language item
-    const OPS_MOD: [&str; 5] = ["core", "ops"];
+    const OPS_MOD: [&str; 2] = ["core", "ops"];
 }

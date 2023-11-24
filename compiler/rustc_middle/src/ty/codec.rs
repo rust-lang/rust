@@ -19,7 +19,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
 use std::hash::Hash;
 use std::intrinsics;
@@ -230,9 +230,9 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D>
                 assert!(pos >= SHORTHAND_OFFSET);
                 let shorthand = pos - SHORTHAND_OFFSET;
 
-                decoder.with_position(shorthand, ty::PredicateKind::decode)
+                decoder.with_position(shorthand, <ty::PredicateKind<'tcx> as Decodable<D>>::decode)
             } else {
-                ty::PredicateKind::decode(decoder)
+                <ty::PredicateKind<'tcx> as Decodable<D>>::decode(decoder)
             },
             bound_vars,
         )
@@ -297,7 +297,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AllocId {
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::SymbolName<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        ty::SymbolName::new(decoder.interner(), &decoder.read_str())
+        ty::SymbolName::new(decoder.interner(), decoder.read_str())
     }
 }
 
@@ -414,6 +414,17 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<Fi
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
+    for ty::List<(VariantIdx, FieldIdx)>
+{
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_offset_of_from_iter(
+            (0..len).map::<(VariantIdx, FieldIdx), _>(|_| Decodable::decode(decoder)),
+        )
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
@@ -426,6 +437,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::BoundVariableKind>,
     &'tcx ty::List<ty::Clause<'tcx>>,
     &'tcx ty::List<FieldIdx>,
+    &'tcx ty::List<(VariantIdx, FieldIdx)>,
 }
 
 #[macro_export]

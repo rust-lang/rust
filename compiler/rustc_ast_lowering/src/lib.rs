@@ -30,9 +30,9 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+#![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -71,9 +71,8 @@ use rustc_middle::{
 };
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
@@ -444,11 +443,6 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     drop(ast_index);
     sess.time("drop_ast", || drop(krate));
 
-    // Discard hygiene data, which isn't required after lowering to HIR.
-    if !sess.opts.unstable_opts.keep_hygiene_data {
-        rustc_span::hygiene::clear_syntax_context_map();
-    }
-
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
@@ -505,7 +499,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn orig_opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver.node_id_to_def_id.get(&node).map(|local_def_id| *local_def_id)
+        self.resolver.node_id_to_def_id.get(&node).copied()
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
@@ -548,7 +542,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.generics_def_id_map
             .iter()
             .rev()
-            .find_map(|map| map.get(&local_def_id).map(|local_def_id| *local_def_id))
+            .find_map(|map| map.get(&local_def_id).copied())
             .unwrap_or(local_def_id)
     }
 
@@ -1163,7 +1157,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::GenericArg<'hir> {
         match arg {
-            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
+            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
                 match &ty.kind {
                     TyKind::Infer if self.tcx.features().generic_arg_infer => {
@@ -1217,17 +1211,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     hir_id: this.lower_node_id(node_id),
                                     body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                                 });
-                                return GenericArg::Const(ConstArg { value: ct, span });
+                                return GenericArg::Const(ConstArg {
+                                    value: ct,
+                                    span,
+                                    is_desugared_from_effects: false,
+                                });
                             }
                         }
                     }
                     _ => {}
                 }
-                GenericArg::Type(self.lower_ty(&ty, itctx))
+                GenericArg::Type(self.lower_ty(ty, itctx))
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                value: self.lower_anon_const(&ct),
+                value: self.lower_anon_const(ct),
                 span: self.lower_span(ct.value.span),
+                is_desugared_from_effects: false,
             }),
         }
     }
@@ -1268,7 +1267,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime_bound = this.elided_dyn_bound(t.span);
                 (bounds, lifetime_bound)
             });
-            let kind = hir::TyKind::TraitObject(bounds, &lifetime_bound, TraitObjectSyntax::None);
+            let kind = hir::TyKind::TraitObject(bounds, lifetime_bound, TraitObjectSyntax::None);
             return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
         }
 
@@ -1552,7 +1551,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
                     // example, we only need to duplicate lifetimes that appear in the
                     // bounds, since those are the only ones that are captured by the opaque.
-                    lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
+                    lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
                 }
             }
             hir::OpaqueTyOrigin::AsyncFn(..) => {
@@ -1737,14 +1736,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
-        // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
-        // as they are not explicit in HIR/Ty function signatures.
-        // (instead, the `c_variadic` flag is set to `true`)
-        let mut inputs = &decl.inputs[..];
-        if decl.c_variadic() {
-            inputs = &inputs[..inputs.len() - 1];
-        }
-        self.arena.alloc_from_iter(inputs.iter().map(|param| match param.pat.kind {
+        self.arena.alloc_from_iter(decl.inputs.iter().map(|param| match param.pat.kind {
             PatKind::Ident(_, ident, _) => self.lower_ident(ident),
             _ => Ident::new(kw::Empty, self.lower_span(param.pat.span)),
         }))
@@ -2075,10 +2067,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
             GenericParamKind::Const { ty, kw_span: _, default } => {
-                let ty = self.lower_ty(
-                    &ty,
-                    &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
-                );
+                let ty = self
+                    .lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
                 let default = default.as_ref().map(|def| self.lower_anon_const(def));
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
@@ -2525,6 +2515,7 @@ impl<'hir> GenericArgsCtor<'hir> {
         self.args.push(hir::GenericArg::Const(hir::ConstArg {
             value: hir::AnonConst { def_id, hir_id, body },
             span,
+            is_desugared_from_effects: true,
         }))
     }
 

@@ -8,7 +8,7 @@
 #![feature(no_core, lang_items, intrinsics, staged_api, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
-#![stable(feature = "", since = "")]
+#![stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #![allow(dead_code)]
 
 // Test that the repr(C) attribute doesn't break compilation
@@ -22,8 +22,8 @@ enum Foo {
 }
 
 extern "rust-intrinsic" {
-    #[stable(feature = "", since = "")]
-    #[rustc_const_stable(feature = "", since = "")]
+    #[stable(feature = "intrinsics_for_test", since = "3.3.3")]
+    #[rustc_const_stable(feature = "intrinsics_for_test", since = "3.3.3")]
     #[rustc_safe_intrinsic]
     fn size_of<T>() -> usize;
 }

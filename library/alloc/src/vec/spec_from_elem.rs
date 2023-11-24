@@ -36,12 +36,12 @@ impl SpecFromElem for i8 {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
+        let mut v = Vec::with_capacity_in(n, alloc);
         unsafe {
-            let mut v = Vec::with_capacity_in(n, alloc);
             ptr::write_bytes(v.as_mut_ptr(), elem as u8, n);
             v.set_len(n);
-            v
         }
+        v
     }
 }
 
@@ -51,11 +51,26 @@ impl SpecFromElem for u8 {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
+        let mut v = Vec::with_capacity_in(n, alloc);
         unsafe {
-            let mut v = Vec::with_capacity_in(n, alloc);
             ptr::write_bytes(v.as_mut_ptr(), elem, n);
             v.set_len(n);
-            v
         }
+        v
+    }
+}
+
+// A better way would be to implement this for all ZSTs which are `Copy` and have trivial `Clone`
+// but the latter cannot be detected currently
+impl SpecFromElem for () {
+    #[inline]
+    fn from_elem<A: Allocator>(_elem: (), n: usize, alloc: A) -> Vec<(), A> {
+        let mut v = Vec::with_capacity_in(n, alloc);
+        // SAFETY: the capacity has just been set to `n`
+        // and `()` is a ZST with trivial `Clone` implementation
+        unsafe {
+            v.set_len(n);
+        }
+        v
     }
 }

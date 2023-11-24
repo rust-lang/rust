@@ -3,8 +3,9 @@ use clippy_utils::macros::macro_backtrace;
 use clippy_utils::ty::expr_sig;
 use clippy_utils::{get_parent_node, is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_ty, Visitor};
-use rustc_hir::{def::Res, Block, Expr, ExprKind, Local, Node, QPath, TyKind};
+use rustc_hir::{Block, Expr, ExprKind, Local, Node, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -23,11 +24,11 @@ declare_clippy_lint! {
     /// [in certain cases](https://nnethercote.github.io/perf-book/standard-library-types.html#box).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: Box<String> = Box::new(Default::default());
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x: Box<String> = Box::default();
     /// ```
     #[clippy::version = "1.66.0"]
@@ -60,9 +61,9 @@ impl LateLintPass<'_> for BoxDefault {
                 } else if let Some(arg_ty) = cx.typeck_results().expr_ty(arg).make_suggestable(cx.tcx, true) {
                     with_forced_trimmed_paths!(format!("Box::<{arg_ty}>::default()"))
                 } else {
-                    return
+                    return;
                 },
-                Applicability::MachineApplicable
+                Applicability::MachineApplicable,
             );
         }
     }
@@ -109,7 +110,8 @@ fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             Node::Expr(Expr {
                 kind: ExprKind::Call(path, args),
                 ..
-            }) | Node::Block(Block {
+            })
+            | Node::Block(Block {
                 expr:
                     Some(Expr {
                         kind: ExprKind::Call(path, args),
@@ -118,10 +120,10 @@ fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 ..
             }),
         ) => {
-            if let Some(index) = args.iter().position(|arg| arg.hir_id == expr.hir_id) &&
-                let Some(sig) = expr_sig(cx, path) &&
-                let Some(input) = sig.input(index) &&
-                !cx.typeck_results().expr_ty_adjusted(expr).boxed_ty().is_trait()
+            if let Some(index) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
+                && let Some(sig) = expr_sig(cx, path)
+                && let Some(input) = sig.input(index)
+                && !cx.typeck_results().expr_ty_adjusted(expr).boxed_ty().is_trait()
             {
                 input.no_bound_vars().is_some()
             } else {

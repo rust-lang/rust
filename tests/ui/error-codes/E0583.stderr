@@ -5,6 +5,7 @@ LL | mod module_that_doesnt_exist;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: to create the module `module_that_doesnt_exist`, create file "$DIR/module_that_doesnt_exist.rs" or "$DIR/module_that_doesnt_exist/mod.rs"
+   = note: if there is a `mod module_that_doesnt_exist` elsewhere in the crate already, import it with `use crate::...` instead
 
 error: aborting due to previous error
 

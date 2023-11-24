@@ -1,6 +1,6 @@
 use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::{AnnNode, IterDelimited, PrintState, State, INDENT_UNIT};
-
+use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
+use itertools::{Itertools, Position};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::util::literal::escape_byte_str_symbol;
@@ -149,10 +149,12 @@ impl<'a> State<'a> {
             return;
         }
         self.cbox(0);
-        for field in fields.iter().delimited() {
+        for (pos, field) in fields.iter().with_position() {
+            let is_first = matches!(pos, Position::First | Position::Only);
+            let is_last = matches!(pos, Position::Last | Position::Only);
             self.maybe_print_comment(field.span.hi());
             self.print_outer_attributes(&field.attrs);
-            if field.is_first {
+            if is_first {
                 self.space_if_not_bol();
             }
             if !field.is_shorthand {
@@ -160,7 +162,7 @@ impl<'a> State<'a> {
                 self.word_nbsp(":");
             }
             self.print_expr(&field.expr);
-            if !field.is_last || has_rest {
+            if !is_last || has_rest {
                 self.word_space(",");
             } else {
                 self.trailing_comma_or_space();
@@ -279,7 +281,7 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
-    pub fn print_expr(&mut self, expr: &ast::Expr) {
+    pub(super) fn print_expr(&mut self, expr: &ast::Expr) {
         self.print_expr_outer_attr_style(expr, true)
     }
 
@@ -445,8 +447,8 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Async(capture_clause, blk) => {
-                self.word_nbsp("async");
+            ast::ExprKind::Gen(capture_clause, blk, kind) => {
+                self.word_nbsp(kind.modifier());
                 self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
                 self.cbox(0);
@@ -673,13 +675,13 @@ impl<'a> State<'a> {
 
     fn print_capture_clause(&mut self, capture_clause: ast::CaptureBy) {
         match capture_clause {
-            ast::CaptureBy::Value => self.word_space("move"),
+            ast::CaptureBy::Value { .. } => self.word_space("move"),
             ast::CaptureBy::Ref => {}
         }
     }
 }
 
-pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> String {
+fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> String {
     let mut template = "\"".to_string();
     for piece in pieces {
         match piece {

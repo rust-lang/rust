@@ -21,6 +21,16 @@ help: consider relaxing the implicit `Sized` restriction
 LL | trait T2<Z: ?Sized> {
    |           ++++++++
 
-error: aborting due to previous error
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/unsized-trait-impl-trait-arg.rs:8:1
+   |
+LL |     fn foo(&self, z: Z);
+   |     -------------------- `foo` from trait
+...
+LL | impl<X: ?Sized> T2<X> for S4<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0277.
+For more information about an error, try `rustc --explain E0046`.

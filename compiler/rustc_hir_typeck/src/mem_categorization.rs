@@ -304,7 +304,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<PlaceWithHirId<'tcx>> {
         let expr_ty = self.expr_ty(expr)?;
         match expr.kind {
-            hir::ExprKind::Unary(hir::UnOp::Deref, ref e_base) => {
+            hir::ExprKind::Unary(hir::UnOp::Deref, e_base) => {
                 if self.typeck_results.is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base)
                 } else {
@@ -313,7 +313,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 }
             }
 
-            hir::ExprKind::Field(ref base, _) => {
+            hir::ExprKind::Field(base, _) => {
                 let base = self.cat_expr(base)?;
                 debug!(?base);
 
@@ -332,7 +332,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 ))
             }
 
-            hir::ExprKind::Index(ref base, _, _) => {
+            hir::ExprKind::Index(base, _, _) => {
                 if self.typeck_results.is_method_call(expr) {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.
@@ -351,7 +351,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
-            hir::ExprKind::Type(ref e, _) => self.cat_expr(e),
+            hir::ExprKind::Type(e, _) => self.cat_expr(e),
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
@@ -728,11 +728,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Binding(.., Some(ref subpat)) => {
+            PatKind::Binding(.., Some(subpat)) => {
                 self.cat_pattern_(place_with_id, subpat, op)?;
             }
 
-            PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
+            PatKind::Box(subpat) | PatKind::Ref(subpat, _) => {
                 // box p1, &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained
                 // in the type.
@@ -754,7 +754,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 for before_pat in before {
                     self.cat_pattern_(elt_place.clone(), before_pat, op)?;
                 }
-                if let Some(ref slice_pat) = *slice {
+                if let Some(slice_pat) = *slice {
                     let slice_pat_ty = self.pat_ty_adjusted(slice_pat)?;
                     let slice_place = self.cat_projection(
                         pat,

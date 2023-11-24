@@ -22,8 +22,8 @@ mod unnecessary_cast;
 mod utils;
 mod zero_ptr;
 
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::is_hir_ty_cfg_dependant;
-use clippy_utils::msrvs::{self, Msrv};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// those places in the code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = u64::MAX;
     /// x as f64;
     /// ```
@@ -67,7 +67,7 @@ declare_clippy_lint! {
     /// as a one-time check to see where numerical wrapping can arise.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let y: i8 = -1;
     /// y as u128; // will return 18446744073709551615
     /// ```
@@ -90,13 +90,13 @@ declare_clippy_lint! {
     /// checks could be beneficial.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn as_u8(x: u64) -> u8 {
     ///     x as u8
     /// }
     /// ```
     /// Use instead:
-    /// ```
+    /// ```no_run
     /// fn as_u8(x: u64) -> u8 {
     ///     if let Ok(x) = u8::try_from(x) {
     ///         x
@@ -132,7 +132,7 @@ declare_clippy_lint! {
     /// example below.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// u32::MAX as i32; // will yield a value of `-1`
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -155,7 +155,7 @@ declare_clippy_lint! {
     /// people reading the code to know that the conversion is lossless.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn as_u64(x: u8) -> u64 {
     ///     x as u64
     /// }
@@ -163,7 +163,7 @@ declare_clippy_lint! {
     ///
     /// Using `::from` would look like this:
     ///
-    /// ```rust
+    /// ```no_run
     /// fn as_u64(x: u8) -> u64 {
     ///     u64::from(x)
     /// }
@@ -191,14 +191,14 @@ declare_clippy_lint! {
     /// intermediate references, raw pointers and trait objects may or may not work.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _ = 2i32 as i32;
     /// let _ = 0.5 as f32;
     /// ```
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```no_run
     /// let _ = 2_i32;
     /// let _ = 0.5_f32;
     /// ```
@@ -223,7 +223,7 @@ declare_clippy_lint! {
     /// u64-> u8 -> u16 can be fine. Miri is able to do a more in-depth analysis.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _ = (&1u8 as *const u8) as *const u16;
     /// let _ = (&mut 1u8 as *mut u8) as *mut u16;
     ///
@@ -249,13 +249,13 @@ declare_clippy_lint! {
     /// Casting to isize also doesn't make sense since there are no signed addresses.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn fun() -> i32 { 1 }
     /// let _ = fun as i64;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # fn fun() -> i32 { 1 }
     /// let _ = fun as usize;
     /// ```
@@ -276,7 +276,7 @@ declare_clippy_lint! {
     /// a comment) to perform the truncation.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn fn1() -> i16 {
     ///     1
     /// };
@@ -284,7 +284,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // Cast to usize first, then comment with the reason for the truncation
     /// fn fn1() -> i16 {
     ///     1
@@ -310,7 +310,7 @@ declare_clippy_lint! {
     /// pointer casts in your code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // fn1 is cast as `usize`
     /// fn fn1() -> u16 {
     ///     1
@@ -319,7 +319,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // maybe you intended to call the function?
     /// fn fn2() -> u16 {
     ///     1
@@ -378,14 +378,14 @@ declare_clippy_lint! {
     /// it cannot accidentally change the pointer's mutability nor cast the pointer to other types like `usize`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr: *mut u32 = &mut 42_u32;
     /// let _ = ptr as *const i32;
     /// let _ = mut_ptr as *mut i32;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr: *mut u32 = &mut 42_u32;
     /// let _ = ptr.cast::<i32>();
@@ -408,13 +408,13 @@ declare_clippy_lint! {
     /// type.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr = ptr as *mut u32;
     /// let ptr = mut_ptr as *const u32;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr = ptr.cast_mut();
     /// let ptr = mut_ptr.cast_const();
@@ -434,7 +434,7 @@ declare_clippy_lint! {
     /// The resulting integral value will not match the value of the variant it came from.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum E { X = 256 };
     /// let _ = E::X as u8;
     /// ```
@@ -457,7 +457,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// // Missing data
-    /// ```rust
+    /// ```no_run
     /// let a = [1_i32, 2, 3, 4];
     /// let p = &a as *const [i32] as *const [u8];
     /// unsafe {
@@ -465,7 +465,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// // Undefined Behavior (note: also potential alignment issues)
-    /// ```rust
+    /// ```no_run
     /// let a = [1_u8, 2, 3, 4];
     /// let p = &a as *const [u8] as *const [u32];
     /// unsafe {
@@ -473,7 +473,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Instead use `ptr::slice_from_raw_parts` to construct a slice from a data pointer and the correct length
-    /// ```rust
+    /// ```no_run
     /// let a = [1_i32, 2, 3, 4];
     /// let old_ptr = &a as *const [i32];
     /// // The data pointer is cast to a pointer to the target `u8` not `[u8]`
@@ -497,7 +497,7 @@ declare_clippy_lint! {
     /// The cast is easily confused with casting a c-like enum value to an integer.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum E { X(i32) };
     /// let _ = E::X as usize;
     /// ```
@@ -515,12 +515,12 @@ declare_clippy_lint! {
     /// The `unsigned_abs()` method avoids panic when called on the MIN value.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = -42;
     /// let y: u32 = x.abs() as u32;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = -42;
     /// let y: u32 = x.unsigned_abs();
     /// ```
@@ -541,13 +541,13 @@ declare_clippy_lint! {
     /// The lint is allowed by default as using `_` is less wordy than always specifying the type.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(n: usize) {}
     /// let n: u16 = 256;
     /// foo(n as _);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(n: usize) {}
     /// let n: u16 = 256;
     /// foo(n as usize);
@@ -570,7 +570,7 @@ declare_clippy_lint! {
     /// Read the `ptr::addr_of` docs for more information.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let val = 1;
     /// let p = &val as *const i32;
     ///
@@ -578,7 +578,7 @@ declare_clippy_lint! {
     /// let p_mut = &mut val_mut as *mut i32;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let val = 1;
     /// let p = std::ptr::addr_of!(val);
     ///
@@ -627,13 +627,13 @@ declare_clippy_lint! {
     /// mutability is used, making it unlikely that having it as a mutable pointer is correct.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut vec = Vec::<u8>::with_capacity(1);
     /// let ptr = vec.as_ptr() as *mut u8;
     /// unsafe { ptr.write(4) }; // UNDEFINED BEHAVIOUR
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let mut vec = Vec::<u8>::with_capacity(1);
     /// let ptr = vec.as_mut_ptr();
     /// unsafe { ptr.write(4) };
@@ -675,12 +675,12 @@ declare_clippy_lint! {
     /// {`std`, `core`}`::ptr::`{`null`, `null_mut`}.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = 0 as *const u32;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = std::ptr::null::<u32>();
     /// ```
     #[clippy::version = "pre 1.29.0"]

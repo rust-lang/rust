@@ -18,14 +18,14 @@ declare_clippy_lint! {
     /// module's visibility.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// mod internal {
     ///     pub(crate) fn internal_fn() { }
     /// }
     /// ```
     /// This function is not visible outside the module and it can be declared with `pub` or
     /// private visibility
-    /// ```rust
+    /// ```no_run
     /// mod internal {
     ///     pub fn internal_fn() { }
     /// }
@@ -45,28 +45,27 @@ impl_lint_pass!(RedundantPubCrate => [REDUNDANT_PUB_CRATE]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if_chain! {
-            if cx.tcx.visibility(item.owner_id.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id());
-            if !cx.effective_visibilities.is_exported(item.owner_id.def_id) && self.is_exported.last() == Some(&false);
-            if is_not_macro_export(item);
-            then {
-                let span = item.span.with_hi(item.ident.span.hi());
-                let descr = cx.tcx.def_kind(item.owner_id).descr(item.owner_id.to_def_id());
-                span_lint_and_then(
-                    cx,
-                    REDUNDANT_PUB_CRATE,
-                    span,
-                    &format!("pub(crate) {descr} inside private module"),
-                    |diag| {
-                        diag.span_suggestion(
-                            item.vis_span,
-                            "consider using",
-                            "pub".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
-            }
+        if cx.tcx.visibility(item.owner_id.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
+            && !cx.effective_visibilities.is_exported(item.owner_id.def_id)
+            && self.is_exported.last() == Some(&false)
+            && is_not_macro_export(item)
+        {
+            let span = item.span.with_hi(item.ident.span.hi());
+            let descr = cx.tcx.def_kind(item.owner_id).descr(item.owner_id.to_def_id());
+            span_lint_and_then(
+                cx,
+                REDUNDANT_PUB_CRATE,
+                span,
+                &format!("pub(crate) {descr} inside private module"),
+                |diag| {
+                    diag.span_suggestion(
+                        item.vis_span,
+                        "consider using",
+                        "pub".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
         }
 
         if let ItemKind::Mod { .. } = item.kind {

@@ -223,9 +223,10 @@ degree documented below):
 - All Rust [Tier 1 targets](https://doc.rust-lang.org/rustc/platform-support.html) are supported by
   Miri. They are all checked on Miri's CI, and some (at least one per OS) are even checked on every
   Rust PR, so the shipped Miri should always work on these targets.
-- We also support `s390x-unknown-linux-gnu` as our "big-endian target of choice".
+- `aarch64-apple-darwin` is supported.
+- `s390x-unknown-linux-gnu` is supported as our "big-endian target of choice".
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
-  make no promises.
+  make no promises and we don't run tests for such targets.
 - For targets on other operating systems, even basic operations such as printing to the standard
   output might not work, and Miri might fail before even reaching the `main` function.
 
@@ -410,10 +411,10 @@ to Miri failing to detect cases of undefined behavior in a program.
   without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
   types where we would also emit `noalias` annotations in the generated LLVM IR (types passed as
   individual scalars or pairs of scalars). Setting this to `none` is **unsound**.
-* `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
-  is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
-  `0` disables the garbage collector, which causes some programs to have explosive memory usage
-  and/or super-linear runtime.
+* `-Zmiri-provenance-gc=<blocks>` configures how often the pointer provenance garbage collector runs.
+  The default is to search for and remove unreachable provenance once every `10000` basic blocks. Setting
+  this to `0` disables the garbage collector, which causes some programs to have explosive memory
+  usage and/or super-linear runtime.
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous

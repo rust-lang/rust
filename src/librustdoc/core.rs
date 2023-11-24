@@ -14,8 +14,8 @@ use rustc_lint::{late_lint_mod, MissingDoc};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
+use rustc_session::lint;
 use rustc_session::Session;
-use rustc_session::{lint, EarlyErrorHandler};
 use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
 
@@ -23,6 +23,7 @@ use std::cell::RefCell;
 use std::mem;
 use std::rc::Rc;
 use std::sync::LazyLock;
+use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
@@ -174,7 +175,6 @@ pub(crate) fn new_handler(
 
 /// Parse, resolve, and typecheck the given crate.
 pub(crate) fn create_config(
-    handler: &EarlyErrorHandler,
     RustdocOptions {
         input,
         crate_name,
@@ -198,6 +198,7 @@ pub(crate) fn create_config(
         ..
     }: RustdocOptions,
     RenderOptions { document_private, .. }: &RenderOptions,
+    using_internal_features: Arc<AtomicBool>,
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
@@ -253,8 +254,8 @@ pub(crate) fn create_config(
 
     interface::Config {
         opts: sessopts,
-        crate_cfg: interface::parse_cfgspecs(handler, cfgs),
-        crate_check_cfg: interface::parse_check_cfg(handler, check_cfgs),
+        crate_cfg: cfgs,
+        crate_check_cfg: check_cfgs,
         input,
         output_file: None,
         output_dir: None,
@@ -293,6 +294,7 @@ pub(crate) fn create_config(
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
+        using_internal_features,
         expanded_args,
     }
 }
@@ -317,10 +319,14 @@ pub(crate) fn run_global_ctxt(
         tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
     });
 
-    // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
+    // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
+    let _ = tcx.sess.time("wf_checking", || {
+        tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
+    });
     tcx.sess.time("item_types_checking", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
+
     tcx.sess.abort_if_errors();
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {

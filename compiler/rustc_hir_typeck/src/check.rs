@@ -58,15 +58,16 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(kind) = body.coroutine_kind
         && can_be_coroutine.is_some()
     {
-        let yield_ty = if kind == hir::CoroutineKind::Coroutine {
-            let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span,
-            });
-            fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-            yield_ty
-        } else {
-            Ty::new_unit(tcx)
+        let yield_ty = match kind {
+            hir::CoroutineKind::Gen(..) | hir::CoroutineKind::Coroutine => {
+                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                });
+                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+                yield_ty
+            }
+            hir::CoroutineKind::Async(..) => Ty::new_unit(tcx),
         };
 
         // Resume type defaults to `()` if the coroutine has no argument.
@@ -75,7 +76,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
 
-    GatherLocalsVisitor::new(&fcx).visit_body(body);
+    GatherLocalsVisitor::new(fcx).visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
@@ -93,7 +94,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
         let ty_span = try { inputs_hir?.get(idx)?.span };
-        fcx.check_pat_top(&param.pat, param_ty, ty_span, None, None);
+        fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
 
         // Check that argument is Sized.
         if !params_can_be_unsized {
@@ -122,19 +123,21 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::Return(ty) => ty.span,
     };
     fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
-    fcx.check_return_expr(&body.value, false);
+    fcx.check_return_expr(body.value, false);
 
     // We insert the deferred_coroutine_interiors entry after visiting the body.
     // This ensures that all nested coroutines appear before the entry of this coroutine.
     // resolve_coroutine_interiors relies on this property.
-    let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_coroutine, body.coroutine_kind) {
+    let coroutine_ty = if let (Some(_), Some(coroutine_kind)) =
+        (can_be_coroutine, body.coroutine_kind)
+    {
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
         fcx.deferred_coroutine_interiors.borrow_mut().push((
             fn_def_id,
             body.id(),
             interior,
-            gen_kind,
+            coroutine_kind,
         ));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
@@ -153,7 +156,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     // really expected to fail, since the coercions would have failed
     // earlier when trying to find a LUB.
     let coercion = fcx.ret_coercion.take().unwrap().into_inner();
-    let mut actual_return_ty = coercion.complete(&fcx);
+    let mut actual_return_ty = coercion.complete(fcx);
     debug!("actual_return_ty = {:?}", actual_return_ty);
     if let ty::Dynamic(..) = declared_ret_ty.kind() {
         // We have special-cased the case where the function is declared
@@ -183,7 +186,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
-    gen_ty
+    coroutine_ty
 }
 
 fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
@@ -211,7 +214,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
         tcx,
-        &[ty::GenericArg::from(ty::Region::new_late_bound(
+        &[ty::GenericArg::from(ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
             ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon },
@@ -219,7 +222,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     );
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
-        ty::Region::new_late_bound(
+        ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
             ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },

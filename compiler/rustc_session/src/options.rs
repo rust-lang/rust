@@ -19,8 +19,7 @@ use rustc_span::SourceFileHashAlgorithm;
 
 use std::collections::BTreeMap;
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
+use std::hash::{DefaultHasher, Hasher};
 use std::num::{IntErrorKind, NonZeroUsize};
 use std::path::PathBuf;
 use std::str;
@@ -294,7 +293,7 @@ impl CodegenOptions {
     // JUSTIFICATION: defn of the suggested wrapper fn
     #[allow(rustc::bad_opt_access)]
     pub fn instrument_coverage(&self) -> InstrumentCoverage {
-        self.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
+        self.instrument_coverage
     }
 }
 
@@ -389,7 +388,7 @@ mod desc {
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
-        "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
+        "`all` (default), `branch`, `except-unused-generics`, `except-unused-functions`, or `off`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -428,6 +427,9 @@ mod desc {
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
     pub const parse_dump_solver_proof_tree: &str = "one of: `always`, `on-request`, `on-error`";
     pub const parse_remap_path_scope: &str = "comma separated list of scopes: `macro`, `diagnostics`, `unsplit-debuginfo`, `split-debuginfo`, `split-debuginfo-path`, `object`, `all`";
+    pub const parse_inlining_threshold: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
+    pub const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
 }
 
 mod parse {
@@ -913,24 +915,25 @@ mod parse {
     }
 
     pub(crate) fn parse_instrument_coverage(
-        slot: &mut Option<InstrumentCoverage>,
+        slot: &mut InstrumentCoverage,
         v: Option<&str>,
     ) -> bool {
         if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = bool_arg.unwrap().then_some(InstrumentCoverage::All);
+            let mut bool_arg = false;
+            if parse_bool(&mut bool_arg, v) {
+                *slot = if bool_arg { InstrumentCoverage::All } else { InstrumentCoverage::Off };
                 return true;
             }
         }
 
         let Some(v) = v else {
-            *slot = Some(InstrumentCoverage::All);
+            *slot = InstrumentCoverage::All;
             return true;
         };
 
-        *slot = Some(match v {
+        *slot = match v {
             "all" => InstrumentCoverage::All,
+            "branch" => InstrumentCoverage::Branch,
             "except-unused-generics" | "except_unused_generics" => {
                 InstrumentCoverage::ExceptUnusedGenerics
             }
@@ -939,7 +942,7 @@ mod parse {
             }
             "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
             _ => return false,
-        });
+        };
         true
     }
 
@@ -1309,6 +1312,53 @@ mod parse {
         };
         true
     }
+
+    pub(crate) fn parse_inlining_threshold(slot: &mut InliningThreshold, v: Option<&str>) -> bool {
+        match v {
+            Some("always" | "yes") => {
+                *slot = InliningThreshold::Always;
+            }
+            Some("never") => {
+                *slot = InliningThreshold::Never;
+            }
+            Some(v) => {
+                if let Ok(threshold) = v.parse() {
+                    *slot = InliningThreshold::Sometimes(threshold);
+                } else {
+                    return false;
+                }
+            }
+            None => return false,
+        }
+        true
+    }
+
+    pub(crate) fn parse_llvm_module_flag(
+        slot: &mut Vec<(String, u32, String)>,
+        v: Option<&str>,
+    ) -> bool {
+        let elements = v.unwrap_or_default().split(':').collect::<Vec<_>>();
+        let [key, md_type, value, behavior] = elements.as_slice() else {
+            return false;
+        };
+        if *md_type != "u32" {
+            // Currently we only support u32 metadata flags, but require the
+            // type for forward-compatibility.
+            return false;
+        }
+        let Ok(value) = value.parse::<u32>() else {
+            return false;
+        };
+        let behavior = behavior.to_lowercase();
+        let all_behaviors =
+            ["error", "warning", "require", "override", "append", "appendunique", "max", "min"];
+        if !all_behaviors.contains(&behavior.as_str()) {
+            return false;
+        }
+
+        slot.push((key.to_string(), value, behavior));
+        true
+    }
 }
 
 options! {
@@ -1351,11 +1401,12 @@ options! {
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "set the threshold for inlining a function"),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
-    instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
+    instrument_coverage: InstrumentCoverage = (InstrumentCoverage::Off, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`. Optional values are:
         `=all` (implicit value)
+        `=branch`
         `=except-unused-generics`
         `=except-unused-functions`
         `=off` (default)"),
@@ -1477,7 +1528,7 @@ options! {
         "combine CGUs into a single one"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
-    cross_crate_inline_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+    cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
         "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
@@ -1490,9 +1541,6 @@ options! {
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
-    dep_tasks: bool = (false, parse_bool, [UNTRACKED],
-        "print tasks that execute and the color their dep node gets (requires debug build) \
-        (default: no)"),
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) \
         (default: no)"),
@@ -1530,12 +1578,12 @@ options! {
     dump_solver_proof_tree: DumpSolverProofTree = (DumpSolverProofTree::Never, parse_dump_solver_proof_tree, [UNTRACKED],
         "dump a proof tree for every goal evaluated by the new trait solver. If the flag is specified without any options after it
         then it defaults to `always`. If the flag is not specified at all it defaults to `on-request`."),
-    dump_solver_proof_tree_use_cache: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
-        "determines whether dumped proof trees use the global cache"),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],
         "enables LTO for dylib crate type"),
+    ehcont_guard: bool = (false, parse_bool, [TRACKED],
+        "generate Windows EHCont Guard tables"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
@@ -1591,15 +1639,6 @@ options! {
         "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
-    instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
-        "instrument the generated code to support LLVM source-based code coverage \
-        reports (note, the compiler build config must include `profiler = true`); \
-        implies `-C symbol-mangling-version=v0`. Optional values are:
-        `=all` (implicit value)
-        `=except-unused-generics`
-        `=except-unused-functions`
-        `=off` (default)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
@@ -1612,8 +1651,6 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
-    keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
-        "keep hygiene data after analysis (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
     link_directives: bool = (true, parse_bool, [TRACKED],
@@ -1622,6 +1659,8 @@ options! {
         "link native libraries in the linker invocation (default: yes)"),
     link_only: bool = (false, parse_bool, [TRACKED],
         "link the `.rlink` file generated by `-Z no-link` (default: no)"),
+    llvm_module_flag: Vec<(String, u32, String)> = (Vec::new(), parse_llvm_module_flag, [TRACKED],
+        "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list LLVM plugins to enable (space separated)"),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
@@ -1701,8 +1740,6 @@ options! {
         "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
-    perf_stats: bool = (false, parse_bool, [UNTRACKED],
-        "print some performance-related statistics (default: no)"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
@@ -1831,11 +1868,6 @@ written to standard error output)"),
         "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
-    strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
-        "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
-    symbol_mangling_version: Option<SymbolManglingVersion> = (None,
-        parse_symbol_mangling_version, [TRACKED],
-        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     #[rustc_lint_opt_deny_field_access("use `Session::teach` instead of this field")]
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
@@ -1909,6 +1941,7 @@ written to standard error output)"),
         `hir` (the HIR), `hir,identified`,
         `hir,typed` (HIR with types for each node),
         `hir-tree` (dump the raw HIR),
+        `thir-tree`, `thir-flat`,
         `mir` (the MIR), or `mir-cfg` (graphviz formatted MIR)"),
     unsound_mir_opts: bool = (false, parse_bool, [TRACKED],
         "enable unsound and buggy MIR optimizations (default: no)"),

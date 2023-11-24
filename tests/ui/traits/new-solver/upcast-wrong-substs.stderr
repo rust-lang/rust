@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/upcast-wrong-substs.rs:11:30
+  --> $DIR/upcast-wrong-substs.rs:9:30
    |
 LL |     let y: &dyn Bar<usize> = x;
    |            ---------------   ^ expected trait `Bar`, found trait `Foo`

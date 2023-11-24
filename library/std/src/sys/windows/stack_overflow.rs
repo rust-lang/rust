@@ -3,6 +3,8 @@
 use crate::sys::c;
 use crate::thread;
 
+use super::api;
+
 pub struct Handler;
 
 impl Handler {
@@ -10,7 +12,7 @@ impl Handler {
         // This API isn't available on XP, so don't panic in that case and just
         // pray it works out ok.
         if c::SetThreadStackGuarantee(&mut 0x5000) == 0
-            && c::GetLastError() as u32 != c::ERROR_CALL_NOT_IMPLEMENTED as u32
+            && api::get_last_error().code != c::ERROR_CALL_NOT_IMPLEMENTED
         {
             panic!("failed to reserve stack space for exception handling");
         }

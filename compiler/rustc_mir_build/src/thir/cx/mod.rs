@@ -27,10 +27,10 @@ pub(crate) fn thir_body(
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
     }
-    let expr = cx.mirror_expr(&body.value);
+    let expr = cx.mirror_expr(body.value);
 
     let owner_id = hir.local_def_id_to_hir_id(owner_def);
-    if let Some(ref fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
+    if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
         let explicit_params = cx.explicit_params(owner_id, fn_decl, body);
         cx.thir.params = closure_env_param.into_iter().chain(explicit_params).collect();
@@ -132,10 +132,10 @@ impl<'tcx> Cx<'tcx> {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
                 };
-                let env_region = ty::Region::new_late_bound(self.tcx, ty::INNERMOST, br);
+                let env_region = ty::Region::new_bound(self.tcx, ty::INNERMOST, br);
                 let closure_env_ty =
                     self.tcx.closure_env_ty(closure_def_id, closure_args, env_region).unwrap();
-                let liberated_closure_env_ty = self.tcx.erase_late_bound_regions(
+                let liberated_closure_env_ty = self.tcx.instantiate_bound_regions_with_erased(
                     ty::Binder::bind_with_vars(closure_env_ty, bound_vars),
                 );
                 let env_param = Param {
@@ -149,10 +149,15 @@ impl<'tcx> Cx<'tcx> {
                 Some(env_param)
             }
             DefKind::Coroutine => {
-                let gen_ty = self.typeck_results.node_type(owner_id);
-                let gen_param =
-                    Param { ty: gen_ty, pat: None, ty_span: None, self_kind: None, hir_id: None };
-                Some(gen_param)
+                let coroutine_ty = self.typeck_results.node_type(owner_id);
+                let coroutine_param = Param {
+                    ty: coroutine_ty,
+                    pat: None,
+                    ty_span: None,
+                    self_kind: None,
+                    hir_id: None,
+                };
+                Some(coroutine_param)
             }
             _ => None,
         }

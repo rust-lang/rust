@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
-            && let ty = cx.typeck_results().expr_ty(&await_expr)
+            && let ty = cx.typeck_results().expr_ty(await_expr)
             && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: future_def_id, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
             && let async_fn_def_id = cx.tcx.parent(*future_def_id)
@@ -132,9 +132,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             return;
         }
 
-        let ty = cx.typeck_results().expr_ty(&expr);
+        let ty = cx.typeck_results().expr_ty(expr);
 
-        let must_use_result = is_ty_must_use(cx, ty, &expr, expr.span);
+        let must_use_result = is_ty_must_use(cx, ty, expr, expr.span);
         let type_lint_emitted_or_suppressed = match must_use_result {
             Some(path) => {
                 emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
@@ -211,7 +211,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             expr_is_from_block: bool,
         ) -> bool {
             let maybe_def_id = match expr.kind {
-                hir::ExprKind::Call(ref callee, _) => {
+                hir::ExprKind::Call(callee, _) => {
                     match callee.kind {
                         hir::ExprKind::Path(ref qpath) => {
                             match cx.qpath_res(qpath, callee.hir_id) {
@@ -251,6 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             /// The root of the normal must_use lint with an optional message.
             Def(Span, DefId, Option<Symbol>),
             Boxed(Box<Self>),
+            Pinned(Box<Self>),
             Opaque(Box<Self>),
             TraitObject(Box<Self>),
             TupleElement(Vec<(usize, Self)>),
@@ -283,6 +284,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let boxed_ty = ty.boxed_ty();
                     is_ty_must_use(cx, boxed_ty, expr, span)
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
+                }
+                ty::Adt(def, args) if cx.tcx.lang_items().pin_type() == Some(def.did()) => {
+                    let pinned_ty = args.type_at(0);
+                    is_ty_must_use(cx, pinned_ty, expr, span)
+                        .map(|inner| MustUsePath::Pinned(Box::new(inner)))
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
@@ -415,6 +421,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 MustUsePath::Suppressed => {}
                 MustUsePath::Boxed(path) => {
                     let descr_pre = &format!("{descr_pre}boxed ");
+                    emit_must_use_untranslated(
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
+                    );
+                }
+                MustUsePath::Pinned(path) => {
+                    let descr_pre = &format!("{descr_pre}pinned ");
                     emit_must_use_untranslated(
                         cx,
                         path,
@@ -674,7 +692,7 @@ trait UnusedDelimLint {
                 innermost = match &innermost.kind {
                     ExprKind::AddrOf(_, _, expr) => expr,
                     _ => {
-                        if parser::contains_exterior_struct_lit(&innermost) {
+                        if parser::contains_exterior_struct_lit(innermost) {
                             return true;
                         } else {
                             break;
@@ -703,7 +721,7 @@ trait UnusedDelimLint {
                     return matches!(rhs.kind, ExprKind::Block(..));
                 }
 
-                _ => return parser::contains_exterior_struct_lit(&inner),
+                _ => return parser::contains_exterior_struct_lit(inner),
             }
         }
     }
@@ -878,7 +896,7 @@ trait UnusedDelimLint {
         };
         self.check_unused_delims_expr(
             cx,
-            &value,
+            value,
             ctx,
             followed_by_block,
             left_pos,
@@ -901,7 +919,7 @@ trait UnusedDelimLint {
             StmtKind::Expr(ref expr) => {
                 self.check_unused_delims_expr(
                     cx,
-                    &expr,
+                    expr,
                     UnusedDelimsCtx::BlockRetValue,
                     false,
                     None,
@@ -1154,7 +1172,7 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         if let StmtKind::Local(ref local) = s.kind {
-            self.check_unused_parens_pat(cx, &local.pat, true, false, (false, false));
+            self.check_unused_parens_pat(cx, &local.pat, true, false, (true, false));
         }
 
         <Self as UnusedDelimLint>::check_stmt(self, cx, s)

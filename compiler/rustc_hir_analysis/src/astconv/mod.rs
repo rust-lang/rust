@@ -250,7 +250,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     var: ty::BoundVar::from_u32(index),
                     kind: ty::BrNamed(def_id, name),
                 };
-                ty::Region::new_late_bound(tcx, debruijn, br)
+                ty::Region::new_bound(tcx, debruijn, br)
             }
 
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
@@ -258,12 +258,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                ty::Region::new_early_bound(tcx, ty::EarlyBoundRegion { def_id, index, name })
+                ty::Region::new_early_param(tcx, ty::EarlyParamRegion { def_id, index, name })
             }
 
             Some(rbv::ResolvedArg::Free(scope, id)) => {
                 let name = lifetime_name(id.expect_local());
-                ty::Region::new_free(tcx, scope, ty::BrNamed(id, name))
+                ty::Region::new_late_param(tcx, scope, ty::BrNamed(id, name))
 
                 // (*) -- not late-bound, won't change
             }
@@ -945,7 +945,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 Applicability::MachineApplicable,
             );
         } else {
-            match (types, traits) {
+            let mut types = types.to_vec();
+            types.sort();
+            let mut traits = traits.to_vec();
+            traits.sort();
+            match (&types[..], &traits[..]) {
                 ([], []) => {
                     err.span_suggestion_verbose(
                         span,
@@ -1622,7 +1626,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
 
                 fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-                    if r.is_late_bound() { self.tcx.lifetimes.re_erased } else { r }
+                    // FIXME(@lcnr): This is broken, erasing bound regions
+                    // impacts selection as it results in different types.
+                    if r.is_bound() { self.tcx.lifetimes.re_erased } else { r }
                 }
 
                 fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -1660,7 +1666,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .copied()
                 .filter(|&(impl_, _)| {
                     infcx.probe(|_| {
-                        let ocx = ObligationCtxt::new(&infcx);
+                        let ocx = ObligationCtxt::new(infcx);
                         ocx.register_obligations(obligations.clone());
 
                         let impl_args = infcx.fresh_args_for_item(span, impl_);
@@ -1973,7 +1979,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     types_and_spans[..types_and_spans.len() - 1]
                         .iter()
                         .map(|(x, _)| x.as_str())
-                        .intersperse(&", ")
+                        .intersperse(", ")
                         .collect::<String>()
                 ),
                 [(only, _)] => only.to_string(),
@@ -2845,6 +2851,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// provided, if they provided one, and otherwise search the supertypes of trait bounds
     /// for region bounds. It may be that we can derive no bound at all, in which case
     /// we return `None`.
+    #[instrument(level = "debug", skip(self, span), ret)]
     fn compute_object_lifetime_bound(
         &self,
         span: Span,
@@ -2852,8 +2859,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();
-
-        debug!("compute_opt_region_bound(existential_predicates={:?})", existential_predicates);
 
         // No explicit region bound specified. Therefore, examine trait
         // bounds and see if we can derive region bounds from those.

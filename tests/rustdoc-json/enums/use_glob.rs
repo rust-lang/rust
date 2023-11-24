@@ -1,8 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/104942>
 
-#![feature(no_core)]
-#![no_core]
-
 // @set Color = "$.index[*][?(@.name == 'Color')].id"
 pub enum Color {
     Red,

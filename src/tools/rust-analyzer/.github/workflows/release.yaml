@@ -30,7 +30,6 @@ jobs:
             code-target: win32-x64
           - os: windows-latest
             target: i686-pc-windows-msvc
-            code-target: win32-ia32
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             code-target: win32-arm64
@@ -102,12 +101,12 @@ jobs:
         working-directory: editors/code
 
       - name: Package Extension (release)
-        if: github.ref == 'refs/heads/release'
+        if: github.ref == 'refs/heads/release' && matrix.code-target
         run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }}
         working-directory: editors/code
 
       - name: Package Extension (nightly)
-        if: github.ref != 'refs/heads/release'
+        if: github.ref != 'refs/heads/release' && matrix.code-target
         run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }} --pre-release
         working-directory: editors/code
 

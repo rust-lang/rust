@@ -5,7 +5,8 @@ use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
-use rustc_errors::{PErr, PResult};
+use rustc_errors::{Applicability, PErr};
+use rustc_span::symbol::kw;
 
 pub(super) struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
@@ -18,36 +19,42 @@ pub(super) struct TokenTreesReader<'a> {
 impl<'a> TokenTreesReader<'a> {
     pub(super) fn parse_all_token_trees(
         string_reader: StringReader<'a>,
-    ) -> (PResult<'a, TokenStream>, Vec<UnmatchedDelim>) {
+    ) -> (TokenStream, Result<(), Vec<PErr<'a>>>, Vec<UnmatchedDelim>) {
         let mut tt_reader = TokenTreesReader {
             string_reader,
             token: Token::dummy(),
             diag_info: TokenTreeDiagInfo::default(),
         };
-        let res = tt_reader.parse_token_trees(/* is_delimited */ false);
-        (res, tt_reader.diag_info.unmatched_delims)
+        let (stream, res) = tt_reader.parse_token_trees(/* is_delimited */ false);
+        (stream, res, tt_reader.diag_info.unmatched_delims)
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s.
-    fn parse_token_trees(&mut self, is_delimited: bool) -> PResult<'a, TokenStream> {
+    fn parse_token_trees(
+        &mut self,
+        is_delimited: bool,
+    ) -> (TokenStream, Result<(), Vec<PErr<'a>>>) {
         self.token = self.string_reader.next_token().0;
         let mut buf = Vec::new();
         loop {
             match self.token.kind {
-                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)?),
+                token::OpenDelim(delim) => {
+                    buf.push(match self.parse_token_tree_open_delim(delim) {
+                        Ok(val) => val,
+                        Err(errs) => return (TokenStream::new(buf), Err(errs)),
+                    })
+                }
                 token::CloseDelim(delim) => {
-                    return if is_delimited {
-                        Ok(TokenStream::new(buf))
-                    } else {
-                        Err(self.close_delim_err(delim))
-                    };
+                    return (
+                        TokenStream::new(buf),
+                        if is_delimited { Ok(()) } else { Err(vec![self.close_delim_err(delim)]) },
+                    );
                 }
                 token::Eof => {
-                    return if is_delimited {
-                        Err(self.eof_err())
-                    } else {
-                        Ok(TokenStream::new(buf))
-                    };
+                    return (
+                        TokenStream::new(buf),
+                        if is_delimited { Err(vec![self.eof_err()]) } else { Ok(()) },
+                    );
                 }
                 _ => {
                     // Get the next normal token. This might require getting multiple adjacent
@@ -90,14 +97,17 @@ impl<'a> TokenTreesReader<'a> {
             report_suspicious_mismatch_block(
                 &mut err,
                 &self.diag_info,
-                &self.string_reader.sess.source_map(),
+                self.string_reader.sess.source_map(),
                 *delim,
             )
         }
         err
     }
 
-    fn parse_token_tree_open_delim(&mut self, open_delim: Delimiter) -> PResult<'a, TokenTree> {
+    fn parse_token_tree_open_delim(
+        &mut self,
+        open_delim: Delimiter,
+    ) -> Result<TokenTree, Vec<PErr<'a>>> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
@@ -106,7 +116,10 @@ impl<'a> TokenTreesReader<'a> {
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
-        let tts = self.parse_token_trees(/* is_delimited */ true)?;
+        let (tts, res) = self.parse_token_trees(/* is_delimited */ true);
+        if let Err(errs) = res {
+            return Err(self.unclosed_delim_err(tts, errs));
+        }
 
         // Expand to cover the entire delimited token tree
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
@@ -151,7 +164,7 @@ impl<'a> TokenTreesReader<'a> {
                         unclosed_delimiter = Some(sp);
                     };
                     for (brace, brace_span) in &self.diag_info.open_braces {
-                        if same_indentation_level(&sm, self.token.span, *brace_span)
+                        if same_indentation_level(sm, self.token.span, *brace_span)
                             && brace == &close_delim
                         {
                             // high likelihood of these two corresponding
@@ -192,6 +205,62 @@ impl<'a> TokenTreesReader<'a> {
         Ok(TokenTree::Delimited(delim_span, open_delim, tts))
     }
 
+    fn unclosed_delim_err(&mut self, tts: TokenStream, mut errs: Vec<PErr<'a>>) -> Vec<PErr<'a>> {
+        // If there are unclosed delims, see if there are diff markers and if so, point them
+        // out instead of complaining about the unclosed delims.
+        let mut parser = crate::stream_to_parser(self.string_reader.sess, tts, None);
+        let mut diff_errs = vec![];
+        // Suggest removing a `{` we think appears in an `if`/`while` condition
+        // We want to suggest removing a `{` only if we think we're in an `if`/`while` condition, but
+        // we have no way of tracking this in the lexer itself, so we piggyback on the parser
+        let mut in_cond = false;
+        while parser.token != token::Eof {
+            if let Err(diff_err) = parser.err_diff_marker() {
+                diff_errs.push(diff_err);
+            } else if parser.is_keyword_ahead(0, &[kw::If, kw::While]) {
+                in_cond = true;
+            } else if matches!(
+                parser.token.kind,
+                token::CloseDelim(Delimiter::Brace) | token::FatArrow
+            ) {
+                // end of the `if`/`while` body, or the end of a `match` guard
+                in_cond = false;
+            } else if in_cond && parser.token == token::OpenDelim(Delimiter::Brace) {
+                // Store the `&&` and `let` to use their spans later when creating the diagnostic
+                let maybe_andand = parser.look_ahead(1, |t| t.clone());
+                let maybe_let = parser.look_ahead(2, |t| t.clone());
+                if maybe_andand == token::OpenDelim(Delimiter::Brace) {
+                    // This might be the beginning of the `if`/`while` body (i.e., the end of the condition)
+                    in_cond = false;
+                } else if maybe_andand == token::AndAnd && maybe_let.is_keyword(kw::Let) {
+                    let mut err = parser.struct_span_err(
+                        parser.token.span,
+                        "found a `{` in the middle of a let-chain",
+                    );
+                    err.span_suggestion(
+                        parser.token.span,
+                        "consider removing this brace to parse the `let` as part of the same chain",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                    err.span_label(
+                        maybe_andand.span.to(maybe_let.span),
+                        "you might have meant to continue the let-chain here",
+                    );
+                    errs.push(err);
+                }
+            }
+            parser.bump();
+        }
+        if !diff_errs.is_empty() {
+            errs.iter_mut().for_each(|err| {
+                err.delay_as_bug();
+            });
+            return diff_errs;
+        }
+        return errs;
+    }
+
     fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'a> {
         // An unexpected closing delimiter (i.e., there is no
         // matching opening delimiter).
@@ -202,7 +271,7 @@ impl<'a> TokenTreesReader<'a> {
         report_suspicious_mismatch_block(
             &mut err,
             &self.diag_info,
-            &self.string_reader.sess.source_map(),
+            self.string_reader.sess.source_map(),
             delim,
         );
         err.span_label(self.token.span, "unexpected closing delimiter");

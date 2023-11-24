@@ -13,7 +13,7 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FIRST_VARIANT};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -680,7 +680,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         layout.align.abi.bytes()
                     }
                     mir::NullOp::OffsetOf(fields) => {
-                        layout.offset_of_subfield(bx.cx(), fields.iter().map(|f| f.index())).bytes()
+                        layout.offset_of_subfield(bx.cx(), fields.iter()).bytes()
                     }
                 };
                 let val = bx.cx().const_usize(val);
@@ -702,7 +702,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     };
                     let fn_ptr = bx.get_fn_addr(instance);
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-                    let fn_ty = bx.fn_decl_backend_type(&fn_abi);
+                    let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {
                         Some(bx.tcx().codegen_fn_attrs(instance.def_id()))
                     } else {

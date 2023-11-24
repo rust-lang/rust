@@ -450,7 +450,6 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             [ident] => { $crate::SyntaxKind::IDENT };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
         }
-        pub use T;
     };
 
     sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(ast.to_string()))
@@ -623,7 +622,7 @@ fn lower_enum(grammar: &Grammar, rule: &Rule) -> Option<Vec<String>> {
 }
 
 fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, rule: &Rule) {
-    if lower_seperated_list(acc, grammar, label, rule) {
+    if lower_separated_list(acc, grammar, label, rule) {
         return;
     }
 
@@ -689,7 +688,7 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
 }
 
 // (T (',' T)* ','?)
-fn lower_seperated_list(
+fn lower_separated_list(
     acc: &mut Vec<Field>,
     grammar: &Grammar,
     label: Option<&String>,

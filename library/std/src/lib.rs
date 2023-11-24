@@ -227,7 +227,7 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![doc(rust_logo)]
 #![doc(cfg_hide(
     not(test),
     not(any(test, bootstrap)),
@@ -310,6 +310,7 @@
 // tidy-alphabetical-start
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
+#![feature(core_io_borrowed_buf)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
@@ -331,7 +332,6 @@
 #![feature(panic_can_unwind)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
-#![feature(pointer_byte_offsets)]
 #![feature(pointer_is_aligned)]
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
@@ -494,8 +494,6 @@ pub use core::convert;
 pub use core::default;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use core::future;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::hash;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 #[stable(feature = "i128", since = "1.26.0")]
@@ -565,6 +563,7 @@ pub mod env;
 pub mod error;
 pub mod ffi;
 pub mod fs;
+pub mod hash;
 pub mod io;
 pub mod net;
 pub mod num;
@@ -716,7 +715,7 @@ pub(crate) mod test_helpers {
     #[track_caller]
     pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
         use core::hash::{BuildHasher, Hash, Hasher};
-        let mut hasher = crate::collections::hash_map::RandomState::new().build_hasher();
+        let mut hasher = crate::hash::RandomState::new().build_hasher();
         core::panic::Location::caller().hash(&mut hasher);
         let hc64 = hasher.finish();
         let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();

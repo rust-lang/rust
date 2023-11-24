@@ -13,6 +13,7 @@ LL |     fn foo<T>(&self, val: T);
 LL | trait Bar: Foo { }
    |       --- this trait cannot be made into an object...
    = help: consider moving `foo` to another trait
+   = help: only type `Thing` implements the trait, consider using it directly instead
 
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-19538.rs:17:30
@@ -29,6 +30,7 @@ LL |     fn foo<T>(&self, val: T);
 LL | trait Bar: Foo { }
    |       --- this trait cannot be made into an object...
    = help: consider moving `foo` to another trait
+   = help: only type `Thing` implements the trait, consider using it directly instead
    = note: required for the cast from `&mut Thing` to `&mut dyn Bar`
 
 error: aborting due to 2 previous errors

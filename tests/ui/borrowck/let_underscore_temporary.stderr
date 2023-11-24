@@ -74,6 +74,44 @@ LL | |     };
    |
    = note: consider using a `let` binding to create a longer lived value
 
-error: aborting due to 4 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/let_underscore_temporary.rs:66:14
+   |
+LL |       match if let Some(s) = &mut num {
+   |  ___________-
+LL | |         *s += 1;
+LL | |         s
+LL | |     } else {
+LL | |         &mut 0
+   | |              ^ creates a temporary value which is freed while still in use
+LL | |
+LL | |     } {
+   | |     -
+   | |     |
+   | |_____temporary value is freed at the end of this statement
+   |       borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/let_underscore_temporary.rs:86:14
+   |
+LL |       match if let Some(ref mut s) = num {
+   |  ___________-
+LL | |         *s += 1;
+LL | |         s
+LL | |     } else {
+LL | |         &mut 0
+   | |              ^ creates a temporary value which is freed while still in use
+LL | |
+LL | |     } {
+   | |     -
+   | |     |
+   | |_____temporary value is freed at the end of this statement
+   |       borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0716`.

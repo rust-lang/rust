@@ -126,7 +126,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     // JUSTIFICATION: necessary in clippy driver to set `mir_opt_level`
     #[allow(rustc::bad_opt_access)]
     fn config(&mut self, config: &mut interface::Config) {
-        let conf_path = clippy_lints::lookup_conf_file();
+        let conf_path = clippy_config::lookup_conf_file();
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
         config.parse_sess_created = Some(Box::new(move |parse_sess| {
@@ -147,9 +147,9 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
                 (previous)(sess, lint_store);
             }
 
-            let conf = clippy_lints::read_conf(sess, &conf_path);
-            clippy_lints::register_plugins(lint_store, sess, &conf);
-            clippy_lints::register_pre_expansion_lints(lint_store, sess, &conf);
+            let conf = clippy_config::Conf::read(sess, &conf_path);
+            clippy_lints::register_lints(lint_store, conf);
+            clippy_lints::register_pre_expansion_lints(lint_store, conf);
             clippy_lints::register_renamed(lint_store);
         }));
 
@@ -178,7 +178,7 @@ pub fn main() {
 
     rustc_driver::init_rustc_env_logger(&handler);
 
-    rustc_driver::install_ice_hook(BUG_REPORT_URL, |handler| {
+    let using_internal_features = rustc_driver::install_ice_hook(BUG_REPORT_URL, |handler| {
         // FIXME: this macro calls unwrap internally but is called in a panicking context!  It's not
         // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
         // accept a generic closure.
@@ -265,9 +265,13 @@ pub fn main() {
         let clippy_enabled = !cap_lints_allow && (!no_deps || in_primary_package);
         if clippy_enabled {
             args.extend(clippy_args);
-            rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var }).run()
+            rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var })
+                .set_using_internal_features(using_internal_features)
+                .run()
         } else {
-            rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var }).run()
+            rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var })
+                .set_using_internal_features(using_internal_features)
+                .run()
         }
     }))
 }

@@ -35,12 +35,9 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
                 }
             }
 
-            ctx.simplify_primitive_clone(
-                &mut block.terminator.as_mut().unwrap(),
-                &mut block.statements,
-            );
+            ctx.simplify_primitive_clone(block.terminator.as_mut().unwrap(), &mut block.statements);
             ctx.simplify_intrinsic_assert(
-                &mut block.terminator.as_mut().unwrap(),
+                block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
             simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());

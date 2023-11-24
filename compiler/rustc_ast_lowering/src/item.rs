@@ -16,9 +16,8 @@ use rustc_hir::PredicateOrigin;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{Span, Symbol};
+use rustc_span::{DesugaringKind, Span, Symbol};
 use rustc_target::spec::abi;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
@@ -277,19 +276,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
                     let asyncness = header.asyncness;
-                    let body_id = this.lower_maybe_async_body(
-                        span,
-                        hir_id,
-                        &decl,
-                        asyncness,
-                        body.as_deref(),
-                    );
+                    let body_id =
+                        this.lower_maybe_async_body(span, hir_id, decl, asyncness, body.as_deref());
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
                         this.lower_generics(generics, header.constness, id, &itctx, |this| {
                             let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(&decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
+                            this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
                         });
                     let sig = hir::FnSig {
                         decl,
@@ -745,7 +739,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (generics, kind, has_default) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => {
                 let (generics, kind) = self.lower_generics(
-                    &generics,
+                    generics,
                     Const::No,
                     i.id,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -776,7 +770,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), .. }) => {
                 let asyncness = sig.header.asyncness;
                 let body_id =
-                    self.lower_maybe_async_body(i.span, hir_id, &sig.decl, asyncness, Some(&body));
+                    self.lower_maybe_async_body(i.span, hir_id, &sig.decl, asyncness, Some(body));
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
@@ -858,7 +852,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => self.lower_generics(
-                &generics,
+                generics,
                 Const::No,
                 i.id,
                 &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -988,12 +982,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
-        let prev_gen_kind = self.coroutine_kind.take();
+        let prev_coroutine_kind = self.coroutine_kind.take();
         let task_context = self.task_context.take();
         let (parameters, result) = f(self);
         let body_id = self.record_body(parameters, result);
         self.task_context = task_context;
-        self.coroutine_kind = prev_gen_kind;
+        self.coroutine_kind = prev_coroutine_kind;
         body_id
     }
 
@@ -1202,11 +1196,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
 
             let async_expr = this.make_async_expr(
-                CaptureBy::Value,
+                CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
                 closure_id,
                 None,
                 body.span,
-                hir::AsyncCoroutineKind::Fn,
+                hir::CoroutineSource::Fn,
                 |this| {
                     // Create a block from the user's function body:
                     let user_body = this.lower_block_expr(body);

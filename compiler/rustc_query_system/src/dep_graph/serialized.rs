@@ -37,7 +37,7 @@
 
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex, Deps};
-use crate::dep_graph::EdgesVec;
+use crate::dep_graph::edges::EdgesVec;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fingerprint::PackedFingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -54,6 +54,7 @@ use std::marker::PhantomData;
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
 // and use those bits to encode which index type it contains.
 rustc_index::newtype_index! {
+    #[encodable]
     #[max = 0x7FFF_FFFF]
     pub struct SerializedDepNodeIndex {}
 }

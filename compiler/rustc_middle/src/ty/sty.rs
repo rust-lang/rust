@@ -29,14 +29,16 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
-use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
+use rustc_type_ir::BoundVar;
+use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::CollectAndApply;
 use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::DebugWithInfcx;
 use rustc_type_ir::DynKind;
+use rustc_type_ir::PredicateKind as IrPredicateKind;
 use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
 use rustc_type_ir::TyKind::*;
@@ -48,6 +50,8 @@ use super::GenericParamDefKind;
 pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
+pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
+pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
@@ -58,9 +62,9 @@ pub struct TypeAndMut<'tcx> {
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
-/// A "free" region `fr` can be interpreted as "some region
+/// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
-pub struct FreeRegion {
+pub struct LateParamRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,
 }
@@ -683,8 +687,8 @@ pub enum ExistentialPredicate<'tcx> {
 }
 
 impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ExistentialPredicate<'tcx> {
-    fn fmt<InfCtx: rustc_type_ir::InferCtxtLike<TyCtxt<'tcx>>>(
-        this: rustc_type_ir::OptWithInfcx<'_, TyCtxt<'tcx>, InfCtx, &Self>,
+    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = TyCtxt<'tcx>>>(
+        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         fmt::Debug::fmt(&this.data, f)
@@ -1033,7 +1037,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// risky thing to do because it's easy to get confused about
     /// De Bruijn indices and the like. It is usually better to
     /// discharge the binder using `no_bound_vars` or
-    /// `replace_late_bound_regions` or something like
+    /// `instantiate_bound_regions` or something like
     /// that. `skip_binder` is only valid when you are either
     /// extracting data that has nothing to do with bound vars, you
     /// are doing some sort of test that does not involve bound
@@ -1239,6 +1243,28 @@ impl<'tcx> AliasTy<'tcx> {
             DefKind::OpaqueTy => ty::Opaque,
             DefKind::TyAlias => ty::Weak,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+        }
+    }
+
+    /// Whether this alias type is an opaque.
+    pub fn is_opaque(self, tcx: TyCtxt<'tcx>) -> bool {
+        matches!(self.opt_kind(tcx), Some(ty::AliasKind::Opaque))
+    }
+
+    /// FIXME: rename `AliasTy` to `AliasTerm` and always handle
+    /// constants. This function can then be removed.
+    pub fn opt_kind(self, tcx: TyCtxt<'tcx>) -> Option<ty::AliasKind> {
+        match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy
+                if let DefKind::Impl { of_trait: false } =
+                    tcx.def_kind(tcx.parent(self.def_id)) =>
+            {
+                Some(ty::Inherent)
+            }
+            DefKind::AssocTy => Some(ty::Projection),
+            DefKind::OpaqueTy => Some(ty::Opaque),
+            DefKind::TyAlias => Some(ty::Weak),
+            _ => None,
         }
     }
 
@@ -1465,15 +1491,15 @@ pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
 impl<'tcx> Region<'tcx> {
     #[inline]
-    pub fn new_early_bound(
+    pub fn new_early_param(
         tcx: TyCtxt<'tcx>,
-        early_bound_region: ty::EarlyBoundRegion,
+        early_bound_region: ty::EarlyParamRegion,
     ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReEarlyBound(early_bound_region))
+        tcx.intern_region(ty::ReEarlyParam(early_bound_region))
     }
 
     #[inline]
-    pub fn new_late_bound(
+    pub fn new_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
         bound_region: ty::BoundRegion,
@@ -1485,17 +1511,17 @@ impl<'tcx> Region<'tcx> {
         {
             re
         } else {
-            tcx.intern_region(ty::ReLateBound(debruijn, bound_region))
+            tcx.intern_region(ty::ReBound(debruijn, bound_region))
         }
     }
 
     #[inline]
-    pub fn new_free(
+    pub fn new_late_param(
         tcx: TyCtxt<'tcx>,
         scope: DefId,
         bound_region: ty::BoundRegionKind,
     ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReFree(ty::FreeRegion { scope, bound_region }))
+        tcx.intern_region(ty::ReLateParam(ty::LateParamRegion { scope, bound_region }))
     }
 
     #[inline]
@@ -1546,10 +1572,10 @@ impl<'tcx> Region<'tcx> {
     /// to avoid the cost of the `match`.
     pub fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
         match kind {
-            ty::ReEarlyBound(region) => Region::new_early_bound(tcx, region),
-            ty::ReLateBound(debruijn, region) => Region::new_late_bound(tcx, debruijn, region),
-            ty::ReFree(ty::FreeRegion { scope, bound_region }) => {
-                Region::new_free(tcx, scope, bound_region)
+            ty::ReEarlyParam(region) => Region::new_early_param(tcx, region),
+            ty::ReBound(debruijn, region) => Region::new_bound(tcx, debruijn, region),
+            ty::ReLateParam(ty::LateParamRegion { scope, bound_region }) => {
+                Region::new_late_param(tcx, scope, bound_region)
             }
             ty::ReStatic => tcx.lifetimes.re_static,
             ty::ReVar(vid) => Region::new_var(tcx, vid),
@@ -1565,49 +1591,29 @@ impl<'tcx> Deref for Region<'tcx> {
 
     #[inline]
     fn deref(&self) -> &RegionKind<'tcx> {
-        &self.0.0
+        self.0.0
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
 #[derive(HashStable)]
-pub struct EarlyBoundRegion {
+pub struct EarlyParamRegion {
     pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
 }
 
-impl fmt::Debug for EarlyBoundRegion {
+impl fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}, {}, {}", self.def_id, self.index, self.name)
     }
 }
 
-/// A **`const`** **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
-pub struct ConstVid<'tcx> {
-    pub index: u32,
-    pub phantom: PhantomData<&'tcx ()>,
-}
-
-/// An **effect** **v**ariable **ID**.
-///
-/// Handling effect infer variables happens separately from const infer variables
-/// because we do not want to reuse any of the const infer machinery. If we try to
-/// relate an effect variable with a normal one, we would ICE, which can catch bugs
-/// where we are not correctly using the effect var for an effect param. Fallback
-/// is also implemented on top of having separate effect and normal const variables.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable)]
-pub struct EffectVid<'tcx> {
-    pub index: u32,
-    pub phantom: PhantomData<&'tcx ()>,
-}
-
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     #[debug_format = "'?{}"]
     pub struct RegionVid {}
 }
@@ -1616,12 +1622,6 @@ impl Atom for RegionVid {
     fn index(self) -> usize {
         Idx::index(self)
     }
-}
-
-rustc_index::newtype_index! {
-    #[derive(HashStable)]
-    #[debug_format = "{}"]
-    pub struct BoundVar {}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
@@ -1723,9 +1723,9 @@ impl<'tcx> Region<'tcx> {
     pub fn get_name(self) -> Option<Symbol> {
         if self.has_name() {
             match *self {
-                ty::ReEarlyBound(ebr) => Some(ebr.name),
-                ty::ReLateBound(_, br) => br.kind.get_name(),
-                ty::ReFree(fr) => fr.bound_region.get_name(),
+                ty::ReEarlyParam(ebr) => Some(ebr.name),
+                ty::ReBound(_, br) => br.kind.get_name(),
+                ty::ReLateParam(fr) => fr.bound_region.get_name(),
                 ty::ReStatic => Some(kw::StaticLifetime),
                 ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
                 _ => None,
@@ -1745,9 +1745,9 @@ impl<'tcx> Region<'tcx> {
     /// Is this region named by the user?
     pub fn has_name(self) -> bool {
         match *self {
-            ty::ReEarlyBound(ebr) => ebr.has_name(),
-            ty::ReLateBound(_, br) => br.kind.is_named(),
-            ty::ReFree(fr) => fr.bound_region.is_named(),
+            ty::ReEarlyParam(ebr) => ebr.has_name(),
+            ty::ReBound(_, br) => br.kind.is_named(),
+            ty::ReLateParam(fr) => fr.bound_region.is_named(),
             ty::ReStatic => true,
             ty::ReVar(..) => false,
             ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(),
@@ -1772,8 +1772,8 @@ impl<'tcx> Region<'tcx> {
     }
 
     #[inline]
-    pub fn is_late_bound(self) -> bool {
-        matches!(*self, ty::ReLateBound(..))
+    pub fn is_bound(self) -> bool {
+        matches!(*self, ty::ReBound(..))
     }
 
     #[inline]
@@ -1784,7 +1784,7 @@ impl<'tcx> Region<'tcx> {
     #[inline]
     pub fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
         match *self {
-            ty::ReLateBound(debruijn, _) => debruijn >= index,
+            ty::ReBound(debruijn, _) => debruijn >= index,
             _ => false,
         }
     }
@@ -1803,20 +1803,20 @@ impl<'tcx> Region<'tcx> {
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
             }
-            ty::ReEarlyBound(..) => {
+            ty::ReEarlyParam(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PARAM;
             }
-            ty::ReFree { .. } => {
+            ty::ReLateParam { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
             ty::ReStatic => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
-            ty::ReLateBound(..) => {
-                flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
+            ty::ReBound(..) => {
+                flags = flags | TypeFlags::HAS_RE_BOUND;
             }
             ty::ReErased => {
                 flags = flags | TypeFlags::HAS_RE_ERASED;
@@ -1852,22 +1852,28 @@ impl<'tcx> Region<'tcx> {
     /// function might return the `DefId` of a closure.
     pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
         match *self {
-            ty::ReEarlyBound(br) => tcx.parent(br.def_id),
-            ty::ReFree(fr) => fr.scope,
+            ty::ReEarlyParam(br) => tcx.parent(br.def_id),
+            ty::ReLateParam(fr) => fr.scope,
             _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
         }
     }
 
     /// True for free regions other than `'static`.
-    pub fn is_free(self) -> bool {
-        matches!(*self, ty::ReEarlyBound(_) | ty::ReFree(_))
+    pub fn is_param(self) -> bool {
+        matches!(*self, ty::ReEarlyParam(_) | ty::ReLateParam(_))
     }
 
-    /// True if `self` is a free region or static.
-    pub fn is_free_or_static(self) -> bool {
+    /// True for free region in the current context.
+    ///
+    /// This is the case for `'static` and param regions.
+    pub fn is_free(self) -> bool {
         match *self {
-            ty::ReStatic => true,
-            _ => self.is_free(),
+            ty::ReStatic | ty::ReEarlyParam(..) | ty::ReLateParam(..) => true,
+            ty::ReVar(..)
+            | ty::RePlaceholder(..)
+            | ty::ReBound(..)
+            | ty::ReErased
+            | ty::ReError(..) => false,
         }
     }
 
@@ -2105,7 +2111,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_tup(tcx: TyCtxt<'tcx>, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(&ts))) }
+        if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(ts))) }
     }
 
     pub fn new_tup_from_iter<I, T>(tcx: TyCtxt<'tcx>, iter: I) -> T::Output
@@ -2261,7 +2267,7 @@ impl<'tcx> Ty<'tcx> {
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
-        &self.0.0
+        self.0.0
     }
 
     #[inline(always)]
@@ -2272,7 +2278,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_unit(self) -> bool {
         match self.kind() {
-            Tuple(ref tys) => tys.is_empty(),
+            Tuple(tys) => tys.is_empty(),
             _ => false,
         }
     }

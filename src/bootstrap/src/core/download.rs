@@ -114,7 +114,7 @@ impl Config {
             is_nixos
         });
         if val {
-            eprintln!("info: You seem to be using Nix.");
+            eprintln!("INFO: You seem to be using Nix.");
         }
         val
     }
@@ -606,10 +606,10 @@ impl Config {
 
         let mut help_on_error = "";
         if destination == "ci-rustc" {
-            help_on_error = "error: failed to download pre-built rustc from CI
+            help_on_error = "ERROR: failed to download pre-built rustc from CI
 
-note: old builds get deleted after a certain time
-help: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
+NOTE: old builds get deleted after a certain time
+HELP: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
 
 [rust]
 download-rustc = false
@@ -685,10 +685,10 @@ download-rustc = false
         let filename = format!("rust-dev-{}-{}.tar.xz", version, self.build.triple);
         let tarball = rustc_cache.join(&filename);
         if !tarball.exists() {
-            let help_on_error = "error: failed to download llvm from ci
+            let help_on_error = "ERROR: failed to download llvm from ci
 
-    help: old builds get deleted after a certain time
-    help: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
+    HELP: old builds get deleted after a certain time
+    HELP: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
 
     [llvm]
     download-ci-llvm = false

@@ -1,4 +1,5 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
@@ -68,7 +69,7 @@ pub struct PendingPredicateObligation<'tcx> {
     // should mostly optimize for reading speed, while modifying is not as relevant.
     //
     // For whatever reason using a boxed slice is slower than using a `Vec` here.
-    pub stalled_on: Vec<TyOrConstInferVar<'tcx>>,
+    pub stalled_on: Vec<TyOrConstInferVar>,
 }
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -349,7 +350,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
                 | ty::PredicateKind::ObjectSafe(_)
-                | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
@@ -407,19 +407,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ProcessResult::Error(CodeSelectionError(Unimplemented))
                     } else {
                         ProcessResult::Changed(vec![])
-                    }
-                }
-
-                ty::PredicateKind::ClosureKind(_, closure_args, kind) => {
-                    match self.selcx.infcx.closure_kind(closure_args) {
-                        Some(closure_kind) => {
-                            if closure_kind.extends(kind) {
-                                ProcessResult::Changed(vec![])
-                            } else {
-                                ProcessResult::Error(CodeSelectionError(Unimplemented))
-                            }
-                        }
-                        None => ProcessResult::Unchanged,
                     }
                 }
 
@@ -669,7 +656,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         &mut self,
         obligation: &PredicateObligation<'tcx>,
         trait_obligation: PolyTraitObligation<'tcx>,
-        stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
+        stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx;
         if obligation.predicate.is_global() && !self.selcx.is_intercrate() {
@@ -722,7 +709,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         &mut self,
         obligation: &PredicateObligation<'tcx>,
         project_obligation: PolyProjectionObligation<'tcx>,
-        stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
+        stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let tcx = self.selcx.tcx();
 
@@ -775,7 +762,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 fn args_infer_vars<'a, 'tcx>(
     selcx: &SelectionContext<'a, 'tcx>,
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
-) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
+) -> impl Iterator<Item = TyOrConstInferVar> + Captures<'tcx> {
     selcx
         .infcx
         .resolve_vars_if_possible(args)

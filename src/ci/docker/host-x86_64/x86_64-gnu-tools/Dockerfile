@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   xz-utils \
   tidy \
+  libgccjit-12-dev \
   \
 # Install dependencies for chromium browser
   gconf-service \
@@ -61,6 +62,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+# Make `libgccjit.so` accessible.
+RUN ln -s /usr/lib/gcc/x86_64-linux-gnu/12/libgccjit.so /usr/lib/x86_64-linux-gnu/libgccjit.so
+# Fix rustc_codegen_gcc lto issues.
+ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
+
 COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
 
 RUN curl -sL https://nodejs.org/dist/v14.20.0/node-v14.20.0-linux-x64.tar.xz | tar -xJ
@@ -81,7 +87,10 @@ RUN npm install -g browser-ui-test@$(head -n 1 /tmp/browser-ui-test.version) --u
 
 ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \
-  --save-toolstates=/tmp/toolstate/toolstates.json
+  --save-toolstates=/tmp/toolstate/toolstates.json \
+  --enable-new-symbol-mangling
+
+ENV HOST_TARGET x86_64-unknown-linux-gnu
 
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
   NODE_PATH=`npm root -g` python3 ../x.py test tests/rustdoc-gui --stage 2 \

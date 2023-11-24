@@ -2,7 +2,6 @@
 // edition: 2021
 
 #![feature(lint_reasons)]
-#![allow(incomplete_features)]
 
 use std::future::Future;
 use std::pin::Pin;

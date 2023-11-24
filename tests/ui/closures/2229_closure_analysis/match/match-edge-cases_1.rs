@@ -26,7 +26,8 @@ pub fn edge_case_str(event: String) {
 pub fn edge_case_raw_ptr(event: *const i32) {
     let _ = || {
         match event {
-            NUMBER_POINTER => (),
+            NUMBER_POINTER => (), //~WARN behave unpredictably
+            //~| previously accepted
             _ => (),
         };
     };

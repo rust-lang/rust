@@ -109,7 +109,7 @@ struct LintAlias {
 
 struct LintGroup {
     lint_ids: Vec<LintId>,
-    from_plugin: bool,
+    is_loaded: bool,
     depr: Option<LintAlias>,
 }
 
@@ -160,9 +160,7 @@ impl LintStore {
                 // Don't display deprecated lint groups.
                 depr.is_none()
             })
-            .map(|(k, LintGroup { lint_ids, from_plugin, .. })| {
-                (*k, lint_ids.clone(), *from_plugin)
-            })
+            .map(|(k, LintGroup { lint_ids, is_loaded, .. })| (*k, lint_ids.clone(), *is_loaded))
     }
 
     pub fn register_early_pass(
@@ -221,7 +219,7 @@ impl LintStore {
                         .entry(edition.lint_name())
                         .or_insert(LintGroup {
                             lint_ids: vec![],
-                            from_plugin: lint.is_plugin,
+                            is_loaded: lint.is_loaded,
                             depr: None,
                         })
                         .lint_ids
@@ -234,7 +232,7 @@ impl LintStore {
                         .entry("future_incompatible")
                         .or_insert(LintGroup {
                             lint_ids: vec![],
-                            from_plugin: lint.is_plugin,
+                            is_loaded: lint.is_loaded,
                             depr: None,
                         })
                         .lint_ids
@@ -249,7 +247,7 @@ impl LintStore {
             alias,
             LintGroup {
                 lint_ids: vec![],
-                from_plugin: false,
+                is_loaded: false,
                 depr: Some(LintAlias { name: lint_name, silent: true }),
             },
         );
@@ -257,21 +255,21 @@ impl LintStore {
 
     pub fn register_group(
         &mut self,
-        from_plugin: bool,
+        is_loaded: bool,
         name: &'static str,
         deprecated_name: Option<&'static str>,
         to: Vec<LintId>,
     ) {
         let new = self
             .lint_groups
-            .insert(name, LintGroup { lint_ids: to, from_plugin, depr: None })
+            .insert(name, LintGroup { lint_ids: to, is_loaded, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
             self.lint_groups.insert(
                 deprecated,
                 LintGroup {
                     lint_ids: vec![],
-                    from_plugin,
+                    is_loaded,
                     depr: Some(LintAlias { name, silent: false }),
                 },
             );
@@ -387,7 +385,7 @@ impl LintStore {
                         };
                     }
                     Some(LintGroup { lint_ids, .. }) => {
-                        return CheckLintNameResult::Tool(Ok(&lint_ids));
+                        return CheckLintNameResult::Tool(Ok(lint_ids));
                     }
                 },
                 Some(Id(id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
@@ -408,12 +406,12 @@ impl LintStore {
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
                         return if *silent {
-                            CheckLintNameResult::Ok(&lint_ids)
+                            CheckLintNameResult::Ok(lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
                         };
                     }
-                    CheckLintNameResult::Ok(&lint_ids)
+                    CheckLintNameResult::Ok(lint_ids)
                 }
             },
             Some(Id(id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
@@ -460,12 +458,12 @@ impl LintStore {
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
                         return if *silent {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
                         };
                     }
-                    CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
+                    CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                 }
             },
             Some(Id(id)) => {
@@ -499,9 +497,6 @@ pub struct LateContext<'tcx> {
     /// Items accessible from the crate being checked.
     pub effective_visibilities: &'tcx EffectiveVisibilities,
 
-    /// The store of registered lints and the lint levels.
-    pub lint_store: &'tcx LintStore,
-
     pub last_node_with_lint_attrs: hir::HirId,
 
     /// Generic type parameters in scope for the item we are in.
@@ -517,21 +512,14 @@ pub struct EarlyContext<'a> {
     pub buffered: LintBuffer,
 }
 
-pub trait LintPassObject: Sized {}
-
-impl LintPassObject for EarlyLintPassObject {}
-
-impl LintPassObject for LateLintPassObject<'_> {}
-
-pub trait LintContext: Sized {
-    type PassObject: LintPassObject;
-
+pub trait LintContext {
     fn sess(&self) -> &Session;
-    fn lints(&self) -> &LintStore;
 
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing diagnostic.
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// diagnostic.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed
+    /// explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -715,7 +703,7 @@ pub trait LintContext: Sized {
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
-                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().map(|s| *s).collect();
+                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().copied().collect();
 
                     // Suggest the most probable if we found one
                     if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
@@ -751,6 +739,8 @@ pub trait LintContext: Sized {
                         } else {
                             db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
                         }
+                    } else if name == sym::feature && std::env::var_os("CARGO").is_some() {
+                        db.help("consider defining some features in `Cargo.toml`");
                     } else if !possibilities.is_empty() {
                         let mut possibilities = possibilities.iter()
                             .map(Symbol::as_str)
@@ -1061,15 +1051,9 @@ impl<'a> EarlyContext<'a> {
 }
 
 impl<'tcx> LintContext for LateContext<'tcx> {
-    type PassObject = LateLintPassObject<'tcx>;
-
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.tcx.sess
-    }
-
-    fn lints(&self) -> &LintStore {
-        &*self.lint_store
+        self.tcx.sess
     }
 
     #[rustc_lint_diagnostics]
@@ -1096,15 +1080,9 @@ impl<'tcx> LintContext for LateContext<'tcx> {
 }
 
 impl LintContext for EarlyContext<'_> {
-    type PassObject = EarlyLintPassObject;
-
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.builder.sess()
-    }
-
-    fn lints(&self) -> &LintStore {
-        self.builder.lint_store()
+        self.builder.sess()
     }
 
     #[rustc_lint_diagnostics]
@@ -1151,7 +1129,7 @@ impl<'tcx> LateContext<'tcx> {
     /// bodies (e.g. for paths in `hir::Ty`), without any risk of ICE-ing.
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .maybe_typeck_results()
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
@@ -1210,35 +1188,35 @@ impl<'tcx> LateContext<'tcx> {
                 self.tcx
             }
 
-            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, PrintError> {
-                Ok(self)
+            fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
+                Ok(())
             }
 
-            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, PrintError> {
-                Ok(self)
+            fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
+                Ok(())
             }
 
             fn print_dyn_existential(
-                self,
+                &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<Self, PrintError> {
-                Ok(self)
+            ) -> Result<(), PrintError> {
+                Ok(())
             }
 
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, PrintError> {
-                Ok(self)
+            fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
+                Ok(())
             }
 
-            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, PrintError> {
+            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.path = vec![self.tcx.crate_name(cnum)];
-                Ok(self)
+                Ok(())
             }
 
             fn path_qualified(
-                mut self,
+                &mut self,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, PrintError> {
+            ) -> Result<(), PrintError> {
                 if trait_ref.is_none() {
                     if let ty::Adt(def, args) = self_ty.kind() {
                         return self.print_def_path(def.did(), args);
@@ -1251,21 +1229,21 @@ impl<'tcx> LateContext<'tcx> {
                         Some(trait_ref) => Symbol::intern(&format!("{trait_ref:?}")),
                         None => Symbol::intern(&format!("<{self_ty}>")),
                     }];
-                    Ok(self)
+                    Ok(())
                 })
             }
 
             fn path_append_impl(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+                &mut self,
+                print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _disambiguated_data: &DisambiguatedDefPathData,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, PrintError> {
-                let mut path = print_prefix(self)?;
+            ) -> Result<(), PrintError> {
+                print_prefix(self)?;
 
                 // This shouldn't ever be needed, but just in case:
-                path.path.push(match trait_ref {
+                self.path.push(match trait_ref {
                     Some(trait_ref) => {
                         with_no_trimmed_paths!(Symbol::intern(&format!(
                             "<impl {} for {}>",
@@ -1278,38 +1256,37 @@ impl<'tcx> LateContext<'tcx> {
                     }
                 });
 
-                Ok(path)
+                Ok(())
             }
 
             fn path_append(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+                &mut self,
+                print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<Self, PrintError> {
-                let mut path = print_prefix(self)?;
+            ) -> Result<(), PrintError> {
+                print_prefix(self)?;
 
                 // Skip `::{{extern}}` blocks and `::{{constructor}}` on tuple/unit structs.
                 if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data {
-                    return Ok(path);
+                    return Ok(());
                 }
 
-                path.path.push(Symbol::intern(&disambiguated_data.data.to_string()));
-                Ok(path)
+                self.path.push(Symbol::intern(&disambiguated_data.data.to_string()));
+                Ok(())
             }
 
             fn path_generic_args(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+                &mut self,
+                print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
-            ) -> Result<Self, PrintError> {
+            ) -> Result<(), PrintError> {
                 print_prefix(self)
             }
         }
 
-        AbsolutePathPrinter { tcx: self.tcx, path: vec![] }
-            .print_def_path(def_id, &[])
-            .unwrap()
-            .path
+        let mut printer = AbsolutePathPrinter { tcx: self.tcx, path: vec![] };
+        printer.print_def_path(def_id, &[]).unwrap();
+        printer.path
     }
 
     /// Returns the associated type `name` for `self_ty` as an implementation of `trait_id`.

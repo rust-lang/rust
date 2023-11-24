@@ -1,6 +1,7 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[allow(unused)]
 macro_rules! eprintln {
@@ -80,6 +81,7 @@ pub use mapping::{
     lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id, to_foreign_def_id,
     to_placeholder_idx,
 };
+pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, is_fn_unsafe_to_call};
 

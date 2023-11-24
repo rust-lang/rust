@@ -1,5 +1,4 @@
-// Check warning for unexpected cfg in the code and in the CLI
-// arguments (here the revision cfg).
+// Check warning for unexpected cfg in the code.
 //
 // check-pass
 // revisions: empty_names_values empty_cfg feature full
@@ -18,11 +17,15 @@ pub fn f() {}
 pub fn f() {}
 
 #[cfg(feature = "unk")]
-//[feature]~^ WARNING unexpected `cfg` condition value
-//[full]~^^ WARNING unexpected `cfg` condition value
+//[empty_names_values]~^ WARNING unexpected `cfg` condition name
+//[empty_cfg]~^^ WARNING unexpected `cfg` condition name
+//[feature]~^^^ WARNING unexpected `cfg` condition value
+//[full]~^^^^ WARNING unexpected `cfg` condition value
 pub fn feat() {}
 
 #[cfg(feature = "std")]
+//[empty_names_values]~^ WARNING unexpected `cfg` condition name
+//[empty_cfg]~^^ WARNING unexpected `cfg` condition name
 pub fn feat() {}
 
 #[cfg(windows)]

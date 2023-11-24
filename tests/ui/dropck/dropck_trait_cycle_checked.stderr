@@ -8,6 +8,8 @@ LL |     o1.set0(&o2);
 ...
 LL | }
    | - `o2` dropped here while still borrowed
+   |
+   = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
 error[E0597]: `o3` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:112:13
@@ -20,6 +22,8 @@ LL |     o1.set1(&o3);
 ...
 LL | }
    | - `o3` dropped here while still borrowed
+   |
+   = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
 error[E0597]: `o2` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:113:13
@@ -32,6 +36,8 @@ LL |     o2.set0(&o2);
 ...
 LL | }
    | - `o2` dropped here while still borrowed
+   |
+   = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
 error[E0597]: `o3` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:114:13
@@ -44,6 +50,8 @@ LL |     o2.set1(&o3);
 ...
 LL | }
    | - `o3` dropped here while still borrowed
+   |
+   = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
 error[E0597]: `o1` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:115:13
@@ -56,6 +64,8 @@ LL |     o3.set0(&o1);
 LL |     o3.set1(&o2);
 LL | }
    | - `o1` dropped here while still borrowed
+   |
+   = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
 error[E0597]: `o2` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:116:13
@@ -67,6 +77,8 @@ LL |     o3.set1(&o2);
    |             ^^^ borrowed value does not live long enough
 LL | }
    | - `o2` dropped here while still borrowed
+   |
+   = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
 error: aborting due to 6 previous errors
 

@@ -41,18 +41,13 @@ use std::ops::ControlFlow;
 
 pub(crate) use self::project::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
 
-pub use self::FulfillmentErrorCode::*;
-pub use self::ImplSource::*;
-pub use self::ObligationCauseCode::*;
-pub use self::SelectionError::*;
-
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
-pub use self::object_safety::MethodViolationCode;
+pub use self::object_safety::object_safety_violations_for_assoc_item;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::project::NormalizeExt;
 pub use self::project::{normalize_inherent_projection, normalize_projection_type};
@@ -489,7 +484,7 @@ fn is_impossible_associated_item(
             t.super_visit_with(self)
         }
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ReEarlyBound(param) = r.kind()
+            if let ty::ReEarlyParam(param) = r.kind()
                 && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {

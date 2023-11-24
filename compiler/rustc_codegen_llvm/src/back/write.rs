@@ -124,7 +124,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMach
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
     target_machine_factory(
-        &tcx.sess,
+        tcx.sess,
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
     )(config)
@@ -990,11 +990,7 @@ unsafe fn embed_bitcode(
     // reason (see issue #90326 for historical background).
     let is_aix = target_is_aix(cgcx);
     let is_apple = target_is_apple(cgcx);
-    if is_apple
-        || is_aix
-        || cgcx.opts.target_triple.triple().starts_with("wasm")
-        || cgcx.opts.target_triple.triple().starts_with("asmjs")
-    {
+    if is_apple || is_aix || cgcx.opts.target_triple.triple().starts_with("wasm") {
         // We don't need custom section flags, create LLVM globals.
         let llconst = common::bytes_in_context(llcx, bitcode);
         let llglobal = llvm::LLVMAddGlobal(
@@ -1110,7 +1106,7 @@ fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, llmod: &llvm::Modu
     }
 
     let raw_stats =
-        llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(&llmod, s) })
+        llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(llmod, s) })
             .expect("cannot get module instruction stats");
 
     #[derive(serde::Deserialize)]

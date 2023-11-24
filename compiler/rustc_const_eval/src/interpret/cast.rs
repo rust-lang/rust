@@ -145,16 +145,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(dest.layout.is_sized());
                 assert_eq!(cast_ty, dest.layout.ty); // we otherwise ignore `cast_ty` enirely...
                 if src.layout.size != dest.layout.size {
-                    let src_bytes = src.layout.size.bytes();
-                    let dest_bytes = dest.layout.size.bytes();
-                    let src_ty = format!("{}", src.layout.ty);
-                    let dest_ty = format!("{}", dest.layout.ty);
                     throw_ub_custom!(
                         fluent::const_eval_invalid_transmute,
-                        src_bytes = src_bytes,
-                        dest_bytes = dest_bytes,
-                        src = src_ty,
-                        dest = dest_ty,
+                        src_bytes = src.layout.size.bytes(),
+                        dest_bytes = dest.layout.size.bytes(),
+                        src = src.layout.ty,
+                        dest = dest.layout.ty,
                     );
                 }
 
@@ -260,7 +256,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let addr = addr.to_target_usize(self)?;
 
         // Then turn address into pointer.
-        let ptr = M::ptr_from_addr_cast(&self, addr)?;
+        let ptr = M::ptr_from_addr_cast(self, addr)?;
         Ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(ptr, self), cast_to))
     }
 

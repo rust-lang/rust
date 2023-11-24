@@ -2,11 +2,13 @@
 //! when all of their successors are unreachable. This is achieved through a
 //! post-order traversal of the blocks.
 
-use crate::simplify;
 use crate::MirPass;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_target::abi::Size;
 
 pub struct UnreachablePropagation;
 
@@ -21,106 +23,133 @@ impl MirPass<'_> for UnreachablePropagation {
     }
 
     fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let mut patch = MirPatch::new(body);
         let mut unreachable_blocks = FxHashSet::default();
-        let mut replacements = FxHashMap::default();
 
         for (bb, bb_data) in traversal::postorder(body) {
             let terminator = bb_data.terminator();
-            if terminator.kind == TerminatorKind::Unreachable {
-                unreachable_blocks.insert(bb);
-            } else {
-                let is_unreachable = |succ: BasicBlock| unreachable_blocks.contains(&succ);
-                let terminator_kind_opt = remove_successors(&terminator.kind, is_unreachable);
-
-                if let Some(terminator_kind) = terminator_kind_opt {
-                    if terminator_kind == TerminatorKind::Unreachable {
-                        unreachable_blocks.insert(bb);
-                    }
-                    replacements.insert(bb, terminator_kind);
+            let is_unreachable = match &terminator.kind {
+                TerminatorKind::Unreachable => true,
+                // This will unconditionally run into an unreachable and is therefore unreachable as well.
+                TerminatorKind::Goto { target } if unreachable_blocks.contains(target) => {
+                    patch.patch_terminator(bb, TerminatorKind::Unreachable);
+                    true
                 }
+                // Try to remove unreachable targets from the switch.
+                TerminatorKind::SwitchInt { .. } => {
+                    remove_successors_from_switch(tcx, bb, &unreachable_blocks, body, &mut patch)
+                }
+                _ => false,
+            };
+            if is_unreachable {
+                unreachable_blocks.insert(bb);
             }
         }
+
+        if !tcx
+            .consider_optimizing(|| format!("UnreachablePropagation {:?} ", body.source.def_id()))
+        {
+            return;
+        }
+
+        patch.apply(body);
 
         // We do want do keep some unreachable blocks, but make them empty.
         for bb in unreachable_blocks {
-            if !tcx.consider_optimizing(|| {
-                format!("UnreachablePropagation {:?} ", body.source.def_id())
-            }) {
-                break;
-            }
-
             body.basic_blocks_mut()[bb].statements.clear();
-        }
-
-        let replaced = !replacements.is_empty();
-
-        for (bb, terminator_kind) in replacements {
-            if !tcx.consider_optimizing(|| {
-                format!("UnreachablePropagation {:?} ", body.source.def_id())
-            }) {
-                break;
-            }
-
-            body.basic_blocks_mut()[bb].terminator_mut().kind = terminator_kind;
-        }
-
-        if replaced {
-            simplify::remove_dead_blocks(body);
         }
     }
 }
 
-fn remove_successors<'tcx, F>(
-    terminator_kind: &TerminatorKind<'tcx>,
-    is_unreachable: F,
-) -> Option<TerminatorKind<'tcx>>
-where
-    F: Fn(BasicBlock) -> bool,
-{
-    let terminator = match terminator_kind {
-        // This will unconditionally run into an unreachable and is therefore unreachable as well.
-        TerminatorKind::Goto { target } if is_unreachable(*target) => TerminatorKind::Unreachable,
-        TerminatorKind::SwitchInt { targets, discr } => {
-            let otherwise = targets.otherwise();
+/// Return whether the current terminator is fully unreachable.
+fn remove_successors_from_switch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bb: BasicBlock,
+    unreachable_blocks: &FxHashSet<BasicBlock>,
+    body: &Body<'tcx>,
+    patch: &mut MirPatch<'tcx>,
+) -> bool {
+    let terminator = body.basic_blocks[bb].terminator();
+    let TerminatorKind::SwitchInt { discr, targets } = &terminator.kind else { bug!() };
+    let source_info = terminator.source_info;
+    let location = body.terminator_loc(bb);
 
-            // If all targets are unreachable, we can be unreachable as well.
-            if targets.all_targets().iter().all(|bb| is_unreachable(*bb)) {
-                TerminatorKind::Unreachable
-            } else if is_unreachable(otherwise) {
-                // If there are multiple targets, don't delete unreachable branches (like an unreachable otherwise)
-                // unless otherwise is unreachable, in which case deleting a normal branch causes it to be merged with
-                // the otherwise, keeping its unreachable.
-                // This looses information about reachability causing worse codegen.
-                // For example (see tests/codegen/match-optimizes-away.rs)
-                //
-                // pub enum Two { A, B }
-                // pub fn identity(x: Two) -> Two {
-                //     match x {
-                //         Two::A => Two::A,
-                //         Two::B => Two::B,
-                //     }
-                // }
-                //
-                // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or LLVM to
-                // turn it into just `x` later. Without the unreachable, such a transformation would be illegal.
-                // If the otherwise branch is unreachable, we can delete all other unreachable targets, as they will
-                // still point to the unreachable and therefore not lose reachability information.
-                let reachable_iter = targets.iter().filter(|(_, bb)| !is_unreachable(*bb));
+    let is_unreachable = |bb| unreachable_blocks.contains(&bb);
 
-                let new_targets = SwitchTargets::new(reachable_iter, otherwise);
+    // If there are multiple targets, we want to keep information about reachability for codegen.
+    // For example (see tests/codegen/match-optimizes-away.rs)
+    //
+    // pub enum Two { A, B }
+    // pub fn identity(x: Two) -> Two {
+    //     match x {
+    //         Two::A => Two::A,
+    //         Two::B => Two::B,
+    //     }
+    // }
+    //
+    // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or LLVM to
+    // turn it into just `x` later. Without the unreachable, such a transformation would be illegal.
+    //
+    // In order to preserve this information, we record reachable and unreachable targets as
+    // `Assume` statements in MIR.
 
-                // No unreachable branches were removed.
-                if new_targets.all_targets().len() == targets.all_targets().len() {
-                    return None;
-                }
+    let discr_ty = discr.ty(body, tcx);
+    let discr_size = Size::from_bits(match discr_ty.kind() {
+        ty::Uint(uint) => uint.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),
+        ty::Int(int) => int.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),
+        ty::Char => 32,
+        ty::Bool => 1,
+        other => bug!("unhandled type: {:?}", other),
+    });
 
-                TerminatorKind::SwitchInt { discr: discr.clone(), targets: new_targets }
-            } else {
-                // If the otherwise branch is reachable, we don't want to delete any unreachable branches.
-                return None;
-            }
-        }
-        _ => return None,
+    let mut add_assumption = |binop, value| {
+        let local = patch.new_temp(tcx.types.bool, source_info.span);
+        let value = Operand::Constant(Box::new(ConstOperand {
+            span: source_info.span,
+            user_ty: None,
+            const_: Const::from_scalar(tcx, Scalar::from_uint(value, discr_size), discr_ty),
+        }));
+        let cmp = Rvalue::BinaryOp(binop, Box::new((discr.to_copy(), value)));
+        patch.add_assign(location, local.into(), cmp);
+
+        let assume = NonDivergingIntrinsic::Assume(Operand::Move(local.into()));
+        patch.add_statement(location, StatementKind::Intrinsic(Box::new(assume)));
     };
-    Some(terminator)
+
+    let otherwise = targets.otherwise();
+    let otherwise_unreachable = is_unreachable(otherwise);
+
+    let reachable_iter = targets.iter().filter(|&(value, bb)| {
+        let is_unreachable = is_unreachable(bb);
+        // We remove this target from the switch, so record the inequality using `Assume`.
+        if is_unreachable && !otherwise_unreachable {
+            add_assumption(BinOp::Ne, value);
+        }
+        !is_unreachable
+    });
+
+    let new_targets = SwitchTargets::new(reachable_iter, otherwise);
+
+    let num_targets = new_targets.all_targets().len();
+    let fully_unreachable = num_targets == 1 && otherwise_unreachable;
+
+    let terminator = match (num_targets, otherwise_unreachable) {
+        // If all targets are unreachable, we can be unreachable as well.
+        (1, true) => TerminatorKind::Unreachable,
+        (1, false) => TerminatorKind::Goto { target: otherwise },
+        (2, true) => {
+            // All targets are unreachable except one. Record the equality, and make it a goto.
+            let (value, target) = new_targets.iter().next().unwrap();
+            add_assumption(BinOp::Eq, value);
+            TerminatorKind::Goto { target }
+        }
+        _ if num_targets == targets.all_targets().len() => {
+            // Nothing has changed.
+            return false;
+        }
+        _ => TerminatorKind::SwitchInt { discr: discr.clone(), targets: new_targets },
+    };
+
+    patch.patch_terminator(bb, terminator);
+    fully_unreachable
 }

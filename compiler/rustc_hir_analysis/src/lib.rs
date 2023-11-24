@@ -57,9 +57,9 @@ This API is completely unstable and subject to change.
 
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
@@ -182,13 +182,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("impl_wf_inference", || {
-            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
-        });
-    })?;
-
-    tcx.sess.track_errors(|| {
         tcx.sess.time("coherence_checking", || {
+            // Check impls constrain their parameters
+            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
+
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
@@ -205,16 +202,22 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         })?;
     }
 
-    tcx.sess.track_errors(|| {
-        tcx.sess.time("wf_checking", || {
-            tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
-        });
-    })?;
+    let errs = tcx.sess.time("wf_checking", || {
+        tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
+    });
 
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
     tcx.sess.time("item_types_checking", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
+
+    // HACK: `check_mod_type_wf` may spuriously emit errors due to `delay_span_bug`, even if those errors
+    // only actually get emitted in `check_mod_item_types`.
+    errs?;
+
+    if tcx.features().rustc_attrs {
+        tcx.sess.track_errors(|| collect::test_opaque_hidden_types(tcx))?;
+    }
 
     // Freeze definitions as we don't add new ones at this point. This improves performance by
     // allowing lock-free access to them.

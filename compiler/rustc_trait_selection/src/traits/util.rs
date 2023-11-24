@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable
 use rustc_span::Span;
 use smallvec::SmallVec;
 
-pub use rustc_infer::traits::{self, util::*};
+pub use rustc_infer::traits::util::*;
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
@@ -295,6 +295,17 @@ pub fn future_trait_ref_and_outputs<'tcx>(
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty]);
     sig.map_bound(|sig| (trait_ref, sig.return_ty))
+}
+
+pub fn iterator_trait_ref_and_outputs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    iterator_def_id: DefId,
+    self_ty: Ty<'tcx>,
+    sig: ty::PolyGenSig<'tcx>,
+) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
+    assert!(!self_ty.has_escaping_bound_vars());
+    let trait_ref = ty::TraitRef::new(tcx, iterator_def_id, [self_ty]);
+    sig.map_bound(|sig| (trait_ref, sig.yield_ty))
 }
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {

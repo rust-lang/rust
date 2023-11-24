@@ -1,5 +1,3 @@
-#![feature(const_pointer_byte_offsets)]
-#![feature(pointer_byte_offsets)]
 #![feature(const_mut_refs)]
 
 

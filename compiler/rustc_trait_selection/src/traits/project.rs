@@ -18,7 +18,7 @@ use rustc_middle::traits::ImplSourceUserDefinedData;
 
 use crate::errors::InherentProjectionNormalizationOverflow;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use crate::infer::{BoundRegionConversionTime, InferCtxt, InferOk};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
@@ -584,7 +584,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         data,
                         self.cause.clone(),
                         self.depth,
-                        &mut self.obligations,
+                        self.obligations,
                     )
                 } else {
                     opt_normalize_projection_type(
@@ -593,7 +593,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         data,
                         self.cause.clone(),
                         self.depth,
-                        &mut self.obligations,
+                        self.obligations,
                     )
                     .ok()
                     .flatten()
@@ -632,7 +632,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     data,
                     self.cause.clone(),
                     self.depth,
-                    &mut self.obligations,
+                    self.obligations,
                 )
                 .ok()
                 .flatten()
@@ -717,7 +717,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     data,
                     self.cause.clone(),
                     self.depth,
-                    &mut self.obligations,
+                    self.obligations,
                 )
             }
 
@@ -732,7 +732,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     data,
                     self.cause.clone(),
                     self.depth,
-                    &mut self.obligations,
+                    self.obligations,
                 );
 
                 PlaceholderReplacer::replace_placeholders(
@@ -783,7 +783,7 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
     current_index: ty::DebruijnIndex,
@@ -843,11 +843,11 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
         T,
         BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-        BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     ) {
         let mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion> = BTreeMap::new();
         let mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy> = BTreeMap::new();
-        let mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar> = BTreeMap::new();
+        let mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar> = BTreeMap::new();
 
         let mut replacer = BoundVarReplacer {
             infcx,
@@ -894,13 +894,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(debruijn, _)
-                if debruijn.as_usize() + 1
-                    > self.current_index.as_usize() + self.universe_indices.len() =>
+            ty::ReBound(debruijn, _)
+                if debruijn.as_usize()
+                    >= self.current_index.as_usize() + self.universe_indices.len() =>
             {
-                bug!("Bound vars outside of `self.universe_indices`");
+                bug!(
+                    "Bound vars {r:#?} outside of `self.universe_indices`: {:#?}",
+                    self.universe_indices
+                );
             }
-            ty::ReLateBound(debruijn, br) if debruijn >= self.current_index => {
+            ty::ReBound(debruijn, br) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderRegion { universe, bound: br };
                 self.mapped_regions.insert(p, br);
@@ -916,7 +919,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
-                bug!("Bound vars outside of `self.universe_indices`");
+                bug!(
+                    "Bound vars {t:#?} outside of `self.universe_indices`: {:#?}",
+                    self.universe_indices
+                );
             }
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
@@ -935,7 +941,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
-                bug!("Bound vars outside of `self.universe_indices`");
+                bug!(
+                    "Bound vars {ct:#?} outside of `self.universe_indices`: {:#?}",
+                    self.universe_indices
+                );
             }
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
@@ -957,7 +966,7 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     universe_indices: &'me [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
@@ -967,7 +976,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
         infcx: &'me InferCtxt<'tcx>,
         mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
         universe_indices: &'me [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
@@ -1025,7 +1034,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        ty::Region::new_late_bound(self.interner(), db, *replace_var)
+                        ty::Region::new_bound(self.interner(), db, *replace_var)
                     }
                     None => r1,
                 }
@@ -1789,7 +1798,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
                 let lang_items = selcx.tcx().lang_items();
-                if [lang_items.gen_trait(), lang_items.future_trait()].contains(&Some(trait_ref.def_id))
+                if [lang_items.coroutine_trait(), lang_items.future_trait(), lang_items.iterator_trait()].contains(&Some(trait_ref.def_id))
                     || selcx.tcx().fn_trait_kind_from_def_id(trait_ref.def_id).is_some()
                 {
                     true
@@ -2002,10 +2011,12 @@ fn confirm_select_candidate<'cx, 'tcx>(
         ImplSource::Builtin(BuiltinImplSource::Misc, data) => {
             let trait_def_id = obligation.predicate.trait_def_id(selcx.tcx());
             let lang_items = selcx.tcx().lang_items();
-            if lang_items.gen_trait() == Some(trait_def_id) {
+            if lang_items.coroutine_trait() == Some(trait_def_id) {
                 confirm_coroutine_candidate(selcx, obligation, data)
             } else if lang_items.future_trait() == Some(trait_def_id) {
                 confirm_future_candidate(selcx, obligation, data)
+            } else if lang_items.iterator_trait() == Some(trait_def_id) {
+                confirm_iterator_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 if obligation.predicate.self_ty().is_closure() {
                     confirm_closure_candidate(selcx, obligation, data)
@@ -2040,26 +2051,26 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     else {
         unreachable!()
     };
-    let gen_sig = args.as_coroutine().poly_sig();
-    let Normalized { value: gen_sig, obligations } = normalize_with_depth(
+    let coroutine_sig = args.as_coroutine().poly_sig();
+    let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
         obligation.cause.clone(),
         obligation.recursion_depth + 1,
-        gen_sig,
+        coroutine_sig,
     );
 
-    debug!(?obligation, ?gen_sig, ?obligations, "confirm_coroutine_candidate");
+    debug!(?obligation, ?coroutine_sig, ?obligations, "confirm_coroutine_candidate");
 
     let tcx = selcx.tcx();
 
-    let gen_def_id = tcx.require_lang_item(LangItem::Coroutine, None);
+    let coroutine_def_id = tcx.require_lang_item(LangItem::Coroutine, None);
 
     let predicate = super::util::coroutine_trait_ref_and_outputs(
         tcx,
-        gen_def_id,
+        coroutine_def_id,
         obligation.predicate.self_ty(),
-        gen_sig,
+        coroutine_sig,
     )
     .map_bound(|(trait_ref, yield_ty, return_ty)| {
         let name = tcx.associated_item(obligation.predicate.def_id).name;
@@ -2092,6 +2103,50 @@ fn confirm_future_candidate<'cx, 'tcx>(
     else {
         unreachable!()
     };
+    let coroutine_sig = args.as_coroutine().poly_sig();
+    let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
+        selcx,
+        obligation.param_env,
+        obligation.cause.clone(),
+        obligation.recursion_depth + 1,
+        coroutine_sig,
+    );
+
+    debug!(?obligation, ?coroutine_sig, ?obligations, "confirm_future_candidate");
+
+    let tcx = selcx.tcx();
+    let fut_def_id = tcx.require_lang_item(LangItem::Future, None);
+
+    let predicate = super::util::future_trait_ref_and_outputs(
+        tcx,
+        fut_def_id,
+        obligation.predicate.self_ty(),
+        coroutine_sig,
+    )
+    .map_bound(|(trait_ref, return_ty)| {
+        debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
+
+        ty::ProjectionPredicate {
+            projection_ty: ty::AliasTy::new(tcx, obligation.predicate.def_id, trait_ref.args),
+            term: return_ty.into(),
+        }
+    });
+
+    confirm_param_env_candidate(selcx, obligation, predicate, false)
+        .with_addl_obligations(nested)
+        .with_addl_obligations(obligations)
+}
+
+fn confirm_iterator_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    nested: Vec<PredicateObligation<'tcx>>,
+) -> Progress<'tcx> {
+    let ty::Coroutine(_, args, _) =
+        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
+    else {
+        unreachable!()
+    };
     let gen_sig = args.as_coroutine().poly_sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
@@ -2101,23 +2156,23 @@ fn confirm_future_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug!(?obligation, ?gen_sig, ?obligations, "confirm_future_candidate");
+    debug!(?obligation, ?gen_sig, ?obligations, "confirm_iterator_candidate");
 
     let tcx = selcx.tcx();
-    let fut_def_id = tcx.require_lang_item(LangItem::Future, None);
+    let iter_def_id = tcx.require_lang_item(LangItem::Iterator, None);
 
-    let predicate = super::util::future_trait_ref_and_outputs(
+    let predicate = super::util::iterator_trait_ref_and_outputs(
         tcx,
-        fut_def_id,
+        iter_def_id,
         obligation.predicate.self_ty(),
         gen_sig,
     )
-    .map_bound(|(trait_ref, return_ty)| {
-        debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
+    .map_bound(|(trait_ref, yield_ty)| {
+        debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
 
         ty::ProjectionPredicate {
             projection_ty: ty::AliasTy::new(tcx, obligation.predicate.def_id, trait_ref.args),
-            term: return_ty.into(),
+            term: yield_ty.into(),
         }
     });
 
@@ -2264,7 +2319,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 
     let cache_entry = infcx.instantiate_binder_with_fresh_vars(
         cause.span,
-        LateBoundRegionConversionTime::HigherRankedType,
+        BoundRegionConversionTime::HigherRankedType,
         poly_cache_entry,
     );
 

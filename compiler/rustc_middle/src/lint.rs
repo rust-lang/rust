@@ -9,17 +9,15 @@ use rustc_session::lint::{
     FutureIncompatibilityReason, Level, Lint, LintId,
 };
 use rustc_session::Session;
-use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{DesugaringKind, ExpnKind};
-use rustc_span::{symbol, Span, Symbol, DUMMY_SP};
+use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::{symbol, DesugaringKind, Span, Symbol, DUMMY_SP};
 
 use crate::ty::TyCtxt;
 
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, Debug)]
 pub enum LintLevelSource {
-    /// Lint is at the default level as declared
-    /// in rustc or a plugin.
+    /// Lint is at the default level as declared in rustc.
     Default,
 
     /// Lint level was set by an attribute.

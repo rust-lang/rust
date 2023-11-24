@@ -9,25 +9,33 @@ const ALLOWED_SOURCES: &[&str] = &["\"registry+https://github.com/rust-lang/crat
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
 pub fn check(root: &Path, bad: &mut bool) {
-    // `Cargo.lock` of rust.
-    let path = root.join("Cargo.lock");
+    for &(workspace, _, _) in crate::deps::WORKSPACES {
+        // FIXME check other workspaces too
+        // `Cargo.lock` of rust.
+        let path = root.join(workspace).join("Cargo.lock");
 
-    // Open and read the whole file.
-    let cargo_lock = t!(fs::read_to_string(&path));
-
-    // Process each line.
-    for line in cargo_lock.lines() {
-        // Consider only source entries.
-        if !line.starts_with("source = ") {
+        if !path.exists() {
+            tidy_error!(bad, "the `{workspace}` workspace doesn't have a Cargo.lock");
             continue;
         }
 
-        // Extract source value.
-        let source = line.split_once('=').unwrap().1.trim();
+        // Open and read the whole file.
+        let cargo_lock = t!(fs::read_to_string(&path));
 
-        // Ensure source is allowed.
-        if !ALLOWED_SOURCES.contains(&&*source) {
-            tidy_error!(bad, "invalid source: {}", source);
+        // Process each line.
+        for line in cargo_lock.lines() {
+            // Consider only source entries.
+            if !line.starts_with("source = ") {
+                continue;
+            }
+
+            // Extract source value.
+            let source = line.split_once('=').unwrap().1.trim();
+
+            // Ensure source is allowed.
+            if !ALLOWED_SOURCES.contains(&&*source) {
+                tidy_error!(bad, "invalid source: {}", source);
+            }
         }
     }
 }

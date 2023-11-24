@@ -66,6 +66,9 @@ fn has_significant_drop_raw<'tcx>(
 struct NeedsDropTypes<'tcx, F> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    // Whether to reveal coroutine witnesses, this is set
+    // to `false` unless we compute `needs_drop` for a coroutine witness.
+    reveal_coroutine_witnesses: bool,
     query_ty: Ty<'tcx>,
     seen_tys: FxHashSet<Ty<'tcx>>,
     /// A stack of types left to process, and the recursion depth when we
@@ -89,6 +92,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         Self {
             tcx,
             param_env,
+            reveal_coroutine_witnesses: false,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
@@ -133,8 +137,31 @@ where
                     // The information required to determine whether a coroutine has drop is
                     // computed on MIR, while this very method is used to build MIR.
                     // To avoid cycles, we consider that coroutines always require drop.
-                    ty::Coroutine(..) => {
-                        return Some(Err(AlwaysRequiresDrop));
+                    //
+                    // HACK: Because we erase regions contained in the coroutine witness, we
+                    // have to conservatively assume that every region captured by the
+                    // coroutine has to be live when dropped. This results in a lot of
+                    // undesirable borrowck errors. During borrowck, we call `needs_drop`
+                    // for the coroutine witness and check whether any of the contained types
+                    // need to be dropped, and only require the captured types to be live
+                    // if they do.
+                    ty::Coroutine(_, args, _) => {
+                        if self.reveal_coroutine_witnesses {
+                            queue_type(self, args.as_coroutine().witness());
+                        } else {
+                            return Some(Err(AlwaysRequiresDrop));
+                        }
+                    }
+                    ty::CoroutineWitness(def_id, args) => {
+                        if let Some(witness) = tcx.mir_coroutine_witnesses(def_id) {
+                            self.reveal_coroutine_witnesses = true;
+                            for field_ty in &witness.field_tys {
+                                queue_type(
+                                    self,
+                                    EarlyBinder::bind(field_ty.ty).instantiate(tcx, args),
+                                );
+                            }
+                        }
                     }
 
                     _ if component.is_copy_modulo_regions(tcx, self.param_env) => (),
@@ -191,7 +218,6 @@ where
                     | ty::FnPtr(..)
                     | ty::Tuple(_)
                     | ty::Bound(..)
-                    | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Infer(_)
                     | ty::Error(_) => {

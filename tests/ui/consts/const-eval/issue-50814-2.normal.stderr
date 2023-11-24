@@ -1,0 +1,21 @@
+error[E0080]: evaluation of `<A<()> as Foo<()>>::BAR` failed
+  --> $DIR/issue-50814-2.rs:16:24
+   |
+LL |     const BAR: usize = [5, 6, 7][T::BOO];
+   |                        ^^^^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 42
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:6
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |      ^^^^^^^^^^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn foo::<()>`
+  --> $DIR/issue-50814-2.rs:32:22
+   |
+LL |     println!("{:x}", foo::<()>() as *const usize as usize);
+   |                      ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

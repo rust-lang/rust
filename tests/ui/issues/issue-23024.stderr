@@ -18,7 +18,7 @@ help: add missing generic argument
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn<Args>)(3));
    |                                         ++++++
 
-error[E0191]: the value of the associated type `Output` (from trait `FnOnce`) must be specified
+error[E0191]: the value of the associated type `Output` in `FnOnce` must be specified
   --> $DIR/issue-23024.rs:8:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));

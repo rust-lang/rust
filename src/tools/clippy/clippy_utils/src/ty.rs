@@ -890,7 +890,9 @@ pub fn for_each_top_level_late_bound_region<B>(
     impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type BreakTy = B;
         fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let RegionKind::ReLateBound(idx, bound) = r.kind() && idx.as_u32() == self.index {
+            if let RegionKind::ReBound(idx, bound) = r.kind()
+                && idx.as_u32() == self.index
+            {
                 (self.f)(bound)
             } else {
                 ControlFlow::Continue(())
@@ -984,16 +986,16 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
         .iter()
         .try_fold(false, |found, p| {
             if let ty::ClauseKind::Trait(p) = p.kind().skip_binder()
-            && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
-            && ty.index == self_ty.index
-        {
-            // This should use `super_traits_of`, but that's a private function.
-            if p.trait_ref.def_id == fn_once_id {
-                return Some(true);
-            } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
-                return None;
+                && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
+                && ty.index == self_ty.index
+            {
+                // This should use `super_traits_of`, but that's a private function.
+                if p.trait_ref.def_id == fn_once_id {
+                    return Some(true);
+                } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
+                    return None;
+                }
             }
-        }
             Some(found)
         })
         .unwrap_or(false)
@@ -1158,11 +1160,16 @@ pub fn make_normalized_projection<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_late_bound_regions()) {
+        if let Some((i, arg)) = ty
+            .args
+            .iter()
+            .enumerate()
+            .find(|(_, arg)| arg.has_escaping_bound_vars())
+        {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
-                    use `TyCtxt::erase_late_bound_regions`\n\
+                    use `TyCtxt::instantiate_bound_regions_with_erased`\n\
                     note: arg is `{arg:#?}`",
             );
             return None;
@@ -1231,11 +1238,16 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_late_bound_regions()) {
+        if let Some((i, arg)) = ty
+            .args
+            .iter()
+            .enumerate()
+            .find(|(_, arg)| arg.has_escaping_bound_vars())
+        {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
-                    use `TyCtxt::erase_late_bound_regions`\n\
+                    use `TyCtxt::instantiate_bound_regions_with_erased`\n\
                     note: arg is `{arg:#?}`",
             );
             return None;
@@ -1263,4 +1275,9 @@ pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>
         Ok(ty) => ty.value,
         Err(_) => ty,
     }
+}
+
+/// Checks if the type is `core::mem::ManuallyDrop<_>`
+pub fn is_manually_drop(ty: Ty<'_>) -> bool {
+    ty.ty_adt_def().map_or(false, AdtDef::is_manually_drop)
 }

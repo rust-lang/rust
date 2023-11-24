@@ -21,6 +21,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -828,7 +829,7 @@ impl MetadataBlob {
                             out,
                             "{}{}",
                             feature,
-                            if let Some(since) = since {
+                            if let FeatureStability::AcceptedSince(since) = since {
                                 format!(" since {since}")
                             } else {
                                 String::new()
@@ -1176,8 +1177,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over all the stability attributes in the given crate.
-    fn get_lib_features(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
-        tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))
+    fn get_lib_features(self) -> LibFeatures {
+        LibFeatures {
+            stability: self
+                .root
+                .lib_features
+                .decode(self)
+                .map(|(sym, stab)| (sym, (stab, DUMMY_SP)))
+                .collect(),
+        }
     }
 
     /// Iterates over the stability implications in the given crate (when a `#[unstable]` attribute

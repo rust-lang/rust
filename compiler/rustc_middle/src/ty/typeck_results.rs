@@ -24,7 +24,7 @@ use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use std::{collections::hash_map::Entry, hash::Hash, iter};
 
 use super::RvalueScopes;
@@ -126,7 +126,7 @@ pub struct TypeckResults<'tcx> {
     /// fn(&'a u32) -> u32
     /// ```
     ///
-    /// Note that `'a` is not bound (it would be an `ReFree`) and
+    /// Note that `'a` is not bound (it would be an `ReLateParam`) and
     /// that the `Foo` opaque type is replaced by its hidden type.
     liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
@@ -205,7 +205,7 @@ pub struct TypeckResults<'tcx> {
     pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
 
     /// Container types and field indices of `offset_of!` expressions
-    offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<FieldIdx>)>,
+    offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -241,7 +241,7 @@ impl<'tcx> TypeckResults<'tcx> {
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .type_dependent_def(id)
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
@@ -464,11 +464,15 @@ impl<'tcx> TypeckResults<'tcx> {
         &self.coercion_casts
     }
 
-    pub fn offset_of_data(&self) -> LocalTableInContext<'_, (Ty<'tcx>, Vec<FieldIdx>)> {
+    pub fn offset_of_data(
+        &self,
+    ) -> LocalTableInContext<'_, (Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.offset_of_data }
     }
 
-    pub fn offset_of_data_mut(&mut self) -> LocalTableInContextMut<'_, (Ty<'tcx>, Vec<FieldIdx>)> {
+    pub fn offset_of_data_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, (Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
     }
 }
@@ -574,6 +578,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
     #[debug_format = "UserType({})"]
     pub struct UserTypeAnnotationIndex {
         const START_INDEX = 0;
@@ -594,10 +599,27 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 /// Canonical user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
-impl<'tcx> CanonicalUserType<'tcx> {
+/// A user-given type annotation attached to a constant. These arise
+/// from constants that are named via paths, like `Foo::<A>::new` and
+/// so forth.
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub enum UserType<'tcx> {
+    Ty(Ty<'tcx>),
+
+    /// The canonical type is the result of `type_of(def_id)` with the
+    /// given substitutions applied.
+    TypeOf(DefId, UserArgs<'tcx>),
+}
+
+pub trait IsIdentity {
+    fn is_identity(&self) -> bool;
+}
+
+impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
-    pub fn is_identity(&self) -> bool {
+    fn is_identity(&self) -> bool {
         match self.value {
             UserType::Ty(_) => false,
             UserType::TypeOf(_, user_args) => {
@@ -617,7 +639,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Lifetime(r) => match *r {
-                            ty::ReLateBound(debruijn, br) => {
+                            ty::ReBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == br.var
@@ -638,19 +660,6 @@ impl<'tcx> CanonicalUserType<'tcx> {
             }
         }
     }
-}
-
-/// A user-given type annotation attached to a constant. These arise
-/// from constants that are named via paths, like `Foo::<A>::new` and
-/// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum UserType<'tcx> {
-    Ty(Ty<'tcx>),
-
-    /// The canonical type is the result of `type_of(def_id)` with the
-    /// given substitutions applied.
-    TypeOf(DefId, UserArgs<'tcx>),
 }
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {

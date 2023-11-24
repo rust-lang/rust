@@ -57,9 +57,9 @@ COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
-# rustc-perf version from 2023-05-30
+# rustc-perf version from 2023-10-22
 # Should also be changed in the opt-dist tool for other environments.
-ENV PERF_COMMIT 8b2ac3042e1ff2c0074455a0a3618adef97156b1
+ENV PERF_COMMIT 4f313add609f43e928e98132358e8426ed3969ae
 RUN curl -LS -o perf.zip https://ci-mirrors.rust-lang.org/rustc/rustc-perf-$PERF_COMMIT.zip && \
     unzip perf.zip && \
     mv rustc-perf-$PERF_COMMIT rustc-perf && \

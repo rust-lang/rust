@@ -24,7 +24,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         _3 = const true;
-        FakeRead(ForMatchedPlace(None), _3);
+        PlaceMention(_3);
         switchInt(_3) -> [0: bb3, otherwise: bb4];
     }
 

@@ -28,6 +28,9 @@ pub fn renumber_mir<'tcx>(
     renumberer.visit_body(body);
 }
 
+// FIXME(@lcnr): A lot of these variants overlap and it seems like
+// this type is only used to decide which region should be used
+// as representative. This should be cleaned up.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum RegionCtxt {
     Location(Location),
@@ -81,6 +84,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
+        if matches!(ty_context, TyContext::ReturnTy(_)) {
+            // We will renumber the return ty when called again with `TyContext::LocalDecl`
+            return;
+        }
         *ty = self.renumber_regions(*ty, || RegionCtxt::TyContext(ty_context));
 
         debug!(?ty);

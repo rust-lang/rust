@@ -2,7 +2,7 @@ use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
 use std::fs::{self, File};
 use std::hash::Hash;
@@ -18,7 +18,8 @@ use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, s
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::cache::{Cache, Interned, INTERNER};
-use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
+use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, add_rustdoc_lld_flags, exe};
+use crate::utils::helpers::{libdir, output, t, LldThreads};
 use crate::Crate;
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
@@ -386,13 +387,13 @@ impl StepDescription {
         }
 
         if !paths.is_empty() {
-            eprintln!("error: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
             eprintln!(
-                "help: run `x.py {} --help --verbose` to show a list of available paths",
+                "HELP: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
             );
             eprintln!(
-                "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+                "NOTE: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
             );
             crate::exit!(1);
         }
@@ -727,8 +728,9 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::RunPassValgrind,
+                test::Coverage,
                 test::CoverageMap,
-                test::RunCoverage,
+                test::CoverageRun,
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
@@ -737,8 +739,9 @@ impl<'a> Builder<'a> {
                 test::Debuginfo,
                 test::UiFullDeps,
                 test::CodegenCranelift,
+                test::CodegenGCC,
                 test::Rustdoc,
-                test::RunCoverageRustdoc,
+                test::CoverageRunRustdoc,
                 test::Pretty,
                 test::Crate,
                 test::CrateLibrustc,
@@ -808,6 +811,7 @@ impl<'a> Builder<'a> {
                 doc::StyleGuide,
                 doc::Tidy,
                 doc::Bootstrap,
+                doc::Releases,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
@@ -815,6 +819,7 @@ impl<'a> Builder<'a> {
                 dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
+                dist::CodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -1170,9 +1175,7 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MAKEFLAGS");
         cmd.env_remove("MFLAGS");
 
-        if let Some(linker) = self.linker(compiler.host) {
-            cmd.env("RUSTDOC_LINKER", linker);
-        }
+        add_rustdoc_lld_flags(&mut cmd, self, compiler.host, LldThreads::Yes);
         cmd
     }
 
@@ -1357,9 +1360,9 @@ impl<'a> Builder<'a> {
                     }
                 }).unwrap_or_else(|_| {
                     eprintln!(
-                        "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
+                        "ERROR: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
                     );
-                    eprintln!("help: try `rustup component add clippy`");
+                    eprintln!("HELP: try `rustup component add clippy`");
                     crate::exit!(1);
                 });
                 if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
@@ -1401,19 +1404,17 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // Enable cfg checking of cargo features for everything but std and also enable cfg
-        // checking of names and values.
+        // Enable compile-time checking of `cfg` names, values and Cargo `features`.
         //
         // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
         // backtrace, core_simd, std_float, ...), those dependencies have their own
         // features but cargo isn't involved in the #[path] process and so cannot pass the
         // complete list of features, so for that reason we don't enable checking of
         // features for std crates.
-        cargo.arg(if mode != Mode::Std {
-            "-Zcheck-cfg=names,values,output,features"
-        } else {
-            "-Zcheck-cfg=names,values,output"
-        });
+        cargo.arg("-Zcheck-cfg");
+        if mode == Mode::Std {
+            rustflags.arg("--check-cfg=cfg(feature,values(any()))");
+        }
 
         // Add extra cfg not defined in/by rustc
         //
@@ -1433,7 +1434,8 @@ impl<'a> Builder<'a> {
                         .collect::<String>(),
                     None => String::new(),
                 };
-                rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
+                rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
             }
         }
 
@@ -1449,7 +1451,7 @@ impl<'a> Builder<'a> {
         // We also declare that the flag is expected, which we need to do to not
         // get warnings about it being unexpected.
         hostflags.arg("-Zunstable-options");
-        hostflags.arg("--check-cfg=values(bootstrap)");
+        hostflags.arg("--check-cfg=cfg(bootstrap)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
@@ -1767,6 +1769,20 @@ impl<'a> Builder<'a> {
             cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
         }
 
+        if self.config.rust_remap_debuginfo {
+            // FIXME: handle vendored sources
+            let registry_src = t!(home::cargo_home()).join("registry").join("src");
+            let mut env_var = OsString::new();
+            for entry in t!(std::fs::read_dir(registry_src)) {
+                if !env_var.is_empty() {
+                    env_var.push("\t");
+                }
+                env_var.push(t!(entry).path());
+                env_var.push("=/rust/deps");
+            }
+            cargo.env("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP", env_var);
+        }
+
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
         self.add_rust_test_threads(&mut cargo);
@@ -1945,6 +1961,16 @@ impl<'a> Builder<'a> {
             && compiler.stage >= 1
         {
             rustflags.arg("-Ccontrol-flow-guard");
+        }
+
+        // If EHCont Guard is enabled, pass the `-Zehcont-guard` flag to rustc when compiling the
+        // standard library, since this might be linked into the final outputs produced by rustc.
+        // Since this mitigation is only available on Windows, only enable it for the standard
+        // library in case the compiler is run on a non-Windows platform.
+        // This is not needed for stage 0 artifacts because these will only be used for building
+        // the stage 1 compiler.
+        if cfg!(windows) && mode == Mode::Std && self.config.ehcont_guard && compiler.stage >= 1 {
+            rustflags.arg("-Zehcont-guard");
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs

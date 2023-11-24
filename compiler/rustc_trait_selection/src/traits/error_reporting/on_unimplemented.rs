@@ -1,5 +1,8 @@
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::infer::error_reporting::TypeErrCtxt;
+use rustc_ast::AttrArgs;
+use rustc_ast::AttrArgsEq;
+use rustc_ast::AttrKind;
 use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -50,6 +53,7 @@ static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
     sym::float,
     sym::_Self,
     sym::crate_local,
+    sym::Trait,
 ];
 
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
@@ -180,6 +184,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             flags.push((sym::cause, Some("MainFunctionType".to_string())));
         }
 
+        if let Some(kind) = self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id)
+            && let ty::Tuple(args) = trait_ref.args.type_at(1).kind()
+        {
+            let args = args.iter().map(|ty| ty.to_string()).collect::<Vec<_>>().join(", ");
+            flags.push((sym::Trait, Some(format!("{}({args})", kind.as_str()))));
+        } else {
+            flags.push((sym::Trait, Some(trait_ref.print_only_trait_path().to_string())));
+        }
+
         // Add all types without trimmed paths or visible paths, ensuring they end up with
         // their "canonical" def path.
         ty::print::with_no_trimmed_paths!(ty::print::with_no_visible_paths!({
@@ -308,7 +321,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct OnUnimplementedFormatString(Symbol);
+pub struct OnUnimplementedFormatString(Symbol, Span);
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
@@ -316,7 +329,7 @@ pub struct OnUnimplementedDirective {
     pub subcommands: Vec<OnUnimplementedDirective>,
     pub message: Option<OnUnimplementedFormatString>,
     pub label: Option<OnUnimplementedFormatString>,
-    pub note: Option<OnUnimplementedFormatString>,
+    pub notes: Vec<OnUnimplementedFormatString>,
     pub parent_label: Option<OnUnimplementedFormatString>,
     pub append_const_msg: Option<AppendConstMessage>,
 }
@@ -326,7 +339,7 @@ pub struct OnUnimplementedDirective {
 pub struct OnUnimplementedNote {
     pub message: Option<String>,
     pub label: Option<String>,
-    pub note: Option<String>,
+    pub notes: Vec<String>,
     pub parent_label: Option<String>,
     // If none, should fall back to a generic message
     pub append_const_msg: Option<AppendConstMessage>,
@@ -337,12 +350,56 @@ pub struct OnUnimplementedNote {
 pub enum AppendConstMessage {
     #[default]
     Default,
-    Custom(Symbol),
+    Custom(Symbol, Span),
 }
 
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_malformed_on_unimplemented_attr)]
-pub struct NoValueInOnUnimplementedLint;
+#[help]
+pub struct MalformedOnUnimplementedAttrLint {
+    #[label]
+    pub span: Span,
+}
+
+impl MalformedOnUnimplementedAttrLint {
+    fn new(span: Span) -> Self {
+        Self { span }
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
+#[help]
+pub struct MissingOptionsForOnUnimplementedAttr;
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_ignored_diagnostic_option)]
+pub struct IgnoredDiagnosticOption {
+    pub option_name: &'static str,
+    #[label]
+    pub span: Span,
+    #[label(trait_selection_other_label)]
+    pub prev_span: Span,
+}
+
+impl IgnoredDiagnosticOption {
+    fn maybe_emit_warning<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        item_def_id: DefId,
+        new: Option<Span>,
+        old: Option<Span>,
+        option_name: &'static str,
+    ) {
+        if let (Some(new_item), Some(old_item)) = (new, old) {
+            tcx.emit_spanned_lint(
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                new_item,
+                IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
+            );
+        }
+    }
+}
 
 impl<'tcx> OnUnimplementedDirective {
     fn parse(
@@ -356,8 +413,9 @@ impl<'tcx> OnUnimplementedDirective {
         let mut errored = None;
         let mut item_iter = items.iter();
 
-        let parse_value = |value_str| {
-            OnUnimplementedFormatString::try_parse(tcx, item_def_id, value_str, span).map(Some)
+        let parse_value = |value_str, value_span| {
+            OnUnimplementedFormatString::try_parse(tcx, item_def_id, value_str, span, value_span)
+                .map(Some)
         };
 
         let condition = if is_root {
@@ -370,7 +428,7 @@ impl<'tcx> OnUnimplementedDirective {
                 .ok_or_else(|| tcx.sess.emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value
-                    && let Err(guar) = parse_value(value)
+                    && let Err(guar) = parse_value(value, cfg.span)
                 {
                     errored = Some(guar);
                 }
@@ -381,7 +439,7 @@ impl<'tcx> OnUnimplementedDirective {
 
         let mut message = None;
         let mut label = None;
-        let mut note = None;
+        let mut notes = Vec::new();
         let mut parent_label = None;
         let mut subcommands = vec![];
         let mut append_const_msg = None;
@@ -389,32 +447,34 @@ impl<'tcx> OnUnimplementedDirective {
         for item in item_iter {
             if item.has_name(sym::message) && message.is_none() {
                 if let Some(message_) = item.value_str() {
-                    message = parse_value(message_)?;
+                    message = parse_value(message_, item.span())?;
                     continue;
                 }
             } else if item.has_name(sym::label) && label.is_none() {
                 if let Some(label_) = item.value_str() {
-                    label = parse_value(label_)?;
+                    label = parse_value(label_, item.span())?;
                     continue;
                 }
-            } else if item.has_name(sym::note) && note.is_none() {
+            } else if item.has_name(sym::note) {
                 if let Some(note_) = item.value_str() {
-                    note = parse_value(note_)?;
-                    continue;
+                    if let Some(note) = parse_value(note_, item.span())? {
+                        notes.push(note);
+                        continue;
+                    }
                 }
             } else if item.has_name(sym::parent_label)
                 && parent_label.is_none()
                 && !is_diagnostic_namespace_variant
             {
                 if let Some(parent_label_) = item.value_str() {
-                    parent_label = parse_value(parent_label_)?;
+                    parent_label = parse_value(parent_label_, item.span())?;
                     continue;
                 }
             } else if item.has_name(sym::on)
                 && is_root
                 && message.is_none()
                 && label.is_none()
-                && note.is_none()
+                && notes.is_empty()
                 && !is_diagnostic_namespace_variant
             // FIXME(diagnostic_namespace): disallow filters for now
             {
@@ -422,7 +482,7 @@ impl<'tcx> OnUnimplementedDirective {
                     match Self::parse(
                         tcx,
                         item_def_id,
-                        &items,
+                        items,
                         item.span(),
                         false,
                         is_diagnostic_namespace_variant,
@@ -440,7 +500,7 @@ impl<'tcx> OnUnimplementedDirective {
                 && !is_diagnostic_namespace_variant
             {
                 if let Some(msg) = item.value_str() {
-                    append_const_msg = Some(AppendConstMessage::Custom(msg));
+                    append_const_msg = Some(AppendConstMessage::Custom(msg, item.span()));
                     continue;
                 } else if item.is_word() {
                     append_const_msg = Some(AppendConstMessage::Default);
@@ -453,7 +513,7 @@ impl<'tcx> OnUnimplementedDirective {
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                     tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
                     vec![item.span()],
-                    NoValueInOnUnimplementedLint,
+                    MalformedOnUnimplementedAttrLint::new(item.span()),
                 );
             } else {
                 // nothing found
@@ -469,7 +529,7 @@ impl<'tcx> OnUnimplementedDirective {
                 subcommands,
                 message,
                 label,
-                note,
+                notes,
                 parent_label,
                 append_const_msg,
             }))
@@ -487,12 +547,62 @@ impl<'tcx> OnUnimplementedDirective {
                     if let Some(aggr) = aggr {
                         let mut subcommands = aggr.subcommands;
                         subcommands.extend(directive.subcommands);
+                        let mut notes = aggr.notes;
+                        notes.extend(directive.notes);
+                        IgnoredDiagnosticOption::maybe_emit_warning(
+                            tcx,
+                            item_def_id,
+                            directive.message.as_ref().map(|f| f.1),
+                            aggr.message.as_ref().map(|f| f.1),
+                            "message",
+                        );
+                        IgnoredDiagnosticOption::maybe_emit_warning(
+                            tcx,
+                            item_def_id,
+                            directive.label.as_ref().map(|f| f.1),
+                            aggr.label.as_ref().map(|f| f.1),
+                            "label",
+                        );
+                        IgnoredDiagnosticOption::maybe_emit_warning(
+                            tcx,
+                            item_def_id,
+                            directive.condition.as_ref().map(|i| i.span),
+                            aggr.condition.as_ref().map(|i| i.span),
+                            "condition",
+                        );
+                        IgnoredDiagnosticOption::maybe_emit_warning(
+                            tcx,
+                            item_def_id,
+                            directive.parent_label.as_ref().map(|f| f.1),
+                            aggr.parent_label.as_ref().map(|f| f.1),
+                            "parent_label",
+                        );
+                        IgnoredDiagnosticOption::maybe_emit_warning(
+                            tcx,
+                            item_def_id,
+                            directive.append_const_msg.as_ref().and_then(|c| {
+                                if let AppendConstMessage::Custom(_, s) = c {
+                                    Some(*s)
+                                } else {
+                                    None
+                                }
+                            }),
+                            aggr.append_const_msg.as_ref().and_then(|c| {
+                                if let AppendConstMessage::Custom(_, s) = c {
+                                    Some(*s)
+                                } else {
+                                    None
+                                }
+                            }),
+                            "append_const_msg",
+                        );
+
                         Ok(Some(Self {
                             condition: aggr.condition.or(directive.condition),
                             subcommands,
                             message: aggr.message.or(directive.message),
                             label: aggr.label.or(directive.label),
-                            note: aggr.note.or(directive.note),
+                            notes,
                             parent_label: aggr.parent_label.or(directive.parent_label),
                             append_const_msg: aggr.append_const_msg.or(directive.append_const_msg),
                         }))
@@ -524,27 +634,47 @@ impl<'tcx> OnUnimplementedDirective {
                         item_def_id,
                         value,
                         attr.span,
+                        attr.span,
                     )?),
-                    note: None,
+                    notes: Vec::new(),
                     parent_label: None,
                     append_const_msg: None,
                 }))
             } else {
+                let item = attr.get_normal_item();
+                let report_span = match &item.args {
+                    AttrArgs::Empty => item.path.span,
+                    AttrArgs::Delimited(args) => args.dspan.entire(),
+                    AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => eq_span.to(expr.span),
+                    AttrArgs::Eq(span, AttrArgsEq::Hir(expr)) => span.to(expr.span),
+                };
+
                 tcx.emit_spanned_lint(
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                     tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
-                    attr.span,
-                    NoValueInOnUnimplementedLint,
+                    report_span,
+                    MalformedOnUnimplementedAttrLint::new(report_span),
                 );
                 Ok(None)
             }
         } else if is_diagnostic_namespace_variant {
-            tcx.emit_spanned_lint(
-                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
-                attr.span,
-                NoValueInOnUnimplementedLint,
-            );
+            match &attr.kind {
+                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
+                    tcx.emit_spanned_lint(
+                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                        attr.span,
+                        MalformedOnUnimplementedAttrLint::new(attr.span),
+                    );
+                }
+                _ => tcx.emit_spanned_lint(
+                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                    attr.span,
+                    MissingOptionsForOnUnimplementedAttr,
+                ),
+            };
+
             Ok(None)
         } else {
             let reported =
@@ -563,7 +693,7 @@ impl<'tcx> OnUnimplementedDirective {
     ) -> OnUnimplementedNote {
         let mut message = None;
         let mut label = None;
-        let mut note = None;
+        let mut notes = Vec::new();
         let mut parent_label = None;
         let mut append_const_msg = None;
         info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
@@ -581,7 +711,13 @@ impl<'tcx> OnUnimplementedDirective {
                         let value = cfg.value.map(|v| {
                             // `with_no_visible_paths` is also used when generating the options,
                             // so we need to match it here.
-                            ty::print::with_no_visible_paths!(OnUnimplementedFormatString(v).format(tcx, trait_ref, &options_map))
+                            ty::print::with_no_visible_paths!(
+                                OnUnimplementedFormatString(v, cfg.span).format(
+                                    tcx,
+                                    trait_ref,
+                                    &options_map
+                                )
+                            )
                         });
 
                         options.contains(&(cfg.name, value))
@@ -600,9 +736,7 @@ impl<'tcx> OnUnimplementedDirective {
                 label = Some(label_.clone());
             }
 
-            if let Some(ref note_) = command.note {
-                note = Some(note_.clone());
-            }
+            notes.extend(command.notes.clone());
 
             if let Some(ref parent_label_) = command.parent_label {
                 parent_label = Some(parent_label_.clone());
@@ -614,7 +748,7 @@ impl<'tcx> OnUnimplementedDirective {
         OnUnimplementedNote {
             label: label.map(|l| l.format(tcx, trait_ref, &options_map)),
             message: message.map(|m| m.format(tcx, trait_ref, &options_map)),
-            note: note.map(|n| n.format(tcx, trait_ref, &options_map)),
+            notes: notes.into_iter().map(|n| n.format(tcx, trait_ref, &options_map)).collect(),
             parent_label: parent_label.map(|e_s| e_s.format(tcx, trait_ref, &options_map)),
             append_const_msg,
         }
@@ -627,8 +761,9 @@ impl<'tcx> OnUnimplementedFormatString {
         item_def_id: DefId,
         from: Symbol,
         err_sp: Span,
+        value_span: Span,
     ) -> Result<Self, ErrorGuaranteed> {
-        let result = OnUnimplementedFormatString(from);
+        let result = OnUnimplementedFormatString(from, value_span);
         result.verify(tcx, item_def_id, err_sp)?;
         Ok(result)
     }
@@ -740,7 +875,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                     // don't break messages using these two arguments incorrectly
                                     &empty_string
                                 } else if s == sym::ItemContext {
-                                    &item_context
+                                    item_context
                                 } else if s == sym::integral {
                                     "{integral}"
                                 } else if s == sym::integer_ {

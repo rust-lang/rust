@@ -7,8 +7,9 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
-use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::{fs, mem};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::tool::{self, prepare_tool_cargo, SourceType, Tool};
@@ -388,6 +389,104 @@ impl Step for Standalone {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Releases {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for Releases {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("RELEASES.md").alias("releases").default_condition(builder.config.docs)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Releases {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    /// Generates HTML release notes to include in the final docs bundle.
+    ///
+    /// This uses the same stylesheet and other tools as Standalone, but the
+    /// RELEASES.md file is included at the root of the repository and gets
+    /// the headline added. In the end, the conversion is done by Rustdoc.
+    fn run(self, builder: &Builder<'_>) {
+        let target = self.target;
+        let compiler = self.compiler;
+        let _guard = builder.msg_doc(compiler, "releases", target);
+        let out = builder.doc_out(target);
+        t!(fs::create_dir_all(&out));
+
+        builder.ensure(Standalone {
+            compiler: builder.compiler(builder.top_stage, builder.config.build),
+            target,
+        });
+
+        let version_info = builder.ensure(SharedAssets { target: self.target }).version_info;
+
+        let favicon = builder.src.join("src/doc/favicon.inc");
+        let footer = builder.src.join("src/doc/footer.inc");
+        let full_toc = builder.src.join("src/doc/full-toc.inc");
+
+        let html = out.join("releases.html");
+        let tmppath = out.join("releases.md");
+        let inpath = builder.src.join("RELEASES.md");
+        let rustdoc = builder.rustdoc(compiler);
+        if !up_to_date(&inpath, &html)
+            || !up_to_date(&footer, &html)
+            || !up_to_date(&favicon, &html)
+            || !up_to_date(&full_toc, &html)
+            || !(builder.config.dry_run()
+                || up_to_date(&version_info, &html)
+                || up_to_date(&rustdoc, &html))
+        {
+            let mut tmpfile = t!(fs::File::create(&tmppath));
+            t!(tmpfile.write_all(b"% Rust Release Notes\n\n"));
+            t!(io::copy(&mut t!(fs::File::open(&inpath)), &mut tmpfile));
+            mem::drop(tmpfile);
+            let mut cmd = builder.rustdoc_cmd(compiler);
+
+            // Needed for --index-page flag
+            cmd.arg("-Z").arg("unstable-options");
+
+            cmd.arg("--html-after-content")
+                .arg(&footer)
+                .arg("--html-before-content")
+                .arg(&version_info)
+                .arg("--html-in-header")
+                .arg(&favicon)
+                .arg("--markdown-no-toc")
+                .arg("--markdown-css")
+                .arg("rust.css")
+                .arg("--index-page")
+                .arg(&builder.src.join("src/doc/index.md"))
+                .arg("--markdown-playground-url")
+                .arg("https://play.rust-lang.org/")
+                .arg("-o")
+                .arg(&out)
+                .arg(&tmppath);
+
+            if !builder.config.docs_minification {
+                cmd.arg("--disable-minification");
+            }
+
+            builder.run(&mut cmd);
+        }
+
+        // We open doc/RELEASES.html as the default if invoked as `x.py doc --open RELEASES.md`
+        // with no particular explicit doc requested (e.g. library/core).
+        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
+            builder.open_in_browser(&html);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SharedAssetsPaths {
     pub version_info: PathBuf,
@@ -685,19 +784,6 @@ impl Step for Rustc {
             target,
         );
 
-        // This uses a shared directory so that librustdoc documentation gets
-        // correctly built and merged with the rustc documentation. This is
-        // needed because rustdoc is built in a different directory from
-        // rustc. rustdoc needs to be able to see everything, for example when
-        // merging the search index, or generating local (relative) links.
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
-        t!(fs::create_dir_all(out_dir.parent().unwrap()));
-        symlink_dir_force(&builder.config, &out, &out_dir);
-        // Cargo puts proc macros in `target/doc` even if you pass `--target`
-        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
-        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
-        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
-
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
         cargo.rustdocflag("--document-private-items");
@@ -724,6 +810,7 @@ impl Step for Rustc {
 
         let mut to_open = None;
 
+        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
@@ -736,7 +823,28 @@ impl Step for Rustc {
             }
         }
 
+        // This uses a shared directory so that librustdoc documentation gets
+        // correctly built and merged with the rustc documentation.
+        //
+        // This is needed because rustdoc is built in a different directory from
+        // rustc. rustdoc needs to be able to see everything, for example when
+        // merging the search index, or generating local (relative) links.
+        symlink_dir_force(&builder.config, &out, &out_dir);
+        // Cargo puts proc macros in `target/doc` even if you pass `--target`
+        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
+        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
+        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
+
         builder.run(&mut cargo.into());
+
+        if !builder.config.dry_run() {
+            // Sanity check on linked compiler crates
+            for krate in &*self.crates {
+                let dir_name = krate.replace("-", "_");
+                // Making sure the directory exists and is not empty.
+                assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
+            }
+        }
 
         if builder.paths.iter().any(|path| path.ends_with("compiler")) {
             // For `x.py doc compiler --open`, open `rustc_middle` by default.
@@ -756,10 +864,10 @@ macro_rules! tool_doc {
         $should_run: literal,
         $path: literal,
         $(rustc_tool = $rustc_tool:literal, )?
-        $(in_tree = $in_tree:literal, )?
-        [$($extra_arg: literal),+ $(,)?]
-        $(,)?
-    ) => {
+        $(in_tree = $in_tree:literal ,)?
+        $(is_library = $is_library:expr,)?
+        $(crates = $crates:expr)?
+       ) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             target: TargetSelection,
@@ -812,17 +920,6 @@ macro_rules! tool_doc {
                     SourceType::Submodule
                 };
 
-                // Symlink compiler docs to the output directory of rustdoc documentation.
-                let out_dirs = [
-                    builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc"),
-                    // Cargo uses a different directory for proc macros.
-                    builder.stage_out(compiler, Mode::ToolRustc).join("doc"),
-                ];
-                for out_dir in out_dirs {
-                    t!(fs::create_dir_all(&out_dir));
-                    symlink_dir_force(&builder.config, &out, &out_dir);
-                }
-
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
                     builder,
@@ -839,9 +936,13 @@ macro_rules! tool_doc {
                 // Only include compiler crates, no dependencies of those, such as `libc`.
                 cargo.arg("--no-deps");
 
-                $(
-                    cargo.arg($extra_arg);
-                )+
+                if false $(|| $is_library)? {
+                    cargo.arg("--lib");
+                }
+
+                $(for krate in $crates {
+                    cargo.arg("-p").arg(krate);
+                })?
 
                 cargo.rustdocflag("--document-private-items");
                 // Since we always pass --document-private-items, there's no need to warn about linking to private items.
@@ -851,62 +952,69 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
 
+                let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
+                $(for krate in $crates {
+                    let dir_name = krate.replace("-", "_");
+                    t!(fs::create_dir_all(out_dir.join(&*dir_name)));
+                })?
+
+                // Symlink compiler docs to the output directory of rustdoc documentation.
+                symlink_dir_force(&builder.config, &out, &out_dir);
+                let proc_macro_out_dir = builder.stage_out(compiler, Mode::ToolRustc).join("doc");
+                symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
+
                 let _guard = builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
                 builder.run(&mut cargo.into());
+
+                if !builder.config.dry_run() {
+                    // Sanity check on linked doc directories
+                    $(for krate in $crates {
+                        let dir_name = krate.replace("-", "_");
+                        // Making sure the directory exists and is not empty.
+                        assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
+                    })?
+                }
             }
         }
     }
 }
 
-tool_doc!(
-    Rustdoc,
-    "rustdoc-tool",
-    "src/tools/rustdoc",
-    ["-p", "rustdoc", "-p", "rustdoc-json-types"]
-);
+tool_doc!(Rustdoc, "rustdoc-tool", "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
 tool_doc!(
     Rustfmt,
     "rustfmt-nightly",
     "src/tools/rustfmt",
-    ["-p", "rustfmt-nightly", "-p", "rustfmt-config_proc_macro"],
+    crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]
 );
-tool_doc!(Clippy, "clippy", "src/tools/clippy", ["-p", "clippy_utils"]);
-tool_doc!(Miri, "miri", "src/tools/miri", ["-p", "miri"]);
+tool_doc!(Clippy, "clippy", "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);
+tool_doc!(Miri, "miri", "src/tools/miri", crates = ["miri"]);
 tool_doc!(
     Cargo,
     "cargo",
     "src/tools/cargo",
     rustc_tool = false,
     in_tree = false,
-    [
-        "-p",
+    crates = [
         "cargo",
-        "-p",
         "cargo-platform",
-        "-p",
         "cargo-util",
-        "-p",
         "crates-io",
-        "-p",
         "cargo-test-macro",
-        "-p",
         "cargo-test-support",
-        "-p",
         "cargo-credential",
-        "-p",
         "mdman",
         // FIXME: this trips a license check in tidy.
-        // "-p",
         // "resolver-tests",
     ]
 );
-tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, ["-p", "tidy"]);
+tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);
 tool_doc!(
     Bootstrap,
     "bootstrap",
     "src/bootstrap",
     rustc_tool = false,
-    ["--lib", "-p", "bootstrap"]
+    is_library = true,
+    crates = ["bootstrap"]
 );
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]

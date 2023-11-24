@@ -98,6 +98,14 @@ pub trait TypeErrCtxtExt<'tcx> {
         error: &SelectionError<'tcx>,
     );
 
+    fn emit_specialized_closure_kind_error(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Option<ErrorGuaranteed>;
+
+    fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool;
+
     fn report_const_param_not_wf(
         &self,
         ty: Ty<'tcx>,
@@ -157,12 +165,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 predicate: error.obligation.predicate,
                 index: Some(index),
             });
-
-            self.reported_trait_errors
-                .borrow_mut()
-                .entry(span)
-                .or_default()
-                .push(error.obligation.predicate);
         }
 
         // We do this in 2 passes because we want to display errors in order, though
@@ -200,6 +202,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     self.report_fulfillment_error(error);
+                    // We want to ignore desugarings here: spans are equivalent even
+                    // if one is the result of a desugaring and the other is not.
+                    let mut span = error.obligation.cause.span;
+                    let expn_data = span.ctxt().outer_expn_data();
+                    if let ExpnKind::Desugaring(_) = expn_data.kind {
+                        span = expn_data.call_site;
+                    }
+                    self.reported_trait_errors
+                        .borrow_mut()
+                        .entry(span)
+                        .or_default()
+                        .push(error.obligation.predicate);
                 }
             }
         }
@@ -246,14 +260,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if pred_str.len() > 50 {
             // We don't need to save the type to a file, we will be talking about this type already
             // in a separate note when we explain the obligation, so it will be available that way.
-            pred_str = predicate
-                .print(FmtPrinter::new_with_limit(
-                    self.tcx,
-                    Namespace::TypeNS,
-                    rustc_session::Limit(6),
-                ))
-                .unwrap()
-                .into_buffer();
+            let mut cx: FmtPrinter<'_, '_> =
+                FmtPrinter::new_with_limit(self.tcx, Namespace::TypeNS, rustc_session::Limit(6));
+            predicate.print(&mut cx).unwrap();
+            pred_str = cx.into_buffer();
         }
         let mut err = struct_span_err!(
             self.tcx.sess,
@@ -407,6 +417,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
+                        let trait_ref = trait_predicate.to_poly_trait_ref();
+
+                        if let Some(_guar) = self.emit_specialized_closure_kind_error(&obligation, trait_ref) {
+                            return;
+                        }
 
                         // FIXME(effects)
                         let predicate_is_const = false;
@@ -416,15 +431,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         {
                             return;
                         }
-                        let trait_ref = trait_predicate.to_poly_trait_ref();
-
-                        let (post_message, pre_message, type_def) = self
+                        if self.fn_arg_obligation(&obligation) {
+                            // Silence redundant errors on binding acccess that are already
+                            // reported on the binding definition (#56607).
+                            return;
+                        }
+                        let (post_message, pre_message, type_def, file_note) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
+                                let (t, file) = self.tcx.short_ty_string(t);
                                 (
                                     format!(" in `{t}`"),
                                     format!("within `{t}`, "),
                                     s.map(|s| (format!("within this `{t}`"), s)),
+                                    file.map(|file| format!(
+                                        "the full trait has been written to '{}'",
+                                        file.display(),
+                                    ))
                                 )
                             })
                             .unwrap_or_default();
@@ -432,7 +455,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let OnUnimplementedNote {
                             message,
                             label,
-                            note,
+                            notes,
                             parent_label,
                             append_const_msg,
                         } = self.on_unimplemented_note(trait_ref, &obligation);
@@ -440,21 +463,21 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let is_try_conversion = self.is_try_conversion(span, trait_ref.def_id());
                         let is_unsize =
                             Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait();
-                        let (message, note, append_const_msg) = if is_try_conversion {
+                        let (message, notes, append_const_msg) = if is_try_conversion {
                             (
                                 Some(format!(
                                     "`?` couldn't convert the error to `{}`",
                                     trait_ref.skip_binder().self_ty(),
                                 )),
-                                Some(
+                                vec![
                                     "the question mark operation (`?`) implicitly performs a \
                                      conversion on the error value using the `From` trait"
                                         .to_owned(),
-                                ),
+                                ],
                                 Some(AppendConstMessage::Default),
                             )
                         } else {
-                            (message, note, append_const_msg)
+                            (message, notes, append_const_msg)
                         };
 
                         let err_msg = self.get_standard_error_message(
@@ -498,7 +521,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         if Some(trait_ref.def_id()) == tcx.lang_items().tuple_trait() {
                             self.add_tuple_trait_message(
-                                &obligation.cause.code().peel_derives(),
+                                obligation.cause.code().peel_derives(),
                                 &mut err,
                             );
                         }
@@ -532,6 +555,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.emit();
                             return;
                         }
+
+                        file_note.map(|note| err.note(note));
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
@@ -554,7 +579,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
                                 self.suggest_borrowing_for_object_cast(
                                     &mut err,
-                                    &root_obligation,
+                                    root_obligation,
                                     source,
                                     target,
                                 );
@@ -573,9 +598,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if let Some((msg, span)) = type_def {
                             err.span_label(span, msg);
                         }
-                        if let Some(s) = note {
+                        for note in notes {
                             // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
-                            err.note(s);
+                            err.note(note);
                         }
                         if let Some(s) = parent_label {
                             let body = obligation.cause.body_id;
@@ -771,11 +796,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
-                    ty::PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
-                        let found_kind = self.closure_kind(closure_args).unwrap();
-                        self.report_closure_error(&obligation, closure_def_id, found_kind, kind)
-                    }
-
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
                         let ty = self.resolve_vars_if_possible(ty);
                         match self.tcx.sess.opts.unstable_opts.trait_solver {
@@ -910,6 +930,56 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit();
+    }
+
+    fn emit_specialized_closure_kind_error(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Option<ErrorGuaranteed> {
+        if let ty::Closure(closure_def_id, closure_args) = *trait_ref.self_ty().skip_binder().kind()
+            && let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id())
+            && let Some(found_kind) = self.closure_kind(closure_args)
+            && !found_kind.extends(expected_kind)
+            && let sig = closure_args.as_closure().sig()
+            && self.can_sub(
+                obligation.param_env,
+                trait_ref,
+                sig.map_bound(|sig| {
+                    ty::TraitRef::new(
+                        self.tcx,
+                        trait_ref.def_id(),
+                        [trait_ref.self_ty().skip_binder(), sig.inputs()[0]],
+                    )
+                }),
+            )
+        {
+            let mut err =
+                self.report_closure_error(&obligation, closure_def_id, found_kind, expected_kind);
+            self.note_obligation_cause(&mut err, &obligation);
+            self.point_at_returns_when_relevant(&mut err, &obligation);
+            Some(err.emit())
+        } else {
+            None
+        }
+    }
+
+    fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool {
+        if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
+            obligation.cause.code()
+            && let Some(Node::Expr(arg)) = self.tcx.hir().find(*arg_hir_id)
+            && let arg = arg.peel_borrows()
+            && let hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) = arg.kind
+            && let Some(Node::Pat(pat)) = self.tcx.hir().find(*hir_id)
+            && let Some(preds) = self.reported_trait_errors.borrow().get(&pat.span)
+            && preds.contains(&obligation.predicate)
+        {
+            return true;
+        }
+        false
     }
 
     fn report_const_param_not_wf(
@@ -1065,7 +1135,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
     fn get_parent_trait_ref(
         &self,
         code: &ObligationCauseCode<'tcx>,
-    ) -> Option<(String, Option<Span>)>;
+    ) -> Option<(Ty<'tcx>, Option<Span>)>;
 
     /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
     /// with the same path as `trait_ref`, a help message about
@@ -1342,7 +1412,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             {
                 let data = self.instantiate_binder_with_fresh_vars(
                     obligation.cause.span,
-                    infer::LateBoundRegionConversionTime::HigherRankedType,
+                    infer::BoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
                 );
                 let unnormalized_term = match data.term.unpack() {
@@ -1408,17 +1478,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
                 })
                 .unwrap_or_else(|| {
-                    with_forced_trimmed_paths!(format!(
-                        "type mismatch resolving `{}`",
-                        self.resolve_vars_if_possible(predicate)
-                            .print(FmtPrinter::new_with_limit(
-                                self.tcx,
-                                Namespace::TypeNS,
-                                rustc_session::Limit(10),
-                            ))
-                            .unwrap()
-                            .into_buffer()
-                    ))
+                    let mut cx = FmtPrinter::new_with_limit(
+                        self.tcx,
+                        Namespace::TypeNS,
+                        rustc_session::Limit(10),
+                    );
+                    with_forced_trimmed_paths!(format!("type mismatch resolving `{}`", {
+                        self.resolve_vars_if_possible(predicate).print(&mut cx).unwrap();
+                        cx.into_buffer()
+                    }))
                 });
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
 
@@ -1463,14 +1531,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ty.span,
                         with_forced_trimmed_paths!(Cow::from(format!(
                             "type mismatch resolving `{}`",
-                            self.resolve_vars_if_possible(predicate)
-                                .print(FmtPrinter::new_with_limit(
+                            {
+                                let mut cx = FmtPrinter::new_with_limit(
                                     self.tcx,
                                     Namespace::TypeNS,
                                     rustc_session::Limit(5),
-                                ))
-                                .unwrap()
-                                .into_buffer()
+                                );
+                                self.resolve_vars_if_possible(predicate).print(&mut cx).unwrap();
+                                cx.into_buffer()
+                            }
                         ))),
                     )),
                     _ => None,
@@ -1614,11 +1683,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str> {
-        self.tcx.hir().body(body_id).coroutine_kind.map(|gen_kind| match gen_kind {
+        self.tcx.hir().body(body_id).coroutine_kind.map(|coroutine_source| match coroutine_source {
             hir::CoroutineKind::Coroutine => "a coroutine",
-            hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Block) => "an async block",
-            hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Fn) => "an async function",
-            hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Closure) => "an async closure",
+            hir::CoroutineKind::Async(hir::CoroutineSource::Block) => "an async block",
+            hir::CoroutineKind::Async(hir::CoroutineSource::Fn) => "an async function",
+            hir::CoroutineKind::Async(hir::CoroutineSource::Closure) => "an async closure",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Block) => "a gen block",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Fn) => "a gen function",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Closure) => "a gen closure",
         })
     }
 
@@ -1915,7 +1987,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn get_parent_trait_ref(
         &self,
         code: &ObligationCauseCode<'tcx>,
-    ) -> Option<(String, Option<Span>)> {
+    ) -> Option<(Ty<'tcx>, Option<Span>)> {
         match code {
             ObligationCauseCode::BuiltinDerivedObligation(data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
@@ -1925,12 +1997,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ty = parent_trait_ref.skip_binder().self_ty();
                         let span = TyCategory::from_ty(self.tcx, ty)
                             .map(|(_, def_id)| self.tcx.def_span(def_id));
-                        Some((ty.to_string(), span))
+                        Some((ty, span))
                     }
                 }
             }
             ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                self.get_parent_trait_ref(&parent_code)
+                self.get_parent_trait_ref(parent_code)
             }
             _ => None,
         }
@@ -2145,7 +2217,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span);
-                    expr_finder.visit_expr(&self.tcx.hir().body(body_id).value);
+                    expr_finder.visit_expr(self.tcx.hir().body(body_id).value);
 
                     if let Some(hir::Expr {
                         kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
@@ -2694,7 +2766,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         Some(format!("{cannot_do_this} in const contexts"))
                     }
                     // overridden post message
-                    (true, Some(AppendConstMessage::Custom(custom_msg))) => {
+                    (true, Some(AppendConstMessage::Custom(custom_msg, _))) => {
                         Some(format!("{cannot_do_this}{custom_msg}"))
                     }
                     // fallback to generic message
@@ -2715,7 +2787,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         use rustc_transmute::Answer;
 
         // Erase regions because layout code doesn't particularly care about regions.
-        let trait_ref = self.tcx.erase_regions(self.tcx.erase_late_bound_regions(trait_ref));
+        let trait_ref =
+            self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_ref));
 
         let src_and_dst = rustc_transmute::Types {
             dst: trait_ref.args.type_at(0),
@@ -2896,7 +2969,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 obligation.param_env,
             ) {
                 self.report_similar_impl_candidates_for_root_obligation(
-                    &obligation,
+                    obligation,
                     *trait_predicate,
                     body_def_id,
                     err,
@@ -3008,13 +3081,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 (ty::ClosureKind::FnOnce, Some((span, place))) => {
                     err.fn_once_label = Some(ClosureFnOnceLabel {
                         span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                        place: ty::place_to_string_for_capture(self.tcx, place),
                     })
                 }
                 (ty::ClosureKind::FnMut, Some((span, place))) => {
                     err.fn_mut_label = Some(ClosureFnMutLabel {
                         span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, &place),
+                        place: ty::place_to_string_for_capture(self.tcx, place),
                     })
                 }
                 _ => {}
@@ -3076,6 +3149,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
             }
         };
+
+        if let Some(diag) =
+            self.tcx.sess.diagnostic().steal_diagnostic(self.tcx.def_span(def_id), StashKey::Cycle)
+        {
+            diag.cancel();
+        }
+
         err
     }
 
@@ -3119,7 +3199,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut not_tupled = false;
 
         let found = match found_trait_ref.skip_binder().args.type_at(1).kind() {
-            ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
+            ty::Tuple(tys) => vec![ArgKind::empty(); tys.len()],
             _ => {
                 not_tupled = true;
                 vec![ArgKind::empty()]
@@ -3128,7 +3208,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let expected_ty = expected_trait_ref.skip_binder().args.type_at(1);
         let expected = match expected_ty.kind() {
-            ty::Tuple(ref tys) => {
+            ty::Tuple(tys) => {
                 tys.iter().map(|t| ArgKind::from_expected_ty(t, Some(span))).collect()
             }
             _ => {
@@ -3143,7 +3223,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // traits manually, but don't make it more confusing when it does
         // happen.
         Some(
-            if Some(expected_trait_ref.def_id()) != self.tcx.lang_items().gen_trait() && not_tupled
+            if Some(expected_trait_ref.def_id()) != self.tcx.lang_items().coroutine_trait()
+                && not_tupled
             {
                 self.report_and_explain_type_error(
                     TypeTrace::poly_trait_refs(

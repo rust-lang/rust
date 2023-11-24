@@ -74,8 +74,8 @@ mod tests {
             r#"
 //- minicore: iterators
 fn foo() {
-    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
-}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
+    let _m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
 "#,
         );
     }
@@ -117,7 +117,7 @@ fn foo() {
 fn foo() {
     let mut m = core::iter::repeat(())
         .filter_map(|()| Some(92));
-    let n = m.next();
+    let _n = m.next();
 }
 "#,
         );
@@ -148,22 +148,22 @@ fn foo() {
 
 fn foo() {
     #[allow(clippy::filter_map_next)]
-    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+    let _m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
 }
 
 #[deny(clippy::filter_map_next)]
 fn foo() {
-    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
-}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: replace filter_map(..).next() with find_map(..)
+    let _m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: replace filter_map(..).next() with find_map(..)
 
 fn foo() {
-    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
-}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
+    let _m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
 
 #[warn(clippy::filter_map_next)]
 fn foo() {
-    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
-}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warn: replace filter_map(..).next() with find_map(..)
+    let _m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warn: replace filter_map(..).next() with find_map(..)
 
 "#,
         );

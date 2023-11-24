@@ -58,6 +58,9 @@ attr_invalid_repr_hint_no_paren =
 attr_invalid_repr_hint_no_value =
     invalid representation hint: `{$name}` does not take a value
 
+attr_invalid_since =
+    'since' must be a Rust version number, such as "1.31.0"
+
 attr_missing_feature =
     missing 'feature'
 

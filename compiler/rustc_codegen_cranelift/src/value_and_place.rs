@@ -132,18 +132,11 @@ impl<'tcx> CValue<'tcx> {
                 (ptr.get_addr(fx), vtable)
             }
             CValueInner::ByValPair(data, vtable) => {
-                let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
-                    kind: StackSlotKind::ExplicitSlot,
-                    // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
-                    // specify stack slot alignment.
-                    size: (u32::try_from(fx.target_config.pointer_type().bytes()).unwrap() + 15)
-                        / 16
-                        * 16,
-                });
-                let data_ptr = Pointer::stack_slot(stack_slot);
-                let mut flags = MemFlags::new();
-                flags.set_notrap();
-                data_ptr.store(fx, data, flags);
+                let data_ptr = fx.create_stack_slot(
+                    u32::try_from(fx.target_config.pointer_type().bytes()).unwrap(),
+                    u32::try_from(fx.target_config.pointer_type().bytes()).unwrap(),
+                );
+                data_ptr.store(fx, data, MemFlags::trusted());
 
                 (data_ptr.get_addr(fx), vtable)
             }
@@ -250,6 +243,34 @@ impl<'tcx> CValue<'tcx> {
         let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
         let lane_layout = fx.layout_of(lane_ty);
         assert!(lane_idx < lane_count);
+
+        match self.0 {
+            CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => unreachable!(),
+            CValueInner::ByRef(ptr, None) => {
+                let field_offset = lane_layout.size * lane_idx;
+                let field_ptr = ptr.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap());
+                CValue::by_ref(field_ptr, lane_layout)
+            }
+            CValueInner::ByRef(_, Some(_)) => unreachable!(),
+        }
+    }
+
+    /// Like [`CValue::value_field`] except using the passed type as lane type instead of the one
+    /// specified by the vector type.
+    pub(crate) fn value_typed_lane(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_ty: Ty<'tcx>,
+        lane_idx: u64,
+    ) -> CValue<'tcx> {
+        let layout = self.1;
+        assert!(layout.ty.is_simd());
+        let (orig_lane_count, orig_lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert!(
+            (lane_idx + 1) * lane_layout.size <= orig_lane_count * fx.layout_of(orig_lane_ty).size
+        );
+
         match self.0 {
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => unreachable!(),
             CValueInner::ByRef(ptr, None) => {
@@ -372,13 +393,11 @@ impl<'tcx> CPlace<'tcx> {
                 .fatal(format!("values of type {} are too big to store on the stack", layout.ty));
         }
 
-        let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
-            // specify stack slot alignment.
-            size: (u32::try_from(layout.size.bytes()).unwrap() + 15) / 16 * 16,
-        });
-        CPlace { inner: CPlaceInner::Addr(Pointer::stack_slot(stack_slot), None), layout }
+        let stack_slot = fx.create_stack_slot(
+            u32::try_from(layout.size.bytes()).unwrap(),
+            u32::try_from(layout.align.pref.bytes()).unwrap(),
+        );
+        CPlace { inner: CPlaceInner::Addr(stack_slot, None), layout }
     }
 
     pub(crate) fn new_var(
@@ -543,13 +562,7 @@ impl<'tcx> CPlace<'tcx> {
                 _ if src_ty.is_vector() && dst_ty.is_vector() => codegen_bitcast(fx, dst_ty, data),
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME(bytecodealliance/wasmtime#6104) do something more efficient for transmutes between vectors and integers.
-                    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
-                        kind: StackSlotKind::ExplicitSlot,
-                        // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
-                        // specify stack slot alignment.
-                        size: (src_ty.bytes() + 15) / 16 * 16,
-                    });
-                    let ptr = Pointer::stack_slot(stack_slot);
+                    let ptr = fx.create_stack_slot(src_ty.bytes(), src_ty.bytes());
                     ptr.store(fx, data, MemFlags::trusted());
                     ptr.load(fx, dst_ty, MemFlags::trusted())
                 }
@@ -736,6 +749,34 @@ impl<'tcx> CPlace<'tcx> {
         let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
         let lane_layout = fx.layout_of(lane_ty);
         assert!(lane_idx < lane_count);
+
+        match self.inner {
+            CPlaceInner::Var(_, _) => unreachable!(),
+            CPlaceInner::VarPair(_, _, _) => unreachable!(),
+            CPlaceInner::Addr(ptr, None) => {
+                let field_offset = lane_layout.size * lane_idx;
+                let field_ptr = ptr.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap());
+                CPlace::for_ptr(field_ptr, lane_layout)
+            }
+            CPlaceInner::Addr(_, Some(_)) => unreachable!(),
+        }
+    }
+
+    /// Like [`CPlace::place_field`] except using the passed type as lane type instead of the one
+    /// specified by the vector type.
+    pub(crate) fn place_typed_lane(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_ty: Ty<'tcx>,
+        lane_idx: u64,
+    ) -> CPlace<'tcx> {
+        let layout = self.layout();
+        assert!(layout.ty.is_simd());
+        let (orig_lane_count, orig_lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert!(
+            (lane_idx + 1) * lane_layout.size <= orig_lane_count * fx.layout_of(orig_lane_ty).size
+        );
 
         match self.inner {
             CPlaceInner::Var(_, _) => unreachable!(),

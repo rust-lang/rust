@@ -3,14 +3,13 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
 #![feature(yeet_expr)]
 #![feature(try_blocks)]
@@ -508,6 +507,8 @@ pub enum StashKey {
     TraitMissingMethod,
     OpaqueHiddenTypeMismatch,
     MaybeForgetReturn,
+    /// Query cycle detected, stashing in favor of a better error.
+    Cycle,
 }
 
 fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
@@ -554,7 +555,7 @@ impl Drop for HandlerInner {
         // instead of "require some error happened". Sadly that isn't ideal, as
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
-        if !self.has_any_message() && !self.suppressed_expected_diag {
+        if !self.has_any_message() && !self.suppressed_expected_diag && !std::thread::panicking() {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
                 bugs,

@@ -59,6 +59,7 @@ o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
 o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")
 o("patch-binaries-for-nix", "build.patch-binaries-for-nix", "whether patch binaries for usage with Nix toolchains")
+o("new-symbol-mangling", "rust.new-symbol-mangling", "use symbol-mangling-version v0")
 
 v("llvm-cflags", "llvm.cflags", "build LLVM with these extra compiler flags")
 v("llvm-cxxflags", "llvm.cxxflags", "build LLVM with these extra compiler flags")
@@ -97,20 +98,7 @@ v("llvm-root", None, "set LLVM root")
 v("llvm-config", None, "set path to llvm-config")
 v("llvm-filecheck", None, "set path to LLVM's FileCheck utility")
 v("python", "build.python", "set path to python")
-v("android-cross-path", "target.arm-linux-androideabi.android-ndk",
-  "Android NDK standalone path (deprecated)")
-v("i686-linux-android-ndk", "target.i686-linux-android.android-ndk",
-  "i686-linux-android NDK standalone path")
-v("arm-linux-androideabi-ndk", "target.arm-linux-androideabi.android-ndk",
-  "arm-linux-androideabi NDK standalone path")
-v("armv7-linux-androideabi-ndk", "target.armv7-linux-androideabi.android-ndk",
-  "armv7-linux-androideabi NDK standalone path")
-v("thumbv7neon-linux-androideabi-ndk", "target.thumbv7neon-linux-androideabi.android-ndk",
-  "thumbv7neon-linux-androideabi NDK standalone path")
-v("aarch64-linux-android-ndk", "target.aarch64-linux-android.android-ndk",
-  "aarch64-linux-android NDK standalone path")
-v("x86_64-linux-android-ndk", "target.x86_64-linux-android.android-ndk",
-  "x86_64-linux-android NDK standalone path")
+v("android-ndk", "build.android-ndk", "set path to Android NDK")
 v("musl-root", "target.x86_64-unknown-linux-musl.musl-root",
   "MUSL root installation directory (deprecated)")
 v("musl-root-x86_64", "target.x86_64-unknown-linux-musl.musl-root",
@@ -265,7 +253,7 @@ def parse_args(args):
         if not found:
             unknown_args.append(arg)
 
-    # Note: here and a few other places, we use [-1] to apply the *last* value
+    # NOTE: here and a few other places, we use [-1] to apply the *last* value
     # passed.  But if option-checking is enabled, then the known_args loop will
     # also assert that options are only passed once.
     option_checking = ('option-checking' not in known_args
@@ -489,7 +477,7 @@ def configure_section(lines, config):
             # These are used by rpm, but aren't accepted by x.py.
             # Give a warning that they're ignored, but not a hard error.
             if key in ["infodir", "localstatedir"]:
-                print("warning: {} will be ignored".format(key))
+                print("WARNING: {} will be ignored".format(key))
             else:
                 raise RuntimeError("failed to find config line for {}".format(key))
 

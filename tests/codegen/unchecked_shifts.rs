@@ -2,7 +2,7 @@
 // ignore-debug (because unchecked is checked in debug)
 
 #![crate_type = "lib"]
-#![feature(unchecked_math)]
+#![feature(unchecked_shifts)]
 
 // CHECK-LABEL: @unchecked_shl_unsigned_same
 #[no_mangle]
@@ -31,7 +31,7 @@ pub unsafe fn unchecked_shl_unsigned_smaller(a: u16, b: u32) -> u16 {
 #[no_mangle]
 pub unsafe fn unchecked_shl_unsigned_bigger(a: u64, b: u32) -> u64 {
     // CHECK-NOT: assume
-    // CHECK: %[[EXT:.+]] = zext i32 %b to i64
+    // CHECK: %[[EXT:.+]] = zext{{( nneg)?}} i32 %b to i64
     // CHECK: shl i64 %a, %[[EXT]]
     a.unchecked_shl(b)
 }
@@ -63,7 +63,7 @@ pub unsafe fn unchecked_shr_signed_smaller(a: i16, b: u32) -> i16 {
 #[no_mangle]
 pub unsafe fn unchecked_shr_signed_bigger(a: i64, b: u32) -> i64 {
     // CHECK-NOT: assume
-    // CHECK: %[[EXT:.+]] = zext i32 %b to i64
+    // CHECK: %[[EXT:.+]] = zext{{( nneg)?}} i32 %b to i64
     // CHECK: ashr i64 %a, %[[EXT]]
     a.unchecked_shr(b)
 }

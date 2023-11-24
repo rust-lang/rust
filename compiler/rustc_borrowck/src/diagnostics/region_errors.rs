@@ -35,7 +35,7 @@ use crate::session_diagnostics::{
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
 
-use super::{OutlivesSuggestionBuilder, RegionName};
+use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
     nll::ConstraintDescription,
@@ -53,7 +53,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Yield => "yielding this value ",
             ConstraintCategory::UseAsConst => "using this value as a constant ",
             ConstraintCategory::UseAsStatic => "using this value as a static ",
-            ConstraintCategory::Cast => "cast ",
+            ConstraintCategory::Cast { .. } => "cast ",
             ConstraintCategory::CallArgument(_) => "argument ",
             ConstraintCategory::TypeAnnotation => "type annotation ",
             ConstraintCategory::ClosureBounds => "closure body ",
@@ -92,6 +92,12 @@ impl<'tcx> RegionErrors<'tcx> {
     }
     pub fn into_iter(self) -> impl Iterator<Item = RegionErrorKind<'tcx>> {
         self.0.into_iter()
+    }
+}
+
+impl std::fmt::Debug for RegionErrors<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("RegionErrors").field(&self.0).finish()
     }
 }
 
@@ -181,8 +187,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     /// Returns `true` if a closure is inferred to be an `FnMut` closure.
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
-        if let Some(ty::ReFree(free_region)) = self.to_error_region(fr).as_deref()
-            && let ty::BoundRegionKind::BrEnv = free_region.bound_region
+        if let Some(ty::ReLateParam(late_param)) = self.to_error_region(fr).as_deref()
+            && let ty::BoundRegionKind::BrEnv = late_param.bound_region
             && let DefiningTy::Closure(_, args) = self.regioncx.universal_regions().defining_ty
         {
             return args.as_closure().kind() == ty::ClosureKind::FnMut;
@@ -644,14 +650,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &self.upvars,
             errci.fr,
         );
         let outlived_fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &self.upvars,
             errci.outlived_fr,
@@ -757,7 +763,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let err = LifetimeOutliveErr { span: *span };
         let mut diag = self.infcx.tcx.sess.create_err(err);
 
-        let fr_name = self.give_region_a_name(*fr).unwrap();
+        // In certain scenarios, such as the one described in issue #118021,
+        // we might encounter a lifetime that cannot be named.
+        // These situations are bound to result in errors.
+        // To prevent an immediate ICE, we opt to create a dummy name instead.
+        let fr_name = self.give_region_a_name(*fr).unwrap_or(RegionName {
+            name: kw::UnderscoreLifetime,
+            source: RegionNameSource::Static,
+        });
         fr_name.highlight_region_name(&mut diag);
         let outlived_fr_name = self.give_region_a_name(*outlived_fr).unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
@@ -958,7 +971,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         for found_did in found_dids {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_ty(&self_ty);
+            hir_v.visit_ty(self_ty);
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
@@ -995,7 +1008,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .infcx
             .tcx
             .is_suitable_region(sub)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.boundregion))
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.bound_region))
         else {
             return;
         };
@@ -1004,7 +1017,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .infcx
             .tcx
             .is_suitable_region(sup)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.boundregion))
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.bound_region))
         else {
             return;
         };

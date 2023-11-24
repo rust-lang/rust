@@ -8,7 +8,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
-use rustc_hir::{AsyncCoroutineKind, CoroutineKind, LangItem};
+use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -490,7 +490,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut spans = vec![];
         for init_idx in inits {
             let init = &self.move_data.inits[*init_idx];
-            let span = init.span(&self.body);
+            let span = init.span(self.body);
             if !span.is_dummy() {
                 spans.push(span);
             }
@@ -518,7 +518,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let body = map.body(body_id);
 
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
-        visitor.visit_body(&body);
+        visitor.visit_body(body);
 
         let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
@@ -614,7 +614,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             let mut visitor = LetVisitor { decl_span, sugg_span: None };
-            visitor.visit_body(&body);
+            visitor.visit_body(body);
             if let Some(span) = visitor.sugg_span {
                 self.suggest_assign_value(&mut err, moved_place, span);
             }
@@ -779,7 +779,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         // Try to find predicates on *generic params* that would allow copying `ty`
-        let ocx = ObligationCtxt::new(&self.infcx);
+        let ocx = ObligationCtxt::new(self.infcx);
         let copy_did = tcx.require_lang_item(LangItem::Copy, Some(span));
         let cause = ObligationCause::misc(span, self.mir_def_id());
 
@@ -856,7 +856,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 &self.local_names,
                 &mut err,
                 "",
@@ -903,7 +903,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 &self.local_names,
                 &mut err,
                 "",
@@ -1022,7 +1022,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.cannot_uniquely_borrow_by_two_closures(span, &desc_place, issued_span, None)
             }
 
-            (BorrowKind::Mut { .. }, BorrowKind::Shallow) => {
+            (BorrowKind::Mut { .. }, BorrowKind::Fake) => {
                 if let Some(immutable_section_description) =
                     self.classify_immutable_section(issued_borrow.assigned_place)
                 {
@@ -1114,11 +1114,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, BorrowKind::Shared | BorrowKind::Shallow)
-            | (
-                BorrowKind::Shallow,
-                BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Shallow,
-            ) => unreachable!(),
+            (BorrowKind::Shared, BorrowKind::Shared | BorrowKind::Fake)
+            | (BorrowKind::Fake, BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake) => {
+                unreachable!()
+            }
         };
 
         if issued_spans == borrow_spans {
@@ -1175,7 +1174,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             first_borrow_desc,
@@ -1579,8 +1578,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         let sig = args.as_closure().sig();
-        let tupled_params =
-            tcx.erase_late_bound_regions(sig.inputs().iter().next().unwrap().map_bound(|&b| b));
+        let tupled_params = tcx.instantiate_bound_regions_with_erased(
+            sig.inputs().iter().next().unwrap().map_bound(|&b| b),
+        );
         let ty::Tuple(params) = tupled_params.kind() else { return };
 
         // Find the first argument with a matching type, get its name
@@ -1932,7 +1932,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let place_desc = self.describe_place(borrow.borrowed_place.as_ref());
 
         let kind_place = kind.filter(|_| place_desc.is_some()).map(|k| (k, place_span.0));
-        let explanation = self.explain_why_borrow_contains_point(location, &borrow, kind_place);
+        let explanation = self.explain_why_borrow_contains_point(location, borrow, kind_place);
 
         debug!(?place_desc, ?explanation);
 
@@ -2001,14 +2001,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             (Some(name), explanation) => self.report_local_value_does_not_live_long_enough(
                 location,
                 &name,
-                &borrow,
+                borrow,
                 drop_span,
                 borrow_spans,
                 explanation,
             ),
             (None, explanation) => self.report_temporary_value_does_not_live_long_enough(
                 location,
-                &borrow,
+                borrow,
                 drop_span,
                 borrow_spans,
                 proper_span,
@@ -2098,7 +2098,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } else {
                 explanation.add_explanation_to_diagnostic(
                     self.infcx.tcx,
-                    &self.body,
+                    self.body,
                     &self.local_names,
                     &mut err,
                     "",
@@ -2119,7 +2119,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             explanation.add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 &self.local_names,
                 &mut err,
                 "",
@@ -2180,7 +2180,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             "",
@@ -2365,7 +2365,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             "",
@@ -2491,11 +2491,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let (sugg_span, suggestion) = match tcx.sess.source_map().span_to_snippet(args_span) {
             Ok(string) => {
-                if string.starts_with("async ") {
-                    let pos = args_span.lo() + BytePos(6);
-                    (args_span.with_lo(pos).with_hi(pos), "move ")
-                } else if string.starts_with("async|") {
-                    let pos = args_span.lo() + BytePos(5);
+                let coro_prefix = if string.starts_with("async") {
+                    // `async` is 5 chars long. Not using `.len()` to avoid the cast from `usize` to `u32`
+                    Some(5)
+                } else if string.starts_with("gen") {
+                    // `gen` is 3 chars long
+                    Some(3)
+                } else {
+                    None
+                };
+                if let Some(n) = coro_prefix {
+                    let pos = args_span.lo() + BytePos(n);
                     (args_span.with_lo(pos).with_hi(pos), " move")
                 } else {
                     (args_span.shrink_to_lo(), "move ")
@@ -2505,9 +2511,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
         let kind = match use_span.coroutine_kind() {
             Some(coroutine_kind) => match coroutine_kind {
+                CoroutineKind::Gen(kind) => match kind {
+                    CoroutineSource::Block => "gen block",
+                    CoroutineSource::Closure => "gen closure",
+                    _ => bug!("gen block/closure expected, but gen function found."),
+                },
                 CoroutineKind::Async(async_kind) => match async_kind {
-                    AsyncCoroutineKind::Block => "async block",
-                    AsyncCoroutineKind::Closure => "async closure",
+                    CoroutineSource::Block => "async block",
+                    CoroutineSource::Closure => "async closure",
                     _ => bug!("async block/closure expected, but async function found."),
                 },
                 CoroutineKind::Coroutine => "coroutine",
@@ -2633,9 +2644,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         /* Check if the mpi is initialized as an argument */
         let mut is_argument = false;
         for arg in self.body.args_iter() {
-            let path = self.move_data.rev_lookup.find_local(arg);
-            if mpis.contains(&path) {
-                is_argument = true;
+            if let Some(path) = self.move_data.rev_lookup.find_local(arg) {
+                if mpis.contains(&path) {
+                    is_argument = true;
+                }
             }
         }
 
@@ -2794,7 +2806,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let descr_place = self.describe_any_place(place.as_ref());
-        if loan.kind == BorrowKind::Shallow {
+        if loan.kind == BorrowKind::Fake {
             if let Some(section) = self.classify_immutable_section(loan.assigned_place) {
                 let mut err = self.cannot_mutate_in_immutable_section(
                     span,
@@ -2830,7 +2842,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         self.explain_why_borrow_contains_point(location, loan, None).add_explanation_to_diagnostic(
             self.infcx.tcx,
-            &self.body,
+            self.body,
             &self.local_names,
             &mut err,
             "",
@@ -3008,7 +3020,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let mut visitor = FakeReadCauseFinder { place, cause: None };
-        visitor.visit_body(&self.body);
+        visitor.visit_body(self.body);
         match visitor.cause {
             Some(FakeReadCause::ForMatchGuard) => Some("match guard"),
             Some(FakeReadCause::ForIndex) => Some("indexing expression"),

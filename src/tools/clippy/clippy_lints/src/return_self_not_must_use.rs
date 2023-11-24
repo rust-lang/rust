@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// if it was added on constructors for example.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub struct Bar;
     /// impl Bar {
     ///     // Missing attribute
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # {
     /// // It's better to have the `#[must_use]` attribute on the method like this:
     /// pub struct Bar;
@@ -69,35 +69,32 @@ declare_clippy_lint! {
 declare_lint_pass!(ReturnSelfNotMustUse => [RETURN_SELF_NOT_MUST_USE]);
 
 fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, span: Span, owner_id: OwnerId) {
-    if_chain! {
+    if !in_external_macro(cx.sess(), span)
         // If it comes from an external macro, better ignore it.
-        if !in_external_macro(cx.sess(), span);
-        if decl.implicit_self.has_implicit_self();
+        && decl.implicit_self.has_implicit_self()
         // We only show this warning for public exported methods.
-        if cx.effective_visibilities.is_exported(fn_def);
+        && cx.effective_visibilities.is_exported(fn_def)
         // We don't want to emit this lint if the `#[must_use]` attribute is already there.
-        if !cx.tcx.hir().attrs(owner_id.into()).iter().any(|attr| attr.has_name(sym::must_use));
-        if cx.tcx.visibility(fn_def.to_def_id()).is_public();
-        let ret_ty = return_ty(cx, owner_id);
-        let self_arg = nth_arg(cx, owner_id, 0);
+        && !cx.tcx.hir().attrs(owner_id.into()).iter().any(|attr| attr.has_name(sym::must_use))
+        && cx.tcx.visibility(fn_def.to_def_id()).is_public()
+        && let ret_ty = return_ty(cx, owner_id)
+        && let self_arg = nth_arg(cx, owner_id, 0)
         // If `Self` has the same type as the returned type, then we want to warn.
         //
         // For this check, we don't want to remove the reference on the returned type because if
         // there is one, we shouldn't emit a warning!
-        if self_arg.peel_refs() == ret_ty;
+        && self_arg.peel_refs() == ret_ty
         // If `Self` is already marked as `#[must_use]`, no need for the attribute here.
-        if !is_must_use_ty(cx, ret_ty);
-
-        then {
-            span_lint_and_help(
-                cx,
-                RETURN_SELF_NOT_MUST_USE,
-                span,
-                "missing `#[must_use]` attribute on a method returning `Self`",
-                None,
-                "consider adding the `#[must_use]` attribute to the method or directly to the `Self` type"
-            );
-        }
+        && !is_must_use_ty(cx, ret_ty)
+    {
+        span_lint_and_help(
+            cx,
+            RETURN_SELF_NOT_MUST_USE,
+            span,
+            "missing `#[must_use]` attribute on a method returning `Self`",
+            None,
+            "consider adding the `#[must_use]` attribute to the method or directly to the `Self` type",
+        );
     }
 }
 
@@ -111,18 +108,15 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
         span: Span,
         fn_def: LocalDefId,
     ) {
-        if_chain! {
+        if matches!(kind, FnKind::Method(_, _))
             // We are only interested in methods, not in functions or associated functions.
-            if matches!(kind, FnKind::Method(_, _));
-            if let Some(impl_def) = cx.tcx.impl_of_method(fn_def.to_def_id());
+            && let Some(impl_def) = cx.tcx.impl_of_method(fn_def.to_def_id())
             // We don't want this method to be te implementation of a trait because the
             // `#[must_use]` should be put on the trait definition directly.
-            if cx.tcx.trait_id_of_impl(impl_def).is_none();
-
-            then {
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def);
-                check_method(cx, decl, fn_def, span, hir_id.expect_owner());
-            }
+            && cx.tcx.trait_id_of_impl(impl_def).is_none()
+        {
+            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def);
+            check_method(cx, decl, fn_def, span, hir_id.expect_owner());
         }
     }
 

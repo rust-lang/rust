@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_hir::{AsyncCoroutineKind, CoroutineKind, Mutability};
+use rustc_hir::{CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
@@ -216,7 +216,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(']');
             }
         }
-        ty::Dynamic(ref trait_data, ..) => {
+        ty::Dynamic(trait_data, ..) => {
             let auto_traits: SmallVec<[DefId; 4]> = trait_data.auto_traits().collect();
 
             let has_enclosing_parens = if cpp_like_debuginfo {
@@ -249,7 +249,7 @@ fn push_debuginfo_type_name<'tcx>(
                     .projection_bounds()
                     .map(|bound| {
                         let ExistentialProjection { def_id: item_def_id, term, .. } =
-                            tcx.erase_late_bound_regions(bound);
+                            tcx.instantiate_bound_regions_with_erased(bound);
                         // FIXME(associated_const_equality): allow for consts here
                         (item_def_id, term.ty().unwrap())
                     })
@@ -560,9 +560,12 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
 
 fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
     match coroutine_kind {
-        Some(CoroutineKind::Async(AsyncCoroutineKind::Block)) => "async_block",
-        Some(CoroutineKind::Async(AsyncCoroutineKind::Closure)) => "async_closure",
-        Some(CoroutineKind::Async(AsyncCoroutineKind::Fn)) => "async_fn",
+        Some(CoroutineKind::Gen(CoroutineSource::Block)) => "gen_block",
+        Some(CoroutineKind::Gen(CoroutineSource::Closure)) => "gen_closure",
+        Some(CoroutineKind::Gen(CoroutineSource::Fn)) => "gen_fn",
+        Some(CoroutineKind::Async(CoroutineSource::Block)) => "async_block",
+        Some(CoroutineKind::Async(CoroutineSource::Closure)) => "async_closure",
+        Some(CoroutineKind::Async(CoroutineSource::Fn)) => "async_fn",
         Some(CoroutineKind::Coroutine) => "coroutine",
         None => "closure",
     }

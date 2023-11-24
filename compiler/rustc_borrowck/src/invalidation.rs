@@ -34,7 +34,7 @@ pub(super) fn generate_invalidates<'tcx>(
             borrow_set,
             tcx,
             location_table,
-            body: &body,
+            body: body,
             dominators,
         };
         ig.visit_body(body);
@@ -253,8 +253,8 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         match rvalue {
             &Rvalue::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
-                    BorrowKind::Shallow => {
-                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
+                    BorrowKind::Fake => {
+                        (Shallow(Some(ArtificialField::FakeBorrow)), Read(ReadKind::Borrow(bk)))
                     }
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Mut { .. } => {
@@ -376,14 +376,14 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         // have already taken the reservation
                     }
 
-                    (Read(_), BorrowKind::Shallow | BorrowKind::Shared)
-                    | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
+                    (Read(_), BorrowKind::Fake | BorrowKind::Shared)
+                    | (Read(ReadKind::Borrow(BorrowKind::Fake)), BorrowKind::Mut { .. }) => {
                         // Reads don't invalidate shared or shallow borrows
                     }
 
                     (Read(_), BorrowKind::Mut { .. }) => {
                         // Reading from mere reservations of mutable-borrows is OK.
-                        if !is_active(&this.dominators, borrow, location) {
+                        if !is_active(this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
                             assert!(allow_two_phase_borrow(borrow.kind));
                             return Control::Continue;
@@ -422,7 +422,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Shallow => false,
+                BorrowKind::Shared | BorrowKind::Fake => false,
                 BorrowKind::Mut { .. } => true,
             });
 

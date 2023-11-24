@@ -16,7 +16,6 @@
 #![feature(const_heap)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_nonnull_new)]
-#![feature(const_pointer_byte_offsets)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_write)]
@@ -24,10 +23,12 @@
 #![feature(const_likely)]
 #![feature(const_location_fields)]
 #![feature(core_intrinsics)]
+#![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
 #![feature(div_duration)]
+#![feature(duration_abs_diff)]
 #![feature(duration_consts_float)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
@@ -87,7 +88,6 @@
 #![feature(const_waker)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(pointer_byte_offsets)]
 #![feature(pointer_is_aligned)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
@@ -111,7 +111,7 @@
 #![feature(slice_flatten)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
-#![feature(trait_upcasting)]
+#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
@@ -119,8 +119,6 @@
 #![feature(iter_map_windows)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
-
-extern crate test;
 
 mod alloc;
 mod any;
@@ -139,6 +137,7 @@ mod fmt;
 mod future;
 mod hash;
 mod intrinsics;
+mod io;
 mod iter;
 mod lazy;
 #[cfg(test)]
@@ -171,7 +170,7 @@ mod waker;
 #[allow(dead_code)] // Not used in all configurations.
 pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
     use core::hash::{BuildHasher, Hash, Hasher};
-    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    let mut hasher = std::hash::RandomState::new().build_hasher();
     core::panic::Location::caller().hash(&mut hasher);
     let hc64 = hasher.finish();
     let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();

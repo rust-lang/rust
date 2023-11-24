@@ -19,7 +19,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::HashStable;
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Integer, IntegerType, Size};
+use rustc_target::abi::{Integer, IntegerType, Primitive, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use std::{fmt, iter};
@@ -35,12 +35,14 @@ pub struct Discr<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CheckRegions {
     No,
-    /// Only permit early bound regions. This is useful for Adts which
-    /// can never have late bound regions.
-    OnlyEarlyBound,
-    /// Permit both late bound and early bound regions. Use this for functions,
-    /// which frequently have late bound regions.
-    Bound,
+    /// Only permit parameter regions. This should be used
+    /// for everything apart from functions, which may use
+    /// `ReBound` to represent late-bound regions.
+    OnlyParam,
+    /// Check region parameters from a function definition.
+    /// Allows `ReEarlyParam` and `ReBound` to handle early
+    /// and late-bound region parameters.
+    FromFunction,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -431,7 +433,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
-                        ty::ReEarlyBound(ref ebr) => {
+                        ty::ReEarlyParam(ref ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
                         }
                         // Error: not a region param
@@ -460,7 +462,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Checks whether each generic argument is simply a unique generic parameter.
     pub fn uses_unique_generic_params(
         self,
-        args: GenericArgsRef<'tcx>,
+        args: &[ty::GenericArg<'tcx>],
         ignore_regions: CheckRegions,
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
@@ -468,17 +470,17 @@ impl<'tcx> TyCtxt<'tcx> {
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
-                    (CheckRegions::Bound, ty::ReLateBound(di, reg)) => {
+                    (CheckRegions::FromFunction, ty::ReBound(di, reg)) => {
                         if !seen_late.insert((di, reg)) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, ty::ReEarlyBound(p)) => {
+                    (CheckRegions::OnlyParam | CheckRegions::FromFunction, ty::ReEarlyParam(p)) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, _) => {
+                    (CheckRegions::OnlyParam | CheckRegions::FromFunction, _) => {
                         return Err(NotUniqueParam::NotParam(lt.into()));
                     }
                     (CheckRegions::No, _) => {}
@@ -749,6 +751,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
                 rustc_hir::CoroutineKind::Async(..) => "async closure",
                 rustc_hir::CoroutineKind::Coroutine => "coroutine",
+                rustc_hir::CoroutineKind::Gen(..) => "gen closure",
             },
             _ => def_kind.descr(def_id),
         }
@@ -766,6 +769,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
                 rustc_hir::CoroutineKind::Async(..) => "an",
                 rustc_hir::CoroutineKind::Coroutine => "a",
+                rustc_hir::CoroutineKind::Gen(..) => "a",
             },
             _ => def_kind.article(),
         }
@@ -917,54 +921,62 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> Ty<'tcx> {
+    /// Returns the `Size` for primitive types (bool, uint, int, char, float).
+    pub fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
+        match *self.kind() {
+            ty::Bool => Size::from_bytes(1),
+            ty::Char => Size::from_bytes(4),
+            ty::Int(ity) => Integer::from_int_ty(&tcx, ity).size(),
+            ty::Uint(uty) => Integer::from_uint_ty(&tcx, uty).size(),
+            ty::Float(ty::FloatTy::F32) => Primitive::F32.size(&tcx),
+            ty::Float(ty::FloatTy::F64) => Primitive::F64.size(&tcx),
+            _ => bug!("non primitive type"),
+        }
+    }
+
     pub fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
-        let (int, signed) = match *self.kind() {
-            ty::Int(ity) => (Integer::from_int_ty(&tcx, ity), true),
-            ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty), false),
+        match *self.kind() {
+            ty::Int(ity) => (Integer::from_int_ty(&tcx, ity).size(), true),
+            ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty).size(), false),
             _ => bug!("non integer discriminant"),
-        };
-        (int.size(), signed)
+        }
+    }
+
+    /// Returns the minimum and maximum values for the given numeric type (including `char`s) or
+    /// returns `None` if the type is not numeric.
+    pub fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)> {
+        use rustc_apfloat::ieee::{Double, Single};
+        Some(match self.kind() {
+            ty::Int(_) | ty::Uint(_) => {
+                let (size, signed) = self.int_size_and_signed(tcx);
+                let min = if signed { size.truncate(size.signed_int_min() as u128) } else { 0 };
+                let max =
+                    if signed { size.signed_int_max() as u128 } else { size.unsigned_int_max() };
+                (min, max)
+            }
+            ty::Char => (0, std::char::MAX as u128),
+            ty::Float(ty::FloatTy::F32) => {
+                ((-Single::INFINITY).to_bits(), Single::INFINITY.to_bits())
+            }
+            ty::Float(ty::FloatTy::F64) => {
+                ((-Double::INFINITY).to_bits(), Double::INFINITY.to_bits())
+            }
+            _ => return None,
+        })
     }
 
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
-        let val = match self.kind() {
-            ty::Int(_) | ty::Uint(_) => {
-                let (size, signed) = self.int_size_and_signed(tcx);
-                let val =
-                    if signed { size.signed_int_max() as u128 } else { size.unsigned_int_max() };
-                Some(val)
-            }
-            ty::Char => Some(std::char::MAX as u128),
-            ty::Float(fty) => Some(match fty {
-                ty::FloatTy::F32 => rustc_apfloat::ieee::Single::INFINITY.to_bits(),
-                ty::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
-            }),
-            _ => None,
-        };
-
-        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        self.numeric_min_and_max_as_bits(tcx)
+            .map(|(_, max)| ty::Const::from_bits(tcx, max, ty::ParamEnv::empty().and(self)))
     }
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
-        let val = match self.kind() {
-            ty::Int(_) | ty::Uint(_) => {
-                let (size, signed) = self.int_size_and_signed(tcx);
-                let val = if signed { size.truncate(size.signed_int_min() as u128) } else { 0 };
-                Some(val)
-            }
-            ty::Char => Some(0),
-            ty::Float(fty) => Some(match fty {
-                ty::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
-                ty::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
-            }),
-            _ => None,
-        };
-
-        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        self.numeric_min_and_max_as_bits(tcx)
+            .map(|(min, _)| ty::Const::from_bits(tcx, min, ty::ParamEnv::empty().and(self)))
     }
 
     /// Checks whether values of this type `T` are *moved* or *copied*
@@ -1097,8 +1109,10 @@ impl<'tcx> Ty<'tcx> {
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 // If normalization fails, we just use `query_ty`.
-                let query_ty =
-                    tcx.try_normalize_erasing_regions(param_env, query_ty).unwrap_or(query_ty);
+                debug_assert!(!param_env.has_infer());
+                let query_ty = tcx
+                    .try_normalize_erasing_regions(param_env, query_ty)
+                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
 
                 tcx.needs_drop_raw(param_env.and(query_ty))
             }
@@ -1287,7 +1301,6 @@ pub fn needs_drop_components<'tcx>(
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Char
-        | ty::CoroutineWitness(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::Str => Ok(SmallVec::new()),
@@ -1327,7 +1340,8 @@ pub fn needs_drop_components<'tcx>(
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Closure(..)
-        | ty::Coroutine(..) => Ok(smallvec![ty]),
+        | ty::Coroutine(..)
+        | ty::CoroutineWitness(..) => Ok(smallvec![ty]),
     }
 }
 

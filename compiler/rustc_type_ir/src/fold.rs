@@ -45,11 +45,17 @@
 //! - u.fold_with(folder)
 //! ```
 
-use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
 use std::mem;
 
+use crate::Lrc;
 use crate::{visit::TypeVisitable, Interner};
+
+#[cfg(feature = "nightly")]
+type Never = !;
+
+#[cfg(not(feature = "nightly"))]
+type Never = std::convert::Infallible;
 
 /// This trait is implemented for every type that can be folded,
 /// providing the skeleton of the traversal.
@@ -79,7 +85,10 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
     /// folders. Do not override this method, to ensure coherence with
     /// `try_fold_with`.
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        self.try_fold_with(folder).into_ok()
+        match self.try_fold_with(folder) {
+            Ok(t) => t,
+            Err(e) => match e {},
+        }
     }
 }
 
@@ -100,7 +109,10 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
     /// infallible folders. Do not override this method, to ensure coherence
     /// with `try_super_fold_with`.
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        self.try_super_fold_with(folder).into_ok()
+        match self.try_super_fold_with(folder) {
+            Ok(t) => t,
+            Err(e) => match e {},
+        }
     }
 }
 
@@ -113,7 +125,7 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
 /// A blanket implementation of [`FallibleTypeFolder`] will defer to
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
-pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = !> {
+pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = Never> {
     fn interner(&self) -> I;
 
     fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
@@ -208,13 +220,13 @@ impl<I: Interner, F> FallibleTypeFolder<I> for F
 where
     F: TypeFolder<I>,
 {
-    type Error = !;
+    type Error = Never;
 
     fn interner(&self) -> I {
         TypeFolder::interner(self)
     }
 
-    fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, !>
+    fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, Never>
     where
         T: TypeFoldable<I>,
         I::Binder<T>: TypeSuperFoldable<I>,
@@ -222,25 +234,25 @@ where
         Ok(self.fold_binder(t))
     }
 
-    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, !>
+    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Never>
     where
         I::Ty: TypeSuperFoldable<I>,
     {
         Ok(self.fold_ty(t))
     }
 
-    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, !> {
+    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Never> {
         Ok(self.fold_region(r))
     }
 
-    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, !>
+    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Never>
     where
         I::Const: TypeSuperFoldable<I>,
     {
         Ok(self.fold_const(c))
     }
 
-    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, !>
+    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Never>
     where
         I::Predicate: TypeSuperFoldable<I>,
     {
@@ -311,7 +323,7 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Lrc<T> {
             // Call to `Lrc::make_mut` above guarantees that `unique` is the
             // sole reference to the contained value, so we can avoid doing
             // a checked `get_mut` here.
-            let slot = Lrc::get_mut_unchecked(&mut unique);
+            let slot = Lrc::get_mut(&mut unique).unwrap_unchecked();
 
             // Semantically move the contained type out from `unique`, fold
             // it, then move the folded value back into `unique`. Should

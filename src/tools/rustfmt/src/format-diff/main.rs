@@ -5,11 +5,12 @@
 #![deny(warnings)]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use thiserror::Error;
+use tracing_subscriber::EnvFilter;
 
 use std::collections::HashSet;
 use std::env;
@@ -63,10 +64,12 @@ pub struct Opts {
 }
 
 fn main() {
-    env_logger::Builder::from_env("RUSTFMT_LOG").init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_env("RUSTFMT_LOG"))
+        .init();
     let opts = Opts::parse();
     if let Err(e) = run(opts) {
-        println!("{}", e);
+        println!("{e}");
         Opts::command()
             .print_help()
             .expect("cannot write to stdout");
@@ -110,7 +113,7 @@ fn run_rustfmt(files: &HashSet<String>, ranges: &[Range]) -> Result<(), FormatDi
     if !exit_status.success() {
         return Err(FormatDiffError::IoError(io::Error::new(
             io::ErrorKind::Other,
-            format!("rustfmt failed with {}", exit_status),
+            format!("rustfmt failed with {exit_status}"),
         )));
     }
     Ok(())
@@ -126,12 +129,12 @@ fn scan_diff<R>(
 where
     R: io::Read,
 {
-    let diff_pattern = format!(r"^\+\+\+\s(?:.*?/){{{}}}(\S*)", skip_prefix);
+    let diff_pattern = format!(r"^\+\+\+\s(?:.*?/){{{skip_prefix}}}(\S*)");
     let diff_pattern = Regex::new(&diff_pattern).unwrap();
 
     let lines_pattern = Regex::new(r"^@@.*\+(\d+)(,(\d+))?").unwrap();
 
-    let file_filter = Regex::new(&format!("^{}$", file_filter))?;
+    let file_filter = Regex::new(&format!("^{file_filter}$"))?;
 
     let mut current_file = None;
 

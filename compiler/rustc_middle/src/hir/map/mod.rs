@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{par_for_each_in, DynSend, DynSync};
+use rustc_data_structures::sync::{par_for_each_in, try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
@@ -16,7 +16,7 @@ use rustc_index::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::spec::abi::Abi;
 
 #[inline]
@@ -531,9 +531,7 @@ impl<'hir> Map<'hir> {
     pub fn get_module(self, module: LocalModDefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = HirId::make_owner(module.to_local_def_id());
         match self.tcx.hir_owner(hir_id.owner).map(|o| o.node) {
-            Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(ref m), .. })) => {
-                (m, span, hir_id)
-            }
+            Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(m), .. })) => (m, span, hir_id),
             Some(OwnerNode::Crate(item)) => (item, item.spans.inner_span, hir_id),
             node => panic!("not a module: {node:?}"),
         }
@@ -628,6 +626,17 @@ impl<'hir> Map<'hir> {
     pub fn par_for_each_module(self, f: impl Fn(LocalModDefId) + DynSend + DynSync) {
         let crate_items = self.tcx.hir_crate_items(());
         par_for_each_in(&crate_items.submodules[..], |module| {
+            f(LocalModDefId::new_unchecked(module.def_id))
+        })
+    }
+
+    #[inline]
+    pub fn try_par_for_each_module(
+        self,
+        f: impl Fn(LocalModDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        let crate_items = self.tcx.hir_crate_items(());
+        try_par_for_each_in(&crate_items.submodules[..], |module| {
             f(LocalModDefId::new_unchecked(module.def_id))
         })
     }
@@ -1267,7 +1276,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::TyAlias(..) => "ty",
-                ItemKind::OpaqueTy(ref opaque) => {
+                ItemKind::OpaqueTy(opaque) => {
                     if opaque.in_trait {
                         "opaque type in trait"
                     } else {
@@ -1303,10 +1312,10 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
 
             format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))
         }
-        Some(Node::Variant(ref variant)) => {
+        Some(Node::Variant(variant)) => {
             format!("{id} (variant `{}` in {})", variant.ident, path_str(variant.def_id))
         }
-        Some(Node::Field(ref field)) => {
+        Some(Node::Field(field)) => {
             format!("{id} (field `{}` in {})", field.ident, path_str(field.def_id))
         }
         Some(Node::AnonConst(_)) => node_str("const"),
@@ -1330,7 +1339,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
             ctor.ctor_def_id().map_or("<missing path>".into(), |def_id| path_str(def_id)),
         ),
         Some(Node::Lifetime(_)) => node_str("lifetime"),
-        Some(Node::GenericParam(ref param)) => {
+        Some(Node::GenericParam(param)) => {
             format!("{id} (generic_param {})", path_str(param.def_id))
         }
         Some(Node::Crate(..)) => String::from("(root_crate)"),

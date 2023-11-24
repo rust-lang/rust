@@ -1,12 +1,12 @@
 // Not in interpret to make sure we do not use private implementation details
 
 use crate::errors::MaxNumNodesInConstErr;
-use crate::interpret::{intern_const_alloc_recursive, InternKind, InterpCx, Scalar};
+use crate::interpret::InterpCx;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_span::DUMMY_SP;
 
 mod error;
 mod eval_queries;
@@ -19,20 +19,6 @@ pub use eval_queries::*;
 pub use fn_queries::*;
 pub use machine::*;
 pub(crate) use valtrees::{const_to_valtree_inner, valtree_to_const_value};
-
-pub(crate) fn const_caller_location(
-    tcx: TyCtxt<'_>,
-    (file, line, col): (Symbol, u32, u32),
-) -> mir::ConstValue<'_> {
-    trace!("const_caller_location: {}:{}:{}", file, line, col);
-    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
-
-    let loc_place = ecx.alloc_caller_location(file, line, col);
-    if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
-        bug!("intern_const_alloc_recursive should not error in this case")
-    }
-    mir::ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
-}
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
 const VALTREE_MAX_NODES: usize = 100000;
@@ -86,7 +72,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
 }
 
 #[instrument(skip(tcx), level = "debug")]
-pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
+pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
@@ -113,7 +99,7 @@ pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
     let fields_iter = (0..field_count)
         .map(|i| {
             let field_op = ecx.project_field(&down, i).ok()?;
-            let val = op_to_const(&ecx, &field_op);
+            let val = op_to_const(&ecx, &field_op, /* for diagnostics */ true);
             Some((val, field_op.layout.ty))
         })
         .collect::<Option<Vec<_>>>()?;

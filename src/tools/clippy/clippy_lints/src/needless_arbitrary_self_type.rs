@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use if_chain::if_chain;
 use rustc_ast::ast::{BindingAnnotation, ByRef, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -15,7 +14,7 @@ declare_clippy_lint! {
     /// Increases the amount and decreases the readability of code
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum ValType {
     ///     I32,
     ///     I64,
@@ -35,7 +34,7 @@ declare_clippy_lint! {
     ///
     /// Could be rewritten as
     ///
-    /// ```rust
+    /// ```no_run
     /// enum ValType {
     ///     I32,
     ///     I64,
@@ -66,48 +65,46 @@ enum Mode {
 }
 
 fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mode: &Mode, mutbl: Mutability) {
-    if_chain! {
-        if let [segment] = &path.segments[..];
-        if segment.ident.name == kw::SelfUpper;
-        then {
-            // In case we have a named lifetime, we check if the name comes from expansion.
-            // If it does, at this point we know the rest of the parameter was written by the user,
-            // so let them decide what the name of the lifetime should be.
-            // See #6089 for more details.
-            let mut applicability = Applicability::MachineApplicable;
-            let self_param = match (binding_mode, mutbl) {
-                (Mode::Ref(None), Mutability::Mut) => "&mut self".to_string(),
-                (Mode::Ref(Some(lifetime)), Mutability::Mut) => {
-                    if lifetime.ident.span.from_expansion() {
-                        applicability = Applicability::HasPlaceholders;
-                        "&'_ mut self".to_string()
-                    } else {
-                        format!("&{} mut self", &lifetime.ident.name)
-                    }
-                },
-                (Mode::Ref(None), Mutability::Not) => "&self".to_string(),
-                (Mode::Ref(Some(lifetime)), Mutability::Not) => {
-                    if lifetime.ident.span.from_expansion() {
-                        applicability = Applicability::HasPlaceholders;
-                        "&'_ self".to_string()
-                    } else {
-                        format!("&{} self", &lifetime.ident.name)
-                    }
-                },
-                (Mode::Value, Mutability::Mut) => "mut self".to_string(),
-                (Mode::Value, Mutability::Not) => "self".to_string(),
-            };
+    if let [segment] = &path.segments[..]
+        && segment.ident.name == kw::SelfUpper
+    {
+        // In case we have a named lifetime, we check if the name comes from expansion.
+        // If it does, at this point we know the rest of the parameter was written by the user,
+        // so let them decide what the name of the lifetime should be.
+        // See #6089 for more details.
+        let mut applicability = Applicability::MachineApplicable;
+        let self_param = match (binding_mode, mutbl) {
+            (Mode::Ref(None), Mutability::Mut) => "&mut self".to_string(),
+            (Mode::Ref(Some(lifetime)), Mutability::Mut) => {
+                if lifetime.ident.span.from_expansion() {
+                    applicability = Applicability::HasPlaceholders;
+                    "&'_ mut self".to_string()
+                } else {
+                    format!("&{} mut self", &lifetime.ident.name)
+                }
+            },
+            (Mode::Ref(None), Mutability::Not) => "&self".to_string(),
+            (Mode::Ref(Some(lifetime)), Mutability::Not) => {
+                if lifetime.ident.span.from_expansion() {
+                    applicability = Applicability::HasPlaceholders;
+                    "&'_ self".to_string()
+                } else {
+                    format!("&{} self", &lifetime.ident.name)
+                }
+            },
+            (Mode::Value, Mutability::Mut) => "mut self".to_string(),
+            (Mode::Value, Mutability::Not) => "self".to_string(),
+        };
 
-            span_lint_and_sugg(
-                cx,
-                NEEDLESS_ARBITRARY_SELF_TYPE,
-                span,
-                "the type of the `self` parameter does not need to be arbitrary",
-                "consider to change this parameter to",
-                self_param,
-                applicability,
-            )
-        }
+        span_lint_and_sugg(
+            cx,
+            NEEDLESS_ARBITRARY_SELF_TYPE,
+            span,
+            "the type of the `self` parameter does not need to be arbitrary",
+            "consider to change this parameter to",
+            self_param,
+            applicability,
+        );
     }
 }
 
@@ -125,12 +122,10 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
                 }
             },
             TyKind::Ref(lifetime, mut_ty) => {
-                if_chain! {
-                if let TyKind::Path(None, path) = &mut_ty.ty.kind;
-                if let PatKind::Ident(BindingAnnotation::NONE, _, _) = p.pat.kind;
-                    then {
-                        check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Ref(*lifetime), mut_ty.mutbl);
-                    }
+                if let TyKind::Path(None, path) = &mut_ty.ty.kind
+                    && let PatKind::Ident(BindingAnnotation::NONE, _, _) = p.pat.kind
+                {
+                    check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Ref(*lifetime), mut_ty.mutbl);
                 }
             },
             _ => {},

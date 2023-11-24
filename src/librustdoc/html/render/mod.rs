@@ -48,13 +48,13 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
+use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
-use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_session::RustcVersion;
 use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
@@ -113,6 +113,7 @@ pub(crate) struct IndexItem {
 pub(crate) struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
+    bindings: Option<Vec<(RenderTypeId, Vec<RenderType>)>>,
 }
 
 impl Serialize for RenderType {
@@ -129,10 +130,15 @@ impl Serialize for RenderType {
             Some(RenderTypeId::Index(idx)) => *idx,
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        if let Some(generics) = &self.generics {
+        if self.generics.is_some() || self.bindings.is_some() {
             let mut seq = serializer.serialize_seq(None)?;
             seq.serialize_element(&id)?;
-            seq.serialize_element(generics)?;
+            seq.serialize_element(self.generics.as_ref().map(Vec::as_slice).unwrap_or_default())?;
+            if self.bindings.is_some() {
+                seq.serialize_element(
+                    self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default(),
+                )?;
+            }
             seq.end()
         } else {
             id.serialize(serializer)
@@ -140,11 +146,29 @@ impl Serialize for RenderType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
+    AssociatedType(Symbol),
     Index(isize),
+}
+
+impl Serialize for RenderTypeId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let id = match &self {
+            // 0 is a sentinel, everything else is one-indexed
+            // concrete type
+            RenderTypeId::Index(idx) if *idx >= 0 => idx + 1,
+            // generic type parameter
+            RenderTypeId::Index(idx) => *idx,
+            _ => panic!("must convert render types to indexes before serializing"),
+        };
+        id.serialize(serializer)
+    }
 }
 
 /// Full type of functions/methods in the search index.
@@ -171,16 +195,23 @@ impl Serialize for IndexItemFunctionType {
         } else {
             let mut seq = serializer.serialize_seq(None)?;
             match &self.inputs[..] {
-                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                [one] if one.generics.is_none() && one.bindings.is_none() => {
+                    seq.serialize_element(one)?
+                }
                 _ => seq.serialize_element(&self.inputs)?,
             }
             match &self.output[..] {
                 [] if self.where_clause.is_empty() => {}
-                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                [one] if one.generics.is_none() && one.bindings.is_none() => {
+                    seq.serialize_element(one)?
+                }
                 _ => seq.serialize_element(&self.output)?,
             }
             for constraint in &self.where_clause {
-                if let [one] = &constraint[..] && one.generics.is_none() {
+                if let [one] = &constraint[..]
+                    && one.generics.is_none()
+                    && one.bindings.is_none()
+                {
                     seq.serialize_element(one)?;
                 } else {
                     seq.serialize_element(constraint)?;
@@ -616,24 +647,22 @@ fn short_item_info(
 ) -> Vec<ShortItemInfo> {
     let mut extra_info = vec![];
 
-    if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
-        item.deprecation(cx.tcx())
-    {
+    if let Some(depr @ Deprecation { note, since, suggestion: _ }) = item.deprecation(cx.tcx()) {
         // We display deprecation messages for #[deprecated], but only display
         // the future-deprecation messages for rustc versions.
-        let mut message = if let Some(since) = since {
-            let since = since.as_str();
-            if !stability::deprecation_in_effect(&depr) {
-                if since == "TBD" {
-                    String::from("Deprecating in a future Rust version")
+        let mut message = match since {
+            DeprecatedSince::RustcVersion(version) => {
+                if depr.is_in_effect() {
+                    format!("Deprecated since {version}")
                 } else {
-                    format!("Deprecating in {}", Escape(since))
+                    format!("Deprecating in {version}")
                 }
-            } else {
-                format!("Deprecated since {}", Escape(since))
             }
-        } else {
-            String::from("Deprecated")
+            DeprecatedSince::Future => String::from("Deprecating in a future Rust version"),
+            DeprecatedSince::NonStandard(since) => {
+                format!("Deprecated since {}", Escape(since.as_str()))
+            }
+            DeprecatedSince::Unspecified | DeprecatedSince::Err => String::from("Deprecated"),
         };
 
         if let Some(note) = note {
@@ -911,13 +940,19 @@ fn assoc_method(
 /// consequence of the above rules.
 fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
-    ver: Option<Symbol>,
+    ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Symbol>,
-    containing_const_ver: Option<Symbol>,
+    containing_ver: Option<StableSince>,
+    containing_const_ver: Option<StableSince>,
     extra_class: &str,
 ) -> bool {
-    let stable_version = ver.filter(|inner| !inner.is_empty() && Some(*inner) != containing_ver);
+    let stable_version = if ver != containing_ver
+        && let Some(ver) = &ver
+    {
+        since_to_string(ver)
+    } else {
+        None
+    };
 
     let mut title = String::new();
     let mut stability = String::new();
@@ -931,7 +966,8 @@ fn render_stability_since_raw_with_extra(
         Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. })
             if Some(since) != containing_const_ver =>
         {
-            Some((format!("const since {since}"), format!("const: {since}")))
+            since_to_string(&since)
+                .map(|since| (format!("const since {since}"), format!("const: {since}")))
         }
         Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }) => {
             let unstable = if let Some(n) = issue {
@@ -971,13 +1007,21 @@ fn render_stability_since_raw_with_extra(
     !stability.is_empty()
 }
 
+fn since_to_string(since: &StableSince) -> Option<String> {
+    match since {
+        StableSince::Version(since) => Some(since.to_string()),
+        StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
+        StableSince::Err => None,
+    }
+}
+
 #[inline]
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<Symbol>,
+    ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Symbol>,
-    containing_const_ver: Option<Symbol>,
+    containing_ver: Option<StableSince>,
+    containing_const_ver: Option<StableSince>,
 ) -> bool {
     render_stability_since_raw_with_extra(
         w,
@@ -1132,13 +1176,13 @@ pub(crate) fn render_all_impls(
 fn render_assoc_items<'a, 'cx: 'a>(
     cx: &'a mut Context<'cx>,
     containing_item: &'a clean::Item,
-    did: DefId,
+    it: DefId,
     what: AssocItemRender<'a>,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     let mut derefs = DefIdSet::default();
-    derefs.insert(did);
+    derefs.insert(it);
     display_fn(move |f| {
-        render_assoc_items_inner(f, cx, containing_item, did, what, &mut derefs);
+        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs);
         Ok(())
     })
 }
@@ -1147,17 +1191,15 @@ fn render_assoc_items_inner(
     mut w: &mut dyn fmt::Write,
     cx: &mut Context<'_>,
     containing_item: &clean::Item,
-    did: DefId,
+    it: DefId,
     what: AssocItemRender<'_>,
     derefs: &mut DefIdSet,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
-    let v = shared.all_impls_for_item(containing_item, did);
-    let v = v.as_slice();
-    let (non_trait, traits): (Vec<&Impl>, _) =
-        v.iter().partition(|i| i.inner_impl().trait_.is_none());
-    let mut saw_impls = FxHashSet::default();
+    let cache = &shared.cache;
+    let Some(v) = cache.impls.get(&it) else { return };
+    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::html();
         let (render_mode, id, class_html) = match what {
@@ -1186,9 +1228,6 @@ fn render_assoc_items_inner(
         };
         let mut impls_buf = Buffer::html();
         for i in &non_trait {
-            if !saw_impls.insert(i.def_id()) {
-                continue;
-            }
             render_impl(
                 &mut impls_buf,
                 cx,
@@ -1234,10 +1273,8 @@ fn render_assoc_items_inner(
 
         let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
             traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) = concrete
-            .into_iter()
-            .filter(|t| saw_impls.insert(t.def_id()))
-            .partition(|t| t.inner_impl().kind.is_blanket());
+        let (blanket_impl, concrete): (Vec<&Impl>, _) =
+            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
         render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl);
     }

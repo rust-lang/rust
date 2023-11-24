@@ -8,8 +8,8 @@ const fn not_fn_items() {
     //~^ ERROR this argument must be a function item
     //~| ERROR this argument must be a function item
     const_eval_select((), 42, 0xDEADBEEF);
-    //~^ ERROR expected a `FnOnce<()>` closure
-    //~| ERROR expected a `FnOnce<()>` closure
+    //~^ ERROR expected a `FnOnce()` closure
+    //~| ERROR expected a `FnOnce()` closure
     //~| ERROR this argument must be a function item
     //~| ERROR this argument must be a function item
 }

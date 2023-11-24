@@ -20,11 +20,11 @@ declare_clippy_lint! {
     /// idiomatic than a string literal, so it's opt-in.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let r = r"Hello, world!";
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let r = "Hello, world!";
     /// ```
     #[clippy::version = "1.72.0"]
@@ -41,11 +41,11 @@ declare_clippy_lint! {
     /// necessary.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let r = r###"Hello, "world"!"###;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let r = r#"Hello, "world"!"#;
     /// ```
     #[clippy::version = "1.72.0"]
@@ -56,7 +56,7 @@ declare_clippy_lint! {
 impl_lint_pass!(RawStrings => [NEEDLESS_RAW_STRINGS, NEEDLESS_RAW_STRING_HASHES]);
 
 pub struct RawStrings {
-    pub needless_raw_string_hashes_allow_one: bool,
+    pub allow_one_hash_in_raw_strings: bool,
 }
 
 impl EarlyLintPass for RawStrings {

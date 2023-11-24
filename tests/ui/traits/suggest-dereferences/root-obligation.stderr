@@ -1,8 +1,8 @@
-error[E0277]: expected a `Fn<(char,)>` closure, found `char`
+error[E0277]: expected a `Fn(char)` closure, found `char`
   --> $DIR/root-obligation.rs:6:38
    |
 LL |         .filter(|c| "aeiou".contains(c))
-   |                             -------- ^ expected an `Fn<(char,)>` closure, found `char`
+   |                             -------- ^ expected an `Fn(char)` closure, found `char`
    |                             |
    |                             required by a bound introduced by this call
    |

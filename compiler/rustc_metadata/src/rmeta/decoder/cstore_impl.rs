@@ -346,7 +346,7 @@ provide! { tcx, def_id, other, cdata,
     module_children => {
         tcx.arena.alloc_from_iter(cdata.get_module_children(def_id.index, tcx.sess))
     }
-    defined_lib_features => { cdata.get_lib_features(tcx) }
+    lib_features => { cdata.get_lib_features() }
     stability_implications => {
         cdata.get_stability_implications(tcx).iter().copied().collect()
     }
@@ -394,7 +394,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
-                .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
+                .filter(|lib| native_libs::relevant_lib(tcx.sess, lib))
                 .find(|lib| {
                     let Some(fm_id) = lib.foreign_module else {
                         return false;

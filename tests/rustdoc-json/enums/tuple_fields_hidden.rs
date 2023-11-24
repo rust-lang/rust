@@ -1,6 +1,3 @@
-#![feature(no_core)]
-#![no_core]
-
 // @set 1.1.0 = "$.index[*][?(@.docs=='1.1.0')].id"
 // @set 2.1.0 = "$.index[*][?(@.docs=='2.1.0')].id"
 // @set 2.1.1 = "$.index[*][?(@.docs=='2.1.1')].id"

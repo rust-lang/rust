@@ -305,7 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) = (parent_node, callee_node)
         {
             let fn_decl_span = if hir.body(body).coroutine_kind
-                == Some(hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Closure))
+                == Some(hir::CoroutineKind::Async(hir::CoroutineSource::Closure))
             {
                 // Actually need to unwrap one more layer of HIR to get to
                 // the _real_ closure...
@@ -625,12 +625,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
+        if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = callee_expr.kind
+            && let Res::Local(_) = path.res
+            && let [segment] = &path.segments[..]
+        {
+            for id in self.tcx.hir().items() {
+                if let Some(node) = self.tcx.hir().get_if_local(id.owner_id.into())
+                    && let hir::Node::Item(item) = node
+                    && let hir::ItemKind::Fn(..) = item.kind
+                    && item.ident.name == segment.ident.name
+                {
+                    err.span_label(
+                        self.tcx.def_span(id.owner_id),
+                        "this function of the same name is available here, but it's shadowed by \
+                         the local binding",
+                    );
+                }
+            }
+        }
+
         let mut inner_callee_path = None;
         let def = match callee_expr.kind {
             hir::ExprKind::Path(ref qpath) => {
                 self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
             }
-            hir::ExprKind::Call(ref inner_callee, _) => {
+            hir::ExprKind::Call(inner_callee, _) => {
                 if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
                     inner_callee_path = Some(inner_qpath);
                     self.typeck_results.borrow().qpath_res(inner_qpath, inner_callee.hir_id)

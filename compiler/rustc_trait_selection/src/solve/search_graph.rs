@@ -6,7 +6,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
 use rustc_middle::dep_graph::dep_kinds;
-use rustc_middle::traits::solve::inspect::CacheHit;
 use rustc_middle::traits::solve::CacheData;
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, EvaluationCache, QueryResult};
 use rustc_middle::ty::TyCtxt;
@@ -14,6 +13,7 @@ use rustc_session::Limit;
 use std::collections::hash_map::Entry;
 
 rustc_index::newtype_index! {
+    #[orderable]
     pub struct StackDepth {}
 }
 
@@ -111,39 +111,6 @@ impl<'tcx> SearchGraph<'tcx> {
         self.stack.is_empty()
     }
 
-    /// Whether we're currently in a cycle. This should only be used
-    /// for debug assertions.
-    pub(super) fn in_cycle(&self) -> bool {
-        if let Some(stack_depth) = self.stack.last_index() {
-            // Either the current goal on the stack is the root of a cycle
-            // or it depends on a goal with a lower depth.
-            self.stack[stack_depth].has_been_used
-                || self.stack[stack_depth].cycle_root_depth != stack_depth
-        } else {
-            false
-        }
-    }
-
-    /// Fetches whether the current goal encountered overflow.
-    ///
-    /// This should only be used for the check in `evaluate_goal`.
-    pub(super) fn encountered_overflow(&self) -> bool {
-        if let Some(last) = self.stack.raw.last() { last.encountered_overflow } else { false }
-    }
-
-    /// Resets `encountered_overflow` of the current goal.
-    ///
-    /// This should only be used for the check in `evaluate_goal`.
-    pub(super) fn reset_encountered_overflow(&mut self, encountered_overflow: bool) -> bool {
-        if let Some(last) = self.stack.raw.last_mut() {
-            let prev = last.encountered_overflow;
-            last.encountered_overflow = encountered_overflow;
-            prev
-        } else {
-            false
-        }
-    }
-
     /// Returns the remaining depth allowed for nested goals.
     ///
     /// This is generally simply one less than the current depth.
@@ -191,8 +158,8 @@ impl<'tcx> SearchGraph<'tcx> {
         };
 
         // Try to fetch the goal from the global cache.
-        if inspect.use_global_cache() {
-            if let Some(CacheData { result, reached_depth, encountered_overflow }) =
+        'global: {
+            let Some(CacheData { result, proof_tree, reached_depth, encountered_overflow }) =
                 self.global_cache(tcx).get(
                     tcx,
                     input,
@@ -201,13 +168,26 @@ impl<'tcx> SearchGraph<'tcx> {
                     },
                     available_depth,
                 )
-            {
-                inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::CacheHit(
-                    CacheHit::Global,
-                ));
-                self.on_cache_hit(reached_depth, encountered_overflow);
-                return result;
+            else {
+                break 'global;
+            };
+
+            // If we're building a proof tree and the current cache entry does not
+            // contain a proof tree, we do not use the entry but instead recompute
+            // the goal. We simply overwrite the existing entry once we're done,
+            // caching the proof tree.
+            if !inspect.is_noop() {
+                if let Some(revisions) = proof_tree {
+                    inspect.goal_evaluation_kind(
+                        inspect::WipCanonicalGoalEvaluationKind::Interned { revisions },
+                    );
+                } else {
+                    break 'global;
+                }
             }
+
+            self.on_cache_hit(reached_depth, encountered_overflow);
+            return result;
         }
 
         // Check whether we're in a cycle.
@@ -238,9 +218,7 @@ impl<'tcx> SearchGraph<'tcx> {
             // Finally we can return either the provisional response for that goal if we have a
             // coinductive cycle or an ambiguous result if the cycle is inductive.
             Entry::Occupied(entry) => {
-                inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::CacheHit(
-                    CacheHit::Provisional,
-                ));
+                inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::CycleInStack);
 
                 let stack_depth = *entry.get();
                 debug!("encountered cycle with depth {stack_depth:?}");
@@ -329,6 +307,8 @@ impl<'tcx> SearchGraph<'tcx> {
                 (current_entry, result)
             });
 
+        let proof_tree = inspect.finalize_evaluation(tcx);
+
         // We're now done with this goal. In case this goal is involved in a larger cycle
         // do not remove it from the provisional cache and update its provisional result.
         // We only add the root of cycles to the global cache.
@@ -346,7 +326,9 @@ impl<'tcx> SearchGraph<'tcx> {
             // more details.
             let reached_depth = final_entry.reached_depth.as_usize() - self.stack.len();
             self.global_cache(tcx).insert(
+                tcx,
                 input,
+                proof_tree,
                 reached_depth,
                 final_entry.encountered_overflow,
                 final_entry.cycle_participants,

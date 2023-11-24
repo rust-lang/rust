@@ -32,6 +32,9 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
+    // We don't use the stage in this shim, but let's parse it to make sure that we're invoked
+    // by bootstrap, or that we provide a helpful error message if not.
+    bin_helpers::parse_rustc_stage();
     let verbose = bin_helpers::parse_rustc_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
@@ -111,7 +114,7 @@ fn main() {
         {
             cmd.arg("-Ztls-model=initial-exec");
         }
-    } else {
+    } else if std::env::var("MIRI").is_err() {
         // Find any host flags that were passed by bootstrap.
         // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
         if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
@@ -123,6 +126,13 @@ fn main() {
 
     if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
         cmd.arg("--remap-path-prefix").arg(&map);
+    }
+    // The remap flags for Cargo registry sources need to be passed after the remapping for the
+    // Rust source code directory, to handle cases when $CARGO_HOME is inside the source directory.
+    if let Ok(maps) = env::var("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP") {
+        for map in maps.split('\t') {
+            cmd.arg("--remap-path-prefix").arg(map);
+        }
     }
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
@@ -235,7 +245,7 @@ fn main() {
 
     if status.success() {
         std::process::exit(0);
-        // note: everything below here is unreachable. do not put code that
+        // NOTE: everything below here is unreachable. do not put code that
         // should run on success, after this block.
     }
     if verbose > 0 {
@@ -293,10 +303,9 @@ fn format_rusage_data(child: Child) -> Option<String> {
             &mut user_filetime,
         )
     }
-    .ok()
     .ok()?;
-    unsafe { FileTimeToSystemTime(&user_filetime, &mut user_time) }.ok().ok()?;
-    unsafe { FileTimeToSystemTime(&kernel_filetime, &mut kernel_time) }.ok().ok()?;
+    unsafe { FileTimeToSystemTime(&user_filetime, &mut user_time) }.ok()?;
+    unsafe { FileTimeToSystemTime(&kernel_filetime, &mut kernel_time) }.ok()?;
 
     // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
     // with the given handle and none of that process's children.

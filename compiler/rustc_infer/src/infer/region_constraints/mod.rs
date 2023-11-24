@@ -16,7 +16,7 @@ use rustc_index::IndexVec;
 use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ReLateBound, ReVar};
+use rustc_middle::ty::{ReBound, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 
@@ -147,6 +147,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
+    Placeholder(ty::PlaceholderType),
     Alias(ty::AliasTy<'tcx>),
 }
 
@@ -316,7 +317,7 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
         match undo_entry {
             AddVar(vid) => {
                 self.var_infos.pop().unwrap();
-                assert_eq!(self.var_infos.len(), vid.index() as usize);
+                assert_eq!(self.var_infos.len(), vid.index());
             }
             AddConstraint(ref constraint) => {
                 self.data.constraints.remove(constraint);
@@ -531,7 +532,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         debug!("origin = {:#?}", origin);
 
         match (*sub, *sup) {
-            (ReLateBound(..), _) | (_, ReLateBound(..)) => {
+            (ReBound(..), _) | (_, ReBound(..)) => {
                 span_bug!(origin.span(), "cannot relate bound region: {:?} <= {:?}", sub, sup);
             }
             (_, ReStatic) => {
@@ -662,12 +663,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         match *region {
             ty::ReStatic
             | ty::ReErased
-            | ty::ReFree(..)
-            | ty::ReEarlyBound(..)
+            | ty::ReLateParam(..)
+            | ty::ReEarlyParam(..)
             | ty::ReError(_) => ty::UniverseIndex::ROOT,
             ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReVar(vid) => self.var_universe(vid),
-            ty::ReLateBound(..) => bug!("universe(): encountered bound region {:?}", region),
+            ty::ReBound(..) => bug!("universe(): encountered bound region {:?}", region),
         }
     }
 
@@ -707,6 +708,7 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{p:?}"),
+            GenericKind::Placeholder(ref p) => write!(f, "{p:?}"),
             GenericKind::Alias(ref p) => write!(f, "{p:?}"),
         }
     }
@@ -716,6 +718,7 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{p}"),
+            GenericKind::Placeholder(ref p) => write!(f, "{p:?}"),
             GenericKind::Alias(ref p) => write!(f, "{p}"),
         }
     }
@@ -725,6 +728,7 @@ impl<'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
+            GenericKind::Placeholder(ref p) => Ty::new_placeholder(tcx, *p),
             GenericKind::Alias(ref p) => p.to_ty(tcx),
         }
     }

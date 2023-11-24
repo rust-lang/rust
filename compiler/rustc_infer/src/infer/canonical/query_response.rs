@@ -460,7 +460,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
                 GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let ty::ReLateBound(debruijn, br) = *result_value {
+                    if let ty::ReBound(debruijn, br) = *result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
@@ -552,7 +552,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // `query_response.var_values` after applying the substitution
         // `result_subst`.
         let substituted_query_response = |index: BoundVar| -> GenericArg<'tcx> {
-            query_response.substitute_projected(self.tcx, &result_subst, |v| v.var_values[index])
+            query_response.substitute_projected(self.tcx, result_subst, |v| v.var_values[index])
         };
 
         // Unify the original value for each variable with the value

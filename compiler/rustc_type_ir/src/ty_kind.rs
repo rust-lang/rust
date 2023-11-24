@@ -1,24 +1,20 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
+#[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+#[cfg(feature = "nightly")]
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
-use rustc_serialize::{Decodable, Decoder, Encodable};
-use std::cmp::Ordering;
-use std::mem::discriminant;
-use std::{fmt, hash};
+use std::fmt;
 
-use crate::HashStableContext;
 use crate::Interner;
-use crate::TyDecoder;
-use crate::TyEncoder;
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, OptWithInfcx};
+use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
 use self::TyKind::*;
 
 /// The movability of a coroutine / closure literal:
 /// whether a coroutine contains self-references, causing it to be `!Unpin`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, Debug, Copy)]
-#[derive(HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -27,7 +23,7 @@ pub enum Movability {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum Mutability {
     // N.B. Order is deliberate, so that Not < Mut
     Not,
@@ -79,7 +75,7 @@ impl Mutability {
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum DynKind {
     /// An unsized `dyn Trait` object
     Dyn,
@@ -93,7 +89,7 @@ pub enum DynKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum AliasKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
@@ -113,7 +109,17 @@ pub enum AliasKind {
 ///
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
-#[rustc_diagnostic_item = "IrTyKind"]
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    PartialOrd(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    Ord(bound = ""),
+    Ord = "feature_allow_slow_enum",
+    Hash(bound = "")
+)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -210,7 +216,6 @@ pub enum TyKind<I: Interner> {
     /// the type of the coroutine, we convert them to higher ranked
     /// lifetimes bound by the witness itself.
     ///
-    /// This variant is only using when `drop_tracking_mir` is set.
     /// This contains the `DefId` and the `GenericArgsRef` of the coroutine.
     /// The actual witness types are computed on MIR by the `mir_coroutine_witnesses` query.
     ///
@@ -276,7 +281,7 @@ pub enum TyKind<I: Interner> {
     /// correctly deal with higher ranked types. Though unlike placeholders,
     /// that universe is stored in the `InferCtxt` instead of directly
     /// inside of the type.
-    Infer(I::InferTy),
+    Infer(InferTy),
 
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
@@ -321,40 +326,6 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Placeholder(_) => 23,
         Infer(_) => 24,
         Error(_) => 25,
-    }
-}
-
-// This is manually implemented because a derive would require `I: Clone`
-impl<I: Interner> Clone for TyKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Bool => Bool,
-            Char => Char,
-            Int(i) => Int(*i),
-            Uint(u) => Uint(*u),
-            Float(f) => Float(*f),
-            Adt(d, s) => Adt(d.clone(), s.clone()),
-            Foreign(d) => Foreign(d.clone()),
-            Str => Str,
-            Array(t, c) => Array(t.clone(), c.clone()),
-            Slice(t) => Slice(t.clone()),
-            RawPtr(p) => RawPtr(p.clone()),
-            Ref(r, t, m) => Ref(r.clone(), t.clone(), m.clone()),
-            FnDef(d, s) => FnDef(d.clone(), s.clone()),
-            FnPtr(s) => FnPtr(s.clone()),
-            Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), *repr),
-            Closure(d, s) => Closure(d.clone(), s.clone()),
-            Coroutine(d, s, m) => Coroutine(d.clone(), s.clone(), m.clone()),
-            CoroutineWitness(d, s) => CoroutineWitness(d.clone(), s.clone()),
-            Never => Never,
-            Tuple(t) => Tuple(t.clone()),
-            Alias(k, p) => Alias(*k, p.clone()),
-            Param(p) => Param(p.clone()),
-            Bound(d, b) => Bound(*d, b.clone()),
-            Placeholder(p) => Placeholder(p.clone()),
-            Infer(t) => Infer(t.clone()),
-            Error(e) => Error(e.clone()),
-        }
     }
 }
 
@@ -410,132 +381,9 @@ impl<I: Interner> PartialEq for TyKind<I> {
 // This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for TyKind<I> {}
 
-// This is manually implemented because a derive would require `I: PartialOrd`
-impl<I: Interner> PartialOrd for TyKind<I> {
-    #[inline]
-    fn partial_cmp(&self, other: &TyKind<I>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// This is manually implemented because a derive would require `I: Ord`
-impl<I: Interner> Ord for TyKind<I> {
-    #[inline]
-    fn cmp(&self, other: &TyKind<I>) -> Ordering {
-        tykind_discriminant(self).cmp(&tykind_discriminant(other)).then_with(|| {
-            match (self, other) {
-                (Int(a_i), Int(b_i)) => a_i.cmp(b_i),
-                (Uint(a_u), Uint(b_u)) => a_u.cmp(b_u),
-                (Float(a_f), Float(b_f)) => a_f.cmp(b_f),
-                (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
-                (Foreign(a_d), Foreign(b_d)) => a_d.cmp(b_d),
-                (Array(a_t, a_c), Array(b_t, b_c)) => a_t.cmp(b_t).then_with(|| a_c.cmp(b_c)),
-                (Slice(a_t), Slice(b_t)) => a_t.cmp(b_t),
-                (RawPtr(a_t), RawPtr(b_t)) => a_t.cmp(b_t),
-                (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => {
-                    a_r.cmp(b_r).then_with(|| a_t.cmp(b_t).then_with(|| a_m.cmp(b_m)))
-                }
-                (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
-                (FnPtr(a_s), FnPtr(b_s)) => a_s.cmp(b_s),
-                (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                    a_p.cmp(b_p).then_with(|| a_r.cmp(b_r).then_with(|| a_repr.cmp(b_repr)))
-                }
-                (Closure(a_p, a_s), Closure(b_p, b_s)) => a_p.cmp(b_p).then_with(|| a_s.cmp(b_s)),
-                (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
-                    a_d.cmp(b_d).then_with(|| a_s.cmp(b_s).then_with(|| a_m.cmp(b_m)))
-                }
-                (
-                    CoroutineWitness(a_d, a_s),
-                    CoroutineWitness(b_d, b_s),
-                ) => match Ord::cmp(a_d, b_d) {
-                    Ordering::Equal => Ord::cmp(a_s, b_s),
-                    cmp => cmp,
-                },
-                (Tuple(a_t), Tuple(b_t)) => a_t.cmp(b_t),
-                (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| a_p.cmp(b_p)),
-                (Param(a_p), Param(b_p)) => a_p.cmp(b_p),
-                (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d.cmp(b_d).then_with(|| a_b.cmp(b_b)),
-                (Placeholder(a_p), Placeholder(b_p)) => a_p.cmp(b_p),
-                (Infer(a_t), Infer(b_t)) => a_t.cmp(b_t),
-                (Error(a_e), Error(b_e)) => a_e.cmp(b_e),
-                (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => Ordering::Equal,
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            }
-        })
-    }
-}
-
-// This is manually implemented because a derive would require `I: Hash`
-impl<I: Interner> hash::Hash for TyKind<I> {
-    fn hash<__H: hash::Hasher>(&self, state: &mut __H) -> () {
-        tykind_discriminant(self).hash(state);
-        match self {
-            Int(i) => i.hash(state),
-            Uint(u) => u.hash(state),
-            Float(f) => f.hash(state),
-            Adt(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            Foreign(d) => d.hash(state),
-            Array(t, c) => {
-                t.hash(state);
-                c.hash(state)
-            }
-            Slice(t) => t.hash(state),
-            RawPtr(t) => t.hash(state),
-            Ref(r, t, m) => {
-                r.hash(state);
-                t.hash(state);
-                m.hash(state)
-            }
-            FnDef(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            FnPtr(s) => s.hash(state),
-            Dynamic(p, r, repr) => {
-                p.hash(state);
-                r.hash(state);
-                repr.hash(state)
-            }
-            Closure(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            Coroutine(d, s, m) => {
-                d.hash(state);
-                s.hash(state);
-                m.hash(state)
-            }
-            CoroutineWitness(d, s) => {
-                d.hash(state);
-                s.hash(state);
-            }
-            Tuple(t) => t.hash(state),
-            Alias(i, p) => {
-                i.hash(state);
-                p.hash(state);
-            }
-            Param(p) => p.hash(state),
-            Bound(d, b) => {
-                d.hash(state);
-                b.hash(state)
-            }
-            Placeholder(p) => p.hash(state),
-            Infer(t) => t.hash(state),
-            Error(e) => e.hash(state),
-            Bool | Char | Str | Never => (),
-        }
-    }
-}
-
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> fmt::Result {
         match this.data {
@@ -559,7 +407,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
 
                 write!(f, ">")
             }
-            Foreign(d) => f.debug_tuple_field1_finish("Foreign", d),
+            Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
@@ -575,7 +423,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 Mutability::Mut => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
                 Mutability::Not => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
             },
-            FnDef(d, s) => f.debug_tuple_field2_finish("FnDef", d, &this.wrap(s)),
+            FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&this.wrap(s)).finish(),
             FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
             Dynamic(p, r, repr) => match repr {
                 DynKind::Dyn => write!(f, "dyn {:?} + {:?}", &this.wrap(p), &this.wrap(r)),
@@ -583,10 +431,12 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                     write!(f, "dyn* {:?} + {:?}", &this.wrap(p), &this.wrap(r))
                 }
             },
-            Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, &this.wrap(s)),
-            Coroutine(d, s, m) => f.debug_tuple_field3_finish("Coroutine", d, &this.wrap(s), m),
+            Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
+            Coroutine(d, s, m) => {
+                f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).field(m).finish()
+            }
             CoroutineWitness(d, s) => {
-                f.debug_tuple_field2_finish("CoroutineWitness", d, &this.wrap(s))
+                f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()
             }
             Never => write!(f, "!"),
             Tuple(t) => {
@@ -605,7 +455,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
                 write!(f, ")")
             }
-            Alias(i, a) => f.debug_tuple_field2_finish("Alias", i, &this.wrap(a)),
+            Alias(i, a) => f.debug_tuple("Alias").field(i).field(&this.wrap(a)).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
@@ -614,305 +464,16 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
         }
     }
 }
+
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        OptWithInfcx::new_no_ctx(self).fmt(f)
-    }
-}
-
-// This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
-where
-    I::ErrorGuaranteed: Encodable<E>,
-    I::AdtDef: Encodable<E>,
-    I::GenericArgs: Encodable<E>,
-    I::DefId: Encodable<E>,
-    I::Ty: Encodable<E>,
-    I::Const: Encodable<E>,
-    I::Region: Encodable<E>,
-    I::TypeAndMut: Encodable<E>,
-    I::PolyFnSig: Encodable<E>,
-    I::BoundExistentialPredicates: Encodable<E>,
-    I::Tys: Encodable<E>,
-    I::AliasTy: Encodable<E>,
-    I::ParamTy: Encodable<E>,
-    I::BoundTy: Encodable<E>,
-    I::PlaceholderTy: Encodable<E>,
-    I::InferTy: Encodable<E>,
-    I::PredicateKind: Encodable<E>,
-    I::AllocId: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = tykind_discriminant(self);
-        match self {
-            Bool => e.emit_enum_variant(disc, |_| {}),
-            Char => e.emit_enum_variant(disc, |_| {}),
-            Int(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e);
-            }),
-            Uint(u) => e.emit_enum_variant(disc, |e| {
-                u.encode(e);
-            }),
-            Float(f) => e.emit_enum_variant(disc, |e| {
-                f.encode(e);
-            }),
-            Adt(adt, args) => e.emit_enum_variant(disc, |e| {
-                adt.encode(e);
-                args.encode(e);
-            }),
-            Foreign(def_id) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-            }),
-            Str => e.emit_enum_variant(disc, |_| {}),
-            Array(t, c) => e.emit_enum_variant(disc, |e| {
-                t.encode(e);
-                c.encode(e);
-            }),
-            Slice(t) => e.emit_enum_variant(disc, |e| {
-                t.encode(e);
-            }),
-            RawPtr(tam) => e.emit_enum_variant(disc, |e| {
-                tam.encode(e);
-            }),
-            Ref(r, t, m) => e.emit_enum_variant(disc, |e| {
-                r.encode(e);
-                t.encode(e);
-                m.encode(e);
-            }),
-            FnDef(def_id, args) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-            }),
-            FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
-                polyfnsig.encode(e);
-            }),
-            Dynamic(l, r, repr) => e.emit_enum_variant(disc, |e| {
-                l.encode(e);
-                r.encode(e);
-                repr.encode(e);
-            }),
-            Closure(def_id, args) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-            }),
-            Coroutine(def_id, args, m) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-                m.encode(e);
-            }),
-            CoroutineWitness(def_id, args) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-            }),
-            Never => e.emit_enum_variant(disc, |_| {}),
-            Tuple(args) => e.emit_enum_variant(disc, |e| {
-                args.encode(e);
-            }),
-            Alias(k, p) => e.emit_enum_variant(disc, |e| {
-                k.encode(e);
-                p.encode(e);
-            }),
-            Param(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e);
-            }),
-            Bound(d, b) => e.emit_enum_variant(disc, |e| {
-                d.encode(e);
-                b.encode(e);
-            }),
-            Placeholder(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e);
-            }),
-            Infer(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e);
-            }),
-            Error(d) => e.emit_enum_variant(disc, |e| {
-                d.encode(e);
-            }),
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Decodable`
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for TyKind<I>
-where
-    I::ErrorGuaranteed: Decodable<D>,
-    I::AdtDef: Decodable<D>,
-    I::GenericArgs: Decodable<D>,
-    I::DefId: Decodable<D>,
-    I::Ty: Decodable<D>,
-    I::Const: Decodable<D>,
-    I::Region: Decodable<D>,
-    I::TypeAndMut: Decodable<D>,
-    I::PolyFnSig: Decodable<D>,
-    I::BoundExistentialPredicates: Decodable<D>,
-    I::Tys: Decodable<D>,
-    I::AliasTy: Decodable<D>,
-    I::ParamTy: Decodable<D>,
-    I::AliasTy: Decodable<D>,
-    I::BoundTy: Decodable<D>,
-    I::PlaceholderTy: Decodable<D>,
-    I::InferTy: Decodable<D>,
-    I::PredicateKind: Decodable<D>,
-    I::AllocId: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => Bool,
-            1 => Char,
-            2 => Int(Decodable::decode(d)),
-            3 => Uint(Decodable::decode(d)),
-            4 => Float(Decodable::decode(d)),
-            5 => Adt(Decodable::decode(d), Decodable::decode(d)),
-            6 => Foreign(Decodable::decode(d)),
-            7 => Str,
-            8 => Array(Decodable::decode(d), Decodable::decode(d)),
-            9 => Slice(Decodable::decode(d)),
-            10 => RawPtr(Decodable::decode(d)),
-            11 => Ref(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            12 => FnDef(Decodable::decode(d), Decodable::decode(d)),
-            13 => FnPtr(Decodable::decode(d)),
-            14 => Dynamic(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            15 => Closure(Decodable::decode(d), Decodable::decode(d)),
-            16 => Coroutine(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            17 => CoroutineWitness(Decodable::decode(d), Decodable::decode(d)),
-            18 => Never,
-            19 => Tuple(Decodable::decode(d)),
-            20 => Alias(Decodable::decode(d), Decodable::decode(d)),
-            21 => Param(Decodable::decode(d)),
-            22 => Bound(Decodable::decode(d), Decodable::decode(d)),
-            23 => Placeholder(Decodable::decode(d)),
-            24 => Infer(Decodable::decode(d)),
-            25 => Error(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "TyKind", 26,
-                )
-            ),
-        }
-    }
-}
-
-// This is not a derived impl because a derive would require `I: HashStable`
-#[allow(rustc::usage_of_ty_tykind)]
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
-where
-    I::AdtDef: HashStable<CTX>,
-    I::DefId: HashStable<CTX>,
-    I::GenericArgs: HashStable<CTX>,
-    I::Ty: HashStable<CTX>,
-    I::Const: HashStable<CTX>,
-    I::TypeAndMut: HashStable<CTX>,
-    I::PolyFnSig: HashStable<CTX>,
-    I::BoundExistentialPredicates: HashStable<CTX>,
-    I::Region: HashStable<CTX>,
-    I::Tys: HashStable<CTX>,
-    I::AliasTy: HashStable<CTX>,
-    I::BoundTy: HashStable<CTX>,
-    I::ParamTy: HashStable<CTX>,
-    I::PlaceholderTy: HashStable<CTX>,
-    I::InferTy: HashStable<CTX>,
-    I::ErrorGuaranteed: HashStable<CTX>,
-{
-    #[inline]
-    fn hash_stable(
-        &self,
-        __hcx: &mut CTX,
-        __hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
-    ) {
-        std::mem::discriminant(self).hash_stable(__hcx, __hasher);
-        match self {
-            Bool => {}
-            Char => {}
-            Int(i) => {
-                i.hash_stable(__hcx, __hasher);
-            }
-            Uint(u) => {
-                u.hash_stable(__hcx, __hasher);
-            }
-            Float(f) => {
-                f.hash_stable(__hcx, __hasher);
-            }
-            Adt(adt, args) => {
-                adt.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            Foreign(def_id) => {
-                def_id.hash_stable(__hcx, __hasher);
-            }
-            Str => {}
-            Array(t, c) => {
-                t.hash_stable(__hcx, __hasher);
-                c.hash_stable(__hcx, __hasher);
-            }
-            Slice(t) => {
-                t.hash_stable(__hcx, __hasher);
-            }
-            RawPtr(tam) => {
-                tam.hash_stable(__hcx, __hasher);
-            }
-            Ref(r, t, m) => {
-                r.hash_stable(__hcx, __hasher);
-                t.hash_stable(__hcx, __hasher);
-                m.hash_stable(__hcx, __hasher);
-            }
-            FnDef(def_id, args) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            FnPtr(polyfnsig) => {
-                polyfnsig.hash_stable(__hcx, __hasher);
-            }
-            Dynamic(l, r, repr) => {
-                l.hash_stable(__hcx, __hasher);
-                r.hash_stable(__hcx, __hasher);
-                repr.hash_stable(__hcx, __hasher);
-            }
-            Closure(def_id, args) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            Coroutine(def_id, args, m) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-                m.hash_stable(__hcx, __hasher);
-            }
-            CoroutineWitness(def_id, args) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            Never => {}
-            Tuple(args) => {
-                args.hash_stable(__hcx, __hasher);
-            }
-            Alias(k, p) => {
-                k.hash_stable(__hcx, __hasher);
-                p.hash_stable(__hcx, __hasher);
-            }
-            Param(p) => {
-                p.hash_stable(__hcx, __hasher);
-            }
-            Bound(d, b) => {
-                d.hash_stable(__hcx, __hasher);
-                b.hash_stable(__hcx, __hasher);
-            }
-            Placeholder(p) => {
-                p.hash_stable(__hcx, __hasher);
-            }
-            Infer(i) => {
-                i.hash_stable(__hcx, __hasher);
-            }
-            Error(d) => {
-                d.hash_stable(__hcx, __hasher);
-            }
-        }
+        WithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum IntTy {
     Isize,
     I8,
@@ -970,7 +531,7 @@ impl IntTy {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum UintTy {
     Usize,
     U8,
@@ -1028,7 +589,7 @@ impl UintTy {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum FloatTy {
     F32,
     F64,
@@ -1061,19 +622,28 @@ pub struct FloatVarValue(pub FloatTy);
 
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
     #[debug_format = "?{}t"]
+    #[gate_rustc_only]
     pub struct TyVid {}
 }
 
 rustc_index::newtype_index! {
     /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
     #[debug_format = "?{}i"]
+    #[gate_rustc_only]
     pub struct IntVid {}
 }
 
 rustc_index::newtype_index! {
     /// A **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
     #[debug_format = "?{}f"]
+    #[gate_rustc_only]
     pub struct FloatVid {}
 }
 
@@ -1082,7 +652,8 @@ rustc_index::newtype_index! {
 /// E.g., if we have an empty array (`[]`), then we create a fresh
 /// type variable for the element type since we won't know until it's
 /// used what the element type is supposed to be.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable))]
 pub enum InferTy {
     /// A type variable.
     TyVar(TyVid),
@@ -1115,6 +686,7 @@ pub enum InferTy {
 
 /// Raw `TyVid` are used as the unification key for `sub_relations`;
 /// they carry no values.
+#[cfg(feature = "nightly")]
 impl UnifyKey for TyVid {
     type Value = ();
     #[inline]
@@ -1130,8 +702,10 @@ impl UnifyKey for TyVid {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl EqUnifyValue for IntVarValue {}
 
+#[cfg(feature = "nightly")]
 impl UnifyKey for IntVid {
     type Value = Option<IntVarValue>;
     #[inline] // make this function eligible for inlining - it is quite hot.
@@ -1147,8 +721,10 @@ impl UnifyKey for IntVid {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl EqUnifyValue for FloatVarValue {}
 
+#[cfg(feature = "nightly")]
 impl UnifyKey for FloatVid {
     type Value = Option<FloatVarValue>;
     #[inline]
@@ -1164,10 +740,11 @@ impl UnifyKey for FloatVid {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<CTX> HashStable<CTX> for InferTy {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         use InferTy::*;
-        discriminant(self).hash_stable(ctx, hasher);
+        std::mem::discriminant(self).hash_stable(ctx, hasher);
         match self {
             TyVar(_) | IntVar(_) | FloatVar(_) => {
                 panic!("type variables should not be hashed: {self:?}")
@@ -1238,13 +815,13 @@ impl fmt::Debug for InferTy {
     }
 }
 
-impl<I: Interner<InferTy = InferTy>> DebugWithInfcx<I> for InferTy {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+impl<I: Interner> DebugWithInfcx<I> for InferTy {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         use InferTy::*;
-        match this.infcx.and_then(|infcx| infcx.universe_of_ty(*this.data)) {
+        match this.infcx.universe_of_ty(*this.data) {
             None => write!(f, "{:?}", this.data),
             Some(universe) => match *this.data {
                 TyVar(ty_vid) => write!(f, "?{}_{}t", ty_vid.index(), universe.index()),

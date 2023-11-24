@@ -4,7 +4,9 @@ mod simd;
 #[cfg(feature="master")]
 use std::iter;
 
-use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
+#[cfg(feature="master")]
+use gccjit::FunctionType;
+use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -143,11 +145,15 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 sym::volatile_load | sym::unaligned_volatile_load => {
                     let tp_ty = fn_args.type_at(0);
-                    let mut ptr = args[0].immediate();
-                    if let PassMode::Cast { cast: ty, .. } = &fn_abi.ret.mode {
-                        ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
-                    }
-                    let load = self.volatile_load(ptr.get_type(), ptr);
+                    let ptr = args[0].immediate();
+                    let load =
+                        if let PassMode::Cast { cast: ty, pad_i32: _ } = &fn_abi.ret.mode {
+                            let gcc_ty = ty.gcc_type(self);
+                            self.volatile_load(gcc_ty, ptr)
+                        }
+                        else {
+                            self.volatile_load(self.layout_of(tp_ty).gcc_type(self), ptr)
+                        };
                     // TODO(antoyo): set alignment.
                     self.to_immediate(load, self.layout_of(tp_ty))
                 }
@@ -819,75 +825,58 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 value
             };
 
-        if value_type.is_u128(&self.cx) {
-            // TODO(antoyo): implement in the normal algorithm below to have a more efficient
-            // implementation (that does not require a call to __popcountdi2).
-            let popcount = self.context.get_builtin_function("__builtin_popcountll");
+        // only break apart 128-bit ints if they're not natively supported
+        // TODO(antoyo): remove this if/when native 128-bit integers land in libgccjit
+        if value_type.is_u128(&self.cx) && !self.cx.supports_128bit_integers {
             let sixty_four = self.gcc_int(value_type, 64);
             let right_shift = self.gcc_lshr(value, sixty_four);
             let high = self.gcc_int_cast(right_shift, self.cx.ulonglong_type);
-            let high = self.context.new_call(None, popcount, &[high]);
+            let high = self.pop_count(high);
             let low = self.gcc_int_cast(value, self.cx.ulonglong_type);
-            let low = self.context.new_call(None, popcount, &[low]);
+            let low = self.pop_count(low);
             let res = high + low;
             return self.gcc_int_cast(res, result_type);
         }
 
-        // First step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x5555555555555555);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 1);
-        let right = shifted & mask;
-        let value = left + right;
+        // Use Wenger's algorithm for population count, gcc's seems to play better with it
+        // for (int counter = 0; value != 0; counter++) {
+        //     value &= value - 1;
+        // }
+        let func = self.current_func.borrow().expect("func");
+        let loop_head = func.new_block("head");
+        let loop_body = func.new_block("body");
+        let loop_tail = func.new_block("tail");
 
-        // Second step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x3333333333333333);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 2);
-        let right = shifted & mask;
-        let value = left + right;
+        let counter_type = self.int_type;
+        let counter = self.current_func().new_local(None, counter_type, "popcount_counter");
+        let val = self.current_func().new_local(None, value_type, "popcount_value");
+        let zero = self.gcc_zero(counter_type);
+        self.llbb().add_assignment(None, counter, zero);
+        self.llbb().add_assignment(None, val, value);
+        self.br(loop_head);
 
-        // Third step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x0F0F0F0F0F0F0F0F);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 4);
-        let right = shifted & mask;
-        let value = left + right;
+        // check if value isn't zero
+        self.switch_to_block(loop_head);
+        let zero = self.gcc_zero(value_type);
+        let cond = self.gcc_icmp(IntPredicate::IntNE, val.to_rvalue(), zero);
+        self.cond_br(cond, loop_body, loop_tail);
 
-        if value_type.is_u8(&self.cx) {
-            return self.context.new_cast(None, value, result_type);
-        }
+        // val &= val - 1;
+        self.switch_to_block(loop_body);
+        let one = self.gcc_int(value_type, 1);
+        let sub = self.gcc_sub(val.to_rvalue(), one);
+        let op = self.gcc_and(val.to_rvalue(), sub);
+        loop_body.add_assignment(None, val, op);
 
-        // Fourth step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x00FF00FF00FF00FF);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 8);
-        let right = shifted & mask;
-        let value = left + right;
+        // counter += 1
+        let one = self.gcc_int(counter_type, 1);
+        let op = self.gcc_add(counter.to_rvalue(), one);
+        loop_body.add_assignment(None, counter, op);
+        self.br(loop_head);
 
-        if value_type.is_u16(&self.cx) {
-            return self.context.new_cast(None, value, result_type);
-        }
-
-        // Fifth step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x0000FFFF0000FFFF);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 16);
-        let right = shifted & mask;
-        let value = left + right;
-
-        if value_type.is_u32(&self.cx) {
-            return self.context.new_cast(None, value, result_type);
-        }
-
-        // Sixth step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x00000000FFFFFFFF);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 32);
-        let right = shifted & mask;
-        let value = left + right;
-
-        self.context.new_cast(None, value, result_type)
+        // end of loop
+        self.switch_to_block(loop_tail);
+        self.gcc_int_cast(counter.to_rvalue(), result_type)
     }
 
     // Algorithm from: https://blog.regehr.org/archives/1063
@@ -947,15 +936,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                             128 => "__rust_i128_addo",
                             _ => unreachable!(),
                         };
-                    let param_a = self.context.new_parameter(None, result_type, "a");
-                    let param_b = self.context.new_parameter(None, result_type, "b");
-                    let result_field = self.context.new_field(None, result_type, "result");
-                    let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
-                    let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
-                    let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
-                    let result = self.context.new_call(None, func, &[lhs, rhs]);
-                    let overflow = result.access_field(None, overflow_field);
-                    let int_result = result.access_field(None, result_field);
+                    let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
                     self.llbb().add_assignment(None, res, int_result);
                     overflow
                 };
@@ -1017,15 +998,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                             128 => "__rust_i128_subo",
                             _ => unreachable!(),
                         };
-                    let param_a = self.context.new_parameter(None, result_type, "a");
-                    let param_b = self.context.new_parameter(None, result_type, "b");
-                    let result_field = self.context.new_field(None, result_type, "result");
-                    let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
-                    let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
-                    let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
-                    let result = self.context.new_call(None, func, &[lhs, rhs]);
-                    let overflow = result.access_field(None, overflow_field);
-                    let int_result = result.access_field(None, result_field);
+                    let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
                     self.llbb().add_assignment(None, res, int_result);
                     overflow
                 };
@@ -1197,7 +1170,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
 #[cfg(feature="master")]
 fn gen_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, name: &str, rust_fn_sig: ty::PolyFnSig<'tcx>, codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>)) -> (Type<'gcc>, Function<'gcc>) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
-    let (typ, _, _, _) = fn_abi.gcc_type(cx);
+    let return_type = fn_abi.gcc_type(cx).return_type;
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
@@ -1207,5 +1180,5 @@ fn gen_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, name: &str, rust_fn_sig
     let block = Builder::append_block(cx, func_val, "entry-block");
     let bx = Builder::build(cx, block);
     codegen(bx);
-    (typ, func)
+    (return_type, func)
 }

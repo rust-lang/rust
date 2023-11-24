@@ -17,10 +17,10 @@ use crate::ptr;
 use crate::slice;
 use crate::sys::{c, cvt};
 
-use super::to_u16s;
+use super::{api, to_u16s};
 
 pub fn errno() -> i32 {
-    unsafe { c::GetLastError() as i32 }
+    api::get_last_error().code as i32
 }
 
 /// Gets a detailed string description for the given error number.
@@ -297,7 +297,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     let k = to_u16s(k).ok()?;
     super::fill_utf16_buf(
         |buf, sz| unsafe { c::GetEnvironmentVariableW(k.as_ptr(), buf, sz) },
-        |buf| OsStringExt::from_wide(buf),
+        OsStringExt::from_wide,
     )
     .ok()
 }
@@ -336,7 +336,7 @@ fn home_dir_crt() -> Option<PathBuf> {
         super::fill_utf16_buf(
             |buf, mut sz| {
                 match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
-                    0 if c::GetLastError() != c::ERROR_INSUFFICIENT_BUFFER => 0,
+                    0 if api::get_last_error().code != c::ERROR_INSUFFICIENT_BUFFER => 0,
                     0 => sz,
                     _ => sz - 1, // sz includes the null terminator
                 }
@@ -356,7 +356,7 @@ pub fn home_dir() -> Option<PathBuf> {
     crate::env::var_os("HOME")
         .or_else(|| crate::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
-        .or_else(|| home_dir_crt())
+        .or_else(home_dir_crt)
 }
 
 pub fn exit(code: i32) -> ! {
@@ -364,5 +364,5 @@ pub fn exit(code: i32) -> ! {
 }
 
 pub fn getpid() -> u32 {
-    unsafe { c::GetCurrentProcessId() as u32 }
+    unsafe { c::GetCurrentProcessId() }
 }

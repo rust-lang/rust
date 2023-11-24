@@ -26,8 +26,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
-use rustc_span::source_map::Span;
 use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
@@ -351,6 +351,16 @@ pub unsafe fn create_module<'ll>(
         );
     }
 
+    // Set module flag to enable Windows EHCont Guard (/guard:ehcont).
+    if sess.opts.unstable_opts.ehcont_guard {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Warning,
+            "ehcontguard\0".as_ptr() as *const _,
+            1,
+        )
+    }
+
     // Insert `llvm.ident` metadata.
     //
     // On the wasm targets it will get hooked up to the "producer" sections
@@ -367,6 +377,24 @@ pub unsafe fn create_module<'ll>(
         cstr!("llvm.ident").as_ptr(),
         llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
     );
+
+    // Add module flags specified via -Z llvm_module_flag
+    for (key, value, behavior) in &sess.opts.unstable_opts.llvm_module_flag {
+        let key = format!("{key}\0");
+        let behavior = match behavior.as_str() {
+            "error" => llvm::LLVMModFlagBehavior::Error,
+            "warning" => llvm::LLVMModFlagBehavior::Warning,
+            "require" => llvm::LLVMModFlagBehavior::Require,
+            "override" => llvm::LLVMModFlagBehavior::Override,
+            "append" => llvm::LLVMModFlagBehavior::Append,
+            "appendunique" => llvm::LLVMModFlagBehavior::AppendUnique,
+            "max" => llvm::LLVMModFlagBehavior::Max,
+            "min" => llvm::LLVMModFlagBehavior::Min,
+            // We already checked this during option parsing
+            _ => unreachable!(),
+        };
+        llvm::LLVMRustAddModuleFlag(llmod, behavior, key.as_ptr().cast(), *value)
+    }
 
     llmod
 }

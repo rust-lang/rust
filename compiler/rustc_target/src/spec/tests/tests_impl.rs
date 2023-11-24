@@ -97,7 +97,7 @@ impl Target {
             );
         }
 
-        if self.link_self_contained == LinkSelfContainedDefault::False {
+        if self.link_self_contained.is_disabled() {
             assert!(
                 self.pre_link_objects_self_contained.is_empty()
                     && self.post_link_objects_self_contained.is_empty()

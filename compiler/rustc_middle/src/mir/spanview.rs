@@ -369,7 +369,7 @@ where
                 debug_indent, span, viewable.span
             );
             from_pos = span.hi();
-            make_html_snippet(tcx, span, Some(&viewable))
+            make_html_snippet(tcx, span, Some(viewable))
         } else {
             None
         };
@@ -439,7 +439,7 @@ where
             tcx,
             from_pos,
             to_pos,
-            &remaining_viewables,
+            remaining_viewables,
             subalt,
             layer + 1,
             w,
@@ -472,7 +472,7 @@ where
             "{}After overlaps, writing (end span?) {:?} of viewable.span {:?}",
             debug_indent, span, viewable.span
         );
-        if let Some(ref html_snippet) = make_html_snippet(tcx, span, Some(&viewable)) {
+        if let Some(ref html_snippet) = make_html_snippet(tcx, span, Some(viewable)) {
             from_pos = span.hi();
             write_span(html_snippet, &viewable.tooltip, alt, layer, w)?;
         }
@@ -507,11 +507,7 @@ fn write_span<W>(
 where
     W: Write,
 {
-    let maybe_alt_class = if layer > 0 {
-        if alt { " odd" } else { " even" }
-    } else {
-        ""
-    };
+    let maybe_alt_class = if layer > 0 { if alt { " odd" } else { " even" } } else { "" };
     let maybe_title_attr = if !tooltip.is_empty() {
         format!(" title=\"{}\"", escape_attr(tooltip))
     } else {

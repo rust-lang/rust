@@ -1,0 +1,20 @@
+[package]
+name = "rustc-dependencies"
+version = "0.0.0"
+description = "TBD"
+
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ra-ap-rustc_lexer = { version = "0.19.0" }
+ra-ap-rustc_parse_format = { version = "0.14.0", default-features = false }
+ra-ap-rustc_index = { version = "0.19.0", default-features = false }
+ra-ap-rustc_abi = { version = "0.19.0", default-features = false }
+
+[features]
+in-rust-tree = []

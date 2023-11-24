@@ -393,19 +393,12 @@ passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
     .suggestion = perhaps you meant to use an outer attribute
 
-passes_invalid_deprecation_version =
-    invalid deprecation version found
-    .label = invalid deprecation version
-    .item = the stability attribute annotates this item
+passes_invalid_attr_at_crate_level_item =
+    the inner attribute doesn't annotate this {$kind}
 
 passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
 
 passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
-
-passes_invalid_stability =
-    invalid stability version found
-    .label = invalid stability version
-    .item = the stability attribute annotates this item
 
 passes_lang_item_fn_with_target_feature =
     `{$name}` language item function is not allowed to have `#[target_feature]`
@@ -596,9 +589,6 @@ passes_pass_by_value =
     `pass_by_value` attribute should be applied to a struct, enum or type alias
     .label = is not a struct, enum or type alias
 
-passes_plugin_registrar =
-    `#[plugin_registrar]` only has an effect on functions
-
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
 passes_repr_conflicting =
@@ -780,12 +770,15 @@ passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
 passes_unused_var_remove_field = unused variable: `{$name}`
 passes_unused_var_remove_field_suggestion = try removing the field
 
+passes_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
+
 passes_unused_variable_try_ignore = unused variable: `{$name}`
     .suggestion = try ignoring the field
 
 passes_unused_variable_try_prefix = unused variable: `{$name}`
     .label = unused variable
     .suggestion = if this is intentional, prefix it with an underscore
+
 
 passes_used_compiler_linker =
     `used(compiler)` and `used(linker)` can't be used together

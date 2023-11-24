@@ -425,8 +425,8 @@ impl IpAddr {
     #[inline]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
-    #[stable(feature = "ip_to_canonical", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ip_to_canonical", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_to_canonical", since = "1.75.0")]
+    #[rustc_const_stable(feature = "ip_to_canonical", since = "1.75.0")]
     pub const fn to_canonical(&self) -> IpAddr {
         match self {
             IpAddr::V4(_) => *self,
@@ -1757,7 +1757,7 @@ impl Ipv6Addr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "ipv6_to_ipv4_mapped", since = "1.63.0")]
-    #[rustc_const_stable(feature = "const_ipv6_to_ipv4_mapped", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ipv6_to_ipv4_mapped", since = "1.75.0")]
     pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, a, b, c, d] => {
@@ -1825,8 +1825,8 @@ impl Ipv6Addr {
     #[inline]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
-    #[stable(feature = "ip_to_canonical", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ip_to_canonical", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_to_canonical", since = "1.75.0")]
+    #[rustc_const_stable(feature = "ip_to_canonical", since = "1.75.0")]
     pub const fn to_canonical(&self) -> IpAddr {
         if let Some(mapped) = self.to_ipv4_mapped() {
             return IpAddr::V4(mapped);
@@ -2128,7 +2128,7 @@ impl From<[u16; 8]> for IpAddr {
     }
 }
 
-#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ip_bitops", since = "1.75.0")]
 impl Not for Ipv4Addr {
     type Output = Ipv4Addr;
 
@@ -2141,7 +2141,7 @@ impl Not for Ipv4Addr {
     }
 }
 
-#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ip_bitops", since = "1.75.0")]
 impl Not for &'_ Ipv4Addr {
     type Output = Ipv4Addr;
 
@@ -2151,7 +2151,7 @@ impl Not for &'_ Ipv4Addr {
     }
 }
 
-#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ip_bitops", since = "1.75.0")]
 impl Not for Ipv6Addr {
     type Output = Ipv6Addr;
 
@@ -2164,7 +2164,7 @@ impl Not for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ip_bitops", since = "1.75.0")]
 impl Not for &'_ Ipv6Addr {
     type Output = Ipv6Addr;
 
@@ -2246,13 +2246,13 @@ macro_rules! bitop_impls {
 }
 
 bitop_impls! {
-    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bitops", since = "1.75.0")]
     impl (BitAnd, BitAndAssign) for Ipv4Addr = (bitand, bitand_assign);
-    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bitops", since = "1.75.0")]
     impl (BitOr, BitOrAssign) for Ipv4Addr = (bitor, bitor_assign);
 
-    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bitops", since = "1.75.0")]
     impl (BitAnd, BitAndAssign) for Ipv6Addr = (bitand, bitand_assign);
-    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bitops", since = "1.75.0")]
     impl (BitOr, BitOrAssign) for Ipv6Addr = (bitor, bitor_assign);
 }

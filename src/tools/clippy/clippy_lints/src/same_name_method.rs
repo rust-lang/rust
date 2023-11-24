@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// Confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// trait T {
     ///     fn foo(&self) {}
     /// }
@@ -75,26 +75,23 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
 
                 match of_trait {
                     Some(trait_ref) => {
-                        let mut methods_in_trait: BTreeSet<Symbol> = if_chain! {
-                            if let Some(Node::TraitRef(TraitRef { path, .. })) =
-                                cx.tcx.hir().find(trait_ref.hir_ref_id);
-                            if let Res::Def(DefKind::Trait, did) = path.res;
-                            then{
-                                // FIXME: if
-                                // `rustc_middle::ty::assoc::AssocItems::items` is public,
-                                // we can iterate its keys instead of `in_definition_order`,
-                                // which's more efficient
-                                cx.tcx
-                                    .associated_items(did)
-                                    .in_definition_order()
-                                    .filter(|assoc_item| {
-                                        matches!(assoc_item.kind, AssocKind::Fn)
-                                    })
-                                    .map(|assoc_item| assoc_item.name)
-                                    .collect()
-                            }else{
-                                BTreeSet::new()
-                            }
+                        let mut methods_in_trait: BTreeSet<Symbol> = if let Some(Node::TraitRef(TraitRef {
+                            path, ..
+                        })) = cx.tcx.hir().find(trait_ref.hir_ref_id)
+                            && let Res::Def(DefKind::Trait, did) = path.res
+                        {
+                            // FIXME: if
+                            // `rustc_middle::ty::assoc::AssocItems::items` is public,
+                            // we can iterate its keys instead of `in_definition_order`,
+                            // which's more efficient
+                            cx.tcx
+                                .associated_items(did)
+                                .in_definition_order()
+                                .filter(|assoc_item| matches!(assoc_item.kind, AssocKind::Fn))
+                                .map(|assoc_item| assoc_item.name)
+                                .collect()
+                        } else {
+                            BTreeSet::new()
                         };
 
                         let mut check_trait_method = |method_name: Symbol, trait_method_span: Span| {
@@ -120,9 +117,10 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                             }
                         };
 
-                        for impl_item_ref in (*items).iter().filter(|impl_item_ref| {
-                            matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. })
-                        }) {
+                        for impl_item_ref in (*items)
+                            .iter()
+                            .filter(|impl_item_ref| matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. }))
+                        {
                             let method_name = impl_item_ref.ident.name;
                             methods_in_trait.remove(&method_name);
                             check_trait_method(method_name, impl_item_ref.span);
@@ -133,9 +131,10 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                         }
                     },
                     None => {
-                        for impl_item_ref in (*items).iter().filter(|impl_item_ref| {
-                            matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. })
-                        }) {
+                        for impl_item_ref in (*items)
+                            .iter()
+                            .filter(|impl_item_ref| matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. }))
+                        {
                             let method_name = impl_item_ref.ident.name;
                             let impl_span = impl_item_ref.span;
                             let hir_id = impl_item_ref.id.hir_id();

@@ -251,6 +251,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) {
         walk_inline_asm_sym(self, sym)
     }
+    fn visit_capture_by(&mut self, _capture_by: &'ast CaptureBy) {
+        // Nothing to do
+    }
 }
 
 #[macro_export]
@@ -857,7 +860,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::Closure(box Closure {
             binder,
-            capture_clause: _,
+            capture_clause,
             asyncness: _,
             constness: _,
             movability: _,
@@ -866,13 +869,14 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             fn_decl_span: _,
             fn_arg_span: _,
         }) => {
+            visitor.visit_capture_by(capture_clause);
             visitor.visit_fn(FnKind::Closure(binder, fn_decl, body), expression.span, expression.id)
         }
         ExprKind::Block(block, opt_label) => {
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
         }
-        ExprKind::Async(_, body) => {
+        ExprKind::Gen(_, body, _) => {
             visitor.visit_block(body);
         }
         ExprKind::Await(expr, _) => visitor.visit_expr(expr),

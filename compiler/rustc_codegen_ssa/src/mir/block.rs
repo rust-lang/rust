@@ -17,8 +17,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::config::OptLevel;
-use rustc_span::source_map::Span;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
@@ -48,7 +47,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         &self,
         fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
-        let cleanup_kinds = (&fx.cleanup_kinds).as_ref()?;
+        let cleanup_kinds = fx.cleanup_kinds.as_ref()?;
         let funclet_bb = cleanup_kinds[self.bb].funclet_bb(self.bb)?;
         // If `landing_pad_for` hasn't been called yet to create the `Funclet`,
         // it has to be now. This may not seem necessary, as RPO should lead
@@ -162,7 +161,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     ) -> MergingSucc {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
-        let fn_ty = bx.fn_decl_backend_type(&fn_abi);
+        let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
         let fn_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
             Some(bx.tcx().codegen_fn_attrs(fx.instance.def_id()))
@@ -205,9 +204,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             let invokeret = bx.invoke(
                 fn_ty,
                 fn_attrs,
-                Some(&fn_abi),
+                Some(fn_abi),
                 fn_ptr,
-                &llargs,
+                llargs,
                 ret_llbb,
                 unwind_block,
                 self.funclet(fx),
@@ -226,7 +225,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
             MergingSucc::False
         } else {
-            let llret = bx.call(fn_ty, fn_attrs, Some(&fn_abi), fn_ptr, &llargs, self.funclet(fx));
+            let llret = bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, llargs, self.funclet(fx));
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(llret);
             }
@@ -274,7 +273,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
             bx.codegen_inline_asm(
                 template,
-                &operands,
+                operands,
                 options,
                 line_spans,
                 instance,
@@ -282,7 +281,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             );
             MergingSucc::False
         } else {
-            bx.codegen_inline_asm(template, &operands, options, line_spans, instance, None);
+            bx.codegen_inline_asm(template, operands, options, line_spans, instance, None);
 
             if let Some(target) = destination {
                 self.funclet_br(fx, bx, target, mergeable_succ)
@@ -319,7 +318,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
     ) {
-        let discr = self.codegen_operand(bx, &discr);
+        let discr = self.codegen_operand(bx, discr);
         let switch_ty = discr.layout.ty;
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
@@ -499,7 +498,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     args = &args[..1];
                     (
                         meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                            .get_fn(bx, vtable, ty, &fn_abi),
+                            .get_fn(bx, vtable, ty, fn_abi),
                         fn_abi,
                     )
                 }
@@ -541,7 +540,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     debug!("args' = {:?}", args);
                     (
                         meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                            .get_fn(bx, meta.immediate(), ty, &fn_abi),
+                            .get_fn(bx, meta.immediate(), ty, fn_abi),
                         fn_abi,
                     )
                 }
@@ -865,7 +864,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic == sym::simd_shuffle {
                             if let mir::Operand::Constant(constant) = arg {
-                                let (llval, ty) = self.simd_shuffle_indices(&bx, constant);
+                                let (llval, ty) = self.simd_shuffle_indices(bx, constant);
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),
@@ -882,7 +881,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 Self::codegen_intrinsic_call(
                     bx,
                     *instance.as_ref().unwrap(),
-                    &fn_abi,
+                    fn_abi,
                     &args,
                     dest,
                     span,
@@ -938,7 +937,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx,
                             meta,
                             op.layout.ty,
-                            &fn_abi,
+                            fn_abi,
                         ));
                         llargs.push(data_ptr);
                         continue 'make_args;
@@ -949,7 +948,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx,
                             meta,
                             op.layout.ty,
-                            &fn_abi,
+                            fn_abi,
                         ));
                         llargs.push(data_ptr);
                         continue;
@@ -976,7 +975,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx,
                             meta.immediate(),
                             op.layout.ty,
-                            &fn_abi,
+                            fn_abi,
                         ));
                         llargs.push(data_ptr.llval);
                         continue;
@@ -1449,47 +1448,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn get_caller_location(
         &mut self,
         bx: &mut Bx,
-        mut source_info: mir::SourceInfo,
+        source_info: mir::SourceInfo,
     ) -> OperandRef<'tcx, Bx::Value> {
-        let tcx = bx.tcx();
-
-        let mut span_to_caller_location = |span: Span| {
-            use rustc_session::RemapFileNameExt;
-            let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-            let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
-            let const_loc = tcx.const_caller_location((
-                Symbol::intern(&caller.file.name.for_codegen(self.cx.sess()).to_string_lossy()),
-                caller.line as u32,
-                caller.col_display as u32 + 1,
-            ));
+        self.mir.caller_location_span(source_info, self.caller_location, bx.tcx(), |span: Span| {
+            let const_loc = bx.tcx().span_as_caller_location(span);
             OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())
-        };
-
-        // Walk up the `SourceScope`s, in case some of them are from MIR inlining.
-        // If so, the starting `source_info.span` is in the innermost inlined
-        // function, and will be replaced with outer callsite spans as long
-        // as the inlined functions were `#[track_caller]`.
-        loop {
-            let scope_data = &self.mir.source_scopes[source_info.scope];
-
-            if let Some((callee, callsite_span)) = scope_data.inlined {
-                // Stop inside the most nested non-`#[track_caller]` function,
-                // before ever reaching its caller (which is irrelevant).
-                if !callee.def.requires_caller_location(tcx) {
-                    return span_to_caller_location(source_info.span);
-                }
-                source_info.span = callsite_span;
-            }
-
-            // Skip past all of the parents with `inlined: None`.
-            match scope_data.inlined_parent_scope {
-                Some(parent) => source_info.scope = parent,
-                None => break,
-            }
-        }
-
-        // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
-        self.caller_location.unwrap_or_else(|| span_to_caller_location(source_info.span))
+        })
     }
 
     fn get_personality_slot(&mut self, bx: &mut Bx) -> PlaceRef<'tcx, Bx::Value> {
@@ -1623,9 +1587,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
         let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, reason.lang_item());
-        let fn_ty = bx.fn_decl_backend_type(&fn_abi);
+        let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
-        let llret = bx.call(fn_ty, None, Some(&fn_abi), fn_ptr, &[], funclet.as_ref());
+        let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref());
         bx.apply_attrs_to_cleanup_callsite(llret);
 
         bx.unreachable();
@@ -1698,10 +1662,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         } else {
-            self.codegen_place(
-                bx,
-                mir::PlaceRef { local: dest.local, projection: &dest.projection },
-            )
+            self.codegen_place(bx, mir::PlaceRef { local: dest.local, projection: dest.projection })
         };
         if fn_ret.is_indirect() {
             if dest.align < dest.layout.align.abi {
@@ -1732,7 +1693,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match dest {
             Nothing => (),
-            Store(dst) => bx.store_arg(&ret_abi, llval, dst),
+            Store(dst) => bx.store_arg(ret_abi, llval, dst),
             IndirectOperand(tmp, index) => {
                 let op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
@@ -1744,7 +1705,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = if let PassMode::Cast { .. } = ret_abi.mode {
                     let tmp = PlaceRef::alloca(bx, ret_abi.layout);
                     tmp.storage_live(bx);
-                    bx.store_arg(&ret_abi, llval, tmp);
+                    bx.store_arg(ret_abi, llval, tmp);
                     let op = bx.load_operand(tmp);
                     tmp.storage_dead(bx);
                     op

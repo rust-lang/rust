@@ -1,11 +1,5 @@
 // ignore-tidy-linelength
 
-#![no_core]
-#![feature(lang_items, no_core)]
-
-#[lang = "sized"]
-pub trait Sized {}
-
 pub trait Display {}
 
 pub trait LendingIterator {

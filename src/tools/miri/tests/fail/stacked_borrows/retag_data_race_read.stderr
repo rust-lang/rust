@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) Read on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>` at ALLOC. (2) just happened here
   --> $DIR/retag_data_race_read.rs:LL:CC
    |
 LL |         *p = 5;
-   |         ^^^^^^ Data race detected between (1) Read on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+   |         ^^^^^^ Data race detected between (1) non-atomic read on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
   --> $DIR/retag_data_race_read.rs:LL:CC

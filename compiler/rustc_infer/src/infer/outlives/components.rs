@@ -11,6 +11,7 @@ use smallvec::{smallvec, SmallVec};
 pub enum Component<'tcx> {
     Region(ty::Region<'tcx>),
     Param(ty::ParamTy),
+    Placeholder(ty::PlaceholderType),
     UnresolvedInferenceVariable(ty::InferTy),
 
     // Projections like `T::Foo` are tricky because a constraint like
@@ -97,12 +98,12 @@ fn compute_components<'tcx>(
                 compute_components(tcx, element, out, visited);
             }
 
-            ty::Closure(_, ref args) => {
+            ty::Closure(_, args) => {
                 let tupled_ty = args.as_closure().tupled_upvars_ty();
                 compute_components(tcx, tupled_ty, out, visited);
             }
 
-            ty::Coroutine(_, ref args, _) => {
+            ty::Coroutine(_, args, _) => {
                 // Same as the closure case
                 let tupled_ty = args.as_coroutine().tupled_upvars_ty();
                 compute_components(tcx, tupled_ty, out, visited);
@@ -118,6 +119,10 @@ fn compute_components<'tcx>(
             // is implied by the environment is done in regionck.
             ty::Param(p) => {
                 out.push(Component::Param(p));
+            }
+
+            ty::Placeholder(p) => {
+                out.push(Component::Placeholder(p));
             }
 
             // For projections, we prefer to generate an obligation like
@@ -176,7 +181,6 @@ fn compute_components<'tcx>(
             ty::Tuple(..) |       // ...
             ty::FnPtr(_) |        // OutlivesFunction (*)
             ty::Dynamic(..) |     // OutlivesObject, OutlivesFragment (*)
-            ty::Placeholder(..) |
             ty::Bound(..) |
             ty::Error(_) => {
                 // (*) Function pointers and trait objects are both binders.
@@ -213,8 +217,8 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
                 compute_components(tcx, ty, out, visited);
             }
             GenericArgKind::Lifetime(lt) => {
-                // Ignore late-bound regions.
-                if !lt.is_late_bound() {
+                // Ignore higher ranked regions.
+                if !lt.is_bound() {
                     out.push(Component::Region(lt));
                 }
             }
@@ -241,8 +245,8 @@ fn compute_components_recursive<'tcx>(
                 compute_components(tcx, ty, out, visited);
             }
             GenericArgKind::Lifetime(lt) => {
-                // Ignore late-bound regions.
-                if !lt.is_late_bound() {
+                // Ignore higher ranked regions.
+                if !lt.is_bound() {
                     out.push(Component::Region(lt));
                 }
             }

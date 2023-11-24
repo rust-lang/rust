@@ -196,16 +196,12 @@ impl ExprCollector<'_> {
             if let Some(self_param) =
                 param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
             {
-                let ptr = AstPtr::new(&self_param);
-                let binding_id: la_arena::Idx<Binding> = self.alloc_binding(
-                    name![self],
-                    BindingAnnotation::new(
-                        self_param.mut_token().is_some() && self_param.amp_token().is_none(),
-                        false,
-                    ),
-                );
-                let param_pat =
-                    self.alloc_pat(Pat::Bind { id: binding_id, subpat: None }, Either::Right(ptr));
+                let is_mutable =
+                    self_param.mut_token().is_some() && self_param.amp_token().is_none();
+                let ptr = AstPtr::new(&Either::Right(self_param));
+                let binding_id: la_arena::Idx<Binding> =
+                    self.alloc_binding(name![self], BindingAnnotation::new(is_mutable, false));
+                let param_pat = self.alloc_pat(Pat::Bind { id: binding_id, subpat: None }, ptr);
                 self.add_definition_to_binding(binding_id, param_pat);
                 self.body.params.push(param_pat);
             }
@@ -1260,8 +1256,8 @@ impl ExprCollector<'_> {
                     (Some(id), Pat::Bind { id, subpat })
                 };
 
-                let ptr = AstPtr::new(&pat);
-                let pat = self.alloc_pat(pattern, Either::Left(ptr));
+                let ptr = AstPtr::new(&Either::Left(pat));
+                let pat = self.alloc_pat(pattern, ptr);
                 if let Some(binding_id) = binding {
                     self.add_definition_to_binding(binding_id, pat);
                 }
@@ -1395,7 +1391,7 @@ impl ExprCollector<'_> {
             ast::Pat::MacroPat(mac) => match mac.macro_call() {
                 Some(call) => {
                     let macro_ptr = AstPtr::new(&call);
-                    let src = self.expander.to_source(Either::Left(AstPtr::new(&pat)));
+                    let src = self.expander.to_source(AstPtr::new(&Either::Left(pat)));
                     let pat =
                         self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
                             this.collect_pat_opt(expanded_pat, binding_list)
@@ -1430,8 +1426,8 @@ impl ExprCollector<'_> {
                 Pat::Range { start, end }
             }
         };
-        let ptr = AstPtr::new(&pat);
-        self.alloc_pat(pattern, Either::Left(ptr))
+        let ptr = AstPtr::new(&Either::Left(pat));
+        self.alloc_pat(pattern, ptr)
     }
 
     fn collect_pat_opt(&mut self, pat: Option<ast::Pat>, binding_list: &mut BindingList) -> PatId {

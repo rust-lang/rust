@@ -10,4 +10,4 @@ struct Multiply<N, M> {
 }
 impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
 //~^ ERROR cannot find type `VAL` in this scope
-//~| ERROR not all trait items implemented, missing: `VAL`
+//~| ERROR not all trait items implemented

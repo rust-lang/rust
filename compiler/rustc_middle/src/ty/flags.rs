@@ -28,30 +28,11 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_const(c: ty::Const<'_>) -> TypeFlags {
+    pub fn for_const(c: &ty::ConstKind<'_>, t: Ty<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
-        result.add_const(c);
-        result.flags
-    }
-
-    pub fn bound_var_flags(vars: &ty::List<ty::BoundVariableKind>) -> FlagComputation {
-        let mut computation = FlagComputation::new();
-
-        for bv in vars {
-            match bv {
-                ty::BoundVariableKind::Ty(_) => {
-                    computation.flags |= TypeFlags::HAS_TY_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Region(_) => {
-                    computation.flags |= TypeFlags::HAS_RE_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Const => {
-                    computation.flags |= TypeFlags::HAS_CT_LATE_BOUND;
-                }
-            }
-        }
-
-        computation
+        result.add_const_kind(c);
+        result.add_ty(t);
+        result
     }
 
     fn add_flags(&mut self, flags: TypeFlags) {
@@ -77,7 +58,11 @@ impl FlagComputation {
     where
         F: FnOnce(&mut Self, T),
     {
-        let mut computation = FlagComputation::bound_var_flags(value.bound_vars());
+        let mut computation = FlagComputation::new();
+
+        if !value.bound_vars().is_empty() {
+            computation.add_flags(TypeFlags::HAS_BINDER_VARS);
+        }
 
         f(&mut computation, value.skip_binder());
 
@@ -134,7 +119,7 @@ impl FlagComputation {
                 if should_remove_further_specializable {
                     self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
                 }
-                self.add_flags(TypeFlags::HAS_TY_GENERATOR);
+                self.add_flags(TypeFlags::HAS_TY_COROUTINE);
             }
 
             &ty::Closure(_, args) => {
@@ -153,7 +138,7 @@ impl FlagComputation {
 
             &ty::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
-                self.add_flags(TypeFlags::HAS_TY_LATE_BOUND);
+                self.add_flags(TypeFlags::HAS_TY_BOUND);
             }
 
             &ty::Placeholder(..) => {
@@ -279,9 +264,6 @@ impl FlagComputation {
                 self.add_args(slice::from_ref(&arg));
             }
             ty::PredicateKind::ObjectSafe(_def_id) => {}
-            ty::PredicateKind::ClosureKind(_def_id, args, _kind) => {
-                self.add_args(args);
-            }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                 self.add_const(uv);
             }
@@ -310,14 +292,18 @@ impl FlagComputation {
 
     fn add_region(&mut self, r: ty::Region<'_>) {
         self.add_flags(r.type_flags());
-        if let ty::ReLateBound(debruijn, _) = *r {
+        if let ty::ReBound(debruijn, _) = *r {
             self.add_bound_var(debruijn);
         }
     }
 
     fn add_const(&mut self, c: ty::Const<'_>) {
-        self.add_ty(c.ty());
-        match c.kind() {
+        self.add_flags(c.flags());
+        self.add_exclusive_binder(c.outer_exclusive_binder());
+    }
+
+    fn add_const_kind(&mut self, c: &ty::ConstKind<'_>) {
+        match *c {
             ty::ConstKind::Unevaluated(uv) => {
                 self.add_args(uv.args);
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);
@@ -333,7 +319,7 @@ impl FlagComputation {
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
-                self.add_flags(TypeFlags::HAS_CT_LATE_BOUND);
+                self.add_flags(TypeFlags::HAS_CT_BOUND);
             }
             ty::ConstKind::Param(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PARAM);

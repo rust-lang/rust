@@ -14,14 +14,11 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use crate::astconv::AstConv;
-use crate::check::intrinsic::intrinsic_operation_unsafety;
-use crate::errors;
-use hir::def::DefKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, Node};
@@ -39,6 +36,11 @@ use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamNa
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
 use std::ops::Bound;
+
+use crate::astconv::AstConv;
+use crate::check::intrinsic::intrinsic_operation_unsafety;
+use crate::errors;
+pub use type_of::test_opaque_hidden_types;
 
 mod generics_of;
 mod item_bounds;
@@ -438,10 +440,10 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                 second: format!(
                                     "{}::",
                                     // Replace the existing lifetimes with a new named lifetime.
-                                    self.tcx.replace_late_bound_regions_uncached(
+                                    self.tcx.instantiate_bound_regions_uncached(
                                         poly_trait_ref,
                                         |_| {
-                                            ty::Region::new_early_bound(self.tcx, ty::EarlyBoundRegion {
+                                            ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
                                                 def_id: item_def_id,
                                                 index: 0,
                                                 name: Symbol::intern(&lt_name),
@@ -1088,7 +1090,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
 pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
     if let hir::FnRetTy::Return(ty) = output {
         if is_suggestable_infer_ty(ty) {
-            return Some(&*ty);
+            return Some(*ty);
         }
     }
     None
@@ -1371,7 +1373,7 @@ fn impl_trait_ref(
             if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
                 tcx,
                 tcx.is_const_trait_impl_raw(def_id.to_def_id()),
-                &ast_trait_ref,
+                ast_trait_ref,
             ) {
                 // we have a const impl, but for a trait without `#[const_trait]`, so
                 // without the host param. If we continue with the HIR trait ref, we get
@@ -1392,7 +1394,7 @@ fn impl_trait_ref(
                 let trait_ref = hir::TraitRef { path: &path, hir_ref_id: ast_trait_ref.hir_ref_id };
                 icx.astconv().instantiate_mono_trait_ref(&trait_ref, selfty)
             } else {
-                icx.astconv().instantiate_mono_trait_ref(&ast_trait_ref, selfty)
+                icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
             }
         })
         .map(ty::EarlyBinder::bind)

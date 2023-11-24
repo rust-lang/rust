@@ -417,24 +417,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         naked_functions, experimental!(naked)
     ),
 
-    // Plugins:
-    BuiltinAttribute {
-        name: sym::plugin,
-        only_local: false,
-        type_: CrateLevel,
-        template: template!(List: "name"),
-        duplicates: DuplicatesOk,
-        gate: Gated(
-            Stability::Deprecated(
-                "https://github.com/rust-lang/rust/pull/64675",
-                Some("may be removed in a future compiler version"),
-            ),
-            sym::plugin,
-            "compiler plugins are deprecated",
-            cfg_fn!(plugin)
-        ),
-    },
-
     // Testing:
     gated!(
         test_runner, CrateLevel, template!(List: "path"), ErrorFollowing, custom_test_frameworks,
@@ -825,6 +807,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_strict_coherence, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_variance_of_opaques, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_hidden_type_of_opaques, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),

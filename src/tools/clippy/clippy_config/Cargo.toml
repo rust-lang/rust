@@ -1,0 +1,21 @@
+[package]
+name = "clippy_config"
+version = "0.1.76"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rustc-semver = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.7.3"
+
+[dev-dependencies]
+walkdir = "2.3"
+
+[features]
+deny-warnings = []
+
+[package.metadata.rust-analyzer]
+# This crate uses #[feature(rustc_private)]
+rustc_private = true

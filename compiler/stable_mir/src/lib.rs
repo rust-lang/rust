@@ -17,11 +17,11 @@
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
 
-use crate::mir::mono::InstanceDef;
+use crate::mir::mono::{InstanceDef, StaticDef};
 use crate::mir::Body;
-use std::cell::Cell;
 use std::fmt;
 use std::fmt::Debug;
+use std::{cell::Cell, io};
 
 use self::ty::{
     GenericPredicates, Generics, ImplDef, ImplTrait, IndexedVal, LineInfo, Span, TraitDecl,
@@ -31,12 +31,16 @@ use self::ty::{
 #[macro_use]
 extern crate scoped_tls;
 
+#[macro_use]
 pub mod error;
-pub mod fold;
 pub mod mir;
 pub mod ty;
 pub mod visitor;
 
+use crate::mir::alloc::{AllocId, GlobalAlloc};
+use crate::mir::pretty::function_name;
+use crate::mir::Mutability;
+use crate::ty::{AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, RigidTy};
 pub use error::*;
 use mir::mono::Instance;
 use ty::{FnDef, GenericArgs};
@@ -48,7 +52,7 @@ pub type Symbol = String;
 pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(usize);
 
 impl Debug for DefId {
@@ -65,19 +69,6 @@ impl IndexedVal for DefId {
         DefId(index)
     }
 
-    fn to_index(&self) -> usize {
-        self.0
-    }
-}
-
-/// A unique identification number for each provenance
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AllocId(usize);
-
-impl IndexedVal for AllocId {
-    fn to_val(index: usize) -> Self {
-        AllocId(index)
-    }
     fn to_index(&self) -> usize {
         self.0
     }
@@ -100,12 +91,16 @@ pub struct Crate {
     pub is_local: bool,
 }
 
-pub type DefKind = Opaque;
-pub type Filename = Opaque;
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum ItemKind {
+    Fn,
+    Static,
+    Const,
+}
+
+pub type Filename = String;
 
 /// Holds information about an item in the crate.
-/// For now, it only stores the item DefId. Use functions inside `rustc_internal` module to
-/// use this item.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct CrateItem(pub DefId);
 
@@ -122,12 +117,25 @@ impl CrateItem {
         with(|cx| cx.name_of_def_id(self.0))
     }
 
-    pub fn kind(&self) -> DefKind {
-        with(|cx| cx.def_kind(self.0))
+    pub fn kind(&self) -> ItemKind {
+        with(|cx| cx.item_kind(*self))
     }
 
     pub fn requires_monomorphization(&self) -> bool {
         with(|cx| cx.requires_monomorphization(self.0))
+    }
+
+    pub fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.0))
+    }
+
+    pub fn is_foreign_item(&self) -> bool {
+        with(|cx| cx.is_foreign_item(*self))
+    }
+
+    pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        writeln!(w, "{}", function_name(*self))?;
+        self.body().dump(w)
     }
 }
 
@@ -174,18 +182,20 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
     with(|cx| cx.trait_impl(trait_impl))
 }
 
+/// This trait defines the interface between stable_mir and the Rust compiler.
+/// Do not use this directly.
 pub trait Context {
-    fn entry_fn(&mut self) -> Option<CrateItem>;
+    fn entry_fn(&self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
-    fn all_local_items(&mut self) -> CrateItems;
-    fn mir_body(&mut self, item: DefId) -> mir::Body;
-    fn all_trait_decls(&mut self) -> TraitDecls;
-    fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
-    fn all_trait_impls(&mut self) -> ImplTraitDecls;
-    fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
-    fn generics_of(&mut self, def_id: DefId) -> Generics;
-    fn predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
-    fn explicit_predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
+    fn all_local_items(&self) -> CrateItems;
+    fn mir_body(&self, item: DefId) -> mir::Body;
+    fn all_trait_decls(&self) -> TraitDecls;
+    fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
+    fn all_trait_impls(&self) -> ImplTraitDecls;
+    fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait;
+    fn generics_of(&self, def_id: DefId) -> Generics;
+    fn predicates_of(&self, def_id: DefId) -> GenericPredicates;
+    fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.
@@ -207,66 +217,114 @@ pub trait Context {
     fn get_lines(&self, span: &Span) -> LineInfo;
 
     /// Returns the `kind` of given `DefId`
-    fn def_kind(&mut self, def_id: DefId) -> DefKind;
+    fn item_kind(&self, item: CrateItem) -> ItemKind;
+
+    /// Returns whether this is a foreign item.
+    fn is_foreign_item(&self, item: CrateItem) -> bool;
+
+    /// Returns the kind of a given algebraic data type
+    fn adt_kind(&self, def: AdtDef) -> AdtKind;
+
+    /// Returns if the ADT is a box.
+    fn adt_is_box(&self, def: AdtDef) -> bool;
+
+    /// Evaluate constant as a target usize.
+    fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
+
+    /// Create a target usize constant for the given value.
+    fn usize_to_const(&self, val: u64) -> Result<Const, Error>;
+
+    /// Create a new type from the given kind.
+    fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
+
+    /// Returns the type of given crate item.
+    fn def_ty(&self, item: DefId) -> Ty;
+
+    /// Returns literal value of a const as a string.
+    fn const_literal(&self, cnst: &Const) -> String;
 
     /// `Span` of an item
-    fn span_of_an_item(&mut self, def_id: DefId) -> Span;
+    fn span_of_an_item(&self, def_id: DefId) -> Span;
 
     /// Obtain the representation of a type.
-    fn ty_kind(&mut self, ty: Ty) -> TyKind;
-
-    /// Create a new `Ty` from scratch without information from rustc.
-    fn mk_ty(&mut self, kind: TyKind) -> Ty;
+    fn ty_kind(&self, ty: Ty) -> TyKind;
 
     /// Get the body of an Instance.
     /// FIXME: Monomorphize the body.
-    fn instance_body(&mut self, instance: InstanceDef) -> Body;
+    fn instance_body(&self, instance: InstanceDef) -> Option<Body>;
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.
-    fn instance_ty(&mut self, instance: InstanceDef) -> Ty;
+    fn instance_ty(&self, instance: InstanceDef) -> Ty;
 
     /// Get the instance.
-    fn instance_def_id(&mut self, instance: InstanceDef) -> DefId;
+    fn instance_def_id(&self, instance: InstanceDef) -> DefId;
+
+    /// Get the instance mangled name.
+    fn instance_mangled_name(&self, instance: InstanceDef) -> String;
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
-    fn mono_instance(&mut self, item: CrateItem) -> Instance;
+    fn mono_instance(&self, item: CrateItem) -> Instance;
 
     /// Item requires monomorphization.
     fn requires_monomorphization(&self, def_id: DefId) -> bool;
 
     /// Resolve an instance from the given function definition and generic arguments.
-    fn resolve_instance(&mut self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+    fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+
+    /// Resolve an instance for drop_in_place for the given type.
+    fn resolve_drop_in_place(&self, ty: Ty) -> Instance;
+
+    /// Resolve instance for a function pointer.
+    fn resolve_for_fn_ptr(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+
+    /// Resolve instance for a closure with the requested type.
+    fn resolve_closure(
+        &self,
+        def: ClosureDef,
+        args: &GenericArgs,
+        kind: ClosureKind,
+    ) -> Option<Instance>;
+
+    /// Evaluate a static's initializer.
+    fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error>;
+
+    /// Retrieve global allocation for the given allocation ID.
+    fn global_alloc(&self, id: AllocId) -> GlobalAlloc;
+
+    /// Retrieve the id for the virtual table.
+    fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local! (static TLV: Cell<*mut ()>);
+scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub fn run(mut context: impl Context, f: impl FnOnce()) {
-    assert!(!TLV.is_set());
-    fn g<'a>(mut context: &mut (dyn Context + 'a), f: impl FnOnce()) {
-        let ptr: *mut () = &mut context as *mut &mut _ as _;
-        TLV.set(&Cell::new(ptr), || {
-            f();
-        });
+pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
+where
+    F: FnOnce() -> T,
+{
+    if TLV.is_set() {
+        Err(Error::from("StableMIR already running"))
+    } else {
+        let ptr: *const () = &context as *const &_ as _;
+        TLV.set(&Cell::new(ptr), || Ok(f()))
     }
-    g(&mut context, f);
 }
 
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub fn with<R>(f: impl FnOnce(&mut dyn Context) -> R) -> R {
+pub fn with<R>(f: impl FnOnce(&dyn Context) -> R) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        f(unsafe { *(ptr as *mut &mut dyn Context) })
+        f(unsafe { *(ptr as *const &dyn Context) })
     })
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Opaque(String);
 
 impl std::fmt::Display for Opaque {

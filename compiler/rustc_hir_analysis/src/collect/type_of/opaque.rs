@@ -1,12 +1,25 @@
 use rustc_errors::StashKey;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, def, Expr, ImplItem, Item, Node, TraitItem};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::DUMMY_SP;
+use rustc_span::{sym, DUMMY_SP};
 
-use crate::errors::{TaitForwardCompat, UnconstrainedOpaqueType};
+use crate::errors::{TaitForwardCompat, TypeOf, UnconstrainedOpaqueType};
+
+pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) {
+    if tcx.has_attr(CRATE_DEF_ID, sym::rustc_hidden_type_of_opaques) {
+        for id in tcx.hir().items() {
+            if matches!(tcx.def_kind(id.owner_id), DefKind::OpaqueTy) {
+                let type_of = tcx.type_of(id.owner_id).instantiate_identity();
+
+                tcx.sess.emit_err(TypeOf { span: tcx.def_span(id.owner_id), type_of });
+            }
+        }
+    }
+}
 
 /// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions
 /// laid for "higher-order pattern unification".
@@ -170,9 +183,17 @@ impl TaitConstraintLocator<'_> {
         };
 
         // Use borrowck to get the type with unerased regions.
-        let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
-        debug!(?concrete_opaque_types);
-        if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
+        let borrowck_results = &self.tcx.mir_borrowck(item_def_id);
+
+        // If the body was tainted, then assume the opaque may have been constrained and just set it to error.
+        if let Some(guar) = borrowck_results.tainted_by_errors {
+            self.found =
+                Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(self.tcx, guar) });
+            return;
+        }
+
+        debug!(?borrowck_results.concrete_opaque_types);
+        if let Some(&concrete_type) = borrowck_results.concrete_opaque_types.get(&self.def_id) {
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {

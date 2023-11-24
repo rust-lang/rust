@@ -46,14 +46,14 @@ LL |     if let [] = &*s {}
 error: comparison to empty slice using `if let`
   --> $DIR/comparison_to_empty.rs:18:8
    |
-LL |     if let [] = &*s && s == [] {}
+LL |     if let [] = &*s
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:18:24
+  --> $DIR/comparison_to_empty.rs:19:12
    |
-LL |     if let [] = &*s && s == [] {}
-   |                        ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
+LL |         && s == []
+   |            ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
 
 error: aborting due to 9 previous errors
 

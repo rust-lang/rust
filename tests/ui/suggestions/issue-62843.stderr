@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnMut<(char,)>` closure, found `String`
+error[E0277]: expected a `FnMut(char)` closure, found `String`
   --> $DIR/issue-62843.rs:4:32
    |
 LL |     println!("{:?}", line.find(pattern));

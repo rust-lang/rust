@@ -1,20 +1,20 @@
 error: multiple `deprecated` attributes
   --> $DIR/stability-attribute-sanity.rs:62:1
    |
-LL | #[deprecated(since = "b", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
   --> $DIR/stability-attribute-sanity.rs:61:1
    |
-LL | #[deprecated(since = "b", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0541]: unknown meta item 'reason'
-  --> $DIR/stability-attribute-sanity.rs:8:42
+  --> $DIR/stability-attribute-sanity.rs:8:46
    |
-LL |     #[stable(feature = "a", since = "b", reason)]
-   |                                          ^^^^^^ expected one of `feature`, `since`
+LL |     #[stable(feature = "a", since = "4.4.4", reason)]
+   |                                              ^^^^^^ expected one of `feature`, `since`
 
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:11:29
@@ -25,7 +25,7 @@ LL |     #[stable(feature = "a", since)]
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:14:14
    |
-LL |     #[stable(feature, since = "a")]
+LL |     #[stable(feature, since = "3.3.3")]
    |              ^^^^^^^
 
 error[E0539]: incorrect meta item
@@ -37,7 +37,7 @@ LL |     #[stable(feature = "a", since(b))]
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:20:14
    |
-LL |     #[stable(feature(b), since = "a")]
+LL |     #[stable(feature(b), since = "3.3.3")]
    |              ^^^^^^^^^^
 
 error[E0546]: missing 'feature'
@@ -55,8 +55,8 @@ LL |     #[unstable(feature = "b")]
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-sanity.rs:31:5
    |
-LL |     #[stable(since = "a")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[stable(since = "3.3.3")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0542]: missing 'since'
   --> $DIR/stability-attribute-sanity.rs:36:5
@@ -73,14 +73,14 @@ LL |     #[deprecated(note = "a")]
 error[E0543]: missing 'note'
   --> $DIR/stability-attribute-sanity.rs:44:5
    |
-LL |     #[deprecated(since = "a")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[deprecated(since = "5.5.5")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:49:1
    |
-LL | #[stable(feature = "a", since = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[stable(feature = "a", since = "4.4.4")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:53:1
@@ -91,7 +91,13 @@ LL | #[unstable(feature = "b", issue = "none")]
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:57:1
    |
-LL | #[stable(feature = "a", since = "b")]
+LL | #[stable(feature = "a", since = "4.4.4")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: 'since' must be a Rust version number, such as "1.31.0"
+  --> $DIR/stability-attribute-sanity.rs:60:1
+   |
+LL | #[stable(feature = "e", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
@@ -100,31 +106,19 @@ error[E0544]: multiple stability levels
 LL | #[rustc_const_unstable(feature = "d", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: invalid stability version found
-  --> $DIR/stability-attribute-sanity.rs:60:1
+error: 'since' must be a Rust version number, such as "1.31.0"
+  --> $DIR/stability-attribute-sanity.rs:68:1
    |
-LL | #[stable(feature = "a", since = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid stability version
-...
-LL | pub const fn multiple4() { }
-   | ---------------------------- the stability attribute annotates this item
-
-error: invalid deprecation version found
-  --> $DIR/stability-attribute-sanity.rs:67:1
-   |
-LL | #[stable(feature = "a", since = "1.0.0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid deprecation version
-...
-LL | fn invalid_deprecation_version() {}
-   | ----------------------------------- the stability attribute annotates this item
+LL | #[deprecated(since = "invalid", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0549]: deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:72:1
+  --> $DIR/stability-attribute-sanity.rs:71:1
    |
-LL | #[deprecated(since = "a", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0711]: feature `a` is declared stable since 1.0.0, but was previously declared stable since b
+error[E0711]: feature `a` is declared stable since 1.0.0, but was previously declared stable since 4.4.4
   --> $DIR/stability-attribute-sanity.rs:67:1
    |
 LL | #[stable(feature = "a", since = "1.0.0")]

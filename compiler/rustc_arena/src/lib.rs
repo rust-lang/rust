@@ -11,14 +11,13 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
 #![feature(decl_macro)]
-#![feature(pointer_byte_offsets)]
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]

@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code or in some other situation where control over memory layout matters (for example, in conjunction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` (or another `repr` attribute) is needed.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct RarelyUseful {
     ///     some_field: u32,
     ///     last: [u32; 0],
@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[repr(C)]
     /// struct MoreOftenUseful {
     ///     some_field: usize,
@@ -54,20 +54,18 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
 }
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
-    if_chain! {
+    if let ItemKind::Struct(data, _) = &item.kind
         // First check if last field is an array
-        if let ItemKind::Struct(data, _) = &item.kind;
-        if let Some(last_field) = data.fields().last();
-        if let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind;
+        && let Some(last_field) = data.fields().last()
+        && let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind
 
         // Then check if that array is zero-sized
-        let length = Const::from_anon_const(cx.tcx, length.def_id);
-        let length = length.try_eval_target_usize(cx.tcx, cx.param_env);
-        if let Some(length) = length;
-        then {
-            length == 0
-        } else {
-            false
-        }
+        && let length = Const::from_anon_const(cx.tcx, length.def_id)
+        && let length = length.try_eval_target_usize(cx.tcx, cx.param_env)
+        && let Some(length) = length
+    {
+        length == 0
+    } else {
+        false
     }
 }

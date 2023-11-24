@@ -3,7 +3,6 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{method_chain_args, return_ty};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::ImplItemKind;
 use rustc_lint::{LateContext, LateLintPass};
@@ -22,7 +21,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// Before:
-    /// ```rust
+    /// ```no_run
     /// fn divisible_by_3(i_str: String) -> Result<(), String> {
     ///     let i = i_str
     ///         .parse::<i32>()
@@ -37,7 +36,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// After:
-    /// ```rust
+    /// ```no_run
     /// fn divisible_by_3(i_str: String) -> Result<(), String> {
     ///     let i = i_str
     ///         .parse::<i32>()
@@ -60,15 +59,13 @@ declare_lint_pass!(UnwrapInResult=> [UNWRAP_IN_RESULT]);
 
 impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if_chain! {
+        if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind
             // first check if it's a method or function
-            if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind;
             // checking if its return type is `result` or `option`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Result)
-                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Option);
-            then {
-                lint_impl_body(cx, impl_item.span, impl_item);
-            }
+            && (is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Result)
+                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Option))
+        {
+            lint_impl_body(cx, impl_item.span, impl_item);
         }
     }
 }

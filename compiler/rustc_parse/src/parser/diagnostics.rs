@@ -21,14 +21,16 @@ use crate::errors::{
 
 use crate::fluent_generated as fluent;
 use crate::parser;
+use crate::parser::attr::InnerAttrPolicy;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
+use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingAnnotation, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
-    Path, PathSegment, QSelf, Ty, TyKind,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
+    PatKind, Path, PathSegment, QSelf, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -504,8 +506,12 @@ impl<'a> Parser<'a> {
 
         // Special-case "expected `;`" errors
         if expected.contains(&TokenType::Token(token::Semi)) {
-            if self.prev_token == token::Question && self.maybe_recover_from_ternary_operator() {
-                return Ok(true);
+            // If the user is trying to write a ternary expression, recover it and
+            // return an Err to prevent a cascade of irrelevant diagnostics
+            if self.prev_token == token::Question
+                && let Err(e) = self.maybe_recover_from_ternary_operator()
+            {
+                return Err(e);
             }
 
             if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
@@ -718,6 +724,101 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
+    pub(super) fn attr_on_non_tail_expr(&self, expr: &Expr) {
+        // Missing semicolon typo error.
+        let span = self.prev_token.span.shrink_to_hi();
+        let mut err = self.sess.create_err(ExpectedSemi {
+            span,
+            token: self.token.clone(),
+            unexpected_token_label: Some(self.token.span),
+            sugg: ExpectedSemiSugg::AddSemi(span),
+        });
+        let attr_span = match &expr.attrs[..] {
+            [] => unreachable!(),
+            [only] => only.span,
+            [first, rest @ ..] => {
+                for attr in rest {
+                    err.span_label(attr.span, "");
+                }
+                first.span
+            }
+        };
+        err.span_label(
+            attr_span,
+            format!(
+                "only `;` terminated statements or tail expressions are allowed after {}",
+                if expr.attrs.len() == 1 { "this attribute" } else { "these attributes" },
+            ),
+        );
+        if self.token == token::Pound
+            && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Bracket))
+        {
+            // We have
+            // #[attr]
+            // expr
+            // #[not_attr]
+            // other_expr
+            err.span_label(span, "expected `;` here");
+            err.multipart_suggestion(
+                "alternatively, consider surrounding the expression with a block",
+                vec![
+                    (expr.span.shrink_to_lo(), "{ ".to_string()),
+                    (expr.span.shrink_to_hi(), " }".to_string()),
+                ],
+                Applicability::MachineApplicable,
+            );
+            let mut snapshot = self.create_snapshot_for_diagnostic();
+            if let [attr] = &expr.attrs[..]
+                && let ast::AttrKind::Normal(attr_kind) = &attr.kind
+                && let [segment] = &attr_kind.item.path.segments[..]
+                && segment.ident.name == sym::cfg
+                && let Ok(next_attr) = snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
+                && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
+                && let [next_segment] = &next_attr_kind.item.path.segments[..]
+                && segment.ident.name == sym::cfg
+                && let Ok(next_expr) = snapshot.parse_expr()
+            {
+                // We have for sure
+                // #[cfg(..)]
+                // expr
+                // #[cfg(..)]
+                // other_expr
+                // So we suggest using `if cfg!(..) { expr } else if cfg!(..) { other_expr }`.
+                let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
+                let sugg = vec![
+                    (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
+                    (
+                        attr_kind.item.args.span().unwrap().shrink_to_hi().with_hi(attr.span.hi()),
+                        " {".to_string(),
+                    ),
+                    (expr.span.shrink_to_lo(), "    ".to_string()),
+                    (
+                        next_attr.span.with_hi(next_segment.span().hi()),
+                        "} else if cfg!".to_string(),
+                    ),
+                    (
+                        next_attr_kind
+                            .item
+                            .args
+                            .span()
+                            .unwrap()
+                            .shrink_to_hi()
+                            .with_hi(next_attr.span.hi()),
+                        " {".to_string(),
+                    ),
+                    (next_expr.span.shrink_to_lo(), "    ".to_string()),
+                    (next_expr.span.shrink_to_hi(), format!("\n{}}}", " ".repeat(margin))),
+                ];
+                err.multipart_suggestion(
+                    "it seems like you are trying to provide different expressions depending on \
+                     `cfg`, consider using `if cfg!(..)`",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+        err.emit();
+    }
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
         let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
@@ -1180,11 +1281,11 @@ impl<'a> Parser<'a> {
                 (BinOpKind::Ge, AssocOp::GreaterEqual | AssocOp::Greater) => {
                     let expr_to_str = |e: &Expr| {
                         self.span_to_snippet(e.span)
-                            .unwrap_or_else(|_| pprust::expr_to_string(&e))
+                            .unwrap_or_else(|_| pprust::expr_to_string(e))
                     };
                     err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::SplitComparison {
                         span: inner_op.span.shrink_to_hi(),
-                        middle_term: expr_to_str(&r1),
+                        middle_term: expr_to_str(r1),
                     });
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
@@ -1405,7 +1506,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
         if impl_dyn_multi {
-            self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(&ty), span: ty.span });
+            self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(ty), span: ty.span });
         }
     }
 
@@ -1428,10 +1529,10 @@ impl<'a> Parser<'a> {
 
     /// Rust has no ternary operator (`cond ? then : else`). Parse it and try
     /// to recover from it if `then` and `else` are valid expressions. Returns
-    /// whether it was a ternary operator.
-    pub(super) fn maybe_recover_from_ternary_operator(&mut self) -> bool {
+    /// an err if this appears to be a ternary expression.
+    pub(super) fn maybe_recover_from_ternary_operator(&mut self) -> PResult<'a, ()> {
         if self.prev_token != token::Question {
-            return false;
+            return PResult::Ok(());
         }
 
         let lo = self.prev_token.span.lo();
@@ -1449,20 +1550,18 @@ impl<'a> Parser<'a> {
             if self.eat_noexpect(&token::Colon) {
                 match self.parse_expr() {
                     Ok(_) => {
-                        self.sess.emit_err(TernaryOperator { span: self.token.span.with_lo(lo) });
-                        return true;
+                        return Err(self
+                            .sess
+                            .create_err(TernaryOperator { span: self.token.span.with_lo(lo) }));
                     }
                     Err(err) => {
                         err.cancel();
-                        self.restore_snapshot(snapshot);
                     }
                 };
             }
-        } else {
-            self.restore_snapshot(snapshot);
-        };
-
-        false
+        }
+        self.restore_snapshot(snapshot);
+        Ok(())
     }
 
     pub(super) fn maybe_recover_from_bad_type_plus(&mut self, ty: &Ty) -> PResult<'a, ()> {
@@ -1840,7 +1939,7 @@ impl<'a> Parser<'a> {
         self.sess.emit_err(IncorrectAwait {
             span,
             sugg_span: (span, applicability),
-            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr)),
+            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(expr)),
             question_mark: if is_question { "?" } else { "" },
         });
 
@@ -2250,6 +2349,59 @@ impl<'a> Parser<'a> {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
+
+        // Walk the chain of macro expansions for the current token to point at how the original
+        // code was interpreted. This helps the user realize when a macro argument of one type is
+        // later reinterpreted as a different type, like `$x:expr` being reinterpreted as `$x:pat`
+        // in a subsequent macro invocation (#71039).
+        let mut tok = self.token.clone();
+        let mut labels = vec![];
+        while let TokenKind::Interpolated(node) = &tok.kind {
+            let tokens = node.0.tokens();
+            labels.push(node.clone());
+            if let Some(tokens) = tokens
+                && let tokens = tokens.to_attr_token_stream()
+                && let tokens = tokens.0.deref()
+                && let [AttrTokenTree::Token(token, _)] = &tokens[..]
+            {
+                tok = token.clone();
+            } else {
+                break;
+            }
+        }
+        let mut iter = labels.into_iter().peekable();
+        let mut show_link = false;
+        while let Some(node) = iter.next() {
+            let descr = node.0.descr();
+            if let Some(next) = iter.peek() {
+                let next_descr = next.0.descr();
+                if next_descr != descr {
+                    err.span_label(next.1, format!("this macro fragment matcher is {next_descr}"));
+                    err.span_label(node.1, format!("this macro fragment matcher is {descr}"));
+                    err.span_label(
+                        next.0.use_span(),
+                        format!("this is expected to be {next_descr}"),
+                    );
+                    err.span_label(
+                        node.0.use_span(),
+                        format!(
+                            "this is interpreted as {}, but it is expected to be {}",
+                            next_descr, descr,
+                        ),
+                    );
+                    show_link = true;
+                } else {
+                    err.span_label(node.1, "");
+                }
+            }
+        }
+        if show_link {
+            err.note(
+                "when forwarding a matched fragment to another macro-by-example, matchers in the \
+                 second macro will see an opaque AST of the fragment type, not the underlying \
+                 tokens",
+            );
+        }
         err
     }
 
@@ -2808,8 +2960,15 @@ impl<'a> Parser<'a> {
     }
 
     pub fn recover_diff_marker(&mut self) {
+        if let Err(mut err) = self.err_diff_marker() {
+            err.emit();
+            FatalError.raise();
+        }
+    }
+
+    pub fn err_diff_marker(&mut self) -> PResult<'a, ()> {
         let Some(start) = self.diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) else {
-            return;
+            return Ok(());
         };
         let mut spans = Vec::with_capacity(3);
         spans.push(start);
@@ -2856,8 +3015,7 @@ impl<'a> Parser<'a> {
             "for an explanation on these markers from the `git` documentation, visit \
              <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
         );
-        err.emit();
-        FatalError.raise()
+        Err(err)
     }
 
     /// Parse and throw away a parenthesized comma separated

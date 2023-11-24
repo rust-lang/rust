@@ -896,7 +896,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut visitor = ValidityVisitor { path, ref_tracking, ctfe_mode, ecx: self };
 
         // Run it.
-        match visitor.visit_value(&op) {
+        match visitor.visit_value(op) {
             Ok(()) => Ok(()),
             // Pass through validation failures and "invalid program" issues.
             Err(err)
@@ -929,7 +929,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// - no pointers to statics.
     /// - no `UnsafeCell` or non-ZST `&mut`.
     #[inline(always)]
-    pub fn const_validate_operand(
+    pub(crate) fn const_validate_operand(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
         path: Vec<PathElem>,

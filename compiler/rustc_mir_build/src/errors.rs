@@ -29,6 +29,8 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -37,6 +39,8 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe<'a> {
 pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -45,6 +49,8 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
 pub struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -53,6 +59,8 @@ pub struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -61,6 +69,8 @@ pub struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -69,6 +79,8 @@ pub struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -77,6 +89,8 @@ pub struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -85,6 +99,8 @@ pub struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -93,6 +109,8 @@ pub struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -100,6 +118,8 @@ pub struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -109,6 +129,8 @@ pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(Diagnostic)]
@@ -376,6 +398,27 @@ pub struct UnsafeNotInheritedNote {
     pub span: Span,
 }
 
+pub struct UnsafeNotInheritedLintNote {
+    pub signature_span: Span,
+    pub body_span: Span,
+}
+
+impl AddToDiagnostic for UnsafeNotInheritedLintNote {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.span_note(self.signature_span, fluent::mir_build_unsafe_fn_safe_body);
+        let body_start = self.body_span.shrink_to_lo();
+        let body_end = self.body_span.shrink_to_hi();
+        diag.tool_only_multipart_suggestion(
+            fluent::mir_build_wrap_suggestion,
+            vec![(body_start, "{ unsafe ".into()), (body_end, "}".into())],
+            Applicability::MaybeIncorrect,
+        );
+    }
+}
+
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unused_unsafe)]
 pub struct UnusedUnsafe {
@@ -389,11 +432,6 @@ pub struct UnusedUnsafe {
 pub enum UnusedUnsafeEnclosing {
     #[label(mir_build_unused_unsafe_enclosing_block_label)]
     Block {
-        #[primary_span]
-        span: Span,
-    },
-    #[label(mir_build_unused_unsafe_enclosing_fn_label)]
-    Function {
         #[primary_span]
         span: Span,
     },
@@ -794,6 +832,18 @@ pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
     pub uncovered: Uncovered<'tcx>,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(mir_build_non_exhaustive_omitted_pattern_lint_on_arm)]
+#[help]
+pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {
+    #[label]
+    pub lint_span: Span,
+    #[suggestion(code = "#[{lint_level}({lint_name})]\n", applicability = "maybe-incorrect")]
+    pub suggest_lint_on_match: Option<Span>,
+    pub lint_level: &'static str,
+    pub lint_name: &'static str,
+}
+
 #[derive(Subdiagnostic)]
 #[label(mir_build_uncovered)]
 pub(crate) struct Uncovered<'tcx> {
@@ -812,13 +862,19 @@ impl<'tcx> Uncovered<'tcx> {
         cx: &MatchCheckCtxt<'p, 'tcx>,
         witnesses: Vec<WitnessPat<'tcx>>,
     ) -> Self {
-        let witness_1 = witnesses.get(0).unwrap().to_pat(cx);
+        let witness_1 = witnesses.get(0).unwrap().to_diagnostic_pat(cx);
         Self {
             span,
             count: witnesses.len(),
             // Substitute dummy values if witnesses is smaller than 3. These will never be read.
-            witness_2: witnesses.get(1).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
-            witness_3: witnesses.get(2).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
+            witness_2: witnesses
+                .get(1)
+                .map(|w| w.to_diagnostic_pat(cx))
+                .unwrap_or_else(|| witness_1.clone()),
+            witness_3: witnesses
+                .get(2)
+                .map(|w| w.to_diagnostic_pat(cx))
+                .unwrap_or_else(|| witness_1.clone()),
             witness_1,
             remainder: witnesses.len().saturating_sub(3),
         }

@@ -3,6 +3,11 @@ error[E0425]: cannot find value `a` in this scope
    |
 LL |         [a.., a] => {}
    |          ^ not found in this scope
+   |
+help: if you meant to collect the rest of the slice in `a`, use the at operator
+   |
+LL |         [a @ .., a] => {}
+   |            +
 
 error: aborting due to previous error
 

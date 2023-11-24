@@ -308,9 +308,6 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
                 // Nothing to elaborate in a projection predicate.
             }
-            ty::PredicateKind::ClosureKind(..) => {
-                // Nothing to elaborate when waiting for a closure's kind to be inferred.
-            }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..)) => {
                 // Currently, we do not elaborate const-evaluatable
                 // predicates.
@@ -340,7 +337,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 // consider this as evidence that `T: 'static`, but
                 // I'm a bit wary of such constructions and so for now
                 // I want to be conservative. --nmatsakis
-                if r_min.is_late_bound() {
+                if r_min.is_bound() {
                     return;
                 }
 
@@ -351,7 +348,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                         .into_iter()
                         .filter_map(|component| match component {
                             Component::Region(r) => {
-                                if r.is_late_bound() {
+                                if r.is_bound() {
                                     None
                                 } else {
                                     Some(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
@@ -362,6 +359,11 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
 
                             Component::Param(p) => {
                                 let ty = Ty::new_param(tcx, p.index, p.name);
+                                Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, r_min)))
+                            }
+
+                            Component::Placeholder(p) => {
+                                let ty = Ty::new_placeholder(tcx, p);
                                 Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, r_min)))
                             }
 

@@ -1,6 +1,6 @@
 use crate::traits::{check_args_compatible, specialization_graph};
 
-use super::assembly::{self, structural_traits};
+use super::assembly::{self, structural_traits, Candidate};
 use super::EvalCtxt;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -101,6 +101,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         self.projection_ty.trait_ref(tcx)
     }
 
+    fn polarity(self) -> ty::ImplPolarity {
+        ty::ImplPolarity::Positive
+    }
+
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         self.with_self_ty(tcx, self_ty)
     }
@@ -150,13 +154,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if !drcx.args_refs_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args) {
+        if !drcx.args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args) {
             return Err(NoSolution);
         }
 
@@ -485,6 +489,37 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         )
     }
 
+    fn consider_builtin_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // Coroutines are not Iterators unless they come from `gen` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.coroutine_is_gen(def_id) {
+            return Err(NoSolution);
+        }
+
+        let term = args.as_coroutine().yield_ty().into();
+
+        Self::consider_implied_clause(
+            ecx,
+            goal,
+            ty::ProjectionPredicate {
+                projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                term,
+            }
+            .to_predicate(tcx),
+            // Technically, we need to check that the iterator type is Sized,
+            // but that's already proven by the generator being WF.
+            [],
+        )
+    }
+
     fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -496,7 +531,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
         // `async`-desugared coroutines do not implement the coroutine trait
         let tcx = ecx.tcx();
-        if tcx.coroutine_is_async(def_id) {
+        if !tcx.is_general_coroutine(def_id) {
             return Err(NoSolution);
         }
 
@@ -523,7 +558,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 term,
             }
             .to_predicate(tcx),
-            // Technically, we need to check that the future type is Sized,
+            // Technically, we need to check that the coroutine type is Sized,
             // but that's already proven by the coroutine being WF.
             [],
         )

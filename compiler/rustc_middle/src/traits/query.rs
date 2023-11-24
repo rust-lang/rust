@@ -10,7 +10,7 @@ use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
 use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;

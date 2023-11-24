@@ -13,7 +13,7 @@ use rustc_parse::parser::attr::InnerAttrPolicy;
 use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::parse::ParseSess;
-use rustc_session::{lint, EarlyErrorHandler, Session};
+use rustc_session::{lint, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
@@ -85,18 +85,13 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         ..config::Options::default()
     };
 
-    let early_error_handler = EarlyErrorHandler::new(ErrorOutputType::default());
-
     let mut cfgs = options.cfgs.clone();
     cfgs.push("doc".to_owned());
     cfgs.push("doctest".to_owned());
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: interface::parse_cfgspecs(&early_error_handler, cfgs),
-        crate_check_cfg: interface::parse_check_cfg(
-            &early_error_handler,
-            options.check_cfgs.clone(),
-        ),
+        crate_cfg: cfgs,
+        crate_check_cfg: options.check_cfgs.clone(),
         input,
         output_file: None,
         output_dir: None,
@@ -110,6 +105,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
+        using_internal_features: Arc::default(),
         expanded_args: options.expanded_args.clone(),
     };
 
@@ -131,17 +127,17 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                         options,
                         false,
                         opts,
-                        Some(compiler.session().parse_sess.clone_source_map()),
+                        Some(compiler.sess.parse_sess.clone_source_map()),
                         None,
                         enable_per_target_ignores,
                     );
 
                     let mut hir_collector = HirCollector {
-                        sess: compiler.session(),
+                        sess: &compiler.sess,
                         collector: &mut collector,
                         map: tcx.hir(),
                         codes: ErrorCodes::from(
-                            compiler.session().opts.unstable_features.is_nightly_build(),
+                            compiler.sess.opts.unstable_features.is_nightly_build(),
                         ),
                         tcx,
                     };
@@ -154,7 +150,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                     collector
                 });
-                if compiler.session().diagnostic().has_errors_or_lint_errors().is_some() {
+                if compiler.sess.diagnostic().has_errors_or_lint_errors().is_some() {
                     FatalError.raise();
                 }
 
@@ -601,15 +597,15 @@ pub(crate) fn make_test(
             loop {
                 match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
-                        if !found_main &&
-                            let ast::ItemKind::Fn(..) = item.kind &&
-                            item.ident.name == sym::main
+                        if !found_main
+                            && let ast::ItemKind::Fn(..) = item.kind
+                            && item.ident.name == sym::main
                         {
                             found_main = true;
                         }
 
-                        if !found_extern_crate &&
-                            let ast::ItemKind::ExternCrate(original) = item.kind
+                        if !found_extern_crate
+                            && let ast::ItemKind::ExternCrate(original) = item.kind
                         {
                             // This code will never be reached if `crate_name` is none because
                             // `found_extern_crate` is initialized to `true` if it is none.
@@ -961,10 +957,10 @@ impl Collector {
     fn get_filename(&self) -> FileName {
         if let Some(ref source_map) = self.source_map {
             let filename = source_map.span_to_filename(self.position);
-            if let FileName::Real(ref filename) = filename &&
-                let Ok(cur_dir) = env::current_dir() &&
-                let Some(local_path) = filename.local_path() &&
-                let Ok(path) = local_path.strip_prefix(&cur_dir)
+            if let FileName::Real(ref filename) = filename
+                && let Ok(cur_dir) = env::current_dir()
+                && let Some(local_path) = filename.local_path()
+                && let Ok(path) = local_path.strip_prefix(&cur_dir)
             {
                 return path.to_owned().into();
             }

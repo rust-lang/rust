@@ -226,7 +226,40 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     if sess.target.is_like_osx {
+        if macho_is_arm64e(&sess.target) {
+            file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
+        }
+
         file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
+    }
+    if binary_format == BinaryFormat::Coff {
+        // Disable the default mangler to avoid mangling the special "@feat.00" symbol name.
+        let original_mangling = file.mangling();
+        file.set_mangling(object::write::Mangling::None);
+
+        let mut feature = 0;
+
+        if file.architecture() == object::Architecture::I386 {
+            // When linking with /SAFESEH on x86, lld requires that all linker inputs be marked as
+            // safe exception handling compatible. Metadata files masquerade as regular COFF
+            // objects and are treated as linker inputs, despite containing no actual code. Thus,
+            // they still need to be marked as safe exception handling compatible. See #96498.
+            // Reference: https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
+            feature |= 1;
+        }
+
+        file.add_symbol(object::write::Symbol {
+            name: "@feat.00".into(),
+            value: feature,
+            size: 0,
+            kind: object::SymbolKind::Data,
+            scope: object::SymbolScope::Compilation,
+            weak: false,
+            section: object::write::SymbolSection::Absolute,
+            flags: object::SymbolFlags::None,
+        });
+
+        file.set_mangling(original_mangling);
     }
     let e_flags = match architecture {
         Architecture::Mips => {
@@ -354,6 +387,11 @@ fn macho_object_build_version_for_target(target: &Target) -> object::write::Mach
     build_version.minos = pack_version(min_os);
     build_version.sdk = pack_version(sdk);
     build_version
+}
+
+/// Is Apple's CPU subtype `arm64e`s
+fn macho_is_arm64e(target: &Target) -> bool {
+    return target.llvm_target.starts_with("arm64e");
 }
 
 pub enum MetadataPosition {

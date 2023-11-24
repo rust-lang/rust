@@ -229,4 +229,4 @@ See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.
 
 [rust]: https://github.com/rust-lang/rust
 [fmt rfcs]: https://github.com/rust-dev-tools/fmt-rfcs
-[style guide]: https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/guide.md
+[style guide]: https://doc.rust-lang.org/nightly/style-guide/

@@ -1,0 +1,51 @@
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
+  --> $DIR/issue-76168-hr-outlives-3.rs:6:1
+   |
+LL | / async fn wrapper<F>(f: F)
+LL | |
+LL | |
+LL | |
+LL | | where
+LL | |     F:,
+LL | |     for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
+   | |______________________________________________________________________________^ expected an `FnOnce(&'a mut i32)` closure, found `i32`
+   |
+   = help: the trait `for<'a> FnOnce<(&'a mut i32,)>` is not implemented for `i32`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
+  --> $DIR/issue-76168-hr-outlives-3.rs:6:10
+   |
+LL | async fn wrapper<F>(f: F)
+   |          ^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `i32`
+   |
+   = help: the trait `for<'a> FnOnce<(&'a mut i32,)>` is not implemented for `i32`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
+  --> $DIR/issue-76168-hr-outlives-3.rs:13:1
+   |
+LL | / {
+LL | |
+LL | |     let mut i = 41;
+LL | |     &mut i;
+LL | | }
+   | |_^ expected an `FnOnce(&'a mut i32)` closure, found `i32`
+   |
+   = help: the trait `for<'a> FnOnce<(&'a mut i32,)>` is not implemented for `i32`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
+  --> $DIR/issue-76168-hr-outlives-3.rs:6:1
+   |
+LL | / async fn wrapper<F>(f: F)
+LL | |
+LL | |
+LL | |
+LL | | where
+LL | |     F:,
+LL | |     for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
+   | |______________________________________________________________________________^ expected an `FnOnce(&'a mut i32)` closure, found `i32`
+   |
+   = help: the trait `for<'a> FnOnce<(&'a mut i32,)>` is not implemented for `i32`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

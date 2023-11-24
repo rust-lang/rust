@@ -2,6 +2,7 @@
 --config flatten std
 --filter
 // tidy-alphabetical-start
+!Windows.Win32.Foundation.INVALID_HANDLE_VALUE
 Windows.Wdk.Storage.FileSystem.FILE_COMPLETE_IF_OPLOCKED
 Windows.Wdk.Storage.FileSystem.FILE_CONTAINS_EXTENDED_CREATE_INFORMATION
 Windows.Wdk.Storage.FileSystem.FILE_CREATE
@@ -1923,7 +1924,6 @@ Windows.Win32.Foundation.HANDLE_FLAG_INHERIT
 Windows.Win32.Foundation.HANDLE_FLAG_PROTECT_FROM_CLOSE
 Windows.Win32.Foundation.HANDLE_FLAGS
 Windows.Win32.Foundation.HMODULE
-Windows.Win32.Foundation.INVALID_HANDLE_VALUE
 Windows.Win32.Foundation.MAX_PATH
 Windows.Win32.Foundation.NO_ERROR
 Windows.Win32.Foundation.NTSTATUS
@@ -2224,6 +2224,7 @@ Windows.Win32.Storage.FileSystem.FILE_ACCESS_RIGHTS
 Windows.Win32.Storage.FileSystem.FILE_ADD_FILE
 Windows.Win32.Storage.FileSystem.FILE_ADD_SUBDIRECTORY
 Windows.Win32.Storage.FileSystem.FILE_ALL_ACCESS
+Windows.Win32.Storage.FileSystem.FILE_ALLOCATION_INFO
 Windows.Win32.Storage.FileSystem.FILE_APPEND_DATA
 Windows.Win32.Storage.FileSystem.FILE_ATTRIBUTE_ARCHIVE
 Windows.Win32.Storage.FileSystem.FILE_ATTRIBUTE_COMPRESSED
@@ -2284,6 +2285,7 @@ Windows.Win32.Storage.FileSystem.FILE_GENERIC_READ
 Windows.Win32.Storage.FileSystem.FILE_GENERIC_WRITE
 Windows.Win32.Storage.FileSystem.FILE_ID_BOTH_DIR_INFO
 Windows.Win32.Storage.FileSystem.FILE_INFO_BY_HANDLE_CLASS
+Windows.Win32.Storage.FileSystem.FILE_IO_PRIORITY_HINT_INFO
 Windows.Win32.Storage.FileSystem.FILE_LIST_DIRECTORY
 Windows.Win32.Storage.FileSystem.FILE_NAME_NORMALIZED
 Windows.Win32.Storage.FileSystem.FILE_NAME_OPENED
@@ -2481,7 +2483,6 @@ Windows.Win32.System.SystemInformation.GetSystemTimeAsFileTime
 Windows.Win32.System.SystemInformation.GetWindowsDirectoryW
 Windows.Win32.System.SystemInformation.PROCESSOR_ARCHITECTURE
 Windows.Win32.System.SystemInformation.SYSTEM_INFO
-Windows.Win32.System.SystemServices.ALL_PROCESSOR_GROUPS
 Windows.Win32.System.SystemServices.DLL_PROCESS_DETACH
 Windows.Win32.System.SystemServices.DLL_THREAD_DETACH
 Windows.Win32.System.SystemServices.EXCEPTION_MAXIMUM_PARAMETERS
@@ -2490,6 +2491,7 @@ Windows.Win32.System.SystemServices.IO_REPARSE_TAG_SYMLINK
 Windows.Win32.System.Threading.ABOVE_NORMAL_PRIORITY_CLASS
 Windows.Win32.System.Threading.AcquireSRWLockExclusive
 Windows.Win32.System.Threading.AcquireSRWLockShared
+Windows.Win32.System.Threading.ALL_PROCESSOR_GROUPS
 Windows.Win32.System.Threading.BELOW_NORMAL_PRIORITY_CLASS
 Windows.Win32.System.Threading.CREATE_BREAKAWAY_FROM_JOB
 Windows.Win32.System.Threading.CREATE_DEFAULT_ERROR_MODE
@@ -2505,9 +2507,12 @@ Windows.Win32.System.Threading.CREATE_SEPARATE_WOW_VDM
 Windows.Win32.System.Threading.CREATE_SHARED_WOW_VDM
 Windows.Win32.System.Threading.CREATE_SUSPENDED
 Windows.Win32.System.Threading.CREATE_UNICODE_ENVIRONMENT
+Windows.Win32.System.Threading.CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+Windows.Win32.System.Threading.CREATE_WAITABLE_TIMER_MANUAL_RESET
 Windows.Win32.System.Threading.CreateEventW
 Windows.Win32.System.Threading.CreateProcessW
 Windows.Win32.System.Threading.CreateThread
+Windows.Win32.System.Threading.CreateWaitableTimerExW
 Windows.Win32.System.Threading.DEBUG_ONLY_THIS_PROCESS
 Windows.Win32.System.Threading.DEBUG_PROCESS
 Windows.Win32.System.Threading.DeleteProcThreadAttributeList
@@ -2544,6 +2549,7 @@ Windows.Win32.System.Threading.REALTIME_PRIORITY_CLASS
 Windows.Win32.System.Threading.ReleaseSRWLockExclusive
 Windows.Win32.System.Threading.ReleaseSRWLockShared
 Windows.Win32.System.Threading.SetThreadStackGuarantee
+Windows.Win32.System.Threading.SetWaitableTimer
 Windows.Win32.System.Threading.Sleep
 Windows.Win32.System.Threading.SleepConditionVariableSRW
 Windows.Win32.System.Threading.SleepEx
@@ -2570,6 +2576,8 @@ Windows.Win32.System.Threading.TerminateProcess
 Windows.Win32.System.Threading.THREAD_CREATE_RUN_IMMEDIATELY
 Windows.Win32.System.Threading.THREAD_CREATE_SUSPENDED
 Windows.Win32.System.Threading.THREAD_CREATION_FLAGS
+Windows.Win32.System.Threading.TIMER_ALL_ACCESS
+Windows.Win32.System.Threading.TIMER_MODIFY_STATE
 Windows.Win32.System.Threading.TLS_OUT_OF_INDEXES
 Windows.Win32.System.Threading.TlsAlloc
 Windows.Win32.System.Threading.TlsFree

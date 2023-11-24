@@ -40,13 +40,17 @@ use libc::{c_int, mode_t};
 ))]
 use libc::c_char;
 #[cfg(any(
-    target_os = "linux",
+    all(target_os = "linux", not(target_env = "musl")),
     target_os = "emscripten",
     target_os = "android",
-    target_os = "hurd",
+    target_os = "hurd"
 ))]
 use libc::dirfd;
-#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "hurd"))]
+#[cfg(any(
+    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "emscripten",
+    target_os = "hurd"
+))]
 use libc::fstatat64;
 #[cfg(any(
     target_os = "android",
@@ -57,9 +61,10 @@ use libc::fstatat64;
     target_os = "aix",
     target_os = "nto",
     target_os = "vita",
+    all(target_os = "linux", target_env = "musl"),
 ))]
 use libc::readdir as readdir64;
-#[cfg(any(target_os = "linux", target_os = "hurd"))]
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::readdir64;
 #[cfg(any(target_os = "emscripten", target_os = "l4re"))]
 use libc::readdir64_r;
@@ -84,7 +89,7 @@ use libc::{
     lstat as lstat64, off64_t, open as open64, stat as stat64,
 };
 #[cfg(not(any(
-    target_os = "linux",
+    all(target_os = "linux", not(target_env = "musl")),
     target_os = "emscripten",
     target_os = "l4re",
     target_os = "android",
@@ -95,7 +100,7 @@ use libc::{
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
 #[cfg(any(
-    target_os = "linux",
+    all(target_os = "linux", not(target_env = "musl")),
     target_os = "emscripten",
     target_os = "l4re",
     target_os = "hurd"
@@ -853,10 +858,10 @@ impl DirEntry {
 
     #[cfg(all(
         any(
-            target_os = "linux",
+            all(target_os = "linux", not(target_env = "musl")),
             target_os = "emscripten",
             target_os = "android",
-            target_os = "hurd",
+            target_os = "hurd"
         ),
         not(miri)
     ))]
@@ -882,7 +887,7 @@ impl DirEntry {
 
     #[cfg(any(
         not(any(
-            target_os = "linux",
+            all(target_os = "linux", not(target_env = "musl")),
             target_os = "emscripten",
             target_os = "android",
             target_os = "hurd",
@@ -1295,13 +1300,17 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
-        let to_timespec = |time: Option<SystemTime>| {
-            match time {
-                Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
-                Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too large to set as a file time")),
-                Some(_) => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too small to set as a file time")),
-                None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
-            }
+        let to_timespec = |time: Option<SystemTime>| match time {
+            Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
+            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "timestamp is too large to set as a file time"
+            )),
+            Some(_) => Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "timestamp is too small to set as a file time"
+            )),
+            None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };
         cfg_if::cfg_if! {
             if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {

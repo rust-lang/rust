@@ -295,8 +295,12 @@ impl<'a> Ctx<'a> {
                         }
                     }
                 };
-                let ty = Interned::new(self_type);
-                let idx = self.data().params.alloc(Param::Normal(ty));
+                let type_ref = Interned::new(self_type);
+                let ast_id = self.source_ast_id_map.ast_id(&self_param);
+                let idx = self.data().params.alloc(Param {
+                    type_ref: Some(type_ref),
+                    ast_id: ParamAstId::SelfParam(ast_id),
+                });
                 self.add_attrs(
                     idx.into(),
                     RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
@@ -305,11 +309,19 @@ impl<'a> Ctx<'a> {
             }
             for param in param_list.params() {
                 let idx = match param.dotdotdot_token() {
-                    Some(_) => self.data().params.alloc(Param::Varargs),
+                    Some(_) => {
+                        let ast_id = self.source_ast_id_map.ast_id(&param);
+                        self.data()
+                            .params
+                            .alloc(Param { type_ref: None, ast_id: ParamAstId::Param(ast_id) })
+                    }
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        self.data().params.alloc(Param::Normal(ty))
+                        let ast_id = self.source_ast_id_map.ast_id(&param);
+                        self.data()
+                            .params
+                            .alloc(Param { type_ref: Some(ty), ast_id: ParamAstId::Param(ast_id) })
                     }
                 };
                 self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));
@@ -384,14 +396,7 @@ impl<'a> Ctx<'a> {
         let bounds = self.lower_type_bounds(type_alias);
         let generic_params = self.lower_generic_params(HasImplicitSelf::No, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
-        let res = TypeAlias {
-            name,
-            visibility,
-            bounds: bounds.into_boxed_slice(),
-            generic_params,
-            type_ref,
-            ast_id,
-        };
+        let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
         Some(id(self.data().type_aliases.alloc(res)))
     }
 
@@ -487,6 +492,7 @@ impl<'a> Ctx<'a> {
         let target_trait = impl_def.trait_().and_then(|tr| self.lower_trait_ref(&tr));
         let self_ty = self.lower_type_ref(&impl_def.self_ty()?);
         let is_negative = impl_def.excl_token().is_some();
+        let is_unsafe = impl_def.unsafe_token().is_some();
 
         // We cannot use `assoc_items()` here as that does not include macro calls.
         let items = impl_def
@@ -501,7 +507,8 @@ impl<'a> Ctx<'a> {
             })
             .collect();
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
-        let res = Impl { generic_params, target_trait, self_ty, is_negative, items, ast_id };
+        let res =
+            Impl { generic_params, target_trait, self_ty, is_negative, is_unsafe, items, ast_id };
         Some(id(self.data().impls.alloc(res)))
     }
 
@@ -625,13 +632,13 @@ impl<'a> Ctx<'a> {
         Interned::new(generics)
     }
 
-    fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Vec<Interned<TypeBound>> {
+    fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Box<[Interned<TypeBound>]> {
         match node.type_bound_list() {
             Some(bound_list) => bound_list
                 .bounds()
                 .map(|it| Interned::new(TypeBound::from_ast(&self.body_ctx, it)))
                 .collect(),
-            None => Vec::new(),
+            None => Box::default(),
         }
     }
 

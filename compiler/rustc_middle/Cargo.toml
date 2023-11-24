@@ -3,24 +3,24 @@ name = "rustc_middle"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 bitflags = "1.2.1"
 derive_more = "0.99.17"
 either = "1.5.0"
-gsgdt = "0.1.2"
 field-offset = "0.3.5"
+gsgdt = "0.1.2"
 measureme = "10.0.0"
 polonius-engine = "0.13.0"
+rustc-rayon = { version = "0.5.0", optional = true }
+rustc-rayon-core = { version = "0.5.0", optional = true }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_error_messages = { path = "../rustc_error_messages" } # Used for intra-doc links
 rustc_errors = { path = "../rustc_errors" }
-# Used for intra-doc links
-rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_graphviz = { path = "../rustc_graphviz" }
@@ -28,8 +28,6 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_query_system = { path = "../rustc_query_system" }
-rustc-rayon-core = { version = "0.5.0", optional = true }
-rustc-rayon = { version = "0.5.0", optional = true }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
@@ -38,6 +36,9 @@ rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
 tracing = "0.1"
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 rustc_use_parallel_compiler = ["rustc-rayon", "rustc-rayon-core"]
+# tidy-alphabetical-end

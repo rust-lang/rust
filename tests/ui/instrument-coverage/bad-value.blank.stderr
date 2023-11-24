@@ -1,0 +1,2 @@
+error: incorrect value `` for codegen option `instrument-coverage` - `all` (default), `branch`, `except-unused-generics`, `except-unused-functions`, or `off` was expected
+

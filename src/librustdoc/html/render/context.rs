@@ -7,13 +7,10 @@ use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::FileName;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, FileName, Symbol};
 
 use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
@@ -25,13 +22,13 @@ use super::{
     AllTypes, LinkFromSrc, StylePath,
 };
 use crate::clean::utils::has_doc_flag;
-use crate::clean::{self, types::ExternalLocation, ExternalCrate, TypeAliasItem};
+use crate::clean::{self, types::ExternalLocation, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::formats::{self, FormatRenderer};
+use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
@@ -150,53 +147,6 @@ impl SharedContext<'_> {
     pub(crate) fn edition(&self) -> Edition {
         self.tcx.sess.edition()
     }
-
-    /// Returns a list of impls on the given type, and, if it's a type alias,
-    /// other types that it aliases.
-    pub(crate) fn all_impls_for_item<'a>(
-        &'a self,
-        it: &clean::Item,
-        did: DefId,
-    ) -> Vec<&'a formats::Impl> {
-        let tcx = self.tcx;
-        let cache = &self.cache;
-        let mut saw_impls = FxHashSet::default();
-        let mut v: Vec<&formats::Impl> = cache
-            .impls
-            .get(&did)
-            .map(Vec::as_slice)
-            .unwrap_or(&[])
-            .iter()
-            .filter(|i| saw_impls.insert(i.def_id()))
-            .collect();
-        if let TypeAliasItem(ait) = &*it.kind &&
-            let aliased_clean_type = ait.item_type.as_ref().unwrap_or(&ait.type_) &&
-            let Some(aliased_type_defid) = aliased_clean_type.def_id(cache) &&
-            let Some(av) = cache.impls.get(&aliased_type_defid) &&
-            let Some(alias_def_id) = it.item_id.as_def_id()
-        {
-            // This branch of the compiler compares types structually, but does
-            // not check trait bounds. That's probably fine, since type aliases
-            // don't normally constrain on them anyway.
-            // https://github.com/rust-lang/rust/issues/21903
-            //
-            // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this to use type unification.
-            // Be aware of `tests/rustdoc/issue-112515-impl-ty-alias.rs` which might regress.
-            let aliased_ty = tcx.type_of(alias_def_id).skip_binder();
-            let reject_cx = DeepRejectCtxt {
-                treat_obligation_params: TreatParams::AsCandidateKey,
-            };
-            v.extend(av.iter().filter(|impl_| {
-                if let Some(impl_def_id) = impl_.impl_item.item_id.as_def_id() {
-                    reject_cx.types_may_unify(aliased_ty, tcx.type_of(impl_def_id).skip_binder())
-                        && saw_impls.insert(impl_def_id)
-                } else {
-                    false
-                }
-            }));
-        }
-        v
-    }
 }
 
 impl<'tcx> Context<'tcx> {
@@ -226,9 +176,9 @@ impl<'tcx> Context<'tcx> {
         let mut render_redirect_pages = self.render_redirect_pages;
         // If the item is stripped but inlined, links won't point to the item so no need to generate
         // a file for it.
-        if it.is_stripped() &&
-            let Some(def_id) = it.def_id() &&
-            def_id.is_local()
+        if it.is_stripped()
+            && let Some(def_id) = it.def_id()
+            && def_id.is_local()
         {
             if self.is_inside_inlined_module || self.shared.cache.inlined_items.contains(&def_id) {
                 // For now we're forced to generate a redirect page for stripped items until
@@ -421,7 +371,9 @@ impl<'tcx> Context<'tcx> {
 
             path = href.into_inner().to_string_lossy().into_owned();
 
-            if let Some(c) = path.as_bytes().last() && *c != b'/' {
+            if let Some(c) = path.as_bytes().last()
+                && *c != b'/'
+            {
                 path.push('/');
             }
 
@@ -791,9 +743,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared.fs.write(scrape_examples_help_file, v)?;
         }
 
-        if let Some(ref redirections) = shared.redirections && !redirections.borrow().is_empty() {
-            let redirect_map_path =
-                self.dst.join(crate_name.as_str()).join("redirect-map.json");
+        if let Some(ref redirections) = shared.redirections
+            && !redirections.borrow().is_empty()
+        {
+            let redirect_map_path = self.dst.join(crate_name.as_str()).join("redirect-map.json");
             let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
             shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
             shared.fs.write(redirect_map_path, paths)?;
@@ -840,7 +793,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
         if !self.is_inside_inlined_module {
-            if let Some(def_id) = item.def_id() && self.cache().inlined_items.contains(&def_id) {
+            if let Some(def_id) = item.def_id()
+                && self.cache().inlined_items.contains(&def_id)
+            {
                 self.is_inside_inlined_module = true;
             }
         } else if !self.cache().document_hidden && item.is_doc_hidden() {

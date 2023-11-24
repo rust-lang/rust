@@ -18,6 +18,7 @@
 // gate-test-bpf_target_feature
 // gate-test-aarch64_ver_target_feature
 // gate-test-csky_target_feature
+// gate-test-loongarch_target_feature
 
 #[target_feature(enable = "avx512bw")]
 //~^ ERROR: currently unstable

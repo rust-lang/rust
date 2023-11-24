@@ -19,18 +19,16 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
             expr.span.trim_start(recv.span).unwrap(),
             "called `skip(..).next()` on an iterator",
             |diag| {
-                if_chain! {
-                    if let Some(id) = path_to_local(recv);
-                    if let Node::Pat(pat) = cx.tcx.hir().get(id);
-                    if let PatKind::Binding(ann, _, _, _)  = pat.kind;
-                    if ann != BindingAnnotation::MUT;
-                    then {
-                        application = Applicability::Unspecified;
-                        diag.span_help(
-                            pat.span,
-                            format!("for this change `{}` has to be mutable", snippet(cx, pat.span, "..")),
-                        );
-                    }
+                if let Some(id) = path_to_local(recv)
+                    && let Node::Pat(pat) = cx.tcx.hir().get(id)
+                    && let PatKind::Binding(ann, _, _, _) = pat.kind
+                    && ann != BindingAnnotation::MUT
+                {
+                    application = Applicability::Unspecified;
+                    diag.span_help(
+                        pat.span,
+                        format!("for this change `{}` has to be mutable", snippet(cx, pat.span, "..")),
+                    );
                 }
 
                 diag.span_suggestion(

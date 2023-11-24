@@ -18,7 +18,7 @@ Coroutines are an extra-unstable feature in the compiler right now. Added in
 [RFC 2033] they're mostly intended right now as a information/constraint
 gathering phase. The intent is that experimentation can happen on the nightly
 compiler before actual stabilization. A further RFC will be required to
-stabilize coroutines/coroutines and will likely contain at least a few small
+stabilize coroutines and will likely contain at least a few small
 tweaks to the overall design.
 
 [RFC 2033]: https://github.com/rust-lang/rfcs/pull/2033

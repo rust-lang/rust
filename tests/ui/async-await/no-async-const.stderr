@@ -9,5 +9,14 @@ LL | pub async const fn x() {}
    |
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
-error: aborting due to previous error
+error: functions cannot be both `const` and `async`
+  --> $DIR/no-async-const.rs:4:5
+   |
+LL | pub async const fn x() {}
+   | ----^^^^^-^^^^^----------
+   |     |     |
+   |     |     `const` because of this
+   |     `async` because of this
+
+error: aborting due to 2 previous errors
 

@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) Atomic Load on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) atomic load on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>` at ALLOC. (2) just happened here
   --> $DIR/atomic_read_na_write_race2.rs:LL:CC
    |
 LL |             *atomic_ref.get_mut() = 32;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) Atomic Load on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) atomic load on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
   --> $DIR/atomic_read_na_write_race2.rs:LL:CC

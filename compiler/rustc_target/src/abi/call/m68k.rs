@@ -9,6 +9,10 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 }
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+    if !arg.layout.is_sized() {
+        // Not touching this...
+        return;
+    }
     if arg.layout.is_aggregate() {
         arg.make_indirect_byval(None);
     } else {

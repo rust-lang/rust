@@ -835,8 +835,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_option_inspect)]
-    ///
     /// let x: u8 = "4"
     ///     .parse::<u8>()
     ///     .inspect(|x| println!("original: {x}"))
@@ -844,7 +842,7 @@ impl<T, E> Result<T, E> {
     ///     .expect("failed to parse number");
     /// ```
     #[inline]
-    #[unstable(feature = "result_option_inspect", issue = "91345")]
+    #[stable(feature = "result_option_inspect", since = "CURRENT_RUSTC_VERSION")]
     pub fn inspect<F: FnOnce(&T)>(self, f: F) -> Self {
         if let Ok(ref t) = self {
             f(t);
@@ -858,8 +856,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_option_inspect)]
-    ///
     /// use std::{fs, io};
     ///
     /// fn read() -> io::Result<String> {
@@ -868,7 +864,7 @@ impl<T, E> Result<T, E> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "result_option_inspect", issue = "91345")]
+    #[stable(feature = "result_option_inspect", since = "CURRENT_RUSTC_VERSION")]
     pub fn inspect_err<F: FnOnce(&E)>(self, f: F) -> Self {
         if let Err(ref e) = self {
             f(e);

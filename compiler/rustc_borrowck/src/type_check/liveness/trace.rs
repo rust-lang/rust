@@ -3,6 +3,7 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::{RegionVid, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
@@ -63,7 +64,7 @@ pub(super) fn trace<'mir, 'tcx>(
         let num_region_vars = typeck.infcx.num_region_vars();
         let graph = constraint_set.graph(num_region_vars);
         let region_graph =
-            graph.region_graph(&constraint_set, borrowck_context.universal_regions.fr_static);
+            graph.region_graph(constraint_set, borrowck_context.universal_regions.fr_static);
 
         // Traverse each issuing region's constraints, and record the loan as flowing into the
         // outlived region.
@@ -317,7 +318,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     fn compute_drop_live_points_for(&mut self, local: Local) {
         debug!("compute_drop_live_points_for(local={:?})", local);
 
-        let mpi = self.cx.move_data.rev_lookup.find_local(local);
+        let Some(mpi) = self.cx.move_data.rev_lookup.find_local(local) else { return };
         debug!("compute_drop_live_points_for: mpi = {:?}", mpi);
 
         // Find the drops where `local` is initialized.
@@ -488,7 +489,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         }
 
         let move_paths = &self.flow_inits.analysis().move_data().move_paths;
-        move_paths[mpi].find_descendant(&move_paths, |mpi| state.contains(mpi)).is_some()
+        move_paths[mpi].find_descendant(move_paths, |mpi| state.contains(mpi)).is_some()
     }
 
     /// Returns `true` if the local variable (or some part of it) is initialized in
@@ -521,7 +522,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
 
         Self::make_all_regions_live(
             self.elements,
-            &mut self.typeck,
+            self.typeck,
             value,
             live_at,
             &self.inflowing_loans,
@@ -578,13 +579,13 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         for &kind in &drop_data.dropck_result.kinds {
             Self::make_all_regions_live(
                 self.elements,
-                &mut self.typeck,
+                self.typeck,
                 kind,
                 live_at,
                 &self.inflowing_loans,
             );
 
-            polonius::add_drop_of_var_derefs_origin(&mut self.typeck, dropped_local, &kind);
+            polonius::add_drop_of_var_derefs_origin(self.typeck, dropped_local, &kind);
         }
     }
 
@@ -601,34 +602,36 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             values::location_set_str(elements, live_at.iter()),
         );
 
-        let tcx = typeck.tcx();
-        let borrowck_context = &mut typeck.borrowck_context;
-
         // When using `-Zpolonius=next`, we want to record the loans that flow into this value's
         // regions as being live at the given `live_at` points: this will be used to compute the
         // location where a loan goes out of scope.
-        let num_loans = borrowck_context.borrow_set.len();
-        let mut value_loans = HybridBitSet::new_empty(num_loans);
+        let num_loans = typeck.borrowck_context.borrow_set.len();
+        let value_loans = &mut HybridBitSet::new_empty(num_loans);
 
-        tcx.for_each_free_region(&value, |live_region| {
-            let live_region_vid = borrowck_context.universal_regions.to_region_vid(live_region);
+        value.visit_with(&mut for_liveness::FreeRegionsVisitor {
+            tcx: typeck.tcx(),
+            param_env: typeck.param_env,
+            op: |r| {
+                let live_region_vid = typeck.borrowck_context.universal_regions.to_region_vid(r);
 
-            borrowck_context
-                .constraints
-                .liveness_constraints
-                .add_elements(live_region_vid, live_at);
+                typeck
+                    .borrowck_context
+                    .constraints
+                    .liveness_constraints
+                    .add_elements(live_region_vid, live_at);
 
-            // There can only be inflowing loans for this region when we are using
-            // `-Zpolonius=next`.
-            if let Some(inflowing) = inflowing_loans.row(live_region_vid) {
-                value_loans.union(inflowing);
-            }
+                // There can only be inflowing loans for this region when we are using
+                // `-Zpolonius=next`.
+                if let Some(inflowing) = inflowing_loans.row(live_region_vid) {
+                    value_loans.union(inflowing);
+                }
+            },
         });
 
         // Record the loans reaching the value.
         if !value_loans.is_empty() {
             for point in live_at.iter() {
-                borrowck_context.live_loans.union_row(point, &value_loans);
+                typeck.borrowck_context.live_loans.union_row(point, value_loans);
             }
         }
     }

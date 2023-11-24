@@ -109,6 +109,7 @@ impl_visitable! {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "bw{}"]
     pub struct BorrowIndex {}
 }
@@ -272,28 +273,35 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
         loan_issued_at: Location,
     ) {
         let sccs = self.regioncx.constraint_sccs();
-        let issuing_region_scc = sccs.scc(issuing_region);
+        let universal_regions = self.regioncx.universal_regions();
 
         // We first handle the cases where the loan doesn't go out of scope, depending on the issuing
         // region's successors.
-        for scc in sccs.depth_first_search(issuing_region_scc) {
-            // 1. Via member constraints
+        for successor in self.regioncx.region_graph().depth_first_search(issuing_region) {
+            // 1. Via applied member constraints
             //
             // The issuing region can flow into the choice regions, and they are either:
             // - placeholders or free regions themselves,
             // - or also transitively outlive a free region.
             //
-            // That is to say, if there are member constraints here, the loan escapes the function
-            // and cannot go out of scope. We can early return.
-            if self.regioncx.scc_has_member_constraints(scc) {
-                return;
+            // That is to say, if there are applied member constraints here, the loan escapes the
+            // function and cannot go out of scope. We could early return here.
+            //
+            // For additional insurance via fuzzing and crater, we verify that the constraint's min
+            // choice indeed escapes the function. In the future, we could e.g. turn this check into
+            // a debug assert and early return as an optimization.
+            let scc = sccs.scc(successor);
+            for constraint in self.regioncx.applied_member_constraints(scc) {
+                if universal_regions.is_universal_region(constraint.min_choice) {
+                    return;
+                }
             }
 
             // 2. Via regions that are live at all points: placeholders and free regions.
             //
             // If the issuing region outlives such a region, its loan escapes the function and
             // cannot go out of scope. We can early return.
-            if self.regioncx.scc_is_live_at_all_points(scc) {
+            if self.regioncx.is_region_live_at_all_points(successor) {
                 return;
             }
         }
@@ -413,12 +421,12 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             let mut polonius_prec = PoloniusOutOfScopePrecomputer::new(body, regioncx);
             for (loan_idx, loan_data) in borrow_set.iter_enumerated() {
                 let issuing_region = loan_data.region;
-                let issued_location = loan_data.reserve_location;
+                let loan_issued_at = loan_data.reserve_location;
 
                 polonius_prec.precompute_loans_out_of_scope(
                     loan_idx,
                     issuing_region,
-                    issued_location,
+                    loan_issued_at,
                 );
             }
 

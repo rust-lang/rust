@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::path_def_id;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::path_def_id;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;

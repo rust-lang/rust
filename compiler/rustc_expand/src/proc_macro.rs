@@ -126,7 +126,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Annotatable::Stmt(stmt) => token::NtStmt(stmt),
                 _ => unreachable!(),
             };
-            TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
+            TokenStream::token_alone(token::Interpolated(Lrc::new((nt, span))), DUMMY_SP)
         } else {
             item.to_tokens()
         };

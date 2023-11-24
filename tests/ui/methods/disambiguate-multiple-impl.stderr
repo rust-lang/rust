@@ -29,10 +29,10 @@ LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
-LL |     <S as A>::foo(&s);
-   |     ~~~~~~~~~~
-LL |     <S as B>::foo(&s);
-   |     ~~~~~~~~~~
+LL |     A::foo(&s);
+   |     ~~~
+LL |     B::foo(&s);
+   |     ~~~
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/disambiguate-multiple-impl.rs:34:16

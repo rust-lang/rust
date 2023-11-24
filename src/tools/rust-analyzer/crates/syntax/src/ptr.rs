@@ -73,6 +73,10 @@ impl<N: AstNode> AstPtr<N> {
         Some(AstPtr { raw: self.raw, _ty: PhantomData })
     }
 
+    pub fn kind(&self) -> parser::SyntaxKind {
+        self.raw.kind()
+    }
+
     pub fn upcast<M: AstNode>(self) -> AstPtr<M>
     where
         N: Into<M>,
@@ -83,6 +87,20 @@ impl<N: AstNode> AstPtr<N> {
     /// Like `SyntaxNodePtr::cast` but the trait bounds work out.
     pub fn try_from_raw(raw: SyntaxNodePtr) -> Option<AstPtr<N>> {
         N::can_cast(raw.kind()).then_some(AstPtr { raw, _ty: PhantomData })
+    }
+
+    pub fn wrap_left<R>(self) -> AstPtr<either::Either<N, R>>
+    where
+        either::Either<N, R>: AstNode,
+    {
+        AstPtr { raw: self.raw, _ty: PhantomData }
+    }
+
+    pub fn wrap_right<L>(self) -> AstPtr<either::Either<L, N>>
+    where
+        either::Either<L, N>: AstNode,
+    {
+        AstPtr { raw: self.raw, _ty: PhantomData }
     }
 }
 

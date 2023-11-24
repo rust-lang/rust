@@ -20,8 +20,9 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::{respan, Span, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -540,7 +541,7 @@ impl<'a> Parser<'a> {
         }
 
         self.sess
-            .emit_err(AmbiguousRangePattern { span: pat.span, pat: pprust::pat_to_string(&pat) });
+            .emit_err(AmbiguousRangePattern { span: pat.span, pat: pprust::pat_to_string(pat) });
     }
 
     /// Parse `&pat` / `&mut pat`.
@@ -591,7 +592,7 @@ impl<'a> Parser<'a> {
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
         if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtPat(_) = **nt {
+            if let token::NtPat(..) = &nt.0 {
                 self.expected_ident_found_err().emit();
             }
         }
@@ -637,13 +638,13 @@ impl<'a> Parser<'a> {
 
     /// Error on `mut $pat` where `$pat` is not an ident.
     fn ban_mut_general_pat(&self, lo: Span, pat: &Pat, changed_any_binding: bool) {
-        let span = lo.to(pat.span);
-        let pat = pprust::pat_to_string(&pat);
-
         self.sess.emit_err(if changed_any_binding {
-            InvalidMutInPattern::NestedIdent { span, pat }
+            InvalidMutInPattern::NestedIdent {
+                span: lo.to(pat.span),
+                pat: pprust::pat_to_string(pat),
+            }
         } else {
-            InvalidMutInPattern::NonIdent { span, pat }
+            InvalidMutInPattern::NonIdent { span: lo.until(pat.span) }
         });
     }
 
@@ -967,11 +968,12 @@ impl<'a> Parser<'a> {
 
             // check that a comma comes after every field
             if !ate_comma {
-                let err = ExpectedCommaAfterPatternField { span: self.token.span }
+                let mut err = ExpectedCommaAfterPatternField { span: self.token.span }
                     .into_diagnostic(&self.sess.span_diagnostic);
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }
+                self.recover_misplaced_pattern_modifiers(&fields, &mut err);
                 return Err(err);
             }
             ate_comma = false;
@@ -1107,6 +1109,37 @@ impl<'a> Parser<'a> {
             err.emit();
         }
         Ok((fields, etc))
+    }
+
+    /// If the user writes `S { ref field: name }` instead of `S { field: ref name }`, we suggest
+    /// the correct code.
+    fn recover_misplaced_pattern_modifiers(
+        &self,
+        fields: &ThinVec<PatField>,
+        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
+    ) {
+        if let Some(last) = fields.iter().last()
+            && last.is_shorthand
+            && let PatKind::Ident(binding, ident, None) = last.pat.kind
+            && binding != BindingAnnotation::NONE
+            && self.token == token::Colon
+            // We found `ref mut? ident:`, try to parse a `name,` or `name }`.
+            && let Some(name_span) = self.look_ahead(1, |t| t.is_ident().then(|| t.span))
+            && self.look_ahead(2, |t| {
+                t == &token::Comma || t == &token::CloseDelim(Delimiter::Brace)
+            })
+        {
+            let span = last.pat.span.with_hi(ident.span.lo());
+            // We have `S { ref field: name }` instead of `S { field: ref name }`
+            err.multipart_suggestion(
+                "the pattern modifiers belong after the `:`",
+                vec![
+                    (span, String::new()),
+                    (name_span.shrink_to_lo(), binding.prefix_str().to_string()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        }
     }
 
     /// Recover on `...` or `_` as if it were `..` to avoid further errors.

@@ -1,19 +1,103 @@
-use crate::ty::{AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region};
-use crate::Opaque;
-use crate::{ty::Ty, Span};
+use crate::mir::pretty::{function_body, pretty_statement};
+use crate::ty::{
+    AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
+};
+use crate::{Error, Opaque, Span, Symbol};
+use std::io;
 
+/// The SMIR representation of a single function.
 #[derive(Clone, Debug)]
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
-    pub locals: LocalDecls,
+
+    // Declarations of locals within the function.
+    //
+    // The first local is the return value pointer, followed by `arg_count`
+    // locals for the function arguments, followed by any user-declared
+    // variables and temporaries.
+    pub(super) locals: LocalDecls,
+
+    // The number of arguments this function takes.
+    pub(super) arg_count: usize,
+
+    // Debug information pertaining to user variables, including captures.
+    pub(super) var_debug_info: Vec<VarDebugInfo>,
+}
+
+impl Body {
+    /// Constructs a `Body`.
+    ///
+    /// A constructor is required to build a `Body` from outside the crate
+    /// because the `arg_count` and `locals` fields are private.
+    pub fn new(
+        blocks: Vec<BasicBlock>,
+        locals: LocalDecls,
+        arg_count: usize,
+        var_debug_info: Vec<VarDebugInfo>,
+    ) -> Self {
+        // If locals doesn't contain enough entries, it can lead to panics in
+        // `ret_local`, `arg_locals`, and `inner_locals`.
+        assert!(
+            locals.len() > arg_count,
+            "A Body must contain at least a local for the return value and each of the function's arguments"
+        );
+        Self { blocks, locals, arg_count, var_debug_info }
+    }
+
+    /// Return local that holds this function's return value.
+    pub fn ret_local(&self) -> &LocalDecl {
+        &self.locals[RETURN_LOCAL]
+    }
+
+    /// Locals in `self` that correspond to this function's arguments.
+    pub fn arg_locals(&self) -> &[LocalDecl] {
+        &self.locals[1..][..self.arg_count]
+    }
+
+    /// Inner locals for this function. These are the locals that are
+    /// neither the return local nor the argument locals.
+    pub fn inner_locals(&self) -> &[LocalDecl] {
+        &self.locals[self.arg_count + 1..]
+    }
+
+    /// Convenience function to get all the locals in this function.
+    ///
+    /// Locals are typically accessed via the more specific methods `ret_local`,
+    /// `arg_locals`, and `inner_locals`.
+    pub fn locals(&self) -> &[LocalDecl] {
+        &self.locals
+    }
+
+    pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        writeln!(w, "{}", function_body(self))?;
+        self.blocks
+            .iter()
+            .enumerate()
+            .map(|(index, block)| -> io::Result<()> {
+                writeln!(w, "    bb{}: {{", index)?;
+                let _ = block
+                    .statements
+                    .iter()
+                    .map(|statement| -> io::Result<()> {
+                        writeln!(w, "{}", pretty_statement(&statement.kind))?;
+                        Ok(())
+                    })
+                    .collect::<Vec<_>>();
+                writeln!(w, "    }}").unwrap();
+                Ok(())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(())
+    }
 }
 
 type LocalDecls = Vec<LocalDecl>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalDecl {
     pub ty: Ty,
     pub span: Span,
+    pub mutability: Mutability,
 }
 
 #[derive(Clone, Debug)]
@@ -22,13 +106,13 @@ pub struct BasicBlock {
     pub terminator: Terminator,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Terminator {
     pub kind: TerminatorKind,
     pub span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TerminatorKind {
     Goto {
         target: usize,
@@ -72,7 +156,7 @@ pub enum TerminatorKind {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InlineAsmOperand {
     pub in_value: Option<Operand>,
     pub out_place: Option<Place>,
@@ -81,7 +165,7 @@ pub struct InlineAsmOperand {
     pub raw_rpr: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UnwindAction {
     Continue,
     Unreachable,
@@ -89,7 +173,7 @@ pub enum UnwindAction {
     Cleanup(usize),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AssertMessage {
     BoundsCheck { len: Operand, index: Operand },
     Overflow(BinOp, Operand, Operand),
@@ -101,7 +185,7 @@ pub enum AssertMessage {
     MisalignedPointerDereference { required: Operand, found: Operand },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BinOp {
     Add,
     AddUnchecked,
@@ -127,20 +211,21 @@ pub enum BinOp {
     Offset,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UnOp {
     Not,
     Neg,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CoroutineKind {
-    Async(AsyncCoroutineKind),
+    Async(CoroutineSource),
     Coroutine,
+    Gen(CoroutineSource),
 }
 
-#[derive(Clone, Debug)]
-pub enum AsyncCoroutineKind {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CoroutineSource {
     Block,
     Closure,
     Fn,
@@ -153,7 +238,7 @@ pub(crate) type LocalDefId = Opaque;
 pub(crate) type Coverage = Opaque;
 
 /// The FakeReadCause describes the type of pattern why a FakeRead statement exists.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FakeReadCause {
     ForMatchGuard,
     ForMatchedPlace(LocalDefId),
@@ -163,7 +248,7 @@ pub enum FakeReadCause {
 }
 
 /// Describes what kind of retag is to be performed
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum RetagKind {
     FnEntry,
     TwoPhase,
@@ -171,7 +256,7 @@ pub enum RetagKind {
     Default,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Variance {
     Covariant,
     Invariant,
@@ -179,26 +264,26 @@ pub enum Variance {
     Bivariant,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CopyNonOverlapping {
     pub src: Operand,
     pub dst: Operand,
     pub count: Operand,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum NonDivergingIntrinsic {
     Assume(Operand),
     CopyNonOverlapping(CopyNonOverlapping),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Statement {
     pub kind: StatementKind,
     pub span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StatementKind {
     Assign(Place, Rvalue),
     FakeRead(FakeReadCause, Place),
@@ -215,7 +300,7 @@ pub enum StatementKind {
     Nop,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Rvalue {
     /// Creates a pointer with the indicated mutability to the place.
     ///
@@ -327,7 +412,7 @@ pub enum Rvalue {
     Use(Operand),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
@@ -336,57 +421,202 @@ pub enum AggregateKind {
     Coroutine(CoroutineDef, GenericArgs, Movability),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operand {
     Copy(Place),
     Move(Place),
     Constant(Constant),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Place {
     pub local: Local,
     /// projection out of a place (access a field, deref a pointer, etc)
-    pub projection: String,
+    pub projection: Vec<ProjectionElem>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VarDebugInfo {
+    pub name: Symbol,
+    pub source_info: SourceInfo,
+    pub composite: Option<VarDebugInfoFragment>,
+    pub value: VarDebugInfoContents,
+    pub argument_index: Option<u16>,
+}
+
+pub type SourceScope = u32;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceInfo {
+    pub span: Span,
+    pub scope: SourceScope,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VarDebugInfoFragment {
+    pub ty: Ty,
+    pub projection: Vec<ProjectionElem>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum VarDebugInfoContents {
+    Place(Place),
+    Const(ConstOperand),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstOperand {
+    pub span: Span,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+    pub const_: Const,
+}
+
+// In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This
+// is so it can be used for both Places (for which the projection elements are of type
+// ProjectionElem<Local, Ty>) and user-provided type annotations (for which the projection elements
+// are of type ProjectionElem<(), ()>). In SMIR we don't need this generality, so we just use
+// ProjectionElem for Places.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProjectionElem {
+    /// Dereference projections (e.g. `*_1`) project to the address referenced by the base place.
+    Deref,
+
+    /// A field projection (e.g., `f` in `_1.f`) project to a field in the base place. The field is
+    /// referenced by source-order index rather than the name of the field. The fields type is also
+    /// given.
+    Field(FieldIdx, Ty),
+
+    /// Index into a slice/array. The value of the index is computed at runtime using the `V`
+    /// argument.
+    ///
+    /// Note that this does not also dereference, and so it does not exactly correspond to slice
+    /// indexing in Rust. In other words, in the below Rust code:
+    ///
+    /// ```rust
+    /// let x = &[1, 2, 3, 4];
+    /// let i = 2;
+    /// x[i];
+    /// ```
+    ///
+    /// The `x[i]` is turned into a `Deref` followed by an `Index`, not just an `Index`. The same
+    /// thing is true of the `ConstantIndex` and `Subslice` projections below.
+    Index(Local),
+
+    /// Index into a slice/array given by offsets.
+    ///
+    /// These indices are generated by slice patterns. Easiest to explain by example:
+    ///
+    /// ```ignore (illustrative)
+    /// [X, _, .._, _, _] => { offset: 0, min_length: 4, from_end: false },
+    /// [_, X, .._, _, _] => { offset: 1, min_length: 4, from_end: false },
+    /// [_, _, .._, X, _] => { offset: 2, min_length: 4, from_end: true },
+    /// [_, _, .._, _, X] => { offset: 1, min_length: 4, from_end: true },
+    /// ```
+    ConstantIndex {
+        /// index or -index (in Python terms), depending on from_end
+        offset: u64,
+        /// The thing being indexed must be at least this long. For arrays this
+        /// is always the exact length.
+        min_length: u64,
+        /// Counting backwards from end? This is always false when indexing an
+        /// array.
+        from_end: bool,
+    },
+
+    /// Projects a slice from the base place.
+    ///
+    /// These indices are generated by slice patterns. If `from_end` is true, this represents
+    /// `slice[from..slice.len() - to]`. Otherwise it represents `array[from..to]`.
+    Subslice {
+        from: u64,
+        to: u64,
+        /// Whether `to` counts from the start or end of the array/slice.
+        from_end: bool,
+    },
+
+    /// "Downcast" to a variant of an enum or a coroutine.
+    Downcast(VariantIdx),
+
+    /// Like an explicit cast from an opaque type to a concrete type, but without
+    /// requiring an intermediate variable.
+    OpaqueCast(Ty),
+
+    /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
+    /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
+    /// explicit during optimizations and codegen.
+    ///
+    /// This projection doesn't impact the runtime behavior of the program except for potentially changing
+    /// some type metadata of the interpreter or codegen backend.
+    Subtype(Ty),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
-    pub projection: String,
+
+    pub projection: Opaque,
 }
 
 pub type Local = usize;
 
+pub const RETURN_LOCAL: Local = 0;
+
+/// The source-order index of a field in a variant.
+///
+/// For example, in the following types,
+/// ```ignore(illustrative)
+/// enum Demo1 {
+///    Variant0 { a: bool, b: i32 },
+///    Variant1 { c: u8, d: u64 },
+/// }
+/// struct Demo2 { e: u8, f: u16, g: u8 }
+/// ```
+/// `a`'s `FieldIdx` is `0`,
+/// `b`'s `FieldIdx` is `1`,
+/// `c`'s `FieldIdx` is `0`, and
+/// `g`'s `FieldIdx` is `2`.
 type FieldIdx = usize;
 
 /// The source-order index of a variant in a type.
+///
+/// For example, in the following types,
+/// ```ignore(illustrative)
+/// enum Demo1 {
+///    Variant0 { a: bool, b: i32 },
+///    Variant1 { c: u8, d: u64 },
+/// }
+/// struct Demo2 { e: u8, f: u16, g: u8 }
+/// ```
+/// `a` is in the variant with the `VariantIdx` of `0`,
+/// `c` is in the variant with the `VariantIdx` of `1`, and
+/// `g` is in the variant with the `VariantIdx` of `0`.
 pub type VariantIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
     pub literal: Const,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SwitchTarget {
     pub value: u128,
     pub target: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
 
     /// The immediately borrowed place must be immutable, but projections from
-    /// it don't need to be. For example, a shallow borrow of `a.b` doesn't
+    /// it don't need to be. This is used to prevent match guards from replacing
+    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
     /// conflict with a mutable borrow of `a.b.c`.
-    Shallow,
+    Fake,
 
     /// Data is mutable and not aliasable.
     Mut {
@@ -395,26 +625,26 @@ pub enum BorrowKind {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MutBorrowKind {
     Default,
     TwoPhaseBorrow,
     ClosureCapture,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mutability {
     Not,
     Mut,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Safety {
     Unsafe,
     Normal,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
@@ -441,7 +671,7 @@ pub enum PointerCoercion {
     Unsize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CastKind {
     PointerExposeAddress,
     PointerFromExposedAddress,
@@ -456,34 +686,89 @@ pub enum CastKind {
     Transmute,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum NullOp {
     /// Returns the size of a value of that type.
     SizeOf,
     /// Returns the minimum alignment of a type.
     AlignOf,
     /// Returns the offset of a field.
-    OffsetOf(Vec<FieldIdx>),
+    OffsetOf(Vec<(VariantIdx, FieldIdx)>),
 }
 
 impl Operand {
-    pub fn ty(&self, locals: &LocalDecls) -> Ty {
+    /// Get the type of an operand relative to the local declaration.
+    ///
+    /// In order to retrieve the correct type, the `locals` argument must match the list of all
+    /// locals from the function body where this operand originates from.
+    ///
+    /// Errors indicate a malformed operand or incompatible locals list.
+    pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
         match self {
             Operand::Copy(place) | Operand::Move(place) => place.ty(locals),
-            Operand::Constant(c) => c.ty(),
+            Operand::Constant(c) => Ok(c.ty()),
         }
     }
 }
 
 impl Constant {
     pub fn ty(&self) -> Ty {
-        self.literal.ty
+        self.literal.ty()
     }
 }
 
 impl Place {
-    pub fn ty(&self, locals: &LocalDecls) -> Ty {
-        let _start_ty = locals[self.local].ty;
-        todo!("Implement projection")
+    /// Resolve down the chain of projections to get the type referenced at the end of it.
+    /// E.g.:
+    /// Calling `ty()` on `var.field` should return the type of `field`.
+    ///
+    /// In order to retrieve the correct type, the `locals` argument must match the list of all
+    /// locals from the function body where this place originates from.
+    pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
+        let start_ty = locals[self.local].ty;
+        self.projection.iter().fold(Ok(start_ty), |place_ty, elem| {
+            let ty = place_ty?;
+            match elem {
+                ProjectionElem::Deref => Self::deref_ty(ty),
+                ProjectionElem::Field(_idx, fty) => Ok(*fty),
+                ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
+                    Self::index_ty(ty)
+                }
+                ProjectionElem::Subslice { from, to, from_end } => {
+                    Self::subslice_ty(ty, from, to, from_end)
+                }
+                ProjectionElem::Downcast(_) => Ok(ty),
+                ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
+            }
+        })
+    }
+
+    fn index_ty(ty: Ty) -> Result<Ty, Error> {
+        ty.kind().builtin_index().ok_or_else(|| error!("Cannot index non-array type: {ty:?}"))
+    }
+
+    fn subslice_ty(ty: Ty, from: &u64, to: &u64, from_end: &bool) -> Result<Ty, Error> {
+        let ty_kind = ty.kind();
+        match ty_kind {
+            TyKind::RigidTy(RigidTy::Slice(..)) => Ok(ty),
+            TyKind::RigidTy(RigidTy::Array(inner, _)) if !from_end => Ty::try_new_array(
+                inner,
+                to.checked_sub(*from).ok_or_else(|| error!("Subslice overflow: {from}..{to}"))?,
+            ),
+            TyKind::RigidTy(RigidTy::Array(inner, size)) => {
+                let size = size.eval_target_usize()?;
+                let len = size - from - to;
+                Ty::try_new_array(inner, len)
+            }
+            _ => Err(Error(format!("Cannot subslice non-array type: `{ty_kind:?}`"))),
+        }
+    }
+
+    fn deref_ty(ty: Ty) -> Result<Ty, Error> {
+        let deref_ty = ty
+            .kind()
+            .builtin_deref(true)
+            .ok_or_else(|| error!("Cannot dereference type: {ty:?}"))?;
+        Ok(deref_ty.ty)
     }
 }

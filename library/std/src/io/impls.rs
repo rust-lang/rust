@@ -476,7 +476,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
 }
 
 /// BufRead is implemented for `VecDeque<u8>` by reading bytes from the front of the `VecDeque`.
-#[stable(feature = "vecdeque_buf_read", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "vecdeque_buf_read", since = "1.75.0")]
 impl<A: Allocator> BufRead for VecDeque<u8, A> {
     /// Returns the contents of the "front" slice as returned by
     /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
@@ -521,6 +521,20 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.extend(buf);
         Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[unstable(feature = "read_buf", issue = "78485")]
+impl<'a> io::Write for core::io::BorrowedCursor<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let amt = cmp::min(buf.len(), self.capacity());
+        self.append(&buf[..amt]);
+        Ok(amt)
     }
 
     #[inline]

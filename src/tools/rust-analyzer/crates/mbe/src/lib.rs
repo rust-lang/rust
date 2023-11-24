@@ -3,7 +3,7 @@
 //! interface, although it contains some code to bridge `SyntaxNode`s and
 //! `TokenTree`s as well!
 //!
-//! The tes for this functionality live in another crate:
+//! The tests for this functionality live in another crate:
 //! `hir_def::macro_expansion_tests::mbe`.
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]

@@ -288,8 +288,8 @@ pub struct FileHandler {
     pub handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
 }
 
-impl VisitTags for FileHandler {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for FileHandler {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
         // All our FileDescriptor do not have any tags.
     }
 }
@@ -490,12 +490,12 @@ impl Default for DirHandler {
     }
 }
 
-impl VisitTags for DirHandler {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for DirHandler {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let DirHandler { streams, next_id: _ } = self;
 
         for dir in streams.values() {
-            dir.entry.visit_tags(visit);
+            dir.entry.visit_provenance(visit);
         }
     }
 }

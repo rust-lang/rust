@@ -23,11 +23,12 @@ use std::fmt::Display;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::str;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
+use build_helper::util::fail;
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
@@ -39,10 +40,8 @@ use crate::core::config::flags;
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
 use crate::utils::cache::{Interned, INTERNER};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, mtime, output, run, run_suppressed, symlink_dir,
-    try_run_suppressed,
-};
+use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, OutputMode};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
 mod utils;
@@ -70,15 +69,61 @@ const LLVM_TOOLS: &[&str] = &[
 /// LLD file names for all flavors.
 const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
+#[derive(Clone, Debug)]
+pub struct ChangeInfo {
+    /// Represents the ID of PR caused major change on bootstrap.
+    pub change_id: usize,
+    pub severity: ChangeSeverity,
+    /// Provides a short summary of the change that will guide developers
+    /// on "how to handle/behave" in response to the changes.
+    pub summary: &'static str,
+}
+
+#[derive(Clone, Debug)]
+pub enum ChangeSeverity {
+    /// Used when build configurations continue working as before.
+    Info,
+    /// Used when the default value of an option changes, or support for an option is removed entirely,
+    /// potentially requiring developers to update their build configurations.
+    Warning,
+}
+
+impl ToString for ChangeSeverity {
+    fn to_string(&self) -> String {
+        match self {
+            ChangeSeverity::Info => "INFO".to_string(),
+            ChangeSeverity::Warning => "WARNING".to_string(),
+        }
+    }
+}
+
 /// Keeps track of major changes made to the bootstrap configuration.
 ///
-/// These values also represent the IDs of the PRs that caused major changes.
-/// You can visit `https://github.com/rust-lang/rust/pull/{any-id-from-the-list}` to
-/// check for more details regarding each change.
-///
-/// If you make any major changes (such as adding new values or changing default values), please
-/// ensure that the associated PR ID is added to the end of this list.
-pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898];
+/// If you make any major changes (such as adding new values or changing default values),
+/// please ensure adding `ChangeInfo` to the end(because the list must be sorted by the merge date)
+/// of this list.
+pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
+    ChangeInfo {
+        change_id: 115898,
+        severity: ChangeSeverity::Info,
+        summary: "Implementation of this change-tracking system. Ignore this.",
+    },
+    ChangeInfo {
+        change_id: 116998,
+        severity: ChangeSeverity::Info,
+        summary: "Removed android-ndk r15 support in favor of android-ndk r25b.",
+    },
+    ChangeInfo {
+        change_id: 117435,
+        severity: ChangeSeverity::Info,
+        summary: "New option `rust.parallel-compiler` added to config.toml.",
+    },
+    ChangeInfo {
+        change_id: 116881,
+        severity: ChangeSeverity::Warning,
+        summary: "Default value of `download-ci-llvm` was changed for `codegen` profile.",
+    },
+];
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))
@@ -98,7 +143,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
     // (Some(Mode::Std), "target_os", Some(&[])),
-    (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
+    (Some(Mode::Std), "target_arch", Some(&["spirv", "nvptx", "xtensa"])),
     /* Extra names used by dependencies */
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
@@ -580,15 +625,19 @@ impl Build {
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
-        #[allow(deprecated)] // diff-index reports the modifications through the exit status
-        let has_local_modifications = self
-            .config
-            .try_run(
+        // diff-index reports the modifications through the exit status
+        let has_local_modifications = !self.run_cmd(
+            BootstrapCommand::from(
                 Command::new("git")
                     .args(&["diff-index", "--quiet", "HEAD"])
                     .current_dir(&absolute_path),
             )
-            .is_err();
+            .allow_failure()
+            .output_mode(match self.is_verbose() {
+                true => OutputMode::PrintAll,
+                false => OutputMode::PrintOutput,
+            }),
+        );
         if has_local_modifications {
             self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
         }
@@ -921,55 +970,103 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        if self.config.dry_run() {
-            return;
-        }
-        self.verbose(&format!("running: {cmd:?}"));
-        run(cmd, self.is_verbose())
+        self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(
+            match self.is_verbose() {
+                true => OutputMode::PrintAll,
+                false => OutputMode::PrintOutput,
+            },
+        ));
+    }
+
+    /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
+    pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
+        self.run_cmd(BootstrapCommand::from(cmd).delay_failure().output_mode(
+            match self.is_verbose() {
+                true => OutputMode::PrintAll,
+                false => OutputMode::PrintOutput,
+            },
+        ))
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
-        if self.config.dry_run() {
-            return;
-        }
-        self.verbose(&format!("running: {cmd:?}"));
-        run_suppressed(cmd)
+        self.run_cmd(
+            BootstrapCommand::from(cmd).fail_fast().output_mode(OutputMode::SuppressOnSuccess),
+        );
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
+        self.run_cmd(
+            BootstrapCommand::from(cmd).delay_failure().output_mode(OutputMode::SuppressOnSuccess),
+        )
+    }
+
+    /// A centralized function for running commands that do not return output.
+    pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
         if self.config.dry_run() {
             return true;
         }
-        if !self.fail_fast {
-            self.verbose(&format!("running: {cmd:?}"));
-            if !try_run_suppressed(cmd) {
-                let mut failures = self.delayed_failures.borrow_mut();
-                failures.push(format!("{cmd:?}"));
-                return false;
-            }
-        } else {
-            self.run_quiet(cmd);
-        }
-        true
-    }
 
-    /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
-    pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
-        if !self.fail_fast {
-            #[allow(deprecated)] // can't use Build::try_run, that's us
-            if self.config.try_run(cmd).is_err() {
-                let mut failures = self.delayed_failures.borrow_mut();
-                failures.push(format!("{cmd:?}"));
-                return false;
+        let command = cmd.into();
+        self.verbose(&format!("running: {command:?}"));
+
+        let (output, print_error) = match command.output_mode {
+            mode @ (OutputMode::PrintAll | OutputMode::PrintOutput) => (
+                command.command.status().map(|status| Output {
+                    status,
+                    stdout: Vec::new(),
+                    stderr: Vec::new(),
+                }),
+                matches!(mode, OutputMode::PrintAll),
+            ),
+            OutputMode::SuppressOnSuccess => (command.command.output(), true),
+        };
+
+        let output = match output {
+            Ok(output) => output,
+            Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", command, e)),
+        };
+        let result = if !output.status.success() {
+            if print_error {
+                println!(
+                    "\n\ncommand did not execute successfully: {:?}\n\
+                    expected success, got: {}\n\n\
+                    stdout ----\n{}\n\
+                    stderr ----\n{}\n\n",
+                    command.command,
+                    output.status,
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
             }
+            Err(())
         } else {
-            self.run(cmd);
+            Ok(())
+        };
+
+        match result {
+            Ok(_) => true,
+            Err(_) => {
+                match command.failure_behavior {
+                    BehaviorOnFailure::DelayFail => {
+                        if self.fail_fast {
+                            exit!(1);
+                        }
+
+                        let mut failures = self.delayed_failures.borrow_mut();
+                        failures.push(format!("{command:?}"));
+                    }
+                    BehaviorOnFailure::Exit => {
+                        exit!(1);
+                    }
+                    BehaviorOnFailure::Ignore => {}
+                }
+                false
+            }
         }
-        true
     }
 
     pub fn is_verbose_than(&self, level: usize) -> bool {
@@ -1146,11 +1243,10 @@ impl Build {
             .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
             .collect::<Vec<String>>();
 
-        // If we're compiling on macOS then we add a few unconditional flags
-        // indicating that we want libc++ (more filled out than libstdc++) and
-        // we want to compile for 10.7. This way we can ensure that
+        // If we're compiling C++ on macOS then we add a flag indicating that
+        // we want libc++ (more filled out than libstdc++), ensuring that
         // LLVM/etc are all properly compiled.
-        if target.contains("apple-darwin") {
+        if matches!(c, CLang::Cxx) && target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }
 
@@ -1517,7 +1613,7 @@ impl Build {
 
         if !stamp.exists() {
             eprintln!(
-                "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
+                "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.display()
             );
             crate::exit!(1);
@@ -1646,7 +1742,7 @@ impl Build {
         self.verbose_than(1, &format!("Install {src:?} to {dst:?}"));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
-            panic!("Error: File \"{}\" not found!", src.display());
+            panic!("ERROR: File \"{}\" not found!", src.display());
         }
         self.copy_internal(src, &dst, true);
         chmod(&dst, perms);
@@ -1798,11 +1894,23 @@ fn envify(s: &str) -> String {
         .collect()
 }
 
-pub fn find_recent_config_change_ids(current_id: usize) -> Vec<usize> {
-    let index = CONFIG_CHANGE_HISTORY
-        .iter()
-        .position(|&id| id == current_id)
-        .expect(&format!("Value `{}` was not found in `CONFIG_CHANGE_HISTORY`.", current_id));
+pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
+    if !CONFIG_CHANGE_HISTORY.iter().any(|config| config.change_id == current_id) {
+        // If the current change-id is greater than the most recent one, return
+        // an empty list (it may be due to switching from a recent branch to an
+        // older one); otherwise, return the full list (assuming the user provided
+        // the incorrect change-id by accident).
+        if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
+            if &current_id > &config.change_id {
+                return Vec::new();
+            }
+        }
+
+        return CONFIG_CHANGE_HISTORY.to_vec();
+    }
+
+    let index =
+        CONFIG_CHANGE_HISTORY.iter().position(|config| config.change_id == current_id).unwrap();
 
     CONFIG_CHANGE_HISTORY
         .iter()

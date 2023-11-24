@@ -6,6 +6,7 @@ use io::Error as IoError;
 use thiserror::Error;
 
 use rustfmt_nightly as rustfmt;
+use tracing_subscriber::EnvFilter;
 
 use std::collections::HashMap;
 use std::env;
@@ -29,13 +30,15 @@ extern crate rustc_driver;
 fn main() {
     rustc_driver::install_ice_hook(BUG_REPORT_URL, |_| ());
 
-    env_logger::Builder::from_env("RUSTFMT_LOG").init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_env("RUSTFMT_LOG"))
+        .init();
     let opts = make_opts();
 
     let exit_code = match execute(&opts) {
         Ok(code) => code,
         Err(e) => {
-            eprintln!("{:#}", e);
+            eprintln!("{e:#}");
             1
         }
     };
@@ -281,7 +284,7 @@ fn format_string(input: String, options: GetOptsOptions) -> Result<i32> {
     for f in config.file_lines().files() {
         match *f {
             FileName::Stdin => {}
-            _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
+            _ => eprintln!("Warning: Extra file listed in file_lines option '{f}'"),
         }
     }
 
@@ -377,7 +380,7 @@ fn format_and_emit_report<T: Write>(session: &mut Session<'_, T>, input: Input) 
             }
         }
         Err(msg) => {
-            eprintln!("Error writing files: {}", msg);
+            eprintln!("Error writing files: {msg}");
             session.add_operational_error();
         }
     }
@@ -400,12 +403,9 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
     let sep = if reason.is_empty() {
         String::new()
     } else {
-        format!("{}\n\n", reason)
+        format!("{reason}\n\n")
     };
-    let msg = format!(
-        "{}Format Rust code\n\nusage: rustfmt [options] <file>...",
-        sep
-    );
+    let msg = format!("{sep}Format Rust code\n\nusage: rustfmt [options] <file>...");
     println!("{}", opts.usage(&msg));
 }
 
@@ -419,7 +419,7 @@ are 1-based and inclusive of both end points. Specifying an empty array
 will result in no files being formatted. For example,
 
 ```
-rustfmt --file-lines '[
+rustfmt src/lib.rs src/foo.rs --file-lines '[
     {{\"file\":\"src/lib.rs\",\"range\":[7,13]}},
     {{\"file\":\"src/lib.rs\",\"range\":[21,29]}},
     {{\"file\":\"src/foo.rs\",\"range\":[10,11]}},
@@ -439,7 +439,7 @@ fn print_version() {
         include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
     );
 
-    println!("rustfmt {}", version_info);
+    println!("rustfmt {version_info}");
 }
 
 fn determine_operation(matches: &Matches) -> Result<Operation, OperationError> {
@@ -644,9 +644,9 @@ impl GetOptsOptions {
             match *f {
                 FileName::Real(ref f) if files.contains(f) => {}
                 FileName::Real(_) => {
-                    eprintln!("Warning: Extra file listed in file_lines option '{}'", f)
+                    eprintln!("Warning: Extra file listed in file_lines option '{f}'")
                 }
-                FileName::Stdin => eprintln!("Warning: Not a file '{}'", f),
+                FileName::Stdin => eprintln!("Warning: Not a file '{f}'"),
             }
         }
     }

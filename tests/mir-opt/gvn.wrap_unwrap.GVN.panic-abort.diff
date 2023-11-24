@@ -15,13 +15,15 @@
   
       bb0: {
           StorageLive(_2);
--         StorageLive(_3);
--         _3 = _1;
+          StorageLive(_3);
+          _3 = _1;
 -         _2 = Option::<T>::Some(move _3);
--         StorageDead(_3);
 +         _2 = Option::<T>::Some(_1);
-          _4 = discriminant(_2);
-          switchInt(move _4) -> [0: bb1, 1: bb3, otherwise: bb2];
+          StorageDead(_3);
+-         _4 = discriminant(_2);
+-         switchInt(move _4) -> [0: bb1, 1: bb3, otherwise: bb2];
++         _4 = const 1_isize;
++         switchInt(const 1_isize) -> [0: bb1, 1: bb3, otherwise: bb2];
       }
   
       bb1: {
@@ -34,10 +36,12 @@
       }
   
       bb3: {
--         StorageLive(_5);
-          _5 = ((_2 as Some).0: T);
-          _0 = _5;
--         StorageDead(_5);
+          StorageLive(_5);
+-         _5 = ((_2 as Some).0: T);
+-         _0 = _5;
++         _5 = _1;
++         _0 = _1;
+          StorageDead(_5);
           StorageDead(_2);
           return;
       }

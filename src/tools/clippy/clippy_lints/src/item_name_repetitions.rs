@@ -1,0 +1,447 @@
+//! lint on enum variants that are prefixed or suffixed by the same characters
+
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
+use clippy_utils::macros::span_is_local;
+use clippy_utils::source::is_present_in_source;
+use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
+use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::symbol::Symbol;
+use rustc_span::Span;
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects enumeration variants that are prefixed or suffixed
+    /// by the same characters.
+    ///
+    /// ### Why is this bad?
+    /// Enumeration variant names should specify their variant,
+    /// not repeat the enumeration name.
+    ///
+    /// ### Limitations
+    /// Characters with no casing will be considered when comparing prefixes/suffixes
+    /// This applies to numbers and non-ascii characters without casing
+    /// e.g. `Foo1` and `Foo2` is considered to have different prefixes
+    /// (the prefixes are `Foo1` and `Foo2` respectively), as also `Bar螃`, `Bar蟹`
+    ///
+    /// ### Example
+    /// ```no_run
+    /// enum Cake {
+    ///     BlackForestCake,
+    ///     HummingbirdCake,
+    ///     BattenbergCake,
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// enum Cake {
+    ///     BlackForest,
+    ///     Hummingbird,
+    ///     Battenberg,
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ENUM_VARIANT_NAMES,
+    style,
+    "enums where all variants share a prefix/postfix"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects type names that are prefixed or suffixed by the
+    /// containing module's name.
+    ///
+    /// ### Why is this bad?
+    /// It requires the user to type the module name twice.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// mod cake {
+    ///     struct BlackForestCake;
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// mod cake {
+    ///     struct BlackForest;
+    /// }
+    /// ```
+    #[clippy::version = "1.33.0"]
+    pub MODULE_NAME_REPETITIONS,
+    pedantic,
+    "type names prefixed/postfixed with their containing module's name"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for modules that have the same name as their
+    /// parent module
+    ///
+    /// ### Why is this bad?
+    /// A typical beginner mistake is to have `mod foo;` and
+    /// again `mod foo { ..
+    /// }` in `foo.rs`.
+    /// The expectation is that items inside the inner `mod foo { .. }` are then
+    /// available
+    /// through `foo::x`, but they are only available through
+    /// `foo::foo::x`.
+    /// If this is done on purpose, it would be better to choose a more
+    /// representative module name.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// // lib.rs
+    /// mod foo;
+    /// // foo.rs
+    /// mod foo {
+    ///     ...
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MODULE_INCEPTION,
+    style,
+    "modules that have the same name as their parent module"
+}
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects struct fields that are prefixed or suffixed
+    /// by the same characters or the name of the struct itself.
+    ///
+    /// ### Why is this bad?
+    /// Information common to all struct fields is better represented in the struct name.
+    ///
+    /// ### Limitations
+    /// Characters with no casing will be considered when comparing prefixes/suffixes
+    /// This applies to numbers and non-ascii characters without casing
+    /// e.g. `foo1` and `foo2` is considered to have different prefixes
+    /// (the prefixes are `foo1` and `foo2` respectively), as also `bar螃`, `bar蟹`
+    ///
+    /// ### Example
+    /// ```no_run
+    /// struct Cake {
+    ///     cake_sugar: u8,
+    ///     cake_flour: u8,
+    ///     cake_eggs: u8
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// struct Cake {
+    ///     sugar: u8,
+    ///     flour: u8,
+    ///     eggs: u8
+    /// }
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub STRUCT_FIELD_NAMES,
+    pedantic,
+    "structs where all fields share a prefix/postfix or contain the name of the struct"
+}
+
+pub struct ItemNameRepetitions {
+    modules: Vec<(Symbol, String, OwnerId)>,
+    enum_threshold: u64,
+    struct_threshold: u64,
+    avoid_breaking_exported_api: bool,
+    allow_private_module_inception: bool,
+}
+
+impl ItemNameRepetitions {
+    #[must_use]
+    pub fn new(
+        enum_threshold: u64,
+        struct_threshold: u64,
+        avoid_breaking_exported_api: bool,
+        allow_private_module_inception: bool,
+    ) -> Self {
+        Self {
+            modules: Vec::new(),
+            enum_threshold,
+            struct_threshold,
+            avoid_breaking_exported_api,
+            allow_private_module_inception,
+        }
+    }
+}
+
+impl_lint_pass!(ItemNameRepetitions => [
+    ENUM_VARIANT_NAMES,
+    STRUCT_FIELD_NAMES,
+    MODULE_NAME_REPETITIONS,
+    MODULE_INCEPTION
+]);
+
+#[must_use]
+fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
+    prefixes.iter().all(|p| p == &"" || p == &"_")
+}
+
+fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+    if (fields.len() as u64) < threshold {
+        return;
+    }
+
+    check_struct_name_repetition(cx, item, fields);
+
+    // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
+    // this prevents linting in macros in which the location of the field identifier names differ
+    if !fields.iter().all(|field| item.ident.span.eq_ctxt(field.ident.span)) {
+        return;
+    }
+
+    let mut pre: Vec<&str> = match fields.first() {
+        Some(first_field) => first_field.ident.name.as_str().split('_').collect(),
+        None => return,
+    };
+    let mut post = pre.clone();
+    post.reverse();
+    for field in fields {
+        let field_split: Vec<&str> = field.ident.name.as_str().split('_').collect();
+        if field_split.len() == 1 {
+            return;
+        }
+
+        pre = pre
+            .into_iter()
+            .zip(field_split.iter())
+            .take_while(|(a, b)| &a == b)
+            .map(|e| e.0)
+            .collect();
+        post = post
+            .into_iter()
+            .zip(field_split.iter().rev())
+            .take_while(|(a, b)| &a == b)
+            .map(|e| e.0)
+            .collect();
+    }
+    let prefix = pre.join("_");
+    post.reverse();
+    let postfix = match post.last() {
+        Some(&"") => post.join("_") + "_",
+        Some(_) | None => post.join("_"),
+    };
+    if fields.len() > 1 {
+        let (what, value) = match (
+            prefix.is_empty() || prefix.chars().all(|c| c == '_'),
+            postfix.is_empty(),
+        ) {
+            (true, true) => return,
+            (false, _) => ("pre", prefix),
+            (true, false) => ("post", postfix),
+        };
+        span_lint_and_help(
+            cx,
+            STRUCT_FIELD_NAMES,
+            item.span,
+            &format!("all fields have the same {what}fix: `{value}`"),
+            None,
+            &format!("remove the {what}fixes"),
+        );
+    }
+}
+
+fn check_struct_name_repetition(cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+    let snake_name = to_snake_case(item.ident.name.as_str());
+    let item_name_words: Vec<&str> = snake_name.split('_').collect();
+    for field in fields {
+        if field.ident.span.eq_ctxt(item.ident.span) {
+            //consider linting only if the field identifier has the same SyntaxContext as the item(struct)
+            let field_words: Vec<&str> = field.ident.name.as_str().split('_').collect();
+            if field_words.len() >= item_name_words.len() {
+                // if the field name is shorter than the struct name it cannot contain it
+                if field_words.iter().zip(item_name_words.iter()).all(|(a, b)| a == b) {
+                    span_lint_hir(
+                        cx,
+                        STRUCT_FIELD_NAMES,
+                        field.hir_id,
+                        field.span,
+                        "field name starts with the struct's name",
+                    );
+                }
+                if field_words.len() > item_name_words.len() {
+                    // lint only if the end is not covered by the start
+                    if field_words
+                        .iter()
+                        .rev()
+                        .zip(item_name_words.iter().rev())
+                        .all(|(a, b)| a == b)
+                    {
+                        span_lint_hir(
+                            cx,
+                            STRUCT_FIELD_NAMES,
+                            field.hir_id,
+                            field.span,
+                            "field name ends with the struct's name",
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) {
+    let name = variant.ident.name.as_str();
+    let item_name_chars = item_name.chars().count();
+
+    if count_match_start(item_name, name).char_count == item_name_chars
+        && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
+        && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
+    {
+        span_lint_hir(
+            cx,
+            ENUM_VARIANT_NAMES,
+            variant.hir_id,
+            variant.span,
+            "variant name starts with the enum's name",
+        );
+    }
+}
+
+fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) {
+    let name = variant.ident.name.as_str();
+    let item_name_chars = item_name.chars().count();
+
+    if count_match_end(item_name, name).char_count == item_name_chars {
+        span_lint_hir(
+            cx,
+            ENUM_VARIANT_NAMES,
+            variant.hir_id,
+            variant.span,
+            "variant name ends with the enum's name",
+        );
+    }
+}
+
+fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_name: &str, span: Span) {
+    if (def.variants.len() as u64) < threshold {
+        return;
+    }
+
+    for var in def.variants {
+        check_enum_start(cx, item_name, var);
+        check_enum_end(cx, item_name, var);
+    }
+
+    let first = match def.variants.first() {
+        Some(variant) => variant.ident.name.as_str(),
+        None => return,
+    };
+    let mut pre = camel_case_split(first);
+    let mut post = pre.clone();
+    post.reverse();
+    for var in def.variants {
+        let name = var.ident.name.as_str();
+
+        let variant_split = camel_case_split(name);
+        if variant_split.len() == 1 {
+            return;
+        }
+
+        pre = pre
+            .iter()
+            .zip(variant_split.iter())
+            .take_while(|(a, b)| a == b)
+            .map(|e| *e.0)
+            .collect();
+        post = post
+            .iter()
+            .zip(variant_split.iter().rev())
+            .take_while(|(a, b)| a == b)
+            .map(|e| *e.0)
+            .collect();
+    }
+    let (what, value) = match (have_no_extra_prefix(&pre), post.is_empty()) {
+        (true, true) => return,
+        (false, _) => ("pre", pre.join("")),
+        (true, false) => {
+            post.reverse();
+            ("post", post.join(""))
+        },
+    };
+    span_lint_and_help(
+        cx,
+        ENUM_VARIANT_NAMES,
+        span,
+        &format!("all variants have the same {what}fix: `{value}`"),
+        None,
+        &format!(
+            "remove the {what}fixes and use full paths to \
+             the variants instead of glob imports"
+        ),
+    );
+}
+
+impl LateLintPass<'_> for ItemNameRepetitions {
+    fn check_item_post(&mut self, _cx: &LateContext<'_>, _item: &Item<'_>) {
+        let last = self.modules.pop();
+        assert!(last.is_some());
+    }
+
+    #[expect(clippy::similar_names)]
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        let item_name = item.ident.name.as_str();
+        let item_camel = to_camel_case(item_name);
+        if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
+            if let [.., (mod_name, mod_camel, owner_id)] = &*self.modules {
+                // constants don't have surrounding modules
+                if !mod_camel.is_empty() {
+                    if mod_name == &item.ident.name
+                        && let ItemKind::Mod(..) = item.kind
+                        && (!self.allow_private_module_inception || cx.tcx.visibility(owner_id.def_id).is_public())
+                    {
+                        span_lint(
+                            cx,
+                            MODULE_INCEPTION,
+                            item.span,
+                            "module has the same name as its containing module",
+                        );
+                    }
+                    // The `module_name_repetitions` lint should only trigger if the item has the module in its
+                    // name. Having the same name is accepted.
+                    if cx.tcx.visibility(item.owner_id).is_public() && item_camel.len() > mod_camel.len() {
+                        let matching = count_match_start(mod_camel, &item_camel);
+                        let rmatching = count_match_end(mod_camel, &item_camel);
+                        let nchars = mod_camel.chars().count();
+
+                        let is_word_beginning = |c: char| c == '_' || c.is_uppercase() || c.is_numeric();
+
+                        if matching.char_count == nchars {
+                            match item_camel.chars().nth(nchars) {
+                                Some(c) if is_word_beginning(c) => span_lint(
+                                    cx,
+                                    MODULE_NAME_REPETITIONS,
+                                    item.ident.span,
+                                    "item name starts with its containing module's name",
+                                ),
+                                _ => (),
+                            }
+                        }
+                        if rmatching.char_count == nchars {
+                            span_lint(
+                                cx,
+                                MODULE_NAME_REPETITIONS,
+                                item.ident.span,
+                                "item name ends with its containing module's name",
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        if !(self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(item.owner_id.def_id))
+            && span_is_local(item.span)
+        {
+            match item.kind {
+                ItemKind::Enum(def, _) => check_variant(cx, self.enum_threshold, &def, item_name, item.span),
+                ItemKind::Struct(VariantData::Struct(fields, _), _) => {
+                    check_fields(cx, self.struct_threshold, item, fields);
+                },
+                _ => (),
+            }
+        }
+        self.modules.push((item.ident.name, item_camel, item.owner_id));
+    }
+}

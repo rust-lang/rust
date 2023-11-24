@@ -1,0 +1,8 @@
+error: `~const` and `?` are mutually exclusive
+  --> $DIR/tilde-const-maybe-trait.rs:3:28
+   |
+LL | const fn tilde_question<T: ~const ?Sized>() {}
+   |                            ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

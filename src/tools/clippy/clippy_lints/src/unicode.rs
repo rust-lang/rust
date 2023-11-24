@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use unicode_normalization::UnicodeNormalization;
 
 declare_clippy_lint! {
@@ -39,12 +39,12 @@ declare_clippy_lint! {
     /// requirements, activating this lint could be useful.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = String::from("€");
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = String::from("\u{20ac}");
     /// ```
     #[clippy::version = "pre 1.29.0"]

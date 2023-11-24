@@ -7,6 +7,7 @@ pub trait X {
 
 impl X for () {
     type Y<'a> = &'a ();
+    //~^ ERROR lifetime bound not satisfied
 }
 
 struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {

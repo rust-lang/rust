@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
 use rustc_index::IndexSlice;
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, FakeReadCause, Local, LocalInfo, LocalKind, Location,
@@ -46,6 +46,7 @@ mod mutability_errors;
 mod region_errors;
 
 pub(crate) use bound_region_errors::{ToUniverseInfo, UniverseInfo};
+pub(crate) use move_errors::{IllegalMoveOriginKind, MoveError};
 pub(crate) use mutability_errors::AccessKind;
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
@@ -353,7 +354,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
-                        &def.variant(idx)
+                        def.variant(idx)
                     } else {
                         def.non_enum_variant()
                     };
@@ -461,7 +462,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
@@ -470,7 +471,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        ty.print(printer).unwrap().into_buffer()
+        ty.print(&mut printer).unwrap();
+        printer.into_buffer()
     }
 
     /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
@@ -480,7 +482,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
@@ -492,7 +494,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             bug!("ty for annotation of borrow region is not a reference");
         };
 
-        region.print(printer).unwrap().into_buffer()
+        region.print(&mut printer).unwrap();
+        printer.into_buffer()
     }
 }
 
@@ -631,7 +634,7 @@ impl UseSpans<'_> {
                 err.subdiagnostic(match kind {
                     Some(kd) => match kd {
                         rustc_middle::mir::BorrowKind::Shared
-                        | rustc_middle::mir::BorrowKind::Shallow => {
+                        | rustc_middle::mir::BorrowKind::Fake => {
                             CaptureVarKind::Immut { kind_span: capture_kind_span }
                         }
 
@@ -848,7 +851,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             let Some((method_did, method_args)) = rustc_middle::util::find_self_call(
                 self.infcx.tcx,
-                &self.body,
+                self.body,
                 target_temp,
                 location.block,
             ) else {
@@ -1045,7 +1048,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let ty = moved_place.ty(self.body, tcx).ty;
                         let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => type_known_to_meet_bound_modulo_regions(
-                                &self.infcx,
+                                self.infcx,
                                 self.param_env,
                                 Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
                                 def_id,
@@ -1110,7 +1113,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && let ty::Ref(_, _, hir::Mutability::Mut) = args.type_at(0).kind()
                             && let self_ty = self.infcx.instantiate_binder_with_fresh_vars(
                                 fn_call_span,
-                                LateBoundRegionConversionTime::FnCall,
+                                BoundRegionConversionTime::FnCall,
                                 tcx.fn_sig(method_did).instantiate(tcx, method_args).input(0),
                             )
                             && self.infcx.can_eq(self.param_env, ty, self_ty)

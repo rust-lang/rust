@@ -30,8 +30,8 @@ LL |     unsafe { ptr.write(0) };
 note: inside `main`
   --> $DIR/return_pointer_aliasing2.rs:LL:CC
    |
-LL |             Call(_x = myfun(ptr), after_call)
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_x = myfun(ptr), after_call, UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

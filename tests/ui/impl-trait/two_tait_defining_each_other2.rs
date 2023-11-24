@@ -1,13 +1,16 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 #![feature(type_alias_impl_trait)]
 
-type A = impl Foo; //~ ERROR unconstrained opaque type
+type A = impl Foo; //[current]~ ERROR unconstrained opaque type
 type B = impl Foo;
 
 trait Foo {}
 
 fn muh(x: A) -> B {
     x // B's hidden type is A (opaquely)
-    //~^ ERROR opaque type's hidden type cannot be another opaque type
+    //[current]~^ ERROR opaque type's hidden type cannot be another opaque type
+    //[next]~^^ ERROR type annotations needed: cannot satisfy `A <: B`
 }
 
 struct Bar;

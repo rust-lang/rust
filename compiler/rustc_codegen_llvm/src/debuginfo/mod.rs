@@ -50,7 +50,6 @@ mod utils;
 
 pub use self::create_scope_map::compute_mir_scopes;
 pub use self::metadata::build_global_var_di_node;
-pub use self::metadata::extend_scope_to_file;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;

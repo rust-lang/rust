@@ -14,7 +14,7 @@ error: `mut` must be followed by a named binding
   --> $DIR/self_type_keyword.rs:16:9
    |
 LL |         mut Self => (),
-   |         ^^^^^^^^ help: remove the `mut` prefix: `Self`
+   |         ^^^^ help: remove the `mut` prefix
    |
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
@@ -31,19 +31,19 @@ LL |         Foo { Self } => (),
    |               ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:29:26
+  --> $DIR/self_type_keyword.rs:31:26
    |
 LL |     extern crate core as Self;
    |                          ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:34:32
+  --> $DIR/self_type_keyword.rs:36:32
    |
 LL |     use std::option::Option as Self;
    |                                ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:39:11
+  --> $DIR/self_type_keyword.rs:41:11
    |
 LL |     trait Self {}
    |           ^^^^ expected identifier, found keyword
@@ -80,7 +80,22 @@ LL | struct Bar<'Self>;
    |
    = help: consider removing `'Self`, referring to it in a field, or using a marker such as `PhantomData`
 
-error: aborting due to 12 previous errors
+error[E0308]: mismatched types
+  --> $DIR/self_type_keyword.rs:23:9
+   |
+LL |     match 15 {
+   |           -- this expression has type `{integer}`
+...
+LL |         Foo { Self } => (),
+   |         ^^^^^^^^^^^^ expected integer, found `Foo`
 
-Some errors have detailed explanations: E0392, E0531.
-For more information about an error, try `rustc --explain E0392`.
+error[E0026]: struct `Foo` does not have a field named `Self`
+  --> $DIR/self_type_keyword.rs:23:15
+   |
+LL |         Foo { Self } => (),
+   |               ^^^^ struct `Foo` does not have this field
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0026, E0308, E0392, E0531.
+For more information about an error, try `rustc --explain E0026`.

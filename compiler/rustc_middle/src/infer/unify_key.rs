@@ -58,18 +58,17 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
         // We pick the value of the least universe because it is compatible with more variables.
-        // This is *not* necessary for soundness, but it allows more region variables to be
-        // resolved to the said value.
+        // This is *not* necessary for completeness.
         #[cold]
         fn min_universe<'tcx>(r1: Region<'tcx>, r2: Region<'tcx>) -> Region<'tcx> {
             cmp::min_by_key(r1, r2, |r| match r.kind() {
                 ty::ReStatic
                 | ty::ReErased
-                | ty::ReFree(..)
-                | ty::ReEarlyBound(..)
+                | ty::ReLateParam(..)
+                | ty::ReEarlyParam(..)
                 | ty::ReError(_) => ty::UniverseIndex::ROOT,
                 ty::RePlaceholder(placeholder) => placeholder.universe,
-                ty::ReVar(..) | ty::ReLateBound(..) => bug!("not a universal region"),
+                ty::ReVar(..) | ty::ReBound(..) => bug!("not a universal region"),
             })
         }
 
@@ -141,18 +140,30 @@ pub struct ConstVarValue<'tcx> {
     pub val: ConstVariableValue<'tcx>,
 }
 
-impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct ConstVidKey<'tcx> {
+    pub vid: ty::ConstVid,
+    pub phantom: PhantomData<ty::Const<'tcx>>,
+}
+
+impl<'tcx> From<ty::ConstVid> for ConstVidKey<'tcx> {
+    fn from(vid: ty::ConstVid) -> Self {
+        ConstVidKey { vid, phantom: PhantomData }
+    }
+}
+
+impl<'tcx> UnifyKey for ConstVidKey<'tcx> {
     type Value = ConstVarValue<'tcx>;
     #[inline]
     fn index(&self) -> u32 {
-        self.index
+        self.vid.as_u32()
     }
     #[inline]
     fn from_index(i: u32) -> Self {
-        ty::ConstVid { index: i, phantom: PhantomData }
+        ConstVidKey::from(ty::ConstVid::from_u32(i))
     }
     fn tag() -> &'static str {
-        "ConstVid"
+        "ConstVidKey"
     }
 }
 
@@ -224,17 +235,29 @@ impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
     }
 }
 
-impl<'tcx> UnifyKey for ty::EffectVid<'tcx> {
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct EffectVidKey<'tcx> {
+    pub vid: ty::EffectVid,
+    pub phantom: PhantomData<EffectVarValue<'tcx>>,
+}
+
+impl<'tcx> From<ty::EffectVid> for EffectVidKey<'tcx> {
+    fn from(vid: ty::EffectVid) -> Self {
+        EffectVidKey { vid, phantom: PhantomData }
+    }
+}
+
+impl<'tcx> UnifyKey for EffectVidKey<'tcx> {
     type Value = Option<EffectVarValue<'tcx>>;
     #[inline]
     fn index(&self) -> u32 {
-        self.index
+        self.vid.as_u32()
     }
     #[inline]
     fn from_index(i: u32) -> Self {
-        ty::EffectVid { index: i, phantom: PhantomData }
+        EffectVidKey::from(ty::EffectVid::from_u32(i))
     }
     fn tag() -> &'static str {
-        "EffectVid"
+        "EffectVidKey"
     }
 }

@@ -159,7 +159,7 @@ impl<'tcx> Place<'tcx> {
 
     #[inline]
     pub fn as_ref(&self) -> PlaceRef<'tcx> {
-        PlaceRef { local: self.local, projection: &self.projection }
+        PlaceRef { local: self.local, projection: self.projection }
     }
 
     /// Iterate over the projections in evaluation order, i.e., the first element is the base with
@@ -446,7 +446,7 @@ impl<'tcx> Rvalue<'tcx> {
 impl BorrowKind {
     pub fn mutability(&self) -> Mutability {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow => Mutability::Not,
+            BorrowKind::Shared | BorrowKind::Fake => Mutability::Not,
             BorrowKind::Mut { .. } => Mutability::Mut,
         }
     }
@@ -454,7 +454,7 @@ impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared
-            | BorrowKind::Shallow
+            | BorrowKind::Fake
             | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture } => {
                 false
             }

@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
 use rustc_hir::def_id::{StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
@@ -17,7 +17,8 @@ use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_session::config::{self, CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::{output::find_crate_name, Session};
+use rustc_session::output::find_crate_name;
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{RefCell, RefMut};
@@ -101,16 +102,10 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    fn session(&self) -> &Lrc<Session> {
-        &self.compiler.sess
-    }
-    fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
-        self.compiler.codegen_backend()
-    }
-
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
-        self.parse
-            .compute(|| passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit()))
+        self.parse.compute(|| {
+            passes::parse(&self.compiler.sess).map_err(|mut parse_error| parse_error.emit())
+        })
     }
 
     #[deprecated = "pre_configure may be made private in the future. If you need it please open an issue with your use case."]
@@ -118,7 +113,7 @@ impl<'tcx> Queries<'tcx> {
         self.pre_configure.compute(|| {
             let mut krate = self.parse()?.steal();
 
-            let sess = self.session();
+            let sess = &self.compiler.sess;
             rustc_builtin_macros::cmdline_attrs::inject(
                 &mut krate,
                 &sess.parse_sess,
@@ -133,7 +128,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
-            let sess = self.session();
+            let sess = &self.compiler.sess;
             #[allow(deprecated)]
             let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
@@ -148,14 +143,8 @@ impl<'tcx> Queries<'tcx> {
             );
             let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
 
-            let lint_store = Lrc::new(passes::create_lint_store(
-                sess,
-                &*self.codegen_backend().metadata_loader(),
-                self.compiler.register_lints.as_deref(),
-                &pre_configured_attrs,
-            ));
             let cstore = FreezeLock::new(Box::new(CStore::new(
-                self.codegen_backend().metadata_loader(),
+                self.compiler.codegen_backend.metadata_loader(),
                 stable_crate_id,
             )) as _);
             let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
@@ -168,7 +157,6 @@ impl<'tcx> Queries<'tcx> {
                 self.compiler,
                 crate_types,
                 stable_crate_id,
-                lint_store,
                 dep_graph,
                 untracked,
                 &self.gcx_cell,
@@ -181,28 +169,14 @@ impl<'tcx> Queries<'tcx> {
                 feed.crate_name(crate_name);
 
                 let feed = tcx.feed_unit_query();
-                feed.features_query(
-                    tcx.arena.alloc(rustc_expand::config::features(sess, &pre_configured_attrs)),
-                );
+                feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+                    sess,
+                    &pre_configured_attrs,
+                    crate_name,
+                )));
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             });
             Ok(qcx)
-        })
-    }
-
-    pub fn ongoing_codegen(&'tcx self) -> Result<Box<dyn Any>> {
-        self.global_ctxt()?.enter(|tcx| {
-            // Don't do code generation if there were any errors
-            self.session().compile_status()?;
-
-            // If we have any delayed bugs, for example because we created TyKind::Error earlier,
-            // it's likely that codegen will only cause more ICEs, obscuring the original problem
-            self.session().diagnostic().flush_delayed();
-
-            // Hook for UI tests.
-            Self::check_for_rustc_errors_attr(tcx);
-
-            Ok(passes::start_codegen(&**self.codegen_backend(), tcx))
         })
     }
 
@@ -240,68 +214,61 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    pub fn linker(&'tcx self, ongoing_codegen: Box<dyn Any>) -> Result<Linker> {
-        let sess = self.session().clone();
-        let codegen_backend = self.codegen_backend().clone();
+    pub fn codegen_and_build_linker(&'tcx self) -> Result<Linker> {
+        self.global_ctxt()?.enter(|tcx| {
+            // Don't do code generation if there were any errors
+            self.compiler.sess.compile_status()?;
 
-        let (crate_hash, prepare_outputs, dep_graph) = self.global_ctxt()?.enter(|tcx| {
-            (
-                if tcx.needs_crate_hash() { Some(tcx.crate_hash(LOCAL_CRATE)) } else { None },
-                tcx.output_filenames(()).clone(),
-                tcx.dep_graph.clone(),
-            )
-        });
+            // If we have any delayed bugs, for example because we created TyKind::Error earlier,
+            // it's likely that codegen will only cause more ICEs, obscuring the original problem
+            self.compiler.sess.diagnostic().flush_delayed();
 
-        Ok(Linker {
-            sess,
-            codegen_backend,
+            // Hook for UI tests.
+            Self::check_for_rustc_errors_attr(tcx);
 
-            dep_graph,
-            prepare_outputs,
-            crate_hash,
-            ongoing_codegen,
+            let ongoing_codegen = passes::start_codegen(&*self.compiler.codegen_backend, tcx);
+
+            Ok(Linker {
+                dep_graph: tcx.dep_graph.clone(),
+                output_filenames: tcx.output_filenames(()).clone(),
+                crate_hash: if tcx.needs_crate_hash() {
+                    Some(tcx.crate_hash(LOCAL_CRATE))
+                } else {
+                    None
+                },
+                ongoing_codegen,
+            })
         })
     }
 }
 
 pub struct Linker {
-    // compilation inputs
-    sess: Lrc<Session>,
-    codegen_backend: Lrc<dyn CodegenBackend>,
-
-    // compilation outputs
     dep_graph: DepGraph,
-    prepare_outputs: Arc<OutputFilenames>,
+    output_filenames: Arc<OutputFilenames>,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
     ongoing_codegen: Box<dyn Any>,
 }
 
 impl Linker {
-    pub fn link(self) -> Result<()> {
-        let (codegen_results, work_products) = self.codegen_backend.join_codegen(
-            self.ongoing_codegen,
-            &self.sess,
-            &self.prepare_outputs,
-        )?;
+    pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
+        let (codegen_results, work_products) =
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)?;
 
-        self.sess.compile_status()?;
+        sess.compile_status()?;
 
-        let sess = &self.sess;
-        let dep_graph = self.dep_graph;
         sess.time("serialize_work_products", || {
-            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
+            rustc_incremental::save_work_product_index(sess, &self.dep_graph, work_products)
         });
 
-        let prof = self.sess.prof.clone();
-        prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
+        let prof = sess.prof.clone();
+        prof.generic_activity("drop_dep_graph").run(move || drop(self.dep_graph));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(&self.sess, self.crate_hash);
+        rustc_incremental::finalize_session_directory(sess, self.crate_hash);
 
-        if !self
-            .sess
+        if !sess
             .opts
             .output_types
             .keys()
@@ -311,14 +278,14 @@ impl Linker {
         }
 
         if sess.opts.unstable_opts.no_link {
-            let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
+            let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
             CodegenResults::serialize_rlink(sess, &rlink_file, &codegen_results)
                 .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
             return Ok(());
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
+        codegen_backend.link(sess, codegen_results, &self.output_filenames)
     }
 }
 
@@ -327,6 +294,7 @@ impl Compiler {
     where
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
+        // Must declare `_timer` first so that it is dropped after `queries`.
         let mut _timer = None;
         let queries = Queries::new(self);
         let ret = f(&queries);
@@ -339,15 +307,16 @@ impl Compiler {
             // after this point, they'll show up as "<unknown>" in self-profiling data.
             {
                 let _prof_timer =
-                    queries.session().prof.generic_activity("self_profile_alloc_query_strings");
+                    queries.compiler.sess.prof.generic_activity("self_profile_alloc_query_strings");
                 gcx.enter(rustc_query_impl::alloc_self_profile_query_strings);
             }
 
-            self.session()
-                .time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
+            self.sess.time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
         }
 
-        _timer = Some(self.session().timer("free_global_ctxt"));
+        // The timer's lifetime spans the dropping of `queries`, which contains
+        // the global context.
+        _timer = Some(self.sess.timer("free_global_ctxt"));
 
         ret
     }

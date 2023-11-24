@@ -290,7 +290,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
-                let r1 = icx.astconv().ast_region_to_region(&region_pred.lifetime, None);
+                let r1 = icx.astconv().ast_region_to_region(region_pred.lifetime, None);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
                         hir::GenericBound::Outlives(lt) => {
@@ -362,10 +362,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
 ) {
     for param in opaque_own_params {
         let orig_lifetime = tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local());
-        if let ty::ReEarlyBound(..) = *orig_lifetime {
-            let dup_lifetime = ty::Region::new_early_bound(
+        if let ty::ReEarlyParam(..) = *orig_lifetime {
+            let dup_lifetime = ty::Region::new_early_param(
                 tcx,
-                ty::EarlyBoundRegion { def_id: param.def_id, index: param.index, name: param.name },
+                ty::EarlyParamRegion { def_id: param.def_id, index: param.index, name: param.name },
             );
             let span = tcx.def_span(param.def_id);
             predicates.push((
@@ -714,9 +714,9 @@ pub(super) fn type_param_predicates(
 
     let item_hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
     let ast_generics = match tcx.hir().get(item_hir_id) {
-        Node::TraitItem(item) => &item.generics,
+        Node::TraitItem(item) => item.generics,
 
-        Node::ImplItem(item) => &item.generics,
+        Node::ImplItem(item) => item.generics,
 
         Node::Item(item) => {
             match item.kind {

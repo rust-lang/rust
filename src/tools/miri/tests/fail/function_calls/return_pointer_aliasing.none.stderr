@@ -11,8 +11,8 @@ LL |     unsafe { ptr.read() };
 note: inside `main`
   --> $DIR/return_pointer_aliasing.rs:LL:CC
    |
-LL |             Call(*ptr = myfun(ptr), after_call)
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(*ptr = myfun(ptr), after_call, UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -23,11 +23,10 @@ use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, abi_test, hir_stats, layout_test};
-use rustc_plugin_impl as plugin;
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, Untracked};
+use rustc_session::cstore::Untracked;
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -73,30 +72,6 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-pub(crate) fn create_lint_store(
-    sess: &Session,
-    metadata_loader: &dyn MetadataLoader,
-    register_lints: Option<impl Fn(&Session, &mut LintStore)>,
-    pre_configured_attrs: &[ast::Attribute],
-) -> LintStore {
-    let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
-    if let Some(register_lints) = register_lints {
-        register_lints(sess, &mut lint_store);
-    }
-
-    let registrars = sess.time("plugin_loading", || {
-        plugin::load::load_plugins(sess, metadata_loader, pre_configured_attrs)
-    });
-    sess.time("plugin_registration", || {
-        let mut registry = plugin::Registry { lint_store: &mut lint_store };
-        for registrar in registrars {
-            registrar(&mut registry);
-        }
-    });
-
-    lint_store
-}
-
 fn pre_expansion_lint<'a>(
     sess: &Session,
     features: &Features,
@@ -139,7 +114,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
     }
 }
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
+/// Runs the "early phases" of the compiler: initial `cfg` processing,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
@@ -152,7 +127,7 @@ fn configure_and_expand(
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
-    let lint_store = unerased_lint_store(tcx);
+    let lint_store = unerased_lint_store(tcx.sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
     pre_expansion_lint(
@@ -175,7 +150,7 @@ fn configure_and_expand(
         )
     });
 
-    util::check_attr_crate_type(sess, pre_configured_attrs, &mut resolver.lint_buffer());
+    util::check_attr_crate_type(sess, pre_configured_attrs, resolver.lint_buffer());
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -309,16 +284,16 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        eprintln!("Post-expansion node count: {}", count_nodes(&krate));
+        eprintln!("Post-expansion node count: {}", count_nodes(krate));
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS", "ast-stats-2");
+        hir_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
-        rustc_ast_passes::feature_gate::check_crate(&krate, sess, tcx.features());
+        rustc_ast_passes::feature_gate::check_crate(krate, sess, tcx.features());
     });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
@@ -344,7 +319,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         }
     });
 
-    let lint_store = unerased_lint_store(tcx);
+    let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         sess,
         tcx.features(),
@@ -392,34 +367,16 @@ fn generated_output_paths(
     out_filenames
 }
 
-// Runs `f` on every output file path and returns the first non-None result, or None if `f`
-// returns None for every file path.
-fn check_output<F, T>(output_paths: &[PathBuf], f: F) -> Option<T>
-where
-    F: Fn(&PathBuf) -> Option<T>,
-{
-    for output_path in output_paths {
-        if let Some(result) = f(output_path) {
-            return Some(result);
-        }
-    }
-    None
-}
-
 fn output_contains_path(output_paths: &[PathBuf], input_path: &Path) -> bool {
     let input_path = try_canonicalize(input_path).ok();
     if input_path.is_none() {
         return false;
     }
-    let check = |output_path: &PathBuf| {
-        if try_canonicalize(output_path).ok() == input_path { Some(()) } else { None }
-    };
-    check_output(output_paths, check).is_some()
+    output_paths.iter().any(|output_path| try_canonicalize(output_path).ok() == input_path)
 }
 
-fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| output_path.is_dir().then(|| output_path.clone());
-    check_output(output_paths, check)
+fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<&PathBuf> {
+    output_paths.iter().find(|output_path| output_path.is_dir())
 }
 
 fn escape_dep_filename(filename: &str) -> String {
@@ -564,11 +521,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             if sess.opts.json_artifact_notifications {
                 sess.parse_sess
                     .span_diagnostic
-                    .emit_artifact_notification(&deps_filename, "dep-info");
+                    .emit_artifact_notification(deps_filename, "dep-info");
             }
         }
         Err(error) => {
-            sess.emit_fatal(errors::ErrorWritingDependencies { path: &deps_filename, error });
+            sess.emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
         }
     }
 }
@@ -602,19 +559,17 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let (_, krate) = &*tcx.resolver_for_lowering(()).borrow();
     let crate_name = tcx.crate_name(LOCAL_CRATE);
 
-    // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(&krate.attrs, sess);
-
     let output_paths =
         generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
-    if let Some(ref input_path) = sess.io.input.opt_path() {
+    if let Some(input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
                 sess.emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
             }
-            if let Some(ref dir_path) = output_conflicts_with_dir(&output_paths) {
+            if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
                 sess.emit_fatal(errors::GeneratedFileConflictsWithDirectory {
                     input_path,
                     dir_path,
@@ -679,7 +634,6 @@ pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     crate_types: Vec<CrateType>,
     stable_crate_id: StableCrateId,
-    lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
     gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
@@ -691,10 +645,10 @@ pub fn create_global_ctxt<'tcx>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let sess = &compiler.session();
+    let sess = &compiler.sess;
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
-    let codegen_backend = compiler.codegen_backend();
+    let codegen_backend = &compiler.codegen_backend;
     let mut providers = *DEFAULT_QUERY_PROVIDERS;
     codegen_backend.provide(&mut providers);
 
@@ -710,7 +664,6 @@ pub fn create_global_ctxt<'tcx>(
                 sess,
                 crate_types,
                 stable_crate_id,
-                lint_store,
                 arena,
                 hir_arena,
                 untracked,
@@ -775,12 +728,16 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     rustc_hir_analysis::check_crate(tcx)?;
 
     sess.time("MIR_borrow_checking", || {
-        tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
+        tcx.hir().par_body_owners(|def_id| {
+            // Run THIR unsafety check because it's responsible for stealing
+            // and deallocating THIR when enabled.
+            tcx.ensure().thir_check_unsafety(def_id);
+            tcx.ensure().mir_borrowck(def_id)
+        });
     });
 
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.hir().body_owners() {
-            tcx.ensure().thir_check_unsafety(def_id);
             if !tcx.sess.opts.unstable_opts.thir_unsafeck {
                 rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
             }
@@ -852,6 +809,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         // This check has to be run after all lints are done processing. We don't
         // define a lint filter, as all lint checks should have finished at this point.
         sess.time("check_lint_expectations", || tcx.ensure().check_expectations(None));
+
+        // This query is only invoked normally if a diagnostic is emitted that needs any
+        // diagnostic item. If the crate compiles without checking any diagnostic items,
+        // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
+        let _ = tcx.all_diagnostic_items(());
     });
 
     if sess.opts.unstable_opts.print_vtable_sizes {
@@ -873,16 +835,18 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
             let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
 
-            // A slightly edited version of the code in `rustc_trait_selection::traits::vtable::vtable_entries`,
-            // that works without self type and just counts number of entries.
+            // A slightly edited version of the code in
+            // `rustc_trait_selection::traits::vtable::vtable_entries`, that works without self
+            // type and just counts number of entries.
             //
-            // Note that this is technically wrong, for traits which have associated types in supertraits:
+            // Note that this is technically wrong, for traits which have associated types in
+            // supertraits:
             //
             //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
             //
-            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>` and
-            // `AsRef<()>` are the same trait, thus we assume that those are different, and potentially
-            // over-estimate how many vtable entries there are.
+            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>`
+            // and `AsRef<()>` are the same trait, thus we assume that those are different, and
+            // potentially over-estimate how many vtable entries there are.
             //
             // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
             // For example:
@@ -909,10 +873,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         let own_existential_entries =
                             tcx.own_existential_vtable_entries(trait_ref.def_id());
 
-                        // The original code here ignores the method if its predicates are impossible.
-                        // We can't really do that as, for example, all not trivial bounds on generic
-                        // parameters are impossible (since we don't know the parameters...),
-                        // see the comment above.
+                        // The original code here ignores the method if its predicates are
+                        // impossible. We can't really do that as, for example, all not trivial
+                        // bounds on generic parameters are impossible (since we don't know the
+                        // parameters...), see the comment above.
                         entries_ignoring_upcasting += own_existential_entries.len();
 
                         if emit_vptr {

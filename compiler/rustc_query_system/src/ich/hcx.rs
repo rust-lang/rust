@@ -28,7 +28,7 @@ pub struct StableHashingContext<'a> {
     // `CachingSourceMapView`, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
     caching_source_map: Option<CachingSourceMapView<'a>>,
-    pub(super) hashing_controls: HashingControls,
+    hashing_controls: HashingControls,
 }
 
 /// The `BodyResolver` allows mapping a `BodyId` to the corresponding `hir::Body`.

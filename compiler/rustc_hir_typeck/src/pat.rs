@@ -12,12 +12,14 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::source_map::{Span, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Span;
 use rustc_span::{BytePos, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
@@ -164,9 +166,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
         let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
         let path_res = match &pat.kind {
-            PatKind::Path(qpath) => {
-                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span))
-            }
+            PatKind::Path(qpath) => Some(
+                self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span, None),
+            ),
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
@@ -870,7 +872,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(pat.span, expected, pat_ty, pat_info.top_info);
 
         // Type-check subpatterns.
-        if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, has_rest_pat, pat_info) {
+        if self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
             pat_ty
         } else {
             Ty::new_misc_error(self.tcx)
@@ -1058,7 +1060,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Resolve the path and check the definition for errors.
         let (res, opt_ty, segments) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
+            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span, None);
         if res == Res::Err {
             let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
             self.set_tainted_by_errors(e);
@@ -2164,7 +2166,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let guar = if let Some(len) = len.try_eval_target_usize(self.tcx, self.param_env) {
+        let len = match len.eval(self.tcx, self.param_env, None) {
+            Ok(val) => val
+                .try_to_scalar()
+                .and_then(|scalar| scalar.try_to_int().ok())
+                .and_then(|int| int.try_to_target_usize(self.tcx).ok()),
+            Err(ErrorHandled::Reported(..)) => {
+                let guar = self.error_scrutinee_unfixed_length(span);
+                return (Some(Ty::new_error(self.tcx, guar)), arr_ty);
+            }
+            Err(ErrorHandled::TooGeneric(..)) => None,
+        };
+
+        let guar = if let Some(len) = len {
             // Now we know the length...
             if slice.is_none() {
                 // ...and since there is no variable-length pattern,

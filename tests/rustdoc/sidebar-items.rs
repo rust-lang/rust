@@ -14,6 +14,7 @@
 // @has - '//*[@class="sidebar-elems"]//section//a' 'Output'
 // @has - '//div[@class="sidebar-elems"]//h3/a[@href="#provided-associated-types"]' 'Provided Associated Types'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'Extra'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#object-safety"]' 'Object Safety'
 pub trait Foo {
     const FOO: usize;
     const BAR: u32 = 0;
@@ -22,6 +23,12 @@ pub trait Foo {
 
     fn foo() {}
     fn bar() -> Self::Output;
+}
+
+// @has foo/trait.Safe.html
+// @!has - '//div[@class="sidebar-elems"]//h3/a[@href="#object-safety"]' ''
+pub trait Safe {
+    fn access(&self);
 }
 
 // @has foo/struct.Bar.html

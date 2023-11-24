@@ -22,12 +22,13 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{AsyncCoroutineKind, CoroutineKind, Node};
+use rustc_hir::{CoroutineKind, CoroutineSource, Node};
 use rustc_hir::{Expr, HirId};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, LateBoundRegionConversionTime};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_middle::hir::map;
+use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
@@ -98,7 +99,7 @@ impl<'tcx, 'a> CoroutineData<'tcx, 'a> {
             .awaits
             .into_iter()
             .map(|id| hir.expect_expr(id))
-            .find(|await_expr| ty_matches(ty::Binder::dummy(self.0.expr_ty_adjusted(&await_expr))))
+            .find(|await_expr| ty_matches(ty::Binder::dummy(self.0.expr_ty_adjusted(await_expr))))
             .map(|expr| expr.span)
     }
 }
@@ -500,7 +501,7 @@ pub fn suggest_restriction<'tcx>(
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn suggest_restricting_param_bound(
         &self,
-        mut err: &mut Diagnostic,
+        err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
         mut body_id: LocalDefId,
@@ -532,7 +533,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     suggest_restriction(
                         self.tcx,
                         body_id,
-                        &generics,
+                        generics,
                         "`Self`",
                         err,
                         None,
@@ -551,7 +552,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
-                        self.tcx, body_id, &generics, "`Self`", err, None, projection, trait_pred,
+                        self.tcx, body_id, generics, "`Self`", err, None, projection, trait_pred,
                         None,
                     );
                     return;
@@ -574,7 +575,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     suggest_restriction(
                         self.tcx,
                         body_id,
-                        &generics,
+                        generics,
                         "the associated type",
                         err,
                         Some(fn_sig),
@@ -594,7 +595,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     suggest_restriction(
                         self.tcx,
                         body_id,
-                        &generics,
+                        generics,
                         "the associated type",
                         err,
                         None,
@@ -661,7 +662,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if suggest_constraining_type_param(
                         self.tcx,
                         generics,
-                        &mut err,
+                        err,
                         &param_name,
                         &constraint,
                         Some(trait_pred.def_id()),
@@ -689,7 +690,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if suggest_arbitrary_trait_bound(
                         self.tcx,
                         generics,
-                        &mut err,
+                        err,
                         trait_pred,
                         associated_ty,
                     ) {
@@ -738,9 +739,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 real_trait_pred = parent_trait_pred;
             }
 
-            // We `erase_late_bound_regions` here because `make_subregion` does not handle
-            // `ReLateBound`, and we don't particularly care about the regions.
-            let real_ty = self.tcx.erase_late_bound_regions(real_trait_pred.self_ty());
+            // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
+            // `ReBound`, and we don't particularly care about the regions.
+            let real_ty = self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
             if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 continue;
             }
@@ -907,7 +908,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let self_ty = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             trait_pred.self_ty(),
         );
 
@@ -1236,7 +1237,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let output = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             output,
         );
         let inputs = inputs
@@ -1245,7 +1246,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .map(|ty| {
                 self.instantiate_binder_with_fresh_vars(
                     DUMMY_SP,
-                    LateBoundRegionConversionTime::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     inputs.rebind(*ty),
                 )
             })
@@ -1272,7 +1273,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
             obligation.cause.code()
         {
-            &parent_code
+            parent_code
         } else if let ObligationCauseCode::ItemObligation(_)
         | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
         {
@@ -1644,7 +1645,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             // use nth(1) to skip one layer of desugaring from `IntoIter::into_iter`
             if let Some((_, hir::Node::Expr(await_expr))) = hir.parent_iter(*hir_id).nth(1)
-                && let Some(expr_span) = expr.span.find_ancestor_inside(await_expr.span)
+                && let Some(expr_span) = expr.span.find_ancestor_inside_same_ctxt(await_expr.span)
             {
                 let removal_span = self
                     .tcx
@@ -1866,7 +1867,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(obligation.cause.body_id));
 
         let mut visitor = ReturnsVisitor::default();
-        visitor.visit_body(&body);
+        visitor.visit_body(body);
 
         let mut sugg =
             vec![(span.shrink_to_lo(), "Box<".to_string()), (span.shrink_to_hi(), ">".to_string())];
@@ -1921,7 +1922,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let body = hir.body(*body_id);
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
-            visitor.visit_body(&body);
+            visitor.visit_body(body);
             let typeck_results = self.typeck_results.as_ref().unwrap();
             for expr in &visitor.returns {
                 if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
@@ -2286,8 +2287,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // represent regions that are part of the suspended
             // coroutine frame. Bound regions are preserved by
             // `erase_regions` and so we must also call
-            // `erase_late_bound_regions`.
-            let ty_erased = self.tcx.erase_late_bound_regions(ty);
+            // `instantiate_bound_regions_with_erased`.
+            let ty_erased = self.tcx.instantiate_bound_regions_with_erased(ty);
             let ty_erased = self.tcx.erase_regions(ty_erased);
             let eq = ty_erased == target_ty_erased;
             debug!(?ty_erased, ?target_ty_erased, ?eq);
@@ -2299,7 +2300,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // cycles. If we can't use resolved types because the coroutine comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
         let coroutine_data = match &self.typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == coroutine_did_root => CoroutineData(&t),
+            Some(t) if t.hir_owner.to_def_id() == coroutine_did_root => CoroutineData(t),
             _ if coroutine_did.is_local() => {
                 CoroutineData(self.tcx.typeck(coroutine_did.expect_local()))
             }
@@ -2343,7 +2344,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         if interior_or_upvar_span.is_none() {
             interior_or_upvar_span =
-                coroutine_data.try_get_upvar_span(&self, coroutine_did, ty_matches);
+                coroutine_data.try_get_upvar_span(self, coroutine_did, ty_matches);
         }
 
         if interior_or_upvar_span.is_none() && !coroutine_did.is_local() {
@@ -2410,7 +2411,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .and_then(|coroutine_did| {
                     Some(match self.tcx.coroutine_kind(coroutine_did).unwrap() {
                         CoroutineKind::Coroutine => format!("coroutine is not {trait_name}"),
-                        CoroutineKind::Async(AsyncCoroutineKind::Fn) => self
+                        CoroutineKind::Async(CoroutineSource::Fn) => self
                             .tcx
                             .parent(coroutine_did)
                             .as_local()
@@ -2419,11 +2420,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .map(|name| {
                                 format!("future returned by `{name}` is not {trait_name}")
                             })?,
-                        CoroutineKind::Async(AsyncCoroutineKind::Block) => {
+                        CoroutineKind::Async(CoroutineSource::Block) => {
                             format!("future created by async block is not {trait_name}")
                         }
-                        CoroutineKind::Async(AsyncCoroutineKind::Closure) => {
+                        CoroutineKind::Async(CoroutineSource::Closure) => {
                             format!("future created by async closure is not {trait_name}")
+                        }
+                        CoroutineKind::Gen(CoroutineSource::Fn) => self
+                            .tcx
+                            .parent(coroutine_did)
+                            .as_local()
+                            .map(|parent_did| hir.local_def_id_to_hir_id(parent_did))
+                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                            .map(|name| {
+                                format!("iterator returned by `{name}` is not {trait_name}")
+                            })?,
+                        CoroutineKind::Gen(CoroutineSource::Block) => {
+                            format!("iterator created by gen block is not {trait_name}")
+                        }
+                        CoroutineKind::Gen(CoroutineSource::Closure) => {
+                            format!("iterator created by gen closure is not {trait_name}")
                         }
                     })
                 })
@@ -2501,7 +2517,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             CoroutineInteriorOrUpvar::Upvar(upvar_span) => {
                 // `Some((ref_ty, is_mut))` if `target_ty` is `&T` or `&mut T` and fails to impl `Send`
                 let non_send = match target_ty.kind() {
-                    ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(&obligation) {
+                    ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(obligation) {
                         Ok(eval) if !eval.may_apply() => Some((ref_ty, mutability.is_mut())),
                         _ => None,
                     },
@@ -2691,8 +2707,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if let DefKind::Trait = tcx.def_kind(item_def_id)
                             && !visible_item
                         {
-                            // FIXME(estebank): extend this to search for all the types that do
-                            // implement this trait and list them.
                             err.note(format!(
                                 "`{short_item_name}` is a \"sealed trait\", because to implement \
                                  it you also need to implement `{}`, which is not accessible; \
@@ -2700,6 +2714,37 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                  types that already implement it",
                                 with_no_trimmed_paths!(tcx.def_path_str(def_id)),
                             ));
+                            let impls_of = tcx.trait_impls_of(def_id);
+                            let impls = impls_of
+                                .non_blanket_impls()
+                                .values()
+                                .flatten()
+                                .chain(impls_of.blanket_impls().iter())
+                                .collect::<Vec<_>>();
+                            if !impls.is_empty() {
+                                let len = impls.len();
+                                let mut types = impls
+                                    .iter()
+                                    .map(|t| {
+                                        with_no_trimmed_paths!(format!(
+                                            "  {}",
+                                            tcx.type_of(*t).instantiate_identity(),
+                                        ))
+                                    })
+                                    .collect::<Vec<_>>();
+                                let post = if types.len() > 9 {
+                                    types.truncate(8);
+                                    format!("\nand {} others", len - 8)
+                                } else {
+                                    String::new()
+                                };
+                                err.help(format!(
+                                    "the following type{} implement{} the trait:\n{}{post}",
+                                    pluralize!(len),
+                                    if len == 1 { "s" } else { "" },
+                                    types.join("\n"),
+                                ));
+                            }
                         }
                     }
                 } else {
@@ -2727,20 +2772,47 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ));
                 }
             }
-            ObligationCauseCode::RepeatElementCopy { is_const_fn } => {
+            ObligationCauseCode::RepeatElementCopy {
+                is_constable,
+                elt_type,
+                elt_span,
+                elt_stmt_span,
+            } => {
                 err.note(
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
-
-                if is_const_fn {
-                    err.help(
-                        "consider creating a new `const` item and initializing it with the result \
-                        of the function call to be used in the repeat position, like \
-                        `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
+                let value_kind = match is_constable {
+                    IsConstable::Fn => Some("the result of the function call"),
+                    IsConstable::Ctor => Some("the result of the constructor"),
+                    _ => None,
+                };
+                let sm = tcx.sess.source_map();
+                if let Some(value_kind) = value_kind
+                    && let Ok(snip) = sm.span_to_snippet(elt_span)
+                {
+                    let help_msg = format!(
+                        "consider creating a new `const` item and initializing it with {value_kind} \
+                        to be used in the repeat position"
+                    );
+                    let indentation = sm.indentation_before(elt_stmt_span).unwrap_or_default();
+                    err.multipart_suggestion(
+                        help_msg,
+                        vec![
+                            (
+                                elt_stmt_span.shrink_to_lo(),
+                                format!(
+                                    "const ARRAY_REPEAT_VALUE: {elt_type} = {snip};\n{indentation}"
+                                ),
+                            ),
+                            (elt_span, "ARRAY_REPEAT_VALUE".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
                     );
                 }
 
-                if self.tcx.sess.is_nightly_build() && is_const_fn {
+                if self.tcx.sess.is_nightly_build()
+                    && matches!(is_constable, IsConstable::Fn | IsConstable::Ctor)
+                {
                     err.help(
                         "create an inline `const` block, see RFC #2920 \
                          <https://github.com/rust-lang/rfcs/pull/2920> for more information",
@@ -2897,7 +2969,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 else {
                     bug!("expected closure in SizedClosureCapture obligation");
                 };
-                if let hir::CaptureBy::Value = closure.capture_clause
+                if let hir::CaptureBy::Value { .. } = closure.capture_clause
                     && let Some(span) = closure.fn_arg_span
                 {
                     err.span_label(span, "this closure captures all values by move");
@@ -2905,7 +2977,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::SizedCoroutineInterior(coroutine_def_id) => {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
-                    None | Some(hir::CoroutineKind::Coroutine) => "yield",
+                    None
+                    | Some(hir::CoroutineKind::Coroutine)
+                    | Some(hir::CoroutineKind::Gen(_)) => "yield",
                     Some(hir::CoroutineKind::Async(..)) => "await",
                 };
                 err.note(format!(
@@ -2995,11 +3069,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let sp = self.tcx.def_span(def_id);
 
                                 // Special-case this to say "async block" instead of `[static coroutine]`.
-                                let kind = tcx.coroutine_kind(def_id).unwrap().descr();
+                                let kind = tcx.coroutine_kind(def_id).unwrap();
                                 err.span_note(
                                     sp,
                                     with_forced_trimmed_paths!(format!(
-                                        "required because it's used within this {kind}",
+                                        "required because it's used within this {kind:#}",
                                     )),
                                 )
                             }
@@ -3231,7 +3305,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err,
                         predicate,
                         param_env,
-                        &parent_code,
+                        parent_code,
                         obligated_types,
                         seen_requirements,
                     )
@@ -3300,7 +3374,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
                 let impls_future = self.type_implements_trait(
                     future_trait,
-                    [self.tcx.erase_late_bound_regions(self_ty)],
+                    [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
                     obligation.param_env,
                 );
                 if !impls_future.must_apply_modulo_regions() {
@@ -3465,11 +3539,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let Some(Node::Expr(expr)) = hir.find(arg_hir_id)
             && let Some(typeck_results) = &self.typeck_results
         {
-            if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
-                let expr = expr.peel_blocks();
-                let ty =
-                    typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx));
-                let span = expr.span;
+            if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
+                let inner_expr = expr.peel_blocks();
+                let ty = typeck_results
+                    .expr_ty_adjusted_opt(inner_expr)
+                    .unwrap_or(Ty::new_misc_error(tcx));
+                let span = inner_expr.span;
                 if Some(span) != err.span.primary_span() {
                     err.span_label(
                         span,
@@ -3480,6 +3555,50 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             format!("this tail expression is of type `{ty}`")
                         },
                     );
+                    if let ty::PredicateKind::Clause(clause) = failed_pred.kind().skip_binder()
+                        && let ty::ClauseKind::Trait(pred) = clause
+                        && [
+                            tcx.lang_items().fn_once_trait(),
+                            tcx.lang_items().fn_mut_trait(),
+                            tcx.lang_items().fn_trait(),
+                        ]
+                        .contains(&Some(pred.def_id()))
+                    {
+                        if let [stmt, ..] = block.stmts
+                            && let hir::StmtKind::Semi(value) = stmt.kind
+                            && let hir::ExprKind::Closure(hir::Closure {
+                                body, fn_decl_span, ..
+                            }) = value.kind
+                            && let body = hir.body(*body)
+                            && !matches!(body.value.kind, hir::ExprKind::Block(..))
+                        {
+                            // Check if the failed predicate was an expectation of a closure type
+                            // and if there might have been a `{ |args|` typo instead of `|args| {`.
+                            err.multipart_suggestion(
+                                "you might have meant to open the closure body instead of placing \
+                                 a closure within a block",
+                                vec![
+                                    (expr.span.with_hi(value.span.lo()), String::new()),
+                                    (fn_decl_span.shrink_to_hi(), " {".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            // Maybe the bare block was meant to be a closure.
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_lo(),
+                                "you might have meant to create the closure instead of a block",
+                                format!(
+                                    "|{}| ",
+                                    (0..pred.trait_ref.args.len() - 1)
+                                        .map(|_| "_")
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                ),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                 }
             }
 
@@ -3500,7 +3619,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let where_pred = self.instantiate_binder_with_placeholders(where_pred);
                     let failed_pred = self.instantiate_binder_with_fresh_vars(
                         expr.span,
-                        LateBoundRegionConversionTime::FnCall,
+                        BoundRegionConversionTime::FnCall,
                         failed_pred,
                     );
 
@@ -3541,9 +3660,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // If the expression we're calling on is a binding, we want to point at the
                 // `let` when talking about the type. Otherwise we'll point at every part
                 // of the method chain with the type.
-                self.point_at_chain(binding_expr, &typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(binding_expr, typeck_results, type_diffs, param_env, err);
             } else {
-                self.point_at_chain(expr, &typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(expr, typeck_results, type_diffs, param_env, err);
             }
         }
         let call_node = hir.find(call_hir_id);
@@ -3737,7 +3856,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         suggest_restriction(
                             tcx,
                             hir.body_owner_def_id(body_id),
-                            &generics,
+                            generics,
                             &format!("type parameter `{ty}`"),
                             err,
                             node.fn_sig(),

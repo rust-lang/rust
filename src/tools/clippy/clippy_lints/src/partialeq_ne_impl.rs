@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_hir;
-use if_chain::if_chain;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -16,7 +15,7 @@ declare_clippy_lint! {
     /// re-implement it.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo;
     ///
     /// impl PartialEq for Foo {
@@ -34,22 +33,24 @@ declare_lint_pass!(PartialEqNeImpl => [PARTIALEQ_NE_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if_chain! {
-            if let ItemKind::Impl(Impl { of_trait: Some(ref trait_ref), items: impl_items, .. }) = item.kind;
-            if !cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
-            if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
-            if trait_ref.path.res.def_id() == eq_trait;
-            then {
-                for impl_item in *impl_items {
-                    if impl_item.ident.name == sym::ne {
-                        span_lint_hir(
-                            cx,
-                            PARTIALEQ_NE_IMPL,
-                            impl_item.id.hir_id(),
-                            impl_item.span,
-                            "re-implementing `PartialEq::ne` is unnecessary",
-                        );
-                    }
+        if let ItemKind::Impl(Impl {
+            of_trait: Some(ref trait_ref),
+            items: impl_items,
+            ..
+        }) = item.kind
+            && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
+            && let Some(eq_trait) = cx.tcx.lang_items().eq_trait()
+            && trait_ref.path.res.def_id() == eq_trait
+        {
+            for impl_item in *impl_items {
+                if impl_item.ident.name == sym::ne {
+                    span_lint_hir(
+                        cx,
+                        PARTIALEQ_NE_IMPL,
+                        impl_item.id.hir_id(),
+                        impl_item.span,
+                        "re-implementing `PartialEq::ne` is unnecessary",
+                    );
                 }
             }
         };

@@ -47,12 +47,12 @@ impl Visitable for Const {
         visitor.visit_const(self)
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
-        match &self.literal {
+        match &self.kind() {
             super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor)?,
             super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor)?,
-            super::ty::ConstantKind::Param(_) => {}
+            super::ty::ConstantKind::Param(_) | super::ty::ConstantKind::ZeroSized => {}
         }
-        self.ty.visit(visitor)
+        self.ty().visit(visitor)
     }
 }
 
@@ -149,6 +149,7 @@ impl Visitable for RigidTy {
             RigidTy::FnPtr(sig) => sig.visit(visitor),
             RigidTy::Closure(_, args) => args.visit(visitor),
             RigidTy::Coroutine(_, args, _) => args.visit(visitor),
+            RigidTy::CoroutineWitness(_, args) => args.visit(visitor),
             RigidTy::Dynamic(pred, r, _) => {
                 pred.visit(visitor)?;
                 r.visit(visitor)

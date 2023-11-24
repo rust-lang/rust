@@ -64,10 +64,10 @@ pub(crate) fn parse_token_trees<'a>(
         override_span,
         nbsp_is_whitespace: false,
     };
-    let (token_trees, unmatched_delims) =
+    let (stream, res, unmatched_delims) =
         tokentrees::TokenTreesReader::parse_all_token_trees(string_reader);
-    match token_trees {
-        Ok(stream) if unmatched_delims.is_empty() => Ok(stream),
+    match res {
+        Ok(()) if unmatched_delims.is_empty() => Ok(stream),
         _ => {
             // Return error if there are unmatched delimiters or unclosed delimiters.
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
@@ -75,13 +75,15 @@ pub(crate) fn parse_token_trees<'a>(
 
             let mut buffer = Vec::with_capacity(1);
             for unmatched in unmatched_delims {
-                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
+                if let Some(err) = make_unclosed_delims_error(unmatched, sess) {
                     err.buffer(&mut buffer);
                 }
             }
-            if let Err(err) = token_trees {
-                // Add unclosing delimiter error
-                err.buffer(&mut buffer);
+            if let Err(errs) = res {
+                // Add unclosing delimiter or diff marker errors
+                for err in errs {
+                    err.buffer(&mut buffer);
+                }
             }
             Err(buffer)
         }
@@ -360,7 +362,7 @@ impl<'a> StringReader<'a> {
         if contains_text_flow_control_chars(content) {
             let span = self.mk_sp(start, self.pos);
             self.sess.buffer_lint_with_diagnostic(
-                &TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+                TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
                 "unicode codepoint changing visible direction of text present in comment",
@@ -681,7 +683,7 @@ impl<'a> StringReader<'a> {
         } else {
             // Before Rust 2021, only emit a lint for migration.
             self.sess.buffer_lint_with_diagnostic(
-                &RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+                RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
                 format!("prefix `{prefix}` is unknown"),

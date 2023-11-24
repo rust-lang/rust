@@ -80,6 +80,10 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             .or_insert(span);
                     }
 
+                    Component::Placeholder(_) => {
+                        span_bug!(span, "Should not deduce placeholder outlives component");
+                    }
+
                     Component::Alias(alias_ty) => {
                         // This would either arise from something like:
                         //
@@ -146,11 +150,11 @@ fn is_free_region(region: Region<'_>) -> bool {
         // These correspond to `T: 'a` relationships:
         //
         //     struct Foo<'a, T> {
-        //         field: &'a T, // this would generate a ReEarlyBound referencing `'a`
+        //         field: &'a T, // this would generate a ReEarlyParam referencing `'a`
         //     }
         //
         // We care about these, so fall through.
-        ty::ReEarlyBound(_) => true,
+        ty::ReEarlyParam(_) => true,
 
         // These correspond to `T: 'static` relationships which can be
         // rather surprising.
@@ -167,13 +171,13 @@ fn is_free_region(region: Region<'_>) -> bool {
         //     }
         //
         // The type above might generate a `T: 'b` bound, but we can
-        // ignore it. We can't put it on the struct header anyway.
-        ty::ReLateBound(..) => false,
+        // ignore it. We can't name this lifetime pn the struct header anyway.
+        ty::ReBound(..) => false,
 
         ty::ReError(_) => false,
 
         // These regions don't appear in types from type declarations:
-        ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReFree(..) => {
+        ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReLateParam(..) => {
             bug!("unexpected region in outlives inference: {:?}", region);
         }
     }

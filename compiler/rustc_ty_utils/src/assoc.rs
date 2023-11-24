@@ -8,7 +8,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, GenericArgs, ImplTraitInTraitData, Ty, TyCtxt};
 use rustc_span::symbol::kw;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         associated_item,
         associated_item_def_ids,
@@ -23,7 +23,7 @@ pub fn provide(providers: &mut Providers) {
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
     let item = tcx.hir().expect_item(def_id);
     match item.kind {
-        hir::ItemKind::Trait(.., ref trait_item_refs) => {
+        hir::ItemKind::Trait(.., trait_item_refs) => {
             // We collect RPITITs for each trait method's return type and create a
             // corresponding associated item using associated_types_for_impl_traits_in_associated_fn
             // query.
@@ -43,11 +43,11 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                                     trait_fn_def_id,
                                 )
                             })
-                            .map(|def_id| *def_id),
+                            .copied(),
                     ),
             )
         }
-        hir::ItemKind::Impl(ref impl_) => {
+        hir::ItemKind::Impl(impl_) => {
             // We collect RPITITs for each trait method's return type, on the impl side too and
             // create a corresponding associated item using
             // associated_types_for_impl_traits_in_associated_fn query.
@@ -69,7 +69,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                                     impl_fn_def_id,
                                 )
                             })
-                            .map(|def_id| *def_id)
+                            .copied()
                     })),
             )
         }
@@ -98,7 +98,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
     let parent_def_id = tcx.hir().get_parent_item(id);
     let parent_item = tcx.hir().expect_item(parent_def_id.def_id);
     match parent_item.kind {
-        hir::ItemKind::Impl(ref impl_) => {
+        hir::ItemKind::Impl(impl_) => {
             if let Some(impl_item_ref) = impl_.items.iter().find(|i| i.id.owner_id.def_id == def_id)
             {
                 let assoc_item = associated_item_from_impl_item_ref(impl_item_ref);
@@ -107,7 +107,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
             }
         }
 
-        hir::ItemKind::Trait(.., ref trait_item_refs) => {
+        hir::ItemKind::Trait(.., trait_item_refs) => {
             if let Some(trait_item_ref) =
                 trait_item_refs.iter().find(|i| i.id.owner_id.def_id == def_id)
             {

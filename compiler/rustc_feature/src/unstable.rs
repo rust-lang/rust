@@ -160,7 +160,7 @@ declare_features! (
     // no-tracking-issue-start
 
     /// Allows using the `unadjusted` ABI; perma-unstable.
-    (unstable, abi_unadjusted, "1.16.0", None, None),
+    (internal, abi_unadjusted, "1.16.0", None, None),
     /// Allows using the `vectorcall` ABI.
     (unstable, abi_vectorcall, "1.7.0", None, None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
@@ -288,6 +288,7 @@ declare_features! (
     (unstable, csky_target_feature, "1.73.0", Some(44839), None),
     (unstable, ermsb_target_feature, "1.49.0", Some(44839), None),
     (unstable, hexagon_target_feature, "1.27.0", Some(44839), None),
+    (unstable, loongarch_target_feature, "1.73.0", Some(44839), None),
     (unstable, mips_target_feature, "1.27.0", Some(44839), None),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839), None),
     (unstable, riscv_target_feature, "1.45.0", Some(44839), None),
@@ -455,6 +456,10 @@ declare_features! (
     (unstable, ffi_returns_twice, "1.34.0", Some(58314), None),
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232), None),
+    /// Support delegating implementation of functions to other already implemented functions.
+    (incomplete, fn_delegation, "CURRENT_RUSTC_VERSION", Some(118212), None),
+    /// Allows defining gen blocks and `gen fn`.
+    (unstable, gen_blocks, "1.75.0", Some(117078), None),
     /// Infer generic args for both consts and types.
     (unstable, generic_arg_infer, "1.55.0", Some(85077), None),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
@@ -523,10 +528,10 @@ declare_features! (
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561), None),
+    /// Allows using enums in offset_of!
+    (unstable, offset_of_enum, "1.75.0", Some(106655), None),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882), None),
-    /// Allows using `#![plugin(myplugin)]`.
-    (unstable, plugin, "1.0.0", Some(29597), None),
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.
     (unstable, precise_pointer_size_matching, "1.32.0", Some(56354), None),
     /// Allows macro attributes on expressions, statements and non-inline modules.
@@ -559,9 +564,6 @@ declare_features! (
     (unstable, thread_local, "1.0.0", Some(29594), None),
     /// Allows defining `trait X = A + B;` alias items.
     (unstable, trait_alias, "1.24.0", Some(41517), None),
-    /// Allows dyn upcasting trait objects via supertraits.
-    /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
-    (unstable, trait_upcasting, "1.56.0", Some(65991), None),
     /// Allows for transmuting between arrays with sizes that contain generic consts.
     (unstable, transmute_generic_consts, "1.70.0", Some(109929), None),
     /// Allows #[repr(transparent)] on unions (RFC 2645).

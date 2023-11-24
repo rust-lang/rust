@@ -172,7 +172,7 @@ impl Step for ToolStateCheck {
         for (tool, _) in STABLE_TOOLS.iter().chain(NIGHTLY_TOOLS.iter()) {
             if !toolstates.contains_key(*tool) {
                 did_error = true;
-                eprintln!("error: Tool `{tool}` was not recorded in tool state.");
+                eprintln!("ERROR: Tool `{tool}` was not recorded in tool state.");
             }
         }
 
@@ -190,7 +190,7 @@ impl Step for ToolStateCheck {
             if state != ToolState::TestPass {
                 if !is_nightly {
                     did_error = true;
-                    eprintln!("error: Tool `{tool}` should be test-pass but is {state}");
+                    eprintln!("ERROR: Tool `{tool}` should be test-pass but is {state}");
                 } else if in_beta_week {
                     let old_state = old_toolstate
                         .iter()
@@ -200,14 +200,14 @@ impl Step for ToolStateCheck {
                     if state < old_state {
                         did_error = true;
                         eprintln!(
-                            "error: Tool `{tool}` has regressed from {old_state} to {state} during beta week."
+                            "ERROR: Tool `{tool}` has regressed from {old_state} to {state} during beta week."
                         );
                     } else {
                         // This warning only appears in the logs, which most
                         // people won't read. It's mostly here for testing and
                         // debugging.
                         eprintln!(
-                            "warning: Tool `{tool}` is not test-pass (is `{state}`), \
+                            "WARNING: Tool `{tool}` is not test-pass (is `{state}`), \
                             this should be fixed before beta is branched."
                         );
                     }

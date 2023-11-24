@@ -1,11 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::get_parent_expr;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 use super::FILETYPE_IS_FILE;
 
@@ -20,21 +18,19 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     let verb: &str;
     let lint_unary: &str;
     let help_unary: &str;
-    if_chain! {
-        if let Some(parent) = get_parent_expr(cx, expr);
-        if let hir::ExprKind::Unary(op, _) = parent.kind;
-        if op == hir::UnOp::Not;
-        then {
-            lint_unary = "!";
-            verb = "denies";
-            help_unary = "";
-            span = parent.span;
-        } else {
-            lint_unary = "";
-            verb = "covers";
-            help_unary = "!";
-            span = expr.span;
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let hir::ExprKind::Unary(op, _) = parent.kind
+        && op == hir::UnOp::Not
+    {
+        lint_unary = "!";
+        verb = "denies";
+        help_unary = "";
+        span = parent.span;
+    } else {
+        lint_unary = "";
+        verb = "covers";
+        help_unary = "!";
+        span = expr.span;
     }
     let lint_msg = format!("`{lint_unary}FileType::is_file()` only {verb} regular files");
     let help_msg = format!("use `{help_unary}FileType::is_dir()` instead");

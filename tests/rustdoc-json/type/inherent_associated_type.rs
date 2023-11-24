@@ -1,8 +1,6 @@
 // ignore-tidy-linelength
 #![feature(inherent_associated_types)]
-#![feature(no_core)]
 #![allow(incomplete_features)]
-#![no_core]
 
 // @set OwnerMetadata = '$.index[*][?(@.name=="OwnerMetadata")].id'
 pub struct OwnerMetadata;

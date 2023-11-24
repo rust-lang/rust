@@ -715,7 +715,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
                 coroutine_type_and_layout,
                 coroutine_type_di_node,
                 coroutine_layout,
-                &common_upvar_names,
+                common_upvar_names,
             );
 
             let span = coroutine_layout.variant_source_info[variant_index].span;

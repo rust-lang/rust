@@ -69,8 +69,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Coroutine(gen_def_id, args, _)) = ty.map(Ty::kind) {
-                let body = tcx.optimized_mir(*gen_def_id).coroutine_drop().unwrap();
+            if let Some(ty::Coroutine(coroutine_def_id, args, _)) = ty.map(Ty::kind) {
+                let body = tcx.optimized_mir(*coroutine_def_id).coroutine_drop().unwrap();
                 let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
                 debug!("make_shim({:?}) = {:?}", instance, body);
 
@@ -179,7 +179,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         GenericArgs::identity_for_item(tcx, def_id)
     };
     let sig = tcx.fn_sig(def_id).instantiate(tcx, args);
-    let sig = tcx.erase_late_bound_regions(sig);
+    let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let span = tcx.def_span(def_id);
 
     let source_info = SourceInfo::outermost(span);
@@ -392,8 +392,8 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         _ if is_copy => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
-        ty::Coroutine(gen_def_id, args, hir::Movability::Movable) => {
-            builder.coroutine_shim(dest, src, *gen_def_id, args.as_coroutine())
+        ty::Coroutine(coroutine_def_id, args, hir::Movability::Movable) => {
+            builder.coroutine_shim(dest, src, *coroutine_def_id, args.as_coroutine())
         }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
@@ -416,7 +416,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
         let sig = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]);
-        let sig = tcx.erase_late_bound_regions(sig);
+        let sig = tcx.instantiate_bound_regions_with_erased(sig);
         let span = tcx.def_span(def_id);
 
         CloneShimBuilder {
@@ -597,7 +597,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         &mut self,
         dest: Place<'tcx>,
         src: Place<'tcx>,
-        gen_def_id: DefId,
+        coroutine_def_id: DefId,
         args: CoroutineArgs<'tcx>,
     ) {
         self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
@@ -607,8 +607,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let unwind = self.clone_fields(dest, src, switch, unwind, args.upvar_tys());
         let target = self.block(vec![], TerminatorKind::Return, false);
         let unreachable = self.block(vec![], TerminatorKind::Unreachable, false);
-        let mut cases = Vec::with_capacity(args.state_tys(gen_def_id, self.tcx).count());
-        for (index, state_tys) in args.state_tys(gen_def_id, self.tcx).enumerate() {
+        let mut cases = Vec::with_capacity(args.state_tys(coroutine_def_id, self.tcx).count());
+        for (index, state_tys) in args.state_tys(coroutine_def_id, self.tcx).enumerate() {
             let variant_index = VariantIdx::new(index);
             let dest = self.tcx.mk_place_downcast_unnamed(dest, variant_index);
             let src = self.tcx.mk_place_downcast_unnamed(src, variant_index);
@@ -654,7 +654,7 @@ fn build_call_shim<'tcx>(
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
     let (sig_args, untuple_args) = if let ty::InstanceDef::FnPtrShim(_, ty) = instance {
-        let sig = tcx.erase_late_bound_regions(ty.fn_sig(tcx));
+        let sig = tcx.instantiate_bound_regions_with_erased(ty.fn_sig(tcx));
 
         let untuple_args = sig.inputs();
 
@@ -668,7 +668,7 @@ fn build_call_shim<'tcx>(
 
     let def_id = instance.def_id();
     let sig = tcx.fn_sig(def_id);
-    let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
+    let sig = sig.map_bound(|sig| tcx.instantiate_bound_regions_with_erased(sig));
 
     assert_eq!(sig_args.is_some(), !instance.has_polymorphic_mir_body());
     let mut sig = if let Some(sig_args) = sig_args {

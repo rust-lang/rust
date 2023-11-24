@@ -34,7 +34,7 @@ def serialize_and_parse(configure_args, bootstrap_args=None):
         # Verify this is actually valid TOML.
         tomllib.loads(build.config_toml)
     except ImportError:
-        print("warning: skipping TOML validation, need at least python 3.11", file=sys.stderr)
+        print("WARNING: skipping TOML validation, need at least python 3.11", file=sys.stderr)
     return build
 
 
@@ -103,7 +103,6 @@ class GenerateAndParseConfig(unittest.TestCase):
     """Test that we can serialize and deserialize a config.toml file"""
     def test_no_args(self):
         build = serialize_and_parse([])
-        self.assertEqual(build.get_toml("change-id"), '115898')
         self.assertEqual(build.get_toml("profile"), 'dist')
         self.assertIsNone(build.get_toml("llvm.download-ci-llvm"))
 

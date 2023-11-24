@@ -250,7 +250,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
-            &self.parse_sess,
+            self.parse_sess,
             sym::async_fn_track_caller,
         );
         diag
@@ -553,33 +553,22 @@ pub enum BuiltinSpecialModuleNameUsed {
     Main,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_unexpected_cli_config_name)]
-#[help]
-pub struct BuiltinUnexpectedCliConfigName {
-    pub name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_unexpected_cli_config_value)]
-#[help]
-pub struct BuiltinUnexpectedCliConfigValue {
-    pub name: Symbol,
-    pub value: Symbol,
-}
-
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]
+#[help]
 pub struct SupertraitAsDerefTarget<'a> {
-    pub t: Ty<'a>,
+    pub self_ty: Ty<'a>,
+    pub supertrait_principal: PolyExistentialTraitRef<'a>,
     pub target_principal: PolyExistentialTraitRef<'a>,
+    #[label]
+    pub label: Span,
     #[subdiagnostic]
-    pub label: Option<SupertraitAsDerefTargetLabel>,
+    pub label2: Option<SupertraitAsDerefTargetLabel>,
 }
 
 #[derive(Subdiagnostic)]
-#[label(lint_label)]
+#[label(lint_label2)]
 pub struct SupertraitAsDerefTargetLabel {
     #[primary_span]
     pub label: Span,
@@ -1844,4 +1833,11 @@ impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
         fluent::lint_async_fn_in_trait
     }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unit_bindings)]
+pub struct UnitBindingsDiag {
+    #[label]
+    pub label: Span,
 }

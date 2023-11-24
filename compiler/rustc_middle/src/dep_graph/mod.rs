@@ -8,8 +8,8 @@ mod dep_node;
 
 pub use rustc_query_system::dep_graph::debug::EdgeFilter;
 pub use rustc_query_system::dep_graph::{
-    debug::DepNodeFilter, hash_result, DepContext, DepGraphQuery, DepNodeColor, DepNodeIndex, Deps,
-    SerializedDepGraph, SerializedDepNodeIndex, TaskDeps, TaskDepsRef, WorkProduct, WorkProductId,
+    debug::DepNodeFilter, hash_result, DepContext, DepGraphQuery, DepNodeIndex, Deps,
+    SerializedDepGraph, SerializedDepNodeIndex, TaskDepsRef, WorkProduct, WorkProductId,
     WorkProductMap,
 };
 

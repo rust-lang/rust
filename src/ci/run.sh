@@ -98,12 +98,14 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   elif [ "$DEPLOY_ALT" != "" ]; then
-    if [ "$NO_PARALLEL_COMPILER" = "" ]; then
-      RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.parallel-compiler"
+    if [ "$ALT_PARALLEL_COMPILER" = "" ]; then
+      RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.parallel-compiler=false"
     fi
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
+
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=${CODEGEN_BACKENDS:-llvm}"
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
@@ -124,8 +126,15 @@ else
 
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
 
-  # Test the Cranelift backend in on CI, but don't ship it.
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
+  # When running gcc backend tests, we need to install `libgccjit` and to not run llvm codegen
+  # tests as it will fail them.
+  if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
+    # Test the Cranelift and GCC backends in CI. Bootstrap knows which targets to run tests on.
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift,gcc"
+  else
+    # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
+  fi
 
   # We enable this for non-dist builders, since those aren't trying to produce
   # fresh binaries. We currently don't entirely support distributing a fresh
@@ -136,7 +145,7 @@ else
   # LLVM continuously on at least some builders to ensure it works, though.
   # (And PGO is its own can of worms).
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-available"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-unchanged"
   else
     # When building for CI we want to use the static C++ Standard library
     # included with LLVM, since a dynamic libstdcpp may not be available.

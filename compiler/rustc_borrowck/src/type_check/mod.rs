@@ -21,7 +21,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    InferCtxt, LateBoundRegion, LateBoundRegionConversionTime, NllRegionVariableOrigin,
+    BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -188,18 +188,14 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut borrowck_context,
     );
 
-    // FIXME(-Ztrait-solver=next): A bit dubious that we're only registering
-    // predefined opaques in the typeck root.
-    if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
-        checker.register_predefined_opaques_in_new_solver();
-    }
+    checker.check_user_type_annotations();
 
     let mut verifier = TypeVerifier::new(&mut checker, promoted);
-    verifier.visit_body(&body);
+    verifier.visit_body(body);
 
     checker.typeck_mir(body);
-    checker.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
-    checker.check_signature_annotation(&body);
+    checker.equate_inputs_and_outputs(body, universal_regions, &normalized_inputs_and_output);
+    checker.check_signature_annotation(body);
 
     liveness::generate(
         &mut checker,
@@ -393,7 +389,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     self.cx.ascribe_user_type(
                         constant.const_.ty(),
                         UserType::TypeOf(uv.def, UserArgs { args: uv.args, user_self_ty: None }),
-                        locations.span(&self.cx.body),
+                        locations.span(self.cx.body),
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
@@ -557,7 +553,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let all_facts = &mut None;
         let mut constraints = Default::default();
         let mut liveness_constraints =
-            LivenessValues::new(Rc::new(RegionValueElements::new(&promoted_body)));
+            LivenessValues::new(Rc::new(RegionValueElements::new(promoted_body)));
         // Don't try to add borrow_region facts for the promoted MIR
 
         let mut swap_constraints = |this: &mut Self| {
@@ -574,7 +570,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         swap_constraints(self);
 
-        self.visit_body(&promoted_body);
+        self.visit_body(promoted_body);
 
         self.cx.typeck_mir(promoted_body);
 
@@ -755,7 +751,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             PlaceContext::MutatingUse(_) => ty::Invariant,
             PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
             PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | PlaceMention | SharedBorrow | ShallowBorrow | AddressOf
+                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | AddressOf
                 | Projection,
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
@@ -1021,7 +1017,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             borrowck_context,
             reported_errors: Default::default(),
         };
-        checker.check_user_type_annotations();
+
+        // FIXME(-Ztrait-solver=next): A bit dubious that we're only registering
+        // predefined opaques in the typeck root.
+        if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
+            checker.register_predefined_opaques_in_new_solver();
+        }
+
         checker
     }
 
@@ -1125,7 +1127,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             locations.span(self.body),
             category,
-            &mut self.borrowck_context.constraints,
+            self.borrowck_context.constraints,
         )
         .convert_all(data);
     }
@@ -1200,7 +1202,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    #[instrument(skip(self, body, location), level = "debug")]
+    #[instrument(skip(self, body), level = "debug")]
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
         debug!("stmt kind: {:?}", stmt.kind);
@@ -1385,7 +1387,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         return;
                     }
                 };
-                let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
+                let (sig, map) = tcx.instantiate_bound_regions(sig, |br| {
                     use crate::renumber::RegionCtxt;
 
                     let region_ctxt_fn = || {
@@ -1399,10 +1401,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     };
 
                     self.infcx.next_region_var(
-                        LateBoundRegion(
+                        BoundRegion(
                             term.source_info.span,
                             br.kind,
-                            LateBoundRegionConversionTime::FnCall,
+                            BoundRegionConversionTime::FnCall,
                         ),
                         region_ctxt_fn,
                     )
@@ -1640,7 +1642,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::UnwindTerminate(_) => {
                 if !is_cleanup {
-                    span_mirbug!(self, block_data, "abort on non-cleanup block!")
+                    span_mirbug!(self, block_data, "terminate on non-cleanup block!")
                 }
             }
             TerminatorKind::Return => {
@@ -1852,7 +1854,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 for op in ops {
                     self.check_operand(op, location);
                 }
-                self.check_aggregate_rvalue(&body, rvalue, ak, ops, location)
+                self.check_aggregate_rvalue(body, rvalue, ak, ops, location)
             }
 
             Rvalue::Repeat(operand, len) => {
@@ -1932,7 +1934,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1957,7 +1959,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1986,7 +1988,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2011,7 +2013,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self.prove_trait_ref(
                             trait_ref,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast {
+                                unsize_to: Some(tcx.fold_regions(ty, |r, _| {
+                                    if let ty::ReVar(_) = r.kind() {
+                                        tcx.lifetimes.re_erased
+                                    } else {
+                                        r
+                                    }
+                                })),
+                            },
                         );
                     }
 
@@ -2031,7 +2041,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 .iter()
                                 .map(|predicate| predicate.with_self_ty(tcx, self_ty)),
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         );
 
                         let outlives_predicate = tcx.mk_predicate(Binder::dummy(
@@ -2042,7 +2052,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self.prove_predicate(
                             outlives_predicate,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         );
                     }
 
@@ -2063,7 +2073,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty_from,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2129,7 +2139,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty_elem,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2290,7 +2300,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(&body, location, *region, borrowed_place);
+                self.add_reborrow_constraint(body, location, *region, borrowed_place);
             }
 
             Rvalue::BinaryOp(
@@ -2502,7 +2512,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
         let field = path_utils::is_upvar_field_projection(
             tcx,
-            &self.borrowck_context.upvars,
+            self.borrowck_context.upvars,
             borrowed_place.as_ref(),
             body,
         );
@@ -2658,13 +2668,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 location.to_locations(),
                 DUMMY_SP,                   // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
-                &mut self.borrowck_context.constraints,
+                self.borrowck_context.constraints,
             )
-            .apply_closure_requirements(
-                &closure_requirements,
-                def_id.to_def_id(),
-                args,
-            );
+            .apply_closure_requirements(closure_requirements, def_id.to_def_id(), args);
         }
 
         // Now equate closure args to regions inherited from `typeck_root_def_id`. Fixes #98589.
@@ -2704,7 +2710,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?body.span);
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
-            self.check_local(&body, local, local_decl);
+            self.check_local(body, local, local_decl);
         }
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
@@ -2717,8 +2723,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 location.statement_index += 1;
             }
 
-            self.check_terminator(&body, block_data.terminator(), location);
-            self.check_iscleanup(&body, block_data);
+            self.check_terminator(body, block_data.terminator(), location);
+            self.check_iscleanup(body, block_data);
         }
     }
 }

@@ -19,7 +19,7 @@ fn split_u32_ptr(dword: *const u32) -> *const [u16; 2] {
 
 // Wine's SRWLock implementation does this, which is definitely undefined in C++ memory model
 // https://github.com/wine-mirror/wine/blob/303f8042f9db508adaca02ef21f8de4992cb9c03/dlls/ntdll/sync.c#L543-L566
-// Though it probably works just fine on x86
+// It probably works just fine on x86, but Intel does document this as "don't do it!"
 pub fn main() {
     let x = static_atomic_u32(0);
     let j1 = spawn(move || {
@@ -31,7 +31,7 @@ pub fn main() {
         let x_split = split_u32_ptr(x_ptr);
         unsafe {
             let hi = ptr::addr_of!((*x_split)[0]);
-            std::intrinsics::atomic_load_relaxed(hi); //~ ERROR: imperfectly overlapping
+            std::intrinsics::atomic_load_relaxed(hi); //~ ERROR: (1) 4-byte atomic store on thread `<unnamed>` and (2) 2-byte atomic load
         }
     });
 

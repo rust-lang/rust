@@ -307,7 +307,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     if let Err(msg) = reg.validate(
                         asm_arch,
                         self.tcx.sess.relocation_model(),
-                        &target_features,
+                        target_features,
                         &self.tcx.sess.target,
                         op.is_clobber(),
                     ) {
@@ -382,7 +382,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         asm.template,
                         true,
                         None,
-                        &target_features,
+                        target_features,
                     );
                 }
                 hir::InlineAsmOperand::Out { reg, late: _, expr } => {
@@ -394,7 +394,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             asm.template,
                             false,
                             None,
-                            &target_features,
+                            target_features,
                         );
                     }
                 }
@@ -406,7 +406,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         asm.template,
                         false,
                         None,
-                        &target_features,
+                        target_features,
                     );
                 }
                 hir::InlineAsmOperand::SplitInOut { reg, late: _, in_expr, out_expr } => {
@@ -417,7 +417,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         asm.template,
                         true,
                         None,
-                        &target_features,
+                        target_features,
                     );
                     if let Some(out_expr) = out_expr {
                         self.check_asm_operand_type(
@@ -427,7 +427,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             asm.template,
                             false,
                             Some((in_expr, in_ty)),
-                            &target_features,
+                            target_features,
                         );
                     }
                 }

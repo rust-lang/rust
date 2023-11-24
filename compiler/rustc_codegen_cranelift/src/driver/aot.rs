@@ -361,12 +361,26 @@ pub(crate) fn run_aot(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<OngoingCodegen> {
+    // FIXME handle `-Ctarget-cpu=native`
+    let target_cpu = match tcx.sess.opts.cg.target_cpu {
+        Some(ref name) => name,
+        None => tcx.sess.target.cpu.as_ref(),
+    }
+    .to_owned();
+
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
         tcx.collect_and_partition_mono_items(()).1
     } else {
         // If only `--emit metadata` is used, we shouldn't perform any codegen.
         // Also `tcx.collect_and_partition_mono_items` may panic in that case.
-        &[]
+        return Box::new(OngoingCodegen {
+            modules: vec![],
+            allocator_module: None,
+            metadata_module: None,
+            metadata,
+            crate_info: CrateInfo::new(tcx, target_cpu),
+            concurrency_limiter: ConcurrencyLimiter::new(tcx.sess, 0),
+        });
     };
 
     if tcx.dep_graph.is_fully_enabled() {
@@ -394,28 +408,31 @@ pub(crate) fn run_aot(
     let modules = tcx.sess.time("codegen mono items", || {
         cgus.iter()
             .enumerate()
-            .map(|(i, cgu)| match cgu_reuse[i] {
-                CguReuse::No => {
-                    let dep_node = cgu.codegen_dep_node(tcx);
-                    tcx.dep_graph
-                        .with_task(
-                            dep_node,
-                            tcx,
-                            (
-                                backend_config.clone(),
-                                global_asm_config.clone(),
-                                cgu.name(),
-                                concurrency_limiter.acquire(tcx.sess.diagnostic()),
-                            ),
-                            module_codegen,
-                            Some(rustc_middle::dep_graph::hash_result),
-                        )
-                        .0
-                }
-                CguReuse::PreLto => unreachable!("LTO not yet supported"),
-                CguReuse::PostLto => {
-                    concurrency_limiter.job_already_done();
-                    OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
+            .map(|(i, cgu)| {
+                let cgu_reuse =
+                    if backend_config.disable_incr_cache { CguReuse::No } else { cgu_reuse[i] };
+                match cgu_reuse {
+                    CguReuse::No => {
+                        let dep_node = cgu.codegen_dep_node(tcx);
+                        tcx.dep_graph
+                            .with_task(
+                                dep_node,
+                                tcx,
+                                (
+                                    backend_config.clone(),
+                                    global_asm_config.clone(),
+                                    cgu.name(),
+                                    concurrency_limiter.acquire(tcx.sess.diagnostic()),
+                                ),
+                                module_codegen,
+                                Some(rustc_middle::dep_graph::hash_result),
+                            )
+                            .0
+                    }
+                    CguReuse::PreLto | CguReuse::PostLto => {
+                        concurrency_limiter.job_already_done();
+                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
+                    }
                 }
             })
             .collect::<Vec<_>>()
@@ -477,13 +494,6 @@ pub(crate) fn run_aot(
     } else {
         None
     };
-
-    // FIXME handle `-Ctarget-cpu=native`
-    let target_cpu = match tcx.sess.opts.cg.target_cpu {
-        Some(ref name) => name,
-        None => tcx.sess.target.cpu.as_ref(),
-    }
-    .to_owned();
 
     Box::new(OngoingCodegen {
         modules,

@@ -1,5 +1,6 @@
 #![doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
 
+#[allow(unused_imports)]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use crate::core_arch::arch::*;
 

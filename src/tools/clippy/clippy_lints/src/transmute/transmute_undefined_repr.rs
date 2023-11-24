@@ -98,17 +98,17 @@ pub(super) fn check<'tcx>(
             },
 
             (ReducedTy::UnorderedFields(from_ty), ReducedTy::UnorderedFields(to_ty)) if from_ty != to_ty => {
-                let same_adt_did = if let (ty::Adt(from_def, from_subs), ty::Adt(to_def, to_subs))
-                        = (from_ty.kind(), to_ty.kind())
-                        && from_def == to_def
-                    {
-                        if same_except_params(from_subs, to_subs) {
-                            return false;
-                        }
-                        Some(from_def.did())
-                    } else {
-                        None
-                    };
+                let same_adt_did = if let (ty::Adt(from_def, from_subs), ty::Adt(to_def, to_subs)) =
+                    (from_ty.kind(), to_ty.kind())
+                    && from_def == to_def
+                {
+                    if same_except_params(from_subs, to_subs) {
+                        return false;
+                    }
+                    Some(from_def.did())
+                } else {
+                    None
+                };
                 span_lint_and_then(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
@@ -299,14 +299,12 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
 }
 
 fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if_chain! {
-        if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty);
-        if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
-        then {
-            layout.layout.size().bytes() == 0
-        } else {
-            false
-        }
+    if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty)
+        && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
+    {
+        layout.layout.size().bytes() == 0
+    } else {
+        false
     }
 }
 

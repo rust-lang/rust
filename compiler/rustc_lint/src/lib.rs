@@ -10,7 +10,7 @@
 //! all other analyses. The `LintPass`es built into rustc are defined
 //! within [rustc_session::lint::builtin],
 //! which has further comments on how to add such a lint.
-//! rustc can also load user-defined lint plugins via the plugin mechanism.
+//! rustc can also load external lint plugins, as is done for Clippy.
 //!
 //! Some of rustc's lints are defined elsewhere in the compiler and work by
 //! calling `add_lint()` on the overall `Session` object. This works when
@@ -27,8 +27,8 @@
 
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
@@ -85,6 +85,7 @@ mod redundant_semicolon;
 mod reference_casting;
 mod traits;
 mod types;
+mod unit_bindings;
 mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
@@ -123,6 +124,7 @@ use redundant_semicolon::*;
 use reference_casting::*;
 use traits::*;
 use types::*;
+use unit_bindings::*;
 use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
@@ -179,7 +181,6 @@ early_lint_methods!(
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
-            UnexpectedCfgs: UnexpectedCfgs,
         ]
     ]
 );
@@ -203,6 +204,7 @@ late_lint_methods!(
             InvalidReferenceCasting: InvalidReferenceCasting,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
+            UnitBindings: UnitBindings,
             NonUpperCaseGlobals: NonUpperCaseGlobals,
             NonShorthandFieldPatterns: NonShorthandFieldPatterns,
             UnusedAllocation: UnusedAllocation,

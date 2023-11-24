@@ -1,0 +1,53 @@
+Function name: fn_sig_into_try::a
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 0a, 01, 04, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 10, 1) to (start + 4, 2)
+
+Function name: fn_sig_into_try::b
+Raw bytes (28): 0x[01, 01, 02, 01, 00, 00, 02, 04, 01, 10, 01, 02, 0f, 00, 02, 0f, 00, 10, 02, 01, 05, 00, 0c, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Zero
+- expression 1 operands: lhs = Zero, rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 16, 1) to (start + 2, 15)
+- Code(Zero) at (prev + 2, 15) to (start + 0, 16)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
+    = (c0 - Zero)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (Zero + (c0 - Zero))
+
+Function name: fn_sig_into_try::c
+Raw bytes (28): 0x[01, 01, 02, 01, 00, 00, 02, 04, 01, 16, 01, 02, 17, 00, 02, 17, 00, 18, 02, 01, 05, 00, 0c, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Zero
+- expression 1 operands: lhs = Zero, rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 22, 1) to (start + 2, 23)
+- Code(Zero) at (prev + 2, 23) to (start + 0, 24)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
+    = (c0 - Zero)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (Zero + (c0 - Zero))
+
+Function name: fn_sig_into_try::d
+Raw bytes (28): 0x[01, 01, 02, 01, 00, 00, 02, 04, 01, 1c, 01, 03, 0f, 00, 03, 0f, 00, 10, 02, 01, 05, 00, 0c, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Zero
+- expression 1 operands: lhs = Zero, rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 28, 1) to (start + 3, 15)
+- Code(Zero) at (prev + 3, 15) to (start + 0, 16)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
+    = (c0 - Zero)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (Zero + (c0 - Zero))
+

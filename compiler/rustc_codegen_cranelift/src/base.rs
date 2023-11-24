@@ -456,7 +456,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     );
                 }
 
-                crate::inline_asm::codegen_inline_asm(
+                crate::inline_asm::codegen_inline_asm_terminator(
                     fx,
                     source_info.span,
                     template,
@@ -766,7 +766,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
                         NullOp::OffsetOf(fields) => {
-                            layout.offset_of_subfield(fx, fields.iter().map(|f| f.index())).bytes()
+                            layout.offset_of_subfield(fx, fields.iter()).bytes()
                         }
                     };
                     let val = CValue::by_val(

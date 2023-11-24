@@ -15,7 +15,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_block, snippet_block_with_applicability};
 use clippy_utils::sugg::Sugg;
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -32,7 +31,7 @@ declare_clippy_lint! {
     /// makes code look more complex than it really is.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let (x, y) = (true, true);
     /// if x {
     ///     if y {
@@ -42,7 +41,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let (x, y) = (true, true);
     /// if x && y {
     ///     // …
@@ -121,49 +120,55 @@ fn block_starts_with_comment(cx: &EarlyContext<'_>, expr: &ast::Block) -> bool {
 }
 
 fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, then_span: Span, else_: &ast::Expr) {
-    if_chain! {
-        if let ast::ExprKind::Block(ref block, _) = else_.kind;
-        if !block_starts_with_comment(cx, block);
-        if let Some(else_) = expr_block(block);
-        if else_.attrs.is_empty();
-        if !else_.span.from_expansion();
-        if let ast::ExprKind::If(..) = else_.kind;
-        then {
-            // Prevent "elseif"
-            // Check that the "else" is followed by whitespace
-            let up_to_else = then_span.between(block.span);
-            let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() { !c.is_whitespace() } else { false };
+    if let ast::ExprKind::Block(ref block, _) = else_.kind
+        && !block_starts_with_comment(cx, block)
+        && let Some(else_) = expr_block(block)
+        && else_.attrs.is_empty()
+        && !else_.span.from_expansion()
+        && let ast::ExprKind::If(..) = else_.kind
+    {
+        // Prevent "elseif"
+        // Check that the "else" is followed by whitespace
+        let up_to_else = then_span.between(block.span);
+        let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
+            !c.is_whitespace()
+        } else {
+            false
+        };
 
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                COLLAPSIBLE_ELSE_IF,
-                block.span,
-                "this `else { if .. }` block can be collapsed",
-                "collapse nested if block",
-                format!(
-                    "{}{}",
-                    if requires_space { " " } else { "" },
-                    snippet_block_with_applicability(cx, else_.span, "..", Some(block.span), &mut applicability)
-                ),
-                applicability,
-            );
-        }
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            COLLAPSIBLE_ELSE_IF,
+            block.span,
+            "this `else { if .. }` block can be collapsed",
+            "collapse nested if block",
+            format!(
+                "{}{}",
+                if requires_space { " " } else { "" },
+                snippet_block_with_applicability(cx, else_.span, "..", Some(block.span), &mut applicability)
+            ),
+            applicability,
+        );
     }
 }
 
 fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
-    if_chain! {
-        if !block_starts_with_comment(cx, then);
-        if let Some(inner) = expr_block(then);
-        if inner.attrs.is_empty();
-        if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.kind;
+    if !block_starts_with_comment(cx, then)
+        && let Some(inner) = expr_block(then)
+        && inner.attrs.is_empty()
+        && let ast::ExprKind::If(ref check_inner, ref content, None) = inner.kind
         // Prevent triggering on `if c { if let a = b { .. } }`.
-        if !matches!(check_inner.kind, ast::ExprKind::Let(..));
-        let ctxt = expr.span.ctxt();
-        if inner.span.ctxt() == ctxt;
-        then {
-            span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this `if` statement can be collapsed", |diag| {
+        && !matches!(check_inner.kind, ast::ExprKind::Let(..))
+        && let ctxt = expr.span.ctxt()
+        && inner.span.ctxt() == ctxt
+    {
+        span_lint_and_then(
+            cx,
+            COLLAPSIBLE_IF,
+            expr.span,
+            "this `if` statement can be collapsed",
+            |diag| {
                 let mut app = Applicability::MachineApplicable;
                 let lhs = Sugg::ast(cx, check, "..", ctxt, &mut app);
                 let rhs = Sugg::ast(cx, check_inner, "..", ctxt, &mut app);
@@ -177,8 +182,8 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
                     ),
                     app, // snippet
                 );
-            });
-        }
+            },
+        );
     }
 }
 

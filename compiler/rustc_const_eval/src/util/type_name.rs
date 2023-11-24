@@ -18,11 +18,11 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         self.tcx
     }
 
-    fn print_region(self, _region: ty::Region<'_>) -> Result<Self, PrintError> {
-        Ok(self)
+    fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
+        Ok(())
     }
 
-    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self, PrintError> {
+    fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
         match *ty.kind() {
             // Types without identity.
             ty::Bool
@@ -43,7 +43,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             // Placeholders (all printed as `_` to uniformize them).
             ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
                 write!(self, "_")?;
-                Ok(self)
+                Ok(())
             }
 
             // Types with identity (print the module path).
@@ -60,44 +60,44 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         }
     }
 
-    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self, PrintError> {
+    fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
         self.pretty_print_const(ct, false)
     }
 
     fn print_dyn_existential(
-        self,
+        &mut self,
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> Result<Self, PrintError> {
+    ) -> Result<(), PrintError> {
         self.pretty_print_dyn_existential(predicates)
     }
 
-    fn path_crate(mut self, cnum: CrateNum) -> Result<Self, PrintError> {
+    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.path.push_str(self.tcx.crate_name(cnum).as_str());
-        Ok(self)
+        Ok(())
     }
 
     fn path_qualified(
-        self,
+        &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self, PrintError> {
+    ) -> Result<(), PrintError> {
         self.pretty_path_qualified(self_ty, trait_ref)
     }
 
     fn path_append_impl(
-        self,
-        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+        &mut self,
+        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         _disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self, PrintError> {
+    ) -> Result<(), PrintError> {
         self.pretty_path_append_impl(
-            |mut cx| {
-                cx = print_prefix(cx)?;
+            |cx| {
+                print_prefix(cx)?;
 
                 cx.path.push_str("::");
 
-                Ok(cx)
+                Ok(())
             },
             self_ty,
             trait_ref,
@@ -105,29 +105,29 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 
     fn path_append(
-        mut self,
-        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+        &mut self,
+        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
-    ) -> Result<Self, PrintError> {
-        self = print_prefix(self)?;
+    ) -> Result<(), PrintError> {
+        print_prefix(self)?;
 
         write!(self.path, "::{}", disambiguated_data.data).unwrap();
 
-        Ok(self)
+        Ok(())
     }
 
     fn path_generic_args(
-        mut self,
-        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+        &mut self,
+        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
-    ) -> Result<Self, PrintError> {
-        self = print_prefix(self)?;
+    ) -> Result<(), PrintError> {
+        print_prefix(self)?;
         let args =
             args.iter().cloned().filter(|arg| !matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
         if args.clone().next().is_some() {
             self.generic_delimiters(|cx| cx.comma_sep(args))
         } else {
-            Ok(self)
+            Ok(())
         }
     }
 }
@@ -136,31 +136,31 @@ impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
-    fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, PrintError>
+    fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
     where
         T: Print<'tcx, Self>,
     {
         if let Some(first) = elems.next() {
-            self = first.print(self)?;
+            first.print(self)?;
             for elem in elems {
                 self.path.push_str(", ");
-                self = elem.print(self)?;
+                elem.print(self)?;
             }
         }
-        Ok(self)
+        Ok(())
     }
 
     fn generic_delimiters(
-        mut self,
-        f: impl FnOnce(Self) -> Result<Self, PrintError>,
-    ) -> Result<Self, PrintError> {
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<(), PrintError>,
+    ) -> Result<(), PrintError> {
         write!(self, "<")?;
 
-        self = f(self)?;
+        f(self)?;
 
         write!(self, ">")?;
 
-        Ok(self)
+        Ok(())
     }
 
     fn should_print_verbose(&self) -> bool {
@@ -177,5 +177,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path
+    let mut printer = AbsolutePathPrinter { tcx, path: String::new() };
+    printer.print_type(ty).unwrap();
+    printer.path
 }

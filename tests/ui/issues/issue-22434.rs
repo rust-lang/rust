@@ -3,6 +3,6 @@ pub trait Foo {
 }
 
 type I<'a> = &'a (dyn Foo + 'a);
-//~^ ERROR the value of the associated type `A` (from trait `Foo`) must be specified
+//~^ ERROR the value of the associated type `A` in `Foo` must be specified
 
 fn main() {}

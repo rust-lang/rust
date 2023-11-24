@@ -272,6 +272,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.Sleep(timeout)?;
             }
+            "CreateWaitableTimerExW" => {
+                let [attributes, name, flags, access] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                this.read_pointer(attributes)?;
+                this.read_pointer(name)?;
+                this.read_scalar(flags)?.to_u32()?;
+                this.read_scalar(access)?.to_u32()?;
+                // Unimplemented. Always return failure.
+                let not_supported = this.eval_windows("c", "ERROR_NOT_SUPPORTED");
+                this.set_last_error(not_supported)?;
+                this.write_null(dest)?;
+            }
 
             // Synchronization primitives
             "AcquireSRWLockExclusive" => {
@@ -351,7 +363,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_target_isize(hModule)?;
                 let name = this.read_c_str(this.read_pointer(lpProcName)?)?;
-                if let Ok(name) = str::from_utf8(name) && is_dyn_sym(name) {
+                if let Ok(name) = str::from_utf8(name)
+                    && is_dyn_sym(name)
+                {
                     let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
                     this.write_pointer(ptr, dest)?;
                 } else {

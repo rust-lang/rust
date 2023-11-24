@@ -14,11 +14,11 @@ Lint groups provided by rustc:
 
     $NAMES  $SUB_LINTS
 
-Lint checks provided by plugins loaded by this crate:
+Lint checks loaded by this crate:
 
     $NAMES  $LEVELS  $MEANINGS
 
-Lint groups provided by plugins loaded by this crate:
+Lint groups loaded by this crate:
 
     $NAMES  $SUB_LINTS
 

@@ -565,3 +565,24 @@ fn offset_of_addr() {
     assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.0), ptr::addr_of!(base.z.0).addr());
     assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.1), ptr::addr_of!(base.z.1).addr());
 }
+
+#[test]
+fn const_maybe_uninit_zeroed() {
+    // Sanity check for `MaybeUninit::zeroed` in a realistic const situation (plugin array term)
+    #[repr(C)]
+    struct Foo {
+        a: Option<&'static str>,
+        b: Bar,
+        c: f32,
+        d: *const u8,
+    }
+    #[repr(C)]
+    struct Bar(usize);
+    struct FooPtr(*const Foo);
+    unsafe impl Sync for FooPtr {}
+
+    static UNINIT: FooPtr = FooPtr([unsafe { MaybeUninit::zeroed().assume_init() }].as_ptr());
+    const SIZE: usize = size_of::<Foo>();
+
+    assert_eq!(unsafe { (*UNINIT.0.cast::<[[u8; SIZE]; 1]>())[0] }, [0u8; SIZE]);
+}

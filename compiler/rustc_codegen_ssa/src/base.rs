@@ -148,10 +148,9 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.eval_target_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
-        (
-            &ty::Dynamic(ref data_a, _, src_dyn_kind),
-            &ty::Dynamic(ref data_b, _, target_dyn_kind),
-        ) if src_dyn_kind == target_dyn_kind => {
+        (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
+            if src_dyn_kind == target_dyn_kind =>
+        {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
@@ -322,8 +321,13 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if lhs_sz < rhs_sz {
         bx.trunc(rhs, lhs_llty)
     } else if lhs_sz > rhs_sz {
-        // FIXME (#1877: If in the future shifting by negative
-        // values is no longer undefined then this is wrong.
+        // We zero-extend even if the RHS is signed. So e.g. `(x: i32) << -1i8` will zero-extend the
+        // RHS to `255i32`. But then we mask the shift amount to be within the size of the LHS
+        // anyway so the result is `31` as it should be. All the extra bits introduced by zext
+        // are masked off so their value does not matter.
+        // FIXME: if we ever support 512bit integers, this will be wrong! For such large integers,
+        // the extra bits introduced by zext are *not* all masked away any more.
+        assert!(lhs_sz <= 256);
         bx.zext(rhs, lhs_llty)
     } else {
         rhs
@@ -453,8 +457,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx.set_frame_pointer_type(llfn);
         cx.apply_target_cpu_attr(llfn);
 
-        let llbb = Bx::append_block(&cx, llfn, "top");
-        let mut bx = Bx::build(&cx, llbb);
+        let llbb = Bx::append_block(cx, llfn, "top");
+        let mut bx = Bx::build(cx, llbb);
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
@@ -680,7 +684,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Calculate the CGU reuse
     let cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
-        codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect::<Vec<_>>()
+        codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, cgu)).collect::<Vec<_>>()
     });
 
     crate::assert_module_sources::assert_module_sources(tcx, &|cgu_reuse_tracker| {

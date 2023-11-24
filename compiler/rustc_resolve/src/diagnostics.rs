@@ -25,7 +25,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 use crate::errors::{
     AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
@@ -979,7 +979,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     path_span: path.span,
                     // intentionally converting to String, as the text would also be used as
                     // in suggestion context
-                    path_str: pprust::path_to_string(&path),
+                    path_str: pprust::path_to_string(path),
                 })
             }
             VisResolutionError::AncestorOnly(span) => {
@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         namespace: Namespace,
         parent_scope: &ParentScope<'a>,
         start_module: Module<'a>,
-        crate_name: Ident,
+        crate_path: ThinVec<ast::PathSegment>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
@@ -1163,8 +1163,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(x) => Some(x),
         } {
             let in_module_is_extern = !in_module.def_id().is_local();
-            // We have to visit module children in deterministic order to avoid
-            // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
                 // avoid non-importable candidates
                 if !name_binding.is_importable() {
@@ -1214,12 +1212,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
-                        let mut segms = path_segments.clone();
-                        if lookup_ident.span.at_least_rust_2018() {
+                        let mut segms = if lookup_ident.span.at_least_rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            segms.insert(0, ast::PathSegment::from_ident(crate_name));
-                        }
+                            crate_path.clone()
+                        } else {
+                            ThinVec::new()
+                        };
+                        segms.append(&mut path_segments.clone());
 
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path { span: name_binding.span, segments: segms, tokens: None };
@@ -1318,18 +1318,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     where
         FilterFn: Fn(Res) -> bool,
     {
+        let crate_path = thin_vec![ast::PathSegment::from_ident(Ident::with_dummy_span(kw::Crate))];
         let mut suggestions = self.lookup_import_candidates_from_module(
             lookup_ident,
             namespace,
             parent_scope,
             self.graph_root,
-            Ident::with_dummy_span(kw::Crate),
+            crate_path,
             &filter_fn,
         );
 
         if lookup_ident.span.at_least_rust_2018() {
-            let extern_prelude_names = self.extern_prelude.clone();
-            for (ident, _) in extern_prelude_names.into_iter() {
+            for ident in self.extern_prelude.clone().into_keys() {
                 if ident.span.from_expansion() {
                     // Idents are adjusted to the root context before being
                     // resolved in the extern prelude, so reporting this to the
@@ -1340,13 +1340,43 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 let crate_id = self.crate_loader(|c| c.maybe_process_path_extern(ident.name));
                 if let Some(crate_id) = crate_id {
-                    let crate_root = self.expect_module(crate_id.as_def_id());
+                    let crate_def_id = crate_id.as_def_id();
+                    let crate_root = self.expect_module(crate_def_id);
+
+                    // Check if there's already an item in scope with the same name as the crate.
+                    // If so, we have to disambiguate the potential import suggestions by making
+                    // the paths *global* (i.e., by prefixing them with `::`).
+                    let needs_disambiguation =
+                        self.resolutions(parent_scope.module).borrow().iter().any(
+                            |(key, name_resolution)| {
+                                if key.ns == TypeNS
+                                    && key.ident == ident
+                                    && let Some(binding) = name_resolution.borrow().binding
+                                {
+                                    match binding.res() {
+                                        // No disambiguation needed if the identically named item we
+                                        // found in scope actually refers to the crate in question.
+                                        Res::Def(_, def_id) => def_id != crate_def_id,
+                                        Res::PrimTy(_) => true,
+                                        _ => false,
+                                    }
+                                } else {
+                                    false
+                                }
+                            },
+                        );
+                    let mut crate_path = ThinVec::new();
+                    if needs_disambiguation {
+                        crate_path.push(ast::PathSegment::path_root(rustc_span::DUMMY_SP));
+                    }
+                    crate_path.push(ast::PathSegment::from_ident(ident));
+
                     suggestions.extend(self.lookup_import_candidates_from_module(
                         lookup_ident,
                         namespace,
                         parent_scope,
                         crate_root,
-                        ident,
+                        crate_path,
                         &filter_fn,
                     ));
                 }
@@ -1414,7 +1444,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::All(ns),
-                &parent_scope,
+                parent_scope,
                 None,
                 false,
                 None,
@@ -1515,7 +1545,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let (span, sugg, post) = if let SuggestionTarget::SimilarlyNamed = suggestion.target
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             && let Some(span) = suggestion.span
-            && let Some(candidate) = suggestion.candidate.as_str().strip_prefix("_")
+            && let Some(candidate) = suggestion.candidate.as_str().strip_prefix('_')
             && snippet == candidate
         {
             // When the suggested binding change would be from `x` to `_x`, suggest changing the
@@ -1828,6 +1858,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
+            } else if ident.name == sym::core {
+                (
+                    format!("maybe a missing crate `{ident}`?"),
+                    Some((
+                        vec![(ident.span, "std".to_string())],
+                        "try using `std` instead of `core`".to_string(),
+                        Applicability::MaybeIncorrect,
+                    )),
+                )
             } else if self.tcx.sess.is_rust_2015() {
                 (
                     format!("maybe a missing crate `{ident}`?"),
@@ -1998,7 +2037,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     },
                 )
             });
-            (format!("use of undeclared crate or module `{ident}`"), suggestion)
+            if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
+                ident,
+                ScopeSet::All(ValueNS),
+                parent_scope,
+                None,
+                false,
+                ignore_binding,
+            ) {
+                let descr = binding.res().descr();
+                (format!("{descr} `{ident}` is not a crate or module"), suggestion)
+            } else {
+                (format!("use of undeclared crate or module `{ident}`"), suggestion)
+            }
         }
     }
 
@@ -2554,7 +2605,7 @@ fn show_candidates(
 
     candidates.iter().for_each(|c| {
         (if c.accessible { &mut accessible_path_strings } else { &mut inaccessible_path_strings })
-            .push((path_names_to_string(&c.path), c.descr, c.did, &c.note, c.via_import))
+            .push((pprust::path_to_string(&c.path), c.descr, c.did, &c.note, c.via_import))
     });
 
     // we want consistent results across executions, but candidates are produced
@@ -2566,6 +2617,7 @@ fn show_candidates(
         path_strings.extend(core_path_strings);
         path_strings.dedup_by(|a, b| a.0 == b.0);
     }
+    accessible_path_strings.sort();
 
     if !accessible_path_strings.is_empty() {
         let (determiner, kind, name, through) =

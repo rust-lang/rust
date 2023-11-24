@@ -1,9 +1,9 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_path_lang_item;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{for_each_expr, Visitable};
-use clippy_utils::is_path_lang_item;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
@@ -40,7 +40,7 @@ declare_clippy_lint! {
     /// making it much less likely to accidentally forget to update the `Debug` impl when adding a new variant.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::fmt;
     /// struct Foo {
     ///     data: String,
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::fmt;
     /// struct Foo {
     ///     data: String,

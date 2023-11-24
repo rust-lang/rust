@@ -4,6 +4,7 @@
   fn transmute_to_box_uninhabited() -> ! {
       let mut _0: !;
       let _1: std::boxed::Box<Never>;
+      let mut _2: *const Never;
       scope 1 {
           debug x => _1;
       }
@@ -16,6 +17,8 @@
       }
   
       bb1: {
+          _2 = (((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>).0: *const Never);
+          PlaceMention((*_2));
           unreachable;
       }
   }

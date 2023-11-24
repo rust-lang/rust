@@ -85,7 +85,7 @@ struct Coerce<'a, 'tcx> {
 impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
     type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.fcx
+        self.fcx
     }
 }
 
@@ -158,7 +158,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             if self.next_trait_solver() {
                 if let Ok(res) = &res {
                     for obligation in &res.obligations {
-                        if !self.predicate_may_hold(&obligation) {
+                        if !self.predicate_may_hold(obligation) {
                             return Err(TypeError::Mismatch);
                         }
                     }
@@ -626,7 +626,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         )];
 
         let mut has_unsized_tuple_coercion = false;
-        let mut has_trait_upcasting_coercion = None;
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -694,13 +693,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // these here and emit a feature error if coercion doesn't fail
                     // due to another reason.
                     match impl_source {
-                        traits::ImplSource::Builtin(
-                            BuiltinImplSource::TraitUpcasting { .. },
-                            _,
-                        ) => {
-                            has_trait_upcasting_coercion =
-                                Some((trait_pred.self_ty(), trait_pred.trait_ref.args.type_at(1)));
-                        }
                         traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
                             has_unsized_tuple_coercion = true;
                         }
@@ -709,21 +701,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     queue.extend(impl_source.nested_obligations())
                 }
             }
-        }
-
-        if let Some((sub, sup)) = has_trait_upcasting_coercion
-            && !self.tcx().features().trait_upcasting
-        {
-            // Renders better when we erase regions, since they're not really the point here.
-            let (sub, sup) = self.tcx.erase_regions((sub, sup));
-            let mut err = feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::trait_upcasting,
-                self.cause.span,
-                format!("cannot cast `{sub}` to `{sup}`, trait upcasting coercion is experimental"),
-            );
-            err.note(format!("required when coercing `{source}` into `{target}`"));
-            err.emit();
         }
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
@@ -1510,7 +1487,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         expression,
                         expression_ty,
                     ),
-                    Expressions::UpFront(ref coercion_sites) => fcx.try_find_coercion_lub(
+                    Expressions::UpFront(coercion_sites) => fcx.try_find_coercion_lub(
                         cause,
                         &coercion_sites[0..self.pushed],
                         self.merged_ty(),
@@ -1665,7 +1642,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 if visitor.ret_exprs.len() > 0
                     && let Some(expr) = expression
                 {
-                    self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
+                    self.note_unreachable_loop_return(&mut err, expr, &visitor.ret_exprs);
                 }
 
                 let reported = err.emit_unless(unsized_return);
@@ -1772,7 +1749,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             if blk_id.is_none() {
                 fcx.suggest_missing_return_type(
                     &mut err,
-                    &fn_decl,
+                    fn_decl,
                     expected,
                     found,
                     can_suggest,
@@ -1871,6 +1848,6 @@ impl AsCoercionSite for ! {
 
 impl AsCoercionSite for hir::Arm<'_> {
     fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        &self.body
+        self.body
     }
 }

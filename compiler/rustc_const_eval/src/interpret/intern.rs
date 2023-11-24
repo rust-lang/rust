@@ -259,7 +259,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 // to avoid could be expensive: on the potentially larger types, arrays and slices,
                 // rather than on all aggregates unconditionally.
                 if matches!(mplace.layout.ty.kind(), ty::Array(..) | ty::Slice(..)) {
-                    let Some((size, _align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+                    let Some((size, _align)) = self.ecx.size_and_align_of_mplace(mplace)? else {
                         // We do the walk if we can't determine the size of the mplace: we may be
                         // dealing with extern types here in the future.
                         return Ok(true);
@@ -447,6 +447,42 @@ pub fn intern_const_alloc_recursive<
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
+    Ok(())
+}
+
+/// Intern `ret`. This function assumes that `ret` references no other allocation.
+#[instrument(level = "debug", skip(ecx))]
+pub fn intern_const_alloc_for_constprop<
+    'mir,
+    'tcx: 'mir,
+    T,
+    M: CompileTimeMachine<'mir, 'tcx, T>,
+>(
+    ecx: &mut InterpCx<'mir, 'tcx, M>,
+    alloc_id: AllocId,
+) -> InterpResult<'tcx, ()> {
+    // Move allocation to `tcx`.
+    let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) else {
+        // Pointer not found in local memory map. It is either a pointer to the global
+        // map, or dangling.
+        if ecx.tcx.try_get_global_alloc(alloc_id).is_none() {
+            throw_ub!(DeadLocal)
+        }
+        // The constant is already in global memory. Do nothing.
+        return Ok(());
+    };
+
+    alloc.mutability = Mutability::Not;
+
+    // We are not doing recursive interning, so we don't currently support provenance.
+    // (If this assertion ever triggers, we should just implement a
+    // proper recursive interning loop.)
+    assert!(alloc.provenance().ptrs().is_empty());
+
+    // Link the alloc id to the actual allocation
+    let alloc = ecx.tcx.mk_const_alloc(alloc);
+    ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
+
     Ok(())
 }
 

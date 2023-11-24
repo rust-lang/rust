@@ -50,7 +50,7 @@ LL |     my_recursive_macro!();
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro! () ;`
 
-error: expected expression, found `A { a: a, b: 0, c: _, .. }`
+error: expected expression, found pattern `A { a: a, b: 0, c: _, .. }`
   --> $DIR/trace_faulty_macros.rs:16:9
    |
 LL |         $a
@@ -69,6 +69,28 @@ LL | #[derive(Debug)]
 LL | fn use_derive_macro_as_attr() {}
    | -------------------------------- not a `struct`, `enum` or `union`
 
+error: expected expression, found pattern `1 + 1`
+  --> $DIR/trace_faulty_macros.rs:49:37
+   |
+LL |     (let $p:pat = $e:expr) => {test!(($p,$e))};
+   |                   -------                -- this is interpreted as expression, but it is expected to be pattern
+   |                   |
+   |                   this macro fragment matcher is expression
+...
+LL |     (($p:pat, $e:pat)) => {let $p = $e;};
+   |               ------                ^^ expected expression
+   |               |
+   |               this macro fragment matcher is pattern
+...
+LL |     test!(let x = 1+1);
+   |     ------------------
+   |     |             |
+   |     |             this is expected to be expression
+   |     in this macro invocation
+   |
+   = note: when forwarding a matched fragment to another macro-by-example, matchers in the second macro will see an opaque AST of the fragment type, not the underlying tokens
+   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:36:13
    |
@@ -80,6 +102,17 @@ LL |     let a = pat_macro!();
    = note: expanding `pat_macro! { A { a : a, b : 0, c : _, .. } }`
    = note: to `A { a: a, b: 0, c: _, .. }`
 
-error: aborting due to 4 previous errors
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:53:5
+   |
+LL |     test!(let x = 1+1);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `test! { let x = 1 + 1 }`
+   = note: to `test! ((x, 1 + 1))`
+   = note: expanding `test! { (x, 1 + 1) }`
+   = note: to `let x = 1 + 1 ;`
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0774`.

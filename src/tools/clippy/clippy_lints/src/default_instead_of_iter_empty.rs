@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_context;
 use clippy_utils::last_path_segment;
+use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, GenericArg, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -14,12 +14,12 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `std::iter::empty()` is the more idiomatic way.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _ = std::iter::Empty::<usize>::default();
     /// let iter: std::iter::Empty<usize> = std::iter::Empty::default();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let _ = std::iter::empty::<usize>();
     /// let iter: std::iter::Empty<usize> = std::iter::empty();
     /// ```
@@ -68,7 +68,10 @@ fn make_sugg(
             _ => None,
         })
     {
-        format!("std::iter::empty::<{}>()", snippet_with_context(cx, iter_ty.span, ctxt, "..", applicability).0)
+        format!(
+            "std::iter::empty::<{}>()",
+            snippet_with_context(cx, iter_ty.span, ctxt, "..", applicability).0
+        )
     } else {
         "std::iter::empty()".to_owned()
     }

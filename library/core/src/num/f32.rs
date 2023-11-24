@@ -1424,9 +1424,17 @@ impl f32 {
     /// ];
     ///
     /// bois.sort_by(|a, b| a.weight.total_cmp(&b.weight));
-    /// # assert!(bois.into_iter().map(|b| b.weight)
-    /// #     .zip([-5.0, 0.1, 10.0, 99.0, f32::INFINITY, f32::NAN].iter())
-    /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
+    ///
+    /// // `f32::NAN` could be positive or negative, which will affect the sort order.
+    /// if f32::NAN.is_sign_negative() {
+    ///     assert!(bois.into_iter().map(|b| b.weight)
+    ///         .zip([f32::NAN, -5.0, 0.1, 10.0, 99.0, f32::INFINITY].iter())
+    ///         .all(|(a, b)| a.to_bits() == b.to_bits()))
+    /// } else {
+    ///     assert!(bois.into_iter().map(|b| b.weight)
+    ///         .zip([-5.0, 0.1, 10.0, 99.0, f32::INFINITY, f32::NAN].iter())
+    ///         .all(|(a, b)| a.to_bits() == b.to_bits()))
+    /// }
     /// ```
     #[stable(feature = "total_cmp", since = "1.62.0")]
     #[must_use]

@@ -9,7 +9,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{Path, PathSegment};
+use ast::{GenBlockKind, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -32,10 +32,10 @@ use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_span::source_map::{self, Span, Spanned};
+use rustc_span::source_map::{self, Spanned};
 use rustc_span::symbol::kw::PathRoot;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Pos};
+use rustc_span::{BytePos, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
@@ -46,7 +46,7 @@ use thin_vec::{thin_vec, ThinVec};
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind {
-            match &**nt {
+            match &nt.0 {
                 token::NtExpr(e) | token::NtLiteral(e) => {
                     let e = e.clone();
                     $p.bump();
@@ -1060,7 +1060,7 @@ impl<'a> Parser<'a> {
         match &*components {
             // 1e2
             [IdentLike(i)] => {
-                DestructuredFloat::Single(Symbol::intern(&i), span)
+                DestructuredFloat::Single(Symbol::intern(i), span)
             }
             // 1.
             [IdentLike(i), Punct('.')] => {
@@ -1072,7 +1072,7 @@ impl<'a> Parser<'a> {
                 } else {
                     (span, span)
                 };
-                let symbol = Symbol::intern(&i);
+                let symbol = Symbol::intern(i);
                 DestructuredFloat::TrailingDot(symbol, ident_span, dot_span)
             }
             // 1.2 | 1.2e3
@@ -1088,8 +1088,8 @@ impl<'a> Parser<'a> {
                 } else {
                     (span, span, span)
                 };
-                let symbol1 = Symbol::intern(&i1);
-                let symbol2 = Symbol::intern(&i2);
+                let symbol1 = Symbol::intern(i1);
+                let symbol2 = Symbol::intern(i2);
                 DestructuredFloat::MiddleDot(symbol1, ident1_span, dot_span, symbol2, ident2_span)
             }
             // 1e+ | 1e- (recovered)
@@ -1441,14 +1441,20 @@ impl<'a> Parser<'a> {
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
                 // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 if this.check_keyword(kw::Async) {
-                    if this.is_async_block() {
+                    if this.is_gen_block(kw::Async) {
                         // Check for `async {` and `async move {`.
-                        this.parse_async_block()
+                        this.parse_gen_block()
                     } else {
                         this.parse_expr_closure()
                     }
                 } else if this.eat_keyword(kw::Await) {
                     this.recover_incorrect_await_syntax(lo, this.prev_token.span)
+                } else if this.token.uninterpolated_span().at_least_rust_2024() {
+                    if this.is_gen_block(kw::Gen) {
+                        this.parse_gen_block()
+                    } else {
+                        this.parse_expr_lit()
+                    }
                 } else {
                     this.parse_expr_lit()
                 }
@@ -1848,7 +1854,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Yield(self.parse_expr_opt()?);
         let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::coroutines, span);
+        self.sess.gated_spans.gate(sym::yield_expr, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
@@ -1946,7 +1952,7 @@ impl<'a> Parser<'a> {
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtExpr(e) | token::NtLiteral(e) = &**nt
+            && let token::NtExpr(e) | token::NtLiteral(e) = &nt.0
             && matches!(e.kind, ExprKind::Err)
         {
             let mut err = errors::InvalidInterpolatedExpression { span: self.token.span }
@@ -2046,7 +2052,7 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         let span = token.uninterpolated_span();
                         self.bump();
-                        report_lit_error(&self.sess, err, lit, span);
+                        report_lit_error(self.sess, err, lit, span);
                         // Pack possible quotes and prefixes from the original literal into
                         // the error literal's symbol so they can be pretty-printed faithfully.
                         let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
@@ -2297,13 +2303,14 @@ impl<'a> Parser<'a> {
     /// Parses an optional `move` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
         if self.eat_keyword(kw::Move) {
+            let move_kw_span = self.prev_token.span;
             // Check for `move async` and recover
             if self.check_keyword(kw::Async) {
                 let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
                 Err(errors::AsyncMoveOrderIncorrect { span: move_async_span }
                     .into_diagnostic(&self.sess.span_diagnostic))
             } else {
-                Ok(CaptureBy::Value)
+                Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
@@ -2434,10 +2441,26 @@ impl<'a> Parser<'a> {
                     self.error_on_extra_if(&cond)?;
                     // Parse block, which will always fail, but we can add a nice note to the error
                     self.parse_block().map_err(|mut err| {
-                        err.span_note(
-                            cond_span,
-                            "the `if` expression is missing a block after this condition",
-                        );
+                        if self.prev_token == token::Semi
+                            && self.token == token::AndAnd
+                            && let maybe_let = self.look_ahead(1, |t| t.clone())
+                            && maybe_let.is_keyword(kw::Let)
+                        {
+                            err.span_suggestion(
+                                self.prev_token.span,
+                                "consider removing this semicolon to parse the `let` as part of the same chain",
+                                "",
+                                Applicability::MachineApplicable,
+                            ).span_note(
+                                self.token.span.to(maybe_let.span),
+                                "you likely meant to continue parsing the let-chain starting here",
+                            );
+                        } else {
+                            err.span_note(
+                                cond_span,
+                                "the `if` expression is missing a block after this condition",
+                            );
+                        }
                         err
                     })?
                 }
@@ -2881,15 +2904,16 @@ impl<'a> Parser<'a> {
                         "=>",
                         Applicability::MachineApplicable,
                     );
-                    err.emit();
-                    this.bump();
-                } else if matches!(
-                    (&this.prev_token.kind, &this.token.kind),
-                    (token::DotDotEq, token::Gt)
-                ) {
-                    // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
-                    // so we suppress the error here
-                    err.delay_as_bug();
+                    if matches!(
+                        (&this.prev_token.kind, &this.token.kind),
+                        (token::DotDotEq, token::Gt)
+                    ) {
+                        // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
+                        // so we suppress the error here
+                        err.delay_as_bug();
+                    } else {
+                        err.emit();
+                    }
                     this.bump();
                 } else {
                     return Err(err);
@@ -3059,18 +3083,24 @@ impl<'a> Parser<'a> {
             && self.token.uninterpolated_span().at_least_rust_2018()
     }
 
-    /// Parses an `async move? {...}` expression.
-    fn parse_async_block(&mut self) -> PResult<'a, P<Expr>> {
+    /// Parses an `async move? {...}` or `gen move? {...}` expression.
+    fn parse_gen_block(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
-        self.expect_keyword(kw::Async)?;
+        let kind = if self.eat_keyword(kw::Async) {
+            GenBlockKind::Async
+        } else {
+            assert!(self.eat_keyword(kw::Gen));
+            self.sess.gated_spans.gate(sym::gen_blocks, lo.to(self.token.span));
+            GenBlockKind::Gen
+        };
         let capture_clause = self.parse_capture_clause()?;
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
-        let kind = ExprKind::Async(capture_clause, body);
+        let kind = ExprKind::Gen(capture_clause, body, kind);
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 
-    fn is_async_block(&self) -> bool {
-        self.token.is_keyword(kw::Async)
+    fn is_gen_block(&self, kw: Symbol) -> bool {
+        self.token.is_keyword(kw)
             && ((
                 // `async move {`
                 self.is_keyword_ahead(1, &[kw::Move])
@@ -3177,7 +3207,7 @@ impl<'a> Parser<'a> {
                     if let Some((ident, _)) = self.token.ident()
                         && !self.token.is_reserved_ident()
                         && self.look_ahead(1, |t| {
-                            AssocOp::from_token(&t).is_some()
+                            AssocOp::from_token(t).is_some()
                                 || matches!(t.kind, token::OpenDelim(_))
                                 || t.kind == token::Dot
                         })
@@ -3596,7 +3626,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Match(_, _)
             | ExprKind::Closure(_)
             | ExprKind::Block(_, _)
-            | ExprKind::Async(_, _)
+            | ExprKind::Gen(_, _, _)
             | ExprKind::TryBlock(_)
             | ExprKind::Underscore
             | ExprKind::Path(_, _)

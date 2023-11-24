@@ -150,7 +150,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
     #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
-            ty::ReLateBound(debruijn, _) if debruijn > self.outer_index => {
+            ty::ReBound(debruijn, _) if debruijn > self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
             }
@@ -160,14 +160,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ct.kind() {
-            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
-                self.escaping =
-                    self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
-                ControlFlow::Continue(())
-            }
-            _ => ct.super_visit_with(self),
+        if ct.outer_exclusive_binder() > self.outer_index {
+            self.escaping = self
+                .escaping
+                .max(ct.outer_exclusive_binder().as_usize() - self.outer_index.as_usize());
         }
+        ControlFlow::Continue(())
     }
 }
 
@@ -230,17 +228,14 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     Reveal::All => {
                         let args = data.args.try_fold_with(self)?;
                         let recursion_limit = self.interner().recursion_limit();
+
                         if !recursion_limit.value_within_limit(self.anon_depth) {
-                            // A closure or coroutine may have itself as in its upvars.
-                            // This should be checked handled by the recursion check for opaque
-                            // types, but we may end up here before that check can happen.
-                            // In that case, we delay a bug to mark the trip, and continue without
-                            // revealing the opaque.
-                            self.infcx
+                            let guar = self
+                                .infcx
                                 .err_ctxt()
                                 .build_overflow_error(&ty, self.cause.span, true)
                                 .delay_as_bug();
-                            return ty.try_super_fold_with(self);
+                            return Ok(Ty::new_error(self.interner(), guar));
                         }
 
                         let generic_ty = self.interner().type_of(data.def_id);
@@ -293,7 +288,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     _ => unreachable!(),
                 }?;
                 // We don't expect ambiguity.
-                if result.is_ambiguous() {
+                if !result.value.is_proven() {
                     // Rustdoc normalizes possibly not well-formed types, so only
                     // treat this as a bug if we're not in rustdoc.
                     if !tcx.sess.opts.actually_rustdoc {

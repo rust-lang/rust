@@ -3,8 +3,9 @@
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
-use build_helper::util::{fail, try_run};
+use build_helper::util::fail;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -183,6 +184,19 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("switch"))
 }
 
+pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
+    if target.contains("linux") {
+        target.contains("x86_64")
+            || target.contains("aarch64")
+            || target.contains("s390x")
+            || target.contains("riscv64gc")
+    } else if target.contains("darwin") || target.contains("windows") {
+        target.contains("x86_64")
+    } else {
+        false
+    }
+}
+
 pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     path: &'a Path,
     suite_path: P,
@@ -216,17 +230,11 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
-    if try_run(cmd, print_cmd_on_fail).is_err() {
-        crate::exit!(1);
-    }
-}
-
 pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => {
-            println!("failed to execute command: {cmd:?}\nerror: {e}");
+            println!("failed to execute command: {cmd:?}\nERROR: {e}");
             return false;
         }
     };
@@ -237,32 +245,6 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
         );
     }
     status.success()
-}
-
-pub fn run_suppressed(cmd: &mut Command) {
-    if !try_run_suppressed(cmd) {
-        crate::exit!(1);
-    }
-}
-
-pub fn try_run_suppressed(cmd: &mut Command) -> bool {
-    let output = match cmd.output() {
-        Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
-    };
-    if !output.status.success() {
-        println!(
-            "\n\ncommand did not execute successfully: {:?}\n\
-             expected success, got: {}\n\n\
-             stdout ----\n{}\n\
-             stderr ----\n{}\n\n",
-            cmd,
-            output.status,
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    output.status.success()
 }
 
 pub fn make(host: &str) -> PathBuf {
@@ -281,7 +263,7 @@ pub fn make(host: &str) -> PathBuf {
 pub fn output(cmd: &mut Command) -> String {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
     };
     if !output.status.success() {
         panic!(
@@ -346,7 +328,7 @@ pub(crate) fn absolute(path: &Path) -> PathBuf {
     }
     #[cfg(not(any(unix, windows)))]
     {
-        println!("warning: bootstrap is not supported on non-unix platforms");
+        println!("WARNING: bootstrap is not supported on non-unix platforms");
         t!(std::fs::canonicalize(t!(std::env::current_dir()))).join(path)
     }
 }
@@ -396,7 +378,6 @@ fn absolute_unix(path: &Path) -> io::Result<PathBuf> {
 
 #[cfg(windows)]
 fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    use std::ffi::OsString;
     use std::io::Error;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::ptr::null_mut;
@@ -488,4 +469,65 @@ pub fn extract_beta_rev(version: &str) -> Option<String> {
     let count = parts.get(1).and_then(|s| s.find(' ').map(|p| (&s[..p]).to_string()));
 
     count
+}
+
+pub enum LldThreads {
+    Yes,
+    No,
+}
+
+pub fn add_rustdoc_lld_flags(
+    cmd: &mut Command,
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    lld_threads: LldThreads,
+) {
+    cmd.args(build_rustdoc_lld_flags(builder, target, lld_threads));
+}
+
+pub fn add_rustdoc_cargo_lld_flags(
+    cmd: &mut Command,
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    lld_threads: LldThreads,
+) {
+    let args = build_rustdoc_lld_flags(builder, target, lld_threads);
+    let mut flags = cmd
+        .get_envs()
+        .find_map(|(k, v)| if k == OsStr::new("RUSTDOCFLAGS") { v } else { None })
+        .unwrap_or_default()
+        .to_os_string();
+    for arg in args {
+        if !flags.is_empty() {
+            flags.push(" ");
+        }
+        flags.push(arg);
+    }
+    if !flags.is_empty() {
+        cmd.env("RUSTDOCFLAGS", flags);
+    }
+}
+
+fn build_rustdoc_lld_flags(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    lld_threads: LldThreads,
+) -> Vec<OsString> {
+    let mut args = vec![];
+
+    if let Some(linker) = builder.linker(target) {
+        let mut flag = std::ffi::OsString::from("-Clinker=");
+        flag.push(linker);
+        args.push(flag);
+    }
+    if builder.is_fuse_ld_lld(target) {
+        args.push(OsString::from("-Clink-arg=-fuse-ld=lld"));
+        if matches!(lld_threads, LldThreads::No) {
+            args.push(OsString::from(format!(
+                "-Clink-arg=-Wl,{}",
+                lld_flag_no_threads(target.contains("windows"))
+            )));
+        }
+    }
+    args
 }

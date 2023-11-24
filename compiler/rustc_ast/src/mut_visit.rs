@@ -302,6 +302,10 @@ pub trait MutVisitor: Sized {
     fn visit_format_args(&mut self, fmt: &mut FormatArgs) {
         noop_visit_format_args(fmt, self)
     }
+
+    fn visit_capture_by(&mut self, capture_by: &mut CaptureBy) {
+        noop_visit_capture_by(capture_by, self)
+    }
 }
 
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
@@ -760,7 +764,10 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             return; // Avoid visiting the span for the second time.
         }
         token::Interpolated(nt) => {
-            visit_nonterminal(Lrc::make_mut(nt), vis);
+            let nt = Lrc::make_mut(nt);
+            let (nt, sp) = (&mut nt.0, &mut nt.1);
+            vis.visit_span(sp);
+            visit_nonterminal(nt, vis);
         }
         _ => {}
     }
@@ -1397,7 +1404,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::Closure(box Closure {
             binder,
-            capture_clause: _,
+            capture_clause,
             constness,
             asyncness,
             movability: _,
@@ -1409,6 +1416,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_closure_binder(binder);
             visit_constness(constness, vis);
             vis.visit_asyncness(asyncness);
+            vis.visit_capture_by(capture_clause);
             vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);
             vis.visit_span(fn_decl_span);
@@ -1418,7 +1426,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_block(blk);
             visit_opt(label, |label| vis.visit_label(label));
         }
-        ExprKind::Async(_capture_by, body) => {
+        ExprKind::Gen(_capture_by, body, _) => {
             vis.visit_block(body);
         }
         ExprKind::Await(expr, await_kw_span) => {
@@ -1560,6 +1568,15 @@ pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
         }
     }
     vis.visit_span(&mut visibility.span);
+}
+
+pub fn noop_visit_capture_by<T: MutVisitor>(capture_by: &mut CaptureBy, vis: &mut T) {
+    match capture_by {
+        CaptureBy::Ref => {}
+        CaptureBy::Value { move_kw } => {
+            vis.visit_span(move_kw);
+        }
+    }
 }
 
 /// Some value for the AST node that is valid but possibly meaningless.

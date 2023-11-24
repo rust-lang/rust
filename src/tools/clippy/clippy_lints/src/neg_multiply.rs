@@ -2,13 +2,12 @@ use clippy_utils::consts::{self, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::has_enclosing_paren;
-use if_chain::if_chain;
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -53,28 +52,25 @@ impl<'tcx> LateLintPass<'tcx> for NegMultiply {
 }
 
 fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
-    if_chain! {
-        if let ExprKind::Lit(l) = lit.kind;
-        if consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1);
-        if cx.typeck_results().expr_ty(exp).is_integral();
-
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);
-            let suggestion = if !from_macro && exp.precedence().order() < PREC_PREFIX && !has_enclosing_paren(&snip) {
-                format!("-({snip})")
-            } else {
-                format!("-{snip}")
-            };
-            span_lint_and_sugg(
-                    cx,
-                    NEG_MULTIPLY,
-                    span,
-                    "this multiplication by -1 can be written more succinctly",
-                    "consider using",
-                    suggestion,
-                    applicability,
-                );
-        }
+    if let ExprKind::Lit(l) = lit.kind
+        && consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1)
+        && cx.typeck_results().expr_ty(exp).is_integral()
+    {
+        let mut applicability = Applicability::MachineApplicable;
+        let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);
+        let suggestion = if !from_macro && exp.precedence().order() < PREC_PREFIX && !has_enclosing_paren(&snip) {
+            format!("-({snip})")
+        } else {
+            format!("-{snip}")
+        };
+        span_lint_and_sugg(
+            cx,
+            NEG_MULTIPLY,
+            span,
+            "this multiplication by -1 can be written more succinctly",
+            "consider using",
+            suggestion,
+            applicability,
+        );
     }
 }

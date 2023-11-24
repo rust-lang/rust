@@ -7,8 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
@@ -236,12 +235,14 @@ impl<'tcx> Ty<'tcx> {
                 _ => "fn item".into(),
             },
             ty::FnPtr(_) => "fn pointer".into(),
-            ty::Dynamic(ref inner, ..) if let Some(principal) = inner.principal() => {
+            ty::Dynamic(inner, ..) if let Some(principal) = inner.principal() => {
                 format!("`dyn {}`", tcx.def_path_str(principal.def_id())).into()
             }
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
-            ty::Coroutine(def_id, ..) => tcx.coroutine_kind(def_id).unwrap().descr().into(),
+            ty::Coroutine(def_id, ..) => {
+                format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
+            }
             ty::CoroutineWitness(..) => "coroutine witness".into(),
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
             ty::Infer(ty::IntVar(_)) => "integer".into(),
@@ -280,7 +281,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::Str
             | ty::Never => "type".into(),
-            ty::Tuple(ref tys) if tys.is_empty() => "unit type".into(),
+            ty::Tuple(tys) if tys.is_empty() => "unit type".into(),
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
             ty::Array(..) => "array".into(),
@@ -299,7 +300,9 @@ impl<'tcx> Ty<'tcx> {
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
-            ty::Coroutine(def_id, ..) => tcx.coroutine_kind(def_id).unwrap().descr().into(),
+            ty::Coroutine(def_id, ..) => {
+                format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
+            }
             ty::CoroutineWitness(..) => "coroutine witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
@@ -315,26 +318,25 @@ impl<'tcx> Ty<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub fn ty_string_with_limit(self, ty: Ty<'tcx>, length_limit: usize) -> String {
         let mut type_limit = 50;
-        let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
-            .pretty_print_type(ty)
-            .expect("could not write to `String`")
-            .into_buffer();
+        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
+            cx.pretty_print_type(ty)
+        })
+        .expect("could not write to `String`");
         if regular.len() <= length_limit {
             return regular;
         }
         let mut short;
         loop {
             // Look for the longest properly trimmed path that still fits in length_limit.
-            short = with_forced_trimmed_paths!(
-                FmtPrinter::new_with_limit(
+            short = with_forced_trimmed_paths!({
+                let mut cx = FmtPrinter::new_with_limit(
                     self,
                     hir::def::Namespace::TypeNS,
                     rustc_session::Limit(type_limit),
-                )
-                .pretty_print_type(ty)
-                .expect("could not write to `String`")
-                .into_buffer()
-            );
+                );
+                cx.pretty_print_type(ty).expect("could not write to `String`");
+                cx.into_buffer()
+            });
             if short.len() <= length_limit || type_limit == 0 {
                 break;
             }
@@ -344,10 +346,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
-        let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
-            .pretty_print_type(ty)
-            .expect("could not write to `String`")
-            .into_buffer();
+        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
+            cx.pretty_print_type(ty)
+        })
+        .expect("could not write to `String`");
 
         if !self.sess.opts.unstable_opts.write_long_types_to_disk {
             return (regular, None);

@@ -595,6 +595,50 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
+    /// frame which is not `#[track_caller]`. This is the fancy version of `cur_span`.
+    pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
+        for frame in self.stack().iter().rev() {
+            debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
+
+            // Assert that the frame we look at is actually executing code currently
+            // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
+            let loc = frame.loc.left().unwrap();
+
+            // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
+            // (such as `box`). Use the normal span by default.
+            let mut source_info = *frame.body.source_info(loc);
+
+            // If this is a `Call` terminator, use the `fn_span` instead.
+            let block = &frame.body.basic_blocks[loc.block];
+            if loc.statement_index == block.statements.len() {
+                debug!(
+                    "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
+                    block.terminator(),
+                    block.terminator().kind,
+                );
+                if let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
+                    source_info.span = fn_span;
+                }
+            }
+
+            let caller_location = if frame.instance.def.requires_caller_location(*self.tcx) {
+                // We use `Err(())` as indication that we should continue up the call stack since
+                // this is a `#[track_caller]` function.
+                Some(Err(()))
+            } else {
+                None
+            };
+            if let Ok(span) =
+                frame.body.caller_location_span(source_info, caller_location, *self.tcx, Ok)
+            {
+                return span;
+            }
+        }
+
+        span_bug!(self.cur_span(), "no non-`#[track_caller]` frame found")
+    }
+
     #[inline(always)]
     pub fn layout_of_local(
         &self,
@@ -1010,7 +1054,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Just make this an efficient immediate.
             // Note that not calling `layout_of` here does have one real consequence:
             // if the type is too big, we'll only notice this when the local is actually initialized,
-            // which is a bit too late -- we should ideally notice this alreayd here, when the memory
+            // which is a bit too late -- we should ideally notice this already here, when the memory
             // is conceptually allocated. But given how rare that error is and that this is a hot function,
             // we accept this downside for now.
             Operand::Immediate(Immediate::Uninit)
@@ -1074,17 +1118,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let gid = GlobalId { instance, promoted: None };
-        // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
-        // and thus don't care about the parameter environment. While we could just use
-        // `self.param_env`, that would mean we invoke the query to evaluate the static
-        // with different parameter environments, thus causing the static to be evaluated
-        // multiple times.
-        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
-            ty::ParamEnv::reveal_all()
+        let val = if self.tcx.is_static(gid.instance.def_id()) {
+            let alloc_id = self.tcx.reserve_and_set_static_alloc(gid.instance.def_id());
+
+            let ty = instance.ty(self.tcx.tcx, self.param_env);
+            mir::ConstAlloc { alloc_id, ty }
         } else {
-            self.param_env
+            self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(self.param_env.and(gid)))?
         };
-        let val = self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
         self.raw_const_to_mplace(val)
     }
 

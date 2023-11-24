@@ -1,12 +1,14 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use super::assembly::{self, structural_traits};
+use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::inspect::ProbeKind;
-use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::solve::{
+    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
+};
 use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
@@ -22,6 +24,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         self.trait_ref
     }
 
+    fn polarity(self) -> ty::ImplPolarity {
+        self.polarity
+    }
+
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         self.with_self_ty(tcx, self_ty)
     }
@@ -34,14 +40,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if !drcx
-            .args_refs_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
-        {
+        if !drcx.args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args) {
             return Err(NoSolution);
         }
 
@@ -61,7 +65,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             },
         };
 
-        ecx.probe_misc_candidate("impl").enter(|ecx| {
+        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
 
@@ -238,14 +242,25 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        if goal.predicate.polarity != ty::ImplPolarity::Positive {
-            return Err(NoSolution);
-        }
-
-        if let ty::FnPtr(..) = goal.predicate.self_ty().kind() {
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        } else {
-            Err(NoSolution)
+        let self_ty = goal.predicate.self_ty();
+        match goal.predicate.polarity {
+            ty::ImplPolarity::Positive => {
+                if self_ty.is_fn_ptr() {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else {
+                    Err(NoSolution)
+                }
+            }
+            ty::ImplPolarity::Negative => {
+                // If a type is rigid and not a fn ptr, then we know for certain
+                // that it does *not* implement `FnPtr`.
+                if !self_ty.is_fn_ptr() && self_ty.is_known_rigid() {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else {
+                    Err(NoSolution)
+                }
+            }
+            ty::ImplPolarity::Reservation => bug!(),
         }
     }
 
@@ -335,6 +350,30 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
+    fn consider_builtin_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
+        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+            return Err(NoSolution);
+        };
+
+        // Coroutines are not iterators unless they come from `gen` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.coroutine_is_gen(def_id) {
+            return Err(NoSolution);
+        }
+
+        // Gen coroutines unconditionally implement `Iterator`
+        // Technically, we need to check that the iterator output type is Sized,
+        // but that's already proven by the coroutines being WF.
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
     fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -350,7 +389,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         // `async`-desugared coroutines do not implement the coroutine trait
         let tcx = ecx.tcx();
-        if tcx.coroutine_is_async(def_id) {
+        if !tcx.is_general_coroutine(def_id) {
             return Err(NoSolution);
         }
 
@@ -432,7 +471,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let a_ty = goal.predicate.self_ty();
             // We need to normalize the b_ty since it's destructured as a `dyn Trait`.
             let Some(b_ty) =
-                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))?
+                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             else {
                 return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
             };
@@ -499,9 +538,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let b_ty = match ecx
                 .try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             {
-                Ok(Some(b_ty)) => b_ty,
-                Ok(None) => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
-                Err(_) => return vec![],
+                Some(b_ty) => b_ty,
+                None => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
             };
 
             let goal = goal.with(ecx.tcx(), (a_ty, b_ty));

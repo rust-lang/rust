@@ -44,6 +44,9 @@ mod handlers {
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
     pub(crate) mod replace_filter_map_next_with_find_map;
+    pub(crate) mod trait_impl_orphan;
+    pub(crate) mod trait_impl_incorrect_safety;
+    pub(crate) mod trait_impl_missing_assoc_item;
     pub(crate) mod typed_hole;
     pub(crate) mod type_mismatch;
     pub(crate) mod unimplemented_builtin_macro;
@@ -56,6 +59,7 @@ mod handlers {
     pub(crate) mod unresolved_proc_macro;
     pub(crate) mod undeclared_label;
     pub(crate) mod unreachable_label;
+    pub(crate) mod unused_variables;
 
     // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
@@ -224,6 +228,7 @@ pub struct DiagnosticsConfig {
     // FIXME: We may want to include a whole `AssistConfig` here
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
+    pub prefer_prelude: bool,
 }
 
 impl DiagnosticsConfig {
@@ -246,6 +251,7 @@ impl DiagnosticsConfig {
                 skip_glob_imports: false,
             },
             prefer_no_std: false,
+            prefer_prelude: true,
         }
     }
 }
@@ -355,6 +361,9 @@ pub fn diagnostics(
             AnyDiagnostic::PrivateAssocItem(d) => handlers::private_assoc_item::private_assoc_item(&ctx, &d),
             AnyDiagnostic::PrivateField(d) => handlers::private_field::private_field(&ctx, &d),
             AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => handlers::replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
+            AnyDiagnostic::TraitImplIncorrectSafety(d) => handlers::trait_impl_incorrect_safety::trait_impl_incorrect_safety(&ctx, &d),
+            AnyDiagnostic::TraitImplMissingAssocItems(d) => handlers::trait_impl_missing_assoc_item::trait_impl_missing_assoc_item(&ctx, &d),
+            AnyDiagnostic::TraitImplOrphan(d) => handlers::trait_impl_orphan::trait_impl_orphan(&ctx, &d),
             AnyDiagnostic::TypedHole(d) => handlers::typed_hole::typed_hole(&ctx, &d),
             AnyDiagnostic::TypeMismatch(d) => handlers::type_mismatch::type_mismatch(&ctx, &d),
             AnyDiagnostic::UndeclaredLabel(d) => handlers::undeclared_label::undeclared_label(&ctx, &d),
@@ -368,6 +377,7 @@ pub fn diagnostics(
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d, config.proc_macros_enabled, config.proc_attr_macros_enabled),
             AnyDiagnostic::UnusedMut(d) => handlers::mutability_errors::unused_mut(&ctx, &d),
+            AnyDiagnostic::UnusedVariable(d) => handlers::unused_variables::unused_variables(&ctx, &d),
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::MismatchedTupleStructPatArgCount(d) => handlers::mismatched_arg_count::mismatched_tuple_struct_pat_arg_count(&ctx, &d),
         };

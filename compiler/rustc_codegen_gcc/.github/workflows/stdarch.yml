@@ -26,11 +26,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - uses: actions/checkout@v3
-      with:
-        repository: llvm/llvm-project
-        path: llvm
-
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
 
@@ -70,9 +65,6 @@ jobs:
         echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
 
-    - name: Set RUST_COMPILER_RT_ROOT
-      run: echo "RUST_COMPILER_RT_ROOT="${{ env.workspace }}/llvm/compiler-rt >> $GITHUB_ENV
-
     - name: Cache cargo installed crates
       uses: actions/cache@v3
       with:
@@ -100,8 +92,10 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ./y.sh build --release --release-sysroot
-        cargo test
+        # TODO: remove `--features master` when it is back to the default.
+        ./y.sh build --release --release-sysroot --features master
+        # TODO: remove --features master when it is back to the default.
+        cargo test --features master
 
     - name: Clean
       if: ${{ !matrix.cargo_runner }}
@@ -119,12 +113,14 @@ jobs:
       uses: actions-rs/cargo@v1.0.3
       with:
         command: build
-        args: --release
+        # TODO: remove `--features master` when it is back to the default.
+        args: --release --features master
 
     - name: Run tests
       if: ${{ !matrix.cargo_runner }}
       run: |
-        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
+        # TODO: remove `--features master` when it is back to the default.
+        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore --features master
 
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}

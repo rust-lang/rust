@@ -128,7 +128,8 @@ impl Once {
                 RUNNING | QUEUED => {
                     // Set the state to QUEUED if it is not already.
                     if state == RUNNING
-                        && let Err(new) = self.state.compare_exchange_weak(RUNNING, QUEUED, Relaxed, Acquire)
+                        && let Err(new) =
+                            self.state.compare_exchange_weak(RUNNING, QUEUED, Relaxed, Acquire)
                     {
                         state = new;
                         continue;

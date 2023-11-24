@@ -59,6 +59,7 @@ trivially_parameterized_over_tcx! {
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,
     crate::middle::debugger_visualizer::DebuggerVisualizerFile,
     crate::middle::exported_symbols::SymbolExportInfo,
+    crate::middle::lib_features::FeatureStability,
     crate::middle::resolve_bound_vars::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
     ty::AssocItemContainer,

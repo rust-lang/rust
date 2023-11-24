@@ -1,3 +1,0 @@
-enum Actions {}
-
-fn main() {}

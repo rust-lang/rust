@@ -19,7 +19,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError, StashKey};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -133,6 +133,17 @@ where
             let guar = error.delay_as_bug();
             query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
         }
+        Stash => {
+            let guar = if let Some(root) = cycle_error.cycle.first()
+                && let Some(span) = root.query.span
+            {
+                error.stash(span, StashKey::Cycle);
+                qcx.dep_context().sess().delay_span_bug(span, "delayed cycle error")
+            } else {
+                error.emit()
+            };
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+        }
     }
 }
 
@@ -192,7 +203,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CycleError {
     /// The query and related span that uses the cycle.
     pub usage: Option<(Span, QueryStackFrame)>,
@@ -209,7 +220,7 @@ where
     C: QueryCache,
     Tcx: DepContext,
 {
-    match cache.lookup(&key) {
+    match cache.lookup(key) {
         Some((value, index)) => {
             tcx.profiler().query_cache_hit(index.into());
             tcx.dep_graph().read_index(index);
@@ -491,7 +502,7 @@ where
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = qcx.start_query(job_id, false, None, || {
-            try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, &dep_node)
+            try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, dep_node)
         }) {
             return ret;
         }
@@ -552,7 +563,7 @@ where
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, &dep_node)?;
+    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, dep_node)?;
 
     debug_assert!(dep_graph_data.is_index_green(prev_dep_node_index));
 
@@ -599,7 +610,7 @@ where
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !query.loadable_from_disk(qcx, &key, prev_dep_node_index),
+        !query.loadable_from_disk(qcx, key, prev_dep_node_index),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -656,7 +667,7 @@ pub(crate) fn incremental_verify_ich<Tcx, V>(
     let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed(tcx, prev_index, &|| format_value(&result));
+        incremental_verify_ich_failed(tcx, prev_index, &|| format_value(result));
     }
 }
 

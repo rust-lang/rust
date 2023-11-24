@@ -317,6 +317,7 @@ pub use self::stdio::set_output_capture;
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
 #[unstable(feature = "print_internals", issue = "none")]
+#[doc(hidden)]
 pub use self::stdio::{_eprint, _print};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
@@ -329,7 +330,7 @@ pub use self::{
 };
 
 #[unstable(feature = "read_buf", issue = "78485")]
-pub use self::readbuf::{BorrowedBuf, BorrowedCursor};
+pub use core::io::{BorrowedBuf, BorrowedCursor};
 pub(crate) use error::const_io_error;
 
 mod buffered;
@@ -338,7 +339,6 @@ mod cursor;
 mod error;
 mod impls;
 pub mod prelude;
-mod readbuf;
 mod stdio;
 mod util;
 
@@ -555,6 +555,10 @@ where
 /// Please note that each call to [`read()`] may involve a system call, and
 /// therefore, using something that implements [`BufRead`], such as
 /// [`BufReader`], will be more efficient.
+///
+/// Repeated calls to the reader use the same cursor, so for example
+/// calling `read_to_end` twice on a [`File`] will only return the file's
+/// contents once. It's recommended to first call `rewind()` in that case.
 ///
 /// # Examples
 ///
@@ -1140,10 +1144,10 @@ pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
 #[repr(transparent)]
 pub struct IoSliceMut<'a>(sys::io::IoSliceMut<'a>);
 
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+#[stable(feature = "iovec_send_sync", since = "1.44.0")]
 unsafe impl<'a> Send for IoSliceMut<'a> {}
 
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+#[stable(feature = "iovec_send_sync", since = "1.44.0")]
 unsafe impl<'a> Sync for IoSliceMut<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -1283,10 +1287,10 @@ impl<'a> DerefMut for IoSliceMut<'a> {
 #[repr(transparent)]
 pub struct IoSlice<'a>(sys::io::IoSlice<'a>);
 
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+#[stable(feature = "iovec_send_sync", since = "1.44.0")]
 unsafe impl<'a> Send for IoSlice<'a> {}
 
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+#[stable(feature = "iovec_send_sync", since = "1.44.0")]
 unsafe impl<'a> Sync for IoSlice<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -1957,6 +1961,36 @@ pub trait Seek {
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
+
+    /// Seeks relative to the current position.
+    ///
+    /// This is equivalent to `self.seek(SeekFrom::Current(offset))` but
+    /// doesn't return the new position which can allow some implementations
+    /// such as [`BufReader`] to perform more efficient seeks.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_seek_relative)]
+    /// use std::{
+    ///     io::{self, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     f.seek_relative(10)?;
+    ///     assert_eq!(f.stream_position()?, 10);
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`BufReader`]: crate::io::BufReader
+    #[unstable(feature = "seek_seek_relative", issue = "117374")]
+    fn seek_relative(&mut self, offset: i64) -> Result<()> {
+        self.seek(SeekFrom::Current(offset))?;
+        Ok(())
+    }
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
@@ -2004,6 +2038,28 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
                     buf.extend_from_slice(available);
                     (false, available.len())
                 }
+            }
+        };
+        r.consume(used);
+        read += used;
+        if done || used == 0 {
+            return Ok(read);
+        }
+    }
+}
+
+fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
+    let mut read = 0;
+    loop {
+        let (done, used) = {
+            let available = match r.fill_buf() {
+                Ok(n) => n,
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            };
+            match memchr::memchr(delim, available) {
+                Some(i) => (true, i + 1),
+                None => (false, available.len()),
             }
         };
         r.consume(used);
@@ -2215,6 +2271,68 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
         read_until(self, byte, buf)
+    }
+
+    /// Skip all bytes until the delimiter `byte` or EOF is reached.
+    ///
+    /// This function will read (and discard) bytes from the underlying stream until the
+    /// delimiter or EOF is found.
+    ///
+    /// If successful, this function will return the total number of bytes read,
+    /// including the delimiter byte.
+    ///
+    /// This is useful for efficiently skipping data such as NUL-terminated strings
+    /// in binary file formats without buffering.
+    ///
+    /// This function is blocking and should be used carefully: it is possible for
+    /// an attacker to continuously send bytes without ever sending the delimiter
+    /// or EOF.
+    ///
+    /// # Errors
+    ///
+    /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
+    /// will otherwise return any errors returned by [`fill_buf`].
+    ///
+    /// If an I/O error is encountered then all bytes read so far will be
+    /// present in `buf` and its length will have been adjusted appropriately.
+    ///
+    /// [`fill_buf`]: BufRead::fill_buf
+    ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read some NUL-terminated information
+    /// about Ferris from a binary string, skipping the fun fact:
+    ///
+    /// ```
+    /// #![feature(bufread_skip_until)]
+    ///
+    /// use std::io::{self, BufRead};
+    ///
+    /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0");
+    ///
+    /// // read name
+    /// let mut name = Vec::new();
+    /// let num_bytes = cursor.read_until(b'\0', &mut name)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 7);
+    /// assert_eq!(name, b"Ferris\0");
+    ///
+    /// // skip fun fact
+    /// let num_bytes = cursor.skip_until(b'\0')
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 30);
+    ///
+    /// // read animal type
+    /// let mut animal = Vec::new();
+    /// let num_bytes = cursor.read_until(b'\0', &mut animal)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 11);
+    /// assert_eq!(animal, b"Crustacean\0");
+    /// ```
+    #[unstable(feature = "bufread_skip_until", issue = "111735")]
+    fn skip_until(&mut self, byte: u8) -> Result<usize> {
+        skip_until(self, byte)
     }
 
     /// Read all bytes until a newline (the `0xA` byte) is reached, and append

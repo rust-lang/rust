@@ -149,7 +149,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
 
         self.cgu_reuse_tracker.set_expectation(
             cgu_name,
-            &user_path,
+            user_path,
             attr.span,
             expected_reuse,
             comp_kind,

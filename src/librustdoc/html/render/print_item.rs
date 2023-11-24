@@ -6,7 +6,6 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
-use rustc_middle::middle::stability;
 use rustc_middle::query::Key;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
@@ -370,8 +369,8 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         if let (Some(a), Some(b)) = (s1, s2) {
             match (a.is_stable(), b.is_stable()) {
                 (true, true) | (false, false) => {}
-                (false, true) => return Ordering::Less,
-                (true, false) => return Ordering::Greater,
+                (false, true) => return Ordering::Greater,
+                (true, false) => return Ordering::Less,
             }
         }
         let lhs = i1.name.unwrap_or(kw::Empty);
@@ -591,11 +590,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
 
         // The trailing space after each tag is to space it properly against the rest of the docs.
         if let Some(depr) = &item.deprecation(tcx) {
-            let message = if stability::deprecation_in_effect(depr) {
-                "Deprecated"
-            } else {
-                "Deprecation planned"
-            };
+            let message = if depr.is_in_effect() { "Deprecated" } else { "Deprecation planned" };
             write!(f, "{}", tag_html("deprecated", "", message))?;
         }
 
@@ -959,13 +954,29 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     let cloned_shared = Rc::clone(&cx.shared);
     let cache = &cloned_shared.cache;
     let mut extern_crates = FxHashSet::default();
+
+    if !t.is_object_safe(cx.tcx()) {
+        write_small_section_header(
+            w,
+            "object-safety",
+            "Object Safety",
+            &format!(
+                "<div class=\"object-safety-info\">This trait is <b>not</b> \
+                <a href=\"{base}/reference/items/traits.html#object-safety\">\
+                object safe</a>.</div>",
+                base = crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL
+            ),
+        );
+    }
+
     if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
-            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache) &&
-                !did.is_local() {
+            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache)
+                && !did.is_local()
+            {
                 extern_crates.insert(did.krate);
             }
             match implementor.inner_impl().for_.without_borrowed_ref() {
@@ -981,7 +992,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
         }
 
-        let (local, foreign) =
+        let (local, mut foreign) =
             implementors.iter().partition::<Vec<_>, _>(|i| i.is_on_local_type(cx));
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -989,6 +1000,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
         synthetic.sort_by_cached_key(|i| ImplString::new(i, cx));
         concrete.sort_by_cached_key(|i| ImplString::new(i, cx));
+        foreign.sort_by_cached_key(|i| ImplString::new(i, cx));
 
         if !foreign.is_empty() {
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
@@ -1066,6 +1078,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
     }
 
+    // [RUSTDOCIMPL] trait.impl
+    //
     // Include implementors in crates that depend on the current crate.
     //
     // This is complicated by the way rustdoc is invoked, which is basically
@@ -1101,7 +1115,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // ```
     //
     // Basically, we want `C::Baz` and `A::Foo` to show the same set of
-    // impls, which is easier if they both treat `/implementors/A/trait.Foo.js`
+    // impls, which is easier if they both treat `/trait.impl/A/trait.Foo.js`
     // as the Single Source of Truth.
     //
     // We also want the `impl Baz for Quux` to be written to
@@ -1110,7 +1124,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // because that'll load faster, and it's better for SEO. And we don't want
     // the same impl to show up twice on the same page.
     //
-    // To make this work, the implementors JS file has a structure kinda
+    // To make this work, the trait.impl/A/trait.Foo.js JS file has a structure kinda
     // like this:
     //
     // ```js
@@ -1127,7 +1141,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // So C's HTML will have something like this:
     //
     // ```html
-    // <script src="/implementors/A/trait.Foo.js"
+    // <script src="/trait.impl/A/trait.Foo.js"
     //     data-ignore-extern-crates="A,B" async></script>
     // ```
     //
@@ -1137,11 +1151,12 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // [JSONP]: https://en.wikipedia.org/wiki/JSONP
     let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
         .take(cx.current.len())
-        .chain(std::iter::once("implementors"))
+        .chain(std::iter::once("trait.impl"))
         .collect();
-    if let Some(did) = it.item_id.as_def_id() &&
-        let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) } &&
-        let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern) {
+    if let Some(did) = it.item_id.as_def_id()
+        && let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) }
+        && let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern)
+    {
         js_src_path.extend(fqp[..fqp.len() - 1].iter().copied());
         js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), fqp.last().unwrap()));
     } else {
@@ -1319,6 +1334,102 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     // we need #14072 to make sense of the generics.
     write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
     write!(w, "{}", document_type_layout(cx, def_id));
+
+    // [RUSTDOCIMPL] type.impl
+    //
+    // Include type definitions from the alias target type.
+    //
+    // Earlier versions of this code worked by having `render_assoc_items`
+    // include this data directly. That generates *O*`(types*impls)` of HTML
+    // text, and some real crates have a lot of types and impls.
+    //
+    // To create the same UX without generating half a gigabyte of HTML for a
+    // crate that only contains 20 megabytes of actual documentation[^115718],
+    // rustdoc stashes these type-alias-inlined docs in a [JSONP]
+    // "database-lite". The file itself is generated in `write_shared.rs`,
+    // and hooks into functions provided by `main.js`.
+    //
+    // The format of `trait.impl` and `type.impl` JS files are superficially
+    // similar. Each line, except the JSONP wrapper itself, belongs to a crate,
+    // and they are otherwise separate (rustdoc should be idempotent). The
+    // "meat" of the file is HTML strings, so the frontend code is very simple.
+    // Links are relative to the doc root, though, so the frontend needs to fix
+    // that up, and inlined docs can reuse these files.
+    //
+    // However, there are a few differences, caused by the sophisticated
+    // features that type aliases have. Consider this crate graph:
+    //
+    // ```text
+    //  ---------------------------------
+    //  | crate A: struct Foo<T>        |
+    //  |          type Bar = Foo<i32>  |
+    //  |          impl X for Foo<i8>   |
+    //  |          impl Y for Foo<i32>  |
+    //  ---------------------------------
+    //      |
+    //  ----------------------------------
+    //  | crate B: type Baz = A::Foo<i8> |
+    //  |          type Xyy = A::Foo<i8> |
+    //  |          impl Z for Xyy        |
+    //  ----------------------------------
+    // ```
+    //
+    // The type.impl/A/struct.Foo.js JS file has a structure kinda like this:
+    //
+    // ```js
+    // JSONP({
+    // "A": [["impl Y for Foo<i32>", "Y", "A::Bar"]],
+    // "B": [["impl X for Foo<i8>", "X", "B::Baz", "B::Xyy"], ["impl Z for Xyy", "Z", "B::Baz"]],
+    // });
+    // ```
+    //
+    // When the type.impl file is loaded, only the current crate's docs are
+    // actually used. The main reason to bundle them together is that there's
+    // enough duplication in them for DEFLATE to remove the redundancy.
+    //
+    // The contents of a crate are a list of impl blocks, themselves
+    // represented as lists. The first item in the sublist is the HTML block,
+    // the second item is the name of the trait (which goes in the sidebar),
+    // and all others are the names of type aliases that successfully match.
+    //
+    // This way:
+    //
+    // - There's no need to generate these files for types that have no aliases
+    //   in the current crate. If a dependent crate makes a type alias, it'll
+    //   take care of generating its own docs.
+    // - There's no need to reimplement parts of the type checker in
+    //   JavaScript. The Rust backend does the checking, and includes its
+    //   results in the file.
+    // - Docs defined directly on the type alias are dropped directly in the
+    //   HTML by `render_assoc_items`, and are accessible without JavaScript.
+    //   The JSONP file will not list impl items that are known to be part
+    //   of the main HTML file already.
+    //
+    // [JSONP]: https://en.wikipedia.org/wiki/JSONP
+    // [^115718]: https://github.com/rust-lang/rust/issues/115718
+    let cloned_shared = Rc::clone(&cx.shared);
+    let cache = &cloned_shared.cache;
+    if let Some(target_did) = t.type_.def_id(cache) &&
+        let get_extern = { || cache.external_paths.get(&target_did) } &&
+        let Some(&(ref target_fqp, target_type)) = cache.paths.get(&target_did).or_else(get_extern) &&
+        target_type.is_adt() && // primitives cannot be inlined
+        let Some(self_did) = it.item_id.as_def_id() &&
+        let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) } &&
+        let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local)
+    {
+        let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
+            .take(cx.current.len())
+            .chain(std::iter::once("type.impl"))
+            .collect();
+        js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());
+        js_src_path.push_fmt(format_args!("{target_type}.{}.js", target_fqp.last().unwrap()));
+        let self_path = self_fqp.iter().map(Symbol::as_str).collect::<Vec<&str>>().join("::");
+        write!(
+            w,
+            "<script src=\"{src}\" data-self-path=\"{self_path}\" async></script>",
+            src = js_src_path.finish(),
+        );
+    }
 }
 
 fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
@@ -1390,8 +1501,10 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
     s: &'a [clean::Item],
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(|f| {
-        if s.iter()
-            .all(|field| matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..))))
+        if !s.is_empty()
+            && s.iter().all(|field| {
+                matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+            })
         {
             return f.write_str("/* private fields */");
         }
@@ -1455,8 +1568,8 @@ fn should_show_enum_discriminant(
 ) -> bool {
     let mut has_variants_with_value = false;
     for variant in variants {
-        if let clean::VariantItem(ref var) = *variant.kind &&
-            matches!(var.kind, clean::VariantKind::CLike)
+        if let clean::VariantItem(ref var) = *variant.kind
+            && matches!(var.kind, clean::VariantKind::CLike)
         {
             has_variants_with_value |= var.discriminant.is_some();
         } else {
@@ -1597,8 +1710,8 @@ fn item_variants(
             " rightside",
         );
         w.write_str("<h3 class=\"code-header\">");
-        if let clean::VariantItem(ref var) = *variant.kind &&
-            let clean::VariantKind::CLike = var.kind
+        if let clean::VariantItem(ref var) = *variant.kind
+            && let clean::VariantKind::CLike = var.kind
         {
             display_c_like_variant(
                 w,
@@ -2164,9 +2277,11 @@ fn render_struct_fields(
         }
         Some(CtorKind::Fn) => {
             w.write_str("(");
-            if fields.iter().all(|field| {
-                matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
-            }) {
+            if !fields.is_empty()
+                && fields.iter().all(|field| {
+                    matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+                })
+            {
                 write!(w, "/* private fields */");
             } else {
                 for (i, field) in fields.iter().enumerate() {

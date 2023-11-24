@@ -740,7 +740,7 @@ impl<T: Clone> Clone for Reverse<T> {
 ///  - Two sequences are compared element by element.
 ///  - The first mismatching element defines which sequence is lexicographically less or greater than the other.
 ///  - If one sequence is a prefix of another, the shorter sequence is lexicographically less than the other.
-///  - If two sequence have equivalent elements and are of the same length, then the sequences are lexicographically equal.
+///  - If two sequences have equivalent elements and are of the same length, then the sequences are lexicographically equal.
 ///  - An empty sequence is lexicographically less than any non-empty sequence.
 ///  - Two empty sequences are lexicographically equal.
 ///

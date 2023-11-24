@@ -128,12 +128,6 @@ lint_builtin_type_alias_generic_bounds = bounds on generic parameters are not en
 lint_builtin_type_alias_where_clause = where clauses are not enforced in type aliases
     .suggestion = the clause will not be checked when the type alias is used, and should be removed
 
-lint_builtin_unexpected_cli_config_name = unexpected `{$name}` as condition name
-    .help = was set with `--cfg` but isn't in the `--check-cfg` expected names
-
-lint_builtin_unexpected_cli_config_value = unexpected condition value `{$value}` for condition name `{$name}`
-    .help = was set with `--cfg` but isn't in the `--check-cfg` expected values
-
 lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
 lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
 
@@ -496,8 +490,10 @@ lint_requested_level = requested on the command line with `{$level} {$lint_name}
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
-lint_supertrait_as_deref_target = `{$t}` implements `Deref` with supertrait `{$target_principal}` as target
-    .label = target type is set here
+lint_supertrait_as_deref_target = this `Deref` implementation is covered by an implicit supertrait coercion
+    .label = `{$self_ty}` implements `Deref<Target = dyn {$target_principal}>` which conflicts with supertrait `{$supertrait_principal}`
+    .label2 = target type is a supertrait of `{$self_ty}`
+    .help = consider removing this implementation or replacing it with a method instead
 
 lint_suspicious_double_ref_clone =
     using `.clone()` on a double reference, which returns `{$ty}` instead of cloning the inner type
@@ -522,6 +518,9 @@ lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::Manual
 
 lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
      .label = this function will not propagate the caller location
+
+lint_unit_bindings = binding has unit type `()`
+    .label = this pattern is inferred to be the unit type `()`
 
 lint_unknown_gated_lint =
     unknown lint: `{$name}`

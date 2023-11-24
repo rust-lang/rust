@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// Methods named `iter` or `iter_mut` conventionally return an `Iterator`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // `String` does not implement `Iterator`
     /// struct Data {}
     /// impl Data {
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::str::Chars;
     /// struct Data {}
     /// impl Data {
@@ -71,7 +71,7 @@ fn check_sig(cx: &LateContext<'_>, name: &str, sig: &FnSig<'_>, fn_id: LocalDefI
     if sig.decl.implicit_self.has_implicit_self() {
         let ret_ty = cx
             .tcx
-            .erase_late_bound_regions(cx.tcx.fn_sig(fn_id).instantiate_identity().output());
+            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(fn_id).instantiate_identity().output());
         let ret_ty = cx
             .tcx
             .try_normalize_erasing_regions(cx.param_env, ret_ty)

@@ -67,8 +67,8 @@ use crate::marker::Tuple;
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{Fn}<{Args}>` closure, found `{Self}`",
-    label = "expected an `Fn<{Args}>` closure, found `{Self}`"
+    message = "expected a `{Trait}` closure, found `{Self}`",
+    label = "expected an `{Trait}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
@@ -154,8 +154,8 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{FnMut}<{Args}>` closure, found `{Self}`",
-    label = "expected an `FnMut<{Args}>` closure, found `{Self}`"
+    message = "expected a `{Trait}` closure, found `{Self}`",
+    label = "expected an `{Trait}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
@@ -233,8 +233,8 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
-    label = "expected an `FnOnce<{Args}>` closure, found `{Self}`"
+    message = "expected a `{Trait}` closure, found `{Self}`",
+    label = "expected an `{Trait}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]

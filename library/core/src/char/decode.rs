@@ -106,7 +106,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     }
 }
 
-#[stable(feature = "decode_utf16_fused_iterator", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "decode_utf16_fused_iterator", since = "1.75.0")]
 impl<I: Iterator<Item = u16> + FusedIterator> FusedIterator for DecodeUtf16<I> {}
 
 impl DecodeUtf16Error {

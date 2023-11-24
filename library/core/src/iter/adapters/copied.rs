@@ -193,7 +193,7 @@ where
     T: Copy,
 {
     default fn spec_next_chunk(&mut self) -> Result<[T; N], array::IntoIter<T, N>> {
-        array::iter_next_chunk(&mut self.map(|e| *e))
+        array::iter_next_chunk(&mut self.copied())
     }
 }
 

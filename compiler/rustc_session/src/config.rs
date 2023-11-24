@@ -9,20 +9,18 @@ use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
 use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
-use crate::parse::{CrateCheckConfig, CrateConfig};
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
-use rustc_span::source_map::{FileName, FilePathMapping};
+use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::SourceFileHashAlgorithm;
-use rustc_span::{FileNameDisplayPreference, RealFileName};
+use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
 
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
@@ -169,6 +167,9 @@ pub enum MirSpanview {
 pub enum InstrumentCoverage {
     /// Default `-C instrument-coverage` or `-C instrument-coverage=statement`
     All,
+    /// Additionally, instrument branches and output branch coverage.
+    /// `-Zunstable-options -C instrument-coverage=branch`
+    Branch,
     /// `-Zunstable-options -C instrument-coverage=except-unused-generics`
     ExceptUnusedGenerics,
     /// `-Zunstable-options -C instrument-coverage=except-unused-functions`
@@ -856,7 +857,7 @@ impl OutFileName {
     pub fn as_path(&self) -> &Path {
         match *self {
             OutFileName::Real(ref path) => path.as_ref(),
-            OutFileName::Stdout => &Path::new("stdout"),
+            OutFileName::Stdout => Path::new("stdout"),
         }
     }
 
@@ -1245,8 +1246,8 @@ pub const fn default_lib_output() -> CrateType {
     CrateType::Rlib
 }
 
-fn default_configuration(sess: &Session) -> CrateConfig {
-    // NOTE: This should be kept in sync with `CrateCheckConfig::fill_well_known` below.
+fn default_configuration(sess: &Session) -> Cfg {
+    // NOTE: This should be kept in sync with `CheckCfg::fill_well_known` below.
     let end = &sess.target.endian;
     let arch = &sess.target.arch;
     let wordsz = sess.target.pointer_width.to_string();
@@ -1262,7 +1263,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
         sess.emit_fatal(err);
     });
 
-    let mut ret = CrateConfig::default();
+    let mut ret = Cfg::default();
     ret.reserve(7); // the minimum number of insertions
     // Target bindings.
     ret.insert((sym::target_os, Some(Symbol::intern(os))));
@@ -1355,55 +1356,22 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     ret
 }
 
-/// Converts the crate `cfg!` configuration from `String` to `Symbol`.
-/// `rustc_interface::interface::Config` accepts this in the compiler configuration,
-/// but the symbol interner is not yet set up then, so we must convert it later.
-pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig {
-    cfg.into_iter().map(|(a, b)| (Symbol::intern(&a), b.map(|b| Symbol::intern(&b)))).collect()
-}
+/// The parsed `--cfg` options that define the compilation environment of the
+/// crate, used to drive conditional compilation.
+///
+/// An `FxIndexSet` is used to ensure deterministic ordering of error messages
+/// relating to `--cfg`.
+pub type Cfg = FxIndexSet<(Symbol, Option<Symbol>)>;
 
-/// The parsed `--check-cfg` options
-pub struct CheckCfg<T = String> {
+/// The parsed `--check-cfg` options.
+#[derive(Default)]
+pub struct CheckCfg {
     /// Is well known names activated
     pub exhaustive_names: bool,
     /// Is well known values activated
     pub exhaustive_values: bool,
     /// All the expected values for a config name
-    pub expecteds: FxHashMap<T, ExpectedValues<T>>,
-}
-
-impl<T> Default for CheckCfg<T> {
-    fn default() -> Self {
-        CheckCfg {
-            exhaustive_names: false,
-            exhaustive_values: false,
-            expecteds: FxHashMap::default(),
-        }
-    }
-}
-
-impl<T> CheckCfg<T> {
-    fn map_data<O: Eq + Hash>(self, f: impl Fn(T) -> O) -> CheckCfg<O> {
-        CheckCfg {
-            exhaustive_names: self.exhaustive_names,
-            exhaustive_values: self.exhaustive_values,
-            expecteds: self
-                .expecteds
-                .into_iter()
-                .map(|(name, values)| {
-                    (
-                        f(name),
-                        match values {
-                            ExpectedValues::Some(values) => ExpectedValues::Some(
-                                values.into_iter().map(|b| b.map(|b| f(b))).collect(),
-                            ),
-                            ExpectedValues::Any => ExpectedValues::Any,
-                        },
-                    )
-                })
-                .collect(),
-        }
-    }
+    pub expecteds: FxHashMap<Symbol, ExpectedValues<Symbol>>,
 }
 
 pub enum ExpectedValues<T> {
@@ -1438,14 +1406,7 @@ impl<'a, T: Eq + Hash + Copy + 'a> Extend<&'a T> for ExpectedValues<T> {
     }
 }
 
-/// Converts the crate `--check-cfg` options from `String` to `Symbol`.
-/// `rustc_interface::interface::Config` accepts this in the compiler configuration,
-/// but the symbol interner is not yet set up then, so we must convert it later.
-pub fn to_crate_check_config(cfg: CheckCfg) -> CrateCheckConfig {
-    cfg.map_data(|s| Symbol::intern(&s))
-}
-
-impl CrateCheckConfig {
+impl CheckCfg {
     pub fn fill_well_known(&mut self, current_target: &Target) {
         if !self.exhaustive_values && !self.exhaustive_names {
             return;
@@ -1482,9 +1443,8 @@ impl CrateCheckConfig {
         let relocation_model_values = RelocModel::all();
 
         // Unknown possible values:
-        //  - `feature`
         //  - `target_feature`
-        for name in [sym::feature, sym::target_feature] {
+        for name in [sym::target_feature] {
             self.expecteds.entry(name).or_insert(ExpectedValues::Any);
         }
 
@@ -1585,7 +1545,7 @@ impl CrateCheckConfig {
     }
 }
 
-pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateConfig {
+pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
     let default_cfg = default_configuration(sess);
@@ -2516,7 +2476,7 @@ pub fn parse_externs(
             let mut error = handler.early_struct_error(format!(
                 "crate name `{name}` passed to `--extern` is not a valid ASCII identifier"
             ));
-            let adjusted_name = name.replace("-", "_");
+            let adjusted_name = name.replace('-', "_");
             if crate::utils::is_ascii_ident(&adjusted_name) {
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
@@ -2712,53 +2672,40 @@ pub fn build_session_options(
         );
     }
 
-    // Handle both `-Z symbol-mangling-version` and `-C symbol-mangling-version`; the latter takes
-    // precedence.
-    match (cg.symbol_mangling_version, unstable_opts.symbol_mangling_version) {
-        (Some(smv_c), Some(smv_z)) if smv_c != smv_z => {
-            handler.early_error(
-                "incompatible values passed for `-C symbol-mangling-version` \
-                and `-Z symbol-mangling-version`",
-            );
+    // Check for unstable values of `-C symbol-mangling-version`.
+    // This is what prevents them from being used on stable compilers.
+    match cg.symbol_mangling_version {
+        // Stable values:
+        None | Some(SymbolManglingVersion::V0) => {}
+        // Unstable values:
+        Some(SymbolManglingVersion::Legacy) => {
+            if !unstable_opts.unstable_options {
+                handler.early_error(
+                    "`-C symbol-mangling-version=legacy` requires `-Z unstable-options`",
+                );
+            }
         }
-        (Some(SymbolManglingVersion::V0), _) => {}
-        (Some(_), _) if !unstable_opts.unstable_options => {
-            handler
-                .early_error("`-C symbol-mangling-version=legacy` requires `-Z unstable-options`");
-        }
-        (None, None) => {}
-        (None, smv) => {
-            handler.early_warn(
-                "`-Z symbol-mangling-version` is deprecated; use `-C symbol-mangling-version`",
-            );
-            cg.symbol_mangling_version = smv;
-        }
-        _ => {}
     }
 
-    // Handle both `-Z instrument-coverage` and `-C instrument-coverage`; the latter takes
-    // precedence.
-    match (cg.instrument_coverage, unstable_opts.instrument_coverage) {
-        (Some(ic_c), Some(ic_z)) if ic_c != ic_z => {
-            handler.early_error(
-                "incompatible values passed for `-C instrument-coverage` \
-                and `-Z instrument-coverage`",
-            );
+    // Check for unstable values of `-C instrument-coverage`.
+    // This is what prevents them from being used on stable compilers.
+    match cg.instrument_coverage {
+        // Stable values:
+        InstrumentCoverage::All | InstrumentCoverage::Off => {}
+        // Unstable values:
+        InstrumentCoverage::Branch
+        | InstrumentCoverage::ExceptUnusedFunctions
+        | InstrumentCoverage::ExceptUnusedGenerics => {
+            if !unstable_opts.unstable_options {
+                handler.early_error(
+                    "`-C instrument-coverage=branch` and `-C instrument-coverage=except-*` \
+                    require `-Z unstable-options`",
+                );
+            }
         }
-        (Some(InstrumentCoverage::Off | InstrumentCoverage::All), _) => {}
-        (Some(_), _) if !unstable_opts.unstable_options => {
-            handler.early_error("`-C instrument-coverage=except-*` requires `-Z unstable-options`");
-        }
-        (None, None) => {}
-        (None, ic) => {
-            handler
-                .early_warn("`-Z instrument-coverage` is deprecated; use `-C instrument-coverage`");
-            cg.instrument_coverage = ic;
-        }
-        _ => {}
     }
 
-    if cg.instrument_coverage.is_some() && cg.instrument_coverage != Some(InstrumentCoverage::Off) {
+    if cg.instrument_coverage != InstrumentCoverage::Off {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             handler.early_error(
                 "option `-C instrument-coverage` is not compatible with either `-C profile-use` \
@@ -2978,12 +2925,13 @@ fn parse_pretty(handler: &EarlyErrorHandler, unstable_opts: &UnstableOptions) ->
         "thir-tree" => ThirTree,
         "thir-flat" => ThirFlat,
         "mir" => Mir,
+        "stable-mir" => StableMir,
         "mir-cfg" => MirCFG,
         name => handler.early_error(format!(
             "argument to `unpretty` must be one of `normal`, `identified`, \
                             `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
-                            `hir,typed`, `hir-tree`, `thir-tree`, `thir-flat`, `mir` or \
+                            `hir,typed`, `hir-tree`, `thir-tree`, `thir-flat`, `mir`, `stable-mir`, or \
                             `mir-cfg`; got {name}"
         )),
     };
@@ -3158,6 +3106,8 @@ pub enum PpMode {
     Mir,
     /// `-Zunpretty=mir-cfg`
     MirCFG,
+    /// `-Zunpretty=stable-mir`
+    StableMir,
 }
 
 impl PpMode {
@@ -3174,7 +3124,8 @@ impl PpMode {
             | ThirTree
             | ThirFlat
             | Mir
-            | MirCFG => true,
+            | MirCFG
+            | StableMir => true,
         }
     }
     pub fn needs_hir(&self) -> bool {
@@ -3182,13 +3133,13 @@ impl PpMode {
         match *self {
             Source(_) | AstTree | AstTreeExpanded => false,
 
-            Hir(_) | HirTree | ThirTree | ThirFlat | Mir | MirCFG => true,
+            Hir(_) | HirTree | ThirTree | ThirFlat | Mir | MirCFG | StableMir => true,
         }
     }
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, Hir(PpHirMode::Typed) | Mir | MirCFG | ThirTree | ThirFlat)
+        matches!(*self, Hir(PpHirMode::Typed) | Mir | StableMir | MirCFG | ThirTree | ThirFlat)
     }
 }
 
@@ -3213,10 +3164,10 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
-        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        ErrorOutputType, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
+        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
+        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -3230,9 +3181,8 @@ pub(crate) mod dep_tracking {
     use rustc_target::spec::{
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
     };
-    use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
-    use std::hash::Hash;
+    use std::hash::{DefaultHasher, Hash};
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
 
@@ -3322,6 +3272,7 @@ pub(crate) mod dep_tracking {
         LanguageIdentifier,
         TraitSolver,
         Polonius,
+        InliningThreshold,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3463,9 +3414,10 @@ impl DumpMonoStatsFormat {
 
 /// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
 /// or future prototype.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
 pub enum Polonius {
     /// The default value: disabled.
+    #[default]
     Off,
 
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
@@ -3473,12 +3425,6 @@ pub enum Polonius {
 
     /// In-tree prototype, extending the NLL infrastructure.
     Next,
-}
-
-impl Default for Polonius {
-    fn default() -> Self {
-        Polonius::Off
-    }
 }
 
 impl Polonius {
@@ -3490,5 +3436,18 @@ impl Polonius {
     /// Returns whether the "next" version of polonius is enabled
     pub fn is_next_enabled(&self) -> bool {
         matches!(self, Polonius::Next)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum InliningThreshold {
+    Always,
+    Sometimes(usize),
+    Never,
+}
+
+impl Default for InliningThreshold {
+    fn default() -> Self {
+        Self::Sometimes(100)
     }
 }

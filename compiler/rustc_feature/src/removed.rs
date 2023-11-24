@@ -99,7 +99,7 @@ declare_features! (
     /// Allows generators to be cloned.
     (removed, generator_clone, "1.65.0", Some(95360), None, Some("renamed to `coroutine_clone`")),
     /// Allows defining generators.
-    (removed, generators, "1.21.0", Some(43122), None, Some("renamed to `coroutine`")),
+    (removed, generators, "1.21.0", Some(43122), None, Some("renamed to `coroutines`")),
     /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (removed, impl_trait_in_bindings, "1.55.0", Some(63065), None,
      Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
@@ -152,9 +152,12 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     (removed, panic_implementation, "1.28.0", Some(44489), None,
      Some("subsumed by `#[panic_handler]`")),
+    /// Allows using `#![plugin(myplugin)]`.
+    (removed, plugin, "1.75.0", Some(29597), None,
+     Some("plugins are no longer supported")),
     /// Allows using `#[plugin_registrar]` on functions.
     (removed, plugin_registrar, "1.54.0", Some(29597), None,
-     Some("a __rustc_plugin_registrar symbol must now be defined instead")),
+     Some("plugins are no longer supported")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_gen, "1.27.0", Some(54727), None,

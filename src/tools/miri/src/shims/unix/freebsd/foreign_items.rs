@@ -29,13 +29,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "pthread_set_name_np" => {
                 let [thread, name] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let max_len = usize::MAX; // freebsd does not seem to have a limit.
-                let res = this.pthread_setname_np(
+                let max_len = usize::MAX; // FreeBSD does not seem to have a limit.
+                // FreeBSD's pthread_set_name_np does not return anything.
+                this.pthread_setname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     max_len,
                 )?;
-                this.write_scalar(res, dest)?;
+            }
+            "pthread_get_name_np" => {
+                let [thread, name, len] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // FreeBSD's pthread_get_name_np does not return anything.
+                this.pthread_getname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    this.read_scalar(len)?,
+                )?;
+            }
+            "getrandom" => {
+                let [ptr, len, flags] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                let _flags = this.read_scalar(flags)?.to_i32()?;
+                // flags on freebsd does not really matter
+                // in practice, GRND_RANDOM does not particularly draw from /dev/random
+                // since it is the same as to /dev/urandom.
+                // GRND_INSECURE is only an alias of GRND_NONBLOCK, which
+                // does not affect the RNG.
+                // https://man.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2&n=1
+                this.gen_random(ptr, len)?;
+                this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
             }
 
             // errno

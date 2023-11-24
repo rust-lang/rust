@@ -22,7 +22,9 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
+use rustc_target::spec::crt_objects::CrtObjects;
+use rustc_target::spec::LinkSelfContainedComponents;
+use rustc_target::spec::LinkSelfContainedDefault;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
 
@@ -275,7 +277,7 @@ pub fn each_linked_rlib(
         let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.rlib {
-            f(cnum, &path);
+            f(cnum, path);
         } else {
             if used_crate_source.rmeta.is_some() {
                 return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
@@ -522,7 +524,7 @@ fn link_staticlib<'a>(
                 && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
 
             let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
-            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, &lib));
+            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
             let relevant_libs: FxHashSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
             let bundled_libs: FxHashSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
@@ -687,7 +689,7 @@ fn link_dwarf_object<'a>(
         // Adding an executable is primarily done to make `thorin` check that all the referenced
         // dwarf objects are found in the end.
         package.add_executable(
-            &executable_out_filename,
+            executable_out_filename,
             thorin::MissingReferencedObjectBehaviour::Skip,
         )?;
 
@@ -728,6 +730,7 @@ fn link_natively<'a>(
 ) -> Result<(), ErrorGuaranteed> {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
+    let self_contained_components = self_contained_components(sess, crate_type);
     let mut cmd = linker_with_args(
         &linker_path,
         flavor,
@@ -737,6 +740,7 @@ fn link_natively<'a>(
         tmpdir,
         out_filename,
         codegen_results,
+        self_contained_components,
     )?;
 
     linker::disable_localization(&mut cmd);
@@ -812,14 +816,14 @@ fn link_natively<'a>(
                 "Linker does not support -static-pie command line option. Retrying with -static instead."
             );
             // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
-            let self_contained = self_contained(sess, crate_type);
+            let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
             let opts = &sess.target;
-            let pre_objects = if self_contained {
+            let pre_objects = if self_contained_crt_objects {
                 &opts.pre_link_objects_self_contained
             } else {
                 &opts.pre_link_objects
             };
-            let post_objects = if self_contained {
+            let post_objects = if self_contained_crt_objects {
                 &opts.post_link_objects_self_contained
             } else {
                 &opts.post_link_objects
@@ -830,7 +834,9 @@ fn link_natively<'a>(
                     .iter()
                     .copied()
                     .flatten()
-                    .map(|obj| get_object_file_path(sess, obj, self_contained).into_os_string())
+                    .map(|obj| {
+                        get_object_file_path(sess, obj, self_contained_crt_objects).into_os_string()
+                    })
                     .collect::<Vec<_>>()
             };
             let pre_objects_static_pie = get_objects(pre_objects, LinkOutputKind::StaticPicExe);
@@ -939,7 +945,7 @@ fn link_natively<'a>(
                     {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
                         let has_linker = windows_registry::find_tool(
-                            &sess.opts.target_triple.triple(),
+                            sess.opts.target_triple.triple(),
                             "link.exe",
                         )
                         .is_some();
@@ -1027,19 +1033,19 @@ fn link_natively<'a>(
         SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
     }
 
-    let strip = strip_value(sess);
+    let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-S"))
+                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-S"))
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-x"))
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, None)
+                strip_symbols_with_external_utility(sess, "strip", out_filename, None)
             }
             (Strip::None, _) => {}
         }
@@ -1053,7 +1059,7 @@ fn link_natively<'a>(
         match strip {
             // Always preserve the symbol table (-x).
             Strip::Debuginfo => {
-                strip_symbols_with_external_utility(sess, stripcmd, &out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
             }
             // Strip::Symbols is handled via the --strip-all linker option.
             Strip::Symbols => {}
@@ -1062,14 +1068,6 @@ fn link_natively<'a>(
     }
 
     Ok(())
-}
-
-// Temporarily support both -Z strip and -C strip
-fn strip_value(sess: &Session) -> Strip {
-    match (sess.opts.unstable_opts.strip, sess.opts.cg.strip) {
-        (s, Strip::None) => s,
-        (_, s) => s,
-    }
 }
 
 fn strip_symbols_with_external_utility<'a>(
@@ -1247,13 +1245,13 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         // rpath to the library as well (the rpath should be absolute, see
         // PR #41352 for details).
         let filename = format!("rustc{channel}_rt.{name}");
-        let path = find_sanitizer_runtime(&sess, &filename);
+        let path = find_sanitizer_runtime(sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
         linker.link_dylib(&filename, false, true);
     } else {
         let filename = format!("librustc{channel}_rt.{name}.a");
-        let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
+        let path = find_sanitizer_runtime(sess, &filename).join(&filename);
         linker.link_whole_rlib(&path);
     }
 }
@@ -1687,7 +1685,7 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 
 // Returns true if linker is located within sysroot
 fn detect_self_contained_mingw(sess: &Session) -> bool {
-    let (linker, _) = linker_and_flavor(&sess);
+    let (linker, _) = linker_and_flavor(sess);
     // Assume `-C linker=rust-lld` as self-contained mode
     if linker == Path::new("rust-lld") {
         return true;
@@ -1710,26 +1708,43 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// Various toolchain components used during linking are used from rustc distribution
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
-fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
-    if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
-        if sess.target.link_self_contained == LinkSelfContainedDefault::False {
-            sess.emit_err(errors::UnsupportedLinkSelfContained);
-        }
-        return self_contained;
-    }
+fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfContainedComponents {
+    // Turn the backwards compatible bool values for `self_contained` into fully inferred
+    // `LinkSelfContainedComponents`.
+    let self_contained =
+        if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
+            // Emit an error if the user requested self-contained mode on the CLI but the target
+            // explicitly refuses it.
+            if sess.target.link_self_contained.is_disabled() {
+                sess.emit_err(errors::UnsupportedLinkSelfContained);
+            }
+            self_contained
+        } else {
+            match sess.target.link_self_contained {
+                LinkSelfContainedDefault::False => false,
+                LinkSelfContainedDefault::True => true,
 
-    match sess.target.link_self_contained {
-        LinkSelfContainedDefault::False => false,
-        LinkSelfContainedDefault::True => true,
-        // FIXME: Find a better heuristic for "native musl toolchain is available",
-        // based on host and linker path, for example.
-        // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
-        LinkSelfContainedDefault::Musl => sess.crt_static(Some(crate_type)),
-        LinkSelfContainedDefault::Mingw => {
-            sess.host == sess.target
-                && sess.target.vendor != "uwp"
-                && detect_self_contained_mingw(&sess)
-        }
+                LinkSelfContainedDefault::WithComponents(components) => {
+                    // For target specs with explicitly enabled components, we can return them
+                    // directly.
+                    return components;
+                }
+
+                // FIXME: Find a better heuristic for "native musl toolchain is available",
+                // based on host and linker path, for example.
+                // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
+                LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
+                LinkSelfContainedDefault::InferredForMingw => {
+                    sess.host == sess.target
+                        && sess.target.vendor != "uwp"
+                        && detect_self_contained_mingw(sess)
+                }
+            }
+        };
+    if self_contained {
+        LinkSelfContainedComponents::all()
+    } else {
+        LinkSelfContainedComponents::empty()
     }
 }
 
@@ -1889,37 +1904,14 @@ fn add_linked_symbol_object(
         return;
     };
 
-    // NOTE(nbdd0121): MSVC will hang if the input object file contains no sections,
-    // so add an empty section.
     if file.format() == object::BinaryFormat::Coff {
+        // NOTE(nbdd0121): MSVC will hang if the input object file contains no sections,
+        // so add an empty section.
         file.add_section(Vec::new(), ".text".into(), object::SectionKind::Text);
 
         // We handle the name decoration of COFF targets in `symbol_export.rs`, so disable the
         // default mangler in `object` crate.
         file.set_mangling(object::write::Mangling::None);
-
-        // Add feature flags to the object file. On MSVC this is optional but LLD will complain if
-        // not present.
-        let mut feature = 0;
-
-        if file.architecture() == object::Architecture::I386 {
-            // Indicate that all SEH handlers are registered in .sxdata section.
-            // We don't have generate any code, so we don't need .sxdata section but LLD still
-            // expects us to set this bit (see #96498).
-            // Reference: https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
-            feature |= 1;
-        }
-
-        file.add_symbol(object::write::Symbol {
-            name: "@feat.00".into(),
-            value: feature,
-            size: 0,
-            kind: object::SymbolKind::Data,
-            scope: object::SymbolScope::Compilation,
-            weak: false,
-            section: object::write::SymbolSection::Absolute,
-            flags: object::SymbolFlags::None,
-        });
     }
 
     for (sym, kind) in symbols.iter() {
@@ -2053,13 +2045,14 @@ fn linker_with_args<'a>(
     tmpdir: &Path,
     out_filename: &Path,
     codegen_results: &CodegenResults,
+    self_contained_components: LinkSelfContainedComponents,
 ) -> Result<Command, ErrorGuaranteed> {
-    let self_contained = self_contained(sess, crate_type);
+    let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
         sess,
         path,
         flavor,
-        self_contained,
+        self_contained_components.are_any_components_enabled(),
         &codegen_results.crate_info.target_cpu,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
@@ -2086,7 +2079,7 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Pre-link CRT objects.
-    add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained);
+    add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained_crt_objects);
 
     add_linked_symbol_object(
         cmd,
@@ -2229,7 +2222,7 @@ fn linker_with_args<'a>(
         cmd,
         sess,
         link_output_kind,
-        self_contained,
+        self_contained_components,
         flavor,
         crate_type,
         codegen_results,
@@ -2245,14 +2238,14 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Post-link CRT objects.
-    add_post_link_objects(cmd, sess, link_output_kind, self_contained);
+    add_post_link_objects(cmd, sess, link_output_kind, self_contained_crt_objects);
 
     // ------------ Late order-dependent options ------------
 
     // Doesn't really make sense.
-    // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
-    // introduce a target spec option for order-independent linker options, migrate built-in specs
-    // to it and remove the option.
+    // FIXME: In practice built-in target specs use this for arbitrary order-independent options.
+    // Introduce a target spec option for order-independent linker options, migrate built-in specs
+    // to it and remove the option. Currently the last holdout is wasm32-unknown-emscripten.
     add_post_link_args(cmd, sess, flavor);
 
     Ok(cmd.take_cmd())
@@ -2262,7 +2255,7 @@ fn add_order_independent_options(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    self_contained: bool,
+    self_contained_components: LinkSelfContainedComponents,
     flavor: LinkerFlavor,
     crate_type: CrateType,
     codegen_results: &CodegenResults,
@@ -2270,7 +2263,7 @@ fn add_order_independent_options(
     tmpdir: &Path,
 ) {
     // Take care of the flavors and CLI options requesting the `lld` linker.
-    add_lld_args(cmd, sess, flavor);
+    add_lld_args(cmd, sess, flavor, self_contained_components);
 
     add_apple_sdk(cmd, sess, flavor);
 
@@ -2295,7 +2288,7 @@ fn add_order_independent_options(
     // Make the binary compatible with data execution prevention schemes.
     cmd.add_no_exec();
 
-    if self_contained {
+    if self_contained_components.is_crt_objects_enabled() {
         cmd.no_crt_objects();
     }
 
@@ -2326,7 +2319,7 @@ fn add_order_independent_options(
 
     cmd.linker_plugin_lto();
 
-    add_library_search_dirs(cmd, sess, self_contained);
+    add_library_search_dirs(cmd, sess, self_contained_components.are_any_components_enabled());
 
     cmd.output_filename(out_filename);
 
@@ -2369,7 +2362,7 @@ fn add_order_independent_options(
     );
 
     // Pass debuginfo, NatVis debugger visualizers and strip flags down to the linker.
-    cmd.debuginfo(strip_value(sess), &natvis_visualizers);
+    cmd.debuginfo(sess.opts.cg.strip, &natvis_visualizers);
 
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.
@@ -2383,6 +2376,11 @@ fn add_order_independent_options(
 
     if sess.opts.cg.control_flow_guard != CFGuard::Disabled {
         cmd.control_flow_guard();
+    }
+
+    // OBJECT-FILES-NO, AUDIT-ORDER
+    if sess.opts.unstable_opts.ehcont_guard {
+        cmd.ehcont_guard();
     }
 
     add_rpath_args(cmd, sess, codegen_results, out_filename);
@@ -2439,7 +2437,7 @@ fn add_native_libs_from_crate(
         // If rlib contains native libs as archives, unpack them to tmpdir.
         let rlib = &codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap().0;
         archive_builder_builder
-            .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
+            .extract_bundled_libs(rlib, tmpdir, bundled_libs)
             .unwrap_or_else(|e| sess.emit_fatal(e));
     }
 
@@ -2492,7 +2490,7 @@ fn add_native_libs_from_crate(
                             cmd.link_whole_staticlib(
                                 name,
                                 verbatim,
-                                &search_paths.get_or_init(|| archive_search_paths(sess)),
+                                search_paths.get_or_init(|| archive_search_paths(sess)),
                             );
                         } else {
                             cmd.link_staticlib(name, verbatim)
@@ -2726,7 +2724,7 @@ fn rehome_sysroot_lib_dir<'a>(sess: &'a Session, lib_dir: &Path) -> PathBuf {
         // already had `fix_windows_verbatim_for_gcc()` applied if needed.
         sysroot_lib_path
     } else {
-        fix_windows_verbatim_for_gcc(&lib_dir)
+        fix_windows_verbatim_for_gcc(lib_dir)
     }
 }
 
@@ -2763,7 +2761,7 @@ fn add_static_crate<'a>(
     let mut link_upstream = |path: &Path| {
         let rlib_path = if let Some(dir) = path.parent() {
             let file_name = path.file_name().expect("rlib path has no file name path component");
-            rehome_sysroot_lib_dir(sess, &dir).join(file_name)
+            rehome_sysroot_lib_dir(sess, dir).join(file_name)
         } else {
             fix_windows_verbatim_for_gcc(path)
         };
@@ -2800,7 +2798,7 @@ fn add_static_crate<'a>(
                 let canonical = f.replace('-', "_");
 
                 let is_rust_object =
-                    canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
+                    canonical.starts_with(&canonical_name) && looks_like_rust_object_file(f);
 
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the
@@ -2879,6 +2877,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     }
 
     let sdk_name = match (arch.as_ref(), os.as_ref()) {
+        ("aarch64", "tvos") if llvm_target.ends_with("-simulator") => "appletvsimulator",
         ("aarch64", "tvos") => "appletvos",
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",
@@ -2976,8 +2975,16 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
 /// invoke it:
 /// - when the self-contained linker flag is active: the build of `lld` distributed with rustc,
 /// - or any `lld` available to `cc`.
-fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
-    debug!("add_lld_args requested, flavor: '{flavor:?}'");
+fn add_lld_args(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    flavor: LinkerFlavor,
+    self_contained_components: LinkSelfContainedComponents,
+) {
+    debug!(
+        "add_lld_args requested, flavor: '{:?}', target self-contained components: {:?}",
+        flavor, self_contained_components,
+    );
 
     // If the flavor doesn't use a C/C++ compiler to invoke the linker, or doesn't opt in to `lld`,
     // we don't need to do anything.
@@ -2986,9 +2993,32 @@ fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     }
 
     // 1. Implement the "self-contained" part of this feature by adding rustc distribution
-    // directories to the tool's search path:
-    // - if the self-contained linker is enabled on the CLI.
-    if sess.opts.cg.link_self_contained.is_linker_enabled() {
+    // directories to the tool's search path, depending on a mix between what users can specify on
+    // the CLI, and what the target spec enables (as it can't disable components):
+    // - if the self-contained linker is enabled on the CLI or by the target spec,
+    // - and if the self-contained linker is not disabled on the CLI.
+    let self_contained_cli = sess.opts.cg.link_self_contained.is_linker_enabled();
+    let self_contained_target = self_contained_components.is_linker_enabled();
+
+    // FIXME: in the future, codegen backends may need to have more control over this process: they
+    // don't always support all the features the linker expects here, and vice versa. For example,
+    // at the time of writing this, lld expects a newer style of aarch64 TLS relocations that
+    // cranelift doesn't implement yet. That in turn can impact whether linking would succeed on
+    // such a target when using the `cg_clif` backend and lld.
+    //
+    // Until interactions between backends and linker features are expressible, we limit target
+    // specs to opt-in to lld only when we're on the llvm backend, where it's expected to work and
+    // tested on CI. As usual, the CLI still has precedence over this, so that users and developers
+    // can still override this default when needed (e.g. for tests).
+    let uses_llvm_backend =
+        matches!(sess.opts.unstable_opts.codegen_backend.as_deref(), None | Some("llvm"));
+    if !uses_llvm_backend && !self_contained_cli && sess.opts.cg.linker_flavor.is_none() {
+        // We bail if we're not using llvm and lld was not explicitly requested on the CLI.
+        return;
+    }
+
+    let self_contained_linker = self_contained_cli || self_contained_target;
+    if self_contained_linker && !sess.opts.cg.link_self_contained.is_linker_disabled() {
         for path in sess.get_tools_search_paths(false) {
             cmd.arg({
                 let mut arg = OsString::from("-B");

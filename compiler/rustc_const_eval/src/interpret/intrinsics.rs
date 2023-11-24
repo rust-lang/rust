@@ -22,8 +22,6 @@ use super::{
 
 use crate::fluent_generated as fluent;
 
-mod caller_location;
-
 fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Prov> {
     let size = match kind {
         Primitive::Int(integer, _) => integer.size(),
@@ -130,8 +128,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match intrinsic_name {
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location();
-                let location = self.alloc_caller_location_for_span(span);
-                self.write_immediate(location.to_ref(self), dest)?;
+                let val = self.tcx.span_as_caller_location(span);
+                let val =
+                    self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
+                self.copy_op(&val, dest, /* allow_transmute */ false)?;
             }
 
             sym::min_align_of_val | sym::size_of_val => {
@@ -218,7 +218,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::discriminant_value => {
                 let place = self.deref_pointer(&args[0])?;
                 let variant = self.read_discriminant(&place)?;
-                let discr = self.discriminant_for_variant(place.layout, variant)?;
+                let discr = self.discriminant_for_variant(place.layout.ty, variant)?;
                 self.write_immediate(*discr, dest)?;
             }
             sym::exact_div => {
@@ -505,7 +505,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
-        let (res, overflow) = self.overflowing_binary_op(BinOp::Rem, &a, &b)?;
+        let (res, overflow) = self.overflowing_binary_op(BinOp::Rem, a, b)?;
         assert!(!overflow); // All overflow is UB, so this should never return on overflow.
         if res.to_scalar().assert_bits(a.layout.size) != 0 {
             throw_ub_custom!(
@@ -515,7 +515,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
-        self.binop_ignore_overflow(BinOp::Div, &a, &b, dest)
+        self.binop_ignore_overflow(BinOp::Div, a, b, dest)
     }
 
     pub fn saturating_arith(

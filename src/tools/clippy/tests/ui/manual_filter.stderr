@@ -169,15 +169,13 @@ error: manual implementation of `Option::filter`
    |
 LL |       let _ = match Some(15) {
    |  _____________^
-LL | |         Some(x) => unsafe {
-LL | |             if f(x) { Some(x) } else { None }
-LL | |         },
+LL | |         Some(x) => unsafe { if f(x) { Some(x) } else { None } },
 LL | |         None => None,
 LL | |     };
    | |_____^ help: try: `Some(15).filter(|&x| unsafe { f(x) })`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:203:12
+  --> $DIR/manual_filter.rs:201:12
    |
 LL |       } else if let Some(x) = Some(16) {
    |  ____________^

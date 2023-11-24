@@ -1072,7 +1072,7 @@ extern "rust-intrinsic" {
     /// zero-initialization: This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_zero_valid<T>();
@@ -1080,7 +1080,7 @@ extern "rust-intrinsic" {
     /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_mem_uninitialized_valid<T>();
@@ -2279,7 +2279,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
-    #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+    #[rustc_const_stable(feature = "const_discriminant", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
@@ -2487,12 +2487,6 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
-
-    /// This method creates a pointer to any `Some` value. If the argument is
-    /// `None`, an invalid within-bounds pointer (that is still acceptable for
-    /// constructing an empty slice) is returned.
-    #[rustc_nounwind]
-    pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 }
 
 // Some functions are defined here because they accidentally got made

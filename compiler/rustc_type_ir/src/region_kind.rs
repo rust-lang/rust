@@ -1,13 +1,8 @@
-use rustc_data_structures::stable_hasher::HashStable;
-use rustc_serialize::{Decodable, Decoder, Encodable};
-use std::cmp::Ordering;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
-use std::hash;
 
-use crate::{
-    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, OptWithInfcx,
-    TyDecoder, TyEncoder,
-};
+use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::RegionKind::*;
 
@@ -27,8 +22,8 @@ use self::RegionKind::*;
 /// ```text
 /// static ----------+-----...------+       (greatest)
 /// |                |              |
-/// early-bound and  |              |
-/// free regions     |              |
+/// param regions    |              |
+/// |                |              |
 /// |                |              |
 /// |                |              |
 /// empty(root)   placeholder(U1)   |
@@ -93,8 +88,8 @@ use self::RegionKind::*;
 /// To do this, we replace the bound regions with placeholder markers,
 /// which don't satisfy any relation not explicitly provided.
 ///
-/// There are two kinds of placeholder regions in rustc: `ReFree` and
-/// `RePlaceholder`. When checking an item's body, `ReFree` is supposed
+/// There are two kinds of placeholder regions in rustc: `ReLateParam` and
+/// `RePlaceholder`. When checking an item's body, `ReLateParam` is supposed
 /// to be used. These also support explicit bounds: both the internally-stored
 /// *scope*, which the region is assumed to outlive, as well as other
 /// relations stored in the `FreeRegionMap`. Note that these relations
@@ -117,20 +112,46 @@ use self::RegionKind::*;
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    PartialOrd(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    Ord(bound = ""),
+    Ord = "feature_allow_slow_enum",
+    Hash(bound = "")
+)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum RegionKind<I: Interner> {
-    /// Region bound in a type or fn declaration which will be
-    /// substituted 'early' -- that is, at the same time when type
-    /// parameters are substituted.
-    ReEarlyBound(I::EarlyBoundRegion),
+    /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
+    ///
+    /// There are some important differences between region and type parameters.
+    /// Not all region parameters in the source are represented via `ReEarlyParam`:
+    /// late-bound function parameters are instead lowered to a `ReBound`. Late-bound
+    /// regions get eagerly replaced with `ReLateParam` which behaves in the same way as
+    /// `ReEarlyParam`. Region parameters are also sometimes implicit,
+    /// e.g. in `impl Trait for &()`.
+    ReEarlyParam(I::EarlyParamRegion),
 
-    /// Region bound in a function scope, which will be substituted when the
-    /// function is called.
-    ReLateBound(DebruijnIndex, I::BoundRegion),
+    /// A higher-ranked region. These represent either late-bound function parameters
+    /// or bound variables from a `for<'a>`-binder.
+    ///
+    /// While inside of a function, e.g. during typeck, the late-bound function parameters
+    /// can be converted to `ReLateParam` by calling `tcx.liberate_late_bound_regions`.
+    ///
+    /// Bound regions inside of types **must not** be erased, as they impact trait
+    /// selection and the `TypeId` of that type. `for<'a> fn(&'a ())` and
+    /// `fn(&'static ())` are different types and have to be treated as such.
+    ReBound(DebruijnIndex, I::BoundRegion),
 
-    /// When checking a function body, the types of all arguments and so forth
-    /// that refer to bound region parameters are modified to refer to free
-    /// region parameters.
-    ReFree(I::FreeRegion),
+    /// Late-bound function parameters are represented using a `ReBound`. When
+    /// inside of a function, we convert these bound variables to placeholder
+    /// parameters via `tcx.liberate_late_bound_regions`. They are then treated
+    /// the same way as `ReEarlyParam` while inside of the function.
+    ///
+    /// See <https://rustc-dev-guide.rust-lang.org/early-late-bound-summary.html> for
+    /// more info about early and late bound lifetime parameters.
+    ReLateParam(I::LateParamRegion),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -138,8 +159,11 @@ pub enum RegionKind<I: Interner> {
     /// A region variable. Should not exist outside of type inference.
     ReVar(I::InferRegion),
 
-    /// A placeholder region -- basically, the higher-ranked version of `ReFree`.
+    /// A placeholder region -- the higher-ranked version of `ReLateParam`.
     /// Should not exist outside of type inference.
+    ///
+    /// Used when instantiating a `forall` binder via
+    /// `infcx.instantiate_binder_with_placeholders`.
     RePlaceholder(I::PlaceholderRegion),
 
     /// Erased region, used by trait selection, in MIR and during codegen.
@@ -154,9 +178,9 @@ pub enum RegionKind<I: Interner> {
 #[inline]
 const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
     match value {
-        ReEarlyBound(_) => 0,
-        ReLateBound(_, _) => 1,
-        ReFree(_) => 2,
+        ReEarlyParam(_) => 0,
+        ReBound(_, _) => 1,
+        ReLateParam(_) => 2,
         ReStatic => 3,
         ReVar(_) => 4,
         RePlaceholder(_) => 5,
@@ -168,29 +192,13 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
 // This is manually implemented because a derive would require `I: Copy`
 impl<I: Interner> Copy for RegionKind<I>
 where
-    I::EarlyBoundRegion: Copy,
+    I::EarlyParamRegion: Copy,
     I::BoundRegion: Copy,
-    I::FreeRegion: Copy,
+    I::LateParamRegion: Copy,
     I::InferRegion: Copy,
     I::PlaceholderRegion: Copy,
     I::ErrorGuaranteed: Copy,
 {
-}
-
-// This is manually implemented because a derive would require `I: Clone`
-impl<I: Interner> Clone for RegionKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            ReEarlyBound(r) => ReEarlyBound(r.clone()),
-            ReLateBound(d, r) => ReLateBound(*d, r.clone()),
-            ReFree(r) => ReFree(r.clone()),
-            ReStatic => ReStatic,
-            ReVar(r) => ReVar(r.clone()),
-            RePlaceholder(r) => RePlaceholder(r.clone()),
-            ReErased => ReErased,
-            ReError(r) => ReError(r.clone()),
-        }
-    }
 }
 
 // This is manually implemented because a derive would require `I: PartialEq`
@@ -199,9 +207,9 @@ impl<I: Interner> PartialEq for RegionKind<I> {
     fn eq(&self, other: &RegionKind<I>) -> bool {
         regionkind_discriminant(self) == regionkind_discriminant(other)
             && match (self, other) {
-                (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r == b_r,
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
-                (ReFree(a_r), ReFree(b_r)) => a_r == b_r,
+                (ReEarlyParam(a_r), ReEarlyParam(b_r)) => a_r == b_r,
+                (ReBound(a_d, a_r), ReBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
+                (ReLateParam(a_r), ReLateParam(b_r)) => a_r == b_r,
                 (ReStatic, ReStatic) => true,
                 (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
                 (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r == b_r,
@@ -221,71 +229,19 @@ impl<I: Interner> PartialEq for RegionKind<I> {
 // This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for RegionKind<I> {}
 
-// This is manually implemented because a derive would require `I: PartialOrd`
-impl<I: Interner> PartialOrd for RegionKind<I> {
-    #[inline]
-    fn partial_cmp(&self, other: &RegionKind<I>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// This is manually implemented because a derive would require `I: Ord`
-impl<I: Interner> Ord for RegionKind<I> {
-    #[inline]
-    fn cmp(&self, other: &RegionKind<I>) -> Ordering {
-        regionkind_discriminant(self).cmp(&regionkind_discriminant(other)).then_with(|| {
-            match (self, other) {
-                (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r.cmp(b_r),
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => {
-                    a_d.cmp(b_d).then_with(|| a_r.cmp(b_r))
-                }
-                (ReFree(a_r), ReFree(b_r)) => a_r.cmp(b_r),
-                (ReStatic, ReStatic) => Ordering::Equal,
-                (ReVar(a_r), ReVar(b_r)) => a_r.cmp(b_r),
-                (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r.cmp(b_r),
-                (ReErased, ReErased) => Ordering::Equal,
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            }
-        })
-    }
-}
-
-// This is manually implemented because a derive would require `I: Hash`
-impl<I: Interner> hash::Hash for RegionKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) -> () {
-        regionkind_discriminant(self).hash(state);
-        match self {
-            ReEarlyBound(r) => r.hash(state),
-            ReLateBound(d, r) => {
-                d.hash(state);
-                r.hash(state)
-            }
-            ReFree(r) => r.hash(state),
-            ReStatic => (),
-            ReVar(r) => r.hash(state),
-            RePlaceholder(r) => r.hash(state),
-            ReErased => (),
-            ReError(_) => (),
-        }
-    }
-}
-
 impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         match this.data {
-            ReEarlyBound(data) => write!(f, "ReEarlyBound({data:?})"),
+            ReEarlyParam(data) => write!(f, "ReEarlyParam({data:?})"),
 
-            ReLateBound(binder_id, bound_region) => {
-                write!(f, "ReLateBound({binder_id:?}, {bound_region:?})")
+            ReBound(binder_id, bound_region) => {
+                write!(f, "ReBound({binder_id:?}, {bound_region:?})")
             }
 
-            ReFree(fr) => write!(f, "{fr:?}"),
+            ReLateParam(fr) => write!(f, "{fr:?}"),
 
             ReStatic => f.write_str("ReStatic"),
 
@@ -301,104 +257,35 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 }
 impl<I: Interner> fmt::Debug for RegionKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        OptWithInfcx::new_no_ctx(self).fmt(f)
+        WithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 
-// This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder> Encodable<E> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Encodable<E>,
-    I::BoundRegion: Encodable<E>,
-    I::FreeRegion: Encodable<E>,
-    I::InferRegion: Encodable<E>,
-    I::PlaceholderRegion: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = regionkind_discriminant(self);
-        match self {
-            ReEarlyBound(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReLateBound(a, b) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-                b.encode(e);
-            }),
-            ReFree(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReStatic => e.emit_enum_variant(disc, |_| {}),
-            ReVar(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            RePlaceholder(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReErased => e.emit_enum_variant(disc, |_| {}),
-            ReError(_) => e.emit_enum_variant(disc, |_| {}),
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Decodable`
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Decodable<D>,
-    I::BoundRegion: Decodable<D>,
-    I::FreeRegion: Decodable<D>,
-    I::InferRegion: Decodable<D>,
-    I::PlaceholderRegion: Decodable<D>,
-    I::ErrorGuaranteed: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => ReEarlyBound(Decodable::decode(d)),
-            1 => ReLateBound(Decodable::decode(d), Decodable::decode(d)),
-            2 => ReFree(Decodable::decode(d)),
-            3 => ReStatic,
-            4 => ReVar(Decodable::decode(d)),
-            5 => RePlaceholder(Decodable::decode(d)),
-            6 => ReErased,
-            7 => ReError(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "RegionKind", 8,
-                )
-            ),
-        }
-    }
-}
-
+#[cfg(feature = "nightly")]
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
 where
-    I::EarlyBoundRegion: HashStable<CTX>,
+    I::EarlyParamRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,
-    I::FreeRegion: HashStable<CTX>,
+    I::LateParamRegion: HashStable<CTX>,
     I::InferRegion: HashStable<CTX>,
     I::PlaceholderRegion: HashStable<CTX>,
 {
     #[inline]
-    fn hash_stable(
-        &self,
-        hcx: &mut CTX,
-        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
-    ) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {
                 // No variant fields to hash for these ...
             }
-            ReLateBound(d, r) => {
+            ReBound(d, r) => {
                 d.hash_stable(hcx, hasher);
                 r.hash_stable(hcx, hasher);
             }
-            ReEarlyBound(r) => {
+            ReEarlyParam(r) => {
                 r.hash_stable(hcx, hasher);
             }
-            ReFree(r) => {
+            ReLateParam(r) => {
                 r.hash_stable(hcx, hasher);
             }
             RePlaceholder(r) => {

@@ -7,6 +7,7 @@
 use std::fmt;
 
 use rustc_ast::ast;
+use rustc_attr::DeprecatedSince;
 use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::{self, TyCtxt};
@@ -138,9 +139,14 @@ where
 }
 
 pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
-    #[rustfmt::skip]
-    let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
-    Deprecation { since: since.map(|s| s.to_string()), note: note.map(|s| s.to_string()) }
+    let rustc_attr::Deprecation { since, note, suggestion: _ } = deprecation;
+    let since = match since {
+        DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
+        DeprecatedSince::Future => Some("TBD".to_owned()),
+        DeprecatedSince::NonStandard(since) => Some(since.to_string()),
+        DeprecatedSince::Unspecified | DeprecatedSince::Err => None,
+    };
+    Deprecation { since, note: note.map(|s| s.to_string()) }
 }
 
 impl FromWithTcx<clean::GenericArgs> for GenericArgs {
@@ -177,7 +183,7 @@ impl FromWithTcx<clean::Constant> for Constant {
         let expr = constant.expr(tcx);
         let value = constant.value(tcx);
         let is_literal = constant.is_literal(tcx);
-        Constant { type_: constant.type_.into_tcx(tcx), expr, value, is_literal }
+        Constant { type_: (*constant.type_).into_tcx(tcx), expr, value, is_literal }
     }
 }
 
@@ -244,15 +250,16 @@ pub(crate) fn id_from_item_inner(
                     // their parent module, which isn't present in the output JSON items. So
                     // instead, we directly get the primitive symbol and convert it to u32 to
                     // generate the ID.
-                    if matches!(tcx.def_kind(def_id), DefKind::Mod) &&
-                        let Some(prim) = tcx.get_attrs(*def_id, sym::rustc_doc_primitive)
-                            .find_map(|attr| attr.value_str()) {
+                    if matches!(tcx.def_kind(def_id), DefKind::Mod)
+                        && let Some(prim) = tcx
+                            .get_attrs(*def_id, sym::rustc_doc_primitive)
+                            .find_map(|attr| attr.value_str())
+                    {
                         format!(":{}", prim.as_u32())
                     } else {
-                        tcx
-                        .opt_item_name(*def_id)
-                        .map(|n| format!(":{}", n.as_u32()))
-                        .unwrap_or_default()
+                        tcx.opt_item_name(*def_id)
+                            .map(|n| format!(":{}", n.as_u32()))
+                            .unwrap_or_default()
                     }
                 }
             };
@@ -325,11 +332,11 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
         TyAssocConstItem(_generics, ty) => {
-            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None }
+            ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: None }
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
         AssocConstItem(_generics, ty, default) => {
-            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
+            ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_tcx(tcx),

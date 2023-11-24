@@ -270,6 +270,9 @@ parse_fn_ptr_with_generics = function pointer types may not have generic paramet
         *[false] a
     } `for` parameter list
 
+parse_fn_trait_missing_paren = `Fn` bounds require arguments in parentheses
+    .add_paren = add the missing parentheses
+
 parse_forgot_paren = perhaps you forgot parentheses?
 
 parse_found_expr_would_be_stmt = expected expression, found `{$token}`
@@ -277,6 +280,9 @@ parse_found_expr_would_be_stmt = expected expression, found `{$token}`
 
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
+
+parse_gen_fn = `gen` functions are not yet implemented
+    .help = for now you can use `gen {"{}"}` blocks and return `impl Iterator` instead
 
 parse_generic_args_in_pat_require_turbofish_syntax = generic args in patterns require the turbofish syntax
 
@@ -523,6 +529,9 @@ parse_missing_fn_for_function_definition = missing `fn` for function definition
 parse_missing_fn_for_method_definition = missing `fn` for method definition
     .suggestion = add `fn` here to parse `{$ident}` as a public method
 
+parse_missing_fn_params = missing parameters for function definition
+    .suggestion = add a parameter list
+
 parse_missing_for_in_trait_impl = missing `for` in a trait impl
     .suggestion = add `for` here
 
@@ -729,6 +738,9 @@ parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
 
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
+
+parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
+    .suggestion = move `{$kw}` before the `for<...>`
 
 parse_type_ascription_removed =
     if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>

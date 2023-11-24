@@ -15,6 +15,13 @@ LL |     Box::z
 LL |     mac!();
    |     ------ in this macro invocation
    |
+note: if you're trying to build a new `Box<_, _>` consider using one of the following associated functions:
+      Box::<T>::new
+      Box::<T>::new_uninit
+      Box::<T>::new_zeroed
+      Box::<T>::try_new
+      and 18 others
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

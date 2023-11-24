@@ -305,9 +305,14 @@ pub enum ObligationCauseCode<'tcx> {
     SizedCoroutineInterior(LocalDefId),
     /// `[expr; N]` requires `type_of(expr): Copy`.
     RepeatElementCopy {
-        /// If element is a `const fn` we display a help message suggesting to move the
-        /// function call to a new `const` item while saying that `T` doesn't implement `Copy`.
-        is_const_fn: bool,
+        /// If element is a `const fn` or const ctor we display a help message suggesting
+        /// to move it to a new `const` item while saying that `T` doesn't implement `Copy`.
+        is_constable: IsConstable,
+        elt_type: Ty<'tcx>,
+        elt_span: Span,
+        /// Span of the statement/item in which the repeat expression occurs. We can use this to
+        /// place a `const` declaration before it
+        elt_stmt_span: Span,
     },
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
@@ -455,6 +460,21 @@ pub enum ObligationCauseCode<'tcx> {
     TypeAlias(InternedObligationCauseCode<'tcx>, Span, DefId),
 }
 
+/// Whether a value can be extracted into a const.
+/// Used for diagnostics around array repeat expressions.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub enum IsConstable {
+    No,
+    /// Call to a const fn
+    Fn,
+    /// Use of a const ctor
+    Ctor,
+}
+
+crate::TrivialTypeTraversalAndLiftImpls! {
+    IsConstable,
+}
+
 /// The 'location' at which we try to perform HIR-based wf checking.
 /// This information is used to obtain an `hir::Ty`, which
 /// we can walk in order to obtain precise spans for any
@@ -541,6 +561,7 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arm_ty: Ty<'tcx>,
     pub prior_arm_span: Span,
     pub scrut_span: Span,
+    pub scrut_hir_id: hir::HirId,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
     pub opt_suggest_box_span: Option<Span>,
@@ -665,7 +686,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n) | ImplSource::Builtin(_, n) => &n,
+            ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
@@ -935,13 +956,26 @@ pub enum CodegenObligationError {
     FulfillmentError,
 }
 
+/// Defines the treatment of opaque types in a given inference context.
+///
+/// This affects both what opaques are allowed to be defined, but also whether
+/// opaques are replaced with inference vars eagerly in the old solver (e.g.
+/// in projection, and in the signature during function type-checking).
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum DefiningAnchor {
-    /// `DefId` of the item.
+    /// Define opaques which are in-scope of the `LocalDefId`. Also, eagerly
+    /// replace opaque types in `replace_opaque_types_with_inference_vars`.
     Bind(LocalDefId),
-    /// When opaque types are not resolved, we `Bubble` up, meaning
-    /// return the opaque/hidden type pair from query, for caller of query to handle it.
+    /// In contexts where we don't currently know what opaques are allowed to be
+    /// defined, such as (old solver) canonical queries, we will simply allow
+    /// opaques to be defined, but "bubble" them up in the canonical response or
+    /// otherwise treat them to be handled later.
+    ///
+    /// We do not eagerly replace opaque types in `replace_opaque_types_with_inference_vars`,
+    /// which may affect what predicates pass and fail in the old trait solver.
     Bubble,
-    /// Used to catch type mismatch errors when handling opaque types.
+    /// Do not allow any opaques to be defined. This is used to catch type mismatch
+    /// errors when handling opaque types, and also should be used when we would
+    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
     Error,
 }

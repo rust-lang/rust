@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::eq_expr_value;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
@@ -10,8 +9,7 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -152,17 +150,15 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 return Ok(Bool::Term(n as u8));
             }
 
-            if_chain! {
-                if let ExprKind::Binary(e_binop, e_lhs, e_rhs) = &e.kind;
-                if implements_ord(self.cx, e_lhs);
-                if let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.kind;
-                if negate(e_binop.node) == Some(expr_binop.node);
-                if eq_expr_value(self.cx, e_lhs, expr_lhs);
-                if eq_expr_value(self.cx, e_rhs, expr_rhs);
-                then {
-                    #[expect(clippy::cast_possible_truncation)]
-                    return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
-                }
+            if let ExprKind::Binary(e_binop, e_lhs, e_rhs) = &e.kind
+                && implements_ord(self.cx, e_lhs)
+                && let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.kind
+                && negate(e_binop.node) == Some(expr_binop.node)
+                && eq_expr_value(self.cx, e_lhs, expr_lhs)
+                && eq_expr_value(self.cx, e_rhs, expr_rhs)
+            {
+                #[expect(clippy::cast_possible_truncation)]
+                return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
             }
         }
         let n = self.terminals.len();
@@ -428,8 +424,9 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     improvements.push(suggestion);
                 }
             }
-            let nonminimal_bool_lint = |suggestions: Vec<_>| {
+            let nonminimal_bool_lint = |mut suggestions: Vec<_>| {
                 if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).0 != Level::Allow {
+                    suggestions.sort();
                     span_lint_hir_and_then(
                         self.cx,
                         NONMINIMAL_BOOL,
@@ -472,8 +469,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                     self.bool_expr(e);
                 },
                 ExprKind::Unary(UnOp::Not, inner) => {
-                    if let ExprKind::Unary(UnOp::Not, ex) = inner.kind &&
-                    !self.cx.typeck_results().node_types()[ex.hir_id].is_bool() {
+                    if let ExprKind::Unary(UnOp::Not, ex) = inner.kind
+                        && !self.cx.typeck_results().node_types()[ex.hir_id].is_bool()
+                    {
                         return;
                     }
                     if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
@@ -500,10 +498,10 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind &&
-            !inner.span.from_expansion() &&
-            let Some(suggestion) = simplify_not(self.cx, inner)
-			&& self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
+            && !inner.span.from_expansion()
+            && let Some(suggestion) = simplify_not(self.cx, inner)
+            && self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
         {
             span_lint_and_sugg(
                 self.cx,

@@ -77,7 +77,7 @@ use std::ops::Deref;
 /// picture, but rather the ending point.
 //
 // FIXME(pnkfelix): this currently derives `PartialOrd` and `Ord` to
-// placate the same deriving in `ty::FreeRegion`, but we may want to
+// placate the same deriving in `ty::LateParamRegion`, but we may want to
 // actually attach a more meaningful ordering to scopes than the one
 // generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, TyEncodable, TyDecodable)]
@@ -148,6 +148,8 @@ rustc_index::newtype_index! {
     /// * The subscope with `first_statement_index == 1` is scope of `c`,
     ///   and thus does not include EXPR_2, but covers the `...`.
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     pub struct FirstStatementIndex {}
 }
 
@@ -178,7 +180,7 @@ impl Scope {
         };
         let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(ref blk) = tcx.hir().get(hir_id) {
+            if let Node::Block(blk) = tcx.hir().get(hir_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`

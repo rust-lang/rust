@@ -2,7 +2,6 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
-use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Stmt, StmtKind};
@@ -18,7 +17,7 @@ declare_clippy_lint! {
     /// The built-in function is more readable and may be faster.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     ///let mut u:u32 = 7000;
     ///
     /// if u != u32::MAX {
@@ -26,7 +25,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///let mut u:u32 = 7000;
     ///
     /// u = u.saturating_add(1);
@@ -40,60 +39,76 @@ declare_lint_pass!(ImplicitSaturatingAdd => [IMPLICIT_SATURATING_ADD]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if_chain! {
-            if let ExprKind::If(cond, then, None) = expr.kind;
-            if let ExprKind::DropTemps(expr1) = cond.kind;
-            if let Some((c, op_node, l)) = get_const(cx, expr1);
-            if let BinOpKind::Ne | BinOpKind::Lt = op_node;
-            if let ExprKind::Block(block, None) = then.kind;
-            if let Block {
+        if let ExprKind::If(cond, then, None) = expr.kind
+            && let ExprKind::DropTemps(expr1) = cond.kind
+            && let Some((c, op_node, l)) = get_const(cx, expr1)
+            && let BinOpKind::Ne | BinOpKind::Lt = op_node
+            && let ExprKind::Block(block, None) = then.kind
+            && let Block {
                 stmts:
-                    [Stmt
-                        { kind: StmtKind::Expr(ex) | StmtKind::Semi(ex), .. }],
-                        expr: None, ..} |
-                        Block { stmts: [], expr: Some(ex), ..} = block;
-            if let ExprKind::AssignOp(op1, target, value) = ex.kind;
-            let ty = cx.typeck_results().expr_ty(target);
-            if Some(c) == get_int_max(ty);
-            let ctxt = expr.span.ctxt();
-            if ex.span.ctxt() == ctxt;
-            if expr1.span.ctxt() == ctxt;
-            if clippy_utils::SpanlessEq::new(cx).eq_expr(l, target);
-            if BinOpKind::Add == op1.node;
-            if let ExprKind::Lit(lit) = value.kind;
-            if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
-            if block.expr.is_none();
-            then {
-                let mut app = Applicability::MachineApplicable;
-                let code = snippet_with_context(cx, target.span, ctxt, "_", &mut app).0;
-                let sugg = if let Some(parent) = get_parent_expr(cx, expr)
-                    && let ExprKind::If(_cond, _then, Some(else_)) = parent.kind
-                    && else_.hir_id == expr.hir_id
-                {
-                    format!("{{{code} = {code}.saturating_add(1); }}")
-                } else {
-                    format!("{code} = {code}.saturating_add(1);")
-                };
-                span_lint_and_sugg(cx, IMPLICIT_SATURATING_ADD, expr.span, "manual saturating add detected", "use instead", sugg, app);
+                    [
+                        Stmt {
+                            kind: StmtKind::Expr(ex) | StmtKind::Semi(ex),
+                            ..
+                        },
+                    ],
+                expr: None,
+                ..
             }
+            | Block {
+                stmts: [],
+                expr: Some(ex),
+                ..
+            } = block
+            && let ExprKind::AssignOp(op1, target, value) = ex.kind
+            && let ty = cx.typeck_results().expr_ty(target)
+            && Some(c) == get_int_max(ty)
+            && let ctxt = expr.span.ctxt()
+            && ex.span.ctxt() == ctxt
+            && expr1.span.ctxt() == ctxt
+            && clippy_utils::SpanlessEq::new(cx).eq_expr(l, target)
+            && BinOpKind::Add == op1.node
+            && let ExprKind::Lit(lit) = value.kind
+            && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
+            && block.expr.is_none()
+        {
+            let mut app = Applicability::MachineApplicable;
+            let code = snippet_with_context(cx, target.span, ctxt, "_", &mut app).0;
+            let sugg = if let Some(parent) = get_parent_expr(cx, expr)
+                && let ExprKind::If(_cond, _then, Some(else_)) = parent.kind
+                && else_.hir_id == expr.hir_id
+            {
+                format!("{{{code} = {code}.saturating_add(1); }}")
+            } else {
+                format!("{code} = {code}.saturating_add(1);")
+            };
+            span_lint_and_sugg(
+                cx,
+                IMPLICIT_SATURATING_ADD,
+                expr.span,
+                "manual saturating add detected",
+                "use instead",
+                sugg,
+                app,
+            );
         }
     }
 }
 
 fn get_int_max(ty: Ty<'_>) -> Option<u128> {
     match ty.peel_refs().kind() {
-        Int(IntTy::I8) => i8::max_value().try_into().ok(),
-        Int(IntTy::I16) => i16::max_value().try_into().ok(),
-        Int(IntTy::I32) => i32::max_value().try_into().ok(),
-        Int(IntTy::I64) => i64::max_value().try_into().ok(),
-        Int(IntTy::I128) => i128::max_value().try_into().ok(),
-        Int(IntTy::Isize) => isize::max_value().try_into().ok(),
-        Uint(UintTy::U8) => u8::max_value().try_into().ok(),
-        Uint(UintTy::U16) => u16::max_value().try_into().ok(),
-        Uint(UintTy::U32) => u32::max_value().try_into().ok(),
-        Uint(UintTy::U64) => u64::max_value().try_into().ok(),
-        Uint(UintTy::U128) => Some(u128::max_value()),
-        Uint(UintTy::Usize) => usize::max_value().try_into().ok(),
+        Int(IntTy::I8) => i8::MAX.try_into().ok(),
+        Int(IntTy::I16) => i16::MAX.try_into().ok(),
+        Int(IntTy::I32) => i32::MAX.try_into().ok(),
+        Int(IntTy::I64) => i64::MAX.try_into().ok(),
+        Int(IntTy::I128) => i128::MAX.try_into().ok(),
+        Int(IntTy::Isize) => isize::MAX.try_into().ok(),
+        Uint(UintTy::U8) => Some(u8::MAX.into()),
+        Uint(UintTy::U16) => Some(u16::MAX.into()),
+        Uint(UintTy::U32) => Some(u32::MAX.into()),
+        Uint(UintTy::U64) => Some(u64::MAX.into()),
+        Uint(UintTy::U128) => Some(u128::MAX),
+        Uint(UintTy::Usize) => usize::MAX.try_into().ok(),
         _ => None,
     }
 }

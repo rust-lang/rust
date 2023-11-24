@@ -7,7 +7,7 @@ extern crate rustc_span;
 
 use rustc_interface::interface;
 use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes};
-use rustc_span::source_map::FileName;
+use rustc_span::FileName;
 
 use std::path::PathBuf;
 
@@ -62,15 +62,15 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
+        using_internal_features: std::sync::Arc::default(),
         expanded_args: Default::default(),
     };
 
     interface::run_compiler(config, |compiler| {
         let linker = compiler.enter(|queries| {
             queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
-            let ongoing_codegen = queries.ongoing_codegen()?;
-            queries.linker(ongoing_codegen)
+            queries.codegen_and_build_linker()
         });
-        linker.unwrap().link().unwrap();
+        linker.unwrap().link(&compiler.sess, &*compiler.codegen_backend).unwrap();
     });
 }

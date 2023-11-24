@@ -25,7 +25,9 @@ use crate::mir::interpret::{
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::query::erase::{erase, restore, Erase};
-use crate::query::plumbing::{query_ensure, query_get_at, CyclePlaceholder, DynamicQuery};
+use crate::query::plumbing::{
+    query_ensure, query_ensure_error_guaranteed, query_get_at, CyclePlaceholder, DynamicQuery,
+};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -107,10 +109,12 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
+    /// This exists purely for testing the interactions between delay_span_bug and incremental.
     query trigger_delay_span_bug(key: DefId) -> () {
-        desc { "triggering a delay span bug" }
+        desc { "triggering a delay span bug for testing incremental" }
     }
 
+    /// Collects the list of all tools registered using `#![register_tool]`.
     query registered_tools(_: ()) -> &'tcx ty::RegisteredTools {
         arena_cache
         desc { "compute registered tools for crate" }
@@ -249,6 +253,7 @@ rustc_queries! {
             "computing type of opaque `{path}`",
             path = tcx.def_path_str(key),
         }
+        cycle_stash
     }
 
     query type_alias_is_lazy(key: DefId) -> bool {
@@ -283,6 +288,7 @@ rustc_queries! {
         }
     }
 
+    /// The root query triggering all analysis passes like typeck or borrowck.
     query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
         eval_always
         desc { "running analysis passes on this crate" }
@@ -339,7 +345,7 @@ rustc_queries! {
 
     query opaque_types_defined_by(
         key: LocalDefId
-    ) -> &'tcx [LocalDefId] {
+    ) -> &'tcx ty::List<LocalDefId> {
         desc {
             |tcx| "computing the opaque types defined by `{}`",
             tcx.def_path_str(key.to_def_id())
@@ -561,7 +567,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query check_coroutine_obligations(key: LocalDefId) {
+    query check_coroutine_obligations(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
     }
 
@@ -965,8 +971,9 @@ rustc_queries! {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_type_wf(key: LocalModDefId) -> () {
+    query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
+        ensure_forwards_result_if_red
     }
 
     query collect_mod_item_types(key: LocalModDefId) -> () {
@@ -1095,10 +1102,6 @@ rustc_queries! {
     /// of their fields.
     query destructure_const(key: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
         desc { "destructuring type level constant"}
-    }
-
-    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue<'tcx> {
-        desc { "getting a &core::panic::Location referring to a span" }
     }
 
     // FIXME get rid of this with valtrees
@@ -1499,8 +1502,9 @@ rustc_queries! {
         feedable
     }
 
-    query check_well_formed(key: hir::OwnerId) -> () {
+    query check_well_formed(key: hir::OwnerId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key) }
+        ensure_forwards_result_if_red
     }
 
     // The `DefId`s of all non-generic functions and statics in the given crate
@@ -1731,13 +1735,10 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id) }
     }
 
-    query lib_features(_: ()) -> &'tcx LibFeatures {
-        arena_cache
-        desc { "calculating the lib features map" }
-    }
-    query defined_lib_features(_: CrateNum) -> &'tcx [(Symbol, Option<Symbol>)] {
+    query lib_features(_: CrateNum) -> &'tcx LibFeatures {
         desc { "calculating the lib features defined in a crate" }
         separate_provide_extern
+        arena_cache
     }
     query stability_implications(_: CrateNum) -> &'tcx FxHashMap<Symbol, Symbol> {
         arena_cache
@@ -1780,10 +1781,17 @@ rustc_queries! {
         desc { "calculating the missing lang items in a crate" }
         separate_provide_extern
     }
+
+    /// The visible parent map is a map from every item to a visible parent.
+    /// It prefers the shortest visible path to an item.
+    /// Used for diagnostics, for example path trimming.
+    /// The parents are modules, enums or traits.
     query visible_parent_map(_: ()) -> &'tcx DefIdMap<DefId> {
         arena_cache
         desc { "calculating the visible parent map" }
     }
+    /// Collects the "trimmed", shortest accessible paths to all items for diagnostics.
+    /// See the [provider docs](`rustc_middle::ty::print::trimmed_def_paths`) for more info.
     query trimmed_def_paths(_: ()) -> &'tcx FxHashMap<DefId, Symbol> {
         arena_cache
         desc { "calculating trimmed def paths" }
@@ -1880,12 +1888,6 @@ rustc_queries! {
 
     query is_codegened_item(def_id: DefId) -> bool {
         desc { |tcx| "determining whether `{}` needs codegen", tcx.def_path_str(def_id) }
-    }
-
-    /// All items participating in code generation together with items inlined into them.
-    query codegened_and_inlined_items(_: ()) -> &'tcx DefIdSet {
-        eval_always
-        desc { "collecting codegened and inlined items" }
     }
 
     query codegen_unit(sym: Symbol) -> &'tcx CodegenUnit<'tcx> {

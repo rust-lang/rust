@@ -614,9 +614,12 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
         err = error.clone().or(err);
     }
 
-    // Set a hard limit for the expanded tt
-    if let Err(value) = check_tt_count(&tt) {
-        return value;
+    // Skip checking token tree limit for include! macro call
+    if !loc.def.is_include() {
+        // Set a hard limit for the expanded tt
+        if let Err(value) = check_tt_count(&tt) {
+            return value;
+        }
     }
 
     ExpandResult { value: Arc::new(tt), err }

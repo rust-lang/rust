@@ -23,15 +23,15 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if let Some(seek_trait_id) = cx.tcx.get_diagnostic_item(sym::IoSeek) &&
-        implements_trait(cx, ty, seek_trait_id, &[]) &&
-        let ExprKind::Call(func, args1) = arg.kind &&
-        let ExprKind::Path(ref path) = func.kind &&
-        let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id() &&
-        match_def_path(cx, def_id, &paths::STD_IO_SEEKFROM_START) &&
-        args1.len() == 1 &&
-        let ExprKind::Lit(lit) = args1[0].kind &&
-        let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    if let Some(seek_trait_id) = cx.tcx.get_diagnostic_item(sym::IoSeek)
+        && implements_trait(cx, ty, seek_trait_id, &[])
+        && let ExprKind::Call(func, args1) = arg.kind
+        && let ExprKind::Path(ref path) = func.kind
+        && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
+        && match_def_path(cx, def_id, &paths::STD_IO_SEEKFROM_START)
+        && args1.len() == 1
+        && let ExprKind::Lit(lit) = args1[0].kind
+        && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
     {
         let method_call_span = expr.span.with_lo(name_span.lo());
         span_lint_and_then(
