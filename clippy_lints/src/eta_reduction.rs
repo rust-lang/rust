@@ -220,7 +220,8 @@ fn check_inputs(
     params.len() == self_arg.map_or(0, |_| 1) + args.len()
         && params.iter().zip(self_arg.into_iter().chain(args)).all(|(p, arg)| {
             matches!(
-                p.pat.kind,PatKind::Binding(BindingAnnotation::NONE, id, _, None)
+                p.pat.kind,
+                PatKind::Binding(BindingAnnotation::NONE, id, _, None)
                 if path_to_local_id(arg, id)
             )
             // Only allow adjustments which change regions (i.e. re-borrowing).
