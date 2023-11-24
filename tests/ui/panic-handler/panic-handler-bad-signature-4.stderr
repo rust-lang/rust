@@ -4,5 +4,5 @@ error: should have no type parameters
 LL | fn panic<T>(pi: &PanicInfo) -> ! {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

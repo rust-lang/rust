@@ -4,6 +4,6 @@ error[E0271]: type mismatch resolving `<{coroutine@$DIR/issue-94429.rs:17:9: 17:
 LL |     fn run(&mut self) -> Self::Coro {
    |                          ^^^^^^^^^^ expected integer, found `()`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0271`.

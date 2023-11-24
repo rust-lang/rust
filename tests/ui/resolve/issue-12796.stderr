@@ -7,6 +7,6 @@ LL |         fn inner(_: &Self) {
    |                      use of generic parameter from outer item
    |                      can't use `Self` here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0401`.

@@ -13,5 +13,5 @@ error: item has unused generic parameters
 LL | pub fn unused<const T: usize>() {
    |        ^^^^^^ -------------- generic parameter `T` is unused
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

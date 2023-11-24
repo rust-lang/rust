@@ -9,6 +9,6 @@ LL | const BAR: &i32 = unsafe { &*(intrinsics::const_allocate(4, 4) as *mut i32)
                ╾ALLOC0╼                                     │ ╾──╼
            }
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

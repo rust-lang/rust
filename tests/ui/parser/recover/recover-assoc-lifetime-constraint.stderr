@@ -8,5 +8,5 @@ LL |     bar::<Item = 'a>();
    |
    = help: if you meant to specify a trait object, write `dyn Trait + 'lifetime`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

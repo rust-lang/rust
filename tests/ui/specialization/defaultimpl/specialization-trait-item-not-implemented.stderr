@@ -17,6 +17,6 @@ LL |     fn foo_two(&self) -> &'static str;
 LL | impl Foo for MyStruct {}
    | ^^^^^^^^^^^^^^^^^^^^^ missing `foo_two` in implementation
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0046`.

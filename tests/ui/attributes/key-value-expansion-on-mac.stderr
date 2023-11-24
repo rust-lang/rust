@@ -4,5 +4,5 @@ error: unexpected expression: `stringify!(b)`
 LL | #[rustc_dummy = stringify!(b)]
    |                 ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

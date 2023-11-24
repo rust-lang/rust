@@ -13,5 +13,5 @@ error: cannot find associated function `methid` for `Trait`
 LL | fn bar<T: Trait<methid(): Send>>() {}
    |                 ^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

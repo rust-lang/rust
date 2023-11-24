@@ -11,6 +11,6 @@ LL | / impl<T, U> Trait<for<'a> fn(<U as WithAssoc1<'a>>::Assoc, u32)> for (T, U
 LL | |     U: for<'a> WithAssoc1<'a>
    | |_____________________________^ conflicting implementation for `(_, _)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0119`.

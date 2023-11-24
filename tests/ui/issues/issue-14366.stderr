@@ -11,6 +11,6 @@ help: consider borrowing the value, since `&&'static str` can be coerced into `&
 LL |     let _x = &"test" as &dyn (::std::any::Any);
    |              +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

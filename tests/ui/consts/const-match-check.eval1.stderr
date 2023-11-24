@@ -16,6 +16,6 @@ help: alternatively, you could prepend the pattern with an underscore to define 
 LL |     A = { let _0 = 0; 0 },
    |               +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0005`.

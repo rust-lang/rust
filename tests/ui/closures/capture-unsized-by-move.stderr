@@ -9,6 +9,6 @@ LL |         k.to_string();
    = help: the trait `Sized` is not implemented for `(dyn std::fmt::Display + 'static)`
    = note: all values captured by value by a closure must have a statically known size
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

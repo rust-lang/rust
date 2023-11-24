@@ -33,6 +33,6 @@ help: consider relaxing the implicit `Sized` restriction
 LL | fn ref_arg<T: ?Send + ?Sized>(_: &T) {}
    |                     ++++++++
 
-error: aborting due to previous error; 3 warnings emitted
+error: aborting due to 1 previous error; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0277`.

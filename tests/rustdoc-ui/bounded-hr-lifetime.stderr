@@ -4,5 +4,5 @@ error: lifetime bounds cannot be used in this context
 LL |     for<'a: 'b + 'c> &'a (): std::fmt::Debug,
    |             ^^   ^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

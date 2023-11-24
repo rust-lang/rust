@@ -21,6 +21,6 @@ LL |     struct A<X: ?Sized>(X);
    |            ^
    = note: the return type of a function must have a statically known size
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

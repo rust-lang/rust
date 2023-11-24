@@ -7,6 +7,6 @@ LL | enum S {
 LL |         S::B {} => {},
    |            ^ help: there is a variant with a similar name: `A`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

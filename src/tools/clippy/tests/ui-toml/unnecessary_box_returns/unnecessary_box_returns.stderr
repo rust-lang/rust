@@ -8,5 +8,5 @@ LL | fn f() -> Box<[u8; 64]> {
    = note: `-D clippy::unnecessary-box-returns` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_box_returns)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

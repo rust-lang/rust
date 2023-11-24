@@ -6,6 +6,6 @@ LL | static B: [u32; 1] = [0; A.len()];
    |
    = help: consider extracting the value of the `static` to a `const`, and referring to that
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0013`.

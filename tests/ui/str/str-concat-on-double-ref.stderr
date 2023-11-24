@@ -13,6 +13,6 @@ help: create an owned `String` from a string reference
 LL |     let c = a.to_owned() + b;
    |              +++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0369`.

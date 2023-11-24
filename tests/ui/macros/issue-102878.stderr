@@ -7,5 +7,5 @@ LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
    |                                  |unclosed delimiter
    |                                  closing delimiter possibly meant for this
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

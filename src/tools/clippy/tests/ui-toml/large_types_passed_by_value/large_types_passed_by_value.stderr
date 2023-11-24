@@ -7,5 +7,5 @@ LL | fn f2(_v: [u8; 513]) {}
    = note: `-D clippy::large-types-passed-by-value` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::large_types_passed_by_value)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

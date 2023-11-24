@@ -8,6 +8,6 @@ LL |         &mut *(ptr as *mut dyn Fn())
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
    = note: required for the cast from `*mut ()` to `*mut dyn Fn()`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

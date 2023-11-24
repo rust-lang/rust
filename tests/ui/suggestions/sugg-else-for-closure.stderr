@@ -22,6 +22,6 @@ help: try calling `unwrap_or_else` instead
 LL |     let _s = y.unwrap_or_else(|| x.split('.').nth(1).unwrap());
    |                         +++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

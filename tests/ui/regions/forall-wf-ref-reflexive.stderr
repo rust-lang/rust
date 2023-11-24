@@ -4,5 +4,5 @@ error: `T` does not live long enough
 LL |     self_wf2::<T>();
    |     ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

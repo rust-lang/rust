@@ -4,5 +4,5 @@ error: invalid start of unicode escape: `_`
 LL |     '\u{_10FFFF}';
    |         ^ invalid start of unicode escape
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

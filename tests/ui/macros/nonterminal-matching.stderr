@@ -25,5 +25,5 @@ LL | complex_nonterminal!(enum E {});
    = help: try using `:tt` instead in the macro definition
    = note: this error originates in the macro `complex_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

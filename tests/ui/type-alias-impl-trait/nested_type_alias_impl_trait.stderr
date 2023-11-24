@@ -15,5 +15,5 @@ note: opaque type being used as hidden type
 LL |     pub type Foo = impl Debug;
    |                    ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

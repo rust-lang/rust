@@ -15,5 +15,5 @@ LL + #[rustc_allow_const_fn_unstable(const_fn_floating_point_arithmetic)]
 LL | pub const fn foo() -> f32 {
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

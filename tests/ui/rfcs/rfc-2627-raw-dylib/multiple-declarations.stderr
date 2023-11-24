@@ -4,5 +4,5 @@ error: multiple declarations of external function `f` from library `foo.dll` hav
 LL |         fn f(x: i32);
    |         ^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

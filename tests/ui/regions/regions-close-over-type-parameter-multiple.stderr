@@ -11,5 +11,5 @@ LL |     Box::new(v) as Box<dyn SomeTrait + 'a>
    |
    = help: consider adding the following bound: `'a: 'c`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

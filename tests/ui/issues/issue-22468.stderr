@@ -11,6 +11,6 @@ LL |     let x = foo("baz");
 LL | fn foo(file: &str) -> bool {
    | -------------------------- this function of the same name is available here, but it's shadowed by the local binding
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0618`.

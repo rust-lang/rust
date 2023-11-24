@@ -15,6 +15,6 @@ LL | pub trait Fetcher: Send + Sync {
 LL |     fn get<'a>(self: &'a Box<Self>) -> Pin<Box<dyn Future<Output = Vec<u8>> + 'a>>
    |                      ^^^^^^^^^^^^^ ...because method `get`'s `self` parameter cannot be dispatched on
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

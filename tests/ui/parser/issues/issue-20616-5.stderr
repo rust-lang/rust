@@ -9,5 +9,5 @@ help: you might have meant to end the type parameters here
 LL | type Type_5<'a> = Type_1_<'a, ()>,,>;
    |                                 +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,5 +4,5 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `..`
 LL |     let r = 1..2..3;
    |                 ^^ expected one of `.`, `;`, `?`, `else`, or an operator
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,5 +4,5 @@ error: expected identifier, found `32`
 LL |     fn 32() {}
    |        ^^ expected identifier
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

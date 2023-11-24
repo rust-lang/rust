@@ -23,5 +23,5 @@ ALLOC (Rust heap, size: 32, align: 8) {
     0x10 │ 00 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ │ .░░░░░░░░░░░░░░░
 }
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

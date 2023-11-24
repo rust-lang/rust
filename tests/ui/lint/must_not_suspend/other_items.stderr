@@ -6,5 +6,5 @@ LL | #[must_not_suspend]
 LL | mod inner {}
    | ------------ is not a struct, enum, or trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

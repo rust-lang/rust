@@ -13,5 +13,5 @@ LL | | }
    = note: `-D clippy::too-many-lines` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -4,5 +4,5 @@ error: `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn
 LL | #[doc(fake_variadic)]
    |       ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

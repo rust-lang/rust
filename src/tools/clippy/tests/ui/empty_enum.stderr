@@ -8,5 +8,5 @@ LL | enum Empty {}
    = note: `-D clippy::empty-enum` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::empty_enum)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

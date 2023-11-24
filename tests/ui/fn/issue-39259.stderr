@@ -10,6 +10,6 @@ help: parenthesized trait syntax expands to `Fn<(u32,), Output=u32>`
 LL | impl Fn(u32) -> u32 for S {
    |      ^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0229`.

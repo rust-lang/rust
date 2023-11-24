@@ -7,5 +7,5 @@ LL |             println!("{}", crate::unhygienic::MESSAGE);
    = note: `-D clippy::crate-in-macro-def` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::crate_in_macro_def)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

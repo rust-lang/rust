@@ -28,6 +28,6 @@ help: replace the return type so that it matches the trait
 LL |     fn iter(&self) -> impl Iterator<Item = <Self as Iterable>::Item<'_>> + '_ {
    |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0276`.

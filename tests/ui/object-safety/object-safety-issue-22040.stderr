@@ -13,6 +13,6 @@ LL | trait Expr: Debug + PartialEq {
    |       this trait cannot be made into an object...
    = help: only type `SExpr<'x>` implements the trait, consider using it directly instead
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

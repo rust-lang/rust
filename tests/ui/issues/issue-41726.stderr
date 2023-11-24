@@ -7,6 +7,6 @@ LL |         things[src.as_str()].sort();
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<String, Vec<String>>`
    = help: to modify a `HashMap<String, Vec<String>>`, use `.get_mut()`, `.insert()` or the entry API
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0596`.

@@ -9,5 +9,5 @@ help: try switching the order
 LL |     let _ = async move { };
    |             ~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

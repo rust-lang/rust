@@ -9,6 +9,6 @@ LL |     println!("{}", check_ptr_exist!(item, name));
    |
    = note: this error originates in the macro `check_ptr_exist` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0616`.

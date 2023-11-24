@@ -4,5 +4,5 @@ error: error reading Clippy's configuration file: invalid type: integer `42`, ex
 LL | disallowed-names = 42
    |                    ^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

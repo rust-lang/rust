@@ -13,5 +13,5 @@ error: `fn() {uwu}` cannot be used in patterns
 LL |         const { uwu } => {}
    |         ^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

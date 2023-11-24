@@ -6,6 +6,6 @@ LL | pub use foo as foo2;
    |
    = note: consider declaring type or module `foo` with `pub`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0365`.

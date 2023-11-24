@@ -7,6 +7,6 @@ LL | fn foo() -> impl Coroutine<Yield = (), Return = ()> {
 LL |         let mut gen = Box::pin(foo());
    |             ------- coroutine captures itself here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0720`.
