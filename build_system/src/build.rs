@@ -141,8 +141,8 @@ fn build_sysroot_inner(
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
     rustflags.push_str(" -Z force-unstable-if-unmarked");
+    let mut env = env.clone();
     let channel = if sysroot_release_channel {
-        let mut env = env.clone();
         env.insert(
             "RUSTFLAGS".to_string(),
             format!("{} -Zmir-opt-level=3", rustflags),
@@ -160,10 +160,15 @@ fn build_sysroot_inner(
         )?;
         "release"
     } else {
+        env.insert(
+            "RUSTFLAGS".to_string(),
+            rustflags,
+        );
+
         run_command_with_output_and_env(
             &[&"cargo", &"build", &"--target", &config.target],
             Some(start_dir),
-            Some(env),
+            Some(&env),
         )?;
         "debug"
     };
