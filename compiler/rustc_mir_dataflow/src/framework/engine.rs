@@ -31,6 +31,7 @@ use super::{
 pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
 
 /// A dataflow analysis that has converged to fixpoint.
+#[derive(Clone)]
 pub struct Results<'tcx, A, E = EntrySets<'tcx, A>>
 where
     A: Analysis<'tcx>,

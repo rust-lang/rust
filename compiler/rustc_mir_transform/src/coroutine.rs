@@ -680,12 +680,12 @@ fn locals_live_across_suspend_points<'tcx>(
     let borrowed_locals_results =
         MaybeBorrowedLocals.into_engine(tcx, body).pass_name("coroutine").iterate_to_fixpoint();
 
-    let mut borrowed_locals_cursor = borrowed_locals_results.cloned_results_cursor(body);
+    let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
     let mut requires_storage_cursor =
-        MaybeRequiresStorage::new(borrowed_locals_results.cloned_results_cursor(body))
+        MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
             .into_engine(tcx, body)
             .iterate_to_fixpoint()
             .into_results_cursor(body);
@@ -829,7 +829,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &CoroutineSavedLocals,
     always_live_locals: BitSet<Local>,
-    mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'_, 'mir, 'tcx>>,
+    mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
