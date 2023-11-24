@@ -115,6 +115,11 @@ use crate::intrinsics;
 pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.
     ///
+    /// If called on a `dyn Any` trait object
+    /// (or a trait object of a subtrait of `Any`),
+    /// this returns the `TypeId` of the underlying
+    /// concrete type, not that of `dyn Any` itself.
+    ///
     /// # Examples
     ///
     /// ```
