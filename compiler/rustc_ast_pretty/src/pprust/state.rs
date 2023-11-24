@@ -1515,7 +1515,7 @@ impl<'a> State<'a> {
                         TraitBoundModifier::Maybe => {
                             self.word("?");
                         }
-                        TraitBoundModifier::MaybeConst => {
+                        TraitBoundModifier::MaybeConst(_) => {
                             self.word_space("~const");
                         }
                         TraitBoundModifier::MaybeConstNegative => {
