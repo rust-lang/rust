@@ -750,7 +750,10 @@ fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String>
     println!("[TEST] rust-lang/regex example shootout-regex-dna");
     let mut env = env.clone();
     // newer aho_corasick versions throw a deprecation warning
-    let rustflags = format!("{} --cap-lints warn", env.get("RUSTFLAGS").cloned().unwrap_or_default());
+    let rustflags = format!(
+        "{} --cap-lints warn",
+        env.get("RUSTFLAGS").cloned().unwrap_or_default()
+    );
     env.insert("RUSTFLAGS".to_string(), rustflags);
     // Make sure `[codegen mono items] start` doesn't poison the diff
     run_cargo_command(
@@ -799,7 +802,10 @@ fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     println!("[TEST] rust-lang/regex tests");
     let mut env = env.clone();
     // newer aho_corasick versions throw a deprecation warning
-    let rustflags = format!("{} --cap-lints warn", env.get("RUSTFLAGS").cloned().unwrap_or_default());
+    let rustflags = format!(
+        "{} --cap-lints warn",
+        env.get("RUSTFLAGS").cloned().unwrap_or_default()
+    );
     env.insert("RUSTFLAGS".to_string(), rustflags);
     run_cargo_command(
         &[

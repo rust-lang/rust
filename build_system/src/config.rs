@@ -4,7 +4,6 @@ use std::env as std_env;
 
 #[derive(Default)]
 pub struct ConfigInfo {
-    pub target: String,
     pub target_triple: String,
     pub host_triple: String,
     pub rustc_command: Vec<String>,
@@ -30,10 +29,6 @@ impl ConfigInfo {
                         "Expected a value after `--target-triple`, found nothing".to_string()
                     )
                 }
-            },
-            "--target" => match args.next() {
-                Some(arg) if !arg.is_empty() => self.target = arg.to_string(),
-                _ => return Err("Expected a value after `--target`, found nothing".to_string()),
             },
             "--out-dir" => match args.next() {
                 Some(arg) if !arg.is_empty() => {
@@ -83,12 +78,6 @@ impl ConfigInfo {
         };
         self.host_triple = rustc_version_info(Some(&rustc))?.host.unwrap_or_default();
 
-        if !self.target_triple.is_empty() && self.target.is_empty() {
-            self.target = self.target_triple.clone();
-        }
-        if self.target.is_empty() {
-            self.target = self.host_triple.clone();
-        }
         if self.target_triple.is_empty() {
             self.target_triple = self.host_triple.clone();
         }
@@ -223,7 +212,6 @@ impl ConfigInfo {
     pub fn show_usage() {
         println!(
             "\
-    --target [arg]         : Set the target to [arg]
     --target-triple [arg]  : Set the target triple to [arg]
     --out-dir              : Location where the files will be generated
     --release-sysroot      : Build sysroot in release mode

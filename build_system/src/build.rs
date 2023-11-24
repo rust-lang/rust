@@ -43,22 +43,6 @@ impl BuildArg {
                     Self::usage();
                     return Ok(None);
                 }
-                "--target-triple" => {
-                    if args.next().is_some() {
-                        // Handled in config.rs.
-                    } else {
-                        return Err(
-                            "Expected a value after `--target-triple`, found nothing".to_string()
-                        );
-                    }
-                }
-                "--target" => {
-                    if args.next().is_some() {
-                        // Handled in config.rs.
-                    } else {
-                        return Err("Expected a value after `--target`, found nothing".to_string());
-                    }
-                }
                 arg => {
                     if !build_arg.config_info.parse_argument(arg, &mut args)? {
                         return Err(format!("Unknown argument `{}`", arg));
@@ -152,7 +136,7 @@ fn build_sysroot_inner(
                 &"cargo",
                 &"build",
                 &"--target",
-                &config.target,
+                &config.target_triple,
                 &"--release",
             ],
             Some(start_dir),
@@ -160,13 +144,10 @@ fn build_sysroot_inner(
         )?;
         "release"
     } else {
-        env.insert(
-            "RUSTFLAGS".to_string(),
-            rustflags,
-        );
+        env.insert("RUSTFLAGS".to_string(), rustflags);
 
         run_command_with_output_and_env(
-            &[&"cargo", &"build", &"--target", &config.target],
+            &[&"cargo", &"build", &"--target", &config.target_triple],
             Some(start_dir),
             Some(&env),
         )?;
