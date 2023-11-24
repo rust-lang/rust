@@ -74,6 +74,93 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         }
 
+        "llvm.x86.avx2.gather.d.ps"
+        | "llvm.x86.avx2.gather.d.pd"
+        | "llvm.x86.avx2.gather.d.ps.256"
+        | "llvm.x86.avx2.gather.d.pd.256"
+        | "llvm.x86.avx2.gather.q.ps"
+        | "llvm.x86.avx2.gather.q.pd"
+        | "llvm.x86.avx2.gather.q.ps.256"
+        | "llvm.x86.avx2.gather.q.pd.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i64gather_pd&ig_expand=3818
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i64gather_pd&ig_expand=3819
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i64gather_pd&ig_expand=3821
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i64gather_pd&ig_expand=3822
+            // ...
+
+            intrinsic_args!(fx, args => (src, ptr, index, mask, scale); intrinsic);
+
+            let (src_lane_count, src_lane_ty) = src.layout().ty.simd_size_and_type(fx.tcx);
+            let (index_lane_count, index_lane_ty) = index.layout().ty.simd_size_and_type(fx.tcx);
+            let (mask_lane_count, mask_lane_ty) = mask.layout().ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert!(src_lane_ty.is_floating_point());
+            assert!(index_lane_ty.is_integral());
+            assert!(mask_lane_ty.is_floating_point());
+            assert!(ret_lane_ty.is_floating_point());
+            assert_eq!(src_lane_count, mask_lane_count);
+            assert_eq!(src_lane_count, ret_lane_count);
+
+            let lane_clif_ty = fx.clif_type(ret_lane_ty).unwrap();
+            let index_lane_clif_ty = fx.clif_type(index_lane_ty).unwrap();
+            let mask_lane_clif_ty = fx.clif_type(mask_lane_ty).unwrap();
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+
+            let ptr = ptr.load_scalar(fx);
+            let scale = scale.load_scalar(fx);
+            let scale = fx.bcx.ins().uextend(types::I64, scale);
+            for lane_idx in 0..std::cmp::min(src_lane_count, index_lane_count) {
+                let src_lane = src.value_lane(fx, lane_idx).load_scalar(fx);
+                let index_lane = index.value_lane(fx, lane_idx).load_scalar(fx);
+                let mask_lane = mask.value_lane(fx, lane_idx).load_scalar(fx);
+                let mask_lane =
+                    fx.bcx.ins().bitcast(mask_lane_clif_ty.as_int(), MemFlags::new(), mask_lane);
+
+                let if_enabled = fx.bcx.create_block();
+                let if_disabled = fx.bcx.create_block();
+                let next = fx.bcx.create_block();
+                let res_lane = fx.bcx.append_block_param(next, lane_clif_ty);
+
+                let mask_lane = match mask_lane_clif_ty {
+                    types::F32 => fx.bcx.ins().band_imm(mask_lane, 0x8000_0000u64 as i64),
+                    types::F64 => fx.bcx.ins().band_imm(mask_lane, 0x8000_0000_0000_0000u64 as i64),
+                    _ => unreachable!(),
+                };
+                fx.bcx.ins().brif(mask_lane, if_enabled, &[], if_disabled, &[]);
+                fx.bcx.seal_block(if_enabled);
+                fx.bcx.seal_block(if_disabled);
+
+                fx.bcx.switch_to_block(if_enabled);
+                let index_lane = if index_lane_clif_ty != types::I64 {
+                    fx.bcx.ins().sextend(types::I64, index_lane)
+                } else {
+                    index_lane
+                };
+                let offset = fx.bcx.ins().imul(index_lane, scale);
+                let lane_ptr = fx.bcx.ins().iadd(ptr, offset);
+                let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), lane_ptr, 0);
+                fx.bcx.ins().jump(next, &[res]);
+
+                fx.bcx.switch_to_block(if_disabled);
+                fx.bcx.ins().jump(next, &[src_lane]);
+
+                fx.bcx.seal_block(next);
+                fx.bcx.switch_to_block(next);
+
+                fx.bcx.ins().nop();
+
+                ret.place_lane(fx, lane_idx)
+                    .write_cvalue(fx, CValue::by_val(res_lane, ret_lane_layout));
+            }
+
+            for lane_idx in std::cmp::min(src_lane_count, index_lane_count)..ret_lane_count {
+                let zero_lane = fx.bcx.ins().iconst(mask_lane_clif_ty.as_int(), 0);
+                let zero_lane = fx.bcx.ins().bitcast(mask_lane_clif_ty, MemFlags::new(), zero_lane);
+                ret.place_lane(fx, lane_idx)
+                    .write_cvalue(fx, CValue::by_val(zero_lane, ret_lane_layout));
+            }
+        }
+
         "llvm.x86.sse.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
             let (x, y, kind) = match args {
                 [x, y, kind] => (x, y, kind),
