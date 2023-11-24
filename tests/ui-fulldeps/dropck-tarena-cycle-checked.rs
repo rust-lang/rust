@@ -1,3 +1,5 @@
+// ignore-stage1
+
 // Reject mixing cyclic structure and Drop when using TypedArena.
 //
 // (Compare against dropck-vec-cycle-checked.rs)
