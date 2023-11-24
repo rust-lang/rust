@@ -273,15 +273,30 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             );
         }
         "llvm.x86.ssse3.pabs.b.128" | "llvm.x86.ssse3.pabs.w.128" | "llvm.x86.ssse3.pabs.d.128" => {
-            let a = match args {
-                [a] => a,
-                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
-            };
-            let a = codegen_operand(fx, a);
+            intrinsic_args!(fx, args => (a); intrinsic);
 
             simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
                 fx.bcx.ins().iabs(lane)
             });
+        }
+        "llvm.x86.sse2.cvttps2dq" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvttps_epi32&ig_expand=2429
+            intrinsic_args!(fx, args => (a); intrinsic);
+            let a = a.load_scalar(fx);
+
+            // Using inline asm instead of fcvt_to_sint_sat as unrepresentable values are turned
+            // into 0x80000000 for which Cranelift doesn't have a native instruction.
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("cvttps2dq xmm0, xmm0"))],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
         }
         "llvm.x86.addcarry.32" | "llvm.x86.addcarry.64" => {
             intrinsic_args!(fx, args => (c_in, a, b); intrinsic);
