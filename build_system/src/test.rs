@@ -345,8 +345,13 @@ fn run_command_in_vm(
     let sudo_command: &[&dyn AsRef<OsStr>] = &[&"sudo", &"cp", &exe, &vm_exe_path];
     run_command_with_env(sudo_command, None, Some(env))?;
 
-    let mut vm_command: Vec<&dyn AsRef<OsStr>> =
-        vec![&"sudo", &"chroot", &"qemu-m68k-static", &inside_vm_exe_path];
+    let mut vm_command: Vec<&dyn AsRef<OsStr>> = vec![
+        &"sudo",
+        &"chroot",
+        &vm_dir,
+        &"qemu-m68k-static",
+        &inside_vm_exe_path,
+    ];
     vm_command.extend_from_slice(command);
     run_command_with_env(&vm_command, Some(&vm_parent_dir), Some(env))?;
     Ok(())
