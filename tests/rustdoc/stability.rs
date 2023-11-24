@@ -3,9 +3,9 @@
 #![unstable(feature = "test", issue = "none")]
 
 // @has stability/index.html
-// @has - '//ul[@class="item-table"]/li[1]//a' Unstable
-// @has - '//ul[@class="item-table"]/li[2]//a' AaStable
-// @has - '//ul[@class="item-table"]/li[3]//a' ZzStable
+// @has - '//ul[@class="item-table"]/li[1]//a' AaStable
+// @has - '//ul[@class="item-table"]/li[2]//a' ZzStable
+// @has - '//ul[@class="item-table"]/li[3]//a' Unstable
 
 #[stable(feature = "rust2", since = "2.2.2")]
 pub struct AaStable;
