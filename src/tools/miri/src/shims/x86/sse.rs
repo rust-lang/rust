@@ -168,7 +168,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let (op, _) = this.operand_to_simd(op)?;
 
-                let op = this.read_scalar(&this.project_index(&op, 0)?)?.to_f32()?;
+                let op = this.read_immediate(&this.project_index(&op, 0)?)?;
 
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
@@ -180,7 +180,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     _ => unreachable!(),
                 };
 
-                let res = this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
+                let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });

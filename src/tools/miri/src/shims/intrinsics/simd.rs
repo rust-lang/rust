@@ -447,22 +447,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
                             this.float_to_float_or_int(&op, dest.layout)?,
                         // Float-to-int in unchecked mode
-                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
-                            let f = op.to_scalar().to_f32()?;
-                            this.float_to_int_checked(f, dest.layout, Round::TowardZero)
+                        (ty::Float(_), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
+                            this.float_to_int_checked(&op, dest.layout, Round::TowardZero)?
                                 .ok_or_else(|| {
                                     err_ub_format!(
-                                        "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
-                                        dest.layout.ty
-                                    )
-                                })?
-                        }
-                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
-                            let f = op.to_scalar().to_f64()?;
-                            this.float_to_int_checked(f, dest.layout, Round::TowardZero)
-                                .ok_or_else(|| {
-                                    err_ub_format!(
-                                        "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                        "`simd_cast` intrinsic called on {op} which cannot be represented in target type `{:?}`",
                                         dest.layout.ty
                                     )
                                 })?
