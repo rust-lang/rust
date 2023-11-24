@@ -17,7 +17,7 @@ trait Baz2: Foo {
 trait Baz3 {
   const BAR: usize;
   const QUX: Self::BAR;
-  //~^ ERROR found associated const
+  //~^ ERROR expected type, found constant
 }
 
 fn main() {}

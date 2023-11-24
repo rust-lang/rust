@@ -18,8 +18,8 @@ use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, FatalError,
-    MultiSpan,
+    error_code, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    FatalError, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -35,6 +35,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -162,7 +163,7 @@ struct ConvertedBinding<'a, 'tcx> {
 
 #[derive(Debug)]
 enum ConvertedBindingKind<'a, 'tcx> {
-    Equality(ty::Term<'tcx>),
+    Equality(Spanned<ty::Term<'tcx>>),
     Constraint(&'a [hir::GenericBound<'a>]),
 }
 
@@ -595,12 +596,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .map(|binding| {
                 let kind = match &binding.kind {
                     hir::TypeBindingKind::Equality { term } => match term {
-                        hir::Term::Ty(ty) => {
-                            ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty).into())
-                        }
+                        hir::Term::Ty(ty) => ConvertedBindingKind::Equality(respan(
+                            ty.span,
+                            self.ast_ty_to_ty(ty).into(),
+                        )),
                         hir::Term::Const(c) => {
+                            let span = self.tcx().def_span(c.def_id);
                             let c = Const::from_anon_const(self.tcx(), c.def_id);
-                            ConvertedBindingKind::Equality(c.into())
+                            ConvertedBindingKind::Equality(respan(span, c.into()))
                         }
                     },
                     hir::TypeBindingKind::Constraint { bounds } => {
@@ -1055,7 +1058,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 
         let param_name = tcx.hir().ty_param_name(ty_param_def_id);
-        self.one_bound_for_assoc_type(
+        self.one_bound_for_assoc_item(
             || {
                 traits::transitive_bounds_that_define_assoc_item(
                     tcx,
@@ -1067,6 +1070,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             },
             param_name,
             Some(ty_param_def_id),
+            ty::AssocKind::Type,
             assoc_name,
             span,
             None,
@@ -1075,48 +1079,45 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     // Checks that `bounds` contains exactly one element and reports appropriate
     // errors otherwise.
-    #[instrument(level = "debug", skip(self, all_candidates, ty_param_name, is_equality), ret)]
-    fn one_bound_for_assoc_type<I>(
+    #[instrument(level = "debug", skip(self, all_candidates, ty_param_name, binding), ret)]
+    fn one_bound_for_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: impl Display,
         ty_param_def_id: Option<LocalDefId>,
+        assoc_kind: ty::AssocKind,
         assoc_name: Ident,
         span: Span,
-        is_equality: Option<ty::Term<'tcx>>,
+        binding: Option<&ConvertedBinding<'_, 'tcx>>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
+        let tcx = self.tcx();
+
         let mut matching_candidates = all_candidates().filter(|r| {
-            self.trait_defines_associated_item_named(r.def_id(), ty::AssocKind::Type, assoc_name)
-        });
-        let mut const_candidates = all_candidates().filter(|r| {
-            self.trait_defines_associated_item_named(r.def_id(), ty::AssocKind::Const, assoc_name)
+            self.trait_defines_associated_item_named(r.def_id(), assoc_kind, assoc_name)
         });
 
-        let (mut bound, mut next_cand) = match (matching_candidates.next(), const_candidates.next())
-        {
-            (Some(bound), _) => (bound, matching_candidates.next()),
-            (None, Some(bound)) => (bound, const_candidates.next()),
-            (None, None) => {
-                let reported = self.complain_about_assoc_type_not_found(
-                    all_candidates,
-                    &ty_param_name.to_string(),
-                    ty_param_def_id,
-                    assoc_name,
-                    span,
-                );
-                return Err(reported);
-            }
+        let Some(mut bound) = matching_candidates.next() else {
+            let reported = self.complain_about_assoc_item_not_found(
+                all_candidates,
+                &ty_param_name.to_string(),
+                ty_param_def_id,
+                assoc_kind,
+                assoc_name,
+                span,
+                binding,
+            );
+            return Err(reported);
         };
         debug!(?bound);
 
         // look for a candidate that is not the same as our first bound, disregarding
         // whether the bound is const.
+        let mut next_cand = matching_candidates.next();
         while let Some(mut bound2) = next_cand {
             debug!(?bound2);
-            let tcx = self.tcx();
             if bound2.bound_vars() != bound.bound_vars() {
                 break;
             }
@@ -1137,7 +1138,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .map(|(n, arg)| if host_index == n { tcx.consts.true_.into() } else { arg });
 
             if unconsted_args.eq(bound2.skip_binder().args.iter()) {
-                next_cand = matching_candidates.next().or_else(|| const_candidates.next());
+                next_cand = matching_candidates.next();
             } else {
                 break;
             }
@@ -1146,37 +1147,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some(bound2) = next_cand {
             debug!(?bound2);
 
-            let bounds = IntoIterator::into_iter([bound, bound2]).chain(matching_candidates);
-            let mut err = if is_equality.is_some() {
-                // More specific Error Index entry.
-                struct_span_err!(
-                    self.tcx().sess,
-                    span,
-                    E0222,
-                    "ambiguous associated type `{}` in bounds of `{}`",
-                    assoc_name,
-                    ty_param_name
-                )
-            } else {
-                struct_span_err!(
-                    self.tcx().sess,
-                    span,
-                    E0221,
-                    "ambiguous associated type `{}` in bounds of `{}`",
-                    assoc_name,
-                    ty_param_name
-                )
-            };
-            err.span_label(span, format!("ambiguous associated type `{assoc_name}`"));
+            let assoc_kind_str = assoc_kind_str(assoc_kind);
+            let ty_param_name = &ty_param_name.to_string();
+            let mut err = tcx.sess.create_err(crate::errors::AmbiguousAssocItem {
+                span,
+                assoc_kind: assoc_kind_str,
+                assoc_name,
+                ty_param_name,
+            });
+            // More specific Error Index entry.
+            err.code(if binding.is_some() { error_code!(E0222) } else { error_code!(E0221) });
 
+            // FIXME(#97583): Resugar equality bounds to type/const bindings.
+            // FIXME: Turn this into an structured, translateable & more actionable suggestion.
             let mut where_bounds = vec![];
-            for bound in bounds {
+            for bound in [bound, bound2].into_iter().chain(matching_candidates) {
                 let bound_id = bound.def_id();
-                let bound_span = self
-                    .tcx()
+                let bound_span = tcx
                     .associated_items(bound_id)
-                    .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, bound_id)
-                    .and_then(|item| self.tcx().hir().span_if_local(item.def_id));
+                    .find_by_name_and_kind(tcx, assoc_name, assoc_kind, bound_id)
+                    .and_then(|item| tcx.hir().span_if_local(item.def_id));
 
                 if let Some(bound_span) = bound_span {
                     err.span_label(
@@ -1186,11 +1176,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             bound.print_only_trait_path(),
                         ),
                     );
-                    if let Some(constraint) = &is_equality {
-                        where_bounds.push(format!(
-                            "        T: {trait}::{assoc_name} = {constraint}",
-                            trait=bound.print_only_trait_path(),
-                        ));
+                    if let Some(binding) = binding {
+                        match binding.kind {
+                            ConvertedBindingKind::Equality(term) => {
+                                // FIXME(#97583): This isn't syntactically well-formed!
+                                where_bounds.push(format!(
+                                    "        T: {trait}::{assoc_name} = {term}",
+                                    trait = bound.print_only_trait_path(),
+                                    term = term.node,
+                                ));
+                            }
+                            // FIXME: Provide a suggestion.
+                            ConvertedBindingKind::Constraint(_bounds) => {}
+                        }
                     } else {
                         err.span_suggestion_verbose(
                             span.with_hi(assoc_name.span.lo()),
@@ -1201,7 +1199,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 } else {
                     err.note(format!(
-                        "associated type `{ty_param_name}` could derive from `{}`",
+                        "associated {assoc_kind_str} `{ty_param_name}` could derive from `{}`",
                         bound.print_only_trait_path(),
                     ));
                 }
@@ -1220,46 +1218,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         Ok(bound)
-    }
-
-    #[instrument(level = "debug", skip(self, all_candidates, ty_name), ret)]
-    fn one_bound_for_assoc_method(
-        &self,
-        all_candidates: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-        ty_name: impl Display,
-        assoc_name: Ident,
-        span: Span,
-    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
-        let mut matching_candidates = all_candidates.filter(|r| {
-            self.trait_defines_associated_item_named(r.def_id(), ty::AssocKind::Fn, assoc_name)
-        });
-
-        let candidate = match matching_candidates.next() {
-            Some(candidate) => candidate,
-            None => {
-                return Err(self.tcx().sess.emit_err(
-                    crate::errors::ReturnTypeNotationMissingMethod {
-                        span,
-                        ty_name: ty_name.to_string(),
-                        assoc_name: assoc_name.name,
-                    },
-                ));
-            }
-        };
-
-        if let Some(conflicting_candidate) = matching_candidates.next() {
-            return Err(self.tcx().sess.emit_err(
-                crate::errors::ReturnTypeNotationConflictingBound {
-                    span,
-                    ty_name: ty_name.to_string(),
-                    assoc_name: assoc_name.name,
-                    first_bound: candidate.print_only_trait_path(),
-                    second_bound: conflicting_candidate.print_only_trait_path(),
-                },
-            ));
-        }
-
-        Ok(candidate)
     }
 
     // Create a type from a path to an associated type or to an enum variant.
@@ -1423,7 +1381,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     return Err(guar);
                 };
 
-                self.one_bound_for_assoc_type(
+                self.one_bound_for_assoc_item(
                     || {
                         traits::supertraits(
                             tcx,
@@ -1432,6 +1390,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     },
                     kw::SelfUpper,
                     None,
+                    ty::AssocKind::Type,
                     assoc_ident,
                     span,
                     None,
@@ -1512,15 +1471,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         let trait_did = bound.def_id();
-        let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, trait_did)
-        else {
-            // Assume that if it's not matched, there must be a const defined with the same name
-            // but it was used in a type position.
-            let msg = format!("found associated const `{assoc_ident}` when type was expected");
-            let guar = tcx.sess.struct_span_err(span, msg).emit();
-            return Err(guar);
-        };
-
+        let assoc_ty_did = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, trait_did).unwrap();
         let ty = self.projected_ty_from_poly_trait_ref(span, assoc_ty_did, assoc_segment, bound);
 
         if let Some(variant_def_id) = variant_resolution {
@@ -2881,5 +2832,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             tcx.sess.emit_err(AmbiguousLifetimeBound { span });
         }
         Some(r)
+    }
+}
+
+fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
+    match kind {
+        ty::AssocKind::Fn => "function",
+        ty::AssocKind::Const => "constant",
+        ty::AssocKind::Type => "type",
     }
 }
