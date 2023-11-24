@@ -88,12 +88,14 @@ pub(super) fn check<'tcx>(
         }
 
         if clippy_utils::higher::Range::hir(arg_expression).is_some() {
+            let range_expr = snippet(cx, arg_expression.span, "?").to_string();
+
             let sugg = snippet(cx, arg_expression.span, "..");
             span_lint_and_sugg(
                 cx,
                 SINGLE_ELEMENT_LOOP,
                 arg.span,
-                "for loop over a single range inside an array, rather than iterating over the elements in the range directly",
+                format!("This loops only once with {pat_snip} being {range_expr}").as_str(),
                 "did you mean to iterate over the range instead?",
                 sugg.to_string(),
                 Applicability::Unspecified,
