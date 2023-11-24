@@ -407,7 +407,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         span: Span,
         def_id: LocalDefId,
     ) {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
         too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, def_id);
