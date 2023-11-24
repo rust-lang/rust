@@ -79,6 +79,11 @@ impl ConfigInfo {
         self.host_triple = rustc_version_info(Some(&rustc))?.host.unwrap_or_default();
 
         if self.target_triple.is_empty() {
+            if let Some(overwrite) = env.get("OVERWRITE_TARGET_TRIPLE") {
+                self.target_triple = overwrite.clone();
+            }
+        }
+        if self.target_triple.is_empty() {
             self.target_triple = self.host_triple.clone();
         }
 
