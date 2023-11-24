@@ -369,8 +369,8 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         if let (Some(a), Some(b)) = (s1, s2) {
             match (a.is_stable(), b.is_stable()) {
                 (true, true) | (false, false) => {}
-                (false, true) => return Ordering::Less,
-                (true, false) => return Ordering::Greater,
+                (false, true) => return Ordering::Greater,
+                (true, false) => return Ordering::Less,
             }
         }
         let lhs = i1.name.unwrap_or(kw::Empty);
