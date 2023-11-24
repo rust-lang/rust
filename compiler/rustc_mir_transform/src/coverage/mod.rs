@@ -314,21 +314,27 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 }
 
 fn make_coverage_hir_info(tcx: TyCtxt<'_>, def_id: LocalDefId) -> mir::coverage::HirInfo {
-    let source_map = tcx.sess.source_map();
-    let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
-
-    let body_span = get_body_span(tcx, hir_body, def_id);
-
-    let source_file = source_map.lookup_source_file(body_span.lo());
-    let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
-        fn_sig.span.eq_ctxt(body_span)
-            && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
-    }) {
-        Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
-        None => body_span.shrink_to_lo(),
-    };
+    let (maybe_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
+    let body_span = get_body_span(tcx, hir_body, def_id);
+
+    let spans_are_compatible = {
+        let source_map = tcx.sess.source_map();
+        |a: Span, b: Span| {
+            a.eq_ctxt(b)
+                && source_map.lookup_source_file_idx(a.lo())
+                    == source_map.lookup_source_file_idx(b.lo())
+        }
+    };
+
+    let fn_sig_span = if let Some(fn_sig) = maybe_fn_sig
+        && spans_are_compatible(fn_sig.span, body_span)
+    {
+        fn_sig.span.with_hi(body_span.lo())
+    } else {
+        body_span.shrink_to_lo()
+    };
 
     mir::coverage::HirInfo { function_source_hash, fn_sig_span, body_span }
 }
