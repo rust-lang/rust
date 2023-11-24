@@ -1,0 +1,38 @@
+error: the type of the associated constant `K` must not depend on generic parameters
+  --> $DIR/assoc-const-eq-param-in-ty.rs:9:39
+   |
+LL | fn take0<'r>(_: impl Trait<'r, (), 0, K = { &[] }>) {}
+   |          --                           ^ its type must not depend on the lifetime parameter `'r`
+   |          |
+   |          the lifetime parameter `'r` is defined here
+
+error: the type of the associated constant `K` must not depend on generic parameters
+  --> $DIR/assoc-const-eq-param-in-ty.rs:13:42
+   |
+LL | fn take1<A>(_: impl Trait<'static, A, 0, K = { &[] }>) {}
+   |          -                               ^ its type must not depend on the type parameter `A`
+   |          |
+   |          the type parameter `A` is defined here
+
+error: the type of the associated constant `K` must not depend on generic parameters
+  --> $DIR/assoc-const-eq-param-in-ty.rs:17:56
+   |
+LL | fn take2<const Q: usize>(_: impl Trait<'static, (), Q, K = { [] }>) {}
+   |                -                                       ^ its type must not depend on the const parameter `Q`
+   |                |
+   |                the const parameter `Q` is defined here
+
+error: the type of the associated constant `S` must not depend on generic parameters
+  --> $DIR/assoc-const-eq-param-in-ty.rs:30:26
+   |
+LL | fn take3(_: impl Project<S = {}>) {}
+   |                          ^ its type must not depend on the type parameter `Self`
+
+error: the type of the associated constant `S` must not depend on generic parameters
+  --> $DIR/assoc-const-eq-param-in-ty.rs:34:21
+   |
+LL | fn take4<P: Project<S = {}>>(_: P) {}
+   |                     ^ its type must not depend on the type parameter `Self`
+
+error: aborting due to 5 previous errors
+

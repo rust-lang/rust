@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -7,8 +9,9 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits;
+use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 
 use super::{bad_placeholder, is_suggestable_infer_ty};
 use super::{AstConv, ItemCtxt};
@@ -88,6 +91,8 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 // FIXME(associated_const_equality): This isn't correct, it should be the concrete /
                 // instantiated self type. Theoretically, we could search for it in the HIR of the
                 // parent item but that's super fragile and hairy.
+                // If the projected type ends up containing this `Self` parameter, we will reject it
+                // below, so not much harm done.
                 Some(tcx.types.self_param),
                 ty::BoundConstness::NotConst,
             );
@@ -132,7 +137,16 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 parent_args,
             );
 
-            return tcx.type_of(assoc_item.def_id).instantiate(tcx, args);
+            let ty = tcx.type_of(assoc_item.def_id).instantiate(tcx, args);
+
+            // FIXME(const_generics): Support generic const generics.
+            if ty.has_param() {
+                // We can't possibly catch this in the resolver, therefore we need to handle it here.
+                let reported = report_unsupported_generic_associated_const(tcx, ident, ty, hir_id);
+                return Ty::new_error(tcx, reported);
+            }
+
+            return ty;
         }
 
         // This match arm is for when the def_id appears in a GAT whose
@@ -338,6 +352,72 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             format!("const generic parameter not found in {generics:?} at position {arg_idx:?}"),
         );
     }
+}
+
+fn report_unsupported_generic_associated_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    assoc_const: Ident,
+    ty: Ty<'tcx>,
+    hir_id: HirId,
+) -> ErrorGuaranteed {
+    // Just find the first generic parameter. This should be sufficient in practice.
+    let ControlFlow::Break((param_index, param_name)) = ty.visit_with(&mut GenericParamFinder)
+    else {
+        bug!()
+    };
+
+    // FIXME(associated_const_equality): Since we use a `Self` type parameter as a hack in
+    // `anon_const_type_of`, we can't be sure where `Self` comes from: It may come from the
+    // def site or the usage site of the assoc const. Therefore, don't try to find its definition.
+    let (param_kind, param_def_span) = if param_name != rustc_span::symbol::kw::SelfUpper {
+        let body_owner = tcx.hir().enclosing_body_owner(hir_id);
+        let param_def = tcx.generics_of(body_owner).param_at(param_index as _, tcx);
+        (&param_def.kind, Some(tcx.def_ident_span(param_def.def_id).unwrap()))
+    } else {
+        (&ty::GenericParamDefKind::Type { has_default: false, synthetic: false }, None)
+    };
+
+    struct GenericParamFinder;
+
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamFinder {
+        type BreakTy = (u32, Symbol);
+
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::Param(param) = ty.kind() {
+                return ControlFlow::Break((param.index, param.name));
+            }
+
+            ty.super_visit_with(self)
+        }
+
+        fn visit_region(&mut self, re: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ReEarlyParam(param) = re.kind() {
+                return ControlFlow::Break((param.index, param.name));
+            }
+
+            ControlFlow::Continue(())
+        }
+
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ConstKind::Param(param) = ct.kind() {
+                return ControlFlow::Break((param.index, param.name));
+            }
+
+            ct.super_visit_with(self)
+        }
+    }
+
+    tcx.sess.emit_err(crate::errors::ParamInTyOfAssocConst {
+        span: assoc_const.span,
+        assoc_const,
+        param_name,
+        param_kind: match param_kind {
+            ty::GenericParamDefKind::Lifetime => "lifetime",
+            ty::GenericParamDefKind::Type { .. } => "type",
+            ty::GenericParamDefKind::Const { .. } => "const",
+        },
+        param_defined_here_label: param_def_span,
+    })
 }
 
 fn get_path_containing_arg_in_pat<'hir>(

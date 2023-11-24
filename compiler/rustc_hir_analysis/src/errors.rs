@@ -142,6 +142,19 @@ pub struct AssocTypeBindingNotAllowed {
     pub fn_trait_expansion: Option<ParenthesizedFnTraitExpansion>,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_param_in_ty_of_assoc_const)]
+pub(crate) struct ParamInTyOfAssocConst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub assoc_const: Ident,
+    pub param_name: Symbol,
+    pub param_kind: &'static str,
+    #[label(hir_analysis_param_defined_here_label)]
+    pub param_defined_here_label: Option<Span>,
+}
+
 #[derive(Subdiagnostic)]
 #[help(hir_analysis_parenthesized_fn_trait_expansion)]
 pub struct ParenthesizedFnTraitExpansion {

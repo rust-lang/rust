@@ -265,6 +265,10 @@ hir_analysis_only_current_traits_primitive = only traits defined in the current 
 
 hir_analysis_only_current_traits_ty = `{$ty}` is not defined in the current crate
 
+hir_analysis_param_in_ty_of_assoc_const = the type of the associated constant `{$assoc_const}` must not depend on generic parameters
+    .label = its type must not depend on the {$param_kind} parameter `{$param_name}`
+    .param_defined_here_label = the {$param_kind} parameter `{$param_name}` is defined here
+
 hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
 
