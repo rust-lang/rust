@@ -69,8 +69,6 @@ fn fn_sig_and_body(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> (Option<&rustc_hir::FnSig<'_>>, &rustc_hir::Body<'_>) {
-    // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
-    // to HIR for it.
     let hir_node = tcx.hir().get_by_def_id(def_id);
     let (_, fn_body_id) =
         hir::map::associated_body(hir_node).expect("HIR node is a function with body");
@@ -106,7 +104,6 @@ fn get_body_span<'tcx>(
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
-    // FIXME(cjgillot) Stop hashing HIR manually here.
     let owner = hir_body.id().hir_id.owner;
     tcx.hir_owner_nodes(owner)
         .unwrap()
