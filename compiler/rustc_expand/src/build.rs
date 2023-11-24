@@ -4,7 +4,7 @@ use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, PatKind, 
 use rustc_ast::{attr, token, util::literal};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
 
 impl<'a> ExtCtxt<'a> {
@@ -135,7 +135,7 @@ impl<'a> ExtCtxt<'a> {
         ast::GenericBound::Trait(
             self.poly_trait_ref(path.span, path),
             if is_const {
-                ast::TraitBoundModifier::MaybeConst
+                ast::TraitBoundModifier::MaybeConst(DUMMY_SP)
             } else {
                 ast::TraitBoundModifier::None
             },

@@ -2,7 +2,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-and-const-params.rs:9:15
    |
 LL |     fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
-   |               ^^^^^^^^^^^^
+   |               ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-and-const-params.rs:9:8
@@ -14,7 +14,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-and-const-params.rs:27:11
    |
 LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
-   |           ^^^^^^^^^^^^
+   |           ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-and-const-params.rs:27:4
