@@ -74,12 +74,20 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         }
 
-        "llvm.x86.avx2.gather.d.ps"
+        "llvm.x86.avx2.gather.d.d"
+        | "llvm.x86.avx2.gather.d.q"
+        | "llvm.x86.avx2.gather.d.ps"
         | "llvm.x86.avx2.gather.d.pd"
+        | "llvm.x86.avx2.gather.d.d.256"
+        | "llvm.x86.avx2.gather.d.q.256"
         | "llvm.x86.avx2.gather.d.ps.256"
         | "llvm.x86.avx2.gather.d.pd.256"
+        | "llvm.x86.avx2.gather.q.d"
+        | "llvm.x86.avx2.gather.q.q"
         | "llvm.x86.avx2.gather.q.ps"
         | "llvm.x86.avx2.gather.q.pd"
+        | "llvm.x86.avx2.gather.q.d.256"
+        | "llvm.x86.avx2.gather.q.q.256"
         | "llvm.x86.avx2.gather.q.ps.256"
         | "llvm.x86.avx2.gather.q.pd.256" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i64gather_pd&ig_expand=3818
@@ -94,10 +102,8 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let (index_lane_count, index_lane_ty) = index.layout().ty.simd_size_and_type(fx.tcx);
             let (mask_lane_count, mask_lane_ty) = mask.layout().ty.simd_size_and_type(fx.tcx);
             let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert!(src_lane_ty.is_floating_point());
+            assert_eq!(src_lane_ty, ret_lane_ty);
             assert!(index_lane_ty.is_integral());
-            assert!(mask_lane_ty.is_floating_point());
-            assert!(ret_lane_ty.is_floating_point());
             assert_eq!(src_lane_count, mask_lane_count);
             assert_eq!(src_lane_count, ret_lane_count);
 
@@ -122,8 +128,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let res_lane = fx.bcx.append_block_param(next, lane_clif_ty);
 
                 let mask_lane = match mask_lane_clif_ty {
-                    types::F32 => fx.bcx.ins().band_imm(mask_lane, 0x8000_0000u64 as i64),
-                    types::F64 => fx.bcx.ins().band_imm(mask_lane, 0x8000_0000_0000_0000u64 as i64),
+                    types::I32 | types::F32 => {
+                        fx.bcx.ins().band_imm(mask_lane, 0x8000_0000u64 as i64)
+                    }
+                    types::I64 | types::F64 => {
+                        fx.bcx.ins().band_imm(mask_lane, 0x8000_0000_0000_0000u64 as i64)
+                    }
                     _ => unreachable!(),
                 };
                 fx.bcx.ins().brif(mask_lane, if_enabled, &[], if_disabled, &[]);
