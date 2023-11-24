@@ -301,7 +301,7 @@ fn completion_item(
 
     if config.completion_label_details_support() {
         lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
-            detail: None,
+            detail: item.label_detail.as_ref().map(ToString::to_string),
             description: lsp_item.detail.clone(),
         });
     }
