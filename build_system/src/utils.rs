@@ -45,6 +45,8 @@ fn check_exit_status(
             .unwrap_or_default(),
         exit_status.code()
     );
+    let input = input.iter().map(|i| i.as_ref()).collect::<Vec<&OsStr>>();
+    eprintln!("Command `{:?}` failed", input);
     if let Some(output) = output {
         unsafe {
             let stdout = std::str::from_utf8_unchecked(&output.stdout);
