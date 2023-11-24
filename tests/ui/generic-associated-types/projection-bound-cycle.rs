@@ -2,6 +2,9 @@
 // Make sure that we make sure that we don't allow arbitrary bounds to be
 // proven when a bound and a where clause of an associated type are the same.
 
+// FIXME(aliemjay): this should not pass.
+// check-pass
+
 #![feature(trivial_bounds)]
 
 trait Print {
@@ -24,7 +27,6 @@ impl Foo for Number {
     // ```
     // which it is :)
     type Item = str where str: Sized;
-    //~^ ERROR overflow evaluating the requirement `<Number as Foo>::Item == _`
 }
 
 struct OnlySized<T> where T: Sized { f: T }

@@ -1,5 +1,5 @@
 // revisions: base extended
-//[base] check-fail
+//[base] check-pass
 //[extended] check-pass
 
 #![cfg_attr(extended, feature(generic_associated_types_extended))]
@@ -11,7 +11,6 @@ pub trait FromLendingIterator<A>: Sized {
 
 impl<A> FromLendingIterator<A> for Vec<A> {
     fn from_iter<I: for<'x> LendingIterator<Item<'x> = A>>(mut iter: I) -> Self {
-        //[base]~^ impl has stricter
         let mut v = vec![];
         while let Some(item) = iter.next() {
             v.push(item);

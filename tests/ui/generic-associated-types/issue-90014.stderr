@@ -1,22 +1,20 @@
-error[E0477]: the type `&mut ()` does not fulfill the required lifetime
+error[E0478]: lifetime bound not satisfied
   --> $DIR/issue-90014.rs:15:20
    |
-LL |     type Fut<'a>
-   |     ------------ definition of `Fut` from trait
-...
 LL |     type Fut<'a> = impl Future<Output = ()>;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: type must outlive the lifetime `'a` as defined here
+note: lifetime parameter instantiated with the anonymous lifetime as defined here
+  --> $DIR/issue-90014.rs:14:19
+   |
+LL | impl MakeFut for &'_ mut () {
+   |                   ^^
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
   --> $DIR/issue-90014.rs:15:14
    |
 LL |     type Fut<'a> = impl Future<Output = ()>;
    |              ^^
-help: copy the `where` clause predicates from the trait
-   |
-LL |     type Fut<'a> = impl Future<Output = ()> where Self: 'a;
-   |                                             ++++++++++++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0477`.
+For more information about this error, try `rustc --explain E0478`.

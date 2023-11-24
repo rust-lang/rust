@@ -11,26 +11,24 @@ help: consider adding an explicit lifetime bound
 LL |     type Item<'a> = &'a mut T where T: 'a;
    |                               +++++++++++
 
-error[E0477]: the type `StreamingSliceIter<'b, T>` does not fulfill the required lifetime
+error[E0478]: lifetime bound not satisfied
   --> $DIR/issue-84931.rs:14:21
    |
-LL |     type Item<'a> where Self: 'a;
-   |     ------------- definition of `Item` from trait
-...
 LL |     type Item<'a> = &'a mut T;
    |                     ^^^^^^^^^
    |
-note: type must outlive the lifetime `'a` as defined here
+note: lifetime parameter instantiated with the lifetime `'b` as defined here
+  --> $DIR/issue-84931.rs:13:6
+   |
+LL | impl<'b, T: 'b> StreamingIter for StreamingSliceIter<'b, T> {
+   |      ^^
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
   --> $DIR/issue-84931.rs:14:15
    |
 LL |     type Item<'a> = &'a mut T;
    |               ^^
-help: copy the `where` clause predicates from the trait
-   |
-LL |     type Item<'a> = &'a mut T where Self: 'a;
-   |                               ++++++++++++++
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0309, E0477.
+Some errors have detailed explanations: E0309, E0478.
 For more information about an error, try `rustc --explain E0309`.

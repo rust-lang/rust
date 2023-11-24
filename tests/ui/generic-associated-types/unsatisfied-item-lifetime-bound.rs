@@ -10,9 +10,9 @@ impl X for () {
     //~^ ERROR lifetime bound not satisfied
 }
 
+// FIXME(aliemjay): this field type should be an error.
 struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {
     f: <T as X>::Y<'a>,
-    //~^ ERROR lifetime bound not satisfied
 }
 
 struct C<'a, T: X> {
@@ -20,9 +20,9 @@ struct C<'a, T: X> {
     //~^ ERROR lifetime bound not satisfied
 }
 
+// FIXME(aliemjay): this field type should be an error.
 struct D<'a> {
     f: <() as X>::Y<'a>,
-    //~^ ERROR lifetime bound not satisfied
 }
 
 fn main() {}

@@ -2210,6 +2210,7 @@ pub(super) fn check_type_bounds<'tcx>(
     let obligations: Vec<_> = tcx
         .explicit_item_bounds(trait_ty.def_id)
         .iter_instantiated_copied(tcx, rebased_args)
+        .chain(tcx.predicates_of(trait_ty.def_id).instantiate_own(tcx, rebased_args))
         .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
             traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)

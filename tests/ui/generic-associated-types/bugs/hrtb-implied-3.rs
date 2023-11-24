@@ -1,3 +1,5 @@
+// check-pass
+
 trait LendingIterator {
     type Item<'a>
     where
@@ -17,7 +19,6 @@ where
 
 fn fails(iter: &str) {
     trivial_bound(iter);
-    //~^ borrowed data escapes
 }
 
 fn main() {}
