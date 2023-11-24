@@ -135,7 +135,7 @@ pub(crate) fn matches_codepattern(a: &str, b: &str) -> bool {
 
 /// Advances the given peekable `Iterator` until it reaches a non-whitespace character.
 fn scan_for_non_ws_or_end<I: Iterator<Item = char>>(iter: &mut Peekable<I>) {
-    while iter.peek().copied().map(rustc_lexer::is_whitespace) == Some(true) {
+    while iter.peek().copied().is_some_and(rustc_lexer::is_whitespace) {
         iter.next();
     }
 }
