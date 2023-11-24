@@ -2,7 +2,7 @@
 
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 use std::fmt::{self, Debug, Formatter};
 
@@ -183,4 +183,16 @@ pub struct FunctionCoverageInfo {
 
     pub expressions: IndexVec<ExpressionId, Expression>,
     pub mappings: Vec<Mapping>,
+}
+
+/// Coverage information captured from HIR/THIR during MIR building.
+///
+/// A MIR body that does not have this information cannot be instrumented for
+/// coverage.
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct HirInfo {
+    pub function_source_hash: u64,
+    pub fn_sig_span: Span,
+    pub body_span: Span,
 }
