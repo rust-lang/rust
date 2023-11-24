@@ -330,6 +330,7 @@ fn make_coverage_hir_info(tcx: TyCtxt<'_>, def_id: LocalDefId) -> mir::coverage:
 
     let fn_sig_span = if let Some(fn_sig) = maybe_fn_sig
         && spans_are_compatible(fn_sig.span, body_span)
+        && fn_sig.span.lo() <= body_span.lo()
     {
         fn_sig.span.with_hi(body_span.lo())
     } else {
