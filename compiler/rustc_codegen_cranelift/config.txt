@@ -43,6 +43,7 @@ aot.mod_bench
 aot.issue-72793
 aot.issue-59326
 aot.neon
+aot.gen_block_iterate
 
 testsuite.extended_sysroot
 test.rust-random/rand
