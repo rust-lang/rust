@@ -35,7 +35,6 @@
 #![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
-#![feature(never_type)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
