@@ -578,13 +578,11 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             }
             mir::TerminatorKind::SwitchInt { discr, targets } => TerminatorKind::SwitchInt {
                 discr: discr.stable(tables),
-                targets: targets
-                    .iter()
-                    .map(|(value, target)| stable_mir::mir::SwitchTarget {
-                        value,
-                        target: target.as_usize(),
-                    })
-                    .collect(),
+                targets: {
+                    let (value_vec, target_vec) =
+                        targets.iter().map(|(value, target)| (value, target.as_usize())).unzip();
+                    stable_mir::mir::SwitchTargets { value: value_vec, targets: target_vec }
+                },
                 otherwise: targets.otherwise().as_usize(),
             },
             mir::TerminatorKind::UnwindResume => TerminatorKind::Resume,

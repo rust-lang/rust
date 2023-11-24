@@ -1,7 +1,9 @@
 use crate::crate_def::CrateDef;
-use crate::mir::{Operand, Rvalue, StatementKind};
+use crate::mir::{Operand, Rvalue, StatementKind, UnwindAction};
 use crate::ty::{DynKind, FloatTy, IntTy, RigidTy, TyKind, UintTy};
 use crate::{with, Body, CrateItem, Mutability};
+use std::io::Write;
+use std::{io, iter};
 
 use super::{AssertMessage, BinOp, TerminatorKind};
 
@@ -72,21 +74,68 @@ pub fn pretty_statement(statement: &StatementKind) -> String {
     pretty
 }
 
-pub fn pretty_terminator(terminator: &TerminatorKind) -> String {
+pub fn pretty_terminator<W: io::Write>(terminator: &TerminatorKind, w: &mut W) -> io::Result<()> {
+    write!(w, "{}", pretty_terminator_head(terminator))?;
+    let successor_count = terminator.successors().count();
+    let labels = pretty_successor_labels(terminator);
+
+    let show_unwind = !matches!(terminator.unwind(), None | Some(UnwindAction::Cleanup(_)));
+    let fmt_unwind = |fmt: &mut dyn Write| -> io::Result<()> {
+        write!(fmt, "unwind ")?;
+        match terminator.unwind() {
+            None | Some(UnwindAction::Cleanup(_)) => unreachable!(),
+            Some(UnwindAction::Continue) => write!(fmt, "continue"),
+            Some(UnwindAction::Unreachable) => write!(fmt, "unreachable"),
+            Some(UnwindAction::Terminate) => write!(fmt, "terminate"),
+        }
+    };
+
+    match (successor_count, show_unwind) {
+        (0, false) => Ok(()),
+        (0, true) => {
+            write!(w, " -> ")?;
+            fmt_unwind(w)?;
+            Ok(())
+        }
+        (1, false) => {
+            write!(w, " -> {:?}", terminator.successors().next().unwrap())?;
+            Ok(())
+        }
+        _ => {
+            write!(w, " -> [")?;
+            for (i, target) in terminator.successors().enumerate() {
+                if i > 0 {
+                    write!(w, ", ")?;
+                }
+                write!(w, "{}: {:?}", labels[i], target)?;
+            }
+            if show_unwind {
+                write!(w, ", ")?;
+                fmt_unwind(w)?;
+            }
+            write!(w, "]")
+        }
+    }?;
+
+    Ok(())
+}
+
+pub fn pretty_terminator_head(terminator: &TerminatorKind) -> String {
+    use self::TerminatorKind::*;
     let mut pretty = String::new();
     match terminator {
-        TerminatorKind::Goto { .. } => format!("        goto"),
-        TerminatorKind::SwitchInt { discr, .. } => {
+        Goto { .. } => format!("        goto"),
+        SwitchInt { discr, .. } => {
             format!("        switch({})", pretty_operand(discr))
         }
-        TerminatorKind::Resume => format!("        resume"),
-        TerminatorKind::Abort => format!("        abort"),
-        TerminatorKind::Return => format!("        return"),
-        TerminatorKind::Unreachable => format!("        unreachable"),
-        TerminatorKind::Drop { place, .. } => format!("        drop({:?})", place.local),
-        TerminatorKind::Call { func, args, destination, .. } => {
+        Resume => format!("        resume"),
+        Abort => format!("        abort"),
+        Return => format!("        return"),
+        Unreachable => format!("        unreachable"),
+        Drop { place, .. } => format!("        drop(_{:?})", place.local),
+        Call { func, args, destination, .. } => {
             pretty.push_str("        ");
-            pretty.push_str(format!("{} = ", destination.local).as_str());
+            pretty.push_str(format!("_{} = ", destination.local).as_str());
             pretty.push_str(&pretty_operand(func));
             pretty.push_str("(");
             args.iter().enumerate().for_each(|(i, arg)| {
@@ -98,18 +147,45 @@ pub fn pretty_terminator(terminator: &TerminatorKind) -> String {
             pretty.push_str(")");
             pretty
         }
-        TerminatorKind::Assert { cond, expected, msg, target: _, unwind: _ } => {
+        Assert { cond, expected, msg, target: _, unwind: _ } => {
             pretty.push_str("        assert(");
             if !expected {
                 pretty.push_str("!");
             }
-            pretty.push_str(&pretty_operand(cond));
+            pretty.push_str(format!("{} bool),", &pretty_operand(cond)).as_str());
             pretty.push_str(&pretty_assert_message(msg));
             pretty.push_str(")");
             pretty
         }
-        TerminatorKind::CoroutineDrop => format!("        coroutine_drop"),
-        TerminatorKind::InlineAsm { .. } => todo!(),
+        CoroutineDrop => format!("        coroutine_drop"),
+        InlineAsm { .. } => todo!(),
+    }
+}
+
+pub fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
+    use self::TerminatorKind::*;
+    match terminator {
+        Resume | Abort | Return | Unreachable | CoroutineDrop => vec![],
+        Goto { .. } => vec!["".to_string()],
+        SwitchInt { targets, .. } => targets
+            .value
+            .iter()
+            .map(|target| format!("{}", target))
+            .chain(iter::once("otherwise".into()))
+            .collect(),
+        Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
+        Drop { unwind: _, .. } => vec!["return".into()],
+        Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
+            vec!["return".into(), "unwind".into()]
+        }
+        Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
+        Call { target: None, unwind: UnwindAction::Cleanup(_), .. } => vec!["unwind".into()],
+        Call { target: None, unwind: _, .. } => vec![],
+        Assert { unwind: UnwindAction::Cleanup(_), .. } => {
+            vec!["success".into(), "unwind".into()]
+        }
+        Assert { unwind: _, .. } => vec!["success".into()],
+        InlineAsm { .. } => todo!(),
     }
 }
 

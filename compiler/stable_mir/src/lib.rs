@@ -16,7 +16,7 @@
 //!
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
-
+#![feature(type_alias_impl_trait)]
 #[macro_use]
 extern crate scoped_tls;
 
