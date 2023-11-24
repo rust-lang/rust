@@ -11,6 +11,7 @@ use rustc_query_system::Value;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 
+use std::collections::VecDeque;
 use std::fmt::Write;
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
@@ -135,73 +136,79 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
         cycle_error: &CycleError,
         _guar: ErrorGuaranteed,
     ) -> Self {
-        let guar = if cycle_error.cycle[0].query.dep_kind == dep_kinds::layout_of
-            && let Some(def_id) = cycle_error.cycle[0].query.ty_def_id
-            && let Some(def_id) = def_id.as_local()
-            && let def_kind = tcx.def_kind(def_id)
-            && matches!(def_kind, DefKind::Closure)
-            && let Some(coroutine_kind) = tcx.coroutine_kind(def_id)
-        {
-            // FIXME: `def_span` for an fn-like coroutine will point to the fn's body
-            // due to interactions between the desugaring into a closure expr and the
-            // def_span code. I'm not motivated to fix it, because I tried and it was
-            // not working, so just hack around it by grabbing the parent fn's span.
-            let span = if coroutine_kind.is_fn_like() {
-                tcx.def_span(tcx.local_parent(def_id))
-            } else {
-                tcx.def_span(def_id)
-            };
-            let mut diag = struct_span_err!(
-                tcx.sess.dcx(),
-                span,
-                E0733,
-                "recursion in {} {} requires boxing",
-                tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
-                tcx.def_kind_descr(def_kind, def_id.to_def_id()),
-            );
-            for (i, frame) in cycle_error.cycle.iter().enumerate() {
-                if frame.query.dep_kind != dep_kinds::layout_of {
-                    continue;
-                }
-                let Some(frame_def_id) = frame.query.ty_def_id else {
-                    continue;
-                };
-                let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {
-                    continue;
-                };
-                let frame_span = frame
-                    .query
-                    .default_span(cycle_error.cycle[(i + 1) % cycle_error.cycle.len()].span);
-                if frame_span.is_dummy() {
-                    continue;
-                }
-                if i == 0 {
-                    diag.span_label(frame_span, "recursive call here");
-                } else {
-                    let coroutine_span = if frame_coroutine_kind.is_fn_like() {
-                        tcx.def_span(tcx.parent(frame_def_id))
+        let mut cycle: VecDeque<_> = cycle_error.cycle.iter().collect();
+
+        let guar = 'search: {
+            for _ in 0..cycle.len() {
+                if cycle[0].query.dep_kind == dep_kinds::layout_of
+                    && let Some(def_id) = cycle[0].query.ty_def_id
+                    && let Some(def_id) = def_id.as_local()
+                    && let def_kind = tcx.def_kind(def_id)
+                    && matches!(def_kind, DefKind::Closure)
+                    && let Some(coroutine_kind) = tcx.coroutine_kind(def_id)
+                {
+                    // FIXME: `def_span` for an fn-like coroutine will point to the fn's body
+                    // due to interactions between the desugaring into a closure expr and the
+                    // def_span code. I'm not motivated to fix it, because I tried and it was
+                    // not working, so just hack around it by grabbing the parent fn's span.
+                    let span = if coroutine_kind.is_fn_like() {
+                        tcx.def_span(tcx.local_parent(def_id))
                     } else {
-                        tcx.def_span(frame_def_id)
+                        tcx.def_span(def_id)
                     };
-                    let mut multispan = MultiSpan::from_span(coroutine_span);
-                    multispan.push_span_label(frame_span, "...leading to this recursive call");
-                    diag.span_note(
-                        multispan,
-                        format!("which leads to this {}", tcx.def_descr(frame_def_id)),
+                    let mut diag = struct_span_err!(
+                        tcx.sess.dcx(),
+                        span,
+                        E0733,
+                        "recursion in {} {} requires boxing",
+                        tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
+                        tcx.def_kind_descr(def_kind, def_id.to_def_id()),
                     );
+                    for (i, frame) in cycle.iter().enumerate() {
+                        if frame.query.dep_kind != dep_kinds::layout_of {
+                            continue;
+                        }
+                        let Some(frame_def_id) = frame.query.ty_def_id else {
+                            continue;
+                        };
+                        let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {
+                            continue;
+                        };
+                        let frame_span =
+                            frame.query.default_span(cycle[(i + 1) % cycle.len()].span);
+                        if frame_span.is_dummy() {
+                            continue;
+                        }
+                        if i == 0 {
+                            diag.span_label(frame_span, "recursive call here");
+                        } else {
+                            let coroutine_span: Span = if frame_coroutine_kind.is_fn_like() {
+                                tcx.def_span(tcx.parent(frame_def_id))
+                            } else {
+                                tcx.def_span(frame_def_id)
+                            };
+                            let mut multispan = MultiSpan::from_span(coroutine_span);
+                            multispan
+                                .push_span_label(frame_span, "...leading to this recursive call");
+                            diag.span_note(
+                                multispan,
+                                format!("which leads to this {}", tcx.def_descr(frame_def_id)),
+                            );
+                        }
+                    }
+                    // FIXME: We could report a structured suggestion if we had
+                    // enough info here... Maybe we can use a hacky HIR walker.
+                    if matches!(
+                        coroutine_kind,
+                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                    ) {
+                        diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
+                    }
+                    break 'search diag.emit();
+                } else {
+                    cycle.rotate_left(1);
                 }
             }
-            if matches!(
-                coroutine_kind,
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
-            ) {
-                diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
-                diag.note(
-                    "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
-                );
-            }
-            diag.emit()
-        } else {
             report_cycle(tcx.sess, cycle_error).emit()
         };
 

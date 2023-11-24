@@ -8,7 +8,6 @@ LL |             self.foo_recursive(n - 1).await
    |             ------------------------------- recursive call here
    |
    = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
-   = note: consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
 
 error: aborting due to 1 previous error
 
