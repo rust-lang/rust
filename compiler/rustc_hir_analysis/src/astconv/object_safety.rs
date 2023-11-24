@@ -106,6 +106,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
              trait here instead: `trait NewTrait: {} {{}}`",
                 regular_traits
                     .iter()
+                    // FIXME: This should `print_sugared`, but also needs to integrate projection bounds...
                     .map(|t| t.trait_ref().print_only_trait_path().to_string())
                     .collect::<Vec<_>>()
                     .join(" + "),

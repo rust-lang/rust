@@ -2288,7 +2288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(def, _) if def.did().is_local() => {
                     spans.push_span_label(
                         self.tcx.def_span(def.did()),
-                        format!("must implement `{}`", pred.trait_ref.print_only_trait_path()),
+                        format!("must implement `{}`", pred.trait_ref.print_trait_sugared()),
                     );
                 }
                 _ => {}
