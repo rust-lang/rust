@@ -151,7 +151,7 @@ pub struct CtxtInterners<'tcx> {
     clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
-    const_: InternedSet<'tcx, ConstData<'tcx>>,
+    const_: InternedSet<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<FieldIdx, VariantIdx>>,
@@ -203,6 +203,32 @@ impl<'tcx> CtxtInterners<'tcx> {
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
+                        stable_hash,
+                        flags: flags.flags,
+                        outer_exclusive_binder: flags.outer_exclusive_binder,
+                    }))
+                })
+                .0,
+        ))
+    }
+
+    /// Interns a const. (Use `mk_*` functions instead, where possible.)
+    #[allow(rustc::usage_of_ty_tykind)]
+    #[inline(never)]
+    fn intern_const(
+        &self,
+        data: ty::ConstData<'tcx>,
+        sess: &Session,
+        untracked: &Untracked,
+    ) -> Const<'tcx> {
+        Const(Interned::new_unchecked(
+            self.const_
+                .intern(data, |data: ConstData<'_>| {
+                    let flags = super::flags::FlagComputation::for_const(&data.kind, data.ty);
+                    let stable_hash = self.stable_hash(&flags, sess, untracked, &data);
+
+                    InternedInSet(self.arena.alloc(WithCachedTypeInfo {
+                        internee: data,
                         stable_hash,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
@@ -418,11 +444,17 @@ impl<'tcx> CommonLifetimes<'tcx> {
 }
 
 impl<'tcx> CommonConsts<'tcx> {
-    fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
+    fn new(
+        interners: &CtxtInterners<'tcx>,
+        types: &CommonTypes<'tcx>,
+        sess: &Session,
+        untracked: &Untracked,
+    ) -> CommonConsts<'tcx> {
         let mk_const = |c| {
-            Const(Interned::new_unchecked(
-                interners.const_.intern(c, |c| InternedInSet(interners.arena.alloc(c))).0,
-            ))
+            interners.intern_const(
+                c, sess, // This is only used to create a stable hashing context.
+                untracked,
+            )
         };
 
         CommonConsts {
@@ -714,7 +746,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners, s, &untracked);
         let common_lifetimes = CommonLifetimes::new(&interners);
-        let common_consts = CommonConsts::new(&interners, &common_types);
+        let common_consts = CommonConsts::new(&interners, &common_types, s, &untracked);
 
         GlobalCtxt {
             sess: s,
@@ -1533,7 +1565,6 @@ macro_rules! direct_interners {
 // crate only, and have a corresponding `mk_` function.
 direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
-    const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS<FieldIdx, VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
@@ -1710,7 +1741,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_ct_from_kind(self, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.intern_const(ty::ConstData { kind, ty })
+        self.interners.intern_const(
+            ty::ConstData { kind, ty },
+            self.sess,
+            // This is only used to create a stable hashing context.
+            &self.untracked,
+        )
     }
 
     // Avoid this in favour of more specific `Ty::new_*` methods, where possible.
