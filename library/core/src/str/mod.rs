@@ -113,7 +113,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     // 2. begin <= end
     assert!(
         begin <= end,
-        "begin <= end ({} <= {}) when slicing `{}`{}",
+        "begin should be <= end ({} is not <= {}) when slicing `{}`{}",
         begin,
         end,
         s_trunc,
