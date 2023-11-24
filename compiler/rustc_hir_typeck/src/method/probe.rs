@@ -619,7 +619,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: bool) {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+            let hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
             let def_scope =
                 self.tcx.adjust_ident_and_get_scope(name, item.container_id(self.tcx), hir_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
@@ -1939,7 +1939,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let Some(local_def_id) = def_id.as_local() else {
             return false;
         };
-        let hir_id = self.fcx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+        let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir().attrs(hir_id);
         for attr in attrs {
             let sym::doc = attr.name_or_empty() else {

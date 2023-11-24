@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                     if let Some(field_hir_id) = field
                         .did
                         .as_local()
-                        .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id))
+                        .map(|local_def_id| cx.tcx.local_def_id_to_hir_id(local_def_id))
                         && !is_lint_allowed(cx, NON_SEND_FIELDS_IN_SEND_TY, field_hir_id)
                         && let field_ty = field.ty(cx.tcx, impl_trait_args)
                         && !ty_allowed_in_send(cx, field_ty, send_trait)

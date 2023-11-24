@@ -393,7 +393,7 @@ impl IgnoredDiagnosticOption {
         if let (Some(new_item), Some(old_item)) = (new, old) {
             tcx.emit_spanned_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
                 new_item,
                 IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
             );
@@ -511,7 +511,7 @@ impl<'tcx> OnUnimplementedDirective {
             if is_diagnostic_namespace_variant {
                 tcx.emit_spanned_lint(
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                    tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
                     vec![item.span()],
                     MalformedOnUnimplementedAttrLint::new(item.span()),
                 );
@@ -651,7 +651,7 @@ impl<'tcx> OnUnimplementedDirective {
 
                 tcx.emit_spanned_lint(
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                    tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
                     report_span,
                     MalformedOnUnimplementedAttrLint::new(report_span),
                 );
@@ -662,14 +662,14 @@ impl<'tcx> OnUnimplementedDirective {
                 AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
                     tcx.emit_spanned_lint(
                         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                        tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
                         attr.span,
                         MalformedOnUnimplementedAttrLint::new(attr.span),
                     );
                 }
                 _ => tcx.emit_spanned_lint(
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                    tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
                     attr.span,
                     MissingOptionsForOnUnimplementedAttr,
                 ),

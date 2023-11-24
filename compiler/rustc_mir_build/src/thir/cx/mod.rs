@@ -29,7 +29,7 @@ pub(crate) fn thir_body(
     }
     let expr = cx.mirror_expr(body.value);
 
-    let owner_id = hir.local_def_id_to_hir_id(owner_def);
+    let owner_id = tcx.local_def_id_to_hir_id(owner_def);
     if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
         let explicit_params = cx.explicit_params(owner_id, fn_decl, body);
@@ -72,7 +72,7 @@ impl<'tcx> Cx<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Cx<'tcx> {
         let typeck_results = tcx.typeck(def);
         let hir = tcx.hir();
-        let hir_id = hir.local_def_id_to_hir_id(def);
+        let hir_id = tcx.local_def_id_to_hir_id(def);
 
         let body_type = if hir.body_owner_kind(def).is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound

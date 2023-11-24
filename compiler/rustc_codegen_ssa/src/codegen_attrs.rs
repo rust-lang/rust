@@ -57,7 +57,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         );
     }
 
-    let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(did));
+    let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(did));
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
@@ -572,7 +572,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     if !codegen_fn_attrs.no_sanitize.is_empty() {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+                let hir_id = tcx.local_def_id_to_hir_id(did);
                 tcx.struct_span_lint_hir(
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,

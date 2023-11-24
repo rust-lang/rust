@@ -144,7 +144,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                             // Otherwise it may cause unexpected behaviours and ICEs
                             // (https://github.com/rust-lang/rust/issues/86261).
                             let is_reachable_non_generic = matches!(
-                                tcx.hir().get(tcx.hir().local_def_id_to_hir_id(local_def_id)),
+                                tcx.hir().get(tcx.local_def_id_to_hir_id(local_def_id)),
                                 Node::Item(&hir::Item {
                                     kind: hir::ItemKind::Static(..) | hir::ItemKind::Fn(..),
                                     ..

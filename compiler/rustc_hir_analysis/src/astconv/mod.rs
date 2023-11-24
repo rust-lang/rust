@@ -239,7 +239,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def: Option<&ty::GenericParamDef>,
     ) -> ty::Region<'tcx> {
         let tcx = self.tcx();
-        let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
+        let lifetime_name = |def_id| tcx.hir().name(tcx.local_def_id_to_hir_id(def_id));
 
         match tcx.named_bound_var(lifetime.hir_id) {
             Some(rbv::ResolvedArg::StaticLifetime) => tcx.lifetimes.re_static,
@@ -1872,7 +1872,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let parent_def_id = def_id
                 .as_local()
-                .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+                .map(|def_id| tcx.local_def_id_to_hir_id(def_id))
                 .map(|hir_id| tcx.hir().get_parent_item(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);

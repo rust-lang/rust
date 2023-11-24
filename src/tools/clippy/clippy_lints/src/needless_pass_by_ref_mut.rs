@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             return;
         }
 
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
+        let hir_id = cx.tcx.local_def_id_to_hir_id(fn_def_id);
         let is_async = match kind {
             FnKind::ItemFn(.., header) => {
                 if header.is_unsafe() {
@@ -256,7 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     span_lint_hir_and_then(
                         cx,
                         NEEDLESS_PASS_BY_REF_MUT,
-                        cx.tcx.hir().local_def_id_to_hir_id(*fn_def_id),
+                        cx.tcx.local_def_id_to_hir_id(*fn_def_id),
                         sp,
                         "this argument is a mutable reference, but not used mutably",
                         |diag| {

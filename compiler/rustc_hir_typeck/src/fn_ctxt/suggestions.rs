@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.hir().local_def_id_to_hir_id(self.body_id))
+            .get(self.tcx.local_def_id_to_hir_id(self.body_id))
             .copied()
     }
 

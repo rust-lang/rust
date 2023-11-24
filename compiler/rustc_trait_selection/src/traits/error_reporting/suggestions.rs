@@ -871,7 +871,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         let hir = self.tcx.hir();
-        let hir_id = hir.local_def_id_to_hir_id(def_id.as_local()?);
+        let hir_id = self.tcx.local_def_id_to_hir_id(def_id.as_local()?);
         match hir.find_parent(hir_id) {
             Some(hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local), .. })) => {
                 get_name(err, &local.pat.kind)
@@ -2414,7 +2414,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .tcx
                             .parent(coroutine_did)
                             .as_local()
-                            .map(|parent_did| hir.local_def_id_to_hir_id(parent_did))
+                            .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
                             .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
                             .map(|name| {
                                 format!("future returned by `{name}` is not {trait_name}")
@@ -2429,7 +2429,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .tcx
                             .parent(coroutine_did)
                             .as_local()
-                            .map(|parent_did| hir.local_def_id_to_hir_id(parent_did))
+                            .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
                             .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
                             .map(|name| {
                                 format!("iterator returned by `{name}` is not {trait_name}")

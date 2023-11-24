@@ -188,7 +188,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if layout.abi.is_uninhabited() {
         tcx.struct_span_lint_hir(
             UNINHABITED_STATIC,
-            tcx.hir().local_def_id_to_hir_id(def_id),
+            tcx.local_def_id_to_hir_id(def_id),
             span,
             "static of uninhabited type",
             |lint| {
@@ -753,8 +753,7 @@ fn check_impl_items_against_trait<'tcx>(
                 leaf_def.as_ref().is_some_and(|node_item| !node_item.defining_node.is_from_trait());
 
             if !is_implemented_here {
-                let full_impl_span =
-                    tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(impl_id));
+                let full_impl_span = tcx.hir().span_with_body(tcx.local_def_id_to_hir_id(impl_id));
                 match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
                     EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
                         tcx,
@@ -811,8 +810,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if !missing_items.is_empty() {
-            let full_impl_span =
-                tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(impl_id));
+            let full_impl_span = tcx.hir().span_with_body(tcx.local_def_id_to_hir_id(impl_id));
             missing_items_err(tcx, impl_id, &missing_items, full_impl_span);
         }
 
@@ -1083,7 +1081,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             if non_trivial_count > 0 || prev_non_exhaustive_1zst {
                 tcx.struct_span_lint_hir(
                     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-                    tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
+                    tcx.local_def_id_to_hir_id(adt.did().expect_local()),
                     span,
                     "zero-sized fields in `repr(transparent)` cannot \
                     contain external non-exhaustive types",

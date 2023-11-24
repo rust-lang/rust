@@ -661,7 +661,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
         let hir_map = self.infcx.tcx.hir();
         let my_def = self.body.source.def_id();
-        let my_hir = hir_map.local_def_id_to_hir_id(my_def.as_local().unwrap());
+        let my_hir = self.infcx.tcx.local_def_id_to_hir_id(my_def.as_local().unwrap());
         let Some(td) =
             self.infcx.tcx.impl_of_method(my_def).and_then(|x| self.infcx.tcx.trait_id_of_impl(x))
         else {

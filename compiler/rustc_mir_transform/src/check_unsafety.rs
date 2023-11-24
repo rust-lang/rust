@@ -452,7 +452,7 @@ fn check_unused_unsafe(
     };
 
     let body = tcx.hir().body(body_id);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let context = match tcx.hir().fn_sig_by_hir_id(hir_id) {
         Some(sig) if sig.header.unsafety == hir::Unsafety::Unsafe => Context::UnsafeFn(hir_id),
         _ => Context::Safe,
@@ -568,7 +568,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     errors::UnsafeOpInUnsafeFn {
                         details,
                         suggest_unsafe_block: suggest_unsafe_block.then(|| {
-                            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                            let hir_id = tcx.local_def_id_to_hir_id(def_id);
                             let fn_sig = tcx
                                 .hir()
                                 .fn_sig_by_hir_id(hir_id)

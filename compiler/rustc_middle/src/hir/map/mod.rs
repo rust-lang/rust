@@ -116,7 +116,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 
             let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
                 let def_id = LocalDefId { local_def_index };
-                self.map.local_def_id_to_hir_id(def_id).owner
+                self.map.tcx.local_def_id_to_hir_id(def_id).owner
             });
             self.current_id = HirId::make_owner(parent_id.def_id);
 
@@ -168,14 +168,9 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().def_path_hash(def_id)
     }
 
-    #[inline]
-    pub fn local_def_id_to_hir_id(self, def_id: impl Into<LocalDefId>) -> HirId {
-        self.tcx.local_def_id_to_hir_id(def_id.into())
-    }
-
     /// Do not call this function directly. The query should be called.
     pub(super) fn def_kind(self, local_def_id: LocalDefId) -> DefKind {
-        let hir_id = self.local_def_id_to_hir_id(local_def_id);
+        let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
         let node = match self.find(hir_id) {
             Some(node) => node,
             None => match self.def_key(local_def_id).disambiguated_data.data {
@@ -415,7 +410,7 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
-            let hir_id = self.local_def_id_to_hir_id(id);
+            let hir_id = self.tcx.local_def_id_to_hir_id(id);
             span_bug!(
                 self.span(hir_id),
                 "body_owned_by: {} has no associated body",

@@ -26,7 +26,7 @@ pub fn find_anon_type<'tcx>(
     br: &ty::BoundRegionKind,
 ) -> Option<(&'tcx hir::Ty<'tcx>, &'tcx hir::FnSig<'tcx>)> {
     let anon_reg = tcx.is_suitable_region(region)?;
-    let hir_id = tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(anon_reg.def_id);
     let fn_sig = tcx.hir().get(hir_id).fn_sig()?;
 
     fn_sig

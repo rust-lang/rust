@@ -262,7 +262,7 @@ fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo
     let user_provided_sig = typeck_results.user_provided_sigs[&def];
     let captures = typeck_results.closure_min_captures_flattened(def);
     let captures = tcx.arena.alloc_from_iter(captures);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
+    let hir_id = tcx.local_def_id_to_hir_id(def);
     let kind_origin = typeck_results.closure_kind_origins().get(hir_id);
     ClosureTypeInfo { user_provided_sig, captures, kind_origin }
 }

@@ -413,7 +413,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         (None, &[][..], 0)
                     };
                     if let Some(def_id) = def_id
-                        && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
+                        && let Some(node) = hir.find(self.infcx.tcx.local_def_id_to_hir_id(def_id))
                         && let Some(fn_sig) = node.fn_sig()
                         && let Some(ident) = node.ident()
                         && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
@@ -3243,7 +3243,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure(did.to_def_id());
-        let fn_hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
+        let fn_hir_id = self.infcx.tcx.local_def_id_to_hir_id(did);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
 
         // We need to work out which arguments to highlight. We do this by looking

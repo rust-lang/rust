@@ -1811,7 +1811,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // so we manually encode just the information that we need
             for &proc_macro in &tcx.resolutions(()).proc_macros {
                 let id = proc_macro;
-                let proc_macro = hir.local_def_id_to_hir_id(proc_macro);
+                let proc_macro = tcx.local_def_id_to_hir_id(proc_macro);
                 let mut name = hir.name(proc_macro);
                 let span = hir.span(proc_macro);
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,

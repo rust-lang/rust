@@ -507,7 +507,7 @@ impl MissingDoc {
             }
         }
 
-        let attrs = cx.tcx.hir().attrs(cx.tcx.hir().local_def_id_to_hir_id(def_id));
+        let attrs = cx.tcx.hir().attrs(cx.tcx.local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
             cx.emit_spanned_lint(

@@ -215,7 +215,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .map(|placeholder| {
                 if let Some(id) = placeholder.bound.kind.get_id()
                     && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = hir.local_def_id_to_hir_id(placeholder_id)
+                    && let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id)
                     && let Some(generics_impl) = hir.get_parent(gat_hir_id).generics()
                 {
                     Some((gat_hir_id, generics_impl))
@@ -236,7 +236,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
                 if bound_generic_params
                     .iter()
-                    .rfind(|bgp| hir.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
+                    .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
                     .is_some()
                 {
                     for bound in *bounds {

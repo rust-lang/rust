@@ -33,7 +33,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         tcx,
         thir: &*thir,
         param_env: tcx.param_env(def_id),
-        lint_level: tcx.hir().local_def_id_to_hir_id(def_id),
+        lint_level: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
         error: Ok(()),

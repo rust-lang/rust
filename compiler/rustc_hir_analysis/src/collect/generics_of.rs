@@ -14,7 +14,7 @@ use rustc_span::{sym, Span};
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir().get(hir_id);
     let parent_def_id = match node {
