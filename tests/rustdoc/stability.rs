@@ -11,6 +11,7 @@
 pub struct AaStable;
 
 pub struct Unstable {
+    // @has stability/index.html '//ul[@class="item-table"]/li[@class="unstable"]//a' Unstable
     // @has stability/struct.Unstable.html \
     //      '//span[@class="item-info"]//div[@class="stab unstable"]' \
     //      'This is a nightly-only experimental API'

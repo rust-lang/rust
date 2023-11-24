@@ -819,6 +819,9 @@ table,
 .item-table > li > .item-name {
 	padding-right: 1.25rem;
 }
+.item-table > li.unstable > .item-name > a {
+	opacity: 0.70;
+}
 
 .search-results-title {
 	margin-top: 0;

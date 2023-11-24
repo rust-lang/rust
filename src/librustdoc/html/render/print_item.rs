@@ -147,6 +147,7 @@ macro_rules! item_template_methods {
 const ITEM_TABLE_OPEN: &str = "<ul class=\"item-table\">";
 const ITEM_TABLE_CLOSE: &str = "</ul>";
 const ITEM_TABLE_ROW_OPEN: &str = "<li>";
+const ITEM_TABLE_ROW_OPEN_UNSTABLE: &str = "<li class=\"unstable\">";
 const ITEM_TABLE_ROW_CLOSE: &str = "</li>";
 
 // A component in a `use` path, like `string` in std::string::ToString
@@ -527,7 +528,12 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     _ => "",
                 };
 
-                w.write_str(ITEM_TABLE_ROW_OPEN);
+                w.write_str(if is_unstable(myitem, tcx) {
+                    ITEM_TABLE_ROW_OPEN_UNSTABLE
+                } else {
+                    ITEM_TABLE_ROW_OPEN
+                });
+
                 let docs =
                     MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
                 let (docs_before, docs_after) = if docs.is_empty() {
@@ -594,13 +600,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             write!(f, "{}", tag_html("deprecated", "", message))?;
         }
 
-        // The "rustc_private" crates are permanently unstable so it makes no sense
-        // to render "unstable" everywhere.
-        if item
-            .stability(tcx)
-            .as_ref()
-            .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private)
-        {
+        if is_unstable(item, tcx) {
             write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
         }
 
@@ -625,6 +625,12 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             Ok(())
         }
     })
+}
+
+fn is_unstable<'a, 'tcx: 'a>(item: &'a clean::Item, tcx: TyCtxt<'tcx>) -> bool {
+    // The "rustc_private" crates are permanently unstable so it makes no sense
+    // to render "unstable" everywhere.
+    item.stability(tcx).as_ref().is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private)
 }
 
 fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
