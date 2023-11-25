@@ -128,12 +128,12 @@ where
 }
 
 /// A solver for dataflow problems.
-pub struct Engine<'a, 'tcx, A>
+pub struct Engine<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     tcx: TyCtxt<'tcx>,
-    body: &'a mir::Body<'tcx>,
+    body: &'mir mir::Body<'tcx>,
     entry_sets: IndexVec<BasicBlock, A::Domain>,
     pass_name: Option<&'static str>,
     analysis: A,
@@ -147,14 +147,14 @@ where
     apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
 }
 
-impl<'a, 'tcx, A, D, T> Engine<'a, 'tcx, A>
+impl<'mir, 'tcx, A, D, T> Engine<'mir, 'tcx, A>
 where
     A: GenKillAnalysis<'tcx, Idx = T, Domain = D>,
     D: Clone + JoinSemiLattice + GenKill<T> + BitSetExt<T>,
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
-    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, mut analysis: A) -> Self {
+    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, mut analysis: A) -> Self {
         // If there are no back-edges in the control-flow graph, we only ever need to apply the
         // transfer function for each block exactly once (assuming that we process blocks in RPO).
         //
@@ -186,7 +186,7 @@ where
     }
 }
 
-impl<'a, 'tcx, A, D> Engine<'a, 'tcx, A>
+impl<'mir, 'tcx, A, D> Engine<'mir, 'tcx, A>
 where
     A: Analysis<'tcx, Domain = D>,
     D: Clone + JoinSemiLattice,
@@ -196,13 +196,13 @@ where
     ///
     /// Gen-kill problems should use `new_gen_kill`, which will coalesce transfer functions for
     /// better performance.
-    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
+    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, analysis: A) -> Self {
         Self::new(tcx, body, analysis, None)
     }
 
     fn new(
         tcx: TyCtxt<'tcx>,
-        body: &'a mir::Body<'tcx>,
+        body: &'mir mir::Body<'tcx>,
         analysis: A,
         apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
@@ -239,7 +239,6 @@ where
             tcx,
             apply_statement_trans_for_block,
             pass_name,
-            ..
         } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());

@@ -120,7 +120,7 @@ fn check_version(config: &Config) -> Option<String> {
         }
 
         if let Ok(last_warned_id) = fs::read_to_string(&warned_id_path) {
-            if id.to_string() == last_warned_id {
+            if latest_change_id.to_string() == last_warned_id {
                 return None;
             }
         }
@@ -144,7 +144,7 @@ fn check_version(config: &Config) -> Option<String> {
             ));
 
             if io::stdout().is_terminal() {
-                t!(fs::write(warned_id_path, id.to_string()));
+                t!(fs::write(warned_id_path, latest_change_id.to_string()));
             }
         }
     } else {

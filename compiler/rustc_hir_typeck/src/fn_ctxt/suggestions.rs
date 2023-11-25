@@ -2293,12 +2293,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let clone_trait =
                             self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
                         if args.is_empty()
-                            && self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
-                                |did| {
+                            && self
+                                .typeck_results
+                                .borrow()
+                                .type_dependent_def_id(expr.hir_id)
+                                .is_some_and(|did| {
                                     let ai = self.tcx.associated_item(did);
                                     ai.trait_container(self.tcx) == Some(clone_trait)
-                                },
-                            ) == Some(true)
+                                })
                             && segment.ident.name == sym::clone
                         {
                             // If this expression had a clone call when suggesting borrowing

@@ -147,7 +147,7 @@ where
     }
 
     /// Returns the underlying `Results`.
-    pub fn results(&mut self) -> &Results<'tcx, A, R::EntrySets> {
+    pub fn results(&self) -> &Results<'tcx, A, R::EntrySets> {
         self.results.borrow()
     }
 
@@ -164,11 +164,6 @@ where
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn mut_analysis(&mut self) -> &mut A {
         &mut self.results.borrow_mut().analysis
-    }
-
-    /// Returns both the dataflow state at the current location and the `Analysis`.
-    pub fn get_with_analysis(&mut self) -> (&A::Domain, &mut A) {
-        (&self.state, &mut self.results.borrow_mut().analysis)
     }
 
     /// Resets the cursor to hold the entry set for the given basic block.

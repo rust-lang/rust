@@ -23,7 +23,6 @@ use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
-#[derive(Clone, Copy)]
 pub struct MaybeLiveLocals;
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
