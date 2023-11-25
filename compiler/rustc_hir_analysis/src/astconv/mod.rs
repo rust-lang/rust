@@ -1674,10 +1674,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
                         // Check that the self types can be related.
-                        // FIXME(inherent_associated_types): Should we use `eq` here? Method probing uses
-                        // `sup` for this situtation, too. What for? To constrain inference variables?
-                        if ocx.sup(&ObligationCause::dummy(), param_env, impl_ty, self_ty).is_err()
-                        {
+                        if ocx.eq(&ObligationCause::dummy(), param_env, impl_ty, self_ty).is_err() {
                             return false;
                         }
 
