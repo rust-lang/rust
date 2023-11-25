@@ -42,6 +42,7 @@ aot.float-minmax-pass
 aot.mod_bench
 aot.issue-72793
 aot.issue-59326
+aot.polymorphize_coroutine
 aot.neon
 aot.gen_block_iterate
 
