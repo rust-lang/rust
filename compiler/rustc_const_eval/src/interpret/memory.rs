@@ -22,8 +22,8 @@ use crate::fluent_generated as fluent;
 
 use super::{
     alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg,
-    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
-    PointerArithmetic, Provenance, Scalar,
+    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak,
+    Misalignment, Pointer, PointerArithmetic, Provenance, Scalar,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -159,9 +159,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn global_base_pointer(
         &self,
-        ptr: Pointer<AllocId>,
+        ptr: Pointer<CtfeProvenance>,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
-        let alloc_id = ptr.provenance;
+        let alloc_id = ptr.provenance.alloc_id();
         // We need to handle `extern static`.
         match self.tcx.try_get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {

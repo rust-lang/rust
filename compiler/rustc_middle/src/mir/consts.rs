@@ -75,7 +75,7 @@ static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
-    pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
+    pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
             ConstValue::Indirect { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
             ConstValue::Scalar(val) => Some(val),
@@ -161,8 +161,8 @@ impl<'tcx> ConstValue<'tcx> {
                     return Some(&[]);
                 }
                 // Non-empty slice, must have memory. We know this is a relative pointer.
-                let (inner_alloc_id, offset) = ptr.into_parts();
-                let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
+                let (inner_prov, offset) = ptr.into_parts();
+                let data = tcx.global_alloc(inner_prov?.alloc_id()).unwrap_memory();
                 (data, offset.bytes(), offset.bytes() + len)
             }
         };

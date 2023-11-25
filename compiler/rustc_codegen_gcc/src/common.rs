@@ -199,7 +199,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
             }
             Scalar::Ptr(ptr, _size) => {
-                let (alloc_id, offset) = ptr.into_parts();
+                let (prov, offset) = ptr.into_parts(); // we know the `offset` is relative
+                let alloc_id = prov.alloc_id();
                 let base_addr =
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Memory(alloc) => {

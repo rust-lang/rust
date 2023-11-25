@@ -14,14 +14,14 @@ use rustc_middle::ty::Ty;
 use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckAlignMsg, ImmTy,
-    Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
+    alloc_range, mir_assign_valid_types, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance,
+    ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
     Operand, Pointer, PointerArithmetic, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
-pub enum MemPlaceMeta<Prov: Provenance = AllocId> {
+pub enum MemPlaceMeta<Prov: Provenance = CtfeProvenance> {
     /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
     Meta(Scalar<Prov>),
     /// `Sized` types or unsized `extern type`
@@ -49,7 +49,7 @@ impl<Prov: Provenance> MemPlaceMeta<Prov> {
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub(super) struct MemPlace<Prov: Provenance = AllocId> {
+pub(super) struct MemPlace<Prov: Provenance = CtfeProvenance> {
     /// The pointer can be a pure integer, with the `None` provenance.
     pub ptr: Pointer<Option<Prov>>,
     /// Metadata for unsized places. Interpretation is up to the type.
@@ -100,7 +100,7 @@ impl<Prov: Provenance> MemPlace<Prov> {
 
 /// A MemPlace with its layout. Constructing it is only possible in this module.
 #[derive(Clone, Hash, Eq, PartialEq)]
-pub struct MPlaceTy<'tcx, Prov: Provenance = AllocId> {
+pub struct MPlaceTy<'tcx, Prov: Provenance = CtfeProvenance> {
     mplace: MemPlace<Prov>,
     pub layout: TyAndLayout<'tcx>,
 }
@@ -179,7 +179,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(super) enum Place<Prov: Provenance = AllocId> {
+pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Prov>),
 
@@ -195,7 +195,7 @@ pub(super) enum Place<Prov: Provenance = AllocId> {
 }
 
 #[derive(Clone)]
-pub struct PlaceTy<'tcx, Prov: Provenance = AllocId> {
+pub struct PlaceTy<'tcx, Prov: Provenance = CtfeProvenance> {
     place: Place<Prov>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }

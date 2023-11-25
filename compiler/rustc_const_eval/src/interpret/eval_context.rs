@@ -7,7 +7,9 @@ use hir::CRATE_HIR_ID;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
+use rustc_middle::mir::interpret::{
+    CtfeProvenance, ErrorHandled, InvalidMetaKind, ReportedErrorInfo,
+};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
@@ -20,9 +22,9 @@ use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic,
-    Projectable, Provenance, Scalar, StackPopJump,
+    GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
+    Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable,
+    Provenance, Scalar, StackPopJump,
 };
 use crate::errors;
 use crate::util;
@@ -84,7 +86,7 @@ impl Drop for SpanGuard {
 }
 
 /// A stack frame.
-pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
+pub struct Frame<'mir, 'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +158,7 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone)]
-pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
+pub struct LocalState<'tcx, Prov: Provenance = CtfeProvenance> {
     value: LocalValue<Prov>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice.
     /// Avoids computing the layout of locals that are never actually initialized.
@@ -177,7 +179,7 @@ impl<Prov: Provenance> std::fmt::Debug for LocalState<'_, Prov> {
 /// This does not store the type of the local; the type is given by `body.local_decls` and can never
 /// change, so by not storing here we avoid having to maintain that as an invariant.
 #[derive(Copy, Clone, Debug)] // Miri debug-prints these
-pub(super) enum LocalValue<Prov: Provenance = AllocId> {
+pub(super) enum LocalValue<Prov: Provenance = CtfeProvenance> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// A normal, live local.

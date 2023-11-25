@@ -16,8 +16,9 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
-    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy,
-    InterpCx, InterpResult, MPlaceTy, MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance,
+    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, ConstAllocation, CtfeProvenance, FnArg,
+    Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind, Misalignment, OpTy, PlaceTy,
+    Pointer, Provenance,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -513,8 +514,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
 /// (CTFE and ConstProp) use the same instance. Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
-    type Provenance = AllocId;
-    type ProvenanceExtra = ();
+    type Provenance = CtfeProvenance;
+    type ProvenanceExtra = (); // FIXME extract the "immutable" bool?
 
     type ExtraFnVal = !;
 
@@ -567,14 +568,14 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         def_id: DefId,
     ) -> InterpResult<$tcx, Pointer> {
         // Use the `AllocId` associated with the `DefId`. Any actual *access* will fail.
-        Ok(Pointer::new(ecx.tcx.reserve_and_set_static_alloc(def_id), Size::ZERO))
+        Ok(Pointer::new(ecx.tcx.reserve_and_set_static_alloc(def_id).into(), Size::ZERO))
     }
 
     #[inline(always)]
     fn adjust_alloc_base_pointer(
         _ecx: &InterpCx<$mir, $tcx, Self>,
-        ptr: Pointer<AllocId>,
-    ) -> InterpResult<$tcx, Pointer<AllocId>> {
+        ptr: Pointer<CtfeProvenance>,
+    ) -> InterpResult<$tcx, Pointer<CtfeProvenance>> {
         Ok(ptr)
     }
 
@@ -582,7 +583,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn ptr_from_addr_cast(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         addr: u64,
-    ) -> InterpResult<$tcx, Pointer<Option<AllocId>>> {
+    ) -> InterpResult<$tcx, Pointer<Option<CtfeProvenance>>> {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
         // This is correct because no pointers can ever be exposed in compile-time evaluation.
@@ -592,10 +593,10 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     #[inline(always)]
     fn ptr_get_alloc(
         _ecx: &InterpCx<$mir, $tcx, Self>,
-        ptr: Pointer<AllocId>,
+        ptr: Pointer<CtfeProvenance>,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
-        let (alloc_id, offset) = ptr.into_parts();
-        Some((alloc_id, offset, ()))
+        let (prov, offset) = ptr.into_parts();
+        Some((prov.alloc_id(), offset, ()))
     }
 }

@@ -49,7 +49,7 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     pub(super) num_evaluated_steps: usize,
 
     /// The virtual call stack.
-    pub(super) stack: Vec<Frame<'mir, 'tcx, AllocId, ()>>,
+    pub(super) stack: Vec<Frame<'mir, 'tcx>>,
 
     /// We need to make sure consts never point to anything mutable, even recursively. That is
     /// relied on for pattern matching on consts with references.
@@ -638,10 +638,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn expose_ptr(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _ptr: Pointer<AllocId>,
-    ) -> InterpResult<'tcx> {
+    fn expose_ptr(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
         // This is only reachable with -Zunleash-the-miri-inside-of-you.
         throw_unsup_format!("exposing pointers is not possible at compile-time")
     }

@@ -47,7 +47,7 @@ pub fn new_allocation<'tcx>(
         }
         ConstValue::Slice { data, meta } => {
             let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = Pointer::new(alloc_id, rustc_target::abi::Size::ZERO);
+            let ptr = Pointer::new(alloc_id.into(), rustc_target::abi::Size::ZERO);
             let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
             let scalar_meta =
                 rustc_middle::mir::interpret::Scalar::from_target_usize(meta, &tables.tcx);
@@ -112,7 +112,10 @@ pub(super) fn allocation_filter<'tcx>(
         .iter()
         .filter(|a| a.0 >= alloc_range.start && a.0 <= alloc_range.end())
     {
-        ptrs.push((offset.bytes_usize() - alloc_range.start.bytes_usize(), tables.prov(*prov)));
+        ptrs.push((
+            offset.bytes_usize() - alloc_range.start.bytes_usize(),
+            tables.prov(prov.alloc_id()),
+        ));
     }
     Allocation {
         bytes: bytes,

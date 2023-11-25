@@ -240,10 +240,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn expose_ptr(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _ptr: Pointer<AllocId>,
-    ) -> InterpResult<'tcx> {
+    fn expose_ptr(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
         throw_machine_stop_str!("exposing pointers isn't supported in ConstProp")
     }
 

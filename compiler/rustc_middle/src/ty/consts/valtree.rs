@@ -1,5 +1,5 @@
 use super::ScalarInt;
-use crate::mir::interpret::{AllocId, Scalar};
+use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
@@ -67,7 +67,7 @@ impl<'tcx> ValTree<'tcx> {
         Self::Leaf(i)
     }
 
-    pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
+    pub fn try_to_scalar(self) -> Option<Scalar> {
         self.try_to_scalar_int().map(Scalar::Int)
     }
 

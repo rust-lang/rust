@@ -256,12 +256,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Convert a relative (tcx) pointer to a Miri pointer.
     fn ptr_from_rel_ptr(
         &self,
-        ptr: Pointer<AllocId>,
+        ptr: Pointer<CtfeProvenance>,
         tag: BorTag,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
         let ecx = self.eval_context_ref();
 
-        let (alloc_id, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
+        let (prov, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
+        let alloc_id = prov.alloc_id();
         let base_addr = ecx.addr_from_alloc_id(alloc_id)?;
 
         // Add offset with the right kind of pointer-overflowing arithmetic.
