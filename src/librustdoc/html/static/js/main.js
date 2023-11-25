@@ -25,19 +25,9 @@ function showMain() {
     removeClass(document.getElementById(MAIN_ID), "hidden");
 }
 
-function elemIsInParent(elem, parent) {
-    while (elem && elem !== document.body) {
-        if (elem === parent) {
-            return true;
-        }
-        elem = elem.parentElement;
-    }
-    return false;
-}
-
 function blurHandler(event, parentElem, hideCallback) {
-    if (!elemIsInParent(document.activeElement, parentElem) &&
-        !elemIsInParent(event.relatedTarget, parentElem)
+    if (!parentElem.contains(document.activeElement) &&
+        !parentElem.contains(event.relatedTarget)
     ) {
         hideCallback();
     }
@@ -1118,7 +1108,7 @@ function preLoadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            if (!e.TOOLTIP_FORCE_VISIBLE && !elemIsInParent(ev.relatedTarget, e)) {
+            if (!e.TOOLTIP_FORCE_VISIBLE && !e.contains(ev.relatedTarget)) {
                 // See "Tooltip pointer leave gesture" below.
                 setTooltipHoverTimeout(e, false);
                 addClass(wrapper, "fade-out");
@@ -1178,10 +1168,10 @@ function preLoadCss(cssUrl) {
 
     function tooltipBlurHandler(event) {
         if (window.CURRENT_TOOLTIP_ELEMENT &&
-            !elemIsInParent(document.activeElement, window.CURRENT_TOOLTIP_ELEMENT) &&
-            !elemIsInParent(event.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT) &&
-            !elemIsInParent(document.activeElement, window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE) &&
-            !elemIsInParent(event.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE)
+            !window.CURRENT_TOOLTIP_ELEMENT.contains(document.activeElement) &&
+            !window.CURRENT_TOOLTIP_ELEMENT.contains(event.relatedTarget) &&
+            !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(document.activeElement) &&
+            !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(event.relatedTarget)
         ) {
             // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
             // When I click the button on an already-opened tooltip popover, Safari
@@ -1248,8 +1238,8 @@ function preLoadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            if (!e.TOOLTIP_FORCE_VISIBLE &&
-                !elemIsInParent(ev.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT)) {
+            if (!e.TOOLTIP_FORCE_VISIBLE && window.CURRENT_TOOLTIP_ELEMENT &&
+                !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)) {
                 // Tooltip pointer leave gesture:
                 //
                 // Designing a good hover microinteraction is a matter of guessing user
