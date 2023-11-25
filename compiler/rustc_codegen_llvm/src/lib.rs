@@ -40,8 +40,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, FatalError, Handler, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
+use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -92,7 +91,7 @@ mod type_of;
 mod va_arg;
 mod value;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());

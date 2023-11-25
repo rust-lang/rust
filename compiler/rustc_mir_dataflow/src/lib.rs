@@ -13,8 +13,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_middle::ty;
 
 pub use self::drop_flag_effects::{
@@ -40,7 +38,7 @@ pub mod storage;
 pub mod un_derefer;
 pub mod value_analysis;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub struct MoveDataParamEnv<'tcx> {
     pub move_data: MoveData<'tcx>,

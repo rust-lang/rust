@@ -22,8 +22,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
@@ -98,7 +97,7 @@ use places_conflict::{places_conflict, PlaceConflictBias};
 use region_infer::RegionInferenceContext;
 use renumber::RegionCtxt;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]

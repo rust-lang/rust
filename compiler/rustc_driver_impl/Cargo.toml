@@ -16,7 +16,6 @@ rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_codes = { path = "../rustc_error_codes" }
-rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }

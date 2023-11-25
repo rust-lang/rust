@@ -37,12 +37,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{
-    Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
-};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::NonMacroAttrKind;
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
@@ -90,7 +87,7 @@ mod late;
 mod macros;
 pub mod rustdoc;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 #[derive(Debug)]
 enum Weak {

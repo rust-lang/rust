@@ -91,8 +91,6 @@ mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -139,7 +137,7 @@ pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintPass, LintVec};
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);

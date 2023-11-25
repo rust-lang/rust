@@ -13,9 +13,6 @@
 #[macro_use]
 extern crate tracing;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
-
 mod callbacks;
 mod errors;
 pub mod interface;
@@ -32,4 +29,4 @@ pub use queries::Queries;
 #[cfg(test)]
 mod tests;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

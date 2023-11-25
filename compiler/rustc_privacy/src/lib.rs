@@ -19,8 +19,6 @@ use rustc_ast::MacroDef;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
@@ -49,7 +47,7 @@ use errors::{
     UnnamedItemIsPrivate,
 };
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.

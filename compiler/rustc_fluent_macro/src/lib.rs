@@ -61,6 +61,10 @@ mod fluent;
 /// );
 /// err.emit();
 /// ```
+///
+/// Note: any crate using this macro must also have a dependency on
+/// `rustc_errors`, because the generated code refers to things from that
+/// crate.
 #[proc_macro]
 pub fn fluent_messages(input: TokenStream) -> TokenStream {
     fluent::fluent_messages(input)

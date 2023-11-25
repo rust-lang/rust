@@ -27,8 +27,6 @@ extern crate rustc_middle;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -60,7 +58,7 @@ pub mod mono_item;
 pub mod target_features;
 pub mod traits;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
