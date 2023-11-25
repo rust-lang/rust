@@ -4,5 +4,5 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

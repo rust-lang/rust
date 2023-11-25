@@ -10,5 +10,5 @@ LL |     recursive!()
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`infinite_macro_expansion`)
    = note: this error originates in the macro `recursive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

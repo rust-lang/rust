@@ -14,6 +14,6 @@ LL | trait Y<'a, T: ?Sized>
 LL |     for<'b> <Self as Y<'b, T>>::V: Clone,
    |                                    ^^^^^ required by this bound in `Y`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

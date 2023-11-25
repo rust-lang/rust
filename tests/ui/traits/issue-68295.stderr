@@ -12,6 +12,6 @@ LL |     input.into_owned()
    = help: consider constraining the associated type `<() as Allocator<R, C>>::Buffer` to `u32`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

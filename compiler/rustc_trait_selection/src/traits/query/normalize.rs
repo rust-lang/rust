@@ -160,14 +160,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ct.kind() {
-            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
-                self.escaping =
-                    self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
-                ControlFlow::Continue(())
-            }
-            _ => ct.super_visit_with(self),
+        if ct.outer_exclusive_binder() > self.outer_index {
+            self.escaping = self
+                .escaping
+                .max(ct.outer_exclusive_binder().as_usize() - self.outer_index.as_usize());
         }
+        ControlFlow::Continue(())
     }
 }
 

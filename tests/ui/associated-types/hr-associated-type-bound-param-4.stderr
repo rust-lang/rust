@@ -14,6 +14,6 @@ LL | trait X<'a, T>
 LL |     for<'b> <(T,) as X<'b, T>>::U: Clone,
    |                                    ^^^^^ required by this bound in `X`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

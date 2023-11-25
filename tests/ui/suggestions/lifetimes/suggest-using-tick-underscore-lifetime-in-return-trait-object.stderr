@@ -11,5 +11,5 @@ help: to declare that the trait object captures data from argument `value`, you 
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any + '_> {
    |                                          ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

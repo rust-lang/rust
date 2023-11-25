@@ -1369,7 +1369,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             GenericBound::Trait(
                                 ty,
                                 modifier @ (TraitBoundModifier::None
-                                | TraitBoundModifier::MaybeConst
+                                | TraitBoundModifier::MaybeConst(_)
                                 | TraitBoundModifier::Negative),
                             ) => {
                                 Some(this.lower_poly_trait_ref(ty, itctx, modifier.to_constness()))
@@ -2227,7 +2227,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_bound_modifier(&mut self, f: TraitBoundModifier) -> hir::TraitBoundModifier {
         match f {
             TraitBoundModifier::None => hir::TraitBoundModifier::None,
-            TraitBoundModifier::MaybeConst => hir::TraitBoundModifier::MaybeConst,
+            TraitBoundModifier::MaybeConst(_) => hir::TraitBoundModifier::MaybeConst,
 
             TraitBoundModifier::Negative => {
                 if self.tcx.features().negative_bounds {

@@ -11,5 +11,5 @@ LL |     underscore!();
    |
    = note: this error originates in the macro `underscore` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -7,6 +7,6 @@ LL | type ReturnType<'a> = impl std::future::Future<Output = u32> + 'a;
 LL |         &inner
    |         ^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0792`.

@@ -8,5 +8,5 @@ LL |     main();
    = note: `-D clippy::main-recursion` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::main_recursion)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

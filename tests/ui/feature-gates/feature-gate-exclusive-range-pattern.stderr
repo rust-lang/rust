@@ -7,6 +7,6 @@ LL |         0 .. 3 => {}
    = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -8,6 +8,6 @@ LL |     for i in 0.2 {
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required for `{float}` to implement `IntoIterator`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

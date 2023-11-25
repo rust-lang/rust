@@ -9,5 +9,5 @@ help: types that don't start with an identifier need to be surrounded with angle
 LL |     let _ = option.map(<[_]>::to_vec);
    |                        +   +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

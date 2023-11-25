@@ -22,6 +22,6 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() where Self: Sized {}
    |              +++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

@@ -2,7 +2,7 @@ error: `~const` is not allowed here
   --> $DIR/assoc-type-const-bound-usage.rs:7:17
    |
 LL |     type Assoc: ~const Foo;
-   |                 ^^^^^^^^^^
+   |                 ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 

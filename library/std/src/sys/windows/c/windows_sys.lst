@@ -2,6 +2,7 @@
 --config flatten std
 --filter
 // tidy-alphabetical-start
+!Windows.Win32.Foundation.INVALID_HANDLE_VALUE
 Windows.Wdk.Storage.FileSystem.FILE_COMPLETE_IF_OPLOCKED
 Windows.Wdk.Storage.FileSystem.FILE_CONTAINS_EXTENDED_CREATE_INFORMATION
 Windows.Wdk.Storage.FileSystem.FILE_CREATE
@@ -1923,7 +1924,6 @@ Windows.Win32.Foundation.HANDLE_FLAG_INHERIT
 Windows.Win32.Foundation.HANDLE_FLAG_PROTECT_FROM_CLOSE
 Windows.Win32.Foundation.HANDLE_FLAGS
 Windows.Win32.Foundation.HMODULE
-Windows.Win32.Foundation.INVALID_HANDLE_VALUE
 Windows.Win32.Foundation.MAX_PATH
 Windows.Win32.Foundation.NO_ERROR
 Windows.Win32.Foundation.NTSTATUS
@@ -2483,7 +2483,6 @@ Windows.Win32.System.SystemInformation.GetSystemTimeAsFileTime
 Windows.Win32.System.SystemInformation.GetWindowsDirectoryW
 Windows.Win32.System.SystemInformation.PROCESSOR_ARCHITECTURE
 Windows.Win32.System.SystemInformation.SYSTEM_INFO
-Windows.Win32.System.SystemServices.ALL_PROCESSOR_GROUPS
 Windows.Win32.System.SystemServices.DLL_PROCESS_DETACH
 Windows.Win32.System.SystemServices.DLL_THREAD_DETACH
 Windows.Win32.System.SystemServices.EXCEPTION_MAXIMUM_PARAMETERS
@@ -2492,6 +2491,7 @@ Windows.Win32.System.SystemServices.IO_REPARSE_TAG_SYMLINK
 Windows.Win32.System.Threading.ABOVE_NORMAL_PRIORITY_CLASS
 Windows.Win32.System.Threading.AcquireSRWLockExclusive
 Windows.Win32.System.Threading.AcquireSRWLockShared
+Windows.Win32.System.Threading.ALL_PROCESSOR_GROUPS
 Windows.Win32.System.Threading.BELOW_NORMAL_PRIORITY_CLASS
 Windows.Win32.System.Threading.CREATE_BREAKAWAY_FROM_JOB
 Windows.Win32.System.Threading.CREATE_DEFAULT_ERROR_MODE

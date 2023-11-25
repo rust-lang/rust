@@ -7,6 +7,6 @@ LL |     let Foo(ref mut y): Foo<fn(&'static str)> = x;
    = note: expected fn pointer `for<'a> fn(&'a str)`
               found fn pointer `fn(&str)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

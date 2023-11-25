@@ -301,7 +301,7 @@ pub enum TraitBoundModifier {
     Maybe,
 
     /// `~const Trait`
-    MaybeConst,
+    MaybeConst(Span),
 
     /// `~const !Trait`
     //
@@ -317,8 +317,7 @@ pub enum TraitBoundModifier {
 impl TraitBoundModifier {
     pub fn to_constness(self) -> Const {
         match self {
-            // FIXME(effects) span
-            Self::MaybeConst => Const::Yes(DUMMY_SP),
+            Self::MaybeConst(span) => Const::Yes(span),
             _ => Const::No,
         }
     }
@@ -3155,7 +3154,7 @@ mod size_asserts {
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 56);
+    static_assert_size!(GenericBound, 64);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 136);
     static_assert_size!(Item, 136);

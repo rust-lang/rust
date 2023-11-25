@@ -10,6 +10,6 @@ LL |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
    |                                                       variant or associated item not found in `Delicious`
    |                                                       help: there is a variant with a similar name: `Pie`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

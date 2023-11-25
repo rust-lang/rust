@@ -7,6 +7,6 @@ LL |     unsafe { mem::transmute(x) }
    = note: source type: `[usize; 2]` (N bits)
    = note: target type: `Bar<U>` (N bits)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0512`.

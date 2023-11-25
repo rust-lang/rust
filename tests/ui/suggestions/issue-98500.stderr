@@ -19,6 +19,6 @@ LL | pub trait B where
    = help: consider moving `f` to another trait
    = help: consider moving `f2` to another trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

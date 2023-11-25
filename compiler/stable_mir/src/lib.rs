@@ -32,11 +32,15 @@ use self::ty::{
 extern crate scoped_tls;
 
 #[macro_use]
+pub mod crate_def;
+#[macro_use]
 pub mod error;
 pub mod mir;
 pub mod ty;
 pub mod visitor;
 
+pub use crate::crate_def::CrateDef;
+pub use crate::crate_def::DefId;
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::pretty::function_name;
 use crate::mir::Mutability;
@@ -51,15 +55,11 @@ pub type Symbol = String;
 /// The number that identifies a crate.
 pub type CrateNum = usize;
 
-/// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DefId(usize);
-
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DefId")
             .field("id", &self.0)
-            .field("name", &with(|cx| cx.name_of_def_id(*self)))
+            .field("name", &with(|cx| cx.def_name(*self, false)))
             .finish()
     }
 }
@@ -100,9 +100,10 @@ pub enum ItemKind {
 
 pub type Filename = String;
 
-/// Holds information about an item in the crate.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct CrateItem(pub DefId);
+crate_def! {
+    /// Holds information about an item in a crate.
+    pub CrateItem;
+}
 
 impl CrateItem {
     pub fn body(&self) -> mir::Body {
@@ -111,10 +112,6 @@ impl CrateItem {
 
     pub fn span(&self) -> Span {
         with(|cx| cx.span_of_an_item(self.0))
-    }
-
-    pub fn name(&self) -> String {
-        with(|cx| cx.name_of_def_id(self.0))
     }
 
     pub fn kind(&self) -> ItemKind {
@@ -205,7 +202,7 @@ pub trait Context {
     fn find_crates(&self, name: &str) -> Vec<Crate>;
 
     /// Returns the name of given `DefId`
-    fn name_of_def_id(&self, def_id: DefId) -> String;
+    fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol;
 
     /// Returns printable, human readable form of `Span`
     fn span_to_string(&self, span: Span) -> String;
@@ -260,7 +257,7 @@ pub trait Context {
     fn instance_def_id(&self, instance: InstanceDef) -> DefId;
 
     /// Get the instance mangled name.
-    fn instance_mangled_name(&self, instance: InstanceDef) -> String;
+    fn instance_mangled_name(&self, instance: InstanceDef) -> Symbol;
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
@@ -294,6 +291,8 @@ pub trait Context {
 
     /// Retrieve the id for the virtual table.
     fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
+    fn krate(&self, def_id: DefId) -> Crate;
+    fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

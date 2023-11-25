@@ -15,6 +15,6 @@ LL | |     }> = x;
    = note: expected struct `Test<Foo { value: 3, nested: &Bar::<i32>(5) }>`
               found struct `Test<Foo { value: 3, nested: &Bar::<i32>(4) }>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

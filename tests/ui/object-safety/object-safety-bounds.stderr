@@ -12,6 +12,6 @@ LL | trait X {
 LL |     type U: PartialEq<Self>;
    |             ^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

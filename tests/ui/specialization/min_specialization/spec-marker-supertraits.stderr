@@ -4,5 +4,5 @@ error: cannot specialize on trait `HasMethod`
 LL | impl<T: Marker> Spec for T {
    |         ^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -6,6 +6,6 @@ LL | impl<'a, T: MyPredicate<'a>> MyTrait<'a> for T {}
 LL | impl<'a, T> MyTrait<'a> for &'a T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0119`.

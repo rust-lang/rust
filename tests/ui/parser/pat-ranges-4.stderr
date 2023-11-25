@@ -4,5 +4,5 @@ error: expected one of `...`, `..=`, `..`, `:`, `;`, `=`, or `|`, found `-`
 LL |     let 10 - 3 ..= 10 = 8;
    |            ^ expected one of 7 possible tokens
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

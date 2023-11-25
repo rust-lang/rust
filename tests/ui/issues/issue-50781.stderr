@@ -20,5 +20,5 @@ note: the lint level is defined here
 LL | #![deny(where_clauses_object_safety)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

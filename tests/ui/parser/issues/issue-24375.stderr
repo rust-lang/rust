@@ -4,5 +4,5 @@ error: expected one of `=>`, `@`, `if`, or `|`, found `[`
 LL |         tmp[0] => {}
    |            ^ expected one of `=>`, `@`, `if`, or `|`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

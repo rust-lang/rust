@@ -6,7 +6,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cmp::Ordering::{self, Greater, Less};
+use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::fmt;
 use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
@@ -2854,14 +2854,13 @@ impl<T> [T] {
             // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
-            // The reason why we use if/else control flow rather than match
-            // is because match reorders comparison operations, which is perf sensitive.
-            // This is x86 asm for u8: https://rust.godbolt.org/z/8Y8Pra.
-            if cmp == Less {
-                left = mid + 1;
-            } else if cmp == Greater {
-                right = mid;
-            } else {
+            // This control flow produces conditional moves, which results in
+            // fewer branches and instructions than if/else or matching on
+            // cmp::Ordering.
+            // This is x86 asm for u8: https://rust.godbolt.org/z/698eYffTx.
+            left = if cmp == Less { mid + 1 } else { left };
+            right = if cmp == Greater { mid } else { right };
+            if cmp == Equal {
                 // SAFETY: same as the `get_unchecked` above
                 unsafe { crate::intrinsics::assume(mid < self.len()) };
                 return Ok(mid);

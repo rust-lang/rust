@@ -14,5 +14,5 @@ LL - #![deny(missing_docs)]
 LL + #[deny(missing_docs)]
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

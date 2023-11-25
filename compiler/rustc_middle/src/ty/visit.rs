@@ -1,4 +1,4 @@
-use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 use rustc_errors::ErrorGuaranteed;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -440,16 +440,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasEscapingVarsVisitor {
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        // we don't have a `visit_infer_const` callback, so we have to
-        // hook in here to catch this case (annoying...), but
-        // otherwise we do want to remember to visit the rest of the
-        // const, as it has types/regions embedded in a lot of other
-        // places.
-        match ct.kind() {
-            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
-                ControlFlow::Break(FoundEscapingVars)
-            }
-            _ => ct.super_visit_with(self),
+        // If the outer-exclusive-binder is *strictly greater* than
+        // `outer_index`, that means that `ct` contains some content
+        // bound at `outer_index` or above (because
+        // `outer_exclusive_binder` is always 1 higher than the
+        // content in `t`). Therefore, `t` has some escaping vars.
+        if ct.outer_exclusive_binder() > self.outer_index {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            ControlFlow::Continue(())
         }
     }
 
@@ -529,9 +528,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasTypeFlagsVisitor {
     #[inline]
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         // Note: no `super_visit_with` call.
-        let flags = FlagComputation::for_const(c);
-        trace!(r.flags=?flags);
-        if flags.intersects(self.flags) {
+        if c.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::Continue(())

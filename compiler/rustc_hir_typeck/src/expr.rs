@@ -526,14 +526,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
 
-        if let ty::FnDef(did, callee_args) = *ty.kind() {
+        if let ty::FnDef(did, _) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
 
-            // HACK: whenever we get a FnDef in a non-const context, enforce effects to get the
-            // default `host = true` to avoid inference errors later.
-            if tcx.hir().body_const_context(self.body_id).is_none() {
-                self.enforce_context_effects(expr.hir_id, qpath.span(), did, callee_args);
-            }
             if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
                 && tcx.item_name(did) == sym::transmute
             {
@@ -1932,7 +1927,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// 8 |     foo::Foo {};
     ///   |     ^^^^^^^^ missing `you_can_use_this_field`
     ///
-    /// error: aborting due to previous error
+    /// error: aborting due to 1 previous error
     /// ```
     fn report_missing_fields(
         &self,
@@ -2049,7 +2044,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// 8 |     foo::Foo {};
     ///   |     ^^^^^^^^
     ///
-    /// error: aborting due to previous error
+    /// error: aborting due to 1 previous error
     /// ```
     fn report_private_fields(
         &self,

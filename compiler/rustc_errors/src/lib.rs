@@ -1465,7 +1465,7 @@ impl HandlerInner {
         };
         let errors = match self.deduplicated_err_count {
             0 => Cow::from(""),
-            1 => Cow::from("aborting due to previous error"),
+            1 => Cow::from("aborting due to 1 previous error"),
             count => Cow::from(format!("aborting due to {count} previous errors")),
         };
         if self.treat_err_as_bug() {

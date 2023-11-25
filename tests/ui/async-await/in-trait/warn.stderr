@@ -16,5 +16,5 @@ LL -     async fn not_send();
 LL +     fn not_send() -> impl std::future::Future<Output = ()> + Send;
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

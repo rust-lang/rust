@@ -53,35 +53,43 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
         let tcx = cx.tcx;
         // `Deref` is being implemented for `t`
         if let hir::ItemKind::Impl(impl_) = item.kind
+            // the trait is a `Deref` implementation
             && let Some(trait_) = &impl_.of_trait
-            && let t = tcx.type_of(item.owner_id).instantiate_identity()
-            && let opt_did @ Some(did) = trait_.trait_def_id()
-            && opt_did == tcx.lang_items().deref_trait()
-            // `t` is `dyn t_principal`
-            && let ty::Dynamic(data, _, ty::Dyn) = t.kind()
-            && let Some(t_principal) = data.principal()
+            && let Some(did) = trait_.trait_def_id()
+            && Some(did) == tcx.lang_items().deref_trait()
+            // the self type is `dyn t_principal`
+            && let self_ty = tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty::Dynamic(data, _, ty::Dyn) = self_ty.kind()
+            && let Some(self_principal) = data.principal()
             // `<T as Deref>::Target` is `dyn target_principal`
-            && let Some(target) = cx.get_associated_type(t, did, "Target")
+            && let Some(target) = cx.get_associated_type(self_ty, did, "Target")
             && let ty::Dynamic(data, _, ty::Dyn) = target.kind()
             && let Some(target_principal) = data.principal()
             // `target_principal` is a supertrait of `t_principal`
-            && supertraits(tcx, t_principal.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
-                .any(|sup| {
-                    tcx.erase_regions(
-                        sup.map_bound(|x| ty::ExistentialTraitRef::erase_self_ty(tcx, x)),
-                    ) == tcx.erase_regions(target_principal)
-                })
+            && let Some(supertrait_principal) = supertraits(tcx, self_principal.with_self_ty(tcx, self_ty))
+                .find(|supertrait| supertrait.def_id() == target_principal.def_id())
         {
-            let t = tcx.erase_regions(t);
-            let label = impl_
+            // erase regions in self type for better diagnostic presentation
+            let (self_ty, target_principal, supertrait_principal) =
+                tcx.erase_regions((self_ty, target_principal, supertrait_principal));
+            let label2 = impl_
                 .items
                 .iter()
                 .find_map(|i| (i.ident.name == sym::Target).then_some(i.span))
                 .map(|label| SupertraitAsDerefTargetLabel { label });
+            let span = tcx.def_span(item.owner_id.def_id);
             cx.emit_spanned_lint(
                 DEREF_INTO_DYN_SUPERTRAIT,
-                tcx.def_span(item.owner_id.def_id),
-                SupertraitAsDerefTarget { t, label },
+                span,
+                SupertraitAsDerefTarget {
+                    self_ty,
+                    supertrait_principal: supertrait_principal.map_bound(|trait_ref| {
+                        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                    }),
+                    target_principal,
+                    label: span,
+                    label2,
+                },
             );
         }
     }

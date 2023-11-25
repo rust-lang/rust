@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
+use rustc_type_ir::{TypeFlags, WithCachedTypeInfo};
 
 mod int;
 mod kind;
@@ -23,7 +24,7 @@ use super::sty::ConstKind;
 /// Use this rather than `ConstData`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct Const<'tcx>(pub(super) Interned<'tcx, ConstData<'tcx>>);
+pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>);
 
 /// Typed constant value.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
@@ -44,6 +45,16 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn kind(self) -> ConstKind<'tcx> {
         self.0.kind.clone()
+    }
+
+    #[inline]
+    pub fn flags(self) -> TypeFlags {
+        self.0.flags
+    }
+
+    #[inline]
+    pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
+        self.0.outer_exclusive_binder
     }
 
     #[inline]

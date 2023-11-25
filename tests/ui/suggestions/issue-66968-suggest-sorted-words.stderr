@@ -4,6 +4,6 @@ error[E0425]: cannot find value `a_variable_longer_name` in this scope
 LL |     println!("{}", a_variable_longer_name);
    |                    ^^^^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `a_longer_variable_name`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0425`.

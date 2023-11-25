@@ -9,6 +9,6 @@ help: give this argument a name or use an underscore to ignore it
 LL |     fn foo(_: [i32; 2]) {}
    |            ~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0642`.

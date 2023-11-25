@@ -7,6 +7,6 @@ LL |     u = ConstUsize::<4> {};
    = note: expected struct `ConstUsize<3>`
               found struct `ConstUsize<4>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

@@ -11,6 +11,6 @@ help: you can convert an `i32` to a `u32` and panic if the converted value doesn
 LL |     let z: u32 = y.try_into().unwrap();
    |                   ++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

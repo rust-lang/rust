@@ -9,6 +9,6 @@ LL | const BAD_UPVAR: &dyn FnOnce() = &{
                ╾ALLOC0╼ ╾ALLOC1╼ │ ╾──────╼╾──────╼
            }
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

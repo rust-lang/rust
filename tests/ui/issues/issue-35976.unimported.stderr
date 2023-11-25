@@ -12,5 +12,5 @@ help: another candidate was found in the following trait, perhaps add a `use` fo
 LL + use private::Future;
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

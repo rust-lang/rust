@@ -6,6 +6,6 @@ LL | fn foo<const N: usize, const A: [u8; N]>() {}
    |
    = note: const parameters may not be used in the type of const parameters
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0770`.

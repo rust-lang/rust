@@ -226,7 +226,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
         return;
     }
 
-    let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap();
+    let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let settings = format!(
         "# Includes one of the default files in src/bootstrap/defaults\n\
     profile = \"{profile}\"\n\

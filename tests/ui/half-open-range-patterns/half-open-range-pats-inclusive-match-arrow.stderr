@@ -11,5 +11,5 @@ help: add a space between the pattern and `=>`
 LL |         74.. => {},
    |             +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

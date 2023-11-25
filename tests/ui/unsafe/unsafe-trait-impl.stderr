@@ -12,6 +12,6 @@ LL |     unsafe fn len(&self) -> u32;
    = note: expected signature `unsafe fn(&u32) -> _`
               found signature `fn(&u32) -> _`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0053`.

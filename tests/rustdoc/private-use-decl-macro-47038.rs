@@ -2,6 +2,8 @@
 
 #![crate_name = "foo"]
 
+// https://github.com/rust-lang/rust/issues/47038
+
 use std::vec;
 
 // @has 'foo/index.html'

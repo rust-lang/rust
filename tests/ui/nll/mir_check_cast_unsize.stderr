@@ -11,5 +11,5 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn bar<'a>(x: &'a u32) -> &'static dyn Debug + 'a {
    |                                              ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

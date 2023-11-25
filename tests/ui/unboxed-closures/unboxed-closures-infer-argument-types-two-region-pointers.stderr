@@ -8,5 +8,5 @@ LL |     doit(0, &|x, y| {
 LL |         x.set(y);
    |         ^^^^^^^^ argument requires that `'1` must outlive `'2`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
