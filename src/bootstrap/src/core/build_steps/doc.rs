@@ -996,14 +996,14 @@ tool_doc!(
     in_tree = false,
     crates = [
         "cargo",
+        "cargo-credential",
         "cargo-platform",
-        "cargo-util",
-        "crates-io",
         "cargo-test-macro",
         "cargo-test-support",
-        "cargo-credential",
-        "rustfix",
+        "cargo-util",
+        "crates-io",
         "mdman",
+        "rustfix",
         // FIXME: this trips a license check in tidy.
         // "resolver-tests",
     ]
