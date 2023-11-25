@@ -556,12 +556,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let ret_lane_layout = fx.layout_of(fx.tcx.types.i32);
             for out_lane_idx in 0..lane_count / 2 {
                 let a_lane0 = a.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
-                let a_lane0 = fx.bcx.ins().uextend(types::I32, a_lane0);
+                let a_lane0 = fx.bcx.ins().sextend(types::I32, a_lane0);
                 let b_lane0 = b.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
                 let b_lane0 = fx.bcx.ins().sextend(types::I32, b_lane0);
 
                 let a_lane1 = a.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
-                let a_lane1 = fx.bcx.ins().uextend(types::I32, a_lane1);
+                let a_lane1 = fx.bcx.ins().sextend(types::I32, a_lane1);
                 let b_lane1 = b.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
                 let b_lane1 = fx.bcx.ins().sextend(types::I32, b_lane1);
 
@@ -716,14 +716,14 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             assert_eq!(ret_lane_ty, fx.tcx.types.i16);
             assert_eq!(lane_count * 2, ret_lane_count);
 
-            let min_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MIN as u16));
-            let max_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MAX as u16));
+            let min_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MIN) as u32 as i64);
+            let max_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MAX) as u32 as i64);
             let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
 
             for idx in 0..lane_count {
                 let lane = a.value_lane(fx, idx).load_scalar(fx);
                 let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
@@ -733,7 +733,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             for idx in 0..lane_count {
                 let lane = b.value_lane(fx, idx).load_scalar(fx);
                 let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
@@ -760,8 +760,8 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             for idx in 0..lane_count {
                 let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().umax(lane, min_u16);
-                let sat = fx.bcx.ins().umin(sat, max_u16);
+                let sat = fx.bcx.ins().smax(lane, min_u16);
+                let sat = fx.bcx.ins().smin(sat, max_u16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
@@ -770,8 +770,8 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             for idx in 0..lane_count {
                 let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().umax(lane, min_u16);
-                let sat = fx.bcx.ins().umin(sat, max_u16);
+                let sat = fx.bcx.ins().smax(lane, min_u16);
+                let sat = fx.bcx.ins().smin(sat, max_u16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
@@ -792,14 +792,14 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             assert_eq!(ret_lane_ty, fx.tcx.types.i16);
             assert_eq!(lane_count * 2, ret_lane_count);
 
-            let min_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MIN as u16));
-            let max_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MAX as u16));
+            let min_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MIN) as u32 as i64);
+            let max_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MAX) as u32 as i64);
             let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
 
             for idx in 0..lane_count / 2 {
                 let lane = a.value_lane(fx, idx).load_scalar(fx);
                 let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
@@ -809,7 +809,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             for idx in 0..lane_count / 2 {
                 let lane = b.value_lane(fx, idx).load_scalar(fx);
                 let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
@@ -819,7 +819,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             for idx in 0..lane_count / 2 {
                 let lane = a.value_lane(fx, idx).load_scalar(fx);
                 let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
@@ -829,7 +829,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             for idx in 0..lane_count / 2 {
                 let lane = b.value_lane(fx, idx).load_scalar(fx);
                 let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
                 let res = fx.bcx.ins().ireduce(types::I16, sat);
 
                 let res_lane = CValue::by_val(res, ret_lane_layout);
