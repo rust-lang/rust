@@ -18,7 +18,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }
 
-    pub(crate) fn lower_pat_mut(&mut self, mut pattern: &Pat) -> hir::Pat<'hir> {
+    fn lower_pat_mut(&mut self, mut pattern: &Pat) -> hir::Pat<'hir> {
         ensure_sufficient_stack(|| {
             // loop here to avoid recursion
             let node = loop {
