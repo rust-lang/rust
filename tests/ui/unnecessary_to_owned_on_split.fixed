@@ -1,0 +1,21 @@
+#[allow(clippy::single_char_pattern)]
+
+fn main() {
+    let _ = "a".split('a').next().unwrap();
+    //~^ ERROR: unnecessary use of `to_string`
+    let _ = "a".split("a").next().unwrap();
+    //~^ ERROR: unnecessary use of `to_string`
+    let _ = "a".split('a').next().unwrap();
+    //~^ ERROR: unnecessary use of `to_owned`
+    let _ = "a".split("a").next().unwrap();
+    //~^ ERROR: unnecessary use of `to_owned`
+
+    let _ = [1].split(|x| *x == 2).next().unwrap();
+    //~^ ERROR: unnecessary use of `to_vec`
+    let _ = [1].split(|x| *x == 2).next().unwrap();
+    //~^ ERROR: unnecessary use of `to_vec`
+    let _ = [1].split(|x| *x == 2).next().unwrap();
+    //~^ ERROR: unnecessary use of `to_owned`
+    let _ = [1].split(|x| *x == 2).next().unwrap();
+    //~^ ERROR: unnecessary use of `to_owned`
+}
