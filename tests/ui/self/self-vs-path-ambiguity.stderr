@@ -4,5 +4,5 @@ error: unexpected lifetime `'a` in pattern
 LL |     fn i(&'a self::S: &S) {}
    |           ^^ help: remove the lifetime
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

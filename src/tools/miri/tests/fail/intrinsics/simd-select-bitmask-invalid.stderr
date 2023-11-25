@@ -11,5 +11,5 @@ LL |         simd_select_bitmask(0b11111111u8, x, x);
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

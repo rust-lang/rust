@@ -9,5 +9,5 @@ help: if you meant to write a comparison against a negative value, add a space i
 LL |     if x< -1 {
    |         ~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -11,5 +11,5 @@ LL | |         ))
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

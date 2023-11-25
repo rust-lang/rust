@@ -16,6 +16,6 @@ LL | async fn bug<T>(mut f: dyn Future<Output = T> + Unpin) -> T {
    = help: the trait `Sized` is not implemented for `(dyn Future<Output = T> + Unpin + 'static)`
    = note: all values captured by value by a closure must have a statically known size
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

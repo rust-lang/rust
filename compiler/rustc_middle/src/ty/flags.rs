@@ -28,10 +28,11 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_const(c: ty::Const<'_>) -> TypeFlags {
+    pub fn for_const(c: &ty::ConstKind<'_>, t: Ty<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
-        result.add_const(c);
-        result.flags
+        result.add_const_kind(c);
+        result.add_ty(t);
+        result
     }
 
     fn add_flags(&mut self, flags: TypeFlags) {
@@ -297,8 +298,12 @@ impl FlagComputation {
     }
 
     fn add_const(&mut self, c: ty::Const<'_>) {
-        self.add_ty(c.ty());
-        match c.kind() {
+        self.add_flags(c.flags());
+        self.add_exclusive_binder(c.outer_exclusive_binder());
+    }
+
+    fn add_const_kind(&mut self, c: &ty::ConstKind<'_>) {
+        match *c {
             ty::ConstKind::Unevaluated(uv) => {
                 self.add_args(uv.args);
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);

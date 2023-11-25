@@ -9,5 +9,5 @@ LL |
 LL |     x
    |     ^ method was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

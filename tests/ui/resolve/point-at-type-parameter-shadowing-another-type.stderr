@@ -10,6 +10,6 @@ LL | impl<Baz> Foo<Baz> for Bar {
 LL |             Baz { num } => num,
    |             ^^^ not a struct, variant or union type
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0574`.

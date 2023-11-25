@@ -15,5 +15,5 @@ LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(warnings)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

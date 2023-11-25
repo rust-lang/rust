@@ -12,6 +12,6 @@ help: copy the `where` clause predicates from the trait
 LL |     type T<'a2, 'b2> = () where 'a2: 'b2;
    |                           ~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0276`.

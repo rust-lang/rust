@@ -9,5 +9,5 @@ LL |     let i: Vec<t!()>;
    |
    = note: the usage of `t!` is likely invalid in type context
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

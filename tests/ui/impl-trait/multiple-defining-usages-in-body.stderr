@@ -22,5 +22,5 @@ note: previous use here
 LL |     let a: T = foo::<T, U>();
    |                ^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

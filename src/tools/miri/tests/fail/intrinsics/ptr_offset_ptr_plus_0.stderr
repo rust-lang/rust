@@ -16,5 +16,5 @@ LL |     let x = Box::into_raw(Box::new(0u32));
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

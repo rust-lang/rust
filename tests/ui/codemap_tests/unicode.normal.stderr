@@ -6,6 +6,6 @@ LL | extern "路濫狼á́́" fn foo() {}
    |
    = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions.
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0703`.

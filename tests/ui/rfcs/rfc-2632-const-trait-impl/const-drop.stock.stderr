@@ -2,9 +2,9 @@ error: `~const` is not allowed here
   --> $DIR/const-drop.rs:67:38
    |
 LL |     pub struct ConstDropWithBound<T: ~const SomeTrait>(pub core::marker::PhantomData<T>);
-   |                                      ^^^^^^^^^^^^^^^^
+   |                                      ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

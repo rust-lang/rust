@@ -18,7 +18,8 @@ use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, s
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::cache::{Cache, Interned, INTERNER};
-use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
+use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, add_rustdoc_lld_flags, exe};
+use crate::utils::helpers::{libdir, output, t, LldThreads};
 use crate::Crate;
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
@@ -1174,9 +1175,7 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MAKEFLAGS");
         cmd.env_remove("MFLAGS");
 
-        if let Some(linker) = self.linker(compiler.host) {
-            cmd.env("RUSTDOC_LINKER", linker);
-        }
+        add_rustdoc_lld_flags(&mut cmd, self, compiler.host, LldThreads::Yes);
         cmd
     }
 

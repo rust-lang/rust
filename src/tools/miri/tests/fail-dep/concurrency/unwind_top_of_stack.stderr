@@ -17,5 +17,5 @@ LL | | }
    = note: BACKTRACE:
    = note: inside `thread_start` at $DIR/unwind_top_of_stack.rs:LL:CC
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

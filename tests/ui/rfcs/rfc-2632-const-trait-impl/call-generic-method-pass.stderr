@@ -4,5 +4,5 @@ error: ~const can only be applied to `#[const_trait]` traits
 LL | const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
    |                                ^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

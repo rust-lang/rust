@@ -8,6 +8,6 @@ LL | extern crate found_staticlib;
            crate `found_staticlib`: $TEST_BUILD_DIR/error-codes/E0462/auxiliary/libfound_staticlib.somelib
    = help: please recompile that crate using --crate-type lib
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0462`.

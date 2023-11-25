@@ -11,5 +11,5 @@ LL |         *(x_ptr as *mut u32) = 42; *(x_ptr.add(1) as *mut u32) = 42;
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

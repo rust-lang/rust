@@ -11,6 +11,6 @@ help: consider introducing a `where` clause, but there might be an alternative b
 LL | fn foo<T: MyMul<f64, f64>>(a: &T, b: f64) -> f64 where &T: Mul<f64, Output = f64> {
    |                                                  ++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0369`.

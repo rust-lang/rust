@@ -13,5 +13,5 @@ LL | |     }
    = note: `-D clippy::serde-api-misuse` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::serde_api_misuse)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -6,6 +6,6 @@ LL | fn is_copy<T: ::std::marker<i32>::Copy>() {}
    |                      |
    |                      not allowed on module `marker`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0109`.

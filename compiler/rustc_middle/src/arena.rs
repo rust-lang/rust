@@ -94,7 +94,7 @@ macro_rules! arena_types {
 
             // Interned types
             [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyKind<'tcx>>,
-            [] consts: rustc_middle::ty::ConstData<'tcx>,
+            [] consts: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::ConstData<'tcx>>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena

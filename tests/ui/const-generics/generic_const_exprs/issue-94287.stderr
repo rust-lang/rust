@@ -11,5 +11,5 @@ help: consider enabling this feature
 LL + #![feature(generic_const_exprs)]
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

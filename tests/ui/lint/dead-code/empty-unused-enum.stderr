@@ -11,5 +11,5 @@ LL | #![deny(unused)]
    |         ^^^^^^
    = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

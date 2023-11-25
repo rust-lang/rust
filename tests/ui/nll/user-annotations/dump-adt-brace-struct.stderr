@@ -4,5 +4,5 @@ error: user args: UserArgs { args: [&ReStatic u32], user_self_ty: None }
 LL |     SomeStruct::<&'static u32> { t: &22 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

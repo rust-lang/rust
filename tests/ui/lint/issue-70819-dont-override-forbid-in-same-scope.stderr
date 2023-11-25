@@ -14,5 +14,5 @@ note: the lint level is defined here
 LL | #![forbid(forbidden_lint_groups)]
    |           ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

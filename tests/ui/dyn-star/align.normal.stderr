@@ -15,6 +15,6 @@ LL |     let x = AlignedUsize(12) as dyn* Debug;
    |
    = help: the trait `PointerLike` is not implemented for `AlignedUsize`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

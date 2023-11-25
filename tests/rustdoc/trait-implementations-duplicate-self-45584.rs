@@ -1,5 +1,7 @@
 #![crate_name = "foo"]
 
+// https://github.com/rust-lang/rust/issues/45584
+
 pub trait Bar<T, U> {}
 
 // @has 'foo/struct.Foo1.html'

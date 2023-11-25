@@ -18,6 +18,6 @@ LL ~     const ARRAY_REPEAT_VALUE: Option<Bar> = no_copy();
 LL ~     let _: [Option<Bar>; 2] = [ARRAY_REPEAT_VALUE; 2];
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

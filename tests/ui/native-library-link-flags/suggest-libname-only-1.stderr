@@ -2,5 +2,5 @@ error: could not find native static library `libfoo.a`, perhaps an -L flag is mi
    |
    = help: only provide the library name `foo`, not the full filename
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

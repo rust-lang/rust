@@ -29,7 +29,7 @@ LL |     foo!()
    = note: `#[warn(semicolon_in_expressions_from_macros)]` on by default
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position

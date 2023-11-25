@@ -6,6 +6,6 @@ LL |     x.0 = 0;
    |
    = note: mutating layout constrained fields cannot statically be checked for valid values
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0133`.

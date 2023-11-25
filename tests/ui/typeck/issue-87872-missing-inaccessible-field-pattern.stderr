@@ -13,6 +13,6 @@ help: if you don't care about this missing field, you can explicitly ignore it
 LL |     let foo::Foo { .. } = foo::Foo::default();
    |                  ~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0027`.

@@ -4,5 +4,5 @@ error: invalid linkage specified
 LL |     static foo: *const i32;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

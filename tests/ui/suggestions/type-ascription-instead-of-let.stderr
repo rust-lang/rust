@@ -9,5 +9,5 @@ help: you might have meant to introduce a new binding
 LL |         let temp: i32 = fun(5i32);
    |         +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

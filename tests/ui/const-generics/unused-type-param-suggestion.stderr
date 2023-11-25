@@ -7,6 +7,6 @@ LL | struct Example<N>;
    = help: consider removing `N`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `N` to be a const parameter, use `const N: usize` instead
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0392`.

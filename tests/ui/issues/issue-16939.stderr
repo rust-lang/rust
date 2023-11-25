@@ -13,6 +13,6 @@ note: callable defined here
 LL | fn _foo<F: Fn()> (f: F) {
    |            ^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0057`.

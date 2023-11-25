@@ -4,6 +4,6 @@ error[E0635]: unknown feature `const_convert`
 LL | #![feature(const_convert)]
    |            ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0635`.

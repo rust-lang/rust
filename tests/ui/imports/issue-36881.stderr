@@ -6,6 +6,6 @@ LL |     use issue_36881_aux::Foo;
    |
    = help: consider adding `extern crate issue_36881_aux` to use the `issue_36881_aux` crate
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0432`.

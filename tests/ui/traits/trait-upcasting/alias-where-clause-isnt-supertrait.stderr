@@ -9,6 +9,6 @@ LL |     x
    = note: expected reference `&dyn B`
               found reference `&dyn C`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

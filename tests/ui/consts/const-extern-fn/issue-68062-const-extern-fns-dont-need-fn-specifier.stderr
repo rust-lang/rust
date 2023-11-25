@@ -4,5 +4,5 @@ error: expected `fn`, found `PUT_ANYTHING_YOU_WANT_HERE`
 LL |     const extern "Rust" PUT_ANYTHING_YOU_WANT_HERE bug() -> usize { 1 }
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `fn`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

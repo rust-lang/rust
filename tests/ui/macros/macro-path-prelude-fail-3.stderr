@@ -9,5 +9,5 @@ LL |     inline!();
    |
    = note: `inline` is in scope, but it is an attribute: `#[inline]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

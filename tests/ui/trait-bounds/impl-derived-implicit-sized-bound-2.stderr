@@ -26,6 +26,6 @@ help: consider restricting the type parameter to satisfy the trait bound
 LL | struct Victim<'a, T: Perpetrator + ?Sized> where Self: Sized {
    |                                            +++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

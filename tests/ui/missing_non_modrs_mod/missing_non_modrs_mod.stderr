@@ -7,6 +7,6 @@ LL | mod missing;
    = help: to create the module `missing`, create file "$DIR/foo/missing.rs" or "$DIR/foo/missing/mod.rs"
    = note: if there is a `mod missing` elsewhere in the crate already, import it with `use crate::...` instead
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0583`.

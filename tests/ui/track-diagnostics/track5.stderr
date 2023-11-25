@@ -5,5 +5,5 @@ LL | }
    | ^ unexpected closing delimiter
 -Ztrack-diagnostics: created at compiler/rustc_parse/src/lexer/tokentrees.rs:LL:CC
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -7,6 +7,6 @@ LL |     #[ffi_pure]
    = note: see issue #58329 <https://github.com/rust-lang/rust/issues/58329> for more information
    = help: add `#![feature(ffi_pure)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

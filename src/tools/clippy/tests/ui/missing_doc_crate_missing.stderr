@@ -11,5 +11,5 @@ LL | | fn main() {}
    = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
