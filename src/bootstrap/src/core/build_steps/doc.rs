@@ -1004,8 +1004,6 @@ tool_doc!(
         "crates-io",
         "mdman",
         "rustfix",
-        // FIXME: this trips a license check in tidy.
-        // "resolver-tests",
     ]
 );
 tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);
