@@ -553,7 +553,7 @@ pub(crate) fn include_arg_to_tt(
     let Some(EagerCallInfo { arg, arg_id, .. }) = loc.eager.as_deref() else {
         panic!("include_arg_to_tt called on non include macro call: {:?}", &loc.eager);
     };
-    let path = parse_string(&arg.0)?;
+    let path = parse_string(&arg)?;
     let file_id = relative_file(db, *arg_id, &path, false)?;
 
     // why are we not going through a SyntaxNode here?

@@ -6,12 +6,6 @@ use stdx::itertools::Itertools;
 use syntax::TextRange;
 use tt::Span;
 
-// pub type HirFile = u32;
-// pub type FileRange = (HirFile, TextRange);
-// Option<MacroCallId>, LocalSyntaxContet
-// pub type SyntaxContext = ();
-// pub type LocalSyntaxContext = u32;
-
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 // FIXME: Rename to SpanMap

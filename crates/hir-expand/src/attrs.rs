@@ -293,13 +293,8 @@ impl Attr {
                 if tts.is_empty() {
                     return None;
                 }
-                // FIXME: Absolutely wrong
-                let call_site = match tts.first().unwrap() {
-                    tt::TokenTree::Leaf(l) => l.span().ctx,
-                    tt::TokenTree::Subtree(s) => s.delimiter.open.ctx,
-                };
                 // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation
-                // here.
+                // here or maybe just parse a mod path from a token tree directly
                 let subtree = tt::Subtree {
                     delimiter: tt::Delimiter::unspecified(),
                     token_trees: tts.to_vec(),
@@ -313,6 +308,7 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
+                let call_site = span_map.span_for_range(path.syntax().text_range()).ctx;
                 Some((
                     ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(&span_map))?,
                     call_site,

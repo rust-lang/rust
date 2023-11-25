@@ -137,7 +137,13 @@ pub use {
 // These are negative re-exports: pub using these names is forbidden, they
 // should remain private to hir internals.
 #[allow(unused)]
-use {hir_def::path::Path, hir_expand::name::AsName};
+use {
+    hir_def::path::Path,
+    hir_expand::{
+        name::AsName,
+        span::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
+    },
+};
 
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -3481,11 +3487,6 @@ impl Impl {
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.lookup(db.upcast()).container.into()
-    }
-
-    pub fn as_builtin_derive_attr(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
-        let src = self.source(db)?;
-        src.file_id.as_builtin_derive_attr_node(db.upcast())
     }
 
     pub fn as_builtin_derive_path(self, db: &dyn HirDatabase) -> Option<InMacroFile<ast::Path>> {

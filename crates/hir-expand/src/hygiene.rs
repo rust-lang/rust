@@ -8,7 +8,7 @@ use base_db::span::{MacroCallId, SpanData, SyntaxContextId};
 
 use crate::db::ExpandDatabase;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct SyntaxContextData {
     pub outer_expn: Option<MacroCallId>,
     pub outer_transparency: Transparency,

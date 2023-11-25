@@ -77,7 +77,8 @@ pub struct RealSpanMap {
 }
 
 impl RealSpanMap {
-    pub fn empty(file_id: FileId) -> Self {
+    /// Creates a real file span map that returns absolute ranges (relative ranges to the root ast id).
+    pub fn absolute(file_id: FileId) -> Self {
         RealSpanMap { file_id, pairs: Box::from([(TextSize::new(0), ROOT_ERASED_FILE_AST_ID)]) }
     }
 

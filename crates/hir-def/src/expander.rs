@@ -131,7 +131,7 @@ impl Expander {
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
         let ctx = LowerCtx::new(db, self.span_map.clone(), self.current_file_id);
-        Path::from_src(path, &ctx)
+        Path::from_src(&ctx, path)
     }
 
     fn within_limit<F, T: ast::AstNode>(

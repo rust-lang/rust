@@ -135,7 +135,7 @@ pub enum MacroDefKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EagerCallInfo {
     /// The expanded argument of the eager macro.
-    arg: Arc<(tt::Subtree,)>,
+    arg: Arc<tt::Subtree>,
     /// Call id of the eager macro's input file (this is the macro file for its fully expanded input).
     arg_id: MacroCallId,
     error: Option<ExpandError>,
@@ -537,8 +537,6 @@ impl MacroCallKind {
         FileRange { range, file_id }
     }
 
-    // FIXME:  -> InFile<SyntaxNode> it should be impossible for the token tree to be missing at
-    // this point!
     fn arg(&self, db: &dyn db::ExpandDatabase) -> InFile<Option<SyntaxNode>> {
         match self {
             MacroCallKind::FnLike { ast_id, .. } => {
@@ -561,7 +559,6 @@ impl MacroCallKind {
 pub struct ExpansionInfo {
     pub expanded: InMacroFile<SyntaxNode>,
     /// The argument TokenTree or item for attributes
-    // FIXME: Can this ever be `None`?
     arg: InFile<Option<SyntaxNode>>,
     /// The `macro_rules!` or attribute input.
     attr_input_or_mac_def: Option<InFile<ast::TokenTree>>,

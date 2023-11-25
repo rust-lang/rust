@@ -868,7 +868,7 @@ impl<'db> SemanticsImpl<'db> {
         let analyze = self.analyze(path.syntax())?;
         let span_map = self.db.span_map(analyze.file_id);
         let ctx = LowerCtx::with_span_map(self.db.upcast(), span_map);
-        let hir_path = Path::from_src(path.clone(), &ctx)?;
+        let hir_path = Path::from_src(&ctx, path.clone())?;
         match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),
             _ => None,
@@ -1466,7 +1466,7 @@ impl SemanticsScope<'_> {
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
         let ctx = LowerCtx::with_file_id(self.db.upcast(), self.file_id);
-        let path = Path::from_src(path.clone(), &ctx)?;
+        let path = Path::from_src(&ctx, path.clone())?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }
 

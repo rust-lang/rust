@@ -565,7 +565,6 @@ impl<SpanMap> Converter<SpanMap> {
 #[derive(Debug)]
 enum SynToken {
     Ordinary(SyntaxToken),
-    // FIXME is this supposed to be `Punct`?
     Punct(SyntaxToken, usize),
 }
 

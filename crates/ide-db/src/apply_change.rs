@@ -97,12 +97,14 @@ impl RootDatabase {
 
             // ExpandDatabase
             hir::db::AstIdMapQuery
-            hir::db::ParseMacroExpansionQuery
+            hir::db::DeclMacroExpanderQuery
+            hir::db::ExpandProcMacroQuery
+            hir::db::IncludeExpandQuery
             hir::db::InternMacroCallQuery
             hir::db::MacroArgQuery
-            hir::db::DeclMacroExpanderQuery
             hir::db::MacroExpandQuery
-            hir::db::ExpandProcMacroQuery
+            hir::db::ParseMacroExpansionQuery
+            hir::db::RealSpanMapQuery
 
             // DefDatabase
             hir::db::FileItemTreeQuery
@@ -142,6 +144,13 @@ impl RootDatabase {
             hir::db::FunctionVisibilityQuery
             hir::db::ConstVisibilityQuery
             hir::db::CrateSupportsNoStdQuery
+            hir::db::BlockItemTreeQueryQuery
+            hir::db::ExternCrateDeclDataQuery
+            hir::db::LangAttrQuery
+            hir::db::InternAnonymousConstQuery
+            hir::db::InternExternCrateQuery
+            hir::db::InternInTypeConstQuery
+            hir::db::InternUseQuery
 
             // HirDatabase
             hir::db::InferQueryQuery

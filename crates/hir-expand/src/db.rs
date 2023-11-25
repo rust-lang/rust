@@ -190,15 +190,16 @@ pub fn expand_speculative(
     speculative_args: &SyntaxNode,
     token_to_map: SyntaxToken,
 ) -> Option<(SyntaxNode, SyntaxToken)> {
-    // FIXME spanmaps
     let loc = db.lookup_intern_macro_call(actual_macro_call);
 
     // Build the subtree and token mapping for the speculative args
     let _censor = censor_for_macro_input(&loc, speculative_args);
+    let span_map = RealSpanMap::absolute(SpanAnchor::DUMMY.file_id);
+    let span_map = SpanMapRef::RealSpanMap(&span_map);
     let mut tt = mbe::syntax_node_to_token_tree(
         speculative_args,
         // we don't leak these spans into any query so its fine to make them absolute
-        SpanMapRef::RealSpanMap(&RealSpanMap::empty(SpanAnchor::DUMMY.file_id)),
+        span_map,
     );
 
     let attr_arg = match loc.kind {
@@ -216,10 +217,7 @@ pub fn expand_speculative(
             }?;
             match attr.token_tree() {
                 Some(token_tree) => {
-                    let mut tree = syntax_node_to_token_tree(
-                        token_tree.syntax(),
-                        SpanMapRef::RealSpanMap(&RealSpanMap::empty(SpanAnchor::DUMMY.file_id)),
-                    );
+                    let mut tree = syntax_node_to_token_tree(token_tree.syntax(), span_map);
                     tree.delimiter = tt::Delimiter::UNSPECIFIED;
 
                     Some(tree)
@@ -243,12 +241,7 @@ pub fn expand_speculative(
         MacroDefKind::BuiltInDerive(expander, ..) => {
             // this cast is a bit sus, can we avoid losing the typedness here?
             let adt = ast::Adt::cast(speculative_args.clone()).unwrap();
-            expander.expand(
-                db,
-                actual_macro_call,
-                &adt,
-                SpanMapRef::RealSpanMap(&RealSpanMap::empty(SpanAnchor::DUMMY.file_id)),
-            )
+            expander.expand(db, actual_macro_call, &adt, span_map)
         }
         MacroDefKind::Declarative(it) => {
             db.decl_macro_expander(loc.krate, it).expand_unhygienic(tt)
@@ -305,6 +298,8 @@ fn parse_or_expand_with_err(
     }
 }
 
+// FIXME: We should verify that the parsed node is one of the many macro node variants we expect
+// instead of having it be untyped
 fn parse_macro_expansion(
     db: &dyn ExpandDatabase,
     macro_file: MacroFileId,
@@ -328,6 +323,18 @@ fn parse_macro_expansion_error(
 ) -> ExpandResult<Box<[SyntaxError]>> {
     db.parse_macro_expansion(MacroFileId { macro_call_id })
         .map(|it| it.0.errors().to_vec().into_boxed_slice())
+}
+
+fn parse_with_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> (Parse<SyntaxNode>, SpanMap) {
+    match file_id.repr() {
+        HirFileIdRepr::FileId(file_id) => {
+            (db.parse(file_id).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
+        }
+        HirFileIdRepr::MacroFile(macro_file) => {
+            let (parse, map) = db.parse_macro_expansion(macro_file).value;
+            (parse, SpanMap::ExpansionSpanMap(map))
+        }
+    }
 }
 
 fn macro_arg(
@@ -361,32 +368,22 @@ fn macro_arg(
         .then(|| loc.eager.as_deref())
         .flatten()
     {
-        ValueResult::ok(Some(Arc::new(arg.0.clone())))
+        ValueResult::ok(Some(arg.clone()))
     } else {
-        //FIXME: clean this up, the ast id map lookup is done twice here
-        let (parse, map) = match loc.kind.file_id().repr() {
-            HirFileIdRepr::FileId(file_id) => {
-                let syntax = db.parse(file_id).to_syntax();
-
-                (syntax, SpanMap::RealSpanMap(db.real_span_map(file_id)))
-            }
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let (parse, map) = db.parse_macro_expansion(macro_file).value;
-                (parse, SpanMap::ExpansionSpanMap(map))
-            }
-        };
+        let (parse, map) = parse_with_map(db, loc.kind.file_id());
         let root = parse.syntax_node();
 
         let syntax = match loc.kind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 let node = &ast_id.to_ptr(db).to_node(&root);
                 let offset = node.syntax().text_range().start();
-                match node.token_tree().map(|it| it.syntax().clone()) {
+                match node.token_tree() {
                     Some(tt) => {
-                        if let Some(e) = mismatched_delimiters(&tt) {
+                        let tt = tt.syntax();
+                        if let Some(e) = mismatched_delimiters(tt) {
                             return ValueResult::only_err(e);
                         }
-                        tt
+                        tt.clone()
                     }
                     None => {
                         return ValueResult::only_err(Arc::new(Box::new([
@@ -479,17 +476,8 @@ fn decl_macro_expander(
     id: AstId<ast::Macro>,
 ) -> Arc<DeclarativeMacroExpander> {
     let is_2021 = db.crate_graph()[def_crate].edition >= Edition::Edition2021;
-    let (root, map) = match id.file_id.repr() {
-        HirFileIdRepr::FileId(file_id) => {
-            // FIXME: Arc
-            // FIXME: id.to_ptr duplicated, expensive
-            (db.parse(file_id).syntax_node(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
-        }
-        HirFileIdRepr::MacroFile(macro_file) => {
-            let (parse, map) = db.parse_macro_expansion(macro_file).value;
-            (parse.syntax_node(), SpanMap::ExpansionSpanMap(map))
-        }
-    };
+    let (root, map) = parse_with_map(db, id.file_id);
+    let root = root.syntax_node();
 
     let transparency = |node| {
         // ... would be nice to have the item tree here
@@ -568,21 +556,8 @@ fn macro_expand(
     let ExpandResult { value: tt, mut err } = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id),
         MacroDefKind::BuiltInDerive(expander, ..) => {
-            // FIXME: add firewall query for this?
-            let hir_file_id = loc.kind.file_id();
-            let (root, map) = match hir_file_id.repr() {
-                HirFileIdRepr::FileId(file_id) => {
-                    // FIXME: query for span map
-                    (
-                        db.parse(file_id).syntax_node(),
-                        SpanMap::RealSpanMap(db.real_span_map(file_id)),
-                    )
-                }
-                HirFileIdRepr::MacroFile(macro_file) => {
-                    let (parse, map) = db.parse_macro_expansion(macro_file).value;
-                    (parse.syntax_node(), SpanMap::ExpansionSpanMap(map))
-                }
-            };
+            let (root, map) = parse_with_map(db, loc.kind.file_id());
+            let root = root.syntax_node();
             let MacroCallKind::Derive { ast_id, .. } = loc.kind else { unreachable!() };
             let node = ast_id.to_ptr(db).to_node(&root);
 
@@ -710,9 +685,9 @@ fn token_tree_to_syntax_node(
         ExpandTo::Type => mbe::TopEntryPoint::Type,
         ExpandTo::Expr => mbe::TopEntryPoint::Expr,
     };
-    let mut tm = mbe::token_tree_to_syntax_node(tt, entry_point);
+    let (parse, mut span_map) = mbe::token_tree_to_syntax_node(tt, entry_point);
     // FIXME: now what the hell is going on here
-    tm.1.span_map.sort_by(|(_, a), (_, b)| {
+    span_map.span_map.sort_by(|(_, a), (_, b)| {
         a.anchor.file_id.cmp(&b.anchor.file_id).then_with(|| {
             let map = db.ast_id_map(a.anchor.file_id.into());
             map.get_erased(a.anchor.ast_id)
@@ -721,7 +696,7 @@ fn token_tree_to_syntax_node(
                 .cmp(&map.get_erased(b.anchor.ast_id).text_range().start())
         })
     });
-    tm
+    (parse, span_map)
 }
 
 fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<Arc<tt::Subtree>>> {

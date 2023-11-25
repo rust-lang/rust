@@ -11,6 +11,7 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
     let (mut db, pos) = TestDB::with_position(ra_fixture_initial);
     let krate = {
         let crate_graph = db.crate_graph();
+        // Some of these tests use minicore/proc-macros which will be injected as the first crate
         crate_graph.iter().last().unwrap()
     };
     {

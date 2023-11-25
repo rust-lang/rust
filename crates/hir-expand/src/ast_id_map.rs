@@ -17,9 +17,9 @@ use profile::Count;
 use rustc_hash::FxHasher;
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
-pub use base_db::span::ErasedFileAstId;
-
 use crate::db;
+
+pub use base_db::span::ErasedFileAstId;
 
 /// `AstId` points to an AST node in any file.
 ///

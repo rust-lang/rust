@@ -40,7 +40,7 @@ impl<'a> LowerCtx<'a> {
     }
 
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
-        Path::from_src(ast, self)
+        Path::from_src(self, ast)
     }
 
     pub(crate) fn ast_id<N: AstIdNode>(&self, item: &N) -> Option<AstId<N>> {

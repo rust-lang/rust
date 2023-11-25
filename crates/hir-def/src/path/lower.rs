@@ -16,12 +16,9 @@ use crate::{
     type_ref::{LifetimeRef, TypeBound, TypeRef},
 };
 
-// fn resolve_crate_root
-
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.
-// FIXME: flip the params
-pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path> {
+pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
     let mut segments = Vec::new();
@@ -36,18 +33,15 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
 
         match segment.kind()? {
             ast::PathSegmentKind::Name(name_ref) => {
-                let name = if name_ref.text() == "$crate" {
-                    kind = resolve_crate_root(
+                if name_ref.text() == "$crate" {
+                    break kind = resolve_crate_root(
                         ctx.db.upcast(),
                         span_map.span_for_range(name_ref.syntax().text_range()).ctx,
                     )
                     .map(PathKind::DollarCrate)
                     .unwrap_or(PathKind::Crate);
-
-                    break;
-                } else {
-                    name_ref.as_name()
-                };
+                }
+                let name = name_ref.as_name();
                 let args = segment
                     .generic_arg_list()
                     .and_then(|it| lower_generic_args(ctx, it))
@@ -82,7 +76,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
                         let Path::Normal { mod_path, generic_args: path_generic_args, .. } =
-                            Path::from_src(trait_ref.path()?, ctx)?
+                            Path::from_src(ctx, trait_ref.path()?)?
                         else {
                             return None;
                         };
