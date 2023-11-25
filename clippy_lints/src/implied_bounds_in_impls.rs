@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.74.0"]
     pub IMPLIED_BOUNDS_IN_IMPLS,
-    nursery,
+    complexity,
     "specifying bounds that are implied by other bounds in `impl Trait` type"
 }
 declare_lint_pass!(ImpliedBoundsInImpls => [IMPLIED_BOUNDS_IN_IMPLS]);
