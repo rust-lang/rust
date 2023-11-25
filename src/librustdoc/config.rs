@@ -798,7 +798,7 @@ impl Options {
 
     /// Returns `true` if the file given as `self.input` is a Markdown file.
     pub(crate) fn markdown_input(&self) -> bool {
-        self.input.extension().map_or(false, |e| e == "md" || e == "markdown")
+        self.input.extension().is_some_and(|e| e == "md" || e == "markdown")
     }
 }
 
