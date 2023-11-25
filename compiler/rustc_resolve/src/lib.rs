@@ -927,7 +927,14 @@ struct DeriveData {
 #[derive(Clone)]
 struct MacroData {
     ext: Lrc<SyntaxExtension>,
+    rule_spans: Vec<(usize, Span)>,
     macro_rules: bool,
+}
+
+impl MacroData {
+    fn new(ext: Lrc<SyntaxExtension>) -> MacroData {
+        MacroData { ext, rule_spans: Vec::new(), macro_rules: false }
+    }
 }
 
 /// The main resolver class.
@@ -1038,7 +1045,7 @@ pub struct Resolver<'a, 'tcx> {
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
-    non_macro_attr: Lrc<SyntaxExtension>,
+    non_macro_attr: MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
     unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
@@ -1321,6 +1328,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let features = tcx.features();
         let pub_vis = ty::Visibility::<DefId>::Public;
+        let edition = tcx.sess.edition();
 
         let mut resolver = Resolver {
             tcx,
@@ -1402,9 +1410,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
-            dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(tcx.sess.edition())),
-            dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(tcx.sess.edition())),
-            non_macro_attr: Lrc::new(SyntaxExtension::non_macro_attr(tcx.sess.edition())),
+            dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(edition)),
+            dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(edition)),
+            non_macro_attr: MacroData::new(Lrc::new(SyntaxExtension::non_macro_attr(edition))),
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             macro_rules_scopes: Default::default(),
@@ -1564,7 +1572,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match macro_kind {
             MacroKind::Bang => self.dummy_ext_bang.clone(),
             MacroKind::Derive => self.dummy_ext_derive.clone(),
-            MacroKind::Attr => self.non_macro_attr.clone(),
+            MacroKind::Attr => self.non_macro_attr.ext.clone(),
         }
     }
 
