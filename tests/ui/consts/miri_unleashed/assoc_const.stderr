@@ -35,6 +35,6 @@ help: skipping check that does not even have a feature gate
 LL |     const F: u32 = (U::X, 42).1;
    |                    ^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

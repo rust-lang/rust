@@ -10,5 +10,5 @@ note: for this opaque type
 LL |     type B<'b> = impl Clone;
    |                  ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

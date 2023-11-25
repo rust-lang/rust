@@ -57,6 +57,6 @@ help: use `dyn`
 LL |     <dyn Dyn>::CONST;
    |     ++++    +
 
-error: aborting due to previous error; 4 warnings emitted
+error: aborting due to 1 previous error; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0223`.

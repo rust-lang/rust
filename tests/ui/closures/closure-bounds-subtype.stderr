@@ -20,6 +20,6 @@ help: consider further restricting this bound
 LL | fn give_owned<F>(f: F) where F: FnOnce() + Send + std::marker::Sync {
    |                                                 +++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

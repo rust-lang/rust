@@ -13,7 +13,7 @@ LL | let x: () = 5i32;
    |        |
    |        expected due to this
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.
 Some expected error codes were not found: ["E0004"]

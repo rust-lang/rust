@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/46766
 #![crate_name = "foo"]
 
 pub enum Enum{Variant}

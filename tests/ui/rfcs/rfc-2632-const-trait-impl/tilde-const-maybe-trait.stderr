@@ -4,5 +4,5 @@ error: `~const` and `?` are mutually exclusive
 LL | const fn tilde_question<T: ~const ?Sized>() {}
    |                            ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

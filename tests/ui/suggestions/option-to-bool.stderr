@@ -13,6 +13,6 @@ help: use `Option::is_some` to test if the `Option` has a value
 LL |     if true && x.is_some() {}
    |                 ++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

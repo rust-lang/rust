@@ -21,6 +21,6 @@ help: consider introducing a `where` clause, but there might be an alternative b
 LL | pub fn foo<T>(s: S<T>, t: S<T>) where S<T>: PartialEq {
    |                                 +++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0369`.

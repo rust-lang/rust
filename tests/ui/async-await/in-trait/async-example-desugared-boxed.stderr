@@ -7,5 +7,5 @@ LL |     async fn foo(&self) -> i32;
 LL |     fn foo(&self) -> Pin<Box<dyn Future<Output = i32> + '_>> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

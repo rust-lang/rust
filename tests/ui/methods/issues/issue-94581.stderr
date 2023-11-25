@@ -10,6 +10,6 @@ LL |     let sqsum = get_slice().map(|i| i * i).sum();
            `[i32]: Iterator`
            which is required by `&mut [i32]: Iterator`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

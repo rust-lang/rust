@@ -2,7 +2,7 @@ warning: this `Deref` implementation is covered by an implicit supertrait coerci
   --> $DIR/deref-lint-regions.rs:8:1
    |
 LL | impl<'a> Deref for dyn Foo<'a> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Foo<'_>` implements `Deref<Target = dyn Bar<'_>>` which conflicts with supertrait `Bar<'_>`
 LL |
 LL |     type Target = dyn Bar<'a>;
    |     -------------------------- target type is a supertrait of `dyn Foo<'_>`

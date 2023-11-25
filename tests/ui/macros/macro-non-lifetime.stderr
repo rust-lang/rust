@@ -13,5 +13,5 @@ note: while trying to match meta-variable `$x:lifetime`
 LL | macro_rules! m { ($x:lifetime) => { } }
    |                   ^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

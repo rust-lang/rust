@@ -10,6 +10,6 @@ note: the constant `PRIVATE` is defined here
 LL |     const PRIVATE: u32 = 0x_a_bad_1dea_u32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0603`.

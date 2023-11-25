@@ -27,6 +27,6 @@ help: disambiguate the associated function for candidate #2
 LL |     <Qux as FooBar>::foo(Qux);
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

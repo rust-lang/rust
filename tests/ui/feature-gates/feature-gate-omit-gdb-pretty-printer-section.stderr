@@ -6,6 +6,6 @@ LL | #[omit_gdb_pretty_printer_section]
    |
    = help: add `#![feature(omit_gdb_pretty_printer_section)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -11,6 +11,6 @@ help: consider returning the local binding `a`
 LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; a }
    |                                                           +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

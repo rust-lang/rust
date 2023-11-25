@@ -41,5 +41,5 @@ LL |             Call(_unit = callee(Move(*ptr), ptr), after_call, UnwindContinu
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

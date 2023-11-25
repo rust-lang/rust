@@ -9,5 +9,5 @@ LL |         a: 0,,
    |              expected identifier
    |              help: remove this comma
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

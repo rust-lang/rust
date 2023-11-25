@@ -4,5 +4,5 @@ error: expected identifier, found keyword `Self`
 LL |             ref Self => (),
    |                 ^^^^ expected identifier, found keyword
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

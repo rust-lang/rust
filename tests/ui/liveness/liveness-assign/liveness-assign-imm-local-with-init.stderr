@@ -10,6 +10,6 @@ LL |     let v: isize = 1;
 LL |     v = 2;
    |     ^^^^^ cannot assign twice to immutable variable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0384`.

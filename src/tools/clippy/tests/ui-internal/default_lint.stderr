@@ -17,5 +17,5 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::default_lint)]` implied by `#[deny(clippy::internal)]`
    = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

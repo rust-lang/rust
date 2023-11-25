@@ -7,6 +7,6 @@ LL | static BAR: Foo = Foo;
    = help: the trait `Sync` is not implemented for `Foo`
    = note: shared static variables must have a type that implements `Sync`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

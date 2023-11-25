@@ -16,5 +16,5 @@ LL | macro_rules! should_lint {
    = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
    = help: move the items to before the test module was defined
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

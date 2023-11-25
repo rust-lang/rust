@@ -12,6 +12,6 @@ LL |     y.use_ref();
    = note: consider using a `let` binding to create a longer lived value
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0716`.

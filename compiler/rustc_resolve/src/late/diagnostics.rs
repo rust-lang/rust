@@ -2162,13 +2162,22 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn let_binding_suggestion(&mut self, err: &mut Diagnostic, ident_span: Span) -> bool {
         if let Some(Expr { kind: ExprKind::Assign(lhs, ..), .. }) =
             self.diagnostic_metadata.in_assignment
-            && let ast::ExprKind::Path(None, _) = lhs.kind
+            && let ast::ExprKind::Path(None, ref path) = lhs.kind
         {
             if !ident_span.from_expansion() {
+                let (span, text) = match path.segments.first() {
+                    Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
+                        // a special case for #117894
+                        let name = name.strip_prefix("_").unwrap_or(name);
+                        (ident_span, format!("let {name}"))
+                    }
+                    _ => (ident_span.shrink_to_lo(), "let ".to_string()),
+                };
+
                 err.span_suggestion_verbose(
-                    ident_span.shrink_to_lo(),
+                    span,
                     "you might have meant to introduce a new binding",
-                    "let ".to_string(),
+                    text,
                     Applicability::MaybeIncorrect,
                 );
                 return true;

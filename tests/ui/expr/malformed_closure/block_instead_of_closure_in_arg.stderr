@@ -22,6 +22,6 @@ help: you might have meant to create the closure instead of a block
 LL |     Some(true).filter(|_| {
    |                       +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

@@ -22,5 +22,5 @@ LL ~     let result = panic::catch_unwind(move || {
 LL +         let _ = &f;
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

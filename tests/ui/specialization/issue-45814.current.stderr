@@ -9,6 +9,6 @@ LL | default impl<T, U> Trait<T> for U {}
    = note: 128 redundant requirements hidden
    = note: required for `T` to implement `Trait<_>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0275`.

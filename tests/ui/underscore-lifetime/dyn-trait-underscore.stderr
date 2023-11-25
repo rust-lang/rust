@@ -12,5 +12,5 @@ help: to declare that the trait object captures data from argument `items`, you 
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
    |                                                   ++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -546,7 +546,7 @@ impl Rewrite for ast::GenericBound {
                     ast::TraitBoundModifier::Maybe => poly_trait_ref
                         .rewrite(context, shape.offset_left(1)?)
                         .map(|s| format!("?{}", s)),
-                    ast::TraitBoundModifier::MaybeConst => poly_trait_ref
+                    ast::TraitBoundModifier::MaybeConst(_) => poly_trait_ref
                         .rewrite(context, shape.offset_left(7)?)
                         .map(|s| format!("~const {}", s)),
                     ast::TraitBoundModifier::MaybeConstMaybe => poly_trait_ref

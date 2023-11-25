@@ -12,6 +12,6 @@ help: you can use `as` to change the binding name of the import
 LL | extern crate m2 as other_m1;
    | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0259`.

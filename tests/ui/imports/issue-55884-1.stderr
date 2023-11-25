@@ -18,6 +18,6 @@ LL |     pub use self::m2::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0659`.

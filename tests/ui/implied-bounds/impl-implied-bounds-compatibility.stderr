@@ -12,7 +12,7 @@ note: the lint level is defined here
 LL | #![deny(implied_bounds_entailment)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
 error: impl method assumes more implied bounds than the corresponding trait method

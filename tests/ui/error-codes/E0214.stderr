@@ -9,6 +9,6 @@ help: use angle brackets instead
 LL |     let v: Vec<&str> = vec!["foo"];
    |               ~    ~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0214`.

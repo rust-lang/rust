@@ -4,5 +4,5 @@ error: feature `bar` implying `foobar` does not exist
 LL | #[unstable(feature = "foobar", issue = "1", implied_by = "bar")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

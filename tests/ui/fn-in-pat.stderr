@@ -6,6 +6,6 @@ LL |         A::new() => (),
    |
    = help: for more information, visit https://doc.rust-lang.org/book/ch18-00-patterns.html
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0164`.

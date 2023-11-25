@@ -29,8 +29,8 @@ use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    self, add_link_lib_path, dylib_path, dylib_path_var, output, t,
-    target_supports_cranelift_backend, up_to_date,
+    self, add_link_lib_path, add_rustdoc_cargo_lld_flags, add_rustdoc_lld_flags, dylib_path,
+    dylib_path_var, output, t, target_supports_cranelift_backend, up_to_date, LldThreads,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
@@ -271,13 +271,14 @@ impl Step for Cargotest {
 
         let _time = helpers::timeit(&builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        builder.run_delaying_failure(
-            cmd.arg(&cargo)
-                .arg(&out_dir)
-                .args(builder.config.test_args())
-                .env("RUSTC", builder.rustc(compiler))
-                .env("RUSTDOC", builder.rustdoc(compiler)),
-        );
+        let mut cmd = cmd
+            .arg(&cargo)
+            .arg(&out_dir)
+            .args(builder.config.test_args())
+            .env("RUSTC", builder.rustc(compiler))
+            .env("RUSTDOC", builder.rustdoc(compiler));
+        add_rustdoc_cargo_lld_flags(&mut cmd, builder, compiler.host, LldThreads::No);
+        builder.run_delaying_failure(cmd);
     }
 }
 
@@ -862,15 +863,8 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.linker(self.compiler.host) {
-            cmd.env("RUSTDOC_LINKER", linker);
-        }
-        if builder.is_fuse_ld_lld(self.compiler.host) {
-            cmd.env(
-                "RUSTDOC_LLD_NO_THREADS",
-                helpers::lld_flag_no_threads(self.compiler.host.contains("windows")),
-            );
-        }
+        add_rustdoc_lld_flags(&mut cmd, builder, self.compiler.host, LldThreads::No);
+
         builder.run_delaying_failure(&mut cmd);
     }
 }
@@ -1043,6 +1037,8 @@ impl Step for RustdocGUI {
 
         cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
+
+        add_rustdoc_cargo_lld_flags(&mut cmd, builder, self.compiler.host, LldThreads::No);
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {

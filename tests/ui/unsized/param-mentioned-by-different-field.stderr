@@ -9,6 +9,6 @@ LL |     let y: &Foo<[u8]> = &x;
    = note: expected reference `&Foo<[u8]>`
               found reference `&Foo<[u8; 1]>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

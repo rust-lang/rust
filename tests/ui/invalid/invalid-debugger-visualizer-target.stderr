@@ -4,5 +4,5 @@ error: attribute should be applied to a module
 LL | #[debugger_visualizer(natvis_file = "./foo.natvis.xml")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

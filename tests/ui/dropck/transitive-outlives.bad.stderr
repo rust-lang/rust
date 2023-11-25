@@ -10,6 +10,6 @@ note: the implementor must specify the same requirement
 LL | struct DropMe<'a, 'b: 'a, 'c: 'b>(PhantomData<&'a ()>, PhantomData<&'b ()>, PhantomData<&'c ()>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0367`.

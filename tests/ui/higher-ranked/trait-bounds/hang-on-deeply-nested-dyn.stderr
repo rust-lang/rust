@@ -16,6 +16,6 @@ LL |       f
    = note: expected reference `&dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn Fn(u32) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a))`
               found reference `&dyn Fn(u32)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

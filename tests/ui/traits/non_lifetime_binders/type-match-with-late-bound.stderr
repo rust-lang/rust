@@ -21,6 +21,6 @@ help: consider adding an explicit lifetime bound
 LL |     for<F> F: 'a, !1_"F": 'a
    |                 ~~~~~~~~~~~~
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0309`.

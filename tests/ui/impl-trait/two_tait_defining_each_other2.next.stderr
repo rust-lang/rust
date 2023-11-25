@@ -4,6 +4,6 @@ error[E0284]: type annotations needed: cannot satisfy `A <: B`
 LL |     x // B's hidden type is A (opaquely)
    |     ^ cannot satisfy `A <: B`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0284`.

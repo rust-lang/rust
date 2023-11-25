@@ -11,6 +11,6 @@ LL |     let _y = x.clone();
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

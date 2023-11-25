@@ -7,5 +7,5 @@ LL |
 LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
    | ------------------------------------------------------------------------------------------- `start` language item function is not allowed to have `#[target_feature]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

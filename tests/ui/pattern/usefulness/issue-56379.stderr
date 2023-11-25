@@ -22,6 +22,6 @@ LL ~         Foo::C(true) => {},
 LL +         Foo::A(false) | Foo::B(false) | Foo::C(false) => todo!()
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0004`.

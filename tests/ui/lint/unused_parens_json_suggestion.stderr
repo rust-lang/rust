@@ -16,6 +16,6 @@ LL +     let _a = 1 / (2 + 3);
    |
 
 "}
-{"$message_type":"diagnostic","message":"aborting due to previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to previous error
+{"$message_type":"diagnostic","message":"aborting due to 1 previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to 1 previous error
 
 "}

@@ -7,6 +7,6 @@ LL | struct LocalTy;
 LL | impl Trait for <LocalTy as Overflow>::Assoc {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<LocalTy as Overflow>::Assoc`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0119`.

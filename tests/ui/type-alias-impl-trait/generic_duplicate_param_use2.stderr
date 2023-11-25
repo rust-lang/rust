@@ -9,6 +9,6 @@ help: consider restricting type parameter `T`
 LL | type Two<T: std::fmt::Debug, U> = impl Debug;
    |           +++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

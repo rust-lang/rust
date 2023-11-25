@@ -556,6 +556,10 @@ where
 /// therefore, using something that implements [`BufRead`], such as
 /// [`BufReader`], will be more efficient.
 ///
+/// Repeated calls to the reader use the same cursor, so for example
+/// calling `read_to_end` twice on a [`File`] will only return the file's
+/// contents once. It's recommended to first call `rewind()` in that case.
+///
 /// # Examples
 ///
 /// [`File`]s implement `Read`:
@@ -2044,6 +2048,28 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
     }
 }
 
+fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
+    let mut read = 0;
+    loop {
+        let (done, used) = {
+            let available = match r.fill_buf() {
+                Ok(n) => n,
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            };
+            match memchr::memchr(delim, available) {
+                Some(i) => (true, i + 1),
+                None => (false, available.len()),
+            }
+        };
+        r.consume(used);
+        read += used;
+        if done || used == 0 {
+            return Ok(read);
+        }
+    }
+}
+
 /// A `BufRead` is a type of `Read`er which has an internal buffer, allowing it
 /// to perform extra ways of reading.
 ///
@@ -2245,6 +2271,68 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
         read_until(self, byte, buf)
+    }
+
+    /// Skip all bytes until the delimiter `byte` or EOF is reached.
+    ///
+    /// This function will read (and discard) bytes from the underlying stream until the
+    /// delimiter or EOF is found.
+    ///
+    /// If successful, this function will return the total number of bytes read,
+    /// including the delimiter byte.
+    ///
+    /// This is useful for efficiently skipping data such as NUL-terminated strings
+    /// in binary file formats without buffering.
+    ///
+    /// This function is blocking and should be used carefully: it is possible for
+    /// an attacker to continuously send bytes without ever sending the delimiter
+    /// or EOF.
+    ///
+    /// # Errors
+    ///
+    /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
+    /// will otherwise return any errors returned by [`fill_buf`].
+    ///
+    /// If an I/O error is encountered then all bytes read so far will be
+    /// present in `buf` and its length will have been adjusted appropriately.
+    ///
+    /// [`fill_buf`]: BufRead::fill_buf
+    ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read some NUL-terminated information
+    /// about Ferris from a binary string, skipping the fun fact:
+    ///
+    /// ```
+    /// #![feature(bufread_skip_until)]
+    ///
+    /// use std::io::{self, BufRead};
+    ///
+    /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0");
+    ///
+    /// // read name
+    /// let mut name = Vec::new();
+    /// let num_bytes = cursor.read_until(b'\0', &mut name)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 7);
+    /// assert_eq!(name, b"Ferris\0");
+    ///
+    /// // skip fun fact
+    /// let num_bytes = cursor.skip_until(b'\0')
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 30);
+    ///
+    /// // read animal type
+    /// let mut animal = Vec::new();
+    /// let num_bytes = cursor.read_until(b'\0', &mut animal)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 11);
+    /// assert_eq!(animal, b"Crustacean\0");
+    /// ```
+    #[unstable(feature = "bufread_skip_until", issue = "111735")]
+    fn skip_until(&mut self, byte: u8) -> Result<usize> {
+        skip_until(self, byte)
     }
 
     /// Read all bytes until a newline (the `0xA` byte) is reached, and append

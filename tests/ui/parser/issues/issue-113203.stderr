@@ -4,5 +4,5 @@ error: incorrect use of `await`
 LL |     await {}()
    |     ^^^^^^^^ help: `await` is a postfix operation: `{}.await`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -142,14 +142,17 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         };
         if in_working_tree {
             let untracked_paths_output = output(
-                build.config.git().arg("status").arg("--porcelain").arg("--untracked-files=normal"),
+                build
+                    .config
+                    .git()
+                    .arg("status")
+                    .arg("--porcelain")
+                    .arg("-z")
+                    .arg("--untracked-files=normal"),
             );
-            let untracked_paths = untracked_paths_output
-                .lines()
-                .filter(|entry| entry.starts_with("??"))
-                .map(|entry| {
-                    entry.split(' ').nth(1).expect("every git status entry should list a path")
-                });
+            let untracked_paths = untracked_paths_output.split_terminator('\0').filter_map(
+                |entry| entry.strip_prefix("?? "), // returns None if the prefix doesn't match
+            );
             let mut untracked_count = 0;
             for untracked_path in untracked_paths {
                 println!("skip untracked path {untracked_path} during rustfmt invocations");

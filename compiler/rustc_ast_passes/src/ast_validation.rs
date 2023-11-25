@@ -1203,7 +1203,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
                     self.err_handler().emit_err(errors::OptionalTraitObject { span: poly.span });
                 }
-                (_, TraitBoundModifier::MaybeConst)
+                (_, &TraitBoundModifier::MaybeConst(span))
                     if let Some(reason) = &self.disallow_tilde_const =>
                 {
                     let reason = match reason {
@@ -1224,8 +1224,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                         DisallowTildeConstContext::Item => errors::TildeConstReason::Item,
                     };
-                    self.err_handler()
-                        .emit_err(errors::TildeConstDisallowed { span: bound.span(), reason });
+                    self.err_handler().emit_err(errors::TildeConstDisallowed { span, reason });
                 }
                 (_, TraitBoundModifier::MaybeConstMaybe) => {
                     self.err_handler().emit_err(errors::OptionalConstExclusive {
