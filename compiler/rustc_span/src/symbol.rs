@@ -1574,6 +1574,7 @@ symbols! {
         slice,
         slice_from_raw_parts,
         slice_from_raw_parts_mut,
+        slice_index,
         slice_len_fn,
         slice_patterns,
         slicing_syntax,

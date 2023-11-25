@@ -1,0 +1,97 @@
+- // MIR for `index_project` before LowerIntrinsics
++ // MIR for `index_project` after LowerIntrinsics
+  
+  fn index_project(_1: &mut [i32], _2: &[i32], _3: *mut [i32], _4: *const [i32], _5: usize) -> () {
+      debug a => _1;
+      debug b => _2;
+      debug c => _3;
+      debug d => _4;
+      debug i => _5;
+      let mut _0: ();
+      let _6: &mut i32;
+      let mut _7: &mut [i32];
+      let mut _8: usize;
+      let mut _10: &[i32];
+      let mut _11: usize;
+      let mut _13: *mut [i32];
+      let mut _14: usize;
+      let mut _16: *const [i32];
+      let mut _17: usize;
+      scope 1 {
+          debug _a => _6;
+          let _9: &i32;
+          scope 2 {
+              debug _b => _9;
+              let _12: *mut i32;
+              scope 3 {
+                  debug _c => _12;
+                  let _15: *const i32;
+                  scope 4 {
+                      debug _d => _15;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = move _1;
+          StorageLive(_8);
+          _8 = _5;
+-         _6 = slice_index::<&mut [i32], &mut i32>(move _7, move _8) -> [return: bb1, unwind unreachable];
++         _6 = &mut (*_7)[_8];
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = _2;
+          StorageLive(_11);
+          _11 = _5;
+-         _9 = slice_index::<&[i32], &i32>(move _10, move _11) -> [return: bb2, unwind unreachable];
++         _9 = &(*_10)[_11];
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageLive(_12);
+          StorageLive(_13);
+          _13 = _3;
+          StorageLive(_14);
+          _14 = _5;
+-         _12 = slice_index::<*mut [i32], *mut i32>(move _13, move _14) -> [return: bb3, unwind unreachable];
++         _12 = &raw mut (*_13)[_14];
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageLive(_15);
+          StorageLive(_16);
+          _16 = _4;
+          StorageLive(_17);
+          _17 = _5;
+-         _15 = slice_index::<*const [i32], *const i32>(move _16, move _17) -> [return: bb4, unwind unreachable];
++         _15 = &raw const (*_16)[_17];
++         goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_17);
+          StorageDead(_16);
+          _0 = const ();
+          StorageDead(_15);
+          StorageDead(_12);
+          StorageDead(_9);
+          StorageDead(_6);
+          return;
+      }
+  }
+  
