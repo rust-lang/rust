@@ -163,14 +163,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let length = this.read_scalar(length)?.to_i64()?;
-                let result = this.ftruncate64(fd, length)?;
+                let result = this.ftruncate64(fd, length.into())?;
                 this.write_scalar(result, dest)?;
             }
             "ftruncate" => {
                 let [fd, length] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
-                let length = this.read_target_isize(length)?;
+                let length = this.read_scalar(length)?.to_int(this.libc_ty_layout("off_t").size)?;
                 let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(result, dest)?;
             }
