@@ -31,14 +31,7 @@ pub fn visit_results<'mir, 'tcx, F, R>(
 pub trait ResultsVisitor<'mir, 'tcx, R> {
     type FlowState;
 
-    fn visit_block_start(
-        &mut self,
-        _results: &mut R,
-        _state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
-    }
+    fn visit_block_start(&mut self, _state: &Self::FlowState) {}
 
     /// Called with the `before_statement_effect` of the given statement applied to `state` but not
     /// its `statement_effect`.
@@ -86,14 +79,7 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     ) {
     }
 
-    fn visit_block_end(
-        &mut self,
-        _results: &mut R,
-        _state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
-    }
+    fn visit_block_end(&mut self, _state: &Self::FlowState) {}
 }
 
 /// Things that can be visited by a `ResultsVisitor`.
