@@ -1,6 +1,7 @@
 use parking_lot::Mutex;
 use std::cell::Cell;
 use std::cell::OnceCell;
+use std::num::NonZeroUsize;
 use std::ops::Deref;
 use std::ptr;
 use std::sync::Arc;
@@ -30,7 +31,7 @@ impl RegistryId {
 }
 
 struct RegistryData {
-    thread_limit: usize,
+    thread_limit: NonZeroUsize,
     threads: Mutex<usize>,
 }
 
@@ -60,7 +61,7 @@ thread_local! {
 
 impl Registry {
     /// Creates a registry which can hold up to `thread_limit` threads.
-    pub fn new(thread_limit: usize) -> Self {
+    pub fn new(thread_limit: NonZeroUsize) -> Self {
         Registry(Arc::new(RegistryData { thread_limit, threads: Mutex::new(0) }))
     }
 
@@ -73,7 +74,7 @@ impl Registry {
     /// Panics if the thread limit is hit or if the thread already has an associated registry.
     pub fn register(&self) {
         let mut threads = self.0.threads.lock();
-        if *threads < self.0.thread_limit {
+        if *threads < self.0.thread_limit.get() {
             REGISTRY.with(|registry| {
                 if registry.get().is_some() {
                     drop(threads);
@@ -126,7 +127,9 @@ impl<T> WorkerLocal<T> {
         {
             let registry = Registry::current();
             WorkerLocal {
-                locals: (0..registry.0.thread_limit).map(|i| CacheAligned(initial(i))).collect(),
+                locals: (0..registry.0.thread_limit.get())
+                    .map(|i| CacheAligned(initial(i)))
+                    .collect(),
                 registry,
             }
         }
