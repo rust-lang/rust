@@ -753,7 +753,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lang_item: hir::LangItem,
         span: Span,
         hir_id: hir::HirId,
-        expr_hir_id: Option<hir::HirId>,
     ) -> (Res, Ty<'tcx>) {
         let def_id = self.tcx.require_lang_item(lang_item, Some(span));
         let def_kind = self.tcx.def_kind(def_id);
@@ -770,7 +769,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let code = match lang_item {
             hir::LangItem::IntoFutureIntoFuture => {
-                Some(ObligationCauseCode::AwaitableExpr(expr_hir_id))
+                if let hir::Node::Expr(into_future_call) = self.tcx.hir().get_parent(hir_id)
+                    && let hir::ExprKind::Call(_, [arg0]) = &into_future_call.kind
+                {
+                    Some(ObligationCauseCode::AwaitableExpr(arg0.hir_id))
+                } else {
+                    None
+                }
             }
             hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
                 Some(ObligationCauseCode::ForLoopIterator)
