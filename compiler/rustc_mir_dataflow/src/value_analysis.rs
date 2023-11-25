@@ -332,8 +332,6 @@ pub struct ValueAnalysisWrapper<T>(pub T);
 impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper<T> {
     type Domain = State<T::Value>;
 
-    type Direction = crate::Forward;
-
     const NAME: &'static str = T::NAME;
 
     fn bottom_value(&self, _body: &Body<'tcx>) -> Self::Domain {
@@ -476,24 +474,8 @@ impl<V: Clone> State<V> {
         }
     }
 
-    pub fn is_reachable(&self) -> bool {
+    fn is_reachable(&self) -> bool {
         matches!(&self.0, StateData::Reachable(_))
-    }
-
-    pub fn mark_unreachable(&mut self) {
-        self.0 = StateData::Unreachable;
-    }
-
-    pub fn flood_all(&mut self)
-    where
-        V: HasTop,
-    {
-        self.flood_all_with(V::TOP)
-    }
-
-    pub fn flood_all_with(&mut self, value: V) {
-        let StateData::Reachable(values) = &mut self.0 else { return };
-        values.raw.fill(value);
     }
 
     /// Assign `value` to all places that are contained in `place` or may alias one.
@@ -510,7 +492,7 @@ impl<V: Clone> State<V> {
     }
 
     /// Assign `value` to the discriminant of `place` and all places that may alias it.
-    pub fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
+    fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
         self.flood_with_tail_elem(place, Some(TrackElem::Discriminant), map, value)
     }
 
@@ -546,7 +528,7 @@ impl<V: Clone> State<V> {
     /// This does nothing if the place is not tracked.
     ///
     /// The target place must have been flooded before calling this method.
-    pub fn insert_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
+    fn insert_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
         match result {
             ValueOrPlace::Value(value) => self.insert_value_idx(target, value, map),
             ValueOrPlace::Place(source) => self.insert_place_idx(target, source, map),
@@ -910,18 +892,13 @@ impl Map {
         self.inner_values[root] = start..end;
     }
 
-    /// Returns the number of tracked places, i.e., those for which a value can be stored.
-    pub fn tracked_places(&self) -> usize {
-        self.value_count
-    }
-
     /// Applies a single projection element, yielding the corresponding child.
     pub fn apply(&self, place: PlaceIndex, elem: TrackElem) -> Option<PlaceIndex> {
         self.projections.get(&(place, elem)).copied()
     }
 
     /// Locates the given place, if it exists in the tree.
-    pub fn find_extra(
+    fn find_extra(
         &self,
         place: PlaceRef<'_>,
         extra: impl IntoIterator<Item = TrackElem>,
@@ -954,7 +931,7 @@ impl Map {
     }
 
     /// Iterate over all direct children.
-    pub fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> + '_ {
+    fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> + '_ {
         Children::new(self, parent)
     }
 

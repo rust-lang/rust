@@ -154,17 +154,13 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
             let infcx = cx.tcx.infer_ctxt().build();
             let suggest_display = is_str
-                || cx
-                    .tcx
-                    .get_diagnostic_item(sym::Display)
-                    .map(|t| infcx.type_implements_trait(t, [ty], cx.param_env).may_apply())
-                    == Some(true);
+                || cx.tcx.get_diagnostic_item(sym::Display).is_some_and(|t| {
+                    infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()
+                });
             let suggest_debug = !suggest_display
-                && cx
-                    .tcx
-                    .get_diagnostic_item(sym::Debug)
-                    .map(|t| infcx.type_implements_trait(t, [ty], cx.param_env).may_apply())
-                    == Some(true);
+                && cx.tcx.get_diagnostic_item(sym::Debug).is_some_and(|t| {
+                    infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()
+                });
 
             let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
 

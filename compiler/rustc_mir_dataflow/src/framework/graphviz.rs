@@ -15,7 +15,7 @@ use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
 use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsRefCursor, ResultsVisitor};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OutputStyle {
+pub(crate) enum OutputStyle {
     AfterOnly,
     BeforeAndAfter,
 }
@@ -29,7 +29,7 @@ impl OutputStyle {
     }
 }
 
-pub struct Formatter<'res, 'mir, 'tcx, A>
+pub(crate) struct Formatter<'res, 'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -43,7 +43,7 @@ impl<'res, 'mir, 'tcx, A> Formatter<'res, 'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub fn new(
+    pub(crate) fn new(
         body: &'mir Body<'tcx>,
         results: &'res mut Results<'tcx, A>,
         style: OutputStyle,
@@ -55,7 +55,7 @@ where
 
 /// A pair of a basic block and an index into that basic blocks `successors`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct CfgEdge {
+pub(crate) struct CfgEdge {
     source: BasicBlock,
     index: usize,
 }

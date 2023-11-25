@@ -1001,7 +1001,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
-        if !t.has_placeholders() && !t.has_infer_regions() {
+        if !t.has_placeholders() && !t.has_infer() {
             return t;
         }
         self.current_index.shift_in(1);
@@ -1048,6 +1048,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let ty = self.infcx.shallow_resolve(ty);
         match *ty.kind() {
             ty::Placeholder(p) => {
                 let replace_var = self.mapped_types.get(&p);
@@ -1063,16 +1064,23 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         );
                         Ty::new_bound(self.infcx.tcx, db, *replace_var)
                     }
-                    None => ty,
+                    None => {
+                        if ty.has_infer() {
+                            ty.super_fold_with(self)
+                        } else {
+                            ty
+                        }
+                    }
                 }
             }
 
-            _ if ty.has_placeholders() || ty.has_infer_regions() => ty.super_fold_with(self),
+            _ if ty.has_placeholders() || ty.has_infer() => ty.super_fold_with(self),
             _ => ty,
         }
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        let ct = self.infcx.shallow_resolve(ct);
         if let ty::ConstKind::Placeholder(p) = ct.kind() {
             let replace_var = self.mapped_consts.get(&p);
             match replace_var {
@@ -1087,7 +1095,13 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                     );
                     ty::Const::new_bound(self.infcx.tcx, db, *replace_var, ct.ty())
                 }
-                None => ct,
+                None => {
+                    if ct.has_infer() {
+                        ct.super_fold_with(self)
+                    } else {
+                        ct
+                    }
+                }
             }
         } else {
             ct.super_fold_with(self)

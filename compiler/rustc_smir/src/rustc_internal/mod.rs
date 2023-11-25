@@ -3,7 +3,7 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
-use crate::rustc_smir::{Stable, Tables, TablesWrapper};
+use crate::rustc_smir::{context::TablesWrapper, Stable, Tables};
 use rustc_data_structures::fx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::interpret::AllocId;
@@ -181,7 +181,7 @@ where
         instances: IndexMap::default(),
         constants: IndexMap::default(),
     }));
-    stable_mir::run(&tables, || init(&tables, f))
+    stable_mir::compiler_interface::run(&tables, || init(&tables, f))
 }
 
 #[macro_export]

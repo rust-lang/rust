@@ -288,7 +288,7 @@ fn do_mir_borrowck<'tcx>(
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
-    let flow_ever_inits = EverInitializedPlaces::new(tcx, body, &mdpe)
+    let flow_ever_inits = EverInitializedPlaces::new(body, &mdpe)
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();

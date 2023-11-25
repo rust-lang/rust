@@ -121,24 +121,24 @@ rustc_index::newtype_index! {
 /// `BorrowIndex`, and maps each such index to a `BorrowData`
 /// describing the borrow. These indexes are used for representing the
 /// borrows in compact bitvectors.
-pub struct Borrows<'a, 'tcx> {
+pub struct Borrows<'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &'mir Body<'tcx>,
 
-    borrow_set: &'a BorrowSet<'tcx>,
+    borrow_set: &'mir BorrowSet<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-struct OutOfScopePrecomputer<'a, 'tcx> {
+struct OutOfScopePrecomputer<'mir, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
-    body: &'a Body<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
+    body: &'mir Body<'tcx>,
+    regioncx: &'mir RegionInferenceContext<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
+impl<'mir, 'tcx> OutOfScopePrecomputer<'mir, 'tcx> {
+    fn new(body: &'mir Body<'tcx>, regioncx: &'mir RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
             visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
@@ -241,17 +241,17 @@ pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
     prec.borrows_out_of_scope_at_location
 }
 
-struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
+struct PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
-    body: &'a Body<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
+    body: &'mir Body<'tcx>,
+    regioncx: &'mir RegionInferenceContext<'tcx>,
 
     loans_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'a, 'tcx> PoloniusOutOfScopePrecomputer<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
+impl<'mir, 'tcx> PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
+    fn new(body: &'mir Body<'tcx>, regioncx: &'mir RegionInferenceContext<'tcx>) -> Self {
         Self {
             visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
@@ -404,12 +404,12 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Borrows<'a, 'tcx> {
+impl<'mir, 'tcx> Borrows<'mir, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        regioncx: &'a RegionInferenceContext<'tcx>,
-        borrow_set: &'a BorrowSet<'tcx>,
+        body: &'mir Body<'tcx>,
+        regioncx: &'mir RegionInferenceContext<'tcx>,
+        borrow_set: &'mir BorrowSet<'tcx>,
     ) -> Self {
         let mut borrows_out_of_scope_at_location =
             calculate_borrows_out_of_scope_at_location(body, regioncx, borrow_set);
