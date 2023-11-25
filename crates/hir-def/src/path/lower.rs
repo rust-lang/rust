@@ -26,7 +26,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
     let mut type_anchor = None;
     let mut segments = Vec::new();
     let mut generic_args = Vec::new();
-    let hygiene = ctx.span_map();
+    let span_map = ctx.span_map();
     loop {
         let segment = path.segment()?;
 
@@ -39,7 +39,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                 let name = if name_ref.text() == "$crate" {
                     kind = resolve_crate_root(
                         ctx.db.upcast(),
-                        hygiene.span_for_range(name_ref.syntax().text_range()).ctx,
+                        span_map.span_for_range(name_ref.syntax().text_range()).ctx,
                     )
                     .map(PathKind::DollarCrate)
                     .unwrap_or(PathKind::Crate);
@@ -159,7 +159,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctxt = hygiene.span_for_range(path.segment()?.syntax().text_range()).ctx;
+            let syn_ctxt = span_map.span_for_range(path.segment()?.syntax().text_range()).ctx;
             if let Some(macro_call_id) = ctx.db.lookup_intern_syntax_context(syn_ctxt).outer_expn {
                 if ctx.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
                     kind = match resolve_crate_root(ctx.db.upcast(), syn_ctxt) {

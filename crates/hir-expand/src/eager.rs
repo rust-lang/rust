@@ -127,7 +127,7 @@ fn lazy_expand(
 
 fn eager_macro_recur(
     db: &dyn ExpandDatabase,
-    hygiene: &ExpansionSpanMap,
+    span_map: &ExpansionSpanMap,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     call_site: SyntaxContextId,
@@ -170,7 +170,7 @@ fn eager_macro_recur(
         };
         let def = match call
             .path()
-            .and_then(|path| ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(hygiene)))
+            .and_then(|path| ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(span_map)))
         {
             Some(path) => match macro_resolver(path.clone()) {
                 Some(def) => def,

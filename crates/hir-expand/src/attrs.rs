@@ -42,18 +42,18 @@ impl RawAttrs {
     pub fn new(
         db: &dyn ExpandDatabase,
         owner: &dyn ast::HasAttrs,
-        hygiene: SpanMapRef<'_>,
+        span_map: SpanMapRef<'_>,
     ) -> Self {
         let entries = collect_attrs(owner)
             .filter_map(|(id, attr)| match attr {
                 Either::Left(attr) => {
-                    attr.meta().and_then(|meta| Attr::from_src(db, meta, hygiene, id))
+                    attr.meta().and_then(|meta| Attr::from_src(db, meta, span_map, id))
                 }
                 Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
                     id,
                     input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                     path: Interned::new(ModPath::from(crate::name!(doc))),
-                    ctxt: hygiene.span_for_range(comment.syntax().text_range()).ctx,
+                    ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
                 }),
             })
             .collect::<Vec<_>>();
@@ -66,9 +66,9 @@ impl RawAttrs {
     pub fn from_attrs_owner(
         db: &dyn ExpandDatabase,
         owner: InFile<&dyn ast::HasAttrs>,
-        hygiene: SpanMapRef<'_>,
+        span_map: SpanMapRef<'_>,
     ) -> Self {
-        Self::new(db, owner.value, hygiene)
+        Self::new(db, owner.value, span_map)
     }
 
     pub fn merge(&self, other: Self) -> Self {
@@ -216,10 +216,10 @@ impl Attr {
     fn from_src(
         db: &dyn ExpandDatabase,
         ast: ast::Meta,
-        hygiene: SpanMapRef<'_>,
+        span_map: SpanMapRef<'_>,
         id: AttrId,
     ) -> Option<Attr> {
-        let path = Interned::new(ModPath::from_src(db, ast.path()?, hygiene)?);
+        let path = Interned::new(ModPath::from_src(db, ast.path()?, span_map)?);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),
@@ -227,12 +227,12 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(tt.syntax(), hygiene);
+            let tree = syntax_node_to_token_tree(tt.syntax(), span_map);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
         };
-        Some(Attr { id, path, input, ctxt: hygiene.span_for_range(ast.syntax().text_range()).ctx })
+        Some(Attr { id, path, input, ctxt: span_map.span_for_range(ast.syntax().text_range()).ctx })
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {

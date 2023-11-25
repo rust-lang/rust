@@ -47,9 +47,9 @@ impl ModPath {
     pub fn from_src(
         db: &dyn ExpandDatabase,
         path: ast::Path,
-        hygiene: SpanMapRef<'_>,
+        span_map: SpanMapRef<'_>,
     ) -> Option<ModPath> {
-        convert_path(db, None, path, hygiene)
+        convert_path(db, None, path, span_map)
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
@@ -194,10 +194,10 @@ fn convert_path(
     db: &dyn ExpandDatabase,
     prefix: Option<ModPath>,
     path: ast::Path,
-    hygiene: SpanMapRef<'_>,
+    span_map: SpanMapRef<'_>,
 ) -> Option<ModPath> {
     let prefix = match path.qualifier() {
-        Some(qual) => Some(convert_path(db, prefix, qual, hygiene)?),
+        Some(qual) => Some(convert_path(db, prefix, qual, span_map)?),
         None => prefix,
     };
 
@@ -211,7 +211,7 @@ fn convert_path(
                 ModPath::from_kind(
                     resolve_crate_root(
                         db,
-                        hygiene.span_for_range(name_ref.syntax().text_range()).ctx,
+                        span_map.span_for_range(name_ref.syntax().text_range()).ctx,
                     )
                     .map(PathKind::DollarCrate)
                     .unwrap_or(PathKind::Crate),
@@ -265,7 +265,7 @@ fn convert_path(
     // We follow what it did anyway :)
     if mod_path.segments.len() == 1 && mod_path.kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctx = hygiene.span_for_range(segment.syntax().text_range()).ctx;
+            let syn_ctx = span_map.span_for_range(segment.syntax().text_range()).ctx;
             if let Some(macro_call_id) = db.lookup_intern_syntax_context(syn_ctx).outer_expn {
                 if db.lookup_intern_macro_call(macro_call_id).def.local_inner {
                     mod_path.kind = match resolve_crate_root(db, syn_ctx) {

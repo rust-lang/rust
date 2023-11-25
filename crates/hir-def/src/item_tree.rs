@@ -776,8 +776,8 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let hygiene = db.span_map(file_id);
-        let (_, source_map) = lower::lower_use_tree(db, hygiene.as_ref(), ast_use_tree)
+        let span_map = db.span_map(file_id);
+        let (_, source_map) = lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
             .expect("failed to lower use tree");
         source_map[index].clone()
     }
@@ -791,8 +791,8 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let hygiene = db.span_map(file_id);
-        lower::lower_use_tree(db, hygiene.as_ref(), ast_use_tree)
+        let span_map = db.span_map(file_id);
+        lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
             .expect("failed to lower use tree")
             .1
     }

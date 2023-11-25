@@ -415,35 +415,32 @@ impl AttrsWithOwner {
             AttrDefId::StaticId(it) => attrs_from_item_tree_assoc(db, it),
             AttrDefId::FunctionId(it) => attrs_from_item_tree_assoc(db, it),
             AttrDefId::TypeAliasId(it) => attrs_from_item_tree_assoc(db, it),
-            AttrDefId::GenericParamId(it) => {
-                // FIXME: we could probably just make these relative to the params?
-                match it {
-                    GenericParamId::ConstParamId(it) => {
-                        let src = it.parent().child_source(db);
-                        RawAttrs::from_attrs_owner(
-                            db.upcast(),
-                            src.with_value(&src.value[it.local_id()]),
-                            db.span_map(src.file_id).as_ref(),
-                        )
-                    }
-                    GenericParamId::TypeParamId(it) => {
-                        let src = it.parent().child_source(db);
-                        RawAttrs::from_attrs_owner(
-                            db.upcast(),
-                            src.with_value(&src.value[it.local_id()]),
-                            db.span_map(src.file_id).as_ref(),
-                        )
-                    }
-                    GenericParamId::LifetimeParamId(it) => {
-                        let src = it.parent.child_source(db);
-                        RawAttrs::from_attrs_owner(
-                            db.upcast(),
-                            src.with_value(&src.value[it.local_id]),
-                            db.span_map(src.file_id).as_ref(),
-                        )
-                    }
+            AttrDefId::GenericParamId(it) => match it {
+                GenericParamId::ConstParamId(it) => {
+                    let src = it.parent().child_source(db);
+                    RawAttrs::from_attrs_owner(
+                        db.upcast(),
+                        src.with_value(&src.value[it.local_id()]),
+                        db.span_map(src.file_id).as_ref(),
+                    )
                 }
-            }
+                GenericParamId::TypeParamId(it) => {
+                    let src = it.parent().child_source(db);
+                    RawAttrs::from_attrs_owner(
+                        db.upcast(),
+                        src.with_value(&src.value[it.local_id()]),
+                        db.span_map(src.file_id).as_ref(),
+                    )
+                }
+                GenericParamId::LifetimeParamId(it) => {
+                    let src = it.parent.child_source(db);
+                    RawAttrs::from_attrs_owner(
+                        db.upcast(),
+                        src.with_value(&src.value[it.local_id]),
+                        db.span_map(src.file_id).as_ref(),
+                    )
+                }
+            },
             AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),
             AttrDefId::ExternCrateId(it) => attrs_from_item_tree_loc(db, it),
             AttrDefId::UseId(it) => attrs_from_item_tree_loc(db, it),

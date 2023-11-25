@@ -1732,7 +1732,7 @@ impl HirDisplay for TypeRef {
                 f.write_joined(bounds, " + ")?;
             }
             TypeRef::Macro(macro_call) => {
-                let ctx = hir_def::lower::LowerCtx::with_hygiene(
+                let ctx = hir_def::lower::LowerCtx::with_span_map(
                     f.db.upcast(),
                     f.db.span_map(macro_call.file_id),
                 );

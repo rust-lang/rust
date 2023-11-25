@@ -13,26 +13,30 @@ use crate::{db::DefDatabase, path::Path};
 
 pub struct LowerCtx<'a> {
     pub db: &'a dyn DefDatabase,
-    hygiene: SpanMap,
+    span_map: SpanMap,
     // FIXME: This optimization is probably pointless, ast id map should pretty much always exist anyways.
     ast_id_map: Option<(HirFileId, OnceCell<Arc<AstIdMap>>)>,
 }
 
 impl<'a> LowerCtx<'a> {
-    pub fn new(db: &'a dyn DefDatabase, hygiene: SpanMap, file_id: HirFileId) -> Self {
-        LowerCtx { db, hygiene, ast_id_map: Some((file_id, OnceCell::new())) }
+    pub fn new(db: &'a dyn DefDatabase, span_map: SpanMap, file_id: HirFileId) -> Self {
+        LowerCtx { db, span_map, ast_id_map: Some((file_id, OnceCell::new())) }
     }
 
     pub fn with_file_id(db: &'a dyn DefDatabase, file_id: HirFileId) -> Self {
-        LowerCtx { db, hygiene: db.span_map(file_id), ast_id_map: Some((file_id, OnceCell::new())) }
+        LowerCtx {
+            db,
+            span_map: db.span_map(file_id),
+            ast_id_map: Some((file_id, OnceCell::new())),
+        }
     }
 
-    pub fn with_hygiene(db: &'a dyn DefDatabase, hygiene: SpanMap) -> Self {
-        LowerCtx { db, hygiene, ast_id_map: None }
+    pub fn with_span_map(db: &'a dyn DefDatabase, span_map: SpanMap) -> Self {
+        LowerCtx { db, span_map, ast_id_map: None }
     }
 
     pub(crate) fn span_map(&self) -> SpanMapRef<'_> {
-        self.hygiene.as_ref()
+        self.span_map.as_ref()
     }
 
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {

@@ -18,7 +18,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Expander {
     cfg_options: CfgOptions,
-    hygiene: SpanMap,
+    span_map: SpanMap,
     krate: CrateId,
     pub(crate) current_file_id: HirFileId,
     pub(crate) module: ModuleId,
@@ -41,7 +41,7 @@ impl Expander {
             recursion_depth: 0,
             recursion_limit,
             cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
-            hygiene: db.span_map(current_file_id),
+            span_map: db.span_map(current_file_id),
             krate: module.krate,
         }
     }
@@ -95,7 +95,7 @@ impl Expander {
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
-        self.hygiene = db.span_map(mark.file_id);
+        self.span_map = db.span_map(mark.file_id);
         self.current_file_id = mark.file_id;
         if self.recursion_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
@@ -110,7 +110,7 @@ impl Expander {
     }
 
     pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
-        LowerCtx::new(db, self.hygiene.clone(), self.current_file_id)
+        LowerCtx::new(db, self.span_map.clone(), self.current_file_id)
     }
 
     pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
@@ -118,7 +118,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, self.hygiene.as_ref()))
+        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, self.span_map.as_ref()))
     }
 
     pub(crate) fn cfg_options(&self) -> &CfgOptions {
@@ -130,7 +130,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::new(db, self.hygiene.clone(), self.current_file_id);
+        let ctx = LowerCtx::new(db, self.span_map.clone(), self.current_file_id);
         Path::from_src(path, &ctx)
     }
 
@@ -174,7 +174,7 @@ impl Expander {
                     let parse = value.cast::<T>()?;
 
                     self.recursion_depth += 1;
-                    self.hygiene = db.span_map(file_id);
+                    self.span_map = db.span_map(file_id);
                     let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
                     let mark = Mark {
                         file_id: old_file_id,

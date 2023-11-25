@@ -595,7 +595,7 @@ impl SourceAnalyzer {
         }
 
         // This must be a normal source file rather than macro file.
-        let ctx = LowerCtx::with_hygiene(db.upcast(), db.span_map(self.file_id));
+        let ctx = LowerCtx::with_span_map(db.upcast(), db.span_map(self.file_id));
         let hir_path = Path::from_src(path.clone(), &ctx)?;
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are

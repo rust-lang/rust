@@ -657,7 +657,8 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
-        let vis = RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), self.span_map());
+        let vis =
+            RawVisibility::from_ast_with_span_map(self.db, item.visibility(), self.span_map());
         self.data().vis.alloc(vis)
     }
 
@@ -735,7 +736,7 @@ fn lower_abi(abi: ast::Abi) -> Interned<str> {
 
 struct UseTreeLowering<'a> {
     db: &'a dyn DefDatabase,
-    hygiene: SpanMapRef<'a>,
+    span_map: SpanMapRef<'a>,
     mapping: Arena<ast::UseTree>,
 }
 
@@ -748,7 +749,7 @@ impl UseTreeLowering<'_> {
                 // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
                 // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
                 Some(path) => {
-                    match ModPath::from_src(self.db.upcast(), path, self.hygiene) {
+                    match ModPath::from_src(self.db.upcast(), path, self.span_map) {
                         Some(it) => Some(it),
                         None => return None, // FIXME: report errors somewhere
                     }
@@ -767,7 +768,7 @@ impl UseTreeLowering<'_> {
         } else {
             let is_glob = tree.star_token().is_some();
             let path = match tree.path() {
-                Some(path) => Some(ModPath::from_src(self.db.upcast(), path, self.hygiene)?),
+                Some(path) => Some(ModPath::from_src(self.db.upcast(), path, self.span_map)?),
                 None => None,
             };
             let alias = tree.rename().map(|a| {
@@ -803,10 +804,10 @@ impl UseTreeLowering<'_> {
 
 pub(crate) fn lower_use_tree(
     db: &dyn DefDatabase,
-    hygiene: SpanMapRef<'_>,
+    span_map: SpanMapRef<'_>,
     tree: ast::UseTree,
 ) -> Option<(UseTree, Arena<ast::UseTree>)> {
-    let mut lowering = UseTreeLowering { db, hygiene, mapping: Arena::new() };
+    let mut lowering = UseTreeLowering { db, span_map, mapping: Arena::new() };
     let tree = lowering.lower_use_tree(tree)?;
     Some((tree, lowering.mapping))
 }
