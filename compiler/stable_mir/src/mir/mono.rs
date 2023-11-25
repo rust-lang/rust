@@ -40,7 +40,7 @@ impl Instance {
 
     pub fn is_foreign_item(&self) -> bool {
         let item = CrateItem::try_from(*self);
-        item.as_ref().map_or(false, CrateItem::is_foreign_item)
+        item.as_ref().is_ok_and(CrateItem::is_foreign_item)
     }
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.

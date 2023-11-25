@@ -361,15 +361,23 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     let infcx = selcx.infcx;
 
     obligations.iter().find(|obligation| {
-        if infcx.next_trait_solver() {
-            infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
+        let evaluation_result = if infcx.next_trait_solver() {
+            infcx.evaluate_obligation(obligation)
         } else {
             // We use `evaluate_root_obligation` to correctly track intercrate
             // ambiguity clauses. We cannot use this in the new solver.
-            selcx.evaluate_root_obligation(obligation).map_or(
-                false, // Overflow has occurred, and treat the obligation as possibly holding.
-                |result| !result.may_apply(),
-            )
+            selcx.evaluate_root_obligation(obligation)
+        };
+
+        match evaluation_result {
+            Ok(result) => !result.may_apply(),
+            // If overflow occurs, we need to conservatively treat the goal as possibly holding,
+            // since there can be instantiations of this goal that don't overflow and result in
+            // success. This isn't much of a problem in the old solver, since we treat overflow
+            // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
+            // but in the new solver, this is very important for correctness, since overflow
+            // *must* be treated as ambiguity for completeness.
+            Err(_overflow) => false,
         }
     })
 }
