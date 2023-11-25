@@ -21,7 +21,7 @@ trait Add<Rhs = Self> {
     fn add(self, rhs: Rhs) -> Self::Output;
 }
 
-// FIXME we shouldn't need to have to specify `Rhs`.
+// FIXME(effects) we shouldn't need to have to specify `Rhs`.
 impl const Add<i32> for i32 {
     type Output = i32;
     fn add(self, rhs: i32) -> i32 {
@@ -336,7 +336,7 @@ fn from_str(s: &str) -> Result<bool, ()> {
 }
 
 #[lang = "eq"]
-#[const_trait]
+// FIXME #[const_trait]
 trait PartialEq<Rhs: ?Sized = Self> {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool {

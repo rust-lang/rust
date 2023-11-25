@@ -1,7 +1,4 @@
-// check-pass
-// known-bug: #110395
-
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 struct S;
 
@@ -24,6 +21,7 @@ const fn equals_self<T: ~const Foo>(t: &T) -> bool {
 // it not using the impl.
 
 pub const EQ: bool = equals_self(&S);
-// FIXME(effects) ~^ ERROR
+//~^ ERROR
+// FIXME(effects) the diagnostics here isn't ideal, we shouldn't get `<false>`
 
 fn main() {}
