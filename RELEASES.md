@@ -1,3 +1,9 @@
+Versions 1.75.0 and later
+=========================
+
+To limit the size of the release files and facilitate Github markdown rendering,
+new releases will be listed in [RELEASES_2021_EDITION.md](./RELEASES_2021_EDITION.md).
+
 Version 1.74.0 (2023-11-16)
 ==========================
 

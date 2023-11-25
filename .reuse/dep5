@@ -24,6 +24,7 @@ Files: compiler/*
        LICENSE-MIT
        README.md
        RELEASES.md
+       RELEASES_2021_EDITION.md
        rustfmt.toml
        rust-bors.toml
        triagebot.toml
