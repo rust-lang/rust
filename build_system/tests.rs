@@ -104,6 +104,15 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         runner.run_out_command("polymorphize_coroutine", &[]);
     }),
     TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
+    TestCase::custom("aot.gen_block_iterate", &|runner| {
+        runner.run_rustc([
+            "example/gen_block_iterate.rs",
+            "--edition",
+            "2024",
+            "-Zunstable-options",
+        ]);
+        runner.run_out_command("gen_block_iterate", &[]);
+    }),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
