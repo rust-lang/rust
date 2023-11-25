@@ -88,7 +88,7 @@ pub struct FlatTree {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SpanMap {
+struct SpanMap {
     #[serde(skip_serializing)]
     serialize: bool,
     span_size: u32,
@@ -122,7 +122,7 @@ impl SpanMap {
 }
 
 impl SpanMap {
-    pub fn do_serialize(&self) -> bool {
+    fn do_serialize(&self) -> bool {
         self.serialize
     }
 }

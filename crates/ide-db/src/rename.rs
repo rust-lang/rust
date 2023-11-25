@@ -533,7 +533,7 @@ fn source_edit_from_def(
                     }
                 },
             };
-            file_id = source.file_id.file_id();
+            file_id = Some(source.file_id);
             if let Either::Left(pat) = source.value {
                 let name_range = pat.name().unwrap().syntax().text_range();
                 // special cases required for renaming fields/locals in Record patterns

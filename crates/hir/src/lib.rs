@@ -59,7 +59,7 @@ use hir_def::{
     Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
-use hir_expand::{name::name, InMacroFile, MacroCallKind};
+use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
@@ -124,7 +124,7 @@ pub use {
     hir_expand::{
         attrs::{Attr, AttrId},
         name::{known, Name},
-        tt, ExpandResult, HirFileId, HirFileIdExt, InFile, MacroFile,
+        tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
     },
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
@@ -3505,7 +3505,7 @@ impl Impl {
             }
             _ => return None,
         };
-        let file_id = MacroFile { macro_call_id: derive_attr };
+        let file_id = MacroFileId { macro_call_id: derive_attr };
         let path = db
             .parse_macro_expansion(file_id)
             .value

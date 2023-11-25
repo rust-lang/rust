@@ -48,9 +48,9 @@ use crate::{
 };
 
 pub use crate::ast_id_map::{AstId, ErasedAstId, ErasedFileAstId};
-pub use crate::files::{InFile, InMacroFile};
+pub use crate::files::{InFile, InMacroFile, InRealFile};
 
-pub use base_db::span::{HirFileId, MacroCallId, MacroFile};
+pub use base_db::span::{HirFileId, MacroCallId, MacroFileId};
 pub use mbe::ValueResult;
 
 pub type DeclarativeMacro = ::mbe::DeclarativeMacro<tt::SpanData>;
@@ -206,7 +206,7 @@ impl HirFileIdExt for HirFileId {
         loop {
             match file_id.repr() {
                 HirFileIdRepr::FileId(id) => break id,
-                HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
+                HirFileIdRepr::MacroFile(MacroFileId { macro_call_id }) => {
                     let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
                     let is_include_expansion = loc.def.is_include() && loc.eager.is_some();
                     file_id = match is_include_expansion.then(|| db.include_expand(macro_call_id)) {
@@ -241,7 +241,7 @@ impl HirFileIdExt for HirFileId {
         loop {
             match call.file_id.repr() {
                 HirFileIdRepr::FileId(file_id) => break Some((file_id, call.value)),
-                HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
+                HirFileIdRepr::MacroFile(MacroFileId { macro_call_id }) => {
                     call = db.lookup_intern_macro_call(macro_call_id).to_node(db);
                 }
             }
@@ -700,7 +700,7 @@ impl ExpansionInfo {
         }
     }
 
-    pub fn new(db: &dyn db::ExpandDatabase, macro_file: MacroFile) -> ExpansionInfo {
+    pub fn new(db: &dyn db::ExpandDatabase, macro_file: MacroFileId) -> ExpansionInfo {
         let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
         let arg_tt = loc.kind.arg(db);

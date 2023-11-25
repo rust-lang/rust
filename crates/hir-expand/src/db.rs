@@ -24,7 +24,7 @@ use crate::{
     span::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
     ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, HirFileId, HirFileIdRepr, MacroCallId,
-    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFileId, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -102,7 +102,7 @@ pub trait ExpandDatabase: SourceDatabase {
     // This query is LRU cached
     fn parse_macro_expansion(
         &self,
-        macro_file: MacroFile,
+        macro_file: MacroFileId,
     ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)>;
     #[salsa::transparent]
     fn span_map(&self, file_id: HirFileId) -> SpanMap;
@@ -307,7 +307,7 @@ fn parse_or_expand_with_err(
 
 fn parse_macro_expansion(
     db: &dyn ExpandDatabase,
-    macro_file: MacroFile,
+    macro_file: MacroFileId,
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
     let _p = profile::span("parse_macro_expansion");
     let mbe::ValueResult { value: tt, err } = db.macro_expand(macro_file.macro_call_id);
@@ -326,7 +326,7 @@ fn parse_macro_expansion_error(
     db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
 ) -> ExpandResult<Box<[SyntaxError]>> {
-    db.parse_macro_expansion(MacroFile { macro_call_id })
+    db.parse_macro_expansion(MacroFileId { macro_call_id })
         .map(|it| it.0.errors().to_vec().into_boxed_slice())
 }
 

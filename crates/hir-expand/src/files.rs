@@ -1,15 +1,14 @@
 use std::iter;
 
 use base_db::{
-    span::{HirFileId, HirFileIdRepr, MacroFile, SyntaxContextId},
-    FileRange,
+    span::{HirFileId, HirFileIdRepr, MacroFileId, SyntaxContextId},
+    FileId, FileRange,
 };
 use either::Either;
 use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange};
 
 use crate::{db, ExpansionInfo, HirFileIdExt as _};
 
-// FIXME: Make an InRealFile wrapper
 /// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
 ///
 /// Typical usages are:
@@ -18,52 +17,88 @@ use crate::{db, ExpansionInfo, HirFileIdExt as _};
 /// * `InFile<ast::FnDef>` -- ast node in a file
 /// * `InFile<TextSize>` -- offset in a file
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct InFile<T> {
-    pub file_id: HirFileId,
+pub struct InFileWrapper<FileKind, T> {
+    pub file_id: FileKind,
     pub value: T,
 }
+pub type InFile<T> = InFileWrapper<HirFileId, T>;
+pub type InMacroFile<T> = InFileWrapper<MacroFileId, T>;
+pub type InRealFile<T> = InFileWrapper<FileId, T>;
 
-impl<T> InFile<T> {
-    pub fn new(file_id: HirFileId, value: T) -> InFile<T> {
-        InFile { file_id, value }
+impl<FileKind, T> InFileWrapper<FileKind, T> {
+    pub fn new(file_id: FileKind, value: T) -> Self {
+        Self { file_id, value }
     }
 
-    pub fn with_value<U>(&self, value: U) -> InFile<U> {
-        InFile::new(self.file_id, value)
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> InFileWrapper<FileKind, U> {
+        InFileWrapper::new(self.file_id, f(self.value))
+    }
+}
+
+impl<FileKind: Copy, T> InFileWrapper<FileKind, T> {
+    pub fn with_value<U>(&self, value: U) -> InFileWrapper<FileKind, U> {
+        InFileWrapper::new(self.file_id, value)
     }
 
-    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> InFile<U> {
-        InFile::new(self.file_id, f(self.value))
-    }
-
-    pub fn as_ref(&self) -> InFile<&T> {
+    pub fn as_ref(&self) -> InFileWrapper<FileKind, &T> {
         self.with_value(&self.value)
     }
+}
 
+impl<FileKind: Copy, T: Clone> InFileWrapper<FileKind, &T> {
+    pub fn cloned(&self) -> InFileWrapper<FileKind, T> {
+        self.with_value(self.value.clone())
+    }
+}
+
+impl<T> From<InMacroFile<T>> for InFile<T> {
+    fn from(InMacroFile { file_id, value }: InMacroFile<T>) -> Self {
+        InFile { file_id: file_id.into(), value }
+    }
+}
+
+impl<T> From<InRealFile<T>> for InFile<T> {
+    fn from(InRealFile { file_id, value }: InRealFile<T>) -> Self {
+        InFile { file_id: file_id.into(), value }
+    }
+}
+
+// region:transpose impls
+
+impl<FileKind, T> InFileWrapper<FileKind, Option<T>> {
+    pub fn transpose(self) -> Option<InFileWrapper<FileKind, T>> {
+        Some(InFileWrapper::new(self.file_id, self.value?))
+    }
+}
+
+impl<FileKind, L, R> InFileWrapper<FileKind, Either<L, R>> {
+    pub fn transpose(self) -> Either<InFileWrapper<FileKind, L>, InFileWrapper<FileKind, R>> {
+        match self.value {
+            Either::Left(l) => Either::Left(InFileWrapper::new(self.file_id, l)),
+            Either::Right(r) => Either::Right(InFileWrapper::new(self.file_id, r)),
+        }
+    }
+}
+
+// endregion:transpose impls
+
+// region:specific impls
+
+impl<T> InFile<T> {
     pub fn file_syntax(&self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id)
     }
 }
 
-impl<T: Clone> InFile<&T> {
-    pub fn cloned(&self) -> InFile<T> {
-        self.with_value(self.value.clone())
+impl<T> InRealFile<T> {
+    pub fn file_syntax(&self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
+        db.parse(self.file_id).syntax_node()
     }
 }
 
-impl<T> InFile<Option<T>> {
-    pub fn transpose(self) -> Option<InFile<T>> {
-        let value = self.value?;
-        Some(InFile::new(self.file_id, value))
-    }
-}
-
-impl<L, R> InFile<Either<L, R>> {
-    pub fn transpose(self) -> Either<InFile<L>, InFile<R>> {
-        match self.value {
-            Either::Left(l) => Either::Left(InFile::new(self.file_id, l)),
-            Either::Right(r) => Either::Right(InFile::new(self.file_id, r)),
-        }
+impl<T> InMacroFile<T> {
+    pub fn file_syntax(&self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
+        db.parse_macro_expansion(self.file_id).value.0.syntax_node()
     }
 }
 
@@ -159,11 +194,17 @@ impl InFile<&SyntaxNode> {
         }
     }
 
-    pub fn original_syntax_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<SyntaxNode>> {
+    pub fn original_syntax_node(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> Option<InRealFile<SyntaxNode>> {
         // This kind of upmapping can only be achieved in attribute expanded files,
         // as we don't have node inputs otherwise and therefore can't find an `N` node in the input
-        let Some(file_id) = self.file_id.macro_file() else {
-            return Some(self.map(Clone::clone));
+        let file_id = match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                return Some(InRealFile { file_id, value: self.value.clone() })
+            }
+            HirFileIdRepr::MacroFile(m) => m,
         };
         if !self.file_id.is_attr_macro(db) {
             return None;
@@ -182,7 +223,7 @@ impl InFile<&SyntaxNode> {
         let kind = self.value.kind();
         // FIXME: This heuristic is brittle and with the right macro may select completely unrelated nodes?
         let value = anc.ancestors().find(|it| it.kind() == kind)?;
-        Some(InFile::new(file_id.into(), value))
+        Some(InRealFile::new(file_id, value))
     }
 }
 
@@ -230,29 +271,11 @@ impl InFile<SyntaxToken> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct InMacroFile<T> {
-    pub file_id: MacroFile,
-    pub value: T,
-}
-
-impl<T> From<InMacroFile<T>> for InFile<T> {
-    fn from(macro_file: InMacroFile<T>) -> Self {
-        InFile { file_id: macro_file.file_id.into(), value: macro_file.value }
-    }
-}
-
-pub fn ascend_range_up_macros(
-    db: &dyn db::ExpandDatabase,
-    range: InFile<TextRange>,
-) -> (FileRange, SyntaxContextId) {
-    match range.file_id.repr() {
-        HirFileIdRepr::FileId(file_id) => {
-            (FileRange { file_id, range: range.value }, SyntaxContextId::ROOT)
-        }
-        HirFileIdRepr::MacroFile(m) => {
-            ExpansionInfo::new(db, m).map_token_range_up(db, range.value)
-        }
+impl InFile<TextRange> {
+    /// Attempts to map the syntax node back up its macro calls.
+    pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> FileRange {
+        let (range, _ctxt) = ascend_range_up_macros(db, self);
+        range
     }
 }
 
@@ -261,12 +284,14 @@ impl<N: AstNode> InFile<N> {
         self.value.syntax().descendants().filter_map(T::cast).map(move |n| self.with_value(n))
     }
 
-    // FIXME: this should return `Option<InFileNotHirFile<N>>`
-    pub fn original_ast_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<N>> {
+    pub fn original_ast_node(self, db: &dyn db::ExpandDatabase) -> Option<InRealFile<N>> {
         // This kind of upmapping can only be achieved in attribute expanded files,
         // as we don't have node inputs otherwise and therefore can't find an `N` node in the input
-        let Some(file_id) = self.file_id.macro_file() else {
-            return Some(self);
+        let file_id = match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                return Some(InRealFile { file_id, value: self.value })
+            }
+            HirFileIdRepr::MacroFile(m) => m,
         };
         if !self.file_id.is_attr_macro(db) {
             return None;
@@ -284,10 +309,24 @@ impl<N: AstNode> InFile<N> {
         // FIXME: This heuristic is brittle and with the right macro may select completely unrelated nodes?
         let anc = db.parse(file_id).syntax_node().covering_element(range);
         let value = anc.ancestors().find_map(N::cast)?;
-        return Some(InFile::new(file_id.into(), value));
+        Some(InRealFile::new(file_id, value))
     }
 
     pub fn syntax(&self) -> InFile<&SyntaxNode> {
         self.with_value(self.value.syntax())
+    }
+}
+
+fn ascend_range_up_macros(
+    db: &dyn db::ExpandDatabase,
+    range: InFile<TextRange>,
+) -> (FileRange, SyntaxContextId) {
+    match range.file_id.repr() {
+        HirFileIdRepr::FileId(file_id) => {
+            (FileRange { file_id, range: range.value }, SyntaxContextId::ROOT)
+        }
+        HirFileIdRepr::MacroFile(m) => {
+            ExpansionInfo::new(db, m).map_token_range_up(db, range.value)
+        }
     }
 }

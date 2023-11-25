@@ -18,7 +18,7 @@ use std::{iter, ops::Range, sync};
 
 use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
 use expect_test::Expect;
-use hir_expand::{db::ExpandDatabase, span::SpanMapRef, HirFileIdExt, InFile, MacroFile};
+use hir_expand::{db::ExpandDatabase, span::SpanMapRef, HirFileIdExt, InFile, MacroFileId};
 use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -94,7 +94,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             })
             .unwrap();
         let macro_call_id = res.value.unwrap();
-        let macro_file = MacroFile { macro_call_id };
+        let macro_file = MacroFileId { macro_call_id };
         let mut expansion_result = db.parse_macro_expansion(macro_file);
         expansion_result.err = expansion_result.err.or(res.err);
         expansions.push((macro_call.value.clone(), expansion_result));

@@ -102,7 +102,7 @@ impl fmt::Debug for HirFileId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroFile {
+pub struct MacroFileId {
     pub macro_call_id: MacroCallId,
 }
 /// `MacroCallId` identifies a particular macro invocation, like
@@ -113,18 +113,18 @@ crate::impl_intern_key!(MacroCallId);
 
 impl MacroCallId {
     pub fn as_file(self) -> HirFileId {
-        MacroFile { macro_call_id: self }.into()
+        MacroFileId { macro_call_id: self }.into()
     }
 
-    pub fn as_macro_file(self) -> MacroFile {
-        MacroFile { macro_call_id: self }
+    pub fn as_macro_file(self) -> MacroFileId {
+        MacroFileId { macro_call_id: self }
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HirFileIdRepr {
     FileId(FileId),
-    MacroFile(MacroFile),
+    MacroFile(MacroFileId),
 }
 
 impl fmt::Debug for HirFileIdRepr {
@@ -145,8 +145,8 @@ impl From<FileId> for HirFileId {
     }
 }
 
-impl From<MacroFile> for HirFileId {
-    fn from(MacroFile { macro_call_id: MacroCallId(id) }: MacroFile) -> Self {
+impl From<MacroFileId> for HirFileId {
+    fn from(MacroFileId { macro_call_id: MacroCallId(id) }: MacroFileId) -> Self {
         let id = id.as_u32();
         assert!(id < Self::MAX_FILE_ID);
         HirFileId(id | Self::MACRO_FILE_TAG_MASK)
@@ -163,10 +163,10 @@ impl HirFileId {
     }
 
     #[inline]
-    pub fn macro_file(self) -> Option<MacroFile> {
+    pub fn macro_file(self) -> Option<MacroFileId> {
         match self.0 & Self::MACRO_FILE_TAG_MASK {
             0 => None,
-            _ => Some(MacroFile {
+            _ => Some(MacroFileId {
                 macro_call_id: MacroCallId(InternId::from(self.0 ^ Self::MACRO_FILE_TAG_MASK)),
             }),
         }
@@ -184,7 +184,7 @@ impl HirFileId {
     pub fn repr(self) -> HirFileIdRepr {
         match self.0 & Self::MACRO_FILE_TAG_MASK {
             0 => HirFileIdRepr::FileId(FileId(self.0)),
-            _ => HirFileIdRepr::MacroFile(MacroFile {
+            _ => HirFileIdRepr::MacroFile(MacroFileId {
                 macro_call_id: MacroCallId(InternId::from(self.0 ^ Self::MACRO_FILE_TAG_MASK)),
             }),
         }
