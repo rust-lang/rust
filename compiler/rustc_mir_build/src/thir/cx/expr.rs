@@ -642,15 +642,23 @@ impl<'tcx> Cx<'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value =
-                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
+                            let value = mir::Const::identity_unevaluated(
+                                tcx,
+                                anon_const.def_id.to_def_id(),
+                            )
+                            .instantiate_identity()
+                            .normalize(tcx, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value =
-                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
+                            let value = mir::Const::identity_unevaluated(
+                                tcx,
+                                anon_const.def_id.to_def_id(),
+                            )
+                            .instantiate_identity()
+                            .normalize(tcx, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }

@@ -445,7 +445,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         && let hir::ExprKind::Path(hir::QPath::LangItem(
                             LangItem::IntoIterIntoIter,
                             _,
-                            _,
                         )) = call_expr.kind
                     {
                         // Do not suggest `.clone()` in a `for` loop, we already suggest borrowing.
@@ -1346,11 +1345,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // };
                 // corresponding to the desugaring of a for loop `for <pat> in <head> { <body> }`.
                 if let hir::ExprKind::Call(path, [arg]) = ex.kind
-                    && let hir::ExprKind::Path(hir::QPath::LangItem(
-                        LangItem::IntoIterIntoIter,
-                        _,
-                        _,
-                    )) = path.kind
+                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IntoIterIntoIter, _)) =
+                        path.kind
                     && arg.span.contains(self.issue_span)
                 {
                     // Find `IntoIterator::into_iter(<head>)`
@@ -1368,10 +1364,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ..
                     }) = stmt.kind
                     && let hir::ExprKind::Call(path, _args) = call.kind
-                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IteratorNext, _, _)) =
+                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IteratorNext, _)) =
                         path.kind
                     && let hir::PatKind::Struct(path, [field, ..], _) = bind.pat.kind
-                    && let hir::QPath::LangItem(LangItem::OptionSome, pat_span, _) = path
+                    && let hir::QPath::LangItem(LangItem::OptionSome, pat_span) = path
                     && call.span.contains(self.issue_span)
                 {
                     // Find `<pat>` and the span for the whole `for` loop.

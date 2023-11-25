@@ -156,33 +156,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn get_macro(&mut self, res: Res) -> Option<MacroData> {
+    pub(crate) fn get_macro(&mut self, res: Res) -> Option<&MacroData> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
-            Res::NonMacroAttr(_) => {
-                Some(MacroData { ext: self.non_macro_attr.clone(), macro_rules: false })
-            }
+            Res::NonMacroAttr(_) => Some(&self.non_macro_attr),
             _ => None,
         }
     }
 
-    pub(crate) fn get_macro_by_def_id(&mut self, def_id: DefId) -> MacroData {
-        if let Some(macro_data) = self.macro_map.get(&def_id) {
-            return macro_data.clone();
+    pub(crate) fn get_macro_by_def_id(&mut self, def_id: DefId) -> &MacroData {
+        if self.macro_map.contains_key(&def_id) {
+            return &self.macro_map[&def_id];
         }
 
-        let load_macro_untracked = self.cstore().load_macro_untracked(def_id, self.tcx);
-        let (ext, macro_rules) = match load_macro_untracked {
-            LoadedMacro::MacroDef(item, edition) => (
-                Lrc::new(self.compile_macro(&item, edition).0),
-                matches!(item.kind, ItemKind::MacroDef(def) if def.macro_rules),
-            ),
-            LoadedMacro::ProcMacro(extz) => (Lrc::new(extz), false),
+        let loaded_macro = self.cstore().load_macro_untracked(def_id, self.tcx);
+        let macro_data = match loaded_macro {
+            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition),
+            LoadedMacro::ProcMacro(ext) => MacroData::new(Lrc::new(ext)),
         };
 
-        let macro_data = MacroData { ext, macro_rules };
-        self.macro_map.insert(def_id, macro_data.clone());
-        macro_data
+        self.macro_map.entry(def_id).or_insert(macro_data)
     }
 
     pub(crate) fn build_reduced_graph(
@@ -1175,16 +1168,10 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     // Mark the given macro as unused unless its name starts with `_`.
     // Macro uses will remove items from this set, and the remaining
     // items will be reported as `unused_macros`.
-    fn insert_unused_macro(
-        &mut self,
-        ident: Ident,
-        def_id: LocalDefId,
-        node_id: NodeId,
-        rule_spans: &[(usize, Span)],
-    ) {
+    fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
-            for (rule_i, rule_span) in rule_spans.iter() {
+            for (rule_i, rule_span) in &self.r.macro_map[&def_id.to_def_id()].rule_spans {
                 self.r.unused_macro_rules.insert((def_id, *rule_i), (ident, *rule_span));
             }
         }
@@ -1194,24 +1181,24 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
         let def_id = self.r.local_def_id(item.id);
-        let (ext, ident, span, macro_rules, rule_spans) = match &item.kind {
+        let (macro_kind, ident, span, macro_rules) = match &item.kind {
             ItemKind::MacroDef(def) => {
-                let (ext, rule_spans) = self.r.compile_macro(item, self.r.tcx.sess.edition());
-                let ext = Lrc::new(ext);
-                (ext, item.ident, item.span, def.macro_rules, rule_spans)
+                let macro_kind = self.r.macro_map[&def_id.to_def_id()].ext.macro_kind();
+                (macro_kind, item.ident, item.span, def.macro_rules)
             }
             ItemKind::Fn(..) => match self.proc_macro_stub(item) {
                 Some((macro_kind, ident, span)) => {
+                    let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
+                    self.r.macro_map.insert(def_id.to_def_id(), macro_data);
                     self.r.proc_macro_stubs.insert(def_id);
-                    (self.r.dummy_ext(macro_kind), ident, span, false, Vec::new())
+                    (macro_kind, ident, span, false)
                 }
                 None => return parent_scope.macro_rules,
             },
             _ => unreachable!(),
         };
 
-        let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id.to_def_id());
-        self.r.macro_map.insert(def_id.to_def_id(), MacroData { ext, macro_rules });
+        let res = Res::Def(DefKind::Macro(macro_kind), def_id.to_def_id());
         self.r.local_macro_def_scopes.insert(def_id, parent_scope.module);
 
         if macro_rules {
@@ -1245,7 +1232,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.r.define(self.r.graph_root, ident, MacroNS, import_binding);
             } else {
                 self.r.check_reserved_macro_name(ident, res);
-                self.insert_unused_macro(ident, def_id, item.id, &rule_spans);
+                self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.visibilities.insert(def_id, vis);
             let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
@@ -1268,7 +1255,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 _ => self.resolve_visibility(&item.vis),
             };
             if !vis.is_public() {
-                self.insert_unused_macro(ident, def_id, item.id, &rule_spans);
+                self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
             self.r.visibilities.insert(def_id, vis);

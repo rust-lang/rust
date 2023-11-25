@@ -289,8 +289,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::AddrOf(kind, mutbl, oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
-            ExprKind::Path(QPath::LangItem(lang_item, _, hir_id)) => {
-                self.check_lang_item_path(lang_item, expr, hir_id)
+            ExprKind::Path(QPath::LangItem(lang_item, _)) => {
+                self.check_lang_item_path(lang_item, expr)
             }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
             ExprKind::InlineAsm(asm) => {
@@ -497,9 +497,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         lang_item: hir::LangItem,
         expr: &'tcx hir::Expr<'tcx>,
-        hir_id: Option<hir::HirId>,
     ) -> Ty<'tcx> {
-        self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id, hir_id).1
+        self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id).1
     }
 
     pub(crate) fn check_expr_path(

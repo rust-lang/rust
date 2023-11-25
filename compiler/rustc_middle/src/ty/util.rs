@@ -701,22 +701,6 @@ impl<'tcx> TyCtxt<'tcx> {
             .map(|decl| ty::EarlyBinder::bind(decl.ty))
     }
 
-    /// Normalizes all opaque types in the given value, replacing them
-    /// with their underlying types.
-    pub fn expand_opaque_types(self, val: Ty<'tcx>) -> Ty<'tcx> {
-        let mut visitor = OpaqueTypeExpander {
-            seen_opaque_tys: FxHashSet::default(),
-            expanded_cache: FxHashMap::default(),
-            primary_def_id: None,
-            found_recursion: false,
-            found_any_recursion: false,
-            check_recursion: false,
-            expand_coroutines: false,
-            tcx: self,
-        };
-        val.fold_with(&mut visitor)
-    }
-
     /// Expands the given impl trait type, stopping if the type is recursive.
     #[instrument(skip(self), level = "debug", ret)]
     pub fn try_expand_impl_trait_type(

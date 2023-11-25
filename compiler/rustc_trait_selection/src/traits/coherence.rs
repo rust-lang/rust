@@ -330,7 +330,7 @@ fn equate_impl_headers<'tcx>(
                 impl1.self_ty,
                 impl2.self_ty,
             ),
-            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+            _ => bug!("equate_impl_headers given mismatched impl kinds"),
         };
 
     result.map(|infer_ok| infer_ok.obligations).ok()
