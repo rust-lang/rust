@@ -1454,7 +1454,18 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
 
     // Infer the generic parameters of the impl by unifying the
     // impl type with the self type of the projection.
-    let self_ty = alias_ty.self_ty();
+    let mut self_ty = alias_ty.self_ty();
+    if !selcx.infcx.next_trait_solver() {
+        self_ty = normalize_with_depth_to(
+            selcx,
+            param_env,
+            cause.clone(),
+            depth + 1,
+            self_ty,
+            obligations,
+        );
+    }
+
     match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, impl_ty, self_ty) {
         Ok(mut ok) => obligations.append(&mut ok.obligations),
         Err(_) => {
