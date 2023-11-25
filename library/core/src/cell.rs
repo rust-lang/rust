@@ -409,8 +409,7 @@ impl<T> Cell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set(&self, val: T) {
-        let old = self.replace(val);
-        drop(old);
+        self.replace(val);
     }
 
     /// Swaps the values of two `Cell`s.

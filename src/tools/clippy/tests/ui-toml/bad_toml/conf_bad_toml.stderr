@@ -4,5 +4,5 @@ error: error reading Clippy's configuration file: expected `.`, `=`
 LL | fn this_is_obviously(not: a, toml: file) {
    |    ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

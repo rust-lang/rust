@@ -6,5 +6,5 @@ LL | fn check<'a, T: ?Sized>() {
 LL |     impls_trait::<'a, 'static, A<T>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

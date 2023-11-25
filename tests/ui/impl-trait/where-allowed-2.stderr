@@ -6,6 +6,6 @@ LL | fn in_adt_in_return() -> Vec<impl Debug> { panic!() }
    |
    = note: cannot satisfy `_: Debug`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0283`.

@@ -13,6 +13,6 @@ LL |         f();
    |         ^
    = note: move occurs because `f` has type `{closure@$DIR/issue-12127.rs:8:24: 8:30}`, which does not implement the `Copy` trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0382`.

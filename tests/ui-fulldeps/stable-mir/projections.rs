@@ -21,6 +21,7 @@ extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
+use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};
 use stable_mir::ty::{RigidTy, TyKind, UintTy};
 use stable_mir::ItemKind;

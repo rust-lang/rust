@@ -17,6 +17,6 @@ LL | fn real_dispatch<T, F>(f: F) -> Result<(), io::Error>
 LL |     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `real_dispatch`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

@@ -203,7 +203,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CycleError {
     /// The query and related span that uses the cycle.
     pub usage: Option<(Span, QueryStackFrame)>,

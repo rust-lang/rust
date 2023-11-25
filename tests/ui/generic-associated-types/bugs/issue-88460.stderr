@@ -24,6 +24,6 @@ LL | fn test<T>(value: T)
 LL |     for<'a> T::Assoc<'a>: Marker,
    |                           ^^^^^^ required by this bound in `test`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

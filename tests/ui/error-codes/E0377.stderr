@@ -6,6 +6,6 @@ LL | impl<T, U> CoerceUnsized<Bar<U>> for Foo<T> where T: CoerceUnsized<U> {}
    |
    = note: expected coercion between the same definition; expected `Foo`, found `Bar`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0377`.

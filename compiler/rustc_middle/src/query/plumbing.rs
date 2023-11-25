@@ -11,6 +11,7 @@ use field_offset::FieldOffset;
 use measureme::StringId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::AtomicU64;
+use rustc_data_structures::sync::WorkerLocal;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -71,7 +72,7 @@ pub struct QuerySystemFns<'tcx> {
 
 pub struct QuerySystem<'tcx> {
     pub states: QueryStates<'tcx>,
-    pub arenas: QueryArenas<'tcx>,
+    pub arenas: WorkerLocal<QueryArenas<'tcx>>,
     pub caches: QueryCaches<'tcx>,
     pub dynamic_queries: DynamicQueries<'tcx>,
 
@@ -370,7 +371,7 @@ macro_rules! define_callbacks {
 
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
-                (WorkerLocal<TypedArena<<$V as Deref>::Target>>)
+                (TypedArena<<$V as Deref>::Target>)
                 ()
             ),)*
         }
@@ -379,7 +380,7 @@ macro_rules! define_callbacks {
             fn default() -> Self {
                 Self {
                     $($name: query_if_arena!([$($modifiers)*]
-                        (WorkerLocal::new(|_| Default::default()))
+                        (Default::default())
                         ()
                     ),)*
                 }

@@ -7,6 +7,6 @@ LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
 LL |     t
    |     ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0792`.

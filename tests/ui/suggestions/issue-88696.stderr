@@ -6,6 +6,6 @@ LL |     a().into()
    |
    = note: required for `Result<u64, i32>` to implement `Into<Result<u32, i32>>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

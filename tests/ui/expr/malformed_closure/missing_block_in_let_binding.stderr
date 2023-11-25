@@ -12,5 +12,5 @@ help: you might have meant to open the body of the closure
 LL |     let x = |x| {
    |                 +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

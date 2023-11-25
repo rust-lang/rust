@@ -15,6 +15,6 @@ LL |     A: MiniTypeId, B: MiniTypeId,
 LL |     Lift<{is_same_type::<A, B>()}>: IsFalse {}
    |                                     ^^^^^^^ required by this bound in `requires_distinct`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

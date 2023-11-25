@@ -9,5 +9,5 @@ LL |         Some(x) @ Some(y) => {}
    |
    = note: bindings are `x`, `mut x`, `ref x`, and `ref mut x`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

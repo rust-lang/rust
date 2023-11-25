@@ -2,7 +2,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:7:26
    |
 LL | fn non_const_function<T: ~const Trait>() {}
-   |                          ^^^^^^^^^^^^
+   |                          ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-invalid-places.rs:7:4
@@ -14,7 +14,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:9:18
    |
 LL | struct Struct<T: ~const Trait> { field: T }
-   |                  ^^^^^^^^^^^^
+   |                  ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -22,7 +22,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:10:23
    |
 LL | struct TupleStruct<T: ~const Trait>(T);
-   |                       ^^^^^^^^^^^^
+   |                       ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -30,7 +30,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:11:22
    |
 LL | struct UnitStruct<T: ~const Trait>;
-   |                      ^^^^^^^^^^^^
+   |                      ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -38,7 +38,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:13:14
    |
 LL | enum Enum<T: ~const Trait> { Variant(T) }
-   |              ^^^^^^^^^^^^
+   |              ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -46,7 +46,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:15:16
    |
 LL | union Union<T: ~const Trait> { field: T }
-   |                ^^^^^^^^^^^^
+   |                ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -54,7 +54,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:17:14
    |
 LL | type Type<T: ~const Trait> = T;
-   |              ^^^^^^^^^^^^
+   |              ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -62,7 +62,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:19:19
    |
 LL | const CONSTANT<T: ~const Trait>: () = ();
-   |                   ^^^^^^^^^^^^
+   |                   ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -70,7 +70,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:23:18
    |
 LL |     type Type<T: ~const Trait>: ~const Trait;
-   |                  ^^^^^^^^^^^^
+   |                  ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -78,7 +78,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:23:33
    |
 LL |     type Type<T: ~const Trait>: ~const Trait;
-   |                                 ^^^^^^^^^^^^
+   |                                 ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -86,7 +86,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:26:30
    |
 LL |     fn non_const_function<T: ~const Trait>();
-   |                              ^^^^^^^^^^^^
+   |                              ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-invalid-places.rs:26:8
@@ -98,7 +98,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:27:23
    |
 LL |     const CONSTANT<T: ~const Trait>: ();
-   |                       ^^^^^^^^^^^^
+   |                       ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -106,7 +106,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:32:18
    |
 LL |     type Type<T: ~const Trait> = ();
-   |                  ^^^^^^^^^^^^
+   |                  ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -114,7 +114,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:33:30
    |
 LL |     fn non_const_function<T: ~const Trait>() {}
-   |                              ^^^^^^^^^^^^
+   |                              ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-invalid-places.rs:33:8
@@ -126,7 +126,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:34:23
    |
 LL |     const CONSTANT<T: ~const Trait>: () = ();
-   |                       ^^^^^^^^^^^^
+   |                       ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -134,7 +134,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:41:18
    |
 LL |     type Type<T: ~const Trait> = ();
-   |                  ^^^^^^^^^^^^
+   |                  ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -142,7 +142,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:43:30
    |
 LL |     fn non_const_function<T: ~const Trait>() {}
-   |                              ^^^^^^^^^^^^
+   |                              ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-invalid-places.rs:43:8
@@ -154,7 +154,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:44:23
    |
 LL |     const CONSTANT<T: ~const Trait>: () = ();
-   |                       ^^^^^^^^^^^^
+   |                       ^^^^^^
    |
    = note: this item cannot have `~const` trait bounds
 
@@ -162,7 +162,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:49:15
    |
 LL | trait Child0: ~const Trait {}
-   |               ^^^^^^^^^^^^
+   |               ^^^^^^
    |
 note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-invalid-places.rs:49:1
@@ -174,7 +174,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:50:26
    |
 LL | trait Child1 where Self: ~const Trait {}
-   |                          ^^^^^^^^^^^^
+   |                          ^^^^^^
    |
 note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-invalid-places.rs:50:1
@@ -186,7 +186,7 @@ error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:53:9
    |
 LL | impl<T: ~const Trait> Trait for T {}
-   |         ^^^^^^^^^^^^
+   |         ^^^^^^
    |
 note: this impl is not `const`, so it cannot have `~const` trait bounds
   --> $DIR/tilde-const-invalid-places.rs:53:1

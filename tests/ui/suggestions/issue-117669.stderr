@@ -13,6 +13,6 @@ help: consider using `Option::expect` to unwrap the `Option<i32>` value, panicki
 LL |     let abs: i32 = 3i32.checked_abs().expect("REASON");
    |                                      +++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

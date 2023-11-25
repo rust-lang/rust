@@ -9,6 +9,6 @@ LL |     ) -> impl Future<Output = Vec<u8>> {
    |          |
    |          ...but data from `buff` is returned here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0623`.

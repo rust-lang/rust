@@ -4,5 +4,5 @@ error: missing type for `const` item
 LL |     const EMPTY_ARRAY = [];
    |                      ^ help: provide a type for the item: `: <type>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

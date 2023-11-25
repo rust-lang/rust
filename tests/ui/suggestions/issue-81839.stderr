@@ -21,6 +21,6 @@ help: consider using a semicolon here, but this will discard any values in the m
 LL |     };
    |      +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

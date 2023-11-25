@@ -4,5 +4,5 @@ error: attribute without generic parameters
 LL | fn foo<#[attr]>() {}
    |        ^^^^^^^ attributes are only permitted when preceding parameters
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -1,0 +1,14 @@
+warning: this `Deref` implementation is covered by an implicit supertrait coercion
+  --> $DIR/migrate-lint-different-substs.rs:11:1
+   |
+LL | impl<'a> Deref for dyn Foo + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Foo` implements `Deref<Target = dyn Bar<u32>>` which conflicts with supertrait `Bar<i32>`
+LL |
+LL |     type Target = dyn Bar<u32> + 'a;
+   |     -------------------------------- target type is a supertrait of `dyn Foo`
+   |
+   = help: consider removing this implementation or replacing it with a method instead
+   = note: `#[warn(deref_into_dyn_supertrait)]` on by default
+
+warning: 1 warning emitted
+

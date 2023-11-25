@@ -4,6 +4,6 @@ error[E0425]: cannot find value `y` in this scope
 LL |         y
    |         ^ help: a local variable with a similar name exists: `x`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0425`.

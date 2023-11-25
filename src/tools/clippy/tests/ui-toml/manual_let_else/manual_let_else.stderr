@@ -11,5 +11,5 @@ LL | |     };
    = note: `-D clippy::manual-let-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

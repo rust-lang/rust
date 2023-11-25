@@ -10,5 +10,5 @@ note: not a concrete type
 LL | impl<'a> ArpIPv4<'a> {
    |          ^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

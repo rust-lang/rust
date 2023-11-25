@@ -160,7 +160,7 @@ declare_features! (
     // no-tracking-issue-start
 
     /// Allows using the `unadjusted` ABI; perma-unstable.
-    (unstable, abi_unadjusted, "1.16.0", None, None),
+    (internal, abi_unadjusted, "1.16.0", None, None),
     /// Allows using the `vectorcall` ABI.
     (unstable, abi_vectorcall, "1.7.0", None, None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
@@ -456,6 +456,8 @@ declare_features! (
     (unstable, ffi_returns_twice, "1.34.0", Some(58314), None),
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232), None),
+    /// Support delegating implementation of functions to other already implemented functions.
+    (incomplete, fn_delegation, "CURRENT_RUSTC_VERSION", Some(118212), None),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078), None),
     /// Infer generic args for both consts and types.

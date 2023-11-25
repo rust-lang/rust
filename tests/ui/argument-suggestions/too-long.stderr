@@ -19,6 +19,6 @@ help: consider dereferencing the borrow
 LL |     qux.foo(a, b, c, d, e, *f, g, h, i, j, k, l);
    |                            +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

@@ -4,6 +4,6 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
 LL | impl<'a> Trait for Opaque<&'a str> {
    |      ^^ unconstrained lifetime parameter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0207`.

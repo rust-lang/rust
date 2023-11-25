@@ -4,5 +4,5 @@ error: trait `PrivNonPrincipal` is private
 LL |     m::leak_dyn_nonprincipal();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ private trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

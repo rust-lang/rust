@@ -1,5 +1,7 @@
 #![crate_name = "foo"]
 
+// https://github.com/rust-lang/rust/issues/34473
+
 mod second {
     pub struct SomeTypeWithLongName;
 }

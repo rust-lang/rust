@@ -3,7 +3,6 @@
 //! See comments in `src/bootstrap/rustc.rs` for more information.
 
 use std::env;
-use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -51,15 +50,6 @@ fn main() {
     // also in the sysroot.
     if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
-    }
-    if let Some(linker) = env::var_os("RUSTDOC_LINKER") {
-        let mut arg = OsString::from("-Clinker=");
-        arg.push(&linker);
-        cmd.arg(arg);
-    }
-    if let Ok(no_threads) = env::var("RUSTDOC_LLD_NO_THREADS") {
-        cmd.arg("-Clink-arg=-fuse-ld=lld");
-        cmd.arg(format!("-Clink-arg=-Wl,{no_threads}"));
     }
     // Cargo doesn't pass RUSTDOCFLAGS to proc_macros:
     // https://github.com/rust-lang/cargo/issues/4423

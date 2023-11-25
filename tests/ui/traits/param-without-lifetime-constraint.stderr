@@ -15,5 +15,5 @@ help: the lifetime requirements from the `impl` do not correspond to the require
 LL |     fn get_relation(&self) -> To;
    |                               ^^ consider borrowing this type parameter in the trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

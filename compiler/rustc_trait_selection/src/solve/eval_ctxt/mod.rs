@@ -108,13 +108,18 @@ pub(super) struct NestedGoals<'tcx> {
     pub(super) goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
-impl NestedGoals<'_> {
+impl<'tcx> NestedGoals<'tcx> {
     pub(super) fn new() -> Self {
         Self { normalizes_to_hack_goal: None, goals: Vec::new() }
     }
 
     pub(super) fn is_empty(&self) -> bool {
         self.normalizes_to_hack_goal.is_none() && self.goals.is_empty()
+    }
+
+    pub(super) fn extend(&mut self, other: NestedGoals<'tcx>) {
+        assert_eq!(other.normalizes_to_hack_goal, None);
+        self.goals.extend(other.goals)
     }
 }
 

@@ -11,6 +11,6 @@ help: consider dereferencing the left-hand side of this operation
 LL |     *(&mut Foo) += ();
    |     +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0067`.

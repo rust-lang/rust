@@ -334,11 +334,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
-        // FIXME(@lcnr): If the normalization of the alias adds an inference constraint which
-        // causes a previously added goal to fail, then we treat the alias as rigid.
-        //
-        // These feels like a potential issue, I should look into writing some tests here
-        // and then probably changing `commit_if_ok` to not inherit the parent goals.
         match self.commit_if_ok(|this| {
             let normalized_ty = this.next_ty_infer();
             let normalizes_to_goal = Goal::new(

@@ -6,6 +6,6 @@ LL | type Alias<'a> = Struct<&'a Self>;
    |      |
    |      `Self` not allowed in a type alias
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0411`.

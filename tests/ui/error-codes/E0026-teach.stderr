@@ -8,6 +8,6 @@ LL |         Thing { x, y, z } => {}
            
            If you are using shorthand field patterns but want to refer to the struct field by a different name, you should rename it explicitly.
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0026`.

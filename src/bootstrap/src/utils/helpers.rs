@@ -5,6 +5,7 @@
 
 use build_helper::util::fail;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -377,7 +378,6 @@ fn absolute_unix(path: &Path) -> io::Result<PathBuf> {
 
 #[cfg(windows)]
 fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    use std::ffi::OsString;
     use std::io::Error;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::ptr::null_mut;
@@ -469,4 +469,65 @@ pub fn extract_beta_rev(version: &str) -> Option<String> {
     let count = parts.get(1).and_then(|s| s.find(' ').map(|p| (&s[..p]).to_string()));
 
     count
+}
+
+pub enum LldThreads {
+    Yes,
+    No,
+}
+
+pub fn add_rustdoc_lld_flags(
+    cmd: &mut Command,
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    lld_threads: LldThreads,
+) {
+    cmd.args(build_rustdoc_lld_flags(builder, target, lld_threads));
+}
+
+pub fn add_rustdoc_cargo_lld_flags(
+    cmd: &mut Command,
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    lld_threads: LldThreads,
+) {
+    let args = build_rustdoc_lld_flags(builder, target, lld_threads);
+    let mut flags = cmd
+        .get_envs()
+        .find_map(|(k, v)| if k == OsStr::new("RUSTDOCFLAGS") { v } else { None })
+        .unwrap_or_default()
+        .to_os_string();
+    for arg in args {
+        if !flags.is_empty() {
+            flags.push(" ");
+        }
+        flags.push(arg);
+    }
+    if !flags.is_empty() {
+        cmd.env("RUSTDOCFLAGS", flags);
+    }
+}
+
+fn build_rustdoc_lld_flags(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    lld_threads: LldThreads,
+) -> Vec<OsString> {
+    let mut args = vec![];
+
+    if let Some(linker) = builder.linker(target) {
+        let mut flag = std::ffi::OsString::from("-Clinker=");
+        flag.push(linker);
+        args.push(flag);
+    }
+    if builder.is_fuse_ld_lld(target) {
+        args.push(OsString::from("-Clink-arg=-fuse-ld=lld"));
+        if matches!(lld_threads, LldThreads::No) {
+            args.push(OsString::from(format!(
+                "-Clink-arg=-Wl,{}",
+                lld_flag_no_threads(target.contains("windows"))
+            )));
+        }
+    }
+    args
 }

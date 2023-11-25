@@ -8,6 +8,6 @@ LL |     let mut u = Test { a: 2, b: Some(Box::new(t))};
 LL |     t.b = Some(Box::new(u));
    |     ^^^ value assigned here after move
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0382`.

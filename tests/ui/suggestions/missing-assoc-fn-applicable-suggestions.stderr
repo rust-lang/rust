@@ -9,6 +9,6 @@ LL | impl TraitA<()> for S {
    = help: implement the missing item: `fn baz<T>(_: T) -> Self where T: TraitB, <T as TraitB>::Item: Copy { todo!() }`
    = help: implement the missing item: `const A: usize = 42;`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0046`.

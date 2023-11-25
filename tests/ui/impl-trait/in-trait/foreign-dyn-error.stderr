@@ -11,6 +11,6 @@ LL |     fn bar(self) -> impl Deref<Target = impl Sized>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait cannot be made into an object because method `bar` references an `impl Trait` type in its return type
    = help: only type `rpitit::Foreign` implements the trait, consider using it directly instead
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

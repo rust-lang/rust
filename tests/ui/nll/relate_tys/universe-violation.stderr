@@ -7,6 +7,6 @@ LL |     let b: fn(&u32) -> &u32 = a;
    = note: expected fn pointer `for<'a> fn(&'a u32) -> &'a u32`
               found fn pointer `fn(&u32) -> &u32`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

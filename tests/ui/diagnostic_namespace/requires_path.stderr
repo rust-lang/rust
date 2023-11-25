@@ -4,5 +4,5 @@ error: cannot find attribute `diagnostic` in this scope
 LL | #[diagnostic]
    |   ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

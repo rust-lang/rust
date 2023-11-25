@@ -6,6 +6,6 @@ LL |     let x = foo!() as *const [u8];
    |             |
    |             consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0606`.

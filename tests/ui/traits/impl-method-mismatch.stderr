@@ -12,6 +12,6 @@ LL |     fn jumbo(&self, x: &usize) -> usize;
    = note: expected signature `fn(&usize, &usize) -> usize`
               found signature `unsafe fn(&usize, &usize)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0053`.

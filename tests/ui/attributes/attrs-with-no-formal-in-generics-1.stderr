@@ -4,5 +4,5 @@ error: trailing attribute after generic parameter
 LL | impl<#[rustc_dummy] 'a, 'b, #[oops]> RefIntPair<'a, 'b> {
    |                             ^^^^^^^ attributes must go before parameters
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

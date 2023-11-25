@@ -6,6 +6,6 @@ LL |     match (S { a: 1 }) {
 LL |         E::C(_) => (),
    |         ^^^^^^^ expected `S`, found `E`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

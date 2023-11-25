@@ -4,5 +4,5 @@ error: lifetime parameters must be declared prior to type and const parameters
 LL | struct Foo<const M: usize = 10, 'a>(&'a u32);
    |           ----------------------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, const M: usize = 10>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

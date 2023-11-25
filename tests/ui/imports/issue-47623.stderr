@@ -4,6 +4,6 @@ error[E0429]: `self` imports are only allowed within a { } list
 LL | use self;
    |     ^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0429`.

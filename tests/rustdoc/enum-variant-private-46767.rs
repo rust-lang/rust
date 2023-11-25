@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/46767
 #![crate_name = "foo"]
 
 mod private {

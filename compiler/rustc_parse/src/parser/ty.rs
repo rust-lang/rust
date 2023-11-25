@@ -37,7 +37,7 @@ impl BoundModifiers {
             (BoundPolarity::Positive, None) => TraitBoundModifier::None,
             (BoundPolarity::Negative(_), None) => TraitBoundModifier::Negative,
             (BoundPolarity::Maybe(_), None) => TraitBoundModifier::Maybe,
-            (BoundPolarity::Positive, Some(_)) => TraitBoundModifier::MaybeConst,
+            (BoundPolarity::Positive, Some(sp)) => TraitBoundModifier::MaybeConst(sp),
             (BoundPolarity::Negative(_), Some(_)) => TraitBoundModifier::MaybeConstNegative,
             (BoundPolarity::Maybe(_), Some(_)) => TraitBoundModifier::MaybeConstMaybe,
         }
