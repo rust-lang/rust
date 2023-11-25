@@ -596,8 +596,10 @@ fn extra_info_tags<'a, 'tcx: 'a>(
 
         // The "rustc_private" crates are permanently unstable so it makes no sense
         // to render "unstable" everywhere.
-        if item.stability(tcx).as_ref().map(|s| s.is_unstable() && s.feature != sym::rustc_private)
-            == Some(true)
+        if item
+            .stability(tcx)
+            .as_ref()
+            .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private)
         {
             write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
         }

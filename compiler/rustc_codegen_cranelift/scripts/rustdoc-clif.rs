@@ -27,7 +27,7 @@ fn main() {
         args.push(codegen_backend_arg);
     }
     if !passed_args.iter().any(|arg| {
-        arg == "--sysroot" || arg.to_str().map(|s| s.starts_with("--sysroot=")) == Some(true)
+        arg == "--sysroot" || arg.to_str().is_some_and(|s| s.starts_with("--sysroot="))
     }) {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
