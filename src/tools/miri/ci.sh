@@ -30,16 +30,23 @@ endgroup
 
 # Test
 function run_tests {
-  if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
+  if [ -n "${MIRI_TEST_TARGET:-}" ]; then
     begingroup "Testing foreign architecture $MIRI_TEST_TARGET"
   else
     begingroup "Testing host architecture"
   fi
 
   ## ui test suite
-  ./miri test
-  if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
-    # Host-only tests: running these on all targets is unlikely to catch more problems and would
+  # On the host and on Linux, also stress-test the GC.
+  if [ -z "${MIRI_TEST_TARGET:-}" ] || [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ]; then
+    MIRIFLAGS="${MIRIFLAGS:-} -Zmiri-provenance-gc=1" ./miri test
+  else
+    ./miri test
+  fi
+
+  # Host-only tests
+  if [ -z "${MIRI_TEST_TARGET:-}" ]; then
+    # Running these on all targets is unlikely to catch more problems and would
     # cost a lot of CI time.
 
     # Tests with optimizations (`-O` is what cargo passes, but crank MIR optimizations up all the
@@ -85,10 +92,11 @@ function run_tests {
 }
 
 function run_tests_minimal {
-  if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
+  if [ -n "${MIRI_TEST_TARGET:-}" ]; then
     begingroup "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
   else
-    begingroup "Testing MINIMAL host architecture: only testing $@"
+    echo "run_tests_minimal requires MIRI_TEST_TARGET to be set"
+    exit 1
   fi
 
   ./miri test -- "$@"
@@ -99,16 +107,22 @@ function run_tests_minimal {
   endgroup
 }
 
-# host
+## Main Testing Logic ##
+
+# Host target.
 run_tests
 
+# Extra targets.
+# In particular, fully cover all tier 1 targets.
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
-    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc atomic env align
+    # Some targets are only partially supported.
+    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align
+    MIRI_TEST_TARGET=i686-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align
     MIRI_TEST_TARGET=aarch64-linux-android run_tests_minimal hello integer vec panic/panic
     MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal no_std integer strings wasm
     MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std integer strings wasm

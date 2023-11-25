@@ -157,15 +157,13 @@ pub struct LiveAllocs<'a, 'mir, 'tcx> {
 
 impl LiveAllocs<'_, '_, '_> {
     pub fn is_live(&self, id: AllocId) -> bool {
-        self.collected.contains(&id) ||
-        self.ecx.is_alloc_live(id)
+        self.collected.contains(&id) || self.ecx.is_alloc_live(id)
     }
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     fn run_provenance_gc(&mut self) {
-
         // We collect all tags from various parts of the interpreter, but also
         let this = self.eval_context_mut();
 
@@ -196,10 +194,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn remove_unreachable_allocs(&mut self, allocs: FxHashSet<AllocId>) {
         let this = self.eval_context_mut();
-        let allocs = LiveAllocs {
-            ecx: this,
-            collected: allocs,
-        };
+        let allocs = LiveAllocs { ecx: this, collected: allocs };
         this.machine.allocation_spans.borrow_mut().retain(|id, _| allocs.is_live(*id));
         this.machine.intptrcast.borrow_mut().remove_unreachable_allocs(&allocs);
         if let Some(borrow_tracker) = &this.machine.borrow_tracker {

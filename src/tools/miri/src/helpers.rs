@@ -5,17 +5,18 @@ use std::time::Duration;
 
 use log::trace;
 
+use rustc_apfloat::ieee::{Double, Single};
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::{
     self,
-    layout::{IntegerExt as _, LayoutOf, TyAndLayout},
-    IntTy, Ty, TyCtxt, UintTy,
+    layout::{LayoutOf, TyAndLayout},
+    FloatTy, IntTy, Ty, TyCtxt, UintTy,
 };
 use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
-use rustc_target::abi::{Align, FieldIdx, FieldsShape, Integer, Size, Variants};
+use rustc_target::abi::{Align, FieldIdx, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
 use rand::RngCore;
@@ -565,10 +566,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// is part of the UNIX family. It panics showing a message with the `name` of the foreign function
     /// if this is not the case.
     fn assert_target_os_is_unix(&self, name: &str) {
-        assert!(
-            target_os_is_unix(self.eval_context_ref().tcx.sess.target.os.as_ref()),
-            "`{name}` is only available for supported UNIX family targets",
-        );
+        assert!(self.target_os_is_unix(), "`{name}` is only available for unix targets",);
+    }
+
+    fn target_os_is_unix(&self) -> bool {
+        self.eval_context_ref().tcx.sess.target.families.iter().any(|f| f == "unix")
     }
 
     /// Get last error variable as a place, lazily allocating thread-local storage for it if
@@ -985,65 +987,74 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    /// Converts `f` to integer type `dest_ty` after rounding with mode `round`.
+    /// Converts `src` from floating point to integer type `dest_ty`
+    /// after rounding with mode `round`.
     /// Returns `None` if `f` is NaN or out of range.
-    fn float_to_int_checked<F>(
+    fn float_to_int_checked(
         &self,
-        f: F,
+        src: &ImmTy<'tcx, Provenance>,
         cast_to: TyAndLayout<'tcx>,
         round: rustc_apfloat::Round,
-    ) -> Option<ImmTy<'tcx, Provenance>>
-    where
-        F: rustc_apfloat::Float + Into<Scalar<Provenance>>,
-    {
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx, Provenance>>> {
         let this = self.eval_context_ref();
 
-        let val = match cast_to.ty.kind() {
-            // Unsigned
-            ty::Uint(t) => {
-                let size = Integer::from_uint_ty(this, *t).size();
-                let res = f.to_u128_r(size.bits_usize(), round, &mut false);
-                if res.status.intersects(
-                    rustc_apfloat::Status::INVALID_OP
-                        | rustc_apfloat::Status::OVERFLOW
-                        | rustc_apfloat::Status::UNDERFLOW,
-                ) {
-                    // Floating point value is NaN (flagged with INVALID_OP) or outside the range
-                    // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-                    return None;
-                } else {
-                    // Floating point value can be represented by the integer type after rounding.
-                    // The INEXACT flag is ignored on purpose to allow rounding.
-                    Scalar::from_uint(res.value, size)
+        fn float_to_int_inner<'tcx, F: rustc_apfloat::Float>(
+            this: &MiriInterpCx<'_, 'tcx>,
+            src: F,
+            cast_to: TyAndLayout<'tcx>,
+            round: rustc_apfloat::Round,
+        ) -> (Scalar<Provenance>, rustc_apfloat::Status) {
+            let int_size = cast_to.layout.size;
+            match cast_to.ty.kind() {
+                // Unsigned
+                ty::Uint(_) => {
+                    let res = src.to_u128_r(int_size.bits_usize(), round, &mut false);
+                    (Scalar::from_uint(res.value, int_size), res.status)
                 }
-            }
-            // Signed
-            ty::Int(t) => {
-                let size = Integer::from_int_ty(this, *t).size();
-                let res = f.to_i128_r(size.bits_usize(), round, &mut false);
-                if res.status.intersects(
-                    rustc_apfloat::Status::INVALID_OP
-                        | rustc_apfloat::Status::OVERFLOW
-                        | rustc_apfloat::Status::UNDERFLOW,
-                ) {
-                    // Floating point value is NaN (flagged with INVALID_OP) or outside the range
-                    // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-                    return None;
-                } else {
-                    // Floating point value can be represented by the integer type after rounding.
-                    // The INEXACT flag is ignored on purpose to allow rounding.
-                    Scalar::from_int(res.value, size)
+                // Signed
+                ty::Int(_) => {
+                    let res = src.to_i128_r(int_size.bits_usize(), round, &mut false);
+                    (Scalar::from_int(res.value, int_size), res.status)
                 }
+                // Nothing else
+                _ =>
+                    span_bug!(
+                        this.cur_span(),
+                        "attempted float-to-int conversion with non-int output type {}",
+                        cast_to.ty,
+                    ),
             }
+        }
+
+        let (val, status) = match src.layout.ty.kind() {
+            // f32
+            ty::Float(FloatTy::F32) =>
+                float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
+            // f64
+            ty::Float(FloatTy::F64) =>
+                float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
             // Nothing else
             _ =>
                 span_bug!(
                     this.cur_span(),
-                    "attempted float-to-int conversion with non-int output type {}",
-                    cast_to.ty,
+                    "attempted float-to-int conversion with non-float input type {}",
+                    src.layout.ty,
                 ),
         };
-        Some(ImmTy::from_scalar(val, cast_to))
+
+        if status.intersects(
+            rustc_apfloat::Status::INVALID_OP
+                | rustc_apfloat::Status::OVERFLOW
+                | rustc_apfloat::Status::UNDERFLOW,
+        ) {
+            // Floating point value is NaN (flagged with INVALID_OP) or outside the range
+            // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
+            Ok(None)
+        } else {
+            // Floating point value can be represented by the integer type after rounding.
+            // The INEXACT flag is ignored on purpose to allow rounding.
+            Ok(Some(ImmTy::from_scalar(val, cast_to)))
+        }
     }
 
     /// Returns an integer type that is twice wide as `ty`
@@ -1062,6 +1073,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ty::Int(IntTy::I64) => this.tcx.types.i128,
             _ => span_bug!(this.cur_span(), "unexpected type: {ty:?}"),
         }
+    }
+
+    /// Checks that target feature `target_feature` is enabled.
+    ///
+    /// If not enabled, emits an UB error that states that the feature is
+    /// required by `intrinsic`.
+    fn expect_target_feature_for_intrinsic(
+        &self,
+        intrinsic: Symbol,
+        target_feature: &str,
+    ) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_ref();
+        if !this.tcx.sess.unstable_target_features.contains(&Symbol::intern(target_feature)) {
+            throw_ub_format!(
+                "attempted to call intrinsic `{intrinsic}` that requires missing target feature {target_feature}"
+            );
+        }
+        Ok(())
     }
 }
 
@@ -1141,12 +1170,6 @@ pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
         }
     }
     local_crates
-}
-
-/// Helper function used inside the shims of foreign functions to check that
-/// `target_os` is a supported UNIX OS.
-pub fn target_os_is_unix(target_os: &str) -> bool {
-    matches!(target_os, "linux" | "macos" | "freebsd" | "android")
 }
 
 pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Provenance> {

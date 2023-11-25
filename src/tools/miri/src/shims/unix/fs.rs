@@ -1504,15 +1504,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn ftruncate64(
-        &mut self,
-        fd_op: &OpTy<'tcx, Provenance>,
-        length_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn ftruncate64(&mut self, fd: i32, length: i128) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let length = this.read_scalar(length_op)?.to_i64()?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {

@@ -4,7 +4,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp, FloatCmpOp};
+use super::{bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int, FloatBinOp};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -20,6 +20,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
+        this.expect_target_feature_for_intrinsic(link_name, "sse2")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse2.").unwrap();
 
@@ -259,37 +260,42 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.write_scalar(Scalar::from_u64(res), &dest)?;
                 }
             }
-            // Used to implement the _mm_cvtps_epi32 and _mm_cvttps_epi32 functions.
-            // Converts packed f32 to packed i32.
-            "cvtps2dq" | "cvttps2dq" => {
+            // Used to implement the _mm_cvtps_epi32, _mm_cvttps_epi32, _mm_cvtpd_epi32
+            // and _mm_cvttpd_epi32 functions.
+            // Converts packed f32/f64 to packed i32.
+            "cvtps2dq" | "cvttps2dq" | "cvtpd2dq" | "cvttpd2dq" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, op_len);
+                let (op_len, _) = op.layout.ty.simd_size_and_type(*this.tcx);
+                let (dest_len, _) = dest.layout.ty.simd_size_and_type(*this.tcx);
+                match unprefixed_name {
+                    "cvtps2dq" | "cvttps2dq" => {
+                        // f32x4 to i32x4 conversion
+                        assert_eq!(op_len, 4);
+                        assert_eq!(dest_len, op_len);
+                    }
+                    "cvtpd2dq" | "cvttpd2dq" => {
+                        // f64x2 to i32x4 conversion
+                        // the last two values are filled with zeros
+                        assert_eq!(op_len, 2);
+                        assert_eq!(dest_len, 4);
+                    }
+                    _ => unreachable!(),
+                }
 
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
                     // https://www.felixcloutier.com/x86/cvtps2dq
-                    "cvtps2dq" => rustc_apfloat::Round::NearestTiesToEven,
+                    // https://www.felixcloutier.com/x86/cvtpd2dq
+                    "cvtps2dq" | "cvtpd2dq" => rustc_apfloat::Round::NearestTiesToEven,
                     // always truncate
                     // https://www.felixcloutier.com/x86/cvttps2dq
-                    "cvttps2dq" => rustc_apfloat::Round::TowardZero,
+                    // https://www.felixcloutier.com/x86/cvttpd2dq
+                    "cvttps2dq" | "cvttpd2dq" => rustc_apfloat::Round::TowardZero,
                     _ => unreachable!(),
                 };
 
-                for i in 0..dest_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_f32()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res =
-                        this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
-                            // Fallback to minimum acording to SSE2 semantics.
-                            ImmTy::from_int(i32::MIN, this.machine.layouts.i32)
-                        });
-                    this.write_immediate(*res, &dest)?;
-                }
+                convert_float_to_int(this, op, rnd, dest)?;
             }
             // Used to implement the _mm_packs_epi16 function.
             // Converts two 16-bit integer vectors to a single 8-bit integer
@@ -461,18 +467,20 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.write_scalar(res, &dest)?;
                 }
             }
-            // Used to implement the _mm_cmp*_sd function.
+            // Used to implement the _mm_cmp*_sd functions.
             // Performs a comparison operation on the first component of `left`
             // and `right`, returning 0 if false or `u64::MAX` if true. The remaining
             // components are copied from `left`.
+            // _mm_cmp_sd is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_sd are SSE2 functions
+            // with hard-coded operations.
             "cmp.sd" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse2.cmp.sd",
-                )?);
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_first::<Double>(this, which, left, right, dest)?;
             }
@@ -480,14 +488,16 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             // Performs a comparison operation on each component of `left`
             // and `right`. For each component, returns 0 if false or `u64::MAX`
             // if true.
+            // _mm_cmp_pd is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_pd are SSE2 functions
+            // with hard-coded operations.
             "cmp.pd" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse2.cmp.pd",
-                )?);
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
             }
@@ -522,45 +532,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 };
                 this.write_scalar(Scalar::from_i32(i32::from(res)), dest)?;
             }
-            // Used to implement the _mm_cvtpd_epi32 and _mm_cvttpd_epi32 functions.
-            // Converts packed f64 to packed i32.
-            "cvtpd2dq" | "cvttpd2dq" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                // op is f64x2, dest is i32x4
-                assert_eq!(op_len, 2);
-                assert_eq!(dest_len, 4);
-
-                let rnd = match unprefixed_name {
-                    // "current SSE rounding mode", assume nearest
-                    // https://www.felixcloutier.com/x86/cvtpd2dq
-                    "cvtpd2dq" => rustc_apfloat::Round::NearestTiesToEven,
-                    // always truncate
-                    // https://www.felixcloutier.com/x86/cvttpd2dq
-                    "cvttpd2dq" => rustc_apfloat::Round::TowardZero,
-                    _ => unreachable!(),
-                };
-
-                for i in 0..op_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_f64()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res =
-                        this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
-                            // Fallback to minimum acording to SSE2 semantics.
-                            ImmTy::from_int(i32::MIN, this.machine.layouts.i32)
-                        });
-                    this.write_immediate(*res, &dest)?;
-                }
-                // Fill the remaining with zeros
-                for i in op_len..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-                    this.write_scalar(Scalar::from_i32(0), &dest)?;
-                }
-            }
             // Use to implement the _mm_cvtsd_si32, _mm_cvttsd_si32,
             // _mm_cvtsd_si64 and _mm_cvttsd_si64 functions.
             // Converts the first component of `op` from f64 to i32/i64.
@@ -568,7 +539,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let (op, _) = this.operand_to_simd(op)?;
 
-                let op = this.read_scalar(&this.project_index(&op, 0)?)?.to_f64()?;
+                let op = this.read_immediate(&this.project_index(&op, 0)?)?;
 
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
@@ -580,7 +551,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     _ => unreachable!(),
                 };
 
-                let res = this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
+                let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });

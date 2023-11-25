@@ -125,7 +125,7 @@ pub use crate::machine::{
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
-pub use crate::provenance_gc::{EvalContextExt as _, VisitProvenance, VisitWith, LiveAllocs};
+pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};
 pub use crate::range_map::RangeMap;
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be

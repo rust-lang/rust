@@ -5,7 +5,7 @@ use rustc_target::spec::abi::Abi;
 
 use rand::Rng as _;
 
-use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp, FloatCmpOp};
+use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -21,6 +21,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
+        this.expect_target_feature_for_intrinsic(link_name, "sse")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse.").unwrap();
         // All these intrinsics operate on 128-bit (f32x4) SIMD vectors unless stated otherwise.
@@ -95,33 +96,37 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 unary_op_ps(this, which, op, dest)?;
             }
-            // Used to implement the _mm_cmp_ss function.
+            // Used to implement the _mm_cmp*_ss functions.
             // Performs a comparison operation on the first component of `left`
             // and `right`, returning 0 if false or `u32::MAX` if true. The remaining
             // components are copied from `left`.
+            // _mm_cmp_ss is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_ss are SSE functions
+            // with hard-coded operations.
             "cmp.ss" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse.cmp.ss",
-                )?);
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_first::<Single>(this, which, left, right, dest)?;
             }
-            // Used to implement the _mm_cmp_ps function.
+            // Used to implement the _mm_cmp*_ps functions.
             // Performs a comparison operation on each component of `left`
             // and `right`. For each component, returns 0 if false or u32::MAX
             // if true.
+            // _mm_cmp_ps is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_ps are SSE functions
+            // with hard-coded operations.
             "cmp.ps" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse.cmp.ps",
-                )?);
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_all::<Single>(this, which, left, right, dest)?;
             }
@@ -163,7 +168,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let (op, _) = this.operand_to_simd(op)?;
 
-                let op = this.read_scalar(&this.project_index(&op, 0)?)?.to_f32()?;
+                let op = this.read_immediate(&this.project_index(&op, 0)?)?;
 
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
@@ -175,7 +180,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     _ => unreachable!(),
                 };
 
-                let res = this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
+                let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });

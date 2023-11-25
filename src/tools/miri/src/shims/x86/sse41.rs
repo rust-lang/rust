@@ -18,6 +18,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
+        this.expect_target_feature_for_intrinsic(link_name, "sse4.1")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse41.").unwrap();
 
@@ -199,7 +200,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     Scalar::from_u16(min_index.try_into().unwrap()),
                     &this.project_index(&dest, 1)?,
                 )?;
-                // Fill remaining with zeros
+                // Fill remainder with zeros
                 for i in 2..dest_len {
                     this.write_scalar(Scalar::from_u16(0), &this.project_index(&dest, i)?)?;
                 }
