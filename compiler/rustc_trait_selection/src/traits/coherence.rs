@@ -362,14 +362,11 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
 
     obligations.iter().find(|obligation| {
         if infcx.next_trait_solver() {
-            infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
+            infcx.evaluate_obligation(obligation).is_ok_and(|result| !result.may_apply())
         } else {
             // We use `evaluate_root_obligation` to correctly track intercrate
             // ambiguity clauses. We cannot use this in the new solver.
-            selcx.evaluate_root_obligation(obligation).map_or(
-                false, // Overflow has occurred, and treat the obligation as possibly holding.
-                |result| !result.may_apply(),
-            )
+            selcx.evaluate_root_obligation(obligation).is_ok_and(|result| !result.may_apply())
         }
     })
 }
