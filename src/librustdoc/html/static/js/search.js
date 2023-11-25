@@ -2424,10 +2424,7 @@ function initSearch(rawSearchIndex) {
      * @param {boolean}     display - True if this is the active tab
      */
     function addTab(array, query, display) {
-        let extraClass = "";
-        if (display === true) {
-            extraClass = " active";
-        }
+        const extraClass = display ? " active" : "";
 
         const output = document.createElement("div");
         let length = 0;
@@ -2669,13 +2666,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
     /**
      * Perform a search based on the current state of the search input element
      * and display the results.
-     * @param {Event}   [e]       - The event that triggered this search, if any
      * @param {boolean} [forced]
      */
-    function search(e, forced) {
-        if (e) {
-            e.preventDefault();
-        }
+    function search(forced) {
         const query = parseQuery(searchState.input.value.trim());
         let filterCrates = getFilterCrates();
 
@@ -3212,7 +3205,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     // popping a state (Firefox), which is why search() is
                     // called both here and at the end of the startSearch()
                     // function.
-                    search(e);
+                    e.preventDefault();
+                    search();
                 } else {
                     searchState.input.value = "";
                     // When browsing back from search results the main page
@@ -3247,7 +3241,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // before paste back the previous search, you get the old search results without
         // the filter. To prevent this, we need to remove the previous results.
         currentResults = null;
-        search(undefined, true);
+        search(true);
     }
 
     /**
