@@ -47,7 +47,6 @@ extern "Rust" { static ext:  u32;
 
 extern "C" {
             fn syscall(number: libc::c_long /* comment 1 */, /* comm 2 */ ... /* sup? */) -> libc::c_long;
-	// im doing great! thanks for asking :).
 
     fn  foo  (x:  *const c_char ,    ...   ) ->
 libc::c_long;
