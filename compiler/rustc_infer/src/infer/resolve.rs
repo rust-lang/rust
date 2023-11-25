@@ -260,3 +260,85 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
         }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+// EAGER RESOLUTION
+
+/// Resolves ty, region, and const vars to their inferred values or their root vars.
+pub struct EagerResolver<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
+}
+
+impl<'a, 'tcx> EagerResolver<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
+        EagerResolver { infcx }
+    }
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerResolver<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match *t.kind() {
+            ty::Infer(ty::TyVar(vid)) => match self.infcx.probe_ty_var(vid) {
+                Ok(t) => t.fold_with(self),
+                Err(_) => Ty::new_var(self.infcx.tcx, self.infcx.root_var(vid)),
+            },
+            ty::Infer(ty::IntVar(vid)) => self.infcx.opportunistic_resolve_int_var(vid),
+            ty::Infer(ty::FloatVar(vid)) => self.infcx.opportunistic_resolve_float_var(vid),
+            _ => {
+                if t.has_infer() {
+                    t.super_fold_with(self)
+                } else {
+                    t
+                }
+            }
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReVar(vid) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(self.infcx.tcx, vid),
+            _ => r,
+        }
+    }
+
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match c.kind() {
+            ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
+                // FIXME: we need to fold the ty too, I think.
+                match self.infcx.probe_const_var(vid) {
+                    Ok(c) => c.fold_with(self),
+                    Err(_) => {
+                        ty::Const::new_var(self.infcx.tcx, self.infcx.root_const_var(vid), c.ty())
+                    }
+                }
+            }
+            ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)) => {
+                debug_assert_eq!(c.ty(), self.infcx.tcx.types.bool);
+                match self.infcx.probe_effect_var(vid) {
+                    Some(c) => c.as_const(self.infcx.tcx),
+                    None => ty::Const::new_infer(
+                        self.infcx.tcx,
+                        ty::InferConst::EffectVar(self.infcx.root_effect_var(vid)),
+                        self.infcx.tcx.types.bool,
+                    ),
+                }
+            }
+            _ => {
+                if c.has_infer() {
+                    c.super_fold_with(self)
+                } else {
+                    c
+                }
+            }
+        }
+    }
+}

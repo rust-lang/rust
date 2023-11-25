@@ -171,7 +171,6 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
 
 pub fn pretty_ty(ty: TyKind) -> String {
     let mut pretty = String::new();
-    pretty.push_str("");
     match ty {
         TyKind::RigidTy(rigid_ty) => match rigid_ty {
             RigidTy::Bool => "bool".to_string(),
@@ -215,7 +214,10 @@ pub fn pretty_ty(ty: TyKind) -> String {
                 pretty.push_str(&pretty_ty(ty.kind()));
                 pretty
             }
-            RigidTy::Ref(_, ty, _) => pretty_ty(ty.kind()),
+            RigidTy::Ref(_, ty, mutability) => match mutability {
+                Mutability::Not => format!("&{}", pretty_ty(ty.kind())),
+                Mutability::Mut => format!("&mut {}", pretty_ty(ty.kind())),
+            },
             RigidTy::FnDef(_, _) => format!("{:#?}", rigid_ty),
             RigidTy::FnPtr(_) => format!("{:#?}", rigid_ty),
             RigidTy::Closure(_, _) => format!("{:#?}", rigid_ty),
