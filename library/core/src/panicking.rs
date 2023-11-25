@@ -124,7 +124,7 @@ pub const fn panic(expr: &'static str) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
-    panic_fmt(fmt::Arguments::new_const(&[expr]));
+    panic_fmt(fmt::Arguments::new_str(expr));
 }
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize.
@@ -133,7 +133,7 @@ pub const fn panic(expr: &'static str) -> ! {
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
 pub fn panic_nounwind(expr: &'static str) -> ! {
-    panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ false);
+    panic_nounwind_fmt(fmt::Arguments::new_str(expr), /* force_no_backtrace */ false);
 }
 
 /// Like `panic_nounwind`, but also inhibits showing a backtrace.
@@ -141,7 +141,7 @@ pub fn panic_nounwind(expr: &'static str) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[rustc_nounwind]
 pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
-    panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ true);
+    panic_nounwind_fmt(fmt::Arguments::new_str(expr), /* force_no_backtrace */ true);
 }
 
 #[inline]

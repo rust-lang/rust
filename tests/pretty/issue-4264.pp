@@ -32,11 +32,10 @@ fn bar() ({
         ({
                 let res =
                     ((::alloc::fmt::format as
-                            for<'a> fn(Arguments<'a>) -> String {format})(((<#[lang = "format_arguments"]>::new_const
+                            for<'a> fn(Arguments<'a>) -> String {format})(((<#[lang = "format_arguments"]>::new_str
                                 as
-                                fn(&[&'static str]) -> Arguments<'_> {Arguments::<'_>::new_const})((&([("test"
-                                            as &str)] as [&str; 1]) as &[&str; 1])) as Arguments<'_>))
-                        as String);
+                                fn(&'static str) -> Arguments<'_> {Arguments::<'_>::new_str})(("test"
+                                as &str)) as Arguments<'_>)) as String);
                 (res as String)
             } as String);
     } as ())
