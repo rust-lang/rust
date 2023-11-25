@@ -7,7 +7,7 @@ use rustc_hir::Item;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::FloatTy;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {

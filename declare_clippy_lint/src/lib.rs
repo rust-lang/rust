@@ -148,7 +148,7 @@ pub fn declare_clippy_lint(input: TokenStream) -> TokenStream {
     let category_variant = format_ident!("{category}");
 
     let output = quote! {
-        declare_tool_lint! {
+        rustc_session::declare_tool_lint! {
             #(#attrs)*
             pub clippy::#name,
             #level,

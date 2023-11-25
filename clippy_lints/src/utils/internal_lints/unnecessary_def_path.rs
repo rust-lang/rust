@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::interpret::{Allocation, GlobalAlloc};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 

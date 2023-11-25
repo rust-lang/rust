@@ -5,7 +5,7 @@ use clippy_utils::{higher, is_res_lang_ctor};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {

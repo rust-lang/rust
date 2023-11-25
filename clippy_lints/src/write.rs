@@ -10,7 +10,7 @@ use rustc_ast::{
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{sym, BytePos, Span};
 
 declare_clippy_lint! {

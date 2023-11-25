@@ -4,7 +4,7 @@ use clippy_utils::{is_lint_allowed, method_calls, paths};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {

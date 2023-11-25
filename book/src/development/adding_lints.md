@@ -202,7 +202,7 @@ is. This file has already imported some initial things we will need:
 
 ```rust
 use rustc_lint::{EarlyLintPass, EarlyContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_ast::ast::*;
 ```
 

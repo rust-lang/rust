@@ -21,7 +21,7 @@ use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
     add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, DocFragment,
 };
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, Span};
 use std::ops::Range;

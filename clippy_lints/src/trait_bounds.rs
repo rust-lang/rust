@@ -13,7 +13,7 @@ use rustc_hir::{
     TraitBoundModifier, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
 use std::collections::hash_map::Entry;
 

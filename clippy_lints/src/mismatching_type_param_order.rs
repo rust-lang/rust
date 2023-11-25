@@ -4,7 +4,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{GenericArg, Item, ItemKind, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
