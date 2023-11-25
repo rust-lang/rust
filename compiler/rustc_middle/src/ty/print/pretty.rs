@@ -8,6 +8,7 @@ use crate::ty::{
 };
 use crate::ty::{GenericArg, GenericArgKind};
 use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
@@ -1477,10 +1478,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Bool if int == ScalarInt::TRUE => p!("true"),
             // Float
             ty::Float(ty::FloatTy::F32) => {
-                p!(write("{}f32", Single::try_from(int).unwrap()))
+                let val = Single::try_from(int).unwrap();
+                p!(write("{}{}f32", val, if val.is_finite() { "" } else { "_" }))
             }
             ty::Float(ty::FloatTy::F64) => {
-                p!(write("{}f64", Double::try_from(int).unwrap()))
+                let val = Double::try_from(int).unwrap();
+                p!(write("{}{}f64", val, if val.is_finite() { "" } else { "_" }))
             }
             // Int
             ty::Uint(_) | ty::Int(_) => {
