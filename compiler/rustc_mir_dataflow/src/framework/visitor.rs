@@ -84,8 +84,8 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
 
 /// Things that can be visited by a `ResultsVisitor`.
 ///
-/// This trait exists so that we can visit the results of multiple dataflow analyses simultaneously.
-/// DO NOT IMPLEMENT MANUALLY. Instead, use the `impl_visitable` macro below.
+/// This trait exists so that we can visit the results of one or more dataflow analyses
+/// simultaneously.
 pub trait ResultsVisitable<'tcx> {
     type Direction: Direction;
     type FlowState;

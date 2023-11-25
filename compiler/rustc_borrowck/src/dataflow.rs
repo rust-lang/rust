@@ -36,76 +36,73 @@ pub type BorrowckResults<'mir, 'tcx> = BorrowckAnalyses<
 pub type BorrowckFlowState<'mir, 'tcx> =
     <BorrowckResults<'mir, 'tcx> as ResultsVisitable<'tcx>>::FlowState;
 
-macro_rules! impl_visitable {
-    ( $(
-        $T:ident { $( $field:ident : $A:ident ),* $(,)? }
-    )* ) => { $(
-        impl<'tcx, $($A),*, D: Direction> ResultsVisitable<'tcx> for $T<$( Results<'tcx, $A> ),*>
-        where
-            $( $A: Analysis<'tcx, Direction = D>, )*
-        {
-            type Direction = D;
-            type FlowState = $T<$( $A::Domain ),*>;
+impl<'tcx, B, U, E, D: Direction> ResultsVisitable<'tcx>
+    for BorrowckAnalyses<Results<'tcx, B>, Results<'tcx, U>, Results<'tcx, E>>
+where
+    B: Analysis<'tcx, Direction = D>,
+    U: Analysis<'tcx, Direction = D>,
+    E: Analysis<'tcx, Direction = D>,
+{
+    type Direction = D;
+    type FlowState = BorrowckAnalyses<B::Domain, U::Domain, E::Domain>;
 
-            fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
-                $T {
-                    $( $field: self.$field.analysis.bottom_value(body) ),*
-                }
-            }
-
-            fn reset_to_block_entry(
-                &self,
-                state: &mut Self::FlowState,
-                block: BasicBlock,
-            ) {
-                $( state.$field.clone_from(&self.$field.entry_set_for_block(block)); )*
-            }
-
-            fn reconstruct_before_statement_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                stmt: &mir::Statement<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_before_statement_effect(&mut state.$field, stmt, loc); )*
-            }
-
-            fn reconstruct_statement_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                stmt: &mir::Statement<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_statement_effect(&mut state.$field, stmt, loc); )*
-            }
-
-            fn reconstruct_before_terminator_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                term: &mir::Terminator<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_before_terminator_effect(&mut state.$field, term, loc); )*
-            }
-
-            fn reconstruct_terminator_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                term: &mir::Terminator<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_terminator_effect(&mut state.$field, term, loc); )*
-            }
+    fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
+        BorrowckAnalyses {
+            borrows: self.borrows.analysis.bottom_value(body),
+            uninits: self.uninits.analysis.bottom_value(body),
+            ever_inits: self.ever_inits.analysis.bottom_value(body),
         }
-    )* }
-}
+    }
 
-impl_visitable! {
-    BorrowckAnalyses { borrows: B, uninits: U, ever_inits: E }
+    fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock) {
+        state.borrows.clone_from(&self.borrows.entry_set_for_block(block));
+        state.uninits.clone_from(&self.uninits.entry_set_for_block(block));
+        state.ever_inits.clone_from(&self.ever_inits.entry_set_for_block(block));
+    }
+
+    fn reconstruct_before_statement_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        stmt: &mir::Statement<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_before_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.analysis.apply_before_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.analysis.apply_before_statement_effect(&mut state.ever_inits, stmt, loc);
+    }
+
+    fn reconstruct_statement_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        stmt: &mir::Statement<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.analysis.apply_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.analysis.apply_statement_effect(&mut state.ever_inits, stmt, loc);
+    }
+
+    fn reconstruct_before_terminator_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        term: &mir::Terminator<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_before_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.analysis.apply_before_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.analysis.apply_before_terminator_effect(&mut state.ever_inits, term, loc);
+    }
+
+    fn reconstruct_terminator_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        term: &mir::Terminator<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.analysis.apply_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.analysis.apply_terminator_effect(&mut state.ever_inits, term, loc);
+    }
 }
 
 rustc_index::newtype_index! {
