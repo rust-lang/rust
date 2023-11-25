@@ -18,17 +18,13 @@ pub(super) fn check<'tcx>(
     def_arg: &'tcx hir::Expr<'_>,
     map_arg: &'tcx hir::Expr<'_>,
 ) {
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
-
-    if !is_result {
-        return;
-    }
-
-    let f_arg_is_some = is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome);
-
-    if f_arg_is_some
+    // lint if the caller of `map_or_else()` is a `Result`
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result)
+        // We check that it is mapped as `Some`.
+        && is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome)
         && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = def_arg.kind
         && let body = cx.tcx.hir().body(body)
+        // And finally we check that we return a `None` in the "else case".
         && is_res_lang_ctor(cx, path_res(cx, peel_blocks(body.value)), OptionNone)
     {
         let msg = "called `map_or_else(|_| None, Some)` on a `Result` value";
