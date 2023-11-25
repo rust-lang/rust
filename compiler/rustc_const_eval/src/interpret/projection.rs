@@ -256,13 +256,13 @@ where
     }
 
     /// Iterates over all fields of an array. Much more efficient than doing the
-    /// same by repeatedly calling `operand_index`.
+    /// same by repeatedly calling `project_index`.
     pub fn project_array_fields<'a, P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &'a P,
     ) -> InterpResult<'tcx, ArrayIterator<'tcx, 'a, M::Provenance, P>> {
         let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
-            span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
+            span_bug!(self.cur_span(), "project_array_fields: expected an array layout");
         };
         let len = base.len(self)?;
         let field_layout = base.layout().field(self, 0);

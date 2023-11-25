@@ -227,10 +227,6 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl Type {
-    pub fn i8_llcx(llcx: &llvm::Context) -> &Type {
-        unsafe { llvm::LLVMInt8TypeInContext(llcx) }
-    }
-
     /// Creates an integer type with the given number of bits, e.g., i24
     pub fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
         unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
