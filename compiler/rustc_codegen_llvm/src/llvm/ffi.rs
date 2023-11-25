@@ -891,7 +891,6 @@ extern "C" {
     pub fn LLVMSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Node: &'a Value);
     pub fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
-    pub fn LLVMIsAFunction(Val: &Value) -> Option<&Value>;
 
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: &Type) -> &Value;
@@ -955,7 +954,6 @@ extern "C" {
     pub fn LLVMConstPtrToInt<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
     pub fn LLVMConstIntToPtr<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
     pub fn LLVMConstBitCast<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
-    pub fn LLVMConstPointerCast<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
     pub fn LLVMGetAggregateElement(ConstantVal: &Value, Idx: c_uint) -> Option<&Value>;
 
     // Operations on global variables, functions, and aliases (globals)
@@ -2346,11 +2344,6 @@ extern "C" {
         len: usize,
         Identifier: *const c_char,
     ) -> Option<&Module>;
-    pub fn LLVMRustGetBitcodeSliceFromObjectData(
-        Data: *const u8,
-        len: usize,
-        out_len: &mut usize,
-    ) -> *const u8;
     pub fn LLVMRustGetSliceFromObjectDataByName(
         data: *const u8,
         len: usize,
