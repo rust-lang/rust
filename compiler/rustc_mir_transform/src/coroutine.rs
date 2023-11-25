@@ -51,6 +51,7 @@
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use crate::abort_unwinding_calls;
+use crate::add_call_guards;
 use crate::deref_separator::deref_finder;
 use crate::errors;
 use crate::pass_manager as pm;
@@ -1176,7 +1177,7 @@ fn create_coroutine_drop_shim<'tcx>(
     pm::run_passes_no_validate(
         tcx,
         &mut body,
-        &[&abort_unwinding_calls::AbortUnwindingCalls],
+        &[&abort_unwinding_calls::AbortUnwindingCalls, &add_call_guards::CriticalCallEdges],
         None,
     );
 
