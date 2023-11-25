@@ -329,7 +329,13 @@ impl<'tcx> CValue<'tcx> {
                 let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
             }
-            ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Ref(..) | ty::RawPtr(..) => {
+            ty::Bool
+            | ty::Char
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Ref(..)
+            | ty::RawPtr(..)
+            | ty::FnPtr(..) => {
                 let raw_val = const_val.size().truncate(const_val.to_bits(layout.size).unwrap());
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
@@ -959,6 +965,32 @@ pub(crate) fn assert_assignable<'tcx>(
         }
         (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b, limit - 1),
         (&ty::Closure(def_id_a, args_a), &ty::Closure(def_id_b, args_b))
+            if def_id_a == def_id_b =>
+        {
+            let mut types_a = args_a.types();
+            let mut types_b = args_b.types();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
+        (&ty::Coroutine(def_id_a, args_a, mov_a), &ty::Coroutine(def_id_b, args_b, mov_b))
+            if def_id_a == def_id_b && mov_a == mov_b =>
+        {
+            let mut types_a = args_a.types();
+            let mut types_b = args_b.types();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
+        (&ty::CoroutineWitness(def_id_a, args_a), &ty::CoroutineWitness(def_id_b, args_b))
             if def_id_a == def_id_b =>
         {
             let mut types_a = args_a.types();
