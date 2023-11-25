@@ -6,7 +6,7 @@ use crate::errors::{
     MacroExpectedFound, RemoveSurroundingDerive,
 };
 use crate::Namespace::*;
-use crate::{BuiltinMacroState, Determinacy};
+use crate::{BuiltinMacroState, Determinacy, MacroData};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::expand::StrippedCfgItem;
@@ -695,7 +695,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             res
         };
 
-        res.map(|res| (self.get_macro(res).map(|macro_data| macro_data.ext), res))
+        res.map(|res| (self.get_macro(res).map(|macro_data| macro_data.ext.clone()), res))
     }
 
     pub(crate) fn finalize_macro_resolutions(&mut self, krate: &Crate) {
@@ -936,27 +936,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Compile the macro into a `SyntaxExtension` and its rule spans.
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
-    pub(crate) fn compile_macro(
-        &mut self,
-        item: &ast::Item,
-        edition: Edition,
-    ) -> (SyntaxExtension, Vec<(usize, Span)>) {
-        let (mut result, mut rule_spans) =
+    pub(crate) fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> MacroData {
+        let (mut ext, mut rule_spans) =
             compile_declarative_macro(self.tcx.sess, self.tcx.features(), item, edition);
 
-        if let Some(builtin_name) = result.builtin_name {
+        if let Some(builtin_name) = ext.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
             if let Some(builtin_macro) = self.builtin_macros.get_mut(&builtin_name) {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
                 // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
                 match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
-                    BuiltinMacroState::NotYetSeen(ext) => {
-                        result.kind = ext;
+                    BuiltinMacroState::NotYetSeen(builtin_ext) => {
+                        ext.kind = builtin_ext;
                         rule_spans = Vec::new();
                         if item.id != ast::DUMMY_NODE_ID {
                             self.builtin_macro_kinds
-                                .insert(self.local_def_id(item.id), result.macro_kind());
+                                .insert(self.local_def_id(item.id), ext.macro_kind());
                         }
                     }
                     BuiltinMacroState::AlreadySeen(span) => {
@@ -976,6 +972,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        (result, rule_spans)
+        let ItemKind::MacroDef(def) = &item.kind else { unreachable!() };
+        MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: def.macro_rules }
     }
 }
