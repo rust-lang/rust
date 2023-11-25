@@ -1002,6 +1002,7 @@ tool_doc!(
         "cargo-test-macro",
         "cargo-test-support",
         "cargo-credential",
+        "rustfix",
         "mdman",
         // FIXME: this trips a license check in tidy.
         // "resolver-tests",
