@@ -30,16 +30,23 @@ endgroup
 
 # Test
 function run_tests {
-  if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
+  if [ -n "${MIRI_TEST_TARGET:-}" ]; then
     begingroup "Testing foreign architecture $MIRI_TEST_TARGET"
   else
     begingroup "Testing host architecture"
   fi
 
   ## ui test suite
-  ./miri test
-  if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
-    # Host-only tests: running these on all targets is unlikely to catch more problems and would
+  # On the host and on Linux, also stress-test the GC.
+  if [ -z "${MIRI_TEST_TARGET:-}" ] || [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ]; then
+    MIRIFLAGS="${MIRIFLAGS:-} -Zmiri-provenance-gc=1" ./miri test
+  else
+    ./miri test
+  fi
+
+  # Host-only tests
+  if [ -z "${MIRI_TEST_TARGET:-}" ]; then
+    # Running these on all targets is unlikely to catch more problems and would
     # cost a lot of CI time.
 
     # Tests with optimizations (`-O` is what cargo passes, but crank MIR optimizations up all the
@@ -85,7 +92,7 @@ function run_tests {
 }
 
 function run_tests_minimal {
-  if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
+  if [ -n "${MIRI_TEST_TARGET:-}" ]; then
     begingroup "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
   else
     begingroup "Testing MINIMAL host architecture: only testing $@"

@@ -35,10 +35,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set the tag GC interval to 1 on linux
-        if: runner.os == 'Linux'
-        run: echo "MIRIFLAGS=-Zmiri-provenance-gc=1" >> $GITHUB_ENV
-
       # Cache the global cargo directory, but NOT the local `target` directory which
       # we cannot reuse anyway when the nightly changes (and it grows quite large
       # over time).
