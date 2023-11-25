@@ -667,36 +667,34 @@ fn locals_live_across_suspend_points<'tcx>(
     always_live_locals: &BitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
-    let body_ref: &Body<'_> = body;
-
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(always_live_locals))
-        .into_engine(tcx, body_ref)
+        .into_engine(tcx, body)
         .iterate_to_fixpoint()
-        .into_results_cursor(body_ref);
+        .into_results_cursor(body);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     let borrowed_locals_results =
-        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("coroutine").iterate_to_fixpoint();
+        MaybeBorrowedLocals.into_engine(tcx, body).pass_name("coroutine").iterate_to_fixpoint();
 
-    let mut borrowed_locals_cursor = borrowed_locals_results.cloned_results_cursor(body_ref);
+    let mut borrowed_locals_cursor = borrowed_locals_results.cloned_results_cursor(body);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
     let mut requires_storage_results =
         MaybeRequiresStorage::new(borrowed_locals_results.cloned_results_cursor(body))
-            .into_engine(tcx, body_ref)
+            .into_engine(tcx, body)
             .iterate_to_fixpoint();
-    let mut requires_storage_cursor = requires_storage_results.as_results_cursor(body_ref);
+    let mut requires_storage_cursor = requires_storage_results.as_results_cursor(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness = MaybeLiveLocals
-        .into_engine(tcx, body_ref)
+        .into_engine(tcx, body)
         .pass_name("coroutine")
         .iterate_to_fixpoint()
-        .into_results_cursor(body_ref);
+        .into_results_cursor(body);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
@@ -762,7 +760,7 @@ fn locals_live_across_suspend_points<'tcx>(
         .collect();
 
     let storage_conflicts = compute_storage_conflicts(
-        body_ref,
+        body,
         &saved_locals,
         always_live_locals.clone(),
         requires_storage_results,

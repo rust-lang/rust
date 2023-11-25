@@ -3,13 +3,13 @@ use rustc_middle::mir::*;
 
 /// Used for reverting changes made by `DerefSeparator`
 #[derive(Default, Debug)]
-pub struct UnDerefer<'tcx> {
+pub(crate) struct UnDerefer<'tcx> {
     deref_chains: FxHashMap<Local, Vec<PlaceRef<'tcx>>>,
 }
 
 impl<'tcx> UnDerefer<'tcx> {
     #[inline]
-    pub fn insert(&mut self, local: Local, reffed: PlaceRef<'tcx>) {
+    pub(crate) fn insert(&mut self, local: Local, reffed: PlaceRef<'tcx>) {
         let mut chain = self.deref_chains.remove(&reffed.local).unwrap_or_default();
         chain.push(reffed);
         self.deref_chains.insert(local, chain);
@@ -17,7 +17,7 @@ impl<'tcx> UnDerefer<'tcx> {
 
     /// Returns the chain of places behind `DerefTemp` locals
     #[inline]
-    pub fn deref_chain(&self, local: Local) -> &[PlaceRef<'tcx>] {
+    pub(crate) fn deref_chain(&self, local: Local) -> &[PlaceRef<'tcx>] {
         self.deref_chains.get(&local).map(Vec::as_slice).unwrap_or_default()
     }
 
@@ -25,7 +25,7 @@ impl<'tcx> UnDerefer<'tcx> {
     ///
     /// See [`PlaceRef::iter_projections`]
     #[inline]
-    pub fn iter_projections(
+    pub(crate) fn iter_projections(
         &self,
         place: PlaceRef<'tcx>,
     ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + '_ {
