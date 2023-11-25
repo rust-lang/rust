@@ -736,7 +736,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             if attr.has_name(sym::doc)
                 && attr
                     .meta_item_list()
-                    .map_or(false, |l| ast::attr::list_contains_name(&l, sym::hidden))
+                    .is_some_and(|l| ast::attr::list_contains_name(&l, sym::hidden))
             {
                 self.insert(LintId::of(MISSING_DOCS), (Level::Allow, LintLevelSource::Default));
                 continue;
