@@ -776,7 +776,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If `extern_crate` is `None`, then the crate was injected (e.g., by the allocator).
             // Treat that kind of crate as "indirect", since it's an implementation detail of
             // the language.
-            || self.extern_crate(key.as_def_id()).map_or(false, |e| e.is_direct())
+            || self.extern_crate(key.as_def_id()).is_some_and(|e| e.is_direct())
     }
 }
 
