@@ -123,6 +123,7 @@
         - [Lowering to logic](./traits/lowering-to-logic.md)
         - [Goals and clauses](./traits/goals-and-clauses.md)
         - [Canonical queries](./traits/canonical-queries.md)
+        - [Canonicalization](./traits/canonicalization.md)
     - [Next-gen trait solving](./solve/trait-solving.md)
         - [Invariants of the type system](./solve/invariants.md)
         - [The solver](./solve/the-solver.md)
