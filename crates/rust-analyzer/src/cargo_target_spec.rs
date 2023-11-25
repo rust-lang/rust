@@ -209,26 +209,17 @@ mod tests {
     use super::*;
 
     use cfg::CfgExpr;
-    use hir_def::tt::{self, Span};
-    use mbe::{syntax_node_to_token_tree, SpanMapper};
+    use mbe::{syntax_node_to_token_tree, DummyTestSpanMap};
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
     };
 
-    struct NoOpMap;
-
-    impl SpanMapper<tt::SpanData> for NoOpMap {
-        fn span_for(&self, _: syntax::TextRange) -> tt::SpanData {
-            tt::SpanData::DUMMY
-        }
-    }
-
     fn check(cfg: &str, expected_features: &[&str]) {
         let cfg_expr = {
             let source_file = ast::SourceFile::parse(cfg).ok().unwrap();
             let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            let tt = syntax_node_to_token_tree(tt.syntax(), &NoOpMap);
+            let tt = syntax_node_to_token_tree(tt.syntax(), &DummyTestSpanMap);
             CfgExpr::parse(&tt)
         };
 

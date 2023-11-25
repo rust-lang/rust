@@ -1,3 +1,5 @@
+/// File and span related types.
+// FIXME: This should probably be moved into its own crate.
 use std::fmt;
 
 use salsa::InternId;
@@ -29,10 +31,10 @@ impl SyntaxContext for SyntaxContextId {
 }
 // inherent trait impls please tyvm
 impl SyntaxContextId {
-    // FIXME: This is very much UB, salsa exposes no way to create an InternId in a const context
+    // TODO: This is very much UB, salsa exposes no way to create an InternId in a const context
     // currently (which kind of makes sense but we need it here!)
     pub const ROOT: Self = SyntaxContextId(unsafe { core::mem::transmute(1) });
-    // FIXME: This is very much UB, salsa exposes no way to create an InternId in a const context
+    // TODO: This is very much UB, salsa exposes no way to create an InternId in a const context
     // currently (which kind of makes sense but we need it here!)
     pub const SELF_REF: Self = SyntaxContextId(unsafe { core::mem::transmute(!0u32) });
 

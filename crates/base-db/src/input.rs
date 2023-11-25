@@ -243,6 +243,9 @@ impl CrateDisplayName {
     }
 }
 
+// FIXME: These should not be defined in here? Why does base db know about proc-macros
+// ProcMacroKind is used in [`fixture`], but that module probably shouldn't be in this crate either.
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProcMacroId(pub u32);
 
@@ -324,7 +327,9 @@ pub struct CrateData {
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
-    // FIXME: These things should not be per crate! These are more per workspace crate graph level things
+    // FIXME: These things should not be per crate! These are more per workspace crate graph level
+    // things. This info does need to be somewhat present though as to prevent deduplication from
+    // happening across different workspaces with different layouts.
     pub target_layout: TargetLayoutLoadResult,
     pub channel: Option<ReleaseChannel>,
 }

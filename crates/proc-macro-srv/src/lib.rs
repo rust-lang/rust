@@ -10,6 +10,7 @@
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
+#![cfg(FALSE)] // TODO
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]

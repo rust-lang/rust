@@ -18,11 +18,13 @@ fn main() -> std::io::Result<()> {
     run()
 }
 
+#[cfg(not(FALSE))]
 #[cfg(not(feature = "sysroot-abi"))]
 fn run() -> io::Result<()> {
     panic!("proc-macro-srv-cli requires the `sysroot-abi` feature to be enabled");
 }
 
+#[cfg(FALSE)]
 #[cfg(feature = "sysroot-abi")]
 fn run() -> io::Result<()> {
     use proc_macro_api::msg::{self, Message};

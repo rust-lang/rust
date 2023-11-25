@@ -7,31 +7,9 @@
 use std::fmt;
 
 use stdx::impl_from;
-use text_size::{TextRange, TextSize};
 
 pub use smol_str::SmolStr;
-
-/// Represents identity of the token.
-///
-/// For hygiene purposes, we need to track which expanded tokens originated from
-/// which source tokens. We do it by assigning an distinct identity to each
-/// source token and making sure that identities are preserved during macro
-/// expansion.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TokenId(pub u32);
-
-impl fmt::Debug for TokenId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl TokenId {
-    pub const UNSPECIFIED: TokenId = TokenId(!0);
-    pub const fn unspecified() -> TokenId {
-        Self::UNSPECIFIED
-    }
-}
+pub use text_size::{TextRange, TextSize};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct SpanData<Anchor, Ctx> {

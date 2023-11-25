@@ -4,38 +4,14 @@ use syntax::{ast, AstNode};
 use test_utils::extract_annotations;
 use tt::{
     buffer::{TokenBuffer, TokenTreeRef},
-    Leaf, Punct, Spacing, SpanAnchor, SyntaxContext,
+    Leaf, Punct, Spacing,
 };
 
-use crate::SpanMapper;
-
-use super::syntax_node_to_token_tree;
+use crate::{syntax_node_to_token_tree, DummyTestSpanData, DummyTestSpanMap};
 
 fn check_punct_spacing(fixture: &str) {
-    type SpanData = tt::SpanData<DummyFile, DummyCtx>;
-
-    #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
-    struct DummyFile;
-    impl SpanAnchor for DummyFile {
-        const DUMMY: Self = DummyFile;
-    }
-
-    #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-    struct DummyCtx;
-    impl SyntaxContext for DummyCtx {
-        const DUMMY: Self = DummyCtx;
-    }
-
-    struct NoOpMap;
-
-    impl SpanMapper<SpanData> for NoOpMap {
-        fn span_for(&self, range: syntax::TextRange) -> SpanData {
-            SpanData { range, anchor: DummyFile, ctx: DummyCtx }
-        }
-    }
-
     let source_file = ast::SourceFile::parse(fixture).ok().unwrap();
-    let subtree = syntax_node_to_token_tree(source_file.syntax(), NoOpMap);
+    let subtree = syntax_node_to_token_tree(source_file.syntax(), DummyTestSpanMap);
     let mut annotations: HashMap<_, _> = extract_annotations(fixture)
         .into_iter()
         .map(|(range, annotation)| {
@@ -53,7 +29,7 @@ fn check_punct_spacing(fixture: &str) {
     while !cursor.eof() {
         while let Some(token_tree) = cursor.token_tree() {
             if let TokenTreeRef::Leaf(
-                Leaf::Punct(Punct { spacing, span: SpanData { range, .. }, .. }),
+                Leaf::Punct(Punct { spacing, span: DummyTestSpanData { range, .. }, .. }),
                 _,
             ) = token_tree
             {

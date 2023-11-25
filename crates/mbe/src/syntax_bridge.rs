@@ -33,6 +33,34 @@ impl<S: Span, SM: SpanMapper<S>> SpanMapper<S> for &SM {
     }
 }
 
+pub(crate) mod dummy_test_span_utils {
+    use super::*;
+
+    pub type DummyTestSpanData = tt::SpanData<DummyTestSpanAnchor, DummyTestSyntaxContext>;
+
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub struct DummyTestSpanAnchor;
+    impl tt::SpanAnchor for DummyTestSpanAnchor {
+        const DUMMY: Self = DummyTestSpanAnchor;
+    }
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    pub struct DummyTestSyntaxContext;
+    impl SyntaxContext for DummyTestSyntaxContext {
+        const DUMMY: Self = DummyTestSyntaxContext;
+    }
+
+    pub struct DummyTestSpanMap;
+
+    impl SpanMapper<tt::SpanData<DummyTestSpanAnchor, DummyTestSyntaxContext>> for DummyTestSpanMap {
+        fn span_for(
+            &self,
+            range: syntax::TextRange,
+        ) -> tt::SpanData<DummyTestSpanAnchor, DummyTestSyntaxContext> {
+            tt::SpanData { range, anchor: DummyTestSpanAnchor, ctx: DummyTestSyntaxContext }
+        }
+    }
+}
+
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 /// TODO: Flesh out the doc comment more thoroughly

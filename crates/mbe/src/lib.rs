@@ -40,6 +40,8 @@ pub use crate::{
     token_map::TokenMap,
 };
 
+pub use crate::syntax_bridge::dummy_test_span_utils::*;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParseError {
     UnexpectedToken(Box<str>),
