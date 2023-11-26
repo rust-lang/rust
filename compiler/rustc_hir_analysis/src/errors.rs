@@ -1501,3 +1501,13 @@ pub enum RefOfMutStaticSugg {
         var: String,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_not_supported_delegation)]
+pub struct NotSupportedDelegation<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'a str,
+    #[label]
+    pub callee_span: Span,
+}

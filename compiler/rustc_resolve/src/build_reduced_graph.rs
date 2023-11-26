@@ -16,7 +16,7 @@ use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::{Block, Fn, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
+use rustc_ast::{Block, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
@@ -686,10 +686,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Static(..) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
-            }
-            ItemKind::Const(..) => {
+            ItemKind::Const(..) | ItemKind::Delegation(..) | ItemKind::Static(..) => {
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
             ItemKind::Fn(..) => {
@@ -701,11 +698,11 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(..) => {
+            ItemKind::TyAlias(..) | ItemKind::TraitAlias(..) => {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
-            ItemKind::Enum(_, _) => {
+            ItemKind::Enum(_, _) | ItemKind::Trait(..) => {
                 let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, ident.name),
@@ -715,10 +712,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
-            }
-
-            ItemKind::TraitAlias(..) => {
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
             // These items live in both the type and value namespaces.
@@ -776,19 +769,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 // Record field names for error reporting.
                 self.insert_field_def_ids(local_def_id, vdata);
                 self.insert_field_visibilities_local(def_id, vdata);
-            }
-
-            ItemKind::Trait(..) => {
-                // Add all the items within to a new module.
-                let module = self.r.new_module(
-                    Some(parent),
-                    ModuleKind::Def(def_kind, def_id, ident.name),
-                    expansion.to_expn_id(),
-                    item.span,
-                    parent.no_implicit_prelude,
-                );
-                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
-                self.parent_scope.module = module;
             }
 
             // These items do not add names to modules.
@@ -1353,13 +1333,9 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
         if ctxt == AssocCtxt::Trait {
             let ns = match item.kind {
-                AssocItemKind::Const(..) => ValueNS,
-                AssocItemKind::Fn(box Fn { ref sig, .. }) => {
-                    if sig.decl.has_self() {
-                        self.r.has_self.insert(local_def_id);
-                    }
-                    ValueNS
-                }
+                AssocItemKind::Const(..)
+                | AssocItemKind::Delegation(..)
+                | AssocItemKind::Fn(..) => ValueNS,
                 AssocItemKind::Type(..) => TypeNS,
                 AssocItemKind::MacCall(_) => bug!(), // handled above
             };

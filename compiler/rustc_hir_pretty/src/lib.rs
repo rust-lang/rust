@@ -320,7 +320,7 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose();
             }
-            hir::TyKind::Infer => {
+            hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
         }

@@ -252,6 +252,8 @@ impl<'a> Parser<'a> {
         {
             // IMPL ITEM
             self.parse_item_impl(attrs, def_())?
+        } else if self.is_reuse_path_item() {
+            self.parse_item_delegation()?
         } else if self.check_keyword(kw::Mod)
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Mod])
         {
@@ -349,9 +351,16 @@ impl<'a> Parser<'a> {
     /// When parsing a statement, would the start of a path be an item?
     pub(super) fn is_path_start_item(&mut self) -> bool {
         self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
+        || self.is_reuse_path_item()
         || self.check_auto_or_unsafe_trait_item() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
         || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`
+    }
+
+    fn is_reuse_path_item(&mut self) -> bool {
+        // no: `reuse ::path` for compatibility reasons with macro invocations
+        self.token.is_keyword(kw::Reuse)
+            && self.look_ahead(1, |t| t.is_path_start() && t.kind != token::ModSep)
     }
 
     /// Are we sure this could not possibly be a macro invocation?
@@ -653,6 +662,33 @@ impl<'a> Parser<'a> {
         };
 
         Ok((Ident::empty(), item_kind))
+    }
+
+    fn parse_item_delegation(&mut self) -> PResult<'a, ItemInfo> {
+        let span = self.token.span;
+        self.expect_keyword(kw::Reuse)?;
+
+        let (qself, path) = if self.eat_lt() {
+            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+            (Some(qself), path)
+        } else {
+            (None, self.parse_path(PathStyle::Expr)?)
+        };
+
+        let body = if self.check(&token::OpenDelim(Delimiter::Brace)) {
+            Some(self.parse_block()?)
+        } else {
+            self.expect(&token::Semi)?;
+            None
+        };
+        let span = span.to(self.prev_token.span);
+        self.sess.gated_spans.gate(sym::fn_delegation, span);
+
+        let ident = path.segments.last().map(|seg| seg.ident).unwrap_or(Ident::empty());
+        Ok((
+            ident,
+            ItemKind::Delegation(Box::new(Delegation { id: DUMMY_NODE_ID, qself, path, body })),
+        ))
     }
 
     fn parse_item_list<T>(

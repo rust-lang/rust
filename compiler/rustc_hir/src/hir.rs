@@ -2538,9 +2538,17 @@ pub enum OpaqueTyOrigin {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegationKind {
+    Input(usize),
+    Output,
+}
+
 /// The various kinds of types recognized by the compiler.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir> {
+    /// Actual type should be inherited from `DefId` signature
+    InferDelegation(DefId, InferDelegationKind),
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
