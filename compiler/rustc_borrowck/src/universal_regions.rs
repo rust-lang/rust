@@ -737,18 +737,6 @@ trait InferCtxtExt<'tcx> {
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>;
-
-    fn instantiate_bound_regions_with_nll_infer_vars_in_recursive_scope(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    );
-
-    fn instantiate_bound_regions_with_nll_infer_vars_in_item(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    );
 }
 
 impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
@@ -798,54 +786,6 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             region_vid
         });
         value
-    }
-
-    /// Finds late-bound regions that do not appear in the parameter listing and adds them to the
-    /// indices vector. Typically, we identify late-bound regions as we process the inputs and
-    /// outputs of the closure/function. However, sometimes there are late-bound regions which do
-    /// not appear in the fn parameters but which are nonetheless in scope. The simplest case of
-    /// this are unused functions, like fn foo<'a>() { } (see e.g., #51351). Despite not being used,
-    /// users can still reference these regions (e.g., let x: &'a u32 = &22;), so we need to create
-    /// entries for them and store them in the indices map. This code iterates over the complete
-    /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
-    /// inputs vector.
-    #[instrument(skip(self, indices))]
-    fn instantiate_bound_regions_with_nll_infer_vars_in_recursive_scope(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    ) {
-        for_each_late_bound_region_in_recursive_scope(self.tcx, mir_def_id, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
-                let region_vid = {
-                    let name = r.get_name_or_anon();
-                    self.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
-                };
-
-                debug!(?region_vid);
-                indices.insert_late_bound_region(r, region_vid.as_var());
-            }
-        });
-    }
-
-    #[instrument(skip(self, indices))]
-    fn instantiate_bound_regions_with_nll_infer_vars_in_item(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    ) {
-        for_each_late_bound_region_in_item(self.tcx, mir_def_id, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
-                let region_vid = {
-                    let name = r.get_name_or_anon();
-                    self.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
-                };
-
-                indices.insert_late_bound_region(r, region_vid.as_var());
-            }
-        });
     }
 }
 
