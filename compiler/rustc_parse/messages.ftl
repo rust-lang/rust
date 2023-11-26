@@ -456,8 +456,6 @@ parse_macro_expands_to_adt_field = macros cannot expand to {$adt_ty} fields
 
 parse_macro_expands_to_enum_variant = macros cannot expand to enum variants
 
-parse_macro_expands_to_match_arm = macros cannot expand to match arms
-
 parse_macro_invocation_visibility = can't qualify macro invocation with `pub`
     .suggestion = remove the visibility
     .help = try adjusting the macro to put `{$vis}` inside the invocation

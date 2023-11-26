@@ -3,6 +3,7 @@ macro_rules! arm {
         $pattern => $block
         //~^ ERROR macro expansion ignores token `=>` and any following
         //~| NOTE the usage of `arm!` is likely invalid in pattern context
+        //~| NOTE macros cannot expand to match arms
     };
 }
 

@@ -955,12 +955,15 @@ pub fn ensure_complete_parse<'a>(
             _ => None,
         };
 
+        let expands_to_match_arm = kind_name == "pattern" && parser.token == token::FatArrow;
+
         parser.sess.emit_err(IncompleteParse {
             span: def_site_span,
             token,
             label_span: span,
             macro_path,
             kind_name,
+            expands_to_match_arm: expands_to_match_arm.then_some(()),
             add_semicolon,
         });
     }

@@ -8,6 +8,7 @@ LL |         arm!(None => {}),
    |         ---------------- caused by the macro expansion here
    |
    = note: the usage of `arm!` is likely invalid in pattern context
+   = note: macros cannot expand to match arms
 
 error: aborting due to 1 previous error
 

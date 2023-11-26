@@ -155,11 +155,7 @@ impl<'a> Parser<'a> {
             Err(err) => return Err(err),
         };
         if rc == RecoverComma::Yes && !first_pat.could_be_never_pattern() {
-            self.maybe_recover_unexpected_comma(
-                first_pat.span,
-                matches!(first_pat.kind, PatKind::MacCall(_)),
-                rt,
-            )?;
+            self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
         }
 
         // If the next token is not a `|`,
@@ -201,7 +197,7 @@ impl<'a> Parser<'a> {
                 err
             })?;
             if rc == RecoverComma::Yes && !pat.could_be_never_pattern() {
-                self.maybe_recover_unexpected_comma(pat.span, false, rt)?;
+                self.maybe_recover_unexpected_comma(pat.span, rt)?;
             }
             pats.push(pat);
         }
