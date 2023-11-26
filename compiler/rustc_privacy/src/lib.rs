@@ -653,8 +653,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::Field
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::Closure
-            | DefKind::Coroutine => (),
+            | DefKind::Closure => (),
         }
     }
 }

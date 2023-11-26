@@ -61,7 +61,7 @@ impl<'tcx> MirLint<'tcx> for ConstPropLint {
 
         // FIXME(welseywiser) const prop doesn't work on coroutines because of query cycles
         // computing their layout.
-        if let DefKind::Coroutine = def_kind {
+        if tcx.is_coroutine(def_id.to_def_id()) {
             trace!("ConstPropLint skipped for coroutine {:?}", def_id);
             return;
         }

@@ -2678,8 +2678,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
         let parent_args = match tcx.def_kind(def_id) {
+            DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => {
+                args.as_coroutine().parent_args()
+            }
             DefKind::Closure => args.as_closure().parent_args(),
-            DefKind::Coroutine => args.as_coroutine().parent_args(),
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };

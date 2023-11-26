@@ -2072,8 +2072,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         .map(|name| format!("function `{name}`"))
                         .unwrap_or_else(|| {
                             match &self.infcx.tcx.def_kind(self.mir_def_id()) {
+                                DefKind::Closure
+                                    if self
+                                        .infcx
+                                        .tcx
+                                        .is_coroutine(self.mir_def_id().to_def_id()) =>
+                                {
+                                    "enclosing coroutine"
+                                }
                                 DefKind::Closure => "enclosing closure",
-                                DefKind::Coroutine => "enclosing coroutine",
                                 kind => bug!("expected closure or coroutine, found {:?}", kind),
                             }
                             .to_string()

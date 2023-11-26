@@ -313,7 +313,7 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Impl { .. } => {}
         // Closures and coroutines are type checked with their parent, so we need to allow all
         // opaques from the closure signature *and* from the parent body.
-        DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst => {
+        DefKind::Closure | DefKind::InlineConst => {
             collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
     }

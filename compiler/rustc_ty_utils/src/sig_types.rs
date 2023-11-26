@@ -67,7 +67,7 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // These are not part of a public API, they can only appear as hidden types, and there
         // the interesting parts are solely in the signature of the containing item's opaque type
         // or dyn type.
-        DefKind::InlineConst | DefKind::Closure | DefKind::Coroutine => {}
+        DefKind::InlineConst | DefKind::Closure => {}
         DefKind::Impl { of_trait } => {
             if of_trait {
                 let span = tcx.hir().get_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().path.span;
