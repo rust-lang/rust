@@ -185,12 +185,14 @@ where
 }
 
 intrinsics! {
+    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_fmul]
     pub extern "C" fn __mulsf3(a: f32, b: f32) -> f32 {
         mul(a, b)
     }
 
+    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_dmul]
     pub extern "C" fn __muldf3(a: f64, b: f64) -> f64 {
