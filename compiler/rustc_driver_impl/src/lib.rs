@@ -173,7 +173,7 @@ pub trait Callbacks {
     fn after_expansion<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -425,18 +425,18 @@ fn run_compiler(
                 return early_exit();
             }
 
-            // Make sure name resolution and macro expansion is run.
-            queries.global_ctxt().enter(|tcx| tcx.resolver_for_lowering());
-
-            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                queries.global_ctxt().enter(|tcxt| dump_feature_usage_metrics(tcxt, metrics_dir));
-            }
-
-            if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
-                return early_exit();
-            }
-
             queries.global_ctxt().enter(|tcx| {
+                // Make sure name resolution and macro expansion is run.
+                let _ = tcx.resolver_for_lowering();
+
+                if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                    dump_feature_usage_metrics(tcx, metrics_dir);
+                }
+
+                if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
+                    return early_exit();
+                }
+
                 passes::write_dep_info(tcx);
 
                 if sess.opts.output_types.contains_key(&OutputType::DepInfo)
