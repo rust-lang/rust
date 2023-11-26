@@ -4,11 +4,11 @@ mod sealed {
 use sealed::Sealed;
 
 /// Specifies the number of lanes in a SIMD vector as a type.
-pub struct LaneCount<const LANES: usize>;
+pub struct LaneCount<const N: usize>;
 
-impl<const LANES: usize> LaneCount<LANES> {
+impl<const N: usize> LaneCount<N> {
     /// The number of bytes in a bitmask with this many lanes.
-    pub const BITMASK_LEN: usize = (LANES + 7) / 8;
+    pub const BITMASK_LEN: usize = (N + 7) / 8;
 }
 
 /// Statically guarantees that a lane count is marked as supported.
@@ -21,7 +21,7 @@ pub trait SupportedLaneCount: Sealed {
     type BitMask: Copy + Default + AsRef<[u8]> + AsMut<[u8]>;
 }
 
-impl<const LANES: usize> Sealed for LaneCount<LANES> {}
+impl<const N: usize> Sealed for LaneCount<N> {}
 
 macro_rules! supported_lane_count {
     ($($lanes:literal),+) => {

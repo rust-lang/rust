@@ -6,9 +6,9 @@ use core::{
 
 macro_rules! impl_traits {
     { $type:ty } => {
-        impl<const LANES: usize> Sum<Self> for Simd<$type, LANES>
+        impl<const N: usize> Sum<Self> for Simd<$type, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
@@ -16,9 +16,9 @@ macro_rules! impl_traits {
             }
         }
 
-        impl<const LANES: usize> Product<Self> for Simd<$type, LANES>
+        impl<const N: usize> Product<Self> for Simd<$type, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
@@ -26,9 +26,9 @@ macro_rules! impl_traits {
             }
         }
 
-        impl<'a, const LANES: usize> Sum<&'a Self> for Simd<$type, LANES>
+        impl<'a, const N: usize> Sum<&'a Self> for Simd<$type, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
@@ -36,9 +36,9 @@ macro_rules! impl_traits {
             }
         }
 
-        impl<'a, const LANES: usize> Product<&'a Self> for Simd<$type, LANES>
+        impl<'a, const N: usize> Product<&'a Self> for Simd<$type, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn product<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
