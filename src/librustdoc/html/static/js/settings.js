@@ -1,6 +1,6 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
-/* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
+/* global addClass, removeClass, onEach, onEachLazy, blurHandler */
 /* global MAIN_ID, getVar, getSettingsButton */
 
 "use strict";
@@ -232,7 +232,7 @@
         const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");
         settingsButton.onclick = event => {
-            if (elemIsInParent(event.target, settingsMenu)) {
+            if (settingsMenu.contains(event.target)) {
                 return;
             }
             event.preventDefault();
