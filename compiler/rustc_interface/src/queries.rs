@@ -62,7 +62,7 @@ impl<'a, T> std::ops::DerefMut for QueryResult<'a, T> {
 
 impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
     pub fn enter<T>(&mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
-        (*self.0).get_mut().enter(f)
+        (*self.0).borrow().enter(f)
     }
 }
 
