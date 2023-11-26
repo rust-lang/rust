@@ -9,8 +9,9 @@ use std::hash::Hash;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
@@ -293,7 +294,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// `def_id` is `Some` if this is the "lazy" allocation of a static.
     #[inline]
     fn before_access_global(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
         _allocation: ConstAllocation<'tcx>,
@@ -388,7 +389,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// need to mutate.
     #[inline(always)]
     fn before_memory_read(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
         _prov: (AllocId, Self::ProvenanceExtra),
@@ -400,7 +401,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Hook for performing extra checks on a memory write access.
     #[inline(always)]
     fn before_memory_write(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         _prov: (AllocId, Self::ProvenanceExtra),
@@ -412,7 +413,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Hook for performing extra operations on a memory deallocation.
     #[inline(always)]
     fn before_memory_deallocation(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         _prov: (AllocId, Self::ProvenanceExtra),
@@ -515,7 +516,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 /// (CTFE and ConstProp) use the same instance. Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type Provenance = CtfeProvenance;
-    type ProvenanceExtra = (); // FIXME extract the "immutable" bool?
+    type ProvenanceExtra = bool; // the "immutable" flag
 
     type ExtraFnVal = !;
 
@@ -597,6 +598,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
         let (prov, offset) = ptr.into_parts();
-        Some((prov.alloc_id(), offset, ()))
+        Some((prov.alloc_id(), offset, prov.immutable()))
     }
 }

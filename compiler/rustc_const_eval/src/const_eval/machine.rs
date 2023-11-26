@@ -1,30 +1,30 @@
-use rustc_hir::def::DefKind;
-use rustc_hir::LangItem;
-use rustc_middle::mir;
-use rustc_middle::mir::interpret::PointerArithmetic;
-use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::Span;
 use std::borrow::Borrow;
+use std::fmt;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::IndexEntry;
-use std::fmt;
-
-use rustc_ast::Mutability;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
+use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
+use rustc_session::lint::builtin::WRITES_THROUGH_IMMUTABLE_POINTER;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, FnArg, FnVal, Frame, ImmTy, InterpCx,
-    InterpResult, OpTy, PlaceTy, Pointer, Scalar,
+    self, compile_time_machine, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal,
+    Frame, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, PointerArithmetic, Scalar,
 };
 
 use super::error::*;
@@ -671,7 +671,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn before_access_global(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         machine: &Self,
         alloc_id: AllocId,
         alloc: ConstAllocation<'tcx>,
@@ -707,6 +707,45 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 Ok(())
             }
         }
+    }
+
+    fn retag_ptr_value(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _kind: mir::RetagKind,
+        val: &ImmTy<'tcx, CtfeProvenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, CtfeProvenance>> {
+        if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
+            && *mutbl == Mutability::Not
+            && ty.is_freeze(*ecx.tcx, ecx.param_env)
+        {
+            // This is a frozen shared reference, mark it immutable.
+            let place = ecx.ref_to_mplace(val)?;
+            let new_place = place.map_provenance(|p| p.map(CtfeProvenance::as_immutable));
+            Ok(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout))
+        } else {
+            Ok(val.clone())
+        }
+    }
+
+    fn before_memory_write(
+        tcx: TyCtxtAt<'tcx>,
+        machine: &mut Self,
+        _alloc_extra: &mut Self::AllocExtra,
+        (_alloc_id, immutable): (AllocId, bool),
+        range: AllocRange,
+    ) -> InterpResult<'tcx> {
+        if range.size == Size::ZERO {
+            // Nothing to check.
+            return Ok(());
+        }
+        // Reject writes through immutable pointers.
+        if immutable {
+            super::lint(tcx, machine, WRITES_THROUGH_IMMUTABLE_POINTER, |frames| {
+                crate::errors::WriteThroughImmutablePointer { frames }
+            });
+        }
+        // Everything else is fine.
+        Ok(())
     }
 }
 

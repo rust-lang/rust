@@ -338,7 +338,7 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
                 *ecx.tcx,
                 error,
                 None,
-                || super::get_span_and_frames(&ecx),
+                || super::get_span_and_frames(ecx.tcx, &ecx.machine),
                 |span, frames| ConstEvalError {
                     span,
                     error_kind: kind,
@@ -419,7 +419,7 @@ pub fn const_report_error<'mir, 'tcx>(
         *ecx.tcx,
         error,
         None,
-        || crate::const_eval::get_span_and_frames(ecx),
+        || crate::const_eval::get_span_and_frames(ecx.tcx, &ecx.machine),
         move |span, frames| errors::UndefinedBehavior { span, ub_note, frames, raw_bytes },
     )
 }
