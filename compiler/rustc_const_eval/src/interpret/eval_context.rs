@@ -1138,13 +1138,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         span: Option<Span>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let const_val = val.eval(*self.tcx, self.param_env, span).map_err(|err| {
-            // FIXME: somehow this is reachable even when POST_MONO_CHECKS is on.
-            // Are we not always populating `required_consts`?
-            err.emit_note(*self.tcx);
-            err
-        })?;
-        self.const_val_to_op(const_val, val.ty(), layout)
+        M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
+            let const_val = val.eval(*ecx.tcx, ecx.param_env, span).map_err(|err| {
+                // FIXME: somehow this is reachable even when POST_MONO_CHECKS is on.
+                // Are we not always populating `required_consts`?
+                err.emit_note(*ecx.tcx);
+                err
+            })?;
+            ecx.const_val_to_op(const_val, val.ty(), layout)
+        })
     }
 
     #[must_use]

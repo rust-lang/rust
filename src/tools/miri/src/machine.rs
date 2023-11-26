@@ -3,6 +3,7 @@
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
+use std::collections::hash_map::Entry;
 use std::fmt;
 use std::path::Path;
 use std::process;
@@ -10,6 +11,7 @@ use std::process;
 use either::Either;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::Rng;
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -45,6 +47,11 @@ pub const SIGRTMIN: i32 = 34;
 /// `SIGRTMAX` - `SIGRTMIN` >= 8 (which is the value of `_POSIX_RTSIG_MAX`)
 pub const SIGRTMAX: i32 = 42;
 
+/// Each const has multiple addresses, but only this many. Since const allocations are never
+/// deallocated, choosing a new [`AllocId`] and thus base address for each evaluation would
+/// produce unbounded memory usage.
+const ADDRS_PER_CONST: usize = 16;
+
 /// Extra data stored with each stack frame
 pub struct FrameExtra<'tcx> {
     /// Extra data for the Borrow Tracker.
@@ -65,12 +72,18 @@ pub struct FrameExtra<'tcx> {
     /// optimization.
     /// This is used by `MiriMachine::current_span` and `MiriMachine::caller_span`
     pub is_user_relevant: bool,
+
+    /// We have a cache for the mapping from [`mir::Const`] to resulting [`AllocId`].
+    /// However, we don't want all frames to always get the same result, so we insert
+    /// an additional bit of "salt" into the cache key. This salt is fixed per-frame
+    /// so that within a call, a const will have a stable address.
+    salt: usize,
 }
 
 impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _ } = self;
+        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _, salt: _ } = self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
@@ -80,7 +93,7 @@ impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
 
 impl VisitProvenance for FrameExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _ } = self;
+        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _, salt: _ } = self;
 
         catch_unwind.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
@@ -552,6 +565,11 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// The spans we will use to report where an allocation was created and deallocated in
     /// diagnostics.
     pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Span, Option<Span>)>>,
+
+    /// Maps MIR consts to their evaluated result. We combine the const with a "salt" (`usize`)
+    /// that is fixed per stack frame; this lets us have sometimes different results for the
+    /// same const while ensuring consistent results within a single call.
+    const_cache: RefCell<FxHashMap<(mir::Const<'tcx>, usize), OpTy<'tcx, Provenance>>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -677,6 +695,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             stack_size,
             collect_leak_backtraces: config.collect_leak_backtraces,
             allocation_spans: RefCell::new(FxHashMap::default()),
+            const_cache: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -857,6 +876,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             stack_size: _,
             collect_leak_backtraces: _,
             allocation_spans: _,
+            const_cache: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1400,6 +1420,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
+            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_CONST,
         };
 
         Ok(frame.with_extra(extra))
@@ -1504,5 +1525,32 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         let span = local_decl.source_info.span;
         ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
         Ok(())
+    }
+
+    fn eval_mir_constant<F>(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        val: mir::Const<'tcx>,
+        span: Option<Span>,
+        layout: Option<TyAndLayout<'tcx>>,
+        eval: F,
+    ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>
+    where
+        F: Fn(
+            &InterpCx<'mir, 'tcx, Self>,
+            mir::Const<'tcx>,
+            Option<Span>,
+            Option<TyAndLayout<'tcx>>,
+        ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>,
+    {
+        let frame = ecx.active_thread_stack().last().unwrap();
+        let mut cache = ecx.machine.const_cache.borrow_mut();
+        match cache.entry((val, frame.extra.salt)) {
+            Entry::Vacant(ve) => {
+                let op = eval(ecx, val, span, layout)?;
+                ve.insert(op.clone());
+                Ok(op)
+            }
+            Entry::Occupied(oe) => Ok(oe.get().clone()),
+        }
     }
 }
