@@ -405,7 +405,7 @@ define_tables! {
     // so we can take their names, visibilities etc from other encoded tables.
     module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
     associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
-    opt_def_kind: Table<DefIndex, DefKind>,
+    def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,

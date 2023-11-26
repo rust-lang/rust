@@ -325,11 +325,11 @@ pub(crate) fn create_query_frame<
         Some(key.default_span(tcx))
     };
     let def_id = key.key_as_def_id();
-    let def_kind = if kind == dep_graph::dep_kinds::opt_def_kind || with_no_queries() {
+    let def_kind = if kind == dep_graph::dep_kinds::def_kind || with_no_queries() {
         // Try to avoid infinite recursion.
         None
     } else {
-        def_id.and_then(|def_id| def_id.as_local()).and_then(|def_id| tcx.opt_def_kind(def_id))
+        def_id.and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
     };
     let hash = || {
         tcx.with_stable_hashing_context(|mut hcx| {
