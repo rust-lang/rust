@@ -128,6 +128,14 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            sleep(delay);
+        }
+    }
+
     pub fn join(self) {
         join_thread(self.tid).unwrap();
     }

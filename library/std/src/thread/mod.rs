@@ -941,11 +941,7 @@ pub fn sleep(dur: Duration) {
 /// ```
 #[unstable(feature = "thread_sleep_until", issue = "113752")]
 pub fn sleep_until(deadline: Instant) {
-    let now = Instant::now();
-
-    if let Some(delay) = deadline.checked_duration_since(now) {
-        sleep(delay);
-    }
+    imp::Thread::sleep_until(deadline)
 }
 
 /// Used to ensure that `park` and `park_timeout` do not unwind, as that can

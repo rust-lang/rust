@@ -303,6 +303,54 @@ impl Thread {
         }
     }
 
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+    )))]
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            sleep(delay);
+        }
+    }
+
+    // Note depends on clock_nanosleep (not supported on macos/ios/watchos/tvos)
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+    ))]
+    pub fn sleep_until(deadline: crate::time::Instant) {
+        let mut ts = deadline
+            .into_inner()
+            .into_timespec()
+            .to_timespec()
+            .expect("Timespec is narrower then libc::timespec thus conversion can't fail");
+        let ts_ptr = &mut ts as *mut _;
+
+        // If we're awoken with a signal and the return value is -1
+        // clock_nanosleep needs to be called again.
+        unsafe {
+            while libc::clock_nanosleep(libc::CLOCK_MONOTONIC, libc::TIMER_ABSTIME, ts_ptr, ts_ptr)
+                == -1
+            {
+                assert_eq!(
+                    os::errno(),
+                    libc::EINTR,
+                    "clock nanosleep should only return an error if interrupted"
+                );
+            }
+        }
+    }
+
     pub fn join(self) {
         let id = self.into_id();
         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
