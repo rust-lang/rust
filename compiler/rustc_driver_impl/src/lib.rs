@@ -396,10 +396,6 @@ fn run_compiler(
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
                         pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
-                        Ok(())
-                    })?;
-
-                    queries.global_ctxt()?.enter(|tcx| {
                         passes::write_dep_info(tcx);
                     });
                 } else {
@@ -429,19 +425,19 @@ fn run_compiler(
 
             queries.global_ctxt()?.enter(|tcx| {
                 passes::write_dep_info(tcx);
-            });
 
-            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                && sess.opts.output_types.len() == 1
-            {
-                return early_exit();
-            }
+                if sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                    && sess.opts.output_types.len() == 1
+                {
+                    return early_exit();
+                }
 
-            if sess.opts.unstable_opts.no_analysis {
-                return early_exit();
-            }
+                if sess.opts.unstable_opts.no_analysis {
+                    return early_exit();
+                }
 
-            queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
+                tcx.analysis(())?;
+            })?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
