@@ -114,22 +114,7 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
     const OFFSET_IS_ADDR: bool;
 
     /// Determines how a pointer should be printed.
-    ///
-    /// Default impl is only good for when `OFFSET_IS_ADDR == true`.
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result
-    where
-        Self: Sized,
-    {
-        assert!(Self::OFFSET_IS_ADDR);
-        let (prov, addr) = ptr.into_parts(); // address is absolute
-        write!(f, "{:#x}", addr.bytes())?;
-        if f.alternate() {
-            write!(f, "{prov:#?}")?;
-        } else {
-            write!(f, "{prov:?}")?;
-        }
-        Ok(())
-    }
+    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// If `OFFSET_IS_ADDR == false`, provenance must always be able to
     /// identify the allocation this ptr points to (i.e., this must return `Some`).
@@ -156,8 +141,11 @@ impl From<AllocId> for CtfeProvenance {
 
 impl fmt::Debug for CtfeProvenance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME print "immutable" bit
-        self.alloc_id().fmt(f)
+        fmt::Debug::fmt(&self.alloc_id(), f)?; // propagates `alternate` flag
+        if self.immutable() {
+            write!(f, "<imm>")?;
+        }
+        Ok(())
     }
 }
 
@@ -189,16 +177,15 @@ impl Provenance for CtfeProvenance {
     const OFFSET_IS_ADDR: bool = false;
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME print "immutable" bit
-        // Forward `alternate` flag to `alloc_id` printing.
-        if f.alternate() {
-            write!(f, "{:#?}", ptr.provenance.alloc_id())?;
-        } else {
-            write!(f, "{:?}", ptr.provenance.alloc_id())?;
-        }
+        // Print AllocId.
+        fmt::Debug::fmt(&ptr.provenance.alloc_id(), f)?; // propagates `alternate` flag
         // Print offset only if it is non-zero.
         if ptr.offset.bytes() > 0 {
             write!(f, "+{:#x}", ptr.offset.bytes())?;
+        }
+        // Print immutable status.
+        if ptr.provenance.immutable() {
+            write!(f, "<imm>")?;
         }
         Ok(())
     }

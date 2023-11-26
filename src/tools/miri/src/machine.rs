@@ -260,6 +260,17 @@ impl interpret::Provenance for Provenance {
         }
     }
 
+    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (prov, addr) = ptr.into_parts(); // address is absolute
+        write!(f, "{:#x}", addr.bytes())?;
+        if f.alternate() {
+            write!(f, "{prov:#?}")?;
+        } else {
+            write!(f, "{prov:?}")?;
+        }
+        Ok(())
+    }
+
     fn join(left: Option<Self>, right: Option<Self>) -> Option<Self> {
         match (left, right) {
             // If both are the *same* concrete tag, that is the result.
