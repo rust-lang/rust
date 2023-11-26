@@ -666,6 +666,13 @@ pub(crate) struct ExplicitUnsafeTraits {
 }
 
 #[derive(Subdiagnostic)]
+#[note(resolve_missing_macro_rules_name)]
+pub(crate) struct MaybeMissingMacroRulesName {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
 #[help(resolve_added_macro_use)]
 pub(crate) struct AddedMacroUse;
 
