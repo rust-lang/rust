@@ -1914,17 +1914,20 @@ impl DefWithBody {
                             if let ast::Expr::MatchExpr(match_expr) =
                                 &source_ptr.value.to_node(&root)
                             {
-                                if let Some(scrut_expr) = match_expr.expr() {
-                                    acc.push(
-                                        MissingMatchArms {
-                                            scrutinee_expr: InFile::new(
-                                                source_ptr.file_id,
-                                                AstPtr::new(&scrut_expr),
-                                            ),
-                                            uncovered_patterns,
-                                        }
-                                        .into(),
-                                    );
+                                match match_expr.expr() {
+                                    Some(scrut_expr) if match_expr.match_arm_list().is_some() => {
+                                        acc.push(
+                                            MissingMatchArms {
+                                                scrutinee_expr: InFile::new(
+                                                    source_ptr.file_id,
+                                                    AstPtr::new(&scrut_expr),
+                                                ),
+                                                uncovered_patterns,
+                                            }
+                                            .into(),
+                                        );
+                                    }
+                                    _ => {}
                                 }
                             }
                         }

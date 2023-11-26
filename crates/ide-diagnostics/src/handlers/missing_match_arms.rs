@@ -26,6 +26,18 @@ mod tests {
     }
 
     #[test]
+    fn empty_body() {
+        check_diagnostics_no_bails(
+            r#"
+fn main() {
+    match 0;
+         //^ error: Syntax Error: expected `{`
+}
+"#,
+        );
+    }
+
+    #[test]
     fn empty_tuple() {
         check_diagnostics_no_bails(
             r#"
