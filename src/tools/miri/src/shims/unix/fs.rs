@@ -66,11 +66,6 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
         false
     }
-
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        None
-    }
 }
 
 impl dyn FileDescriptor {
@@ -150,12 +145,6 @@ impl FileDescriptor for FileHandle {
         Ok(Box::new(FileHandle { file: duplicated, writable: self.writable }))
     }
 
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        use std::os::unix::io::AsRawFd;
-        Some(self.file.as_raw_fd())
-    }
-
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.file.is_terminal()
     }
@@ -181,11 +170,6 @@ impl FileDescriptor for io::Stdin {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdin()))
-    }
-
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        Some(libc::STDIN_FILENO)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -220,11 +204,6 @@ impl FileDescriptor for io::Stdout {
         Ok(Box::new(io::stdout()))
     }
 
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        Some(libc::STDOUT_FILENO)
-    }
-
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.is_terminal()
     }
@@ -248,11 +227,6 @@ impl FileDescriptor for io::Stderr {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stderr()))
-    }
-
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        Some(libc::STDERR_FILENO)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
