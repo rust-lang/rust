@@ -20,20 +20,6 @@ const fn contains_zero_byte(x: usize) -> bool {
     x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0
 }
 
-#[inline]
-#[cfg(target_pointer_width = "16")]
-#[rustc_const_stable(feature = "const_memchr", since = "1.65.0")]
-const fn repeat_byte(b: u8) -> usize {
-    (b as usize) << 8 | b as usize
-}
-
-#[inline]
-#[cfg(not(target_pointer_width = "16"))]
-#[rustc_const_stable(feature = "const_memchr", since = "1.65.0")]
-const fn repeat_byte(b: u8) -> usize {
-    (b as usize) * (usize::MAX / 255)
-}
-
 /// Returns the first index matching the byte `x` in `text`.
 #[inline]
 #[must_use]
@@ -93,7 +79,7 @@ const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
     }
 
     // search the body of the text
-    let repeated_x = repeat_byte(x);
+    let repeated_x = usize::repeat_u8(x);
     while offset <= len - 2 * USIZE_BYTES {
         // SAFETY: the while's predicate guarantees a distance of at least 2 * usize_bytes
         // between the offset and the end of the slice.
@@ -149,7 +135,7 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     // Search the body of the text, make sure we don't cross min_aligned_offset.
     // offset is always aligned, so just testing `>` is sufficient and avoids possible
     // overflow.
-    let repeated_x = repeat_byte(x);
+    let repeated_x = usize::repeat_u8(x);
     let chunk_bytes = mem::size_of::<Chunk>();
 
     while offset > min_aligned_offset {
