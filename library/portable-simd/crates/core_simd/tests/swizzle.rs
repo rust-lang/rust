@@ -11,10 +11,10 @@ wasm_bindgen_test_configure!(run_in_browser);
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn swizzle() {
     struct Index;
-    impl Swizzle<4, 4> for Index {
+    impl Swizzle<4> for Index {
         const INDEX: [usize; 4] = [2, 1, 3, 0];
     }
-    impl Swizzle<4, 2> for Index {
+    impl Swizzle<2> for Index {
         const INDEX: [usize; 2] = [1, 1];
     }
 
@@ -34,18 +34,18 @@ fn reverse() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn rotate() {
     let a = Simd::from_array([1, 2, 3, 4]);
-    assert_eq!(a.rotate_lanes_left::<0>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_lanes_left::<1>().to_array(), [2, 3, 4, 1]);
-    assert_eq!(a.rotate_lanes_left::<2>().to_array(), [3, 4, 1, 2]);
-    assert_eq!(a.rotate_lanes_left::<3>().to_array(), [4, 1, 2, 3]);
-    assert_eq!(a.rotate_lanes_left::<4>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_lanes_left::<5>().to_array(), [2, 3, 4, 1]);
-    assert_eq!(a.rotate_lanes_right::<0>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_lanes_right::<1>().to_array(), [4, 1, 2, 3]);
-    assert_eq!(a.rotate_lanes_right::<2>().to_array(), [3, 4, 1, 2]);
-    assert_eq!(a.rotate_lanes_right::<3>().to_array(), [2, 3, 4, 1]);
-    assert_eq!(a.rotate_lanes_right::<4>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_lanes_right::<5>().to_array(), [4, 1, 2, 3]);
+    assert_eq!(a.rotate_elements_left::<0>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_elements_left::<1>().to_array(), [2, 3, 4, 1]);
+    assert_eq!(a.rotate_elements_left::<2>().to_array(), [3, 4, 1, 2]);
+    assert_eq!(a.rotate_elements_left::<3>().to_array(), [4, 1, 2, 3]);
+    assert_eq!(a.rotate_elements_left::<4>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_elements_left::<5>().to_array(), [2, 3, 4, 1]);
+    assert_eq!(a.rotate_elements_right::<0>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_elements_right::<1>().to_array(), [4, 1, 2, 3]);
+    assert_eq!(a.rotate_elements_right::<2>().to_array(), [3, 4, 1, 2]);
+    assert_eq!(a.rotate_elements_right::<3>().to_array(), [2, 3, 4, 1]);
+    assert_eq!(a.rotate_elements_right::<4>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_elements_right::<5>().to_array(), [4, 1, 2, 3]);
 }
 
 #[test]

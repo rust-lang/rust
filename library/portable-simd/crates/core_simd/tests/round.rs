@@ -43,7 +43,7 @@ macro_rules! float_rounding_test {
                 }
 
                 fn fract<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
+                    test_helpers::test_unary_elementwise_flush_subnormals(
                         &Vector::<LANES>::fract,
                         &Scalar::fract,
                         &|_| true,
@@ -53,7 +53,7 @@ macro_rules! float_rounding_test {
 
             test_helpers::test_lanes! {
                 fn to_int_unchecked<const LANES: usize>() {
-                    use core_simd::simd::SimdFloat;
+                    use core_simd::simd::num::SimdFloat;
                     // The maximum integer that can be represented by the equivalently sized float has
                     // all of the mantissa digits set to 1, pushed up to the MSB.
                     const ALL_MANTISSA_BITS: IntScalar = ((1 << <Scalar>::MANTISSA_DIGITS) - 1);
