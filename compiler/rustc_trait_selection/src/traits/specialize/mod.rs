@@ -37,7 +37,7 @@ pub struct OverlapError<'tcx> {
     pub with_impl: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
     pub self_ty: Option<Ty<'tcx>>,
-    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,
+    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
     pub involves_placeholder: bool,
 }
 
