@@ -333,19 +333,12 @@ fn run_compiler(
         expanded_args: args,
     };
 
-    let has_input = match make_input(&default_early_dcx, &matches.free) {
-        Err(reported) => return Err(reported),
-        Ok(Some(input)) => {
+    let has_input = match make_input(&default_early_dcx, &matches.free)? {
+        Some(input) => {
             config.input = input;
             true // has input: normal compilation
         }
-        Ok(None) => match matches.free.as_slice() {
-            [] => false, // no input: we will exit early
-            [_] => panic!("make_input should have provided valid inputs"),
-            [fst, snd, ..] => default_early_dcx.early_fatal(format!(
-                "multiple input filenames provided (first two filenames are `{fst}` and `{snd}`)"
-            )),
-        },
+        None => false, // no input: we will exit early
     };
 
     drop(default_early_dcx);
@@ -490,37 +483,40 @@ fn make_input(
     early_dcx: &EarlyDiagCtxt,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
-    let [input_file] = free_matches else { return Ok(None) };
+    match free_matches {
+        [] => Ok(None), // no input: we will exit early,
+        [ifile] if ifile == "-" => {
+            // read from stdin as `Input::Str`
+            let mut input = String::new();
+            if io::stdin().read_to_string(&mut input).is_err() {
+                // Immediately stop compilation if there was an issue reading
+                // the input (for example if the input stream is not UTF-8).
+                let reported = early_dcx
+                    .early_err("couldn't read from stdin, as it did not contain valid UTF-8");
+                return Err(reported);
+            }
 
-    if input_file != "-" {
-        // Normal `Input::File`
-        return Ok(Some(Input::File(PathBuf::from(input_file))));
-    }
-
-    // read from stdin as `Input::Str`
-    let mut input = String::new();
-    if io::stdin().read_to_string(&mut input).is_err() {
-        // Immediately stop compilation if there was an issue reading
-        // the input (for example if the input stream is not UTF-8).
-        let reported =
-            early_dcx.early_err("couldn't read from stdin, as it did not contain valid UTF-8");
-        return Err(reported);
-    }
-
-    let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
-        Ok(path) => {
-            let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
-                "when UNSTABLE_RUSTDOC_TEST_PATH is set \
+            let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+                Ok(path) => {
+                    let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
+                        "when UNSTABLE_RUSTDOC_TEST_PATH is set \
                                     UNSTABLE_RUSTDOC_TEST_LINE also needs to be set",
-            );
-            let line = isize::from_str_radix(&line, 10)
-                .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
-            FileName::doc_test_source_code(PathBuf::from(path), line)
-        }
-        Err(_) => FileName::anon_source_code(&input),
-    };
+                    );
+                    let line = isize::from_str_radix(&line, 10)
+                        .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
+                    FileName::doc_test_source_code(PathBuf::from(path), line)
+                }
+                Err(_) => FileName::anon_source_code(&input),
+            };
 
-    Ok(Some(Input::Str { name, input }))
+            Ok(Some(Input::Str { name, input }))
+        }
+        [ifile] => Ok(Some(Input::File(PathBuf::from(ifile)))),
+        _ => early_dcx.early_fatal(format!(
+            "multiple input filenames provided (first two filenames are `{}` and `{}`)",
+            free_matches[0], free_matches[1],
+        )),
+    }
 }
 
 /// Whether to stop or continue compilation.
