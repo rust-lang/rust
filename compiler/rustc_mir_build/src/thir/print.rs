@@ -31,8 +31,8 @@ const INDENT: &str = "    ";
 
 macro_rules! print_indented {
     ($writer:ident, $s:expr, $indent_lvl:expr) => {
-        let indent = (0..$indent_lvl).map(|_| INDENT).collect::<Vec<_>>().concat();
-        writeln!($writer, "{}{}", indent, $s).expect("unable to write to ThirPrinter");
+        $writer.indent($indent_lvl);
+        writeln!($writer, "{}", $s).expect("unable to write to ThirPrinter");
     };
 }
 
@@ -46,6 +46,12 @@ impl<'a, 'tcx> Write for ThirPrinter<'a, 'tcx> {
 impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     fn new(thir: &'a Thir<'tcx>) -> Self {
         Self { thir, fmt: String::new() }
+    }
+
+    fn indent(&mut self, level: usize) {
+        for _ in 0..level {
+            self.fmt.push_str(INDENT);
+        }
     }
 
     fn print(&mut self) {
