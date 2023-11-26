@@ -12,7 +12,7 @@ use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{sym, Span};
 
 #[expect(clippy::module_name_repetitions)]

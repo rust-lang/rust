@@ -8,7 +8,7 @@ use rustc_ast::LitKind::{Byte, Char};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::DefId;
 use rustc_span::{sym, Span};
 

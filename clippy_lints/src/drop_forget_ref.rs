@@ -3,7 +3,7 @@ use clippy_utils::ty::{is_copy, is_must_use_ty, is_type_lang_item};
 use clippy_utils::{get_parent_node, is_must_use_func_call};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 use std::borrow::Cow;
 

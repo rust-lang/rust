@@ -31,7 +31,7 @@ use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SpanData, SyntaxContext};
 
 declare_clippy_lint! {

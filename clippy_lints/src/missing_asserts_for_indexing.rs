@@ -11,7 +11,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::{sym, Span};
 

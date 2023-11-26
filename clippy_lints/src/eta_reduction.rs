@@ -13,7 +13,7 @@ use rustc_middle::ty::{
     self, Binder, ClosureArgs, ClosureKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
     ImplPolarity, List, Region, RegionKind, Ty, TypeVisitableExt, TypeckResults,
 };
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;

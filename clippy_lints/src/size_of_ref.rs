@@ -3,7 +3,7 @@ use clippy_utils::path_def_id;
 use clippy_utils::ty::peel_mid_ty_refs;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {

@@ -283,7 +283,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
             use clippy_utils::msrvs::{{self, Msrv}};
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
-            use rustc_session::{{declare_tool_lint, impl_lint_pass}};
+            use rustc_session::impl_lint_pass;
 
         "#
         )
@@ -292,7 +292,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
             r#"
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}}};
-            use rustc_session::{{declare_lint_pass, declare_tool_lint}};
+            use rustc_session::declare_lint_pass;
 
         "#
         )

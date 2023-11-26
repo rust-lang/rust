@@ -14,7 +14,7 @@ use rustc_middle::ty::{
     self, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate, TraitPredicate, Ty,
     TyCtxt,
 };
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 

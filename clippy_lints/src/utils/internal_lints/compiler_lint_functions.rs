@@ -4,7 +4,7 @@ use clippy_utils::{is_lint_allowed, paths};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

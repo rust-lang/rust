@@ -8,7 +8,7 @@ use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::{Body, ExprKind, FnDecl, Impl, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
