@@ -1129,3 +1129,27 @@ fn foo() {
 "#,
     );
 }
+
+#[test]
+fn generic_alias() {
+    check_types(
+        r#"
+type Wrap<T> = T;
+
+enum X {
+    A { cool: u32, stuff: u32 },
+    B,
+}
+
+fn main() {
+    let wrapped = Wrap::<X>::A {
+        cool: 100,
+        stuff: 100,
+    };
+
+    if let Wrap::<X>::A { cool, ..} = &wrapped {}
+                        //^^^^ &u32
+}
+"#,
+    );
+}
