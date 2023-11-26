@@ -629,6 +629,10 @@ impl<'tcx> GlobalCtxt<'tcx> {
         let icx = tls::ImplicitCtxt::new(self);
         tls::enter_context(&icx, || f(icx.tcx))
     }
+
+    pub fn finish(&self) -> FileEncodeResult {
+        self.dep_graph.finish_encoding(&self.sess.prof)
+    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {

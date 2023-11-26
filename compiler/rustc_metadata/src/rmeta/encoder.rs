@@ -1,4 +1,4 @@
-use crate::errors::{FailCreateFileEncoder, FailSeekFile, FailWriteFile};
+use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
@@ -42,6 +42,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SpanData, SyntaxContext};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
+use std::fs::File;
 use std::hash::Hash;
 use std::io::{Read, Seek, Write};
 use std::num::NonZeroUsize;
@@ -2255,25 +2256,34 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();
 
-    ecx.opaque.flush();
+    // Make sure we report any errors from writing to the file.
+    // If we forget this, compilation can succeed with an incomplete rmeta file,
+    // causing an ICE when the rmeta file is read by another compilation.
+    if let Err((path, err)) = ecx.opaque.finish() {
+        tcx.sess.emit_err(FailWriteFile { path: &path, err });
+    }
 
-    let mut file = ecx.opaque.file();
+    let file = ecx.opaque.file();
+    if let Err(err) = encode_root_position(file, root.position.get()) {
+        tcx.sess.emit_err(FailWriteFile { path: ecx.opaque.path(), err });
+    }
+
+    // Record metadata size for self-profiling
+    tcx.prof.artifact_size("crate_metadata", "crate_metadata", file.metadata().unwrap().len());
+}
+
+fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {
     // We will return to this position after writing the root position.
     let pos_before_seek = file.stream_position().unwrap();
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
-    file.seek(std::io::SeekFrom::Start(header as u64))
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailSeekFile { err }));
-    let pos = root.position.get();
-    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailWriteFile { err }));
+    file.seek(std::io::SeekFrom::Start(header as u64))?;
+    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])?;
 
     // Return to the position where we are before writing the root position.
-    file.seek(std::io::SeekFrom::Start(pos_before_seek)).unwrap();
-
-    // Record metadata size for self-profiling
-    tcx.prof.artifact_size("crate_metadata", "crate_metadata", file.metadata().unwrap().len());
+    file.seek(std::io::SeekFrom::Start(pos_before_seek))?;
+    Ok(())
 }
 
 pub fn provide(providers: &mut Providers) {

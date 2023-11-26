@@ -40,6 +40,7 @@ rustc_privacy = { path = "../rustc_privacy" }
 rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_resolve = { path = "../rustc_resolve" }
+rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }

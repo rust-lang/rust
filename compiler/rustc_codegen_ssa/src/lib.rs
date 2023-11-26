@@ -224,7 +224,7 @@ impl CodegenResults {
         encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes());
         encoder.emit_str(sess.cfg_version);
         Encodable::encode(codegen_results, &mut encoder);
-        encoder.finish()
+        encoder.finish().map_err(|(_path, err)| err)
     }
 
     pub fn deserialize_rlink(sess: &Session, data: Vec<u8>) -> Result<Self, CodegenErrors> {

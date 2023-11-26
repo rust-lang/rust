@@ -25,7 +25,6 @@ use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span};
 use rustc_span::{CachingSourceMapView, Symbol};
 use std::collections::hash_map::Entry;
-use std::io;
 use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
@@ -862,7 +861,7 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     }
 
     #[inline]
-    fn finish(self) -> Result<usize, io::Error> {
+    fn finish(mut self) -> FileEncodeResult {
         self.encoder.finish()
     }
 }

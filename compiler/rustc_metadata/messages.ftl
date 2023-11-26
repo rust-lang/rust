@@ -63,11 +63,8 @@ metadata_extern_location_not_file =
 metadata_fail_create_file_encoder =
     failed to create file encoder: {$err}
 
-metadata_fail_seek_file =
-    failed to seek the file: {$err}
-
 metadata_fail_write_file =
-    failed to write to the file: {$err}
+    failed to write to `{$path}`: {$err}
 
 metadata_failed_copy_to_stdout =
     failed to copy {$filename} to stdout: {$err}
