@@ -857,8 +857,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::Impl { .. }
-        | DefKind::Closure
-        | DefKind::Coroutine => true,
+        | DefKind::Closure => true,
         DefKind::ForeignMod | DefKind::GlobalAsm => false,
     }
 }
@@ -898,8 +897,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::LifetimeParam
-        | DefKind::GlobalAsm
-        | DefKind::Coroutine => false,
+        | DefKind::GlobalAsm => false,
     }
 }
 
@@ -934,8 +932,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Closure
-        | DefKind::Coroutine => false,
+        | DefKind::Closure => false,
     }
 }
 
@@ -970,7 +967,6 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ExternCrate => false,
     }
 }
@@ -1006,7 +1002,6 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ExternCrate => false,
     }
 }
@@ -1049,6 +1044,8 @@ fn should_encode_mir(
         | DefKind::AssocConst
         | DefKind::Static(..)
         | DefKind::Const => (true, false),
+        // Coroutines require optimized MIR to compute layout.
+        DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
@@ -1062,8 +1059,6 @@ fn should_encode_mir(
                 || tcx.is_const_default_method(def_id.to_def_id());
             (is_const_fn, opt)
         }
-        // Coroutines require optimized MIR to compute layout.
-        DefKind::Coroutine => (false, true),
         // The others don't have MIR.
         _ => (false, false),
     }
@@ -1099,7 +1094,6 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ExternCrate => false,
         DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
     }
@@ -1128,8 +1122,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Field
         | DefKind::TyParam
-        | DefKind::Closure
-        | DefKind::Coroutine => true,
+        | DefKind::Closure => true,
         DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::ConstParam
@@ -1158,7 +1151,6 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst => true,
@@ -1219,7 +1211,6 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::AssocConst
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst
@@ -1258,7 +1249,6 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Impl { of_trait: false }
         | DefKind::ForeignTy
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::InlineConst
         | DefKind::AssocTy
@@ -1293,7 +1283,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::AssocTy
         | DefKind::TyParam
@@ -1453,8 +1442,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.encode_info_for_assoc_item(def_id);
                 }
             }
-            if let DefKind::Coroutine = def_kind {
-                let data = self.tcx.coroutine_kind(def_id).unwrap();
+            if def_kind == DefKind::Closure
+                && let Some(data) = self.tcx.coroutine_kind(def_id)
+            {
                 record!(self.tables.coroutine_kind[def_id] <- data);
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
@@ -1636,7 +1626,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
-                if let DefKind::Coroutine = self.tcx.def_kind(def_id)
+                if self.tcx.is_coroutine(def_id.to_def_id())
                     && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
                 {
                     record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
@@ -1663,7 +1653,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
 
-            if let DefKind::Coroutine = self.tcx.def_kind(def_id)
+            if self.tcx.is_coroutine(def_id.to_def_id())
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);

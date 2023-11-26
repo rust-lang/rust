@@ -550,16 +550,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// those are not yet phased out). The parent of the closure's
     /// `DefId` will also be the context where it appears.
     pub fn is_closure(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Coroutine)
+        matches!(self.def_kind(def_id), DefKind::Closure)
     }
 
     /// Returns `true` if `def_id` refers to a definition that does not have its own
     /// type-checking context, i.e. closure, coroutine or inline const.
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
-        matches!(
-            self.def_kind(def_id),
-            DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst
-        )
+        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::InlineConst)
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
@@ -732,11 +729,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
-            DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
-                rustc_hir::CoroutineKind::Async(..) => "async closure",
-                rustc_hir::CoroutineKind::Coroutine => "coroutine",
-                rustc_hir::CoroutineKind::Gen(..) => "gen closure",
-            },
+            DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
+                match coroutine_kind {
+                    rustc_hir::CoroutineKind::Async(..) => "async closure",
+                    rustc_hir::CoroutineKind::Coroutine => "coroutine",
+                    rustc_hir::CoroutineKind::Gen(..) => "gen closure",
+                }
+            }
             _ => def_kind.descr(def_id),
         }
     }
@@ -750,11 +749,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
-            DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
-                rustc_hir::CoroutineKind::Async(..) => "an",
-                rustc_hir::CoroutineKind::Coroutine => "a",
-                rustc_hir::CoroutineKind::Gen(..) => "a",
-            },
+            DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
+                match coroutine_kind {
+                    rustc_hir::CoroutineKind::Async(..) => "an",
+                    rustc_hir::CoroutineKind::Coroutine => "a",
+                    rustc_hir::CoroutineKind::Gen(..) => "a",
+                }
+            }
             _ => def_kind.article(),
         }
     }

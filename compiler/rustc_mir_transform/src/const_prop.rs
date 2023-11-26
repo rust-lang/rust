@@ -84,8 +84,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         // FIXME(welseywiser) const prop doesn't work on coroutines because of query cycles
         // computing their layout.
-        let is_coroutine = def_kind == DefKind::Coroutine;
-        if is_coroutine {
+        if tcx.is_coroutine(def_id.to_def_id()) {
             trace!("ConstProp skipped for coroutine {:?}", def_id);
             return;
         }

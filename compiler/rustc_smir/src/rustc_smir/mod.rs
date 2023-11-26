@@ -89,7 +89,7 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::GlobalAsm => {
             unreachable!("Not a valid item kind: {kind:?}");
         }
-        DefKind::Closure | DefKind::Coroutine | DefKind::AssocFn | DefKind::Fn => ItemKind::Fn,
+        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => ItemKind::Fn,
         DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
             ItemKind::Const
         }

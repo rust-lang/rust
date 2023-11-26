@@ -804,6 +804,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
+    pub fn is_coroutine(self, def_id: DefId) -> bool {
+        self.coroutine_kind(def_id).is_some()
+    }
+
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for an async construct.
     pub fn coroutine_is_async(self, def_id: DefId) -> bool {
         matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Async(_)))
