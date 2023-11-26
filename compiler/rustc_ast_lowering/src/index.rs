@@ -89,7 +89,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node: node });
+        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node });
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {

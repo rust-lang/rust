@@ -1449,7 +1449,7 @@ fn opaque_type_cycle_error(
                         label_match(capture.place.ty(), capture.get_path_span(tcx));
                     }
                     // Label any coroutine locals that capture the opaque
-                    if let DefKind::Coroutine = tcx.def_kind(closure_def_id)
+                    if tcx.is_coroutine(closure_def_id)
                         && let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(closure_def_id)
                     {
                         for interior_ty in &coroutine_layout.field_tys {
@@ -1470,7 +1470,7 @@ pub(super) fn check_coroutine_obligations(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Coroutine));
+    debug_assert!(tcx.is_coroutine(def_id.to_def_id()));
 
     let typeck = tcx.typeck(def_id);
     let param_env = tcx.param_env(def_id);
