@@ -101,11 +101,12 @@ pub fn report_object_safety_error<'tcx>(
          to be resolvable dynamically; for more information visit \
          <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
     );
+
+    // Only provide the help if its a local trait, otherwise it's not actionable.
     if trait_span.is_some() {
         let mut reported_violations: Vec<_> = reported_violations.into_iter().collect();
         reported_violations.sort();
 
-        // Only provide the help if its a local trait, otherwise it's not actionable.
         let mut potential_solutions: Vec<_> =
             reported_violations.into_iter().map(|violation| violation.solution()).collect();
         potential_solutions.sort();
