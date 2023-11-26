@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
             closure.def_id.to_def_id(),
             Binder::bind_with_vars(
                 cx.typeck_results().node_type(param_ty.hir_id),
-                cx.tcx.late_bound_vars(cx.tcx.hir().local_def_id_to_hir_id(closure.def_id)),
+                cx.tcx.late_bound_vars(cx.tcx.local_def_id_to_hir_id(closure.def_id)),
             ),
         )
         && is_copy(cx, param_ty)

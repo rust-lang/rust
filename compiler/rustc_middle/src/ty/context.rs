@@ -1131,7 +1131,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         scope_def_id: LocalDefId,
     ) -> Vec<&'tcx hir::Ty<'tcx>> {
-        let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
+        let hir_id = self.local_def_id_to_hir_id(scope_def_id);
         let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) =
             self.hir().fn_decl_by_hir_id(hir_id)
         else {
@@ -1150,7 +1150,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         scope_def_id: LocalDefId,
     ) -> Option<(Vec<&'tcx hir::Ty<'tcx>>, Span, Option<Span>)> {
-        let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
+        let hir_id = self.local_def_id_to_hir_id(scope_def_id);
         let mut v = TraitObjectVisitor(vec![], self.hir());
         // when the return type is a type alias
         if let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id)

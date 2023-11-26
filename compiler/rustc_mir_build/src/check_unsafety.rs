@@ -138,7 +138,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             // Runs all other queries that depend on THIR.
             self.tcx.ensure_with_value().mir_built(def);
             let inner_thir = &inner_thir.steal();
-            let hir_context = self.tcx.hir().local_def_id_to_hir_id(def);
+            let hir_context = self.tcx.local_def_id_to_hir_id(def);
             let safety_context = mem::replace(&mut self.safety_context, SafetyContext::Safe);
             let mut inner_visitor = UnsafetyVisitor {
                 thir: inner_thir,
@@ -859,7 +859,7 @@ pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         return;
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
+    let hir_id = tcx.local_def_id_to_hir_id(def);
     let safety_context = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
         if fn_sig.header.unsafety == hir::Unsafety::Unsafe {
             SafetyContext::UnsafeFn

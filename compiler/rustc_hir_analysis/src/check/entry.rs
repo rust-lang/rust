@@ -42,7 +42,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+        let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
                 generics.params.is_empty().not().then_some(generics.span)
@@ -57,7 +57,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+        let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
                 Some(generics.where_clause_span)
@@ -79,7 +79,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+        let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(fn_sig, _, _), .. })) => {
                 Some(fn_sig.decl.output.span())
@@ -194,7 +194,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
 fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_def_id = start_def_id.expect_local();
-    let start_id = tcx.hir().local_def_id_to_hir_id(start_def_id);
+    let start_id = tcx.local_def_id_to_hir_id(start_def_id);
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id).instantiate_identity();
     match start_t.kind() {

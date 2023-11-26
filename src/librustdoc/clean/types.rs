@@ -345,7 +345,7 @@ pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
         || tcx.def_span(def_id),
         |local| {
             let hir = tcx.hir();
-            hir.span_with_body(hir.local_def_id_to_hir_id(local))
+            hir.span_with_body(tcx.local_def_id_to_hir_id(local))
         },
     ))
 }

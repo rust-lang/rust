@@ -105,7 +105,7 @@ pub(super) fn explicit_item_bounds(
         None => {}
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let bounds = match tcx.hir().get(hir_id) {
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),

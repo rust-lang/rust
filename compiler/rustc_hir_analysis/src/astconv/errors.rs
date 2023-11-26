@@ -201,7 +201,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
                 let hir = self.tcx().hir();
                 if let Some(def_id) = ty_param_def_id
-                    && let parent = hir.get_parent_item(hir.local_def_id_to_hir_id(def_id))
+                    && let parent = hir.get_parent_item(self.tcx().local_def_id_to_hir_id(def_id))
                     && let Some(generics) = hir.get_generics(parent.def_id)
                 {
                     if generics.bounds_for_param(def_id).flat_map(|pred| pred.bounds.iter()).any(

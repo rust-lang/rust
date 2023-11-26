@@ -456,7 +456,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack()
             .iter()
             .find_map(|frame| frame.body.source.def_id().as_local())
-            .map_or(CRATE_HIR_ID, |def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
+            .map_or(CRATE_HIR_ID, |def_id| self.tcx.local_def_id_to_hir_id(def_id))
     }
 
     /// Turn the given error into a human-readable string. Expects the string to be printed, so if

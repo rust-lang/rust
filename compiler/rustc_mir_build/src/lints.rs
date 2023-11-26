@@ -52,7 +52,7 @@ fn check_recursion<'tcx>(
         vis.reachable_recursive_calls.sort();
 
         let sp = tcx.def_span(def_id);
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.emit_spanned_lint(
             UNCONDITIONAL_RECURSION,
             hir_id,

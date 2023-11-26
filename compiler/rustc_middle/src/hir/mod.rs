@@ -166,7 +166,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
         tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {
-            let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
+            let mut parent_hir_id = tcx.local_def_id_to_hir_id(parent);
             parent_hir_id.local_id =
                 tcx.hir_crate(()).owners[parent_hir_id.owner.def_id].unwrap().parenting[&id.def_id];
             parent_hir_id
@@ -176,16 +176,16 @@ pub fn provide(providers: &mut Providers) {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
     providers.def_span = |tcx, def_id| {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
     };
     providers.def_ident_span = |tcx, def_id| {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir().opt_ident_span(hir_id)
     };
     providers.fn_arg_names = |tcx, def_id| {
         let hir = tcx.hir();
-        let hir_id = hir.local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         if let Some(body_id) = hir.maybe_body_owned_by(def_id) {
             tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
         } else if let Node::TraitItem(&TraitItem {

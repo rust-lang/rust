@@ -295,7 +295,7 @@ fn late_arg_as_bound_arg<'tcx>(
 ) -> ty::BoundVariableKind {
     match arg {
         ResolvedArg::LateBound(_, _, def_id) => {
-            let name = tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id.expect_local()));
+            let name = tcx.hir().name(tcx.local_def_id_to_hir_id(def_id.expect_local()));
             match param.kind {
                 GenericParamKind::Lifetime { .. } => {
                     ty::BoundVariableKind::Region(ty::BrNamed(*def_id, name))
@@ -733,7 +733,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     let def = self.map.defs.get(&lifetime.hir_id).cloned();
                     let Some(ResolvedArg::LateBound(_, _, def_id)) = def else { continue };
                     let Some(def_id) = def_id.as_local() else { continue };
-                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                    let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
                     let parent_id = self.tcx.hir().parent_id(hir_id);
                     if !parent_id.is_owner() {

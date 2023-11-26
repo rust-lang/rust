@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
         if matches!(fn_kind, FnKind::Closure) {
             return;
         }
-        let owner = cx.tcx.hir().local_def_id_to_hir_id(def_id).expect_owner();
+        let owner = cx.tcx.local_def_id_to_hir_id(def_id).expect_owner();
         if is_type_diagnostic_item(cx, return_ty(cx, owner), sym::Result) {
             lint_impl_body(cx, span, body);
         }

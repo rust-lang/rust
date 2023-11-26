@@ -2273,7 +2273,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // FIXME(@lcnr): Remove this function.
     pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
+            self.hir().attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.item_attrs(did)
         }
@@ -2288,7 +2288,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let did: DefId = did.into();
         let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
             bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
         } else {
@@ -2306,7 +2306,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let filter_fn = move |a: &&ast::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             self.item_attrs(did).iter().filter(filter_fn)
         }

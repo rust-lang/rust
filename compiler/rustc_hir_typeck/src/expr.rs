@@ -2344,7 +2344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match deref_base_ty.kind() {
                 ty::Adt(base_def, args) if !base_def.is_enum() => {
                     debug!("struct named {:?}", deref_base_ty);
-                    let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+                    let body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did(), body_hir_id);
                     let fields = &base_def.non_enum_variant().fields;
@@ -2691,7 +2691,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let param_def_id = generic_param.def_id;
         let param_hir_id = match param_def_id.as_local() {
-            Some(x) => self.tcx.hir().local_def_id_to_hir_id(x),
+            Some(x) => self.tcx.local_def_id_to_hir_id(x),
             None => return,
         };
         let param_span = self.tcx.hir().span(param_hir_id);
@@ -3268,7 +3268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             match container.kind() {
                 ty::Adt(container_def, args) if container_def.is_enum() => {
-                    let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
                     let (ident, _def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
@@ -3350,7 +3350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
                 ty::Adt(container_def, args) => {
-                    let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 

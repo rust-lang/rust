@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.compute_min_captures(closure_def_id, capture_information, span);
 
-        let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
+        let closure_hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
 
         if should_do_rust_2021_incompatible_closure_captures_analysis(self.tcx, closure_hir_id) {
             self.perform_2229_migration_analysis(closure_def_id, body_id, capture_clause, span);
@@ -763,7 +763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (migration_string, migrated_variables_concat) =
                 migration_suggestion_for_2229(self.tcx, &need_migrations);
 
-            let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
+            let closure_hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
             let closure_head_span = self.tcx.def_span(closure_def_id);
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,

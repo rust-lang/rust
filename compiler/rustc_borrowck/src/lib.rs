@@ -134,7 +134,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let hir_owner = tcx.hir().local_def_id_to_hir_id(def).owner;
+    let hir_owner = tcx.local_def_id_to_hir_id(def).owner;
 
     let infcx =
         tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();

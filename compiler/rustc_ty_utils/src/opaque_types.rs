@@ -81,8 +81,8 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
     #[instrument(level = "trace", skip(self), ret)]
     fn check_tait_defining_scope(&self, opaque_def_id: LocalDefId) -> bool {
-        let mut hir_id = self.tcx.hir().local_def_id_to_hir_id(self.item);
-        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(opaque_def_id);
+        let mut hir_id = self.tcx.local_def_id_to_hir_id(self.item);
+        let opaque_hir_id = self.tcx.local_def_id_to_hir_id(opaque_def_id);
 
         // Named opaque types can be defined by any siblings or children of siblings.
         let scope = self.tcx.hir().get_defining_scope(opaque_hir_id);

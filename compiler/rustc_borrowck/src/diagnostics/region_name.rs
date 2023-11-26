@@ -199,7 +199,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     }
 
     pub(crate) fn mir_hir_id(&self) -> hir::HirId {
-        self.infcx.tcx.hir().local_def_id_to_hir_id(self.mir_def_id())
+        self.infcx.tcx.local_def_id_to_hir_id(self.mir_def_id())
     }
 
     /// Generate a synthetic region named `'N`, where `N` is the next value of the counter. Then,
