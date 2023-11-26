@@ -58,6 +58,7 @@ use core::cmp;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+#[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
@@ -101,6 +102,7 @@ mod into_iter;
 #[cfg(not(no_global_oom_handling))]
 use self::is_zero::IsZero;
 
+#[cfg(not(no_global_oom_handling))]
 mod is_zero;
 
 #[cfg(not(no_global_oom_handling))]
@@ -2599,6 +2601,7 @@ pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<
     <T as SpecFromElem>::from_elem(elem, n, alloc)
 }
 
+#[cfg(not(no_global_oom_handling))]
 trait ExtendFromWithinSpec {
     /// # Safety
     ///
@@ -2607,6 +2610,7 @@ trait ExtendFromWithinSpec {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
     default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         // SAFETY:
@@ -2626,6 +2630,7 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         let count = src.len();
