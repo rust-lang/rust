@@ -363,8 +363,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     format!("captured variable in an `{closure_kind}` closure");
 
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
-                let upvar_hir_id = upvar.place.get_root_variable();
-                let upvar_name = upvar.place.to_string(self.infcx.tcx);
+                let upvar_hir_id = upvar.get_root_variable();
+                let upvar_name = upvar.to_string(self.infcx.tcx);
                 let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
 
                 let place_name = self.describe_any_place(move_place.as_ref());

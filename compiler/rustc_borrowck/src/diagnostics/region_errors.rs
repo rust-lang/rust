@@ -605,7 +605,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             };
 
             let captured_place = &self.upvars[upvar_field.index()].place;
-            let defined_hir = match captured_place.place.base {
+            let defined_hir = match captured_place.base {
                 PlaceBase::Local(hirid) => Some(hirid),
                 PlaceBase::Upvar(upvar) => Some(upvar.var_path.hir_id),
                 _ => None,

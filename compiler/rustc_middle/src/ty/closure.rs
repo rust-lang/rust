@@ -247,6 +247,13 @@ impl<'tcx> CapturedPlace<'tcx> {
                 .span
         }
     }
+
+    pub fn is_by_ref(&self) -> bool {
+        match self.info.capture_kind {
+            ty::UpvarCapture::ByValue => false,
+            ty::UpvarCapture::ByRef(..) => true,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]

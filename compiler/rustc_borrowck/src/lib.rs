@@ -34,7 +34,7 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::DefiningAnchor;
-use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
@@ -98,15 +98,6 @@ use region_infer::RegionInferenceContext;
 use renumber::RegionCtxt;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
-// FIXME(eddyb) perhaps move this somewhere more centrally.
-#[derive(Debug)]
-struct Upvar<'tcx> {
-    place: CapturedPlace<'tcx>,
-
-    /// If true, the capture is behind a reference.
-    by_ref: bool,
-}
 
 /// Associate some local constants with the `'tcx` lifetime
 struct TyCtxtConsts<'tcx>(TyCtxt<'tcx>);
@@ -192,18 +183,6 @@ fn do_mir_borrowck<'tcx>(
         infcx.set_tainted_by_errors(e);
         errors.set_tainted_by_errors(e);
     }
-    let upvars: Vec<_> = tcx
-        .closure_captures(def)
-        .iter()
-        .map(|&captured_place| {
-            let capture = captured_place.info.capture_kind;
-            let by_ref = match capture {
-                ty::UpvarCapture::ByValue => false,
-                ty::UpvarCapture::ByRef(..) => true,
-            };
-            Upvar { place: captured_place.clone(), by_ref }
-        })
-        .collect();
 
     // Replace all regions with fresh inference variables. This
     // requires first making our own copy of the MIR. This copy will
@@ -253,7 +232,7 @@ fn do_mir_borrowck<'tcx>(
         &mut flow_inits,
         &mdpe.move_data,
         &borrow_set,
-        &upvars,
+        tcx.closure_captures(def),
         consumer_options,
     );
 
@@ -323,7 +302,7 @@ fn do_mir_borrowck<'tcx>(
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
             borrow_set: Rc::clone(&borrow_set),
-            upvars: Vec::new(),
+            upvars: &[],
             local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
             region_names: RefCell::default(),
             next_region_name: RefCell::new(1),
@@ -364,7 +343,7 @@ fn do_mir_borrowck<'tcx>(
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: Rc::clone(&borrow_set),
-        upvars,
+        upvars: tcx.closure_captures(def),
         local_names,
         region_names: RefCell::default(),
         next_region_name: RefCell::new(1),
@@ -583,7 +562,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     borrow_set: Rc<BorrowSet<'tcx>>,
 
     /// Information about upvars not necessarily preserved in types or MIR
-    upvars: Vec<Upvar<'tcx>>,
+    upvars: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
 
     /// Names of local (user) variables (extracted from `var_debug_info`).
     local_names: IndexVec<Local, Option<Symbol>>,
@@ -2293,7 +2272,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     // unique path to the `&mut`
                                     hir::Mutability::Mut => {
                                         let mode = match self.is_upvar_field_projection(place) {
-                                            Some(field) if self.upvars[field.index()].by_ref => {
+                                            Some(field)
+                                                if self.upvars[field.index()].is_by_ref() =>
+                                            {
                                                 is_local_mutation_allowed
                                             }
                                             _ => LocalMutationIsAllowed::Yes,
@@ -2341,7 +2322,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                  place={:?}, place_base={:?}",
                                 upvar, is_local_mutation_allowed, place, place_base
                             );
-                            match (upvar.place.mutability, is_local_mutation_allowed) {
+                            match (upvar.mutability, is_local_mutation_allowed) {
                                 (
                                     Mutability::Not,
                                     LocalMutationIsAllowed::No
