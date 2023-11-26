@@ -326,6 +326,7 @@ mod tuple_array_conversions;
 mod types;
 mod undocumented_unsafe_blocks;
 mod unicode;
+mod uninhabited_references;
 mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
@@ -1071,6 +1072,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
     store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
     store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
+    store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
