@@ -82,28 +82,43 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 // and unwinds anyway, we will hit the "unwinding out of nounwind function" guard,
 // which causes a "panic in a function that cannot unwind".
 #[rustc_nounwind]
-pub fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        super::intrinsics::abort()
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
+    #[track_caller]
+    fn runtime(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
+        if cfg!(feature = "panic_immediate_abort") {
+            super::intrinsics::abort()
+        }
+
+        // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+        // that gets resolved to the `#[panic_handler]` function.
+        extern "Rust" {
+            #[lang = "panic_impl"]
+            fn panic_impl(pi: &PanicInfo<'_>) -> !;
+        }
+
+        // PanicInfo with the `can_unwind` flag set to false forces an abort.
+        let pi = PanicInfo::internal_constructor(
+            Some(&fmt),
+            Location::caller(),
+            /* can_unwind */ false,
+            force_no_backtrace,
+        );
+
+        // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+        unsafe { panic_impl(&pi) }
     }
 
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    #[inline]
+    #[track_caller]
+    const fn comptime(fmt: fmt::Arguments<'_>, _force_no_backtrace: bool) -> ! {
+        panic_fmt(fmt);
     }
 
-    // PanicInfo with the `can_unwind` flag set to false forces an abort.
-    let pi = PanicInfo::internal_constructor(
-        Some(&fmt),
-        Location::caller(),
-        /* can_unwind */ false,
-        force_no_backtrace,
-    );
-
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
+    // SAFETY: const panic does not care about unwinding
+    unsafe {
+        super::intrinsics::const_eval_select((fmt, force_no_backtrace), comptime, runtime);
+    }
 }
 
 // Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
@@ -132,7 +147,8 @@ pub const fn panic(expr: &'static str) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
-pub fn panic_nounwind(expr: &'static str) -> ! {
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_nounwind(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ false);
 }
 

@@ -75,12 +75,12 @@ macro_rules! nonzero_integers {
                 #[must_use]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
+                    crate::panic::debug_assert_nounwind!(
+                        n != 0,
+                        concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument")
+                    );
                     // SAFETY: this is guaranteed to be safe by the caller.
                     unsafe {
-                        core::intrinsics::assert_unsafe_precondition!(
-                            concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument"),
-                            (n: $Int) => n != 0
-                        );
                         Self(n)
                     }
                 }

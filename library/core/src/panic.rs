@@ -139,6 +139,32 @@ pub macro unreachable_2021 {
     ),
 }
 
+/// Asserts that a boolean expression is `true`, and perform a non-unwinding panic otherwise.
+///
+/// This macro is similar to `debug_assert!`, but is intended to be used in code that should not
+/// unwind. For example, checks in `_unchecked` functions that are intended for debugging but should
+/// not compromise unwind safety.
+#[doc(hidden)]
+#[unstable(feature = "core_panic", issue = "none")]
+#[allow_internal_unstable(core_panic, const_format_args)]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro debug_assert_nounwind {
+    ($cond:expr $(,)?) => {
+        if $crate::cfg!(debug_assertions) {
+            if !$cond {
+                $crate::panicking::panic_nounwind($crate::concat!("assertion failed: ", $crate::stringify!($cond)));
+            }
+        }
+    },
+    ($cond:expr, $($arg:tt)+) => {
+        if $crate::cfg!(debug_assertions) {
+            if !$cond {
+                $crate::panicking::panic_nounwind_fmt($crate::const_format_args!($($arg)+), false);
+            }
+        }
+    },
+}
+
 /// An internal trait used by std to pass data from std to `panic_unwind` and
 /// other panic runtimes. Not intended to be stabilized any time soon, do not
 /// use.
