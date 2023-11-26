@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.14.3] - 2023-11-26
+
+### Added
+
+- Specialized `fold` implementation of iterators. (#480)
+
+### Fixed
+
+- Avoid using unstable `ptr::invalid_mut` on nightly. (#481)
+
 ## [v0.14.2] - 2023-10-19
 
 ### Added
@@ -461,7 +471,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.14.2...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.14.3...HEAD
+[v0.14.3]: https://github.com/rust-lang/hashbrown/compare/v0.14.2...v0.14.3
 [v0.14.2]: https://github.com/rust-lang/hashbrown/compare/v0.14.1...v0.14.2
 [v0.14.1]: https://github.com/rust-lang/hashbrown/compare/v0.14.0...v0.14.1
 [v0.14.0]: https://github.com/rust-lang/hashbrown/compare/v0.13.2...v0.14.0
