@@ -1305,7 +1305,7 @@ impl clean::Impl {
                 primitive_link_fragment(
                     f,
                     PrimitiveType::Tuple,
-                    format_args!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"),
+                    format_args!("fn({name}₁, {name}₂, …, {name}ₙ{ellipsis})"),
                     "#trait-implementations-1",
                     cx,
                 )?;
