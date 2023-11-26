@@ -550,7 +550,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             dropped_local,
             dropped_ty,
             drop_locations,
-            values::location_set_str(self.elements, live_at.iter()),
+            values::pretty_print_points(self.elements, live_at.iter()),
         );
 
         let drop_data = self.drop_data.entry(dropped_ty).or_insert_with({
@@ -599,7 +599,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         debug!("make_all_regions_live(value={:?})", value);
         debug!(
             "make_all_regions_live: live_at={}",
-            values::location_set_str(elements, live_at.iter()),
+            values::pretty_print_points(elements, live_at.iter()),
         );
 
         // When using `-Zpolonius=next`, we want to record the loans that flow into this value's
@@ -618,7 +618,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                     .borrowck_context
                     .constraints
                     .liveness_constraints
-                    .add_elements(live_region_vid, live_at);
+                    .add_points(live_region_vid, live_at);
 
                 // There can only be inflowing loans for this region when we are using
                 // `-Zpolonius=next`.
