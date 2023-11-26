@@ -37,7 +37,7 @@ use crate::{
     renumber,
     type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
     universal_regions::UniversalRegions,
-    BorrowckInferCtxt, Upvar,
+    BorrowckInferCtxt,
 };
 
 pub type PoloniusOutput = Output<RustcFacts>;
@@ -166,7 +166,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    upvars: &[Upvar<'tcx>],
+    upvars: &[&ty::CapturedPlace<'tcx>],
     consumer_options: Option<ConsumerOptions>,
 ) -> NllOutput<'tcx> {
     let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();

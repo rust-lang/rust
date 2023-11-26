@@ -67,7 +67,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let imm_borrow_derefed = self.upvars[upvar_index.index()]
                     .place
-                    .place
                     .deref_tys()
                     .any(|ty| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not)));
 
@@ -85,7 +84,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
                         reason = ", as it is not declared as mutable".to_string();
                     } else {
-                        let name = self.upvars[upvar_index.index()].place.to_string(self.infcx.tcx);
+                        let name = self.upvars[upvar_index.index()].to_string(self.infcx.tcx);
                         reason = format!(", as `{name}` is not declared as mutable");
                     }
                 }
@@ -388,7 +387,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
-                let captured_place = &self.upvars[upvar_index.index()].place;
+                let captured_place = self.upvars[upvar_index.index()];
 
                 err.span_label(span, format!("cannot {act}"));
 

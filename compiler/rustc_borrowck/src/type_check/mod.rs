@@ -68,7 +68,7 @@ use crate::{
     region_infer::TypeTest,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
-    BorrowckInferCtxt, Upvar,
+    BorrowckInferCtxt,
 };
 
 macro_rules! span_mirbug {
@@ -138,7 +138,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
-    upvars: &[Upvar<'tcx>],
+    upvars: &[&ty::CapturedPlace<'tcx>],
     use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
@@ -857,7 +857,7 @@ struct BorrowCheckContext<'a, 'tcx> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     pub(crate) constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    upvars: &'a [Upvar<'tcx>],
+    upvars: &'a [&'a ty::CapturedPlace<'tcx>],
 
     /// The set of loans that are live at a given point in the CFG, filled in by `liveness::trace`,
     /// when using `-Zpolonius=next`.
