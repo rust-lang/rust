@@ -877,6 +877,23 @@ pub fn is_valid_for_get_attr(name: Symbol) -> bool {
     })
 }
 
+/// If true, bang macros are allowed and eagerly expanded within the value part
+/// of nested NameValue meta items. All such expansions must produce a literal.
+///
+/// `#[stable(feature = get_feature_name!($signedness))]`
+pub fn expand_nested_meta(name: Symbol) -> bool {
+    // Just these few for now. We can roll this out more broadly if it would be
+    // useful.
+    //
+    // WARNING: While it's all right to add nightly-only builtin attributes
+    // here, adding something that is available to stable (such as `deprecated`)
+    // would require the addition of a feature gate.
+    matches!(
+        name,
+        sym::stable | sym::unstable | sym::rustc_const_stable | sym::rustc_const_unstable
+    )
+}
+
 pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>> =
     LazyLock::new(|| {
         let mut map = FxHashMap::default();

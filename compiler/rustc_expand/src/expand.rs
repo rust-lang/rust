@@ -2,7 +2,7 @@ use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::errors::{
     IncompleteParse, RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported,
-    UnsupportedKeyValue, WrongFragmentKind,
+    UnsupportedExprInKeyValue, UnsupportedKeyValue, WrongFragmentKind,
 };
 use crate::hygiene::SyntaxContext;
 use crate::mbe::diagnostics::annotate_err_with_kind;
@@ -12,11 +12,11 @@ use crate::placeholders::{placeholder, PlaceholderExpander};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter};
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
+use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind};
-use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
+use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrArgs, AttrKind, AttrStyle};
+use rustc_ast::{AttrVec, ExprKind, ForeignItemKind, HasAttrs, HasNodeId};
 use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
 use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
@@ -32,11 +32,11 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{FileName, LocalExpnId, Span};
 
 use smallvec::SmallVec;
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::{iter, mem};
@@ -770,6 +770,95 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 _ => unreachable!(),
             },
         })
+    }
+
+    /// Expand the macros in the values of an attribute such as:
+    /// `#[stable(feature = get_feature_name!($signedness))]`
+    fn expand_nested_meta(&mut self, attr: &mut ast::Attribute) {
+        let AttrKind::Normal(normal_attr) = &mut attr.kind else { return };
+        let AttrArgs::Delimited(delim_args) = &mut normal_attr.item.args else { return };
+
+        let tokens = delim_args.tokens.clone();
+        let mut new_tokens = Vec::with_capacity(tokens.len());
+        let subparser_name = Some("built-in attribute");
+        let mut parser = Parser::new(self.cx.parse_sess(), tokens, subparser_name);
+
+        // Have any expansions occurred.
+        let mut modified = false;
+
+        // If the attribute contains unrecognized syntax, just return early
+        // without modifying `delim_args.tokens`. Whatever tries to parse it to
+        // ast::MetaItem later will report its own error.
+        while parser.token != token::Eof {
+            // Parse name of a NameValue meta item.
+            if parser.token.is_ident() {
+                new_tokens.push(TokenTree::Token(parser.token.clone(), parser.token_spacing));
+                parser.bump();
+            } else {
+                return;
+            }
+
+            // Parse `=` between name and value.
+            if parser.token == token::Eq {
+                new_tokens.push(TokenTree::Token(parser.token.clone(), parser.token_spacing));
+                parser.bump();
+            } else {
+                return;
+            }
+
+            // Parse value expr, and if it's a macro call, then fully expand it
+            // to a literal.
+            match parser.parse_expr().map(P::into_inner) {
+                Ok(mut expr) => {
+                    let expr_span = expr.span;
+                    let lit = match expr.kind {
+                        ExprKind::Lit(lit) => lit,
+                        ExprKind::MacCall(mac) => {
+                            modified = true;
+                            expr.kind = ExprKind::MacCall(mac);
+                            if let AstFragment::Expr(expr) =
+                                self.fully_expand_fragment(AstFragment::Expr(P(expr)))
+                                && let ExprKind::Lit(lit) = expr.kind
+                            {
+                                lit
+                            } else {
+                                self.cx
+                                    .dcx()
+                                    .emit_err(UnsupportedExprInKeyValue { span: expr_span });
+                                Lit::new(LitKind::Err, kw::Empty, None)
+                            }
+                        }
+                        _ => {
+                            modified = true;
+                            self.cx.dcx().emit_err(UnsupportedExprInKeyValue { span: expr_span });
+                            Lit::new(LitKind::Err, kw::Empty, None)
+                        }
+                    };
+                    let token = Token::new(TokenKind::Literal(lit), expr_span);
+                    new_tokens.push(TokenTree::Token(token, Spacing::Alone));
+                }
+                Err(err) => {
+                    err.cancel();
+                    return;
+                }
+            };
+
+            // Comma separators, and optional trailing comma.
+            if parser.token == token::Eof {
+                break;
+            } else if parser.token == token::Comma {
+                new_tokens.push(TokenTree::Token(parser.token.clone(), parser.token_spacing));
+                parser.bump();
+            } else {
+                return;
+            }
+        }
+
+        if modified {
+            delim_args.tokens = TokenStream::new(new_tokens);
+            normal_attr.tokens = None;
+            normal_attr.item.tokens = None;
+        }
     }
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
@@ -1627,33 +1716,78 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// its position and derives following it. We have to collect the derives in order to resolve
     /// legacy derive helpers (helpers written before derives that introduce them).
     fn take_first_attr(
-        &self,
+        &mut self,
         item: &mut impl HasAttrs,
     ) -> Option<(ast::Attribute, usize, Vec<ast::Path>)> {
-        let mut attr = None;
-
-        let mut cfg_pos = None;
-        let mut attr_pos = None;
-        for (pos, attr) in item.attrs().iter().enumerate() {
-            if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
+        loop {
+            let mut cfg_pos = None;
+            let mut attr_pos = None;
+            let mut attr_is_builtin = false;
+            for (pos, attr) in item.attrs().iter().enumerate() {
+                if attr.is_doc_comment() || self.cx.expanded_inert_attrs.is_marked(attr) {
+                    continue;
+                }
                 let name = attr.ident().map(|ident| ident.name);
                 if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
                     break;
                 } else if attr_pos.is_none()
-                    && !name.is_some_and(rustc_feature::is_builtin_attr_name)
+                    && match name {
+                        // User-defined attribute invoked using a single identifier.
+                        Some(name) if !rustc_feature::is_builtin_attr_name(name) => true,
+                        // A subset of builtin attributes, like `stable`, which expand
+                        // nested macro calls within the attribute arguments.
+                        Some(name) if rustc_feature::expand_nested_meta(name) => {
+                            attr_is_builtin = true;
+                            true
+                        }
+                        // Built-in inert attribute.
+                        Some(_) => false,
+                        // Attribute path longer than one identifier. These are
+                        // user-defined attribute macros or tool attributes.
+                        None => true,
+                    }
                 {
                     attr_pos = Some(pos); // a non-cfg attr found, still may find a cfg attr
                 }
             }
-        }
 
-        item.visit_attrs(|attrs| {
-            attr = Some(match (cfg_pos, attr_pos) {
-                (Some(pos), _) => (attrs.remove(pos), pos, Vec::new()),
-                (_, Some(pos)) => {
-                    let attr = attrs.remove(pos);
-                    let following_derives = attrs[pos..]
+            let mut control_flow = ControlFlow::Break(None);
+            item.visit_attrs(|attrs| match (cfg_pos, attr_pos) {
+                (Some(cfg_pos), _) => {
+                    let cfg = attrs.remove(cfg_pos);
+                    let following_derives = Vec::new();
+                    control_flow = ControlFlow::Break(Some((cfg, cfg_pos, following_derives)));
+                }
+                (None, Some(attr_pos)) if attr_is_builtin => {
+                    // A built-in attribute such as #[stable(feature = f!($x))].
+                    // Eagerly expand its arguments here and now.
+                    //
+                    // This does not get a LocalExpnId because nothing else in
+                    // `item` is affected by this expansion, unlike attribute
+                    // macros which replace `item` with their own output. If a
+                    // subsequent expansion within `item` fails, there is no
+                    // need to show `stable` in that diagnostic's macro
+                    // backtrace.
+                    //
+                    // Also, this expansion does not go through the placeholder
+                    // system and PlaceholderExpander because there is no
+                    // reliance on the Resolver to look up the name of this
+                    // attribute. Since we know here it's a built-in attribute,
+                    // there is no possibility that name resolution would be
+                    // indeterminate and we'd need to defer the expansion until
+                    // after some other one.
+                    let attr = &mut attrs[attr_pos];
+                    MacroExpander::new(self.cx, self.monotonic).expand_nested_meta(attr);
+                    self.cx.expanded_inert_attrs.mark(attr);
+
+                    // Now loop back to the top of `take_first_attr` in search
+                    // of a more interesting attribute to return to the caller.
+                    control_flow = ControlFlow::Continue(());
+                }
+                (None, Some(attr_pos)) => {
+                    let attr = attrs.remove(attr_pos);
+                    let following_derives = attrs[attr_pos..]
                         .iter()
                         .filter(|a| a.has_name(sym::derive))
                         .flat_map(|a| a.meta_item_list().unwrap_or_default())
@@ -1667,13 +1801,15 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         })
                         .collect();
 
-                    (attr, pos, following_derives)
+                    control_flow = ControlFlow::Break(Some((attr, attr_pos, following_derives)));
                 }
-                _ => return,
+                (None, None) => {}
             });
-        });
 
-        attr
+            if let ControlFlow::Break(attr) = control_flow {
+                return attr;
+            }
+        }
     }
 
     // Detect use of feature-gated or invalid attributes on macro invocations

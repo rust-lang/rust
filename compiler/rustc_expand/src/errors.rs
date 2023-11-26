@@ -277,6 +277,13 @@ pub(crate) struct WrongFragmentKind<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_unsupported_expr_in_key_value)]
+pub(crate) struct UnsupportedExprInKeyValue {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_unsupported_key_value)]
 pub(crate) struct UnsupportedKeyValue {
     #[primary_span]

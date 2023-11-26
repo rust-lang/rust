@@ -132,6 +132,9 @@ expand_takes_no_arguments =
 
 expand_trace_macro = trace_macro
 
+expand_unsupported_expr_in_key_value =
+    expression in the value of this attribute must be a literal or macro call
+
 expand_unsupported_key_value =
     key-value macro attributes are not supported
 
