@@ -234,10 +234,10 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             && (self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
-                    .map_or(false, |t| is_from_private_dep(self.tcx, self.cache, t.def_id()))
+                    .is_some_and(|t| is_from_private_dep(self.tcx, self.cache, t.def_id()))
                 || i.for_
                     .def_id(self.cache)
-                    .map_or(false, |d| is_from_private_dep(self.tcx, self.cache, d)))
+                    .is_some_and(|d| is_from_private_dep(self.tcx, self.cache, d)))
         {
             return None;
         }
@@ -279,7 +279,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         .cache
                         .parent_stack
                         .last()
-                        .map_or(false, |parent| parent.is_trait_impl()) =>
+                        .is_some_and(|parent| parent.is_trait_impl()) =>
                 {
                     // skip associated items in trait impls
                     ((None, None), false)
@@ -341,7 +341,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
-                    if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root())
+                    if item.item_id.as_def_id().is_some_and(|idx| !idx.is_crate_root())
                         && let ty = item.type_()
                         && (ty != ItemType::StructField
                             || u16::from_str_radix(s.as_str(), 10).is_err())

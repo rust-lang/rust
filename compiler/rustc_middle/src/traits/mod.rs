@@ -250,9 +250,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
 
-    /// This is the trait reference from the given projection.
-    ProjectionWf(ty::AliasTy<'tcx>),
-
     /// Must satisfy all of the where-clause predicates of the
     /// given item.
     ItemObligation(DefId),
@@ -343,7 +340,8 @@ pub enum ObligationCauseCode<'tcx> {
         parent_code: InternedObligationCauseCode<'tcx>,
     },
 
-    /// Error derived when matching traits/impls; see ObligationCause for more details
+    /// Error derived when checking an impl item is compatible with
+    /// its corresponding trait item's definition
     CompareImplItemObligation {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
@@ -371,9 +369,6 @@ pub enum ObligationCauseCode<'tcx> {
         /// Whether the `Span` came from an expression or a type expression.
         origin_expr: bool,
     },
-
-    /// Constants in patterns must have `Structural` type.
-    ConstPatternStructural,
 
     /// Computing common supertype in an if expression
     IfExpression(Box<IfExpressionCause<'tcx>>),
@@ -407,9 +402,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// `return` with an expression
     ReturnValue(hir::HirId),
 
-    /// Return type of this function
-    ReturnType,
-
     /// Opaque return type of this function
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
@@ -418,9 +410,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
-
-    /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
-    OpaqueType,
 
     AwaitableExpr(hir::HirId),
 

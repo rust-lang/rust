@@ -14,9 +14,6 @@
 #[macro_use]
 extern crate rustc_macros;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
-
 mod builtin;
 mod session_diagnostics;
 
@@ -29,4 +26,4 @@ pub use rustc_ast::attr::*;
 
 pub(crate) use rustc_session::HashStableContext;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

@@ -62,6 +62,14 @@ impl CoverageGraph {
             Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
         let dominators = dominators::dominators(&basic_coverage_blocks);
         basic_coverage_blocks.dominators = Some(dominators);
+
+        // The coverage graph's entry-point node (bcb0) always starts with bb0,
+        // which never has predecessors. Any other blocks merged into bcb0 can't
+        // have multiple (coverage-relevant) predecessors, so bcb0 always has
+        // zero in-edges.
+        assert!(basic_coverage_blocks[START_BCB].leader_bb() == mir::START_BLOCK);
+        assert!(basic_coverage_blocks.predecessors[START_BCB].is_empty());
+
         basic_coverage_blocks
     }
 
@@ -199,6 +207,25 @@ impl CoverageGraph {
     pub fn cmp_in_dominator_order(&self, a: BasicCoverageBlock, b: BasicCoverageBlock) -> Ordering {
         self.dominators.as_ref().unwrap().cmp_in_dominator_order(a, b)
     }
+
+    /// Returns true if the given node has 2 or more in-edges, i.e. 2 or more
+    /// predecessors.
+    ///
+    /// This property is interesting to code that assigns counters to nodes and
+    /// edges, because if a node _doesn't_ have multiple in-edges, then there's
+    /// no benefit in having a separate counter for its in-edge, because it
+    /// would have the same value as the node's own counter.
+    ///
+    /// FIXME: That assumption might not be true for [`TerminatorKind::Yield`]?
+    #[inline(always)]
+    pub(super) fn bcb_has_multiple_in_edges(&self, bcb: BasicCoverageBlock) -> bool {
+        // Even though bcb0 conceptually has an extra virtual in-edge due to
+        // being the entry point, we've already asserted that it has no _other_
+        // in-edges, so there's no possibility of it having _multiple_ in-edges.
+        // (And since its virtual in-edge doesn't exist in the graph, that edge
+        // can't have a separate counter anyway.)
+        self.predecessors[bcb].len() > 1
+    }
 }
 
 impl Index<BasicCoverageBlock> for CoverageGraph {
@@ -316,45 +343,6 @@ impl BasicCoverageBlockData {
     #[inline(always)]
     pub fn last_bb(&self) -> BasicBlock {
         *self.basic_blocks.last().unwrap()
-    }
-}
-
-/// Represents a successor from a branching BasicCoverageBlock (such as the arms of a `SwitchInt`)
-/// as either the successor BCB itself, if it has only one incoming edge, or the successor _plus_
-/// the specific branching BCB, representing the edge between the two. The latter case
-/// distinguishes this incoming edge from other incoming edges to the same `target_bcb`.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) struct BcbBranch {
-    pub edge_from_bcb: Option<BasicCoverageBlock>,
-    pub target_bcb: BasicCoverageBlock,
-}
-
-impl BcbBranch {
-    pub fn from_to(
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-        basic_coverage_blocks: &CoverageGraph,
-    ) -> Self {
-        let edge_from_bcb = if basic_coverage_blocks.predecessors[to_bcb].len() > 1 {
-            Some(from_bcb)
-        } else {
-            None
-        };
-        Self { edge_from_bcb, target_bcb: to_bcb }
-    }
-
-    pub fn is_only_path_to_target(&self) -> bool {
-        self.edge_from_bcb.is_none()
-    }
-}
-
-impl std::fmt::Debug for BcbBranch {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(from_bcb) = self.edge_from_bcb {
-            write!(fmt, "{:?}->{:?}", from_bcb, self.target_bcb)
-        } else {
-            write!(fmt, "{:?}", self.target_bcb)
-        }
     }
 }
 

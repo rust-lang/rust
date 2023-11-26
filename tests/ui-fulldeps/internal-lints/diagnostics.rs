@@ -16,11 +16,10 @@ use rustc_errors::{
     AddToDiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, Handler,
     IntoDiagnostic, SubdiagnosticMessage,
 };
-use rustc_fluent_macro::fluent_messages;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
-fluent_messages! { "./diagnostics.ftl" }
+rustc_fluent_macro::fluent_messages! { "./diagnostics.ftl" }
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example)]

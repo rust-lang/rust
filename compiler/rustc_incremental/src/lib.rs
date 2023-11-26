@@ -28,7 +28,4 @@ pub use persist::save_work_product_index;
 pub use persist::setup_dep_graph;
 pub use persist::LoadResult;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
-
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

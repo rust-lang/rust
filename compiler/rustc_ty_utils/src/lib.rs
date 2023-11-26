@@ -24,8 +24,6 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_middle::query::Providers;
 
 mod abi;
@@ -44,7 +42,7 @@ mod sig_types;
 mod structural_match;
 mod ty;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     abi::provide(providers);

@@ -1381,8 +1381,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
             if let Some(trait_) = &impl_.trait_ {
                 let trait_did = trait_.def_id();
 
-                if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx()))
-                {
+                if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
                     has_notable_trait = true;
                 }
             }
@@ -1417,7 +1416,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         if let Some(trait_) = &impl_.trait_ {
             let trait_did = trait_.def_id();
 
-            if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx())) {
+            if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
                 if out.is_empty() {
                     write!(
                         &mut out,
