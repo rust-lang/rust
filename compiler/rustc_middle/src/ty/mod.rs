@@ -42,7 +42,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -202,6 +202,10 @@ pub struct ResolverAstLowering {
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
+
+    /// Information about functions signatures for delegation items expansion
+    pub has_self: LocalDefIdSet,
+    pub fn_parameter_counts: LocalDefIdMap<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]

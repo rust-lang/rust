@@ -1101,6 +1101,8 @@ pub struct Resolver<'a, 'tcx> {
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
+    /// Amount of parameters for each function in the crate.
+    fn_parameter_counts: LocalDefIdMap<usize>,
 
     main_def: Option<MainDefinition>,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1439,6 +1441,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             all_macro_rules: Default::default(),
+            fn_parameter_counts: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1542,6 +1545,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
+            has_self: self.has_self,
+            fn_parameter_counts: self.fn_parameter_counts,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }
