@@ -1842,8 +1842,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
-            QPath::LangItem(lang_item, span, id) => {
-                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id, id);
+            QPath::LangItem(lang_item, span) => {
+                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
                 (res, self.handle_raw_ty(path_span, ty))
             }
         }

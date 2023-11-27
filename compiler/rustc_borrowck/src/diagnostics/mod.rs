@@ -217,9 +217,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         projection: place.projection.split_at(index + 1).0,
                     }) {
                         let var_index = field.index();
-                        buf = self.upvars[var_index].place.to_string(self.infcx.tcx);
+                        buf = self.upvars[var_index].to_string(self.infcx.tcx);
                         ok = Ok(());
-                        if !self.upvars[var_index].by_ref {
+                        if !self.upvars[var_index].is_by_ref() {
                             buf.insert(0, '*');
                         }
                     } else {
@@ -250,7 +250,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         local,
                         projection: place.projection.split_at(index + 1).0,
                     }) {
-                        buf = self.upvars[field.index()].place.to_string(self.infcx.tcx);
+                        buf = self.upvars[field.index()].to_string(self.infcx.tcx);
                         ok = Ok(());
                     } else {
                         let field_name = self.describe_field(
@@ -958,7 +958,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = self.infcx.tcx.local_def_id_to_hir_id(def_id);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {

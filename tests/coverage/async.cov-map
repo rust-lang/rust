@@ -197,12 +197,12 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 38, 1) to (start + 0, 19)
 
 Function name: async::i::{closure#0}
-Raw bytes (78): 0x[01, 01, 02, 19, 07, 1d, 21, 0e, 01, 26, 13, 04, 0c, 0d, 05, 09, 00, 0a, 01, 00, 0e, 00, 12, 05, 00, 13, 00, 18, 09, 00, 1c, 00, 21, 0d, 00, 27, 00, 2a, 15, 00, 2b, 00, 30, 1d, 01, 09, 00, 0a, 11, 00, 0e, 00, 11, 25, 00, 12, 00, 17, 29, 00, 1b, 00, 20, 1d, 00, 24, 00, 26, 21, 01, 0e, 00, 10, 03, 02, 01, 00, 02]
+Raw bytes (78): 0x[01, 01, 02, 07, 21, 19, 1d, 0e, 01, 26, 13, 04, 0c, 0d, 05, 09, 00, 0a, 01, 00, 0e, 00, 12, 05, 00, 13, 00, 18, 09, 00, 1c, 00, 21, 0d, 00, 27, 00, 2a, 15, 00, 2b, 00, 30, 1d, 01, 09, 00, 0a, 11, 00, 0e, 00, 11, 25, 00, 12, 00, 17, 29, 00, 1b, 00, 20, 1d, 00, 24, 00, 26, 21, 01, 0e, 00, 10, 03, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
-- expression 0 operands: lhs = Counter(6), rhs = Expression(1, Add)
-- expression 1 operands: lhs = Counter(7), rhs = Counter(8)
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(8)
+- expression 1 operands: lhs = Counter(6), rhs = Counter(7)
 Number of file 0 mappings: 14
 - Code(Counter(0)) at (prev + 38, 19) to (start + 4, 12)
 - Code(Counter(3)) at (prev + 5, 9) to (start + 0, 10)
@@ -218,15 +218,15 @@ Number of file 0 mappings: 14
 - Code(Counter(7)) at (prev + 0, 36) to (start + 0, 38)
 - Code(Counter(8)) at (prev + 1, 14) to (start + 0, 16)
 - Code(Expression(0, Add)) at (prev + 2, 1) to (start + 0, 2)
-    = (c6 + (c7 + c8))
+    = ((c6 + c7) + c8)
 
 Function name: async::j
-Raw bytes (53): 0x[01, 01, 02, 05, 07, 09, 0d, 09, 01, 31, 01, 13, 0c, 05, 14, 09, 00, 0a, 01, 00, 0e, 00, 1b, 05, 00, 1f, 00, 27, 09, 01, 09, 00, 0a, 11, 00, 0e, 00, 1a, 09, 00, 1e, 00, 20, 0d, 01, 0e, 00, 10, 03, 02, 01, 00, 02]
+Raw bytes (53): 0x[01, 01, 02, 07, 0d, 05, 09, 09, 01, 31, 01, 13, 0c, 05, 14, 09, 00, 0a, 01, 00, 0e, 00, 1b, 05, 00, 1f, 00, 27, 09, 01, 09, 00, 0a, 11, 00, 0e, 00, 1a, 09, 00, 1e, 00, 20, 0d, 01, 0e, 00, 10, 03, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
-- expression 0 operands: lhs = Counter(1), rhs = Expression(1, Add)
-- expression 1 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(3)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 9
 - Code(Counter(0)) at (prev + 49, 1) to (start + 19, 12)
 - Code(Counter(1)) at (prev + 20, 9) to (start + 0, 10)
@@ -237,7 +237,7 @@ Number of file 0 mappings: 9
 - Code(Counter(2)) at (prev + 0, 30) to (start + 0, 32)
 - Code(Counter(3)) at (prev + 1, 14) to (start + 0, 16)
 - Code(Expression(0, Add)) at (prev + 2, 1) to (start + 0, 2)
-    = (c1 + (c2 + c3))
+    = ((c1 + c2) + c3)
 
 Function name: async::j::c
 Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 33, 05, 01, 12, 05, 02, 0d, 00, 0e, 02, 0a, 0d, 00, 0e, 07, 02, 05, 00, 06]
@@ -283,22 +283,22 @@ Number of file 0 mappings: 5
 - Code(Zero) at (prev + 2, 1) to (start + 0, 2)
 
 Function name: async::l
-Raw bytes (37): 0x[01, 01, 04, 01, 07, 09, 05, 09, 0f, 05, 02, 05, 01, 53, 01, 01, 0c, 02, 02, 0e, 00, 10, 05, 01, 0e, 00, 10, 09, 01, 0e, 00, 10, 0b, 02, 01, 00, 02]
+Raw bytes (37): 0x[01, 01, 04, 01, 07, 05, 09, 0f, 02, 09, 05, 05, 01, 53, 01, 01, 0c, 02, 02, 0e, 00, 10, 05, 01, 0e, 00, 10, 09, 01, 0e, 00, 10, 0b, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
 - expression 0 operands: lhs = Counter(0), rhs = Expression(1, Add)
-- expression 1 operands: lhs = Counter(2), rhs = Counter(1)
-- expression 2 operands: lhs = Counter(2), rhs = Expression(3, Add)
-- expression 3 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(3, Add), rhs = Expression(0, Sub)
+- expression 3 operands: lhs = Counter(2), rhs = Counter(1)
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 83, 1) to (start + 1, 12)
 - Code(Expression(0, Sub)) at (prev + 2, 14) to (start + 0, 16)
-    = (c0 - (c2 + c1))
+    = (c0 - (c1 + c2))
 - Code(Counter(1)) at (prev + 1, 14) to (start + 0, 16)
 - Code(Counter(2)) at (prev + 1, 14) to (start + 0, 16)
 - Code(Expression(2, Add)) at (prev + 2, 1) to (start + 0, 2)
-    = (c2 + (c1 + (c0 - (c2 + c1))))
+    = ((c2 + c1) + (c0 - (c1 + c2)))
 
 Function name: async::m
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 5b, 01, 00, 19]

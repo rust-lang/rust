@@ -841,7 +841,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
                 msg,
                 |l| l,
@@ -857,7 +857,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
                 msg,
                 |lint| lint.help(help),

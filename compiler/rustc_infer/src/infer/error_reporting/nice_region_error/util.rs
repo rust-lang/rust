@@ -50,7 +50,7 @@ pub fn find_param_with_region<'tcx>(
 
     let hir = &tcx.hir();
     let def_id = id.as_local()?;
-    let hir_id = hir.local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     // FIXME: use def_kind
     // Don't perform this on closures

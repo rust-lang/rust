@@ -139,6 +139,8 @@ pub struct CompilerIO {
     pub temps_dir: Option<PathBuf>,
 }
 
+pub trait LintStoreMarker: Any + DynSync + DynSend {}
+
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
@@ -171,10 +173,7 @@ pub struct Session {
     pub jobserver: Client,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
-    ///
-    /// FIXME(Centril): consider `dyn LintStoreMarker` once
-    /// we can upcast to `Any` for some additional type safety.
-    pub lint_store: Option<Lrc<dyn Any + DynSync + DynSend>>,
+    pub lint_store: Option<Lrc<dyn LintStoreMarker>>,
 
     /// Should be set if any lints are registered in `lint_store`.
     pub registered_lints: bool,

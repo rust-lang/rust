@@ -29,7 +29,6 @@ use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint::builtin::COINDUCTIVE_OVERLAP_IN_COHERENCE;
@@ -54,7 +53,7 @@ pub enum Conflict {
 
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
-    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,
+    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 
     /// `true` if the overlap might've been permitted before the shift
     /// to universes.
@@ -330,7 +329,7 @@ fn equate_impl_headers<'tcx>(
                 impl1.self_ty,
                 impl2.self_ty,
             ),
-            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+            _ => bug!("equate_impl_headers given mismatched impl kinds"),
         };
 
     result.map(|infer_ok| infer_ok.obligations).ok()
@@ -361,15 +360,23 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     let infcx = selcx.infcx;
 
     obligations.iter().find(|obligation| {
-        if infcx.next_trait_solver() {
-            infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
+        let evaluation_result = if infcx.next_trait_solver() {
+            infcx.evaluate_obligation(obligation)
         } else {
             // We use `evaluate_root_obligation` to correctly track intercrate
             // ambiguity clauses. We cannot use this in the new solver.
-            selcx.evaluate_root_obligation(obligation).map_or(
-                false, // Overflow has occurred, and treat the obligation as possibly holding.
-                |result| !result.may_apply(),
-            )
+            selcx.evaluate_root_obligation(obligation)
+        };
+
+        match evaluation_result {
+            Ok(result) => !result.may_apply(),
+            // If overflow occurs, we need to conservatively treat the goal as possibly holding,
+            // since there can be instantiations of this goal that don't overflow and result in
+            // success. This isn't much of a problem in the old solver, since we treat overflow
+            // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
+            // but in the new solver, this is very important for correctness, since overflow
+            // *must* be treated as ambiguity for completeness.
+            Err(_overflow) => false,
         }
     })
 }
@@ -979,8 +986,8 @@ where
 fn compute_intercrate_ambiguity_causes<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligations: &[PredicateObligation<'tcx>],
-) -> FxIndexSet<IntercrateAmbiguityCause> {
-    let mut causes: FxIndexSet<IntercrateAmbiguityCause> = Default::default();
+) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
+    let mut causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>> = Default::default();
 
     for obligation in obligations {
         search_ambiguity_causes(infcx, obligation.clone().into(), &mut causes);
@@ -989,11 +996,11 @@ fn compute_intercrate_ambiguity_causes<'tcx>(
     causes
 }
 
-struct AmbiguityCausesVisitor<'a> {
-    causes: &'a mut FxIndexSet<IntercrateAmbiguityCause>,
+struct AmbiguityCausesVisitor<'a, 'tcx> {
+    causes: &'a mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 }
 
-impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
+impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
     type BreakTy = !;
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy> {
         let infcx = goal.infcx();
@@ -1033,14 +1040,12 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
             } = cand.kind()
             {
                 if let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id) {
-                    let value = infcx
+                    let message = infcx
                         .tcx
                         .get_attr(def_id, sym::rustc_reservation_impl)
                         .and_then(|a| a.value_str());
-                    if let Some(value) = value {
-                        self.causes.insert(IntercrateAmbiguityCause::ReservationImpl {
-                            message: value.to_string(),
-                        });
+                    if let Some(message) = message {
+                        self.causes.insert(IntercrateAmbiguityCause::ReservationImpl { message });
                     }
                 }
             }
@@ -1080,24 +1085,18 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
                         Ok(Err(conflict)) => {
                             if !trait_ref.references_error() {
                                 let self_ty = trait_ref.self_ty();
-                                let (trait_desc, self_desc) = with_no_trimmed_paths!({
-                                    let trait_desc = trait_ref.print_only_trait_path().to_string();
-                                    let self_desc = self_ty
-                                        .has_concrete_skeleton()
-                                        .then(|| self_ty.to_string());
-                                    (trait_desc, self_desc)
-                                });
+                                let self_ty = self_ty.has_concrete_skeleton().then(|| self_ty);
                                 ambiguity_cause = Some(match conflict {
                                     Conflict::Upstream => {
                                         IntercrateAmbiguityCause::UpstreamCrateUpdate {
-                                            trait_desc,
-                                            self_desc,
+                                            trait_ref,
+                                            self_ty,
                                         }
                                     }
                                     Conflict::Downstream => {
                                         IntercrateAmbiguityCause::DownstreamCrate {
-                                            trait_desc,
-                                            self_desc,
+                                            trait_ref,
+                                            self_ty,
                                         }
                                     }
                                 });
@@ -1134,7 +1133,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
 fn search_ambiguity_causes<'tcx>(
     infcx: &InferCtxt<'tcx>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    causes: &mut FxIndexSet<IntercrateAmbiguityCause>,
+    causes: &mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 ) {
     infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor { causes });
 }

@@ -46,6 +46,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
+use rustc_span::Symbol;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -59,13 +60,13 @@ mod candidate_assembly;
 mod confirmation;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum IntercrateAmbiguityCause {
-    DownstreamCrate { trait_desc: String, self_desc: Option<String> },
-    UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
-    ReservationImpl { message: String },
+pub enum IntercrateAmbiguityCause<'tcx> {
+    DownstreamCrate { trait_ref: ty::TraitRef<'tcx>, self_ty: Option<Ty<'tcx>> },
+    UpstreamCrateUpdate { trait_ref: ty::TraitRef<'tcx>, self_ty: Option<Ty<'tcx>> },
+    ReservationImpl { message: Symbol },
 }
 
-impl IntercrateAmbiguityCause {
+impl<'tcx> IntercrateAmbiguityCause<'tcx> {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
     pub fn add_intercrate_ambiguity_hint(&self, err: &mut Diagnostic) {
@@ -73,28 +74,32 @@ impl IntercrateAmbiguityCause {
     }
 
     pub fn intercrate_ambiguity_hint(&self) -> String {
-        match self {
-            IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc } => {
-                let self_desc = if let Some(ty) = self_desc {
-                    format!(" for type `{ty}`")
-                } else {
-                    String::new()
-                };
-                format!("downstream crates may implement trait `{trait_desc}`{self_desc}")
-            }
-            IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc } => {
-                let self_desc = if let Some(ty) = self_desc {
-                    format!(" for type `{ty}`")
-                } else {
-                    String::new()
-                };
+        with_no_trimmed_paths!(match self {
+            IntercrateAmbiguityCause::DownstreamCrate { trait_ref, self_ty } => {
                 format!(
-                    "upstream crates may add a new impl of trait `{trait_desc}`{self_desc} \
-                     in future versions"
+                    "downstream crates may implement trait `{trait_desc}`{self_desc}",
+                    trait_desc = trait_ref.print_only_trait_path(),
+                    self_desc = if let Some(self_ty) = self_ty {
+                        format!(" for type `{self_ty}`")
+                    } else {
+                        String::new()
+                    }
                 )
             }
-            IntercrateAmbiguityCause::ReservationImpl { message } => message.clone(),
-        }
+            IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_ref, self_ty } => {
+                format!(
+                    "upstream crates may add a new impl of trait `{trait_desc}`{self_desc} \
+                in future versions",
+                    trait_desc = trait_ref.print_only_trait_path(),
+                    self_desc = if let Some(self_ty) = self_ty {
+                        format!(" for type `{self_ty}`")
+                    } else {
+                        String::new()
+                    }
+                )
+            }
+            IntercrateAmbiguityCause::ReservationImpl { message } => message.to_string(),
+        })
     }
 }
 
@@ -114,7 +119,7 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// We don't do his until we detect a coherence error because it can
     /// lead to false overflow results (#47139) and because always
     /// computing it may negatively impact performance.
-    intercrate_ambiguity_causes: Option<FxIndexSet<IntercrateAmbiguityCause>>,
+    intercrate_ambiguity_causes: Option<FxIndexSet<IntercrateAmbiguityCause<'tcx>>>,
 
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
@@ -270,7 +275,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Gets the intercrate ambiguity causes collected since tracking
     /// was enabled and disables tracking at the same time. If
     /// tracking is not enabled, just returns an empty vector.
-    pub fn take_intercrate_ambiguity_causes(&mut self) -> FxIndexSet<IntercrateAmbiguityCause> {
+    pub fn take_intercrate_ambiguity_causes(
+        &mut self,
+    ) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
         assert!(self.is_intercrate());
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
@@ -428,19 +435,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
                         if !trait_ref.references_error() {
                             let self_ty = trait_ref.self_ty();
-                            let (trait_desc, self_desc) = with_no_trimmed_paths!({
-                                let trait_desc = trait_ref.print_only_trait_path().to_string();
-                                let self_desc =
-                                    self_ty.has_concrete_skeleton().then(|| self_ty.to_string());
-                                (trait_desc, self_desc)
-                            });
+                            let self_ty = self_ty.has_concrete_skeleton().then(|| self_ty);
                             let cause = if let Conflict::Upstream = conflict {
-                                IntercrateAmbiguityCause::UpstreamCrateUpdate {
-                                    trait_desc,
-                                    self_desc,
-                                }
+                                IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_ref, self_ty }
                             } else {
-                                IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
+                                IntercrateAmbiguityCause::DownstreamCrate { trait_ref, self_ty }
                             };
                             debug!(?cause, "evaluate_stack: pushing cause");
                             self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
@@ -1451,20 +1450,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let ImplCandidate(def_id) = candidate {
             if let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id) {
                 if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                    let value = tcx
+                    let message = tcx
                         .get_attr(def_id, sym::rustc_reservation_impl)
                         .and_then(|a| a.value_str());
-                    if let Some(value) = value {
+                    if let Some(message) = message {
                         debug!(
                             "filter_reservation_impls: \
                                  reservation impl ambiguity on {:?}",
                             def_id
                         );
-                        intercrate_ambiguity_clauses.insert(
-                            IntercrateAmbiguityCause::ReservationImpl {
-                                message: value.to_string(),
-                            },
-                        );
+                        intercrate_ambiguity_clauses
+                            .insert(IntercrateAmbiguityCause::ReservationImpl { message });
                     }
                 }
                 return Ok(None);

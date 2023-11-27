@@ -308,14 +308,9 @@ pub struct FailCreateFileEncoder {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_fail_seek_file)]
-pub struct FailSeekFile {
-    pub err: Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(metadata_fail_write_file)]
-pub struct FailWriteFile {
+pub struct FailWriteFile<'a> {
+    pub path: &'a Path,
     pub err: Error,
 }
 

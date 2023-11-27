@@ -1087,7 +1087,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
 
                 Box::new(segment.into_iter())
             }
-            hir::QPath::LangItem(_, _, _) => Box::new(iter::empty()),
+            hir::QPath::LangItem(_, _) => Box::new(iter::empty()),
         }
     }
 }

@@ -279,7 +279,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
             return;
         }
 
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         match kind {
             FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {

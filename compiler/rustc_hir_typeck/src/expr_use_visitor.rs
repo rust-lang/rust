@@ -848,7 +848,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         // be a local variable
                         PlaceBase::Local(*var_hir_id)
                     };
-                    let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id);
+                    let closure_hir_id = tcx.local_def_id_to_hir_id(closure_def_id);
                     let place_with_id = PlaceWithHirId::new(
                         capture_info
                             .path_expr_id

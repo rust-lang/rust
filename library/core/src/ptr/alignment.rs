@@ -1,5 +1,4 @@
 use crate::convert::{TryFrom, TryInto};
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::num::NonZeroUsize;
 use crate::{cmp, fmt, hash, mem, num};
 
@@ -77,13 +76,10 @@ impl Alignment {
     #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
-        // SAFETY: Precondition passed to the caller.
-        unsafe {
-            assert_unsafe_precondition!(
-               "Alignment::new_unchecked requires a power of two",
-                (align: usize) => align.is_power_of_two()
-            )
-        };
+        crate::panic::debug_assert_nounwind!(
+            align.is_power_of_two(),
+            "Alignment::new_unchecked requires a power of two"
+        );
 
         // SAFETY: By precondition, this must be a power of two, and
         // our variants encompass all possible powers of two.

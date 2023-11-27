@@ -1,17 +1,16 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir};
+use rustc_hir::def_id::DefId;
 use rustc_session::RemapFileNameExt;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::mir::interpret::{alloc_range, AllocId, ConstAllocation, ErrorHandled, Scalar};
 use crate::mir::{pretty_print_const_value, Promoted};
+use crate::ty::GenericArgsRef;
 use crate::ty::ScalarInt;
-use crate::ty::{self, print::pretty_print_const, List, Ty, TyCtxt};
-use crate::ty::{GenericArgs, GenericArgsRef};
+use crate::ty::{self, print::pretty_print_const, Ty, TyCtxt};
 
 ///////////////////////////////////////////////////////////////////////////
 /// Evaluated Constants
@@ -220,6 +219,17 @@ pub enum Const<'tcx> {
 }
 
 impl<'tcx> Const<'tcx> {
+    pub fn identity_unevaluated(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::EarlyBinder<Const<'tcx>> {
+        ty::EarlyBinder::bind(Const::Unevaluated(
+            UnevaluatedConst {
+                def: def_id,
+                args: ty::GenericArgs::identity_for_item(tcx, def_id),
+                promoted: None,
+            },
+            tcx.type_of(def_id).skip_binder(),
+        ))
+    }
+
     #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
@@ -397,101 +407,6 @@ impl<'tcx> Const<'tcx> {
     pub fn from_scalar(_tcx: TyCtxt<'tcx>, s: Scalar, ty: Ty<'tcx>) -> Self {
         let val = ConstValue::Scalar(s);
         Self::Val(val, ty)
-    }
-
-    /// Literals are converted to `Const::Val`, const generic parameters are eagerly
-    /// converted to a constant, everything else becomes `Unevaluated`.
-    #[instrument(skip(tcx), level = "debug", ret)]
-    pub fn from_anon_const(
-        tcx: TyCtxt<'tcx>,
-        def: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
-        let body_id = match tcx.hir().get_by_def_id(def) {
-            hir::Node::AnonConst(ac) => ac.body,
-            _ => {
-                span_bug!(tcx.def_span(def), "from_anon_const can only process anonymous constants")
-            }
-        };
-
-        let expr = &tcx.hir().body(body_id).value;
-        debug!(?expr);
-
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.kind {
-            hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
-                block.expr.as_ref().unwrap()
-            }
-            _ => expr,
-        };
-        debug!("expr.kind: {:?}", expr.kind);
-
-        let ty = tcx.type_of(def).instantiate_identity();
-        debug!(?ty);
-
-        // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
-        // does not provide the parents generics to anonymous constants. We still allow generic const
-        // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
-        // ever try to substitute the generic parameters in their bodies.
-        //
-        // While this doesn't happen as these constants are always used as `ty::ConstKind::Param`, it does
-        // cause issues if we were to remove that special-case and try to evaluate the constant instead.
-        use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
-        match expr.kind {
-            ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
-                // Find the name and index of the const parameter by indexing the generics of
-                // the parent item and construct a `ParamConst`.
-                let item_def_id = tcx.parent(def_id);
-                let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.item_name(def_id);
-                let ty_const = ty::Const::new_param(tcx, ty::ParamConst::new(index, name), ty);
-                debug!(?ty_const);
-
-                return Self::Ty(ty_const);
-            }
-            _ => {}
-        }
-
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def);
-        let parent_args = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
-            && let Some(parent_did) = parent_hir_id.as_owner()
-        {
-            GenericArgs::identity_for_item(tcx, parent_did)
-        } else {
-            List::empty()
-        };
-        debug!(?parent_args);
-
-        let did = def.to_def_id();
-        let child_args = GenericArgs::identity_for_item(tcx, did);
-        let args = tcx.mk_args_from_iter(parent_args.into_iter().chain(child_args.into_iter()));
-        debug!(?args);
-
-        let span = tcx.def_span(def);
-        let uneval = UnevaluatedConst::new(did, args);
-        debug!(?span, ?param_env);
-
-        match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
-            Ok(val) => {
-                debug!("evaluated const value");
-                Self::Val(val, ty)
-            }
-            Err(_) => {
-                debug!("error encountered during evaluation");
-                // Error was handled in `const_eval_resolve`. Here we just create a
-                // new unevaluated const and error hard later in codegen
-                Self::Unevaluated(
-                    UnevaluatedConst {
-                        def: did,
-                        args: GenericArgs::identity_for_item(tcx, did),
-                        promoted: None,
-                    },
-                    ty,
-                )
-            }
-        }
     }
 
     pub fn from_ty_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {

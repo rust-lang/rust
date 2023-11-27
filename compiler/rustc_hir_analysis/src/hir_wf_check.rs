@@ -25,7 +25,7 @@ fn diagnostic_hir_wf_check<'tcx>(
         WellFormedLoc::Ty(def_id) => def_id,
         WellFormedLoc::Param { function, param_idx: _ } => function,
     };
-    let hir_id = hir.local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     // HIR wfcheck should only ever happen as part of improving an existing error
     tcx.sess

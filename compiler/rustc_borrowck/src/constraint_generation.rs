@@ -9,7 +9,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use crate::{
     borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, places_conflict,
@@ -18,7 +18,7 @@ use crate::{
 
 pub(super) fn generate_constraints<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    liveness_constraints: &mut LivenessValues<RegionVid>,
+    liveness_constraints: &mut LivenessValues,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
@@ -43,7 +43,7 @@ struct ConstraintGeneration<'cg, 'tcx> {
     infcx: &'cg InferCtxt<'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
-    liveness_constraints: &'cg mut LivenessValues<RegionVid>,
+    liveness_constraints: &'cg mut LivenessValues,
     borrow_set: &'cg BorrowSet<'tcx>,
     body: &'cg Body<'tcx>,
 }
@@ -167,7 +167,7 @@ impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
 
         self.infcx.tcx.for_each_free_region(&live_ty, |live_region| {
             let vid = live_region.as_var();
-            self.liveness_constraints.add_element(vid, location);
+            self.liveness_constraints.add_location(vid, location);
         });
     }
 

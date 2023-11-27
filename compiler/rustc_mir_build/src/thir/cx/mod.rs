@@ -29,7 +29,7 @@ pub(crate) fn thir_body(
     }
     let expr = cx.mirror_expr(body.value);
 
-    let owner_id = hir.local_def_id_to_hir_id(owner_def);
+    let owner_id = tcx.local_def_id_to_hir_id(owner_def);
     if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
         let explicit_params = cx.explicit_params(owner_id, fn_decl, body);
@@ -37,7 +37,7 @@ pub(crate) fn thir_body(
 
         // The resume argument may be missing, in that case we need to provide it here.
         // It will always be `()` in this case.
-        if tcx.def_kind(owner_def) == DefKind::Coroutine && body.params.is_empty() {
+        if tcx.is_coroutine(owner_def.to_def_id()) && body.params.is_empty() {
             cx.thir.params.push(Param {
                 ty: Ty::new_unit(tcx),
                 pat: None,
@@ -72,7 +72,7 @@ impl<'tcx> Cx<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Cx<'tcx> {
         let typeck_results = tcx.typeck(def);
         let hir = tcx.hir();
-        let hir_id = hir.local_def_id_to_hir_id(def);
+        let hir_id = tcx.local_def_id_to_hir_id(def);
 
         let body_type = if hir.body_owner_kind(def).is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
@@ -119,6 +119,17 @@ impl<'tcx> Cx<'tcx> {
 
     fn closure_env_param(&self, owner_def: LocalDefId, owner_id: HirId) -> Option<Param<'tcx>> {
         match self.tcx.def_kind(owner_def) {
+            DefKind::Closure if self.tcx.is_coroutine(owner_def.to_def_id()) => {
+                let coroutine_ty = self.typeck_results.node_type(owner_id);
+                let coroutine_param = Param {
+                    ty: coroutine_ty,
+                    pat: None,
+                    ty_span: None,
+                    self_kind: None,
+                    hir_id: None,
+                };
+                Some(coroutine_param)
+            }
             DefKind::Closure => {
                 let closure_ty = self.typeck_results.node_type(owner_id);
 
@@ -147,17 +158,6 @@ impl<'tcx> Cx<'tcx> {
                 };
 
                 Some(env_param)
-            }
-            DefKind::Coroutine => {
-                let coroutine_ty = self.typeck_results.node_type(owner_id);
-                let coroutine_param = Param {
-                    ty: coroutine_ty,
-                    pat: None,
-                    ty_span: None,
-                    self_kind: None,
-                    hir_id: None,
-                };
-                Some(coroutine_param)
             }
             _ => None,
         }

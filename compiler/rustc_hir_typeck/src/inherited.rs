@@ -75,7 +75,7 @@ impl<'tcx> Deref for Inherited<'tcx> {
 
 impl<'tcx> Inherited<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
+        let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
         let infcx = tcx
             .infer_ctxt()

@@ -850,7 +850,7 @@ impl MetadataBlob {
                     ) -> io::Result<()> {
                         let root = blob.get_root();
 
-                        let def_kind = root.tables.opt_def_kind.get(blob, item).unwrap();
+                        let def_kind = root.tables.def_kind.get(blob, item).unwrap();
                         let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
                         let def_name = if item == CRATE_DEF_INDEX {
                             rustc_span::symbol::kw::Crate
@@ -1001,14 +1001,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn def_kind(self, item_id: DefIndex) -> DefKind {
-        self.root.tables.opt_def_kind.get(self, item_id).unwrap_or_else(|| {
-            bug!(
-                "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
-                item_id,
-                self.root.name(),
-                self.cnum,
-            )
-        })
+        self.root
+            .tables
+            .def_kind
+            .get(self, item_id)
+            .unwrap_or_else(|| self.missing("def_kind", item_id))
     }
 
     fn get_span(self, index: DefIndex, sess: &Session) -> Span {

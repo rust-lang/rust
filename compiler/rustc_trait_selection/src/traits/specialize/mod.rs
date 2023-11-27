@@ -37,7 +37,7 @@ pub struct OverlapError<'tcx> {
     pub with_impl: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
     pub self_ty: Option<Ty<'tcx>>,
-    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,
+    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
     pub involves_placeholder: bool,
 }
 
@@ -442,7 +442,7 @@ fn report_conflicting_impls<'tcx>(
             };
             tcx.struct_span_lint_hir(
                 lint,
-                tcx.hir().local_def_id_to_hir_id(impl_def_id),
+                tcx.local_def_id_to_hir_id(impl_def_id),
                 impl_span,
                 msg,
                 |err| {

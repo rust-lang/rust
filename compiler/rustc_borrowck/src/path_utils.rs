@@ -4,7 +4,6 @@ use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use crate::places_conflict;
 use crate::AccessDepth;
 use crate::BorrowIndex;
-use crate::Upvar;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, PlaceRef, ProjectionElem};
@@ -150,7 +149,7 @@ pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
 /// of a closure type.
 pub(crate) fn is_upvar_field_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
-    upvars: &[Upvar<'tcx>],
+    upvars: &[&rustc_middle::ty::CapturedPlace<'tcx>],
     place_ref: PlaceRef<'tcx>,
     body: &Body<'tcx>,
 ) -> Option<FieldIdx> {
@@ -166,7 +165,7 @@ pub(crate) fn is_upvar_field_projection<'tcx>(
         Some((place_base, ProjectionElem::Field(field, _ty))) => {
             let base_ty = place_base.ty(body, tcx).ty;
             if (base_ty.is_closure() || base_ty.is_coroutine())
-                && (!by_ref || upvars[field.index()].by_ref)
+                && (!by_ref || upvars[field.index()].is_by_ref())
             {
                 Some(field)
             } else {

@@ -108,17 +108,6 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
             tcx.sess.emit_err(DropCheckOverflow { span, ty, overflow_ty: *overflow_ty });
         }
     }
-
-    pub fn into_kinds_reporting_overflows(
-        self,
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-        ty: Ty<'tcx>,
-    ) -> Vec<GenericArg<'tcx>> {
-        self.report_overflows(tcx, span, ty);
-        let DropckOutlivesResult { kinds, overflows: _ } = self;
-        kinds
-    }
 }
 
 /// A set of constraints that need to be satisfied in order for

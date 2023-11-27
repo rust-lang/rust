@@ -154,7 +154,7 @@ pub fn recursive_type_error(
         let (_, field_id) = item_and_field_ids[i];
         let (next_item_id, _) = item_and_field_ids[(i + 1) % cycle_len];
         // Find the span(s) that contain the next item in the cycle
-        let hir_id = tcx.hir().local_def_id_to_hir_id(field_id);
+        let hir_id = tcx.local_def_id_to_hir_id(field_id);
         let hir::Node::Field(field) = tcx.hir().get(hir_id) else { bug!("expected field") };
         let mut found = Vec::new();
         find_item_ty_spans(tcx, field.ty, next_item_id, &mut found, representable_ids);

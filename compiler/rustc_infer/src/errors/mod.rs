@@ -363,7 +363,7 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             };
 
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
+            let hir_id = self.tcx.local_def_id_to_hir_id(anon_reg.def_id);
 
             let node = self.tcx.hir().get(hir_id);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));

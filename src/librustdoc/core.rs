@@ -107,12 +107,12 @@ impl<'tcx> DocContext<'tcx> {
         r
     }
 
-    /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
+    /// Like `tcx.local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
     pub(crate) fn as_local_hir_id(tcx: TyCtxt<'_>, item_id: ItemId) -> Option<HirId> {
         match item_id {
             ItemId::DefId(real_id) => {
-                real_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+                real_id.as_local().map(|def_id| tcx.local_def_id_to_hir_id(def_id))
             }
             // FIXME: Can this be `Some` for `Auto` or `Blanket`?
             _ => None,

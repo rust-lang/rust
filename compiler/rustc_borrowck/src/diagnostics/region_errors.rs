@@ -215,7 +215,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .map(|placeholder| {
                 if let Some(id) = placeholder.bound.kind.get_id()
                     && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = hir.local_def_id_to_hir_id(placeholder_id)
+                    && let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id)
                     && let Some(generics_impl) = hir.get_parent(gat_hir_id).generics()
                 {
                     Some((gat_hir_id, generics_impl))
@@ -236,7 +236,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
                 if bound_generic_params
                     .iter()
-                    .rfind(|bgp| hir.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
+                    .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
                     .is_some()
                 {
                     for bound in *bounds {
@@ -605,7 +605,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             };
 
             let captured_place = &self.upvars[upvar_field.index()].place;
-            let defined_hir = match captured_place.place.base {
+            let defined_hir = match captured_place.base {
                 PlaceBase::Local(hirid) => Some(hirid),
                 PlaceBase::Upvar(upvar) => Some(upvar.var_path.hir_id),
                 _ => None,

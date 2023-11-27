@@ -111,7 +111,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     ) where
         F: FnOnce(&mut Self),
     {
-        let attrs = self.tcx.hir().attrs(self.tcx.hir().local_def_id_to_hir_id(def_id));
+        let attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
         let depr = attr::find_deprecation(self.tcx.sess, self.tcx.features(), attrs);
@@ -120,7 +120,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             is_deprecated = true;
 
             if matches!(kind, AnnotationKind::Prohibited | AnnotationKind::DeprecationProhibited) {
-                let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
                 self.tcx.emit_spanned_lint(
                     USELESS_DEPRECATED,
                     hir_id,

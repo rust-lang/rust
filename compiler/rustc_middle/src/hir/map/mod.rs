@@ -116,7 +116,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 
             let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
                 let def_id = LocalDefId { local_def_index };
-                self.map.local_def_id_to_hir_id(def_id).owner
+                self.map.tcx.local_def_id_to_hir_id(def_id).owner
             });
             self.current_id = HirId::make_owner(parent_id.def_id);
 
@@ -168,27 +168,19 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().def_path_hash(def_id)
     }
 
-    #[inline]
-    pub fn local_def_id_to_hir_id(self, def_id: impl Into<LocalDefId>) -> HirId {
-        self.tcx.local_def_id_to_hir_id(def_id.into())
-    }
-
     /// Do not call this function directly. The query should be called.
-    pub(super) fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
-        let hir_id = self.local_def_id_to_hir_id(local_def_id);
+    pub(super) fn def_kind(self, local_def_id: LocalDefId) -> DefKind {
+        let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
         let node = match self.find(hir_id) {
             Some(node) => node,
             None => match self.def_key(local_def_id).disambiguated_data.data {
-                // FIXME: Some anonymous constants do not have corresponding HIR nodes,
-                // so many local queries will panic on their def ids. `None` is currently
-                // returned here instead of `DefKind::{Anon,Inline}Const` to avoid such panics.
-                // Ideally all def ids should have `DefKind`s, we need to create the missing
-                // HIR nodes or feed relevant query results to achieve that.
-                DefPathData::AnonConst => return None,
+                // FIXME: Some anonymous constants produced by `#[rustc_legacy_const_generics]`
+                // do not have corresponding HIR nodes, but they are still anonymous constants.
+                DefPathData::AnonConst => return DefKind::AnonConst,
                 _ => bug!("no HIR node for def id {local_def_id:?}"),
             },
         };
-        let def_kind = match node {
+        match node {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(_, mt, _) => DefKind::Static(mt),
                 ItemKind::Const(..) => DefKind::Const,
@@ -239,8 +231,7 @@ impl<'hir> Map<'hir> {
             Node::ConstBlock(_) => DefKind::InlineConst,
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Closure(Closure { movability: None, .. }) => DefKind::Closure,
-                ExprKind::Closure(Closure { movability: Some(_), .. }) => DefKind::Coroutine,
+                ExprKind::Closure(_) => DefKind::Closure,
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
             Node::GenericParam(param) => match param.kind {
@@ -266,8 +257,7 @@ impl<'hir> Map<'hir> {
                 self.span(hir_id),
                 "unexpected node with def id {local_def_id:?}: {node:?}"
             ),
-        };
-        Some(def_kind)
+        }
     }
 
     /// Finds the id of the parent node to this one.
@@ -419,7 +409,7 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
-            let hir_id = self.local_def_id_to_hir_id(id);
+            let hir_id = self.tcx.local_def_id_to_hir_id(id);
             span_bug!(
                 self.span(hir_id),
                 "body_owned_by: {} has no associated body",
@@ -445,7 +435,7 @@ impl<'hir> Map<'hir> {
             }
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
-            DefKind::Closure | DefKind::Coroutine => BodyOwnerKind::Closure,
+            DefKind::Closure => BodyOwnerKind::Closure,
             DefKind::Static(mt) => BodyOwnerKind::Static(mt),
             dk => bug!("{:?} is not a body node: {:?}", def_id, dk),
         }
@@ -895,7 +885,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     fn opt_ident(self, id: HirId) -> Option<Ident> {
-        match self.get(id) {
+        match self.find(id)? {
             Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::opt_span`.

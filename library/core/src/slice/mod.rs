@@ -8,13 +8,14 @@
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::fmt;
-use crate::intrinsics::{assert_unsafe_precondition, exact_div};
+use crate::intrinsics::exact_div;
 use crate::marker::Copy;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
+use crate::panic::debug_assert_nounwind;
 use crate::ptr;
 use crate::result::Result;
 use crate::result::Result::{Err, Ok};
@@ -929,14 +930,14 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        let this = self;
-        let ptr = this.as_mut_ptr();
+        debug_assert_nounwind!(
+            a < self.len() && b < self.len(),
+            "slice::swap_unchecked requires that the indices are within the slice",
+        );
+
+        let ptr = self.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::swap_unchecked requires that the indices are within the slice",
-                [T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len()
-            );
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -1269,15 +1270,12 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
-        let this = self;
+        debug_assert_nounwind!(
+            N != 0 && self.len() % N == 0,
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+        );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
-        let new_len = unsafe {
-            assert_unsafe_precondition!(
-                "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
-                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
-            );
-            exact_div(self.len(), N)
-        };
+        let new_len = unsafe { exact_div(self.len(), N) };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts(self.as_ptr().cast(), new_len) }
@@ -1426,15 +1424,12 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
-        let this = &*self;
+        debug_assert_nounwind!(
+            N != 0 && self.len() % N == 0,
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+        );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
-        let new_len = unsafe {
-            assert_unsafe_precondition!(
-                "slice::as_chunks_unchecked_mut requires `N != 0` and the slice to split exactly into `N`-element chunks",
-                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
-            );
-            exact_div(this.len(), N)
-        };
+        let new_len = unsafe { exact_div(self.len(), N) };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), new_len) }
@@ -1967,14 +1962,13 @@ impl<T> [T] {
         let len = self.len();
         let ptr = self.as_ptr();
 
+        debug_assert_nounwind!(
+            mid <= len,
+            "slice::split_at_unchecked requires the index to be within the slice",
+        );
+
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        unsafe {
-            assert_unsafe_precondition!(
-                "slice::split_at_unchecked requires the index to be within the slice",
-                (mid: usize, len: usize) => mid <= len
-            );
-            (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid))
-        }
+        unsafe { (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid)) }
     }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.
@@ -2018,17 +2012,16 @@ impl<T> [T] {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
+        debug_assert_nounwind!(
+            mid <= len,
+            "slice::split_at_mut_unchecked requires the index to be within the slice",
+        );
+
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`.
         //
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
-        unsafe {
-            assert_unsafe_precondition!(
-                "slice::split_at_mut_unchecked requires the index to be within the slice",
-                (mid: usize, len: usize) => mid <= len
-            );
-            (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
-        }
+        unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
     }
 
     /// Divides one slice into an array and a remainder slice at an index.

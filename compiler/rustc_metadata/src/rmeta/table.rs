@@ -167,7 +167,6 @@ fixed_size_enum! {
         ( Impl { of_trait: false }                 )
         ( Impl { of_trait: true }                  )
         ( Closure                                  )
-        ( Coroutine                                )
         ( Static(ast::Mutability::Not)             )
         ( Static(ast::Mutability::Mut)             )
         ( Ctor(CtorOf::Struct, CtorKind::Fn)       )

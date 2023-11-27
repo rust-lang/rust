@@ -110,7 +110,7 @@ impl<'tcx> TyCtxt<'tcx> {
                             let Some(local_def_id) = ct.def.as_local() else { return };
                             self.struct_span_lint_hir(
                                 lint::builtin::CONST_EVALUATABLE_UNCHECKED,
-                                self.hir().local_def_id_to_hir_id(local_def_id),
+                                self.local_def_id_to_hir_id(local_def_id),
                                 self.def_span(ct.def),
                                 "cannot use constants which depend on generic parameters in types",
                                 |err| err,

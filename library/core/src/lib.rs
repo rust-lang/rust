@@ -178,6 +178,7 @@
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(non_null_convenience)]
 #![feature(offset_of)]
 #![feature(offset_of_enum)]
 #![feature(ptr_alignment_type)]

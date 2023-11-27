@@ -134,7 +134,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         None => {}
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
@@ -412,7 +412,7 @@ fn const_evaluatable_predicates_of(
         }
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir().get(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
@@ -503,7 +503,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
         }
     } else {
         if matches!(def_kind, DefKind::AnonConst) && tcx.features().generic_const_exprs {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+            let hir_id = tcx.local_def_id_to_hir_id(def_id);
             let parent_def_id = tcx.hir().get_parent_item(hir_id);
 
             if let Some(defaulted_param_def_id) =
@@ -571,7 +571,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 // To fix this, we call `explicit_predicates_of` directly on `foo`, the parent's parent.
 
                 // In the above example this is `foo::{opaque#0}` or `impl Iterator`
-                let parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent_def_id.def_id);
+                let parent_hir_id = tcx.local_def_id_to_hir_id(parent_def_id.def_id);
 
                 // In the above example this is the function `foo`
                 let item_def_id = tcx.hir().get_parent_item(parent_hir_id);
@@ -631,7 +631,7 @@ pub(super) fn implied_predicates_with_filter(
         return tcx.super_predicates_of(trait_def_id);
     };
 
-    let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_def_id);
+    let trait_hir_id = tcx.local_def_id_to_hir_id(trait_def_id);
 
     let Node::Item(item) = tcx.hir().get(trait_hir_id) else {
         bug!("trait_node_id {} is not an item", trait_hir_id);
@@ -691,7 +691,7 @@ pub(super) fn type_param_predicates(
     // written inline like `<T: Foo>` or in a where-clause like
     // `where T: Foo`.
 
-    let param_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let param_id = tcx.local_def_id_to_hir_id(def_id);
     let param_owner = tcx.hir().ty_param_owner(def_id);
     let generics = tcx.generics_of(param_owner);
     let index = generics.param_def_id_to_index[&def_id.to_def_id()];
@@ -712,7 +712,7 @@ pub(super) fn type_param_predicates(
         .unwrap_or_default();
     let mut extend = None;
 
-    let item_hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
+    let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
     let ast_generics = match tcx.hir().get(item_hir_id) {
         Node::TraitItem(item) => item.generics,
 

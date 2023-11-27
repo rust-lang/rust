@@ -34,7 +34,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     can_be_coroutine: Option<hir::Movability>,
     params_can_be_unsized: bool,
 ) -> Option<CoroutineTypes<'tcx>> {
-    let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
+    let fn_id = fcx.tcx.local_def_id_to_hir_id(fn_def_id);
 
     let tcx = fcx.tcx;
     let hir = tcx.hir();

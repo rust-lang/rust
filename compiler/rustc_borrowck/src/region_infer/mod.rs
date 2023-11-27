@@ -59,7 +59,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    liveness_constraints: LivenessValues<RegionVid>,
+    liveness_constraints: LivenessValues,
 
     /// The outlives constraints computed by the type-check.
     constraints: Frozen<OutlivesConstraintSet<'tcx>>,
@@ -333,7 +333,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
-        liveness_constraints: LivenessValues<RegionVid>,
+        liveness_constraints: LivenessValues,
         elements: &Rc<RegionValueElements>,
         live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
     ) -> Self {
@@ -360,7 +360,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut scc_values =
             RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
 
-        for region in liveness_constraints.rows() {
+        for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);
             scc_values.merge_liveness(scc, region, &liveness_constraints);
         }
@@ -1972,15 +1972,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         None
     }
 
-    /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
+    /// Finds some region R such that `fr1: R` and `R` is live at `location`.
     #[instrument(skip(self), level = "trace", ret)]
-    pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
+    pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);
         self.find_constraint_paths_between_regions(fr1, |r| {
-            // First look for some `r` such that `fr1: r` and `r` is live at `elem`
-            trace!(?r, liveness_constraints=?self.liveness_constraints.region_value_str(r));
-            self.liveness_constraints.contains(r, elem)
+            // First look for some `r` such that `fr1: r` and `r` is live at `location`
+            trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
+            self.liveness_constraints.is_live_at(r, location)
         })
         .or_else(|| {
             // If we fail to find that, we may find some `r` such that

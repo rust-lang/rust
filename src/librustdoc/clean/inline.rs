@@ -640,7 +640,7 @@ fn build_module_items(
 
 pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     if let Some(did) = did.as_local() {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+        let hir_id = tcx.local_def_id_to_hir_id(did);
         rustc_hir_pretty::id_to_string(&tcx.hir(), hir_id)
     } else {
         tcx.rendered_const(did).clone()

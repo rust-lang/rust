@@ -345,7 +345,7 @@ pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
         || tcx.def_span(def_id),
         |local| {
             let hir = tcx.hir();
-            hir.span_with_body(hir.local_def_id_to_hir_id(local))
+            hir.span_with_body(tcx.local_def_id_to_hir_id(local))
         },
     ))
 }
@@ -498,7 +498,7 @@ impl Item {
     }
 
     pub(crate) fn is_crate(&self) -> bool {
-        self.is_mod() && self.def_id().map_or(false, |did| did.is_crate_root())
+        self.is_mod() && self.def_id().is_some_and(|did| did.is_crate_root())
     }
     pub(crate) fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -2487,7 +2487,7 @@ impl Import {
     }
 
     pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
-        self.source.did.map_or(false, |did| tcx.is_doc_hidden(did))
+        self.source.did.is_some_and(|did| tcx.is_doc_hidden(did))
     }
 }
 

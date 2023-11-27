@@ -139,13 +139,6 @@ pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnO
     SESSION_GLOBALS.set(session_globals, f)
 }
 
-pub fn create_default_session_if_not_set_then<R, F>(f: F) -> R
-where
-    F: FnOnce(&SessionGlobals) -> R,
-{
-    create_session_if_not_set_then(edition::DEFAULT_EDITION, f)
-}
-
 pub fn create_session_if_not_set_then<R, F>(edition: Edition, f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,

@@ -559,7 +559,7 @@ fn has_allow_dead_code_or_lang_attr(
     }
 
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
         matches!(lint_level, lint::Allow | lint::Expect(_))
     }
@@ -805,10 +805,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
         let tcx = self.tcx;
 
-        let first_hir_id = tcx.hir().local_def_id_to_hir_id(first_id);
+        let first_hir_id = tcx.local_def_id_to_hir_id(first_id);
         let first_lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, first_hir_id).0;
         assert!(dead_codes.iter().skip(1).all(|id| {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(*id);
+            let hir_id = tcx.local_def_id_to_hir_id(*id);
             let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
             level == first_lint_level
         }));
@@ -969,7 +969,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                 let def_id = item.id.owner_id.def_id;
                 if !visitor.is_live_code(def_id) {
                     let name = tcx.item_name(def_id.to_def_id());
-                    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                    let hir_id = tcx.local_def_id_to_hir_id(def_id);
                     let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
 
                     dead_items.push(DeadItem { def_id, name, level })
@@ -997,7 +997,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                 let def_id = variant.def_id.expect_local();
                 if !live_symbols.contains(&def_id) {
                     // Record to group diagnostics.
-                    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                    let hir_id = tcx.local_def_id_to_hir_id(def_id);
                     let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
                     dead_variants.push(DeadItem { def_id, name: variant.name, level });
                     continue;
@@ -1009,7 +1009,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                     .iter()
                     .filter_map(|field| {
                         let def_id = field.did.expect_local();
-                        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                        let hir_id = tcx.local_def_id_to_hir_id(def_id);
                         if let ShouldWarnAboutField::Yes(is_pos) =
                             visitor.should_warn_about_field(field)
                         {
