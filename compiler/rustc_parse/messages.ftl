@@ -721,6 +721,9 @@ parse_sugg_wrap_pattern_in_parens = wrap the pattern in parentheses
 parse_switch_mut_let_order =
     switch the order of `mut` and `let`
 
+parse_switch_ref_box_order = switch the order of `ref` and `box`
+    .suggestion = swap them
+
 parse_ternary_operator = Rust has no ternary operator
     .help = use an `if-else` expression instead
 
