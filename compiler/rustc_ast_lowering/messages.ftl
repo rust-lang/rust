@@ -108,6 +108,11 @@ ast_lowering_misplaced_impl_trait =
 ast_lowering_misplaced_relax_trait_bound =
     `?Trait` bounds are only permitted at the point where a type parameter is declared
 
+ast_lowering_never_pattern_with_body =
+    a never pattern is always unreachable
+    .label = this will never be executed
+    .suggestion = remove this expression
+
 ast_lowering_never_pattern_with_guard =
     a guard on a never pattern will never be run
     .suggestion = remove this guard

@@ -350,6 +350,15 @@ pub struct MatchArmWithNoBody {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_lowering_never_pattern_with_body)]
+pub struct NeverPatternWithBody {
+    #[primary_span]
+    #[label]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_lowering_never_pattern_with_guard)]
 pub struct NeverPatternWithGuard {
     #[primary_span]

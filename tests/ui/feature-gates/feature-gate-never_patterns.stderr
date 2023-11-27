@@ -18,7 +18,7 @@ LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
 error[E0658]: `!` patterns are experimental
   --> $DIR/feature-gate-never_patterns.rs:15:13
    |
-LL |             ! => {}
+LL |             !
    |             ^
    |
    = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information

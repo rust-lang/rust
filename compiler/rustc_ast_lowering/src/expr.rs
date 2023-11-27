@@ -2,7 +2,8 @@ use super::errors::{
     AsyncCoroutinesNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, CoroutineTooManyParameters,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    NeverPatternWithGuard, NotSupportedForLifetimeBinderAsyncClosure, UnderscoreExprLhsAssign,
+    NeverPatternWithBody, NeverPatternWithGuard, NotSupportedForLifetimeBinderAsyncClosure,
+    UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -567,20 +568,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
         self.lower_attrs(hir_id, &arm.attrs);
-        let body = if let Some(body) = &arm.body {
-            // FIXME(never_patterns): Disallow never pattern with a body or guard
+        let is_never_pattern = pat.is_never_pattern();
+        let body = if let Some(body) = &arm.body
+            && !is_never_pattern
+        {
             self.lower_expr(body)
         } else {
-            if !pat.is_never_pattern() {
-                self.tcx
-                    .sess
-                    .emit_err(MatchArmWithNoBody { span, suggestion: span.shrink_to_hi() });
+            // Either `body.is_none()` or `is_never_pattern` here.
+            if !is_never_pattern {
+                let suggestion = span.shrink_to_hi();
+                self.tcx.sess.emit_err(MatchArmWithNoBody { span, suggestion });
+            } else if let Some(body) = &arm.body {
+                self.tcx.sess.emit_err(NeverPatternWithBody { span: body.span });
+                guard = None;
             } else if let Some(g) = &arm.guard {
                 self.tcx.sess.emit_err(NeverPatternWithGuard { span: g.span });
                 guard = None;
             }
 
-            // An arm without a body, meant for never patterns.
             // We add a fake `loop {}` arm body so that it typecks to `!`.
             // FIXME(never_patterns): Desugar into a call to `unreachable_unchecked`.
             let block = self.arena.alloc(hir::Block {
