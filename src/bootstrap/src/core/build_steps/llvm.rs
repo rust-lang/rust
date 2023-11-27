@@ -15,6 +15,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
@@ -105,13 +106,16 @@ pub fn prebuilt_llvm_config(
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
     let res = LlvmResult { llvm_config: build_llvm_config, llvm_cmake_dir };
 
-    let smart_stamp_hash = generate_smart_stamp_hash(
-        &builder.config.src.join("src/llvm-project"),
-        &builder.in_tree_llvm_info.sha().unwrap_or_default(),
-    );
+    static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+    let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+        generate_smart_stamp_hash(
+            &builder.config.src.join("src/llvm-project"),
+            &builder.in_tree_llvm_info.sha().unwrap_or_default(),
+        )
+    });
 
     let stamp = out_dir.join("llvm-finished-building");
-    let stamp = HashStamp::new(stamp, Some(&smart_stamp_hash));
+    let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
 
     if stamp.is_done() {
         if stamp.hash.is_none() {
