@@ -1,0 +1,122 @@
+error: expected one of `=>`, `if`, or `|`, found `}`
+  --> $DIR/match-arm-without-body.rs:8:5
+   |
+LL |         Some(_)
+   |                - expected one of `=>`, `if`, or `|`
+LL |     }
+   |     ^ unexpected token
+
+error: expected one of `=>`, `if`, or `|`, found reserved identifier `_`
+  --> $DIR/match-arm-without-body.rs:12:9
+   |
+LL |         Some(_)
+   |                - expected one of `=>`, `if`, or `|`
+LL |         _ => {}
+   |         ^ unexpected token
+
+error: unexpected `,` in pattern
+  --> $DIR/match-arm-without-body.rs:16:16
+   |
+LL |         Some(_),
+   |                ^
+   |
+help: try adding parentheses to match on a tuple...
+   |
+LL |         (Some(_),)
+   |         +        +
+help: ...or a vertical bar to match on multiple alternatives
+   |
+LL |         Some(_) |
+   |
+
+error: unexpected `,` in pattern
+  --> $DIR/match-arm-without-body.rs:22:16
+   |
+LL |         Some(_),
+   |                ^
+   |
+help: try adding parentheses to match on a tuple...
+   |
+LL ~         (Some(_),
+LL |
+LL |
+LL |
+LL ~         _) => {}
+   |
+help: ...or a vertical bar to match on multiple alternatives
+   |
+LL ~         Some(_) |
+LL +
+LL +
+LL +
+LL ~         _ => {}
+   |
+
+error: expected one of `.`, `=>`, `?`, or an operator, found `}`
+  --> $DIR/match-arm-without-body.rs:30:5
+   |
+LL |         Some(_) if true
+   |                        - expected one of `.`, `=>`, `?`, or an operator
+LL |     }
+   |     ^ unexpected token
+
+error: expected one of `.`, `=>`, `?`, or an operator, found reserved identifier `_`
+  --> $DIR/match-arm-without-body.rs:34:9
+   |
+LL |         Some(_) if true
+   |                        - expected one of `.`, `=>`, `?`, or an operator
+LL |         _ => {}
+   |         ^ unexpected token
+
+error: expected one of `.`, `=>`, `?`, or an operator, found `,`
+  --> $DIR/match-arm-without-body.rs:38:24
+   |
+LL |         Some(_) if true,
+   |                        ^ expected one of `.`, `=>`, `?`, or an operator
+
+error: expected one of `.`, `=>`, `?`, or an operator, found `,`
+  --> $DIR/match-arm-without-body.rs:42:24
+   |
+LL |         Some(_) if true,
+   |                        ^ expected one of `.`, `=>`, `?`, or an operator
+
+error: expected one of `=>`, `if`, or `|`, found `}`
+  --> $DIR/match-arm-without-body.rs:48:5
+   |
+LL |         pat!()
+   |               - expected one of `=>`, `if`, or `|`
+LL |     }
+   |     ^ unexpected token
+
+error: unexpected `,` in pattern
+  --> $DIR/match-arm-without-body.rs:51:15
+   |
+LL |         pat!(),
+   |               ^
+   |
+   = note: macros cannot expand to match arms
+
+error: expected one of `.`, `=>`, `?`, or an operator, found `,`
+  --> $DIR/match-arm-without-body.rs:55:23
+   |
+LL |         pat!() if true,
+   |                       ^ expected one of `.`, `=>`, `?`, or an operator
+
+error: expected one of `=>`, `if`, or `|`, found reserved identifier `_`
+  --> $DIR/match-arm-without-body.rs:60:9
+   |
+LL |         pat!()
+   |               - expected one of `=>`, `if`, or `|`
+LL |         _ => {}
+   |         ^ unexpected token
+
+error: unexpected `,` in pattern
+  --> $DIR/match-arm-without-body.rs:64:15
+   |
+LL |         pat!(),
+   |               ^
+   |
+   = note: macros cannot expand to match arms
+
+error: aborting due to 13 previous errors
+

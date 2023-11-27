@@ -1,0 +1,8 @@
+error: expected one of `.`, `=>`, `?`, or an operator, found `,`
+  --> $DIR/check.rs:18:24
+   |
+LL |         Some(!) if true,
+   |                        ^ expected one of `.`, `=>`, `?`, or an operator
+
+error: aborting due to 1 previous error
+

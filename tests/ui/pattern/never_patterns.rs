@@ -84,7 +84,7 @@ fn never_and_bindings() {
         //~^ ERROR: is not bound in all patterns
     }
     let (Ok(_x) | Err(&!)) = x;
-        //~^ ERROR: is not bound in all patterns
+    //~^ ERROR: is not bound in all patterns
 
     // FIXME(never_patterns): A never pattern mustn't have bindings.
     match x {
