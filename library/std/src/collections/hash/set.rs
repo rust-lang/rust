@@ -1501,6 +1501,10 @@ impl<'a, K> Iterator for Iter<'a, K> {
         self.base.size_hint()
     }
     #[inline]
+    fn count(self) -> usize {
+        self.base.len()
+    }
+    #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
@@ -1537,6 +1541,10 @@ impl<K> Iterator for IntoIter<K> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.base.size_hint()
+    }
+    #[inline]
+    fn count(self) -> usize {
+        self.base.len()
     }
     #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
@@ -1849,6 +1857,10 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count()
     }
     #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B

@@ -2233,6 +2233,10 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
         self.base.size_hint()
     }
     #[inline]
+    fn count(self) -> usize {
+        self.base.len()
+    }
+    #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
@@ -2263,6 +2267,10 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.base.size_hint()
+    }
+    #[inline]
+    fn count(self) -> usize {
+        self.base.len()
     }
     #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
@@ -2307,6 +2315,10 @@ impl<K, V> Iterator for IntoIter<K, V> {
         self.base.size_hint()
     }
     #[inline]
+    fn count(self) -> usize {
+        self.base.len()
+    }
+    #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
@@ -2345,6 +2357,10 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
         self.inner.size_hint()
     }
     #[inline]
+    fn count(self) -> usize {
+        self.inner.len()
+    }
+    #[inline]
     fn fold<B, F>(self, init: B, mut f: F) -> B
     where
         Self: Sized,
@@ -2376,6 +2392,10 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
         self.inner.size_hint()
     }
     #[inline]
+    fn count(self) -> usize {
+        self.inner.len()
+    }
+    #[inline]
     fn fold<B, F>(self, init: B, mut f: F) -> B
     where
         Self: Sized,
@@ -2405,6 +2425,10 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.len()
     }
     #[inline]
     fn fold<B, F>(self, init: B, mut f: F) -> B
@@ -2445,6 +2469,10 @@ impl<K, V> Iterator for IntoKeys<K, V> {
         self.inner.size_hint()
     }
     #[inline]
+    fn count(self) -> usize {
+        self.inner.len()
+    }
+    #[inline]
     fn fold<B, F>(self, init: B, mut f: F) -> B
     where
         Self: Sized,
@@ -2481,6 +2509,10 @@ impl<K, V> Iterator for IntoValues<K, V> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.len()
     }
     #[inline]
     fn fold<B, F>(self, init: B, mut f: F) -> B
