@@ -129,7 +129,6 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
     ("dissimilar", "Apache-2.0"),
-    ("instant", "BSD-3-Clause"),
     ("notify", "CC0-1.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
