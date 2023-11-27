@@ -107,7 +107,7 @@ pub fn pretty_terminator<W: io::Write>(terminator: &TerminatorKind, w: &mut W) -
                 if i > 0 {
                     write!(w, ", ")?;
                 }
-                write!(w, "{}: {:?}", labels[i], target)?;
+                write!(w, "{}: bb{:?}", labels[i], target)?;
             }
             if show_unwind {
                 write!(w, ", ")?;
@@ -126,7 +126,7 @@ pub fn pretty_terminator_head(terminator: &TerminatorKind) -> String {
     match terminator {
         Goto { .. } => format!("        goto"),
         SwitchInt { discr, .. } => {
-            format!("        switch({})", pretty_operand(discr))
+            format!("        switchInt(_{})", pretty_operand(discr))
         }
         Resume => format!("        resume"),
         Abort => format!("        abort"),
