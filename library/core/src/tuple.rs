@@ -50,22 +50,19 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
-            impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+)
-            {}
+            impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+) {}
         }
 
         maybe_tuple_doc! {
             $($T)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
-            impl<$($T),+> StructuralPartialEq for ($($T,)+)
-            {}
+            impl<$($T),+> StructuralPartialEq for ($($T,)+) {}
         }
 
         maybe_tuple_doc! {
             $($T)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
-            impl<$($T),+> StructuralEq for ($($T,)+)
-            {}
+            impl<$($T),+> StructuralEq for ($($T,)+) {}
         }
 
         maybe_tuple_doc! {
@@ -118,7 +115,7 @@ macro_rules! tuple_impls {
             impl<$($T: Default),+> Default for ($($T,)+) {
                 #[inline]
                 fn default() -> ($($T,)+) {
-                    ($({ let x: $T = Default::default(); x},)+)
+                    ($($T::default(),)+)
                 }
             }
         }
@@ -196,7 +193,7 @@ macro_rules! lexical_partial_cmp {
     ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
         match ($a).partial_cmp(&$b) {
             Some(Equal) => lexical_partial_cmp!($($rest_a, $rest_b),+),
-            ordering   => ordering
+            ordering => ordering
         }
     };
     ($a:expr, $b:expr) => { ($a).partial_cmp(&$b) };
@@ -206,7 +203,7 @@ macro_rules! lexical_cmp {
     ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
         match ($a).cmp(&$b) {
             Equal => lexical_cmp!($($rest_a, $rest_b),+),
-            ordering   => ordering
+            ordering => ordering
         }
     };
     ($a:expr, $b:expr) => { ($a).cmp(&$b) };
