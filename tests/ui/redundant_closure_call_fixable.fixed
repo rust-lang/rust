@@ -3,6 +3,7 @@
 #![allow(clippy::redundant_async_block)]
 #![allow(clippy::type_complexity)]
 #![allow(unused)]
+#![allow(clippy::double_parens)]
 
 async fn something() -> u32 {
     21
@@ -83,4 +84,18 @@ fn issue9956() {
     fn foo(_: i32, _: i32) {}
     bar()(42, 5);
     foo(42, 5);
+}
+
+async fn issue11357() {
+    (async {}).await;
+}
+
+mod issue11707 {
+    use core::future::Future;
+
+    fn spawn_on(fut: impl Future<Output = ()>) {}
+
+    fn demo() {
+        spawn_on((async move {}));
+    }
 }
