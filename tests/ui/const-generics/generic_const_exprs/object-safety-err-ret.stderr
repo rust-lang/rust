@@ -14,7 +14,6 @@ LL |     fn test(&self) -> [u8; bar::<Self>()];
    |        |
    |        ...because method `test` references the `Self` type in its `where` clause
    = help: consider moving `test` to another trait
-   = help: consider moving `test` to another trait
    = help: only type `()` implements the trait, consider using it directly instead
 
 error: aborting due to 1 previous error
