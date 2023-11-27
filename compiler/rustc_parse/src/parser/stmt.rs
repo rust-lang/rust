@@ -567,20 +567,37 @@ impl<'a> Parser<'a> {
                         snapshot.recover_diff_marker();
                     }
                     if self.token == token::Colon {
-                        // if next token is following a colon, it's likely a path
-                        // and we can suggest a path separator
-                        self.bump();
-                        if self.token.span.lo() == self.prev_token.span.hi() {
+                        // if a previous and next token of the current one is
+                        // integer literal (e.g. `1:42`), it's likely a range
+                        // expression for Pythonistas and we can suggest so.
+                        if self.prev_token.is_integer_lit()
+                            && self.may_recover()
+                            && self.look_ahead(1, |token| token.is_integer_lit())
+                        {
+                            // FIXME(hkmatsumoto): Might be better to trigger
+                            // this only when parsing an index expression.
                             err.span_suggestion_verbose(
-                                self.prev_token.span,
-                                "maybe write a path separator here",
-                                "::",
+                                self.token.span,
+                                "you might have meant a range expression",
+                                "..",
                                 Applicability::MaybeIncorrect,
                             );
-                        }
-                        if self.sess.unstable_features.is_nightly_build() {
-                            // FIXME(Nilstrieb): Remove this again after a few months.
-                            err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
+                        } else {
+                            // if next token is following a colon, it's likely a path
+                            // and we can suggest a path separator
+                            self.bump();
+                            if self.token.span.lo() == self.prev_token.span.hi() {
+                                err.span_suggestion_verbose(
+                                    self.prev_token.span,
+                                    "maybe write a path separator here",
+                                    "::",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            if self.sess.unstable_features.is_nightly_build() {
+                                // FIXME(Nilstrieb): Remove this again after a few months.
+                                err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
+                            }
                         }
                     }
 
