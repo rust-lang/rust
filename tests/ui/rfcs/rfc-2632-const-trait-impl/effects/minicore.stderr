@@ -1,0 +1,18 @@
+error[E0282]: type annotations needed
+  --> $DIR/minicore.rs:291:43
+   |
+LL |         Option::Some(t) => Option::Some(t.deref()),
+   |                                           ^^^^^ cannot infer type
+
+error[E0599]: no method named `deref` found for reference `&T` in the current scope
+  --> $DIR/minicore.rs:291:43
+   |
+LL |         Option::Some(t) => Option::Some(t.deref()),
+   |                                           ^^^^^ method not found in `&T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0599.
+For more information about an error, try `rustc --explain E0282`.

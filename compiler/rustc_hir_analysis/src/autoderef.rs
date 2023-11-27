@@ -109,14 +109,14 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     pub fn new(
         infcx: &'a InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_def_id: LocalDefId,
+        body_id: LocalDefId,
         span: Span,
         base_ty: Ty<'tcx>,
     ) -> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
             span,
-            body_id: body_def_id,
+            body_id,
             param_env,
             state: AutoderefSnapshot {
                 steps: vec![],
@@ -135,7 +135,21 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // <ty as Deref>
-        let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
+        let deref_trait_def_id = tcx.lang_items().deref_trait()?;
+
+        // FIXME(effects): This is still broken, since we don't necessarily have a choice of
+        // `host = true` or `host = host` in `const` functions. This is also busted in `method_autoderef_steps`.
+        let deref_generics = self.infcx.tcx.generics_of(deref_trait_def_id);
+        let args = if let Some(host_param) = deref_generics.host_effect_index {
+            self.infcx.tcx.mk_args(&[
+                ty.into(),
+                self.infcx.var_for_def(self.span, &deref_generics.params[host_param]),
+            ])
+        } else {
+            self.infcx.tcx.mk_args(&[ty.into()])
+        };
+
+        let trait_ref = ty::TraitRef::new(tcx, deref_trait_def_id, args);
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
         let obligation = traits::Obligation::new(
             tcx,
@@ -151,7 +165,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let (normalized_ty, obligations) = self.structurally_normalize(Ty::new_projection(
             tcx,
             tcx.lang_items().deref_target()?,
-            [ty],
+            trait_ref.args,
         ))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);

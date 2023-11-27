@@ -828,15 +828,14 @@ impl<'tcx> TyCtxt<'tcx> {
         callee_def_id: DefId,
         args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
     ) -> ty::GenericArgsRef<'tcx> {
-        let generics = self.generics_of(callee_def_id);
-        assert_eq!(generics.parent, None);
-
-        let opt_const_param = generics
-            .host_effect_index
-            .is_some()
-            .then(|| ty::GenericArg::from(self.expected_host_effect_param_for_body(caller_def_id)));
-
-        self.mk_args_from_iter(args.into_iter().map(|arg| arg.into()).chain(opt_const_param))
+        let mut args = args.into_iter();
+        ty::GenericArgs::for_item(self, callee_def_id, |param, _| {
+            if param.is_host_effect() {
+                self.expected_host_effect_param_for_body(caller_def_id).into()
+            } else {
+                args.next().unwrap().into()
+            }
+        })
     }
 }
 

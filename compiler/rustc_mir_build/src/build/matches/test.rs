@@ -254,7 +254,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
-                    let method = trait_method(tcx, deref, sym::deref, [ty]);
+                    let method = trait_method(
+                        tcx,
+                        deref,
+                        sym::deref,
+                        tcx.with_opt_host_effect_param(self.def_id, deref, [ty]),
+                    );
                     let eq_block = self.cfg.start_new_block();
                     self.cfg.push_assign(
                         block,

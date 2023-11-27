@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: unknown
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]
@@ -235,7 +235,7 @@ impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b 
 
 
 #[lang = "deref"]
-// #[const_trait] FIXME
+#[const_trait]
 trait Deref {
     #[lang = "deref_target"]
     type Target: ?Sized;
@@ -244,7 +244,7 @@ trait Deref {
 }
 
 
-impl<T: ?Sized> /* const */ Deref for &T {
+impl<T: ?Sized> const Deref for &T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -252,7 +252,7 @@ impl<T: ?Sized> /* const */ Deref for &T {
     }
 }
 
-impl<T: ?Sized> /* const */ Deref for &mut T {
+impl<T: ?Sized> const Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -285,7 +285,6 @@ impl<T> Option<T> {
 
 use Option::*;
 
-/*
 const fn as_deref<T>(opt: &Option<T>) -> Option<&T::Target>
 where
     T: ~const Deref,
@@ -295,7 +294,6 @@ where
         Option::None => Option::None,
     }
 }
-*/
 
 #[const_trait]
 trait Into<T>: Sized {
@@ -400,9 +398,9 @@ impl<'a, T: ?Sized> Pin<&'a T> {
 
 
 impl<P: Deref> Pin<P> {
-    /* const */ fn as_ref(&self) -> Pin<&P::Target>
+    const fn as_ref(&self) -> Pin<&P::Target>
     where
-        P: /* ~const */ Deref,
+        P: ~const Deref,
     {
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
@@ -434,14 +432,14 @@ impl<T> Option<T> {
 }
 */
 
-impl<P: /* ~const */ Deref> /* const */ Deref for Pin<P> {
+impl<P: ~const Deref> const Deref for Pin<P> {
     type Target = P::Target;
     fn deref(&self) -> &P::Target {
         Pin::get_ref(Pin::as_ref(self))
     }
 }
 
-impl<T> /* const */ Deref for Option<T> {
+impl<T> const Deref for Option<T> {
     type Target = T;
     fn deref(&self) -> &T {
         loop {}

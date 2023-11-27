@@ -118,7 +118,7 @@ impl<'tcx> Cx<'tcx> {
             Adjust::Deref(Some(deref)) => {
                 // We don't need to do call adjust_span here since
                 // deref coercions always start with a built-in deref.
-                let call = deref.method_call(self.tcx(), expr.ty);
+                let call = deref.method_call(self.tcx(), expr.ty, self.body_owner.expect_local());
 
                 expr = Expr {
                     temp_lifetime,

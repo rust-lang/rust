@@ -1,5 +1,6 @@
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
 use rustc_span::Span;
@@ -121,7 +122,12 @@ pub struct OverloadedDeref<'tcx> {
 
 impl<'tcx> OverloadedDeref<'tcx> {
     /// Get the zst function item type for this method call.
-    pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn method_call(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        source: Ty<'tcx>,
+        caller_def_id: LocalDefId,
+    ) -> Ty<'tcx> {
         let trait_def_id = match self.mutbl {
             hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
             hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
@@ -132,7 +138,11 @@ impl<'tcx> OverloadedDeref<'tcx> {
             .find(|m| m.kind == ty::AssocKind::Fn)
             .unwrap()
             .def_id;
-        Ty::new_fn_def(tcx, method_def_id, [source])
+        Ty::new_fn_def(
+            tcx,
+            method_def_id,
+            tcx.with_opt_host_effect_param(caller_def_id, method_def_id, [source]),
+        )
     }
 }
 
