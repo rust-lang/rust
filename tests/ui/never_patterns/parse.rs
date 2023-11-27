@@ -30,10 +30,12 @@ fn parse(x: Void) {
     match None::<Void> {
         Some(!) if true
         //~^ ERROR expected `,` following `match` arm
+        //~| ERROR guard on a never pattern
         None => {}
     }
     match None::<Void> {
         Some(!) if true,
+        //~^ ERROR guard on a never pattern
         None => {}
     }
     match None::<Void> {
@@ -45,6 +47,7 @@ fn parse(x: Void) {
     }
     match x {
         never!() if true,
+        //~^ ERROR guard on a never pattern
     }
     match x {
         never!()

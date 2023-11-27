@@ -349,6 +349,14 @@ pub struct MatchArmWithNoBody {
     pub suggestion: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(ast_lowering_never_pattern_with_guard)]
+pub struct NeverPatternWithGuard {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_arbitrary_expression_in_pattern)]
 pub struct ArbitraryExpressionInPattern {

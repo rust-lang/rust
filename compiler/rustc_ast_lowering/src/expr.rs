@@ -2,7 +2,7 @@ use super::errors::{
     AsyncCoroutinesNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, CoroutineTooManyParameters,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    NotSupportedForLifetimeBinderAsyncClosure, UnderscoreExprLhsAssign,
+    NeverPatternWithGuard, NotSupportedForLifetimeBinderAsyncClosure, UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -550,7 +550,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
-        let guard = arm.guard.as_ref().map(|cond| {
+        let mut guard = arm.guard.as_ref().map(|cond| {
             if let ExprKind::Let(pat, scrutinee, span, is_recovered) = &cond.kind {
                 hir::Guard::IfLet(self.arena.alloc(hir::Let {
                     hir_id: self.next_id(),
@@ -575,6 +575,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.tcx
                     .sess
                     .emit_err(MatchArmWithNoBody { span, suggestion: span.shrink_to_hi() });
+            } else if let Some(g) = &arm.guard {
+                self.tcx.sess.emit_err(NeverPatternWithGuard { span: g.span });
+                guard = None;
             }
 
             // An arm without a body, meant for never patterns.
