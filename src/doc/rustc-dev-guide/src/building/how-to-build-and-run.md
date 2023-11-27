@@ -293,7 +293,7 @@ For example, if your host platform is `x86_64-unknown-linux-gnu`
 and your cross-compilation target is `wasm32-wasi`, you can build with:
 
 ```bash
-./x build --target x86_64-unknown-linux-gnu --target wasm32-wasi
+./x build --target x86_64-unknown-linux-gnu,wasm32-wasi
 ```
 
 Note that if you want the resulting compiler to be able to build crates that
