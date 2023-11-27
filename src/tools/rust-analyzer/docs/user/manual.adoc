@@ -174,7 +174,7 @@ $ rustup component add rust-analyzer
 
 The `rust-analyzer` binary can be installed from the repos or AUR (Arch User Repository):
 
-- https://www.archlinux.org/packages/community/x86_64/rust-analyzer/[`rust-analyzer`] (built from latest tagged source)
+- https://www.archlinux.org/packages/extra/x86_64/rust-analyzer/[`rust-analyzer`] (built from latest tagged source)
 - https://aur.archlinux.org/packages/rust-analyzer-git[`rust-analyzer-git`] (latest Git version)
 
 Install it with pacman, for example:

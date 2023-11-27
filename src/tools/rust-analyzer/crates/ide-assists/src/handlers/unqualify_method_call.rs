@@ -91,7 +91,7 @@ fn add_import(
 ) {
     if let Some(path_segment) = qualifier.segment() {
         // for `<i32 as std::ops::Add>`
-        let path_type = path_segment.syntax().children().filter_map(ast::PathType::cast).last();
+        let path_type = path_segment.qualifying_trait();
         let import = match path_type {
             Some(it) => {
                 if let Some(path) = it.path() {
