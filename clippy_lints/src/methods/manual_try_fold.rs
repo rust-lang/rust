@@ -1,14 +1,14 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{is_from_proc_macro, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 use super::MANUAL_TRY_FOLD;
 
@@ -22,6 +22,7 @@ pub(super) fn check<'tcx>(
 ) {
     if !in_external_macro(cx.sess(), fold_span)
         && msrv.meets(msrvs::ITERATOR_TRY_FOLD)
+        && is_trait_method(cx, expr, sym::Iterator)
         && let init_ty = cx.typeck_results().expr_ty(init)
         && let Some(try_trait) = cx.tcx.lang_items().try_trait()
         && implements_trait(cx, init_ty, try_trait, &[])
