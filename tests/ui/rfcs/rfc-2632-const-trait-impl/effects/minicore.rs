@@ -344,6 +344,15 @@ trait PartialEq<Rhs: ?Sized = Self> {
     }
 }
 
+impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &&B) -> bool {
+        PartialEq::eq(*self, *other)
+    }
+}
+
 // FIXME(effects): again, this should not error without Rhs specified
 impl PartialEq<str> for str {
     fn eq(&self, other: &str) -> bool {
