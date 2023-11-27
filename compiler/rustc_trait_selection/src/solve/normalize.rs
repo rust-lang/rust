@@ -4,10 +4,11 @@ use crate::traits::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::TraitEngineExt;
 use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::Reveal;
+use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{FallibleTypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
@@ -39,6 +40,19 @@ pub(crate) fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCt
     let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes };
 
     value.try_fold_with(&mut folder)
+}
+
+// Deeply normalize a value and return it
+pub(crate) fn deeply_normalize_for_diagnostics<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    t: T,
+) -> T {
+    infcx
+        .commit_if_ok(|_| {
+            deeply_normalize(infcx.at(&ObligationCause::dummy(), param_env), t.clone())
+        })
+        .unwrap_or(t)
 }
 
 struct NormalizationFolder<'me, 'tcx> {
