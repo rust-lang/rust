@@ -46,6 +46,7 @@ impl<'a, T: Clone + IntoDiagArg> IntoDiagArg for &'a T {
     }
 }
 
+#[macro_export]
 macro_rules! into_diag_arg_using_display {
     ($( $ty:ty ),+ $(,)?) => {
         $(
