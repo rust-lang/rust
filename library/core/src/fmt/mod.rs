@@ -292,7 +292,7 @@ pub struct FormattingOptions {
     sign_aware_zero_pad: bool,
     alternate: bool,
     fill: char,
-    alignment: Option<Alignment>,
+    align: Option<Alignment>,
     width: Option<usize>,
     precision: Option<usize>,
     debug_as_hex: Option<DebugAsHex>,
@@ -316,7 +316,7 @@ impl FormattingOptions {
             sign_aware_zero_pad: false,
             alternate: false,
             fill: ' ',
-            alignment: None,
+            align: None,
             width: None,
             precision: None,
             debug_as_hex: None,
@@ -373,15 +373,15 @@ impl FormattingOptions {
     /// The alignment specifies how the value being formatted should be
     /// positioned if it is smaller than the width of the formatter.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn alignment(&mut self, alignment: Option<Alignment>) -> &mut Self {
-        self.alignment = alignment;
+    pub fn align(&mut self, align: Option<Alignment>) -> &mut Self {
+        self.align = align;
         self
     }
     /// Sets or removes the width.
     ///
     /// This is a parameter for the “minimum width” that the format should take
     /// up. If the value’s string does not fill up this many characters, then
-    /// the padding specified by [`FormattingOptions::fill`]/[`FormattingOptions::alignment`]
+    /// the padding specified by [`FormattingOptions::fill`]/[`FormattingOptions::align`]
     /// will be used to take up the required space.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub fn width(&mut self, width: Option<usize>) -> &mut Self {
@@ -432,8 +432,8 @@ impl FormattingOptions {
     }
     /// Returns the current alignment.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn get_alignment(&self) -> Option<Alignment> {
-        self.alignment
+    pub fn get_align(&self) -> Option<Alignment> {
+        self.align
     }
     /// Returns the current width.
     #[unstable(feature = "formatting_options", issue = "118117")]
@@ -1459,7 +1459,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
 
 unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argument<'_>]) -> Result {
     fmt.options.fill(arg.fill);
-    fmt.options.alignment(arg.align.into());
+    fmt.options.align(arg.align.into());
     fmt.options.flags(arg.flags);
     // SAFETY: arg and args come from the same Arguments,
     // which guarantees the indexes are always within bounds.
@@ -1623,13 +1623,13 @@ impl<'a> Formatter<'a> {
             Some(min) if self.sign_aware_zero_pad() => {
                 let old_fill = crate::mem::replace(&mut self.options.fill, '0');
                 let old_align =
-                    crate::mem::replace(&mut self.options.alignment, Some(Alignment::Right));
+                    crate::mem::replace(&mut self.options.align, Some(Alignment::Right));
                 write_prefix(self, sign, prefix)?;
                 let post_padding = self.padding(min - width, Alignment::Right)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)?;
                 self.options.fill = old_fill;
-                self.options.alignment = old_align;
+                self.options.align = old_align;
                 Ok(())
             }
             // Otherwise, the sign and prefix goes after the padding
@@ -1767,7 +1767,7 @@ impl<'a> Formatter<'a> {
                 formatted.sign = "";
                 width = width.saturating_sub(sign.len());
                 self.options.fill('0');
-                self.options.alignment(Some(Alignment::Right));
+                self.options.align(Some(Alignment::Right));
             }
 
             // remaining parts go through the ordinary padding process.
@@ -1785,7 +1785,7 @@ impl<'a> Formatter<'a> {
                 post_padding.write(self)
             };
             self.options.fill(old_fill);
-            self.options.alignment(old_align);
+            self.options.align(old_align);
             ret
         } else {
             // this is the common case and we take a shortcut
@@ -1979,7 +1979,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
-        self.options.get_alignment()
+        self.options.get_align()
     }
 
     /// Returns the optionally specified integer width that the output should be.
