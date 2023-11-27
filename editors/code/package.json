@@ -498,6 +498,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.showRequestFailedErrorNotification": {
+                    "markdownDescription": "Whether to show error notifications for failing requests.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.showDependenciesExplorer": {
                     "markdownDescription": "Whether to show the dependencies view.",
                     "default": true,

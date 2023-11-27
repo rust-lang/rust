@@ -55,7 +55,7 @@ pub(crate) fn toggle_ignore(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
 }
 
 fn has_ignore_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
-    fn_def.attrs().find(|attr| attr.path().map(|it| it.syntax().text() == "ignore") == Some(true))
+    fn_def.attrs().find(|attr| attr.path().is_some_and(|it| it.syntax().text() == "ignore"))
 }
 
 #[cfg(test)]

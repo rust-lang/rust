@@ -6,8 +6,8 @@ use std::{collections::VecDeque, fmt, fs, iter, process::Command, str::FromStr, 
 
 use anyhow::{format_err, Context};
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
-    FileId, LangCrateOrigin, ProcMacroPaths, ReleaseChannel, TargetLayoutLoadResult,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, DependencyKind,
+    Edition, Env, FileId, LangCrateOrigin, ProcMacroPaths, ReleaseChannel, TargetLayoutLoadResult,
 };
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
@@ -834,7 +834,7 @@ fn project_json_to_crate_graph(
 
             for dep in &krate.deps {
                 if let Some(&to) = crates.get(&dep.crate_id) {
-                    add_dep(crate_graph, from, dep.name.clone(), to)
+                    add_dep(crate_graph, from, dep.name.clone(), to, dep.kind().to_owned())
                 }
             }
         }
@@ -979,7 +979,7 @@ fn cargo_to_crate_graph(
                     // cargo metadata does not do any normalization,
                     // so we do it ourselves currently
                     let name = CrateName::normalize_dashes(&name);
-                    add_dep(crate_graph, from, name, to);
+                    add_dep(crate_graph, from, name, to, DependencyKind::Normal);
                 }
             }
         }
@@ -999,7 +999,17 @@ fn cargo_to_crate_graph(
                     continue;
                 }
 
-                add_dep(crate_graph, from, name.clone(), to)
+                add_dep(
+                    crate_graph,
+                    from,
+                    name.clone(),
+                    to,
+                    match dep.kind {
+                        DepKind::Normal => DependencyKind::Normal,
+                        DepKind::Dev => DependencyKind::Dev,
+                        DepKind::Build => DependencyKind::Build,
+                    },
+                )
             }
         }
     }
@@ -1187,7 +1197,17 @@ fn handle_rustc_crates(
             let name = CrateName::new(&dep.name).unwrap();
             if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
                 for &from in rustc_pkg_crates.get(&pkg).into_iter().flatten() {
-                    add_dep(crate_graph, from, name.clone(), to);
+                    add_dep(
+                        crate_graph,
+                        from,
+                        name.clone(),
+                        to,
+                        match dep.kind {
+                            DepKind::Normal => DependencyKind::Normal,
+                            DepKind::Dev => DependencyKind::Dev,
+                            DepKind::Build => DependencyKind::Build,
+                        },
+                    );
                 }
             }
         }
@@ -1209,7 +1229,7 @@ fn handle_rustc_crates(
                     // `rust_analyzer` thinks that it should use the one from the `rustc_source`
                     // instead of the one from `crates.io`
                     if !crate_graph[*from].dependencies.iter().any(|d| d.name == name) {
-                        add_dep(crate_graph, *from, name.clone(), to);
+                        add_dep(crate_graph, *from, name.clone(), to, DependencyKind::Normal);
                     }
                 }
             }
@@ -1308,7 +1328,14 @@ impl SysrootPublicDeps {
     /// Makes `from` depend on the public sysroot crates.
     fn add_to_crate_graph(&self, crate_graph: &mut CrateGraph, from: CrateId) {
         for (name, krate, prelude) in &self.deps {
-            add_dep_with_prelude(crate_graph, from, name.clone(), *krate, *prelude);
+            add_dep_with_prelude(
+                crate_graph,
+                from,
+                name.clone(),
+                *krate,
+                *prelude,
+                DependencyKind::Normal,
+            );
         }
     }
 }
@@ -1363,7 +1390,7 @@ fn sysroot_to_crate_graph(
         for &to in sysroot[from].deps.iter() {
             let name = CrateName::new(&sysroot[to].name).unwrap();
             if let (Some(&from), Some(&to)) = (sysroot_crates.get(&from), sysroot_crates.get(&to)) {
-                add_dep(crate_graph, from, name, to);
+                add_dep(crate_graph, from, name, to, DependencyKind::Normal);
             }
         }
     }
@@ -1442,8 +1469,14 @@ fn handle_hack_cargo_workspace(
         .collect()
 }
 
-fn add_dep(graph: &mut CrateGraph, from: CrateId, name: CrateName, to: CrateId) {
-    add_dep_inner(graph, from, Dependency::new(name, to))
+fn add_dep(
+    graph: &mut CrateGraph,
+    from: CrateId,
+    name: CrateName,
+    to: CrateId,
+    kind: DependencyKind,
+) {
+    add_dep_inner(graph, from, Dependency::new(name, to, kind))
 }
 
 fn add_dep_with_prelude(
@@ -1452,12 +1485,20 @@ fn add_dep_with_prelude(
     name: CrateName,
     to: CrateId,
     prelude: bool,
+    kind: DependencyKind,
 ) {
-    add_dep_inner(graph, from, Dependency::with_prelude(name, to, prelude))
+    add_dep_inner(graph, from, Dependency::with_prelude(name, to, prelude, kind))
 }
 
 fn add_proc_macro_dep(crate_graph: &mut CrateGraph, from: CrateId, to: CrateId, prelude: bool) {
-    add_dep_with_prelude(crate_graph, from, CrateName::new("proc_macro").unwrap(), to, prelude);
+    add_dep_with_prelude(
+        crate_graph,
+        from,
+        CrateName::new("proc_macro").unwrap(),
+        to,
+        prelude,
+        DependencyKind::Normal,
+    );
 }
 
 fn add_dep_inner(graph: &mut CrateGraph, from: CrateId, dep: Dependency) {
