@@ -138,6 +138,14 @@ pub(crate) enum InvalidVariableDeclarationSub {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_switch_ref_box_order)]
+pub(crate) struct SwitchRefBoxOrder {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "box ref")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_invalid_comparison_operator)]
 pub(crate) struct InvalidComparisonOperator {
     #[primary_span]
