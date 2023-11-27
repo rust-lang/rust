@@ -78,7 +78,7 @@ impl EarlyLintPass for Precedence {
                     let sugg = format!(
                         "({}) {} ({})",
                         snippet_with_applicability(cx, left.span, "..", &mut applicability),
-                        op.to_string(),
+                        op.as_str(),
                         snippet_with_applicability(cx, right.span, "..", &mut applicability)
                     );
                     span_sugg(expr, sugg, applicability);
@@ -87,7 +87,7 @@ impl EarlyLintPass for Precedence {
                     let sugg = format!(
                         "({}) {} {}",
                         snippet_with_applicability(cx, left.span, "..", &mut applicability),
-                        op.to_string(),
+                        op.as_str(),
                         snippet_with_applicability(cx, right.span, "..", &mut applicability)
                     );
                     span_sugg(expr, sugg, applicability);
@@ -96,7 +96,7 @@ impl EarlyLintPass for Precedence {
                     let sugg = format!(
                         "{} {} ({})",
                         snippet_with_applicability(cx, left.span, "..", &mut applicability),
-                        op.to_string(),
+                        op.as_str(),
                         snippet_with_applicability(cx, right.span, "..", &mut applicability)
                     );
                     span_sugg(expr, sugg, applicability);
