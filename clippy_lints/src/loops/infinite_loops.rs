@@ -34,27 +34,15 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    // First, find any `break` or `return` without entering any inner loop,
-    // then, find `return` or labeled `break` which breaks this loop with entering inner loop,
-    // otherwise this loop is a infinite loop.
-    let mut direct_visitor = LoopVisitor {
+    let mut loop_visitor = LoopVisitor {
         cx,
         label,
         is_finite: false,
-        enter_nested_loop: false,
+        loop_depth: 0,
     };
-    direct_visitor.visit_block(loop_block);
+    loop_visitor.visit_block(loop_block);
 
-    let is_finite_loop = direct_visitor.is_finite || {
-        let mut inner_loop_visitor = LoopVisitor {
-            cx,
-            label,
-            is_finite: false,
-            enter_nested_loop: true,
-        };
-        inner_loop_visitor.visit_block(loop_block);
-        inner_loop_visitor.is_finite
-    };
+    let is_finite_loop = loop_visitor.is_finite;
 
     if !is_finite_loop {
         span_lint_and_then(cx, INFINITE_LOOPS, expr.span, "infinite loop detected", |diag| {
@@ -103,26 +91,27 @@ fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option
 struct LoopVisitor<'hir, 'tcx> {
     cx: &'hir LateContext<'tcx>,
     label: Option<Label>,
+    loop_depth: usize,
     is_finite: bool,
-    enter_nested_loop: bool,
 }
 
 impl<'hir> Visitor<'hir> for LoopVisitor<'hir, '_> {
     fn visit_expr(&mut self, ex: &'hir Expr<'_>) {
         match &ex.kind {
             ExprKind::Break(hir::Destination { label, .. }, ..) => {
-                // When entering nested loop, only by breaking this loop's label
-                // would be considered as exiting this loop.
-                if self.enter_nested_loop {
-                    if label.is_some() && *label == self.label {
-                        self.is_finite = true;
-                    }
-                } else {
+                // Assuming breaks the loop when `loop_depth` is 0,
+                // as it could only means this `break` breaks current loop or any of its upper loop.
+                // Or, the depth is not zero but the label is matched.
+                if self.loop_depth == 0 || (label.is_some() && *label == self.label) {
                     self.is_finite = true;
                 }
             },
             ExprKind::Ret(..) => self.is_finite = true,
-            ExprKind::Loop(..) if !self.enter_nested_loop => (),
+            ExprKind::Loop(..) => {
+                self.loop_depth += 1;
+                walk_expr(self, ex);
+                self.loop_depth = self.loop_depth.saturating_sub(1);
+            },
             _ => {
                 // Calls to a function that never return
                 if let Some(did) = fn_def_id(self.cx, ex) {
