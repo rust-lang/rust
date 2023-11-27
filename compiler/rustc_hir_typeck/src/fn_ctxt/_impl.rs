@@ -159,7 +159,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn write_method_call(&self, hir_id: hir::HirId, method: MethodCallee<'tcx>) {
+    pub fn write_method_call_and_enforce_effects(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+        method: MethodCallee<'tcx>,
+    ) {
+        self.enforce_context_effects(hir_id, span, method.def_id, method.args);
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_args(hir_id, method.args);
     }

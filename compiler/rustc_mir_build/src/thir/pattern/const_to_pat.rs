@@ -263,13 +263,13 @@ impl<'tcx> ConstToPat<'tcx> {
         // (If there isn't, then we can safely issue a hard
         // error, because that's never worked, due to compiler
         // using `PartialEq::eq` in this scenario in the past.)
-        let partial_eq_trait_id =
-            self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
+        let tcx = self.tcx();
+        let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, Some(self.span));
         let partial_eq_obligation = Obligation::new(
-            self.tcx(),
+            tcx,
             ObligationCause::dummy(),
             self.param_env,
-            ty::TraitRef::new(self.tcx(), partial_eq_trait_id, [ty, ty]),
+            ty::TraitRef::new(tcx, partial_eq_trait_id, [ty, ty]),
         );
 
         // This *could* accept a type that isn't actually `PartialEq`, because region bounds get

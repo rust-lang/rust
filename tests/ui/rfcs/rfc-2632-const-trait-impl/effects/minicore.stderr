@@ -1,32 +1,61 @@
-error[E0369]: cannot add `i32` to `i32`
-  --> $DIR/minicore.rs:33:20
+warning: to use a constant of type `&str` in a pattern, the type must implement `PartialEq`
+  --> $DIR/minicore.rs:332:9
    |
-LL |     let x = 42_i32 + 43_i32;
-   |             ------ ^ ------ i32
-   |             |
-   |             i32
-
-error[E0369]: cannot add `i32` to `i32`
-  --> $DIR/minicore.rs:37:20
+LL |         "true" => Ok(true),
+   |         ^^^^^^
    |
-LL |     let x = 42_i32 + 43_i32;
-   |             ------ ^ ------ i32
-   |             |
-   |             i32
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
+   = note: `#[warn(const_patterns_without_partial_eq)]` on by default
 
-error[E0600]: cannot apply unary operator `!` to type `bool`
-  --> $DIR/minicore.rs:343:9
+warning: to use a constant of type `&str` in a pattern, the type must implement `PartialEq`
+  --> $DIR/minicore.rs:333:9
    |
-LL |         !self.eq(other)
-   |         ^^^^^^^^^^^^^^^ cannot apply unary operator `!`
-
-error[E0600]: cannot apply unary operator `!` to type `bool`
-  --> $DIR/minicore.rs:365:9
+LL |         "false" => Ok(false),
+   |         ^^^^^^^
    |
-LL |         !self
-   |         ^^^^^ cannot apply unary operator `!`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
 
-error: aborting due to 4 previous errors
+error[E0493]: destructor of `Self` cannot be evaluated at compile-time
+  --> $DIR/minicore.rs:494:9
+   |
+LL |         *self = source.clone()
+   |         ^^^^^
+   |         |
+   |         the destructor for this type cannot be evaluated in constant functions
+   |         value is dropped here
 
-Some errors have detailed explanations: E0369, E0600.
-For more information about an error, try `rustc --explain E0369`.
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/minicore.rs:504:35
+   |
+LL | const fn drop<T: ~const Destruct>(_: T) {}
+   |                                   ^      - value is dropped here
+   |                                   |
+   |                                   the destructor for this type cannot be evaluated in constant functions
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0493`.
+Future incompatibility report: Future breakage diagnostic:
+warning: to use a constant of type `&str` in a pattern, the type must implement `PartialEq`
+  --> $DIR/minicore.rs:332:9
+   |
+LL |         "true" => Ok(true),
+   |         ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
+   = note: `#[warn(const_patterns_without_partial_eq)]` on by default
+
+Future breakage diagnostic:
+warning: to use a constant of type `&str` in a pattern, the type must implement `PartialEq`
+  --> $DIR/minicore.rs:333:9
+   |
+LL |         "false" => Ok(false),
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
+   = note: `#[warn(const_patterns_without_partial_eq)]` on by default
+

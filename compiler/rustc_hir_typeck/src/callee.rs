@@ -845,7 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected,
         );
 
-        self.write_method_call(call_expr.hir_id, method_callee);
+        self.write_method_call_and_enforce_effects(call_expr.hir_id, call_expr.span, method_callee);
         output_type
     }
 }
@@ -895,7 +895,11 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 adjustments.extend(autoref);
                 fcx.apply_adjustments(self.callee_expr, adjustments);
 
-                fcx.write_method_call(self.call_expr.hir_id, method_callee);
+                fcx.write_method_call_and_enforce_effects(
+                    self.call_expr.hir_id,
+                    self.call_expr.span,
+                    method_callee,
+                );
             }
             None => {
                 // This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
