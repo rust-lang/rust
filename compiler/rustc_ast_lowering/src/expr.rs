@@ -1,7 +1,7 @@
 use super::errors::{
     AsyncCoroutinesNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, CoroutineTooManyParameters,
-    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
+    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
     NotSupportedForLifetimeBinderAsyncClosure, UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
@@ -565,14 +565,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         });
         let hir_id = self.next_id();
+        let span = self.lower_span(arm.span);
         self.lower_attrs(hir_id, &arm.attrs);
         let body = if let Some(body) = &arm.body {
+            // FIXME(never_patterns): Disallow never pattern with a body or guard
             self.lower_expr(body)
         } else {
+            if !pat.is_never_pattern() {
+                self.tcx
+                    .sess
+                    .emit_err(MatchArmWithNoBody { span, suggestion: span.shrink_to_hi() });
+            }
+
             // An arm without a body, meant for never patterns.
             // We add a fake `loop {}` arm body so that it typecks to `!`.
             // FIXME(never_patterns): Desugar into a call to `unreachable_unchecked`.
-            let span = pat.span;
             let block = self.arena.alloc(hir::Block {
                 stmts: &[],
                 expr: None,
@@ -587,7 +594,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
             })
         };
-        hir::Arm { hir_id, pat, guard, body, span: self.lower_span(arm.span) }
+        hir::Arm { hir_id, pat, guard, body, span }
     }
 
     /// Lower an `async` construct to a coroutine that implements `Future`.

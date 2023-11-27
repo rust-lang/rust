@@ -659,8 +659,8 @@ impl Pat {
         matches!(self.kind, PatKind::Rest)
     }
 
-    /// Could this be a never pattern? I.e. is it a never pattern modulo macro invocations that
-    /// might return never patterns?
+    /// Whether this could be a never pattern, taking into account that a macro invocation can
+    /// return a never pattern. Used to inform errors during parsing.
     pub fn could_be_never_pattern(&self) -> bool {
         let mut could_be_never_pattern = false;
         self.walk(&mut |pat| match &pat.kind {

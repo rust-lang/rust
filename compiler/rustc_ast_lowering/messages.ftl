@@ -91,6 +91,10 @@ ast_lowering_invalid_register =
 ast_lowering_invalid_register_class =
     invalid register class `{$reg_class}`: {$error}
 
+ast_lowering_match_arm_with_no_body =
+    `match` arm with no body
+    .suggestion = add a body after the pattern
+
 ast_lowering_misplaced_assoc_ty_binding =
     associated type bounds are only allowed in where clauses and function signatures, not in {$position}
 

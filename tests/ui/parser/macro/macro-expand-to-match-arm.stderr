@@ -10,5 +10,11 @@ LL |         arm!(None => {}),
    = note: the usage of `arm!` is likely invalid in pattern context
    = note: macros cannot expand to match arms
 
-error: aborting due to 1 previous error
+error: `match` arm with no body
+  --> $DIR/macro-expand-to-match-arm.rs:14:9
+   |
+LL |         arm!(None => {}),
+   |         ^^^^^^^^^^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+
+error: aborting due to 2 previous errors
 

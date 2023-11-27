@@ -5,6 +5,8 @@ macro_rules! pat {
 fn main() {
     match Some(false) {
         Some(_)
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
     }
     match Some(false) {
         Some(_)
@@ -26,6 +28,8 @@ fn main() {
     }
     match Some(false) {
         Some(_) if true
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
     }
     match Some(false) {
         Some(_) if true
@@ -34,28 +38,42 @@ fn main() {
     }
     match Some(false) {
         Some(_) if true,
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
     }
     match Some(false) {
         Some(_) if true,
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
         _ => {}
     }
     match Some(false) {
         pat!()
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
     }
     match Some(false) {
         pat!(),
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
     }
     match Some(false) {
         pat!() if true,
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
     }
     match Some(false) {
         pat!()
         //~^ ERROR expected `,` following `match` arm
         //~| HELP missing a comma here
+        //~| ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
         _ => {}
     }
     match Some(false) {
         pat!(),
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
         _ => {}
     }
 }

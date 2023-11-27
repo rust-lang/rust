@@ -13,6 +13,7 @@ fn main() {
         Some(1) => {},
         arm!(None => {}),
         //~^ NOTE caused by the macro expansion here
+        //~| ERROR `match` arm with no body
         Some(2) => {},
         _ => {},
     };
