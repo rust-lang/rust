@@ -387,7 +387,7 @@ impl<'a> Parser<'a> {
             if op.node.lazy() {
                 self.sess.emit_err(errors::InvalidExpressionInLetElse {
                     span: init.span,
-                    operator: op.node.to_string(),
+                    operator: op.node.as_str(),
                     sugg: errors::WrapExpressionInParentheses {
                         left: init.span.shrink_to_lo(),
                         right: init.span.shrink_to_hi(),
