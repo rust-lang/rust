@@ -3,7 +3,6 @@
 #![allow(clippy::redundant_async_block)]
 #![allow(clippy::type_complexity)]
 #![allow(unused)]
-#![allow(clippy::double_parens)]
 
 async fn something() -> u32 {
     21
@@ -98,4 +97,8 @@ mod issue11707 {
     fn demo() {
         spawn_on((|| async move {})());
     }
+}
+
+fn avoid_double_parens() {
+    std::convert::identity((|| 13_i32 + 36_i32)()).leading_zeros();
 }

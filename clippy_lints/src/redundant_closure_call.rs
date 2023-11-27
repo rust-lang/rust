@@ -5,7 +5,7 @@ use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
-use rustc_hir::{intravisit as hir_visit, CoroutineKind, CoroutineSource};
+use rustc_hir::{intravisit as hir_visit, CoroutineKind, CoroutineSource, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
@@ -176,12 +176,19 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             hint = hint.asyncify();
                         }
 
-                        diag.span_suggestion(
-                            full_expr.span,
-                            "try doing something like",
-                            hint.maybe_par(),
-                            applicability,
-                        );
+                        let is_in_fn_call_arg = clippy_utils::get_parent_node(cx.tcx, expr.hir_id)
+                            .map(|x| match x {
+                                Node::Expr(expr) => matches!(expr.kind, hir::ExprKind::Call(_, _)),
+                                _ => false,
+                            })
+                            .unwrap_or(false);
+
+                        // avoid clippy::double_parens
+                        if !is_in_fn_call_arg {
+                            hint = hint.maybe_par()
+                        };
+
+                        diag.span_suggestion(full_expr.span, "try doing something like", hint, applicability);
                     }
                 },
             );
