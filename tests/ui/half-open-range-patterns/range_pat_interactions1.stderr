@@ -1,8 +1,8 @@
-error: expected one of `=>`, `if`, or `|`, found `+`
+error: expected one of `,`, `=>`, `if`, `|`, or `}`, found `+`
   --> $DIR/range_pat_interactions1.rs:19:17
    |
 LL |             0..5+1 => errors_only.push(x),
-   |                 ^ expected one of `=>`, `if`, or `|`
+   |                 ^ expected one of `,`, `=>`, `if`, `|`, or `}`
 
 error[E0408]: variable `n` is not bound in all patterns
   --> $DIR/range_pat_interactions1.rs:10:25

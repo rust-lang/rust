@@ -154,7 +154,7 @@ impl<'a> Parser<'a> {
             }
             Err(err) => return Err(err),
         };
-        if rc == RecoverComma::Yes {
+        if rc == RecoverComma::Yes && !first_pat.could_be_never_pattern() {
             self.maybe_recover_unexpected_comma(
                 first_pat.span,
                 matches!(first_pat.kind, PatKind::MacCall(_)),
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
-            if rc == RecoverComma::Yes {
+            if rc == RecoverComma::Yes && !pat.could_be_never_pattern() {
                 self.maybe_recover_unexpected_comma(pat.span, false, rt)?;
             }
             pats.push(pat);

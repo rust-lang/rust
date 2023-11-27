@@ -505,7 +505,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             pat,
             guard: None,
-            body: expr,
+            body: Some(expr),
             span,
             id: ast::DUMMY_NODE_ID,
             is_placeholder: false,

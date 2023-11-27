@@ -658,6 +658,24 @@ impl Pat {
     pub fn is_rest(&self) -> bool {
         matches!(self.kind, PatKind::Rest)
     }
+
+    /// Could this be a never pattern? I.e. is it a never pattern modulo macro invocations that
+    /// might return never patterns?
+    pub fn could_be_never_pattern(&self) -> bool {
+        let mut could_be_never_pattern = false;
+        self.walk(&mut |pat| match &pat.kind {
+            PatKind::Never | PatKind::MacCall(_) => {
+                could_be_never_pattern = true;
+                false
+            }
+            PatKind::Or(s) => {
+                could_be_never_pattern = s.iter().all(|p| p.could_be_never_pattern());
+                false
+            }
+            _ => true,
+        });
+        could_be_never_pattern
+    }
 }
 
 /// A single field in a struct pattern.
@@ -1080,8 +1098,8 @@ pub struct Arm {
     pub pat: P<Pat>,
     /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`
     pub guard: Option<P<Expr>>,
-    /// Match arm body.
-    pub body: P<Expr>,
+    /// Match arm body. Omitted if the pattern is a never pattern.
+    pub body: Option<P<Expr>>,
     pub span: Span,
     pub id: NodeId,
     pub is_placeholder: bool,

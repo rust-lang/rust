@@ -6,7 +6,6 @@ fn main() {
     match Some(false) {
         Some(_)
     }
-    //~^ ERROR expected one of
     match Some(false) {
         Some(_)
         _ => {}
@@ -28,7 +27,6 @@ fn main() {
     match Some(false) {
         Some(_) if true
     }
-    //~^ ERROR expected one of
     match Some(false) {
         Some(_) if true
         _ => {}
@@ -36,33 +34,28 @@ fn main() {
     }
     match Some(false) {
         Some(_) if true,
-        //~^ ERROR expected one of
     }
     match Some(false) {
         Some(_) if true,
-        //~^ ERROR expected one of
         _ => {}
     }
     match Some(false) {
         pat!()
     }
-    //~^ ERROR expected one of
     match Some(false) {
         pat!(),
-        //~^ ERROR unexpected `,` in pattern
     }
     match Some(false) {
         pat!() if true,
-        //~^ ERROR expected one of
     }
     match Some(false) {
         pat!()
+        //~^ ERROR expected `,` following `match` arm
+        //~| HELP missing a comma here
         _ => {}
-        //~^ ERROR expected one of
     }
     match Some(false) {
         pat!(),
-        //~^ ERROR unexpected `,` in pattern
         _ => {}
     }
 }

@@ -566,13 +566,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
         let hir_id = self.next_id();
         self.lower_attrs(hir_id, &arm.attrs);
-        hir::Arm {
-            hir_id,
-            pat,
-            guard,
-            body: self.lower_expr(&arm.body),
-            span: self.lower_span(arm.span),
-        }
+        let body = if let Some(body) = &arm.body {
+            self.lower_expr(body)
+        } else {
+            // An arm without a body, meant for never patterns.
+            // We add a fake `loop {}` arm body so that it typecks to `!`.
+            // FIXME(never_patterns): Desugar into a call to `unreachable_unchecked`.
+            let span = pat.span;
+            let block = self.arena.alloc(hir::Block {
+                stmts: &[],
+                expr: None,
+                hir_id: self.next_id(),
+                rules: hir::BlockCheckMode::DefaultBlock,
+                span,
+                targeted_by_break: false,
+            });
+            self.arena.alloc(hir::Expr {
+                hir_id: self.next_id(),
+                kind: hir::ExprKind::Loop(block, None, hir::LoopSource::Loop, span),
+                span,
+            })
+        };
+        hir::Arm { hir_id, pat, guard, body, span: self.lower_span(arm.span) }
     }
 
     /// Lower an `async` construct to a coroutine that implements `Future`.

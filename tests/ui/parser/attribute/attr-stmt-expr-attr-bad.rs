@@ -84,15 +84,15 @@ fn main() {}
 
 #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] 10 => () } }
 //~^ ERROR inclusive range with no end
-//~| ERROR expected one of `=>`, `if`, or `|`, found `#`
+//~| ERROR expected one of `,`, `=>`, `if`, `|`, or `}`, found `#`
 #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] -10 => () } }
 //~^ ERROR inclusive range with no end
-//~| ERROR expected one of `=>`, `if`, or `|`, found `#`
+//~| ERROR expected one of `,`, `=>`, `if`, `|`, or `}`, found `#`
 #[cfg(FALSE)] fn e() { match 0 { 0..=-#[attr] 10 => () } }
 //~^ ERROR unexpected token: `#`
 #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
 //~^ ERROR inclusive range with no end
-//~| ERROR expected one of `=>`, `if`, or `|`, found `#`
+//~| ERROR expected one of `,`, `=>`, `if`, `|`, or `}`, found `#`
 
 #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
 //~^ ERROR unexpected token: `#`

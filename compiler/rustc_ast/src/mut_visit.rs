@@ -453,7 +453,7 @@ pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[
     vis.visit_id(id);
     vis.visit_pat(pat);
     visit_opt(guard, |guard| vis.visit_expr(guard));
-    vis.visit_expr(body);
+    visit_opt(body, |body| vis.visit_expr(body));
     vis.visit_span(span);
     smallvec![arm]
 }

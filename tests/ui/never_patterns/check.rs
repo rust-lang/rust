@@ -15,11 +15,12 @@ fn no_arms_or_guards(x: Void) {
         None => {}
     }
     match None::<Void> {
+        //~^ ERROR non-exhaustive
         Some(!) if true,
-        //~^ ERROR expected one of
         None => {}
     }
     match None::<Void> {
+        //~^ ERROR non-exhaustive
         Some(!) if true => {}
         None => {}
     }

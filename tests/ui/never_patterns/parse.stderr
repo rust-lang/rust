@@ -1,0 +1,26 @@
+error: expected `,` following `match` arm
+  --> $DIR/parse.rs:26:16
+   |
+LL |         Some(!)
+   |                ^ help: missing a comma here to end this `match` arm: `,`
+
+error: expected `,` following `match` arm
+  --> $DIR/parse.rs:31:24
+   |
+LL |         Some(!) if true
+   |                        ^ help: missing a comma here to end this `match` arm: `,`
+
+error: expected one of `,`, `=>`, `if`, `|`, or `}`, found `<=`
+  --> $DIR/parse.rs:40:17
+   |
+LL |         Some(!) <=
+   |                 ^^ expected one of `,`, `=>`, `if`, `|`, or `}`
+
+error: top-level or-patterns are not allowed in `let` bindings
+  --> $DIR/parse.rs:64:9
+   |
+LL |     let Ok(_) | Err(!) = &res; // Disallowed; see #82048.
+   |         ^^^^^^^^^^^^^^ help: wrap the pattern in parentheses: `(Ok(_) | Err(!))`
+
+error: aborting due to 4 previous errors
+
