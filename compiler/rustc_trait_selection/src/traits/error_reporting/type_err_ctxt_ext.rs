@@ -444,21 +444,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // reported on the binding definition (#56607).
                             return;
                         }
-                        let (post_message, pre_message, type_def, file_note) = self
+                        let mut file = None;
+                        let (post_message, pre_message, type_def) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
-                                let (t, file) = self.tcx.short_ty_string(t);
+                                let t = self.tcx.short_ty_string(t, &mut file);
                                 (
                                     format!(" in `{t}`"),
                                     format!("within `{t}`, "),
                                     s.map(|s| (format!("within this `{t}`"), s)),
-                                    file.map(|file| format!(
-                                        "the full trait has been written to '{}'",
-                                        file.display(),
-                                    ))
                                 )
                             })
                             .unwrap_or_default();
+                        let file_note = file.map(|file| format!(
+                            "the full trait has been written to '{}'",
+                            file.display(),
+                        ));
 
                         let OnUnimplementedNote {
                             message,
@@ -547,6 +548,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
 
                         let explanation = get_explanation_based_on_obligation(
+                            self.tcx,
                             &obligation,
                             trait_ref,
                             &trait_predicate,

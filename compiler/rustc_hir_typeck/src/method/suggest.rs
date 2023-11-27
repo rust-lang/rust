@@ -262,7 +262,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         rcvr_expr: &hir::Expr<'tcx>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let (ty_str, _ty_file) = self.tcx.short_ty_string(rcvr_ty);
+        let mut file = None;
+        let ty_str = self.tcx.short_ty_string(rcvr_ty, &mut file);
         let mut err = struct_span_err!(
             self.tcx.sess,
             rcvr_expr.span,
@@ -280,6 +281,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "a writer is needed before this format string",
             );
         };
+        if let Some(file) = file {
+            err.note(format!("the full type name has been written to '{}'", file.display()));
+        }
 
         err
     }
@@ -299,11 +303,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let ((mut ty_str, ty_file), short_ty_str) =
+        let mut ty_file = None;
+        let (mut ty_str, short_ty_str) =
             if trait_missing_method && let ty::Dynamic(predicates, _, _) = rcvr_ty.kind() {
-                ((predicates.to_string(), None), with_forced_trimmed_paths!(predicates.to_string()))
+                (predicates.to_string(), with_forced_trimmed_paths!(predicates.to_string()))
             } else {
-                (tcx.short_ty_string(rcvr_ty), with_forced_trimmed_paths!(rcvr_ty.to_string()))
+                (
+                    tcx.short_ty_string(rcvr_ty, &mut ty_file),
+                    with_forced_trimmed_paths!(rcvr_ty.to_string()),
+                )
             };
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
