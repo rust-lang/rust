@@ -401,9 +401,7 @@ fn run_compiler(
                         Ok(())
                     })?;
 
-                    // Make sure the `output_filenames` query is run for its side
-                    // effects of writing the dep-info and reporting errors.
-                    queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
+                    queries.write_dep_info()?;
                 } else {
                     let krate = queries.parse()?;
                     pretty::print(
@@ -431,9 +429,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            // Make sure the `output_filenames` query is run for its side
-            // effects of writing the dep-info and reporting errors.
-            queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
+            queries.write_dep_info()?;
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
@@ -648,12 +644,11 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
 fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
     assert!(sess.opts.unstable_opts.link_only);
     if let Input::File(file) = &sess.io.input {
-        let outputs = compiler.build_output_filenames(sess, &[]);
         let rlink_data = fs::read(file).unwrap_or_else(|err| {
             sess.emit_fatal(RlinkUnableToRead { err });
         });
-        let codegen_results = match CodegenResults::deserialize_rlink(sess, rlink_data) {
-            Ok(codegen) => codegen,
+        let (codegen_results, outputs) = match CodegenResults::deserialize_rlink(sess, rlink_data) {
+            Ok((codegen, outputs)) => (codegen, outputs),
             Err(err) => {
                 match err {
                     CodegenErrors::WrongFileType => sess.emit_fatal(RLinkWrongFileType),

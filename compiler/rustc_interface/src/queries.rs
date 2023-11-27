@@ -85,7 +85,6 @@ pub struct Queries<'tcx> {
     hir_arena: WorkerLocal<rustc_hir::Arena<'tcx>>,
 
     parse: Query<ast::Crate>,
-    pre_configure: Query<(ast::Crate, ast::AttrVec)>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
 }
@@ -98,7 +97,6 @@ impl<'tcx> Queries<'tcx> {
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
             parse: Default::default(),
-            pre_configure: Default::default(),
             gcx: Default::default(),
         }
     }
@@ -113,12 +111,12 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    #[deprecated = "pre_configure may be made private in the future. If you need it please open an issue with your use case."]
-    pub fn pre_configure(&self) -> Result<QueryResult<'_, (ast::Crate, ast::AttrVec)>> {
-        self.pre_configure.compute(|| {
+    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
+        self.gcx.compute(|| {
+            let sess = &self.compiler.sess;
+
             let mut krate = self.parse()?.steal();
 
-            let sess = &self.compiler.sess;
             rustc_builtin_macros::cmdline_attrs::inject(
                 &mut krate,
                 &sess.parse_sess,
@@ -127,15 +125,6 @@ impl<'tcx> Queries<'tcx> {
 
             let pre_configured_attrs =
                 rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
-            Ok((krate, pre_configured_attrs))
-        })
-    }
-
-    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
-        self.gcx.compute(|| {
-            let sess = &self.compiler.sess;
-            #[allow(deprecated)]
-            let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
             // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
             let crate_name = find_crate_name(sess, &pre_configured_attrs);
@@ -146,6 +135,7 @@ impl<'tcx> Queries<'tcx> {
                 sess.opts.cg.metadata.clone(),
                 sess.cfg_version,
             );
+            let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
             let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
 
             let cstore = FreezeLock::new(Box::new(CStore::new(
@@ -180,9 +170,17 @@ impl<'tcx> Queries<'tcx> {
                     crate_name,
                 )));
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
+                feed.output_filenames(Arc::new(outputs));
             });
             Ok(qcx)
         })
+    }
+
+    pub fn write_dep_info(&'tcx self) -> Result<()> {
+        self.global_ctxt()?.enter(|tcx| {
+            passes::write_dep_info(tcx);
+        });
+        Ok(())
     }
 
     /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
@@ -284,8 +282,13 @@ impl Linker {
 
         if sess.opts.unstable_opts.no_link {
             let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
-            CodegenResults::serialize_rlink(sess, &rlink_file, &codegen_results)
-                .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
+            CodegenResults::serialize_rlink(
+                sess,
+                &rlink_file,
+                &codegen_results,
+                &*self.output_filenames,
+            )
+            .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
             return Ok(());
         }
 
