@@ -96,6 +96,6 @@ mod issue11707 {
     fn spawn_on(fut: impl Future<Output = ()>) {}
 
     fn demo() {
-        spawn_on(((|| async move {})()));
+        spawn_on((|| async move {})());
     }
 }
