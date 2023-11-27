@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
         if let ast::ExprKind::Binary(op, ..) = init.kind {
-            if op.node.lazy() {
+            if op.node.is_lazy() {
                 self.sess.emit_err(errors::InvalidExpressionInLetElse {
                     span: init.span,
                     operator: op.node.as_str(),
