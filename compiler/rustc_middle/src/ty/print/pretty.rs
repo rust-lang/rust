@@ -283,7 +283,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// from at least one local module, and returns `true`. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
     fn try_print_visible_def_path(&mut self, def_id: DefId) -> Result<bool, PrintError> {
-        if NO_VISIBLE_PATH.with(|flag| flag.get()) {
+        if with_no_visible_paths() {
             return Ok(false);
         }
 
@@ -367,7 +367,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     /// Try to see if this path can be trimmed to a unique symbol name.
     fn try_print_trimmed_def_path(&mut self, def_id: DefId) -> Result<bool, PrintError> {
-        if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+        if with_forced_trimmed_paths() {
             let trimmed = self.force_print_trimmed_def_path(def_id)?;
             if trimmed {
                 return Ok(true);
@@ -375,8 +375,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
         if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
             || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
-            || NO_TRIMMED_PATH.with(|flag| flag.get())
-            || SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get())
+            || with_no_trimmed_paths()
+            || with_crate_prefix()
         {
             return Ok(false);
         }
@@ -861,7 +861,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             p!("@", print_def_path(did.to_def_id(), args));
                         } else {
                             let span = self.tcx().def_span(did);
-                            let preference = if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+                            let preference = if with_forced_trimmed_paths() {
                                 FileNameDisplayPreference::Short
                             } else {
                                 FileNameDisplayPreference::Remapped
@@ -1102,7 +1102,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             write!(self, "Sized")?;
         }
 
-        if !FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+        if !with_forced_trimmed_paths() {
             for re in lifetimes {
                 write!(self, " + ")?;
                 self.print_region(re)?;
@@ -1886,7 +1886,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             // available, and filename/line-number is mostly uninteresting.
             let use_types = !def_id.is_local() || {
                 // Otherwise, use filename/line-number if forced.
-                let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
+                let force_no_types = with_forced_impl_filename_line();
                 !force_no_types
             };
 
@@ -1951,7 +1951,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         if cnum == LOCAL_CRATE {
             if self.tcx.sess.at_least_rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
-                if SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get()) {
+                if with_crate_prefix() {
                     write!(self, "{}", kw::Crate)?;
                     self.empty_path = false;
                 }
@@ -2154,7 +2154,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             return true;
         }
 
-        if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+        if with_forced_trimmed_paths() {
             return false;
         }
 
@@ -2437,7 +2437,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         } else {
             let tcx = self.tcx;
 
-            let trim_path = FORCE_TRIMMED_PATH.with(|flag| flag.get());
+            let trim_path = with_forced_trimmed_paths();
             // Closure used in `RegionFolder` to create names for anonymous late-bound
             // regions. We use two `DebruijnIndex`es (one for the currently folded
             // late-bound region and the other for the binder level) to determine
