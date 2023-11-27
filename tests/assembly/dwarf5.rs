@@ -18,3 +18,4 @@ pub fn wibble() {}
 // CHECK-NOT: .short 2
 // CHECK-NOT: .short 4
 // CHECK: .short 5
+// CHECK: .section .debug_names
