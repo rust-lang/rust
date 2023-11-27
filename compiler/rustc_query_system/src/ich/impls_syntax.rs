@@ -117,9 +117,9 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
         self.declared_lang_features.hash_stable(hcx, hasher);
         self.declared_lib_features.hash_stable(hcx, hasher);
 
-        self.walk_feature_fields(|feature_name, value| {
-            feature_name.hash_stable(hcx, hasher);
-            value.hash_stable(hcx, hasher);
-        });
+        self.all_features()[..].hash_stable(hcx, hasher);
+        for feature in rustc_feature::UNSTABLE_FEATURES.iter() {
+            feature.feature.name.hash_stable(hcx, hasher);
+        }
     }
 }

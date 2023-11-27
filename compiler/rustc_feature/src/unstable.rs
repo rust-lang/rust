@@ -50,6 +50,8 @@ macro_rules! declare_features {
             }),+
         ];
 
+        const NUM_FEATURES: usize = UNSTABLE_FEATURES.len();
+
         /// A set of features to be used by later passes.
         #[derive(Clone, Default, Debug)]
         pub struct Features {
@@ -82,8 +84,14 @@ macro_rules! declare_features {
                 self.declared_features.insert(symbol);
             }
 
-            pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
-                $(f(stringify!($feature), self.$feature);)+
+            /// This is intended for hashing the set of active features.
+            ///
+            /// The expectation is that this produces much smaller code than other alternatives.
+            ///
+            /// Note that the total feature count is pretty small, so this is not a huge array.
+            #[inline]
+            pub fn all_features(&self) -> [u8; NUM_FEATURES] {
+                [$(self.$feature as u8),+]
             }
 
             /// Is the given feature explicitly declared, i.e. named in a
