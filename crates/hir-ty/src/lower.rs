@@ -768,7 +768,7 @@ impl<'a> TyLoweringContext<'a> {
         }
     }
 
-    fn substs_from_path_segment(
+    pub(super) fn substs_from_path_segment(
         &self,
         segment: PathSegment<'_>,
         def: Option<GenericDefId>,

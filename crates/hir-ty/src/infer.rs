@@ -1152,20 +1152,15 @@ impl<'a> InferenceContext<'a> {
                 (ty, variant)
             }
             TypeNs::TypeAliasId(it) => {
-                let container = it.lookup(self.db.upcast()).container;
-                let parent_subst = match container {
-                    ItemContainerId::TraitId(id) => {
-                        let subst = TyBuilder::subst_for_def(self.db, id, None)
-                            .fill_with_inference_vars(&mut self.table)
-                            .build();
-                        Some(subst)
-                    }
-                    // Type aliases do not exist in impls.
-                    _ => None,
+                let resolved_seg = match unresolved {
+                    None => path.segments().last().unwrap(),
+                    Some(n) => path.segments().get(path.segments().len() - n - 1).unwrap(),
                 };
-                let ty = TyBuilder::def_ty(self.db, it.into(), parent_subst)
-                    .fill_with_inference_vars(&mut self.table)
-                    .build();
+                let substs =
+                    ctx.substs_from_path_segment(resolved_seg, Some(it.into()), true, None);
+                let ty = self.db.ty(it.into());
+                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+
                 self.resolve_variant_on_alias(ty, unresolved, mod_path)
             }
             TypeNs::AdtSelfType(_) => {
