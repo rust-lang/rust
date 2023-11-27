@@ -1097,10 +1097,25 @@ impl<'a> TyLoweringContext<'a> {
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = &binding.type_ref {
-                    let ty = self.lower_ty(type_ref);
-                    let alias_eq =
-                        AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                    predicates.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
+                    if let (TypeRef::ImplTrait(bounds), ImplTraitLoweringState::Disallowed) =
+                        (type_ref, &self.impl_trait_mode)
+                    {
+                        for bound in bounds {
+                            predicates.extend(
+                                self.lower_type_bound(
+                                    bound,
+                                    TyKind::Alias(AliasTy::Projection(projection_ty.clone()))
+                                        .intern(Interner),
+                                    false,
+                                ),
+                            );
+                        }
+                    } else {
+                        let ty = self.lower_ty(type_ref);
+                        let alias_eq =
+                            AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
+                        predicates.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
+                    }
                 }
                 for bound in binding.bounds.iter() {
                     predicates.extend(self.lower_type_bound(

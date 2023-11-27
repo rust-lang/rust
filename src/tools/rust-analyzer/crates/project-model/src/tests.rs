@@ -249,3 +249,55 @@ fn crate_graph_dedup() {
     crate_graph.extend(regex_crate_graph, &mut regex_proc_macros);
     assert_eq!(crate_graph.iter().count(), 118);
 }
+
+#[test]
+fn test_deduplicate_origin_dev() {
+    let path_map = &mut Default::default();
+    let (mut crate_graph, _proc_macros) =
+        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_A.json");
+    crate_graph.sort_deps();
+    let (crate_graph_1, mut _proc_macros_2) =
+        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_B.json");
+
+    crate_graph.extend(crate_graph_1, &mut _proc_macros_2);
+
+    let mut crates_named_p2 = vec![];
+    for id in crate_graph.iter() {
+        let krate = &crate_graph[id];
+        if let Some(name) = krate.display_name.as_ref() {
+            if name.to_string() == "p2" {
+                crates_named_p2.push(krate);
+            }
+        }
+    }
+
+    assert!(crates_named_p2.len() == 1);
+    let p2 = crates_named_p2[0];
+    assert!(p2.origin.is_local());
+}
+
+#[test]
+fn test_deduplicate_origin_dev_rev() {
+    let path_map = &mut Default::default();
+    let (mut crate_graph, _proc_macros) =
+        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_B.json");
+    crate_graph.sort_deps();
+    let (crate_graph_1, mut _proc_macros_2) =
+        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_A.json");
+
+    crate_graph.extend(crate_graph_1, &mut _proc_macros_2);
+
+    let mut crates_named_p2 = vec![];
+    for id in crate_graph.iter() {
+        let krate = &crate_graph[id];
+        if let Some(name) = krate.display_name.as_ref() {
+            if name.to_string() == "p2" {
+                crates_named_p2.push(krate);
+            }
+        }
+    }
+
+    assert!(crates_named_p2.len() == 1);
+    let p2 = crates_named_p2[0];
+    assert!(p2.origin.is_local());
+}

@@ -183,15 +183,6 @@ impl DefMap {
         shadow: BuiltinShadowMode,
         expected_macro_subns: Option<MacroSubNs>,
     ) -> ResolvePathResult {
-        let graph = db.crate_graph();
-        let _cx = stdx::panic_context::enter(format!(
-            "DefMap {:?} crate_name={:?} block={:?} path={}",
-            self.krate,
-            graph[self.krate].display_name,
-            self.block,
-            path.display(db.upcast())
-        ));
-
         let mut segments = path.segments().iter().enumerate();
         let mut curr_per_ns = match path.kind {
             PathKind::DollarCrate(krate) => {

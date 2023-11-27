@@ -108,7 +108,7 @@ fn try_extend_selection(
 
     let node = shallowest_node(&node);
 
-    if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
+    if node.parent().is_some_and(|n| list_kinds.contains(&n.kind())) {
         if let Some(range) = extend_list_item(&node) {
             return Some(range);
         }
