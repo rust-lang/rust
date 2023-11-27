@@ -578,7 +578,7 @@ impl<'a> Parser<'a> {
                             // this only when parsing an index expression.
                             err.span_suggestion_verbose(
                                 self.token.span,
-                                "you might have meant to make a slice with range index",
+                                "you might have meant a range expression",
                                 "..",
                                 Applicability::MaybeIncorrect,
                             );

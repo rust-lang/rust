@@ -4,7 +4,7 @@ error: expected one of `.`, `?`, `]`, or an operator, found `:`
 LL |     &[1, 2, 3][1:2];
    |                 ^ expected one of `.`, `?`, `]`, or an operator
    |
-help: you might have meant to make a slice with range index
+help: you might have meant a range expression
    |
 LL |     &[1, 2, 3][1..2];
    |                 ~~
