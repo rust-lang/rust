@@ -1686,7 +1686,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `unused_lifetimes` lint detects lifetime parameters that are never
-    /// used.
+    /// used, or are redundant because they are equal to another named lifetime.
     ///
     /// ### Example
     ///
@@ -1694,6 +1694,12 @@ declare_lint! {
     /// #[deny(unused_lifetimes)]
     ///
     /// pub fn foo<'a>() {}
+    ///
+    /// // `'a = 'static`, so all usages of `'a` can be replaced with `'static`
+    /// pub fn bar<'a: 'static>() {}
+    ///
+    /// // `'a = 'b`, so all usages of `'b` can be replaced with `'a`
+    /// pub fn bar<'a: 'b, 'b: 'a>() {}
     /// ```
     ///
     /// {{produces}}
