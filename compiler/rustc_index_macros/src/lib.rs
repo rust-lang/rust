@@ -23,14 +23,14 @@ mod newtype;
 /// The impls provided by default are Clone, Copy, PartialEq, Eq, and Hash.
 ///
 /// Accepted attributes for customization:
-/// - #[derive(HashStable_Generic)]/#[derive(HashStable)]: derives
+/// - `#[derive(HashStable_Generic)]`/`#[derive(HashStable)]`: derives
 ///   `HashStable`, as normal.
-/// - #[encodable]: derives `Encodable`/`Decodable`.
-/// - #[orderable]: derives `PartialOrd`/`Ord`, plus step-related methods.
-/// - #[debug_format = "Foo({})"]: derives `Debug` with particular output.
-/// - #[max = 0xFFFF_FFFD]: specifies the max value, which allows niche
+/// - `#[encodable]`: derives `Encodable`/`Decodable`.
+/// - `#[orderable]`: derives `PartialOrd`/`Ord`, plus step-related methods.
+/// - `#[debug_format = "Foo({})"]`: derives `Debug` with particular output.
+/// - `#[max = 0xFFFF_FFFD]`: specifies the max value, which allows niche
 ///   optimizations. The default max value is 0xFFFF_FF00.
-/// - #[gate_rustc_only]: makes parts of the generated code nightly-only.
+/// - `#[gate_rustc_only]`: makes parts of the generated code nightly-only.
 #[proc_macro]
 #[cfg_attr(
     feature = "nightly",

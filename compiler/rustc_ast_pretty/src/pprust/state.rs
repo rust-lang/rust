@@ -151,7 +151,7 @@ pub fn print_crate<'a>(
 /// Note: some old proc macros parse pretty-printed output, so changes here can
 /// break old code. For example:
 /// - #63896: `#[allow(unused,` must be printed rather than `#[allow(unused ,`
-/// - #73345: `#[allow(unused)] must be printed rather than `# [allow(unused)]
+/// - #73345: `#[allow(unused)]` must be printed rather than `# [allow(unused)]`
 ///
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use token::*;
