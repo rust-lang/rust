@@ -530,7 +530,7 @@ impl<'a> Formatter<'a> {
 
     /// Creates a new formatter based on this one with given [`FormattingOptions`].
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn with_options(&'a mut self, options: FormattingOptions) -> Self {
+    pub fn with_options<'b>(&'b mut self, options: FormattingOptions) -> Formatter<'b> {
         Formatter { options, buf: self.buf }
     }
 }
