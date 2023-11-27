@@ -6,7 +6,7 @@ pub fn target() -> Target {
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
     // This option is required to build executables on Haiku x86_64
     base.position_independent_executables = true;
 

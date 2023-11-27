@@ -1,4 +1,3 @@
-// min-llvm-version: 16.0
 // assembly-output: emit-asm
 // compile-flags: --target loongarch64-unknown-linux-gnu
 // needs-llvm-components: loongarch
@@ -42,7 +41,7 @@ extern "C" {
 
 // Hack to avoid function merging
 extern "Rust" {
-   fn dont_merge(s: &str);
+    fn dont_merge(s: &str);
 }
 
 // CHECK-LABEL: sym_fn:

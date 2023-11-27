@@ -204,11 +204,7 @@ enum class LLVMRustCodeModel {
   None,
 };
 
-#if LLVM_VERSION_LT(16, 0)
-static Optional<CodeModel::Model>
-#else
 static std::optional<CodeModel::Model>
-#endif
 fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
   case LLVMRustCodeModel::Tiny:
@@ -222,11 +218,7 @@ fromRust(LLVMRustCodeModel Model) {
   case LLVMRustCodeModel::Large:
     return CodeModel::Large;
   case LLVMRustCodeModel::None:
-#if LLVM_VERSION_LT(16, 0)
-    return None;
-#else
     return std::nullopt;
-#endif
   default:
     report_fatal_error("Bad CodeModel.");
   }
@@ -452,7 +444,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (OutputObjFile) {
       Options.ObjectFilenameForDebug = OutputObjFile;
   }
-#if LLVM_VERSION_GE(16, 0)
   if (!strcmp("zlib", DebugInfoCompression) && llvm::compression::zlib::isAvailable()) {
     Options.CompressDebugSections = DebugCompressionType::Zlib;
   } else if (!strcmp("zstd", DebugInfoCompression) && llvm::compression::zstd::isAvailable()) {
@@ -460,7 +451,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   } else if (!strcmp("none", DebugInfoCompression)) {
     Options.CompressDebugSections = DebugCompressionType::None;
   }
-#endif
 
   Options.RelaxELFRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
@@ -734,22 +724,14 @@ LLVMRustOptimize(
   bool DebugPassManager = false;
 
   PassInstrumentationCallbacks PIC;
-#if LLVM_VERSION_LT(16, 0)
-  StandardInstrumentations SI(DebugPassManager);
-#else
   StandardInstrumentations SI(TheModule->getContext(), DebugPassManager);
-#endif
   SI.registerCallbacks(PIC);
 
   if (LlvmSelfProfiler){
     LLVMSelfProfileInitializeCallbacks(PIC,LlvmSelfProfiler,BeforePassCallback,AfterPassCallback);
   }
 
-#if LLVM_VERSION_LT(16, 0)
-  Optional<PGOOptions> PGOOpt;
-#else
   std::optional<PGOOptions> PGOOpt;
-#endif
 #if LLVM_VERSION_GE(17, 0)
   auto FS = vfs::getRealFileSystem();
 #endif
@@ -882,12 +864,7 @@ LLVMRustOptimize(
           /*EagerChecks=*/true);
       OptimizerLastEPCallbacks.push_back(
         [Options](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_LT(16, 0)
-          MPM.addPass(ModuleMemorySanitizerPass(Options));
-          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
-#else
           MPM.addPass(MemorySanitizerPass(Options));
-#endif
         }
       );
     }
@@ -912,11 +889,7 @@ LLVMRustOptimize(
             /*UseAfterScope=*/true,
             AsanDetectStackUseAfterReturnMode::Runtime,
           };
-#if LLVM_VERSION_LT(16, 0)
-          MPM.addPass(ModuleAddressSanitizerPass(opts));
-#else
           MPM.addPass(AddressSanitizerPass(opts));
-#endif
         }
       );
     }

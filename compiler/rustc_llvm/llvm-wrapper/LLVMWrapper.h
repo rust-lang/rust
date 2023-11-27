@@ -42,11 +42,7 @@
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/Linker/Linker.h"
 
-#if LLVM_VERSION_GE(16, 0)
 #include "llvm/TargetParser/Triple.h"
-#else
-#include "llvm/ADT/Triple.h"
-#endif
 
 extern "C" void LLVMRustSetLastError(const char *);
 

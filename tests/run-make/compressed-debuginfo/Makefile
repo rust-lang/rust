@@ -2,7 +2,6 @@
 include ../tools.mk
 
 # only-linux
-# min-llvm-version: 16.0
 #
 # This tests debuginfo-compression.
 

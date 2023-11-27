@@ -12,7 +12,7 @@ pub fn target() -> Target {
             plt_by_default: false,
             pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]),
             max_atomic_width: Some(64),
-            stack_probes: StackProbeType::X86,
+            stack_probes: StackProbeType::Inline,
             ..base::unikraft_linux_musl::opts()
         },
     }
