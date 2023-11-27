@@ -999,6 +999,7 @@ impl Step for RustdocGUI {
         let run = run.suite_path("tests/rustdoc-gui");
         run.lazy_default_condition(Box::new(move || {
             builder.config.nodejs.is_some()
+                && builder.doc_tests != DocTests::Only
                 && builder
                     .config
                     .npm
@@ -1158,7 +1159,8 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/tidy")
+        let default = run.builder.doc_tests != DocTests::Only;
+        run.path("src/tools/tidy").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1560,6 +1562,10 @@ impl Step for Compiletest {
     /// compiletest `mode` and `suite` arguments. For example `mode` can be
     /// "run-pass" or `suite` can be something like `debuginfo`.
     fn run(self, builder: &Builder<'_>) {
+        if builder.doc_tests == DocTests::Only {
+            return;
+        }
+
         if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
             eprintln!("\
 ERROR: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
@@ -2323,6 +2329,8 @@ impl Step for CrateLibrustc {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        builder.ensure(compile::Std::new(self.compiler, self.target));
+
         builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
