@@ -1388,6 +1388,7 @@ fn opaque_type_cycle_error(
                 struct OpaqueTypeCollector {
                     opaques: Vec<DefId>,
                     closures: Vec<DefId>,
+                    coroutine: Vec<DefId>,
                 }
                 impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1396,8 +1397,12 @@ fn opaque_type_cycle_error(
                                 self.opaques.push(def);
                                 ControlFlow::Continue(())
                             }
-                            ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
+                            ty::Closure(def_id, ..) => {
                                 self.closures.push(def_id);
+                                t.super_visit_with(self)
+                            }
+                            ty::Coroutine(def_id, ..) => {
+                                self.coroutine.push(def_id);
                                 t.super_visit_with(self)
                             }
                             _ => t.super_visit_with(self),
@@ -1417,43 +1422,48 @@ fn opaque_type_cycle_error(
                     err.span_label(sp, format!("returning here with type `{ty}`"));
                 }
 
-                for closure_def_id in visitor.closures {
-                    let Some(closure_local_did) = closure_def_id.as_local() else {
-                        continue;
-                    };
-                    let typeck_results = tcx.typeck(closure_local_did);
-
-                    let mut label_match = |ty: Ty<'_>, span| {
-                        for arg in ty.walk() {
-                            if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                                && let ty::Alias(
-                                    ty::Opaque,
-                                    ty::AliasTy { def_id: captured_def_id, .. },
-                                ) = *ty.kind()
-                                && captured_def_id == opaque_def_id.to_def_id()
-                            {
-                                err.span_label(
-                                    span,
-                                    format!(
-                                        "{} captures itself here",
-                                        tcx.def_descr(closure_def_id)
-                                    ),
-                                );
-                            }
+                let label_match = |err: &mut DiagnosticBuilder<'_, _>, ty: Ty<'_>, span, def_id| {
+                    for arg in ty.walk() {
+                        if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                            && let ty::Alias(
+                                ty::Opaque,
+                                ty::AliasTy { def_id: captured_def_id, .. },
+                            ) = *ty.kind()
+                            && captured_def_id == opaque_def_id.to_def_id()
+                        {
+                            err.span_label(
+                                span,
+                                format!("{} captures itself here", tcx.def_descr(def_id)),
+                            );
                         }
-                    };
-
-                    // Label any closure upvars that capture the opaque
-                    for capture in typeck_results.closure_min_captures_flattened(closure_local_did)
-                    {
-                        label_match(capture.place.ty(), capture.get_path_span(tcx));
                     }
-                    // Label any coroutine locals that capture the opaque
-                    if tcx.is_coroutine(closure_def_id)
-                        && let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(closure_def_id)
-                    {
+                };
+
+                let capture = |err: &mut DiagnosticBuilder<'_, _>, def_id: DefId| {
+                    let Some(local_id) = def_id.as_local() else {
+                        return;
+                    };
+                    let typeck_results = tcx.typeck(local_id);
+                    // Label any closure upvars that capture the opaque
+                    for capture in typeck_results.closure_min_captures_flattened(local_id) {
+                        label_match(err, capture.place.ty(), capture.get_path_span(tcx), def_id);
+                    }
+                };
+
+                for closure_def_id in visitor.closures {
+                    capture(&mut err, closure_def_id);
+                }
+
+                for coroutine_def_id in visitor.coroutine {
+                    capture(&mut err, coroutine_def_id);
+                    if let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(coroutine_def_id) {
                         for interior_ty in &coroutine_layout.field_tys {
-                            label_match(interior_ty.ty, interior_ty.source_info.span);
+                            label_match(
+                                &mut err,
+                                interior_ty.ty,
+                                interior_ty.source_info.span,
+                                coroutine_def_id,
+                            );
                         }
                     }
                 }

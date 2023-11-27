@@ -638,25 +638,25 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
             );
             (sig.inputs().to_vec(), sig.output(), None)
         }
-        DefKind::Closure if coroutine_kind.is_some() => {
-            let coroutine_ty = tcx.type_of(def_id).instantiate_identity();
-            let ty::Coroutine(_, args, _) = coroutine_ty.kind() else { bug!() };
-            let args = args.as_coroutine();
-            let yield_ty = args.yield_ty();
-            let return_ty = args.return_ty();
-            (vec![coroutine_ty, args.resume_ty()], return_ty, Some(yield_ty))
-        }
         DefKind::Closure => {
-            let closure_ty = tcx.type_of(def_id).instantiate_identity();
-            let ty::Closure(_, args) = closure_ty.kind() else { bug!() };
-            let args = args.as_closure();
-            let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), args.sig());
-            let self_ty = match args.kind() {
-                ty::ClosureKind::Fn => Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, closure_ty),
-                ty::ClosureKind::FnMut => Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, closure_ty),
-                ty::ClosureKind::FnOnce => closure_ty,
-            };
-            ([self_ty].into_iter().chain(sig.inputs().to_vec()).collect(), sig.output(), None)
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            if let ty::Coroutine(_, args, _) = ty.kind() {
+                let args = args.as_coroutine();
+                let yield_ty = args.yield_ty();
+                let return_ty = args.return_ty();
+                (vec![ty, args.resume_ty()], return_ty, Some(yield_ty))
+            } else if let ty::Closure(_, args) = ty.kind() {
+                let args = args.as_closure();
+                let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), args.sig());
+                let self_ty = match args.kind() {
+                    ty::ClosureKind::Fn => Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
+                    ty::ClosureKind::FnMut => Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty),
+                    ty::ClosureKind::FnOnce => ty,
+                };
+                ([self_ty].into_iter().chain(sig.inputs().to_vec()).collect(), sig.output(), None)
+            } else {
+                bug!()
+            }
         }
         dk => bug!("{:?} is not a body: {:?}", def_id, dk),
     };

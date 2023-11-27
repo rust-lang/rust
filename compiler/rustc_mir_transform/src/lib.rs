@@ -395,13 +395,13 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
 fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    if tcx.is_coroutine(def.to_def_id()) {
+    let def_kind = tcx.def_kind(def);
+    if def_kind == DefKind::Closure && tcx.is_coroutine(def.to_def_id()) {
         tcx.ensure_with_value().mir_coroutine_witnesses(def);
     }
     let mir_borrowck = tcx.mir_borrowck(def);
 
-    let is_fn_like = tcx.def_kind(def).is_fn_like();
-    if is_fn_like {
+    if def_kind.is_fn_like() {
         // Do not compute the mir call graph without said call graph actually being used.
         if pm::should_run_pass(tcx, &inline::Inline) {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
