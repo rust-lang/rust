@@ -1,0 +1,39 @@
+error: unnecessary lifetime parameter `'b`
+  --> $DIR/transitively-redundant-lifetimes.rs:4:10
+   |
+LL | fn a<'a, 'b>(x: &'a &'b &'a ()) {}
+   |          ^^
+   |
+   = note: you can use the `'a` lifetime directly, in place of `'b`
+note: the lint level is defined here
+  --> $DIR/transitively-redundant-lifetimes.rs:2:9
+   |
+LL | #![deny(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unnecessary lifetime parameter `'b`
+  --> $DIR/transitively-redundant-lifetimes.rs:6:14
+   |
+LL | fn b<'a: 'b, 'b: 'a>() {}
+   |              ^^
+   |
+   = note: you can use the `'a` lifetime directly, in place of `'b`
+
+error: unnecessary lifetime parameter `'a`
+  --> $DIR/transitively-redundant-lifetimes.rs:9:6
+   |
+LL | fn c<'a>(_: Foo<&'a ()>) {}
+   |      ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+
+error: unnecessary lifetime parameter `'b`
+  --> $DIR/transitively-redundant-lifetimes.rs:13:10
+   |
+LL |     fn d<'b: 'a>(&'b self) {}
+   |          ^^
+   |
+   = note: you can use the `'a` lifetime directly, in place of `'b`
+
+error: aborting due to 4 previous errors
+

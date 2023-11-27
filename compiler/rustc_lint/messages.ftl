@@ -534,7 +534,8 @@ lint_reason_must_be_string_literal = reason must be a string literal
 
 lint_reason_must_come_last = reason in lint attribute must come last
 
-lint_redundant_lifetime_args = lifetime `{$victim}` is required to be equal to `{$candidate}`, and is redundant and can be removed
+lint_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
+    .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
 lint_redundant_semicolons =
     unnecessary trailing {$multiple ->
