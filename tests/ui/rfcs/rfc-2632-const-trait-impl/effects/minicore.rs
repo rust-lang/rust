@@ -336,7 +336,7 @@ fn from_str(s: &str) -> Result<bool, ()> {
 }
 
 #[lang = "eq"]
-// FIXME #[const_trait]
+#[const_trait]
 trait PartialEq<Rhs: ?Sized = Self> {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool {
