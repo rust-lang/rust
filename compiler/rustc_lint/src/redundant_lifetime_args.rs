@@ -8,19 +8,13 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{SubregionOrigin, TyCtxtInferExt};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_session::lint::builtin::UNUSED_LIFETIMES;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::{outlives_bounds::InferCtxtExt, ObligationCtxt};
 
 use crate::{LateContext, LateLintPass};
 
-declare_lint! {
-    /// Docs
-    pub REDUNDANT_LIFETIME_ARGS,
-    Allow,
-    "do something"
-}
-
-declare_lint_pass!(RedundantLifetimeArgs => [REDUNDANT_LIFETIME_ARGS]);
+declare_lint_pass!(RedundantLifetimeArgs => []);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantLifetimeArgs {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
@@ -142,10 +136,10 @@ fn check<'tcx>(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, owner_id: hir::
             if infcx.resolve_regions(outlives_env).is_empty() {
                 shadowed.insert(victim);
                 tcx.emit_spanned_lint(
-                    REDUNDANT_LIFETIME_ARGS,
+                    UNUSED_LIFETIMES,
                     tcx.local_def_id_to_hir_id(def_id.expect_local()),
                     tcx.def_span(def_id),
-                    RedundantLifetimeArgsList { candidate, victim },
+                    RedundantLifetimeArgsLint { candidate, victim },
                 );
             }
         }
@@ -154,7 +148,8 @@ fn check<'tcx>(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, owner_id: hir::
 
 #[derive(LintDiagnostic)]
 #[diag(lint_redundant_lifetime_args)]
-struct RedundantLifetimeArgsList<'tcx> {
+#[note]
+struct RedundantLifetimeArgsLint<'tcx> {
     candidate: ty::Region<'tcx>,
     victim: ty::Region<'tcx>,
 }
