@@ -1,6 +1,7 @@
 # LLVM Notification group
 
-**Github Label:** [A-LLVM]
+**Github Label:** [A-LLVM] <br>
+**Ping command:** `@rustbot ping llvm`
 
 [A-LLVM]: https://github.com/rust-lang/rust/labels/A-LLVM
 

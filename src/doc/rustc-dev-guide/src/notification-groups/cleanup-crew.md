@@ -1,6 +1,7 @@
 # Cleanup Crew
 
-**Github Label:** [ICEBreaker-Cleanup-Crew]
+**Github Label:** [ICEBreaker-Cleanup-Crew] <br>
+**Ping command:** `@rustbot ping cleanup-crew`
 
 [ICEBreaker-Cleanup-Crew]: https://github.com/rust-lang/rust/labels/ICEBreaker-Cleanup-Crew
 

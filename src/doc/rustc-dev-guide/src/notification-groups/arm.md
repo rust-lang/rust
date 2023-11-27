@@ -1,6 +1,7 @@
 # ARM notification group
 
-**Github Label:** [O-ARM]
+**Github Label:** [O-ARM] <br>
+**Ping command:** `@rustbot ping arm`
 
 [O-ARM]: https://github.com/rust-lang/rust/labels/O-ARM
 
