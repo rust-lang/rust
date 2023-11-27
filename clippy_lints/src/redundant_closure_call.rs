@@ -176,16 +176,15 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             hint = hint.asyncify();
                         }
 
-                        let is_in_fn_call_arg = clippy_utils::get_parent_node(cx.tcx, expr.hir_id)
-                            .map(|x| match x {
+                        let is_in_fn_call_arg =
+                            clippy_utils::get_parent_node(cx.tcx, expr.hir_id).is_some_and(|x| match x {
                                 Node::Expr(expr) => matches!(expr.kind, hir::ExprKind::Call(_, _)),
                                 _ => false,
-                            })
-                            .unwrap_or(false);
+                            });
 
                         // avoid clippy::double_parens
                         if !is_in_fn_call_arg {
-                            hint = hint.maybe_par()
+                            hint = hint.maybe_par();
                         };
 
                         diag.span_suggestion(full_expr.span, "try doing something like", hint, applicability);
