@@ -105,6 +105,10 @@ pub fn prebuilt_llvm_config(
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
     let res = LlvmResult { llvm_config: build_llvm_config, llvm_cmake_dir };
 
+    if !builder.config.stdout_is_tty {
+        return Ok(res);
+    }
+
     let smart_stamp_hash = generate_smart_stamp_hash(
         &builder.config.src.join("src/llvm-project"),
         &builder.in_tree_llvm_info.sha().unwrap_or_default(),
