@@ -126,11 +126,8 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
         .deadlock_handler(|| {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
-            let query_map = FromDyn::from(tls::with(|tcx| {
-                QueryCtxt::new(tcx)
-                    .try_collect_active_jobs()
-                    .expect("active jobs shouldn't be locked in deadlock handler")
-            }));
+            let query_map =
+                FromDyn::from(tls::with(|tcx| QueryCtxt::new(tcx).collect_active_jobs()));
             let registry = rayon_core::Registry::current();
             thread::spawn(move || deadlock(query_map.into_inner(), &registry));
         });
