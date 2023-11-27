@@ -817,7 +817,7 @@ pub enum BorrowKind {
     Raw,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum BinOpKind {
     /// The `+` operator (addition)
     Add,
@@ -888,12 +888,17 @@ impl BinOpKind {
 
     pub fn is_comparison(&self) -> bool {
         use BinOpKind::*;
-        // Note for developers: please keep this as is;
+        // Note for developers: please keep this match exhaustive;
         // we want compilation to fail if another variant is added.
         match *self {
             Eq | Lt | Le | Ne | Gt | Ge => true,
             And | Or | Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr => false,
         }
+    }
+
+    /// Returns `true` if the binary operator takes its arguments by value.
+    pub fn is_by_value(self) -> bool {
+        !self.is_comparison()
     }
 }
 
@@ -902,7 +907,7 @@ pub type BinOp = Spanned<BinOpKind>;
 /// Unary operator.
 ///
 /// Note that `&data` is not an operator, it's an `AddrOf` expression.
-#[derive(Clone, Encodable, Decodable, Debug, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum UnOp {
     /// The `*` operator for dereferencing
     Deref,
@@ -919,6 +924,11 @@ impl UnOp {
             UnOp::Not => "!",
             UnOp::Neg => "-",
         }
+    }
+
+    /// Returns `true` if the unary operator takes its argument by value.
+    pub fn is_by_value(self) -> bool {
+        matches!(self, Self::Neg | Self::Not)
     }
 }
 
