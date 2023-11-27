@@ -107,6 +107,7 @@ impl Body {
                 Ok(())
             })
             .collect::<Result<Vec<_>, _>>()?;
+        writeln!(w, "}}")?;
         Ok(())
     }
 

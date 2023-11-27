@@ -7,6 +7,8 @@ use std::{io, iter};
 
 use super::{AssertMessage, BinOp, TerminatorKind};
 
+use super::BorrowKind;
+
 pub fn function_name(item: CrateItem) -> String {
     let mut pretty_name = String::new();
     let body = item.body();
@@ -40,7 +42,6 @@ pub fn function_body(body: &Body) -> String {
         pretty_body.push_str(format!("{}", pretty_ty(local.ty.kind())).as_str());
         pretty_body.push_str(";\n");
     });
-    pretty_body.push_str("}");
     pretty_body
 }
 
@@ -320,6 +321,7 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
             pretty.push_str(format!("(*_{})", addr.local).as_str());
         }
         Rvalue::Aggregate(aggregatekind, operands) => {
+            // FIXME: Add pretty_aggregate function that returns a pretty string
             pretty.push_str(format!("{:#?}", aggregatekind).as_str());
             pretty.push_str("(");
             operands.iter().enumerate().for_each(|(i, op)| {
@@ -330,12 +332,13 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
             });
             pretty.push_str(")");
         }
-        Rvalue::BinaryOp(bin, op, op2) => {
-            pretty.push_str(&pretty_operand(op));
-            pretty.push_str(" ");
+        Rvalue::BinaryOp(bin, op1, op2) => {
             pretty.push_str(format!("{:#?}", bin).as_str());
-            pretty.push_str(" ");
-            pretty.push_str(&pretty_operand(op2));
+            pretty.push_str("(");
+            pretty.push_str(format!("_{}", &pretty_operand(op1)).as_str());
+            pretty.push_str(", ");
+            pretty.push_str(format!("{}", &pretty_operand(op2)).as_str());
+            pretty.push_str(")");
         }
         Rvalue::Cast(_, op, ty) => {
             pretty.push_str(&pretty_operand(op));
@@ -343,11 +346,12 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
             pretty.push_str(&pretty_ty(ty.kind()));
         }
         Rvalue::CheckedBinaryOp(bin, op1, op2) => {
-            pretty.push_str(&pretty_operand(op1));
-            pretty.push_str(" ");
-            pretty.push_str(format!("{:#?}", bin).as_str());
-            pretty.push_str(" ");
-            pretty.push_str(&pretty_operand(op2));
+            pretty.push_str(format!("Checked{:#?}", bin).as_str());
+            pretty.push_str("(");
+            pretty.push_str(format!("_{}", &pretty_operand(op1)).as_str());
+            pretty.push_str(", ");
+            pretty.push_str(format!("{}", &pretty_operand(op2)).as_str());
+            pretty.push_str(")");
         }
         Rvalue::CopyForDeref(deref) => {
             pretty.push_str("CopyForDeref");
@@ -362,8 +366,11 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
             pretty.push_str(format!("{}", len.local).as_str());
         }
         Rvalue::Ref(_, borrowkind, place) => {
-            pretty.push_str("ref");
-            pretty.push_str(format!("{:#?}", borrowkind).as_str());
+            match borrowkind {
+                BorrowKind::Shared => pretty.push_str("&"),
+                BorrowKind::Fake => pretty.push_str("&fake "),
+                BorrowKind::Mut { .. } => pretty.push_str("&mut "),
+            }
             pretty.push_str(format!("{}", place.local).as_str());
         }
         Rvalue::Repeat(op, cnst) => {
@@ -418,7 +425,7 @@ pub fn pretty_ty(ty: TyKind) -> String {
                 FloatTy::F64 => "f64".to_string(),
             },
             RigidTy::Adt(def, _) => {
-                format!("{:#?}", with(|cx| cx.def_ty(def.0)))
+                format!("{}", with(|cx| cx.adt_literal(&def)))
             }
             RigidTy::Str => "str".to_string(),
             RigidTy::Array(ty, len) => {

@@ -1,6 +1,9 @@
 // compile-flags: -Z unpretty=stable-mir -Z mir-opt-level=3
 // check-pass
+<<<<<<< HEAD
 // only-x86_64
+=======
+>>>>>>> 9a9a3a91e41 (add stable_mir output test)
 
 fn foo(i:i32) -> i32 {
     i + 1

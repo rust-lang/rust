@@ -3,7 +3,7 @@
 //! This trait is currently the main interface between the Rust compiler,
 //! and the `stable_mir` crate.
 
-use rustc_middle::ty;
+use crate::rustc_smir::stable_mir::opaque;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
     GenericPredicates, Instance, ParamEnv, ScalarInt, TypeVisitableExt, ValTree,
@@ -18,7 +18,8 @@ use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
-use stable_mir::{Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
+use stable_mir::Opaque;
+use stable_mir::{self, Crate, CrateItem, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
 
 use crate::rustc_internal::{internal, RustcInternal};
@@ -295,6 +296,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn const_literal(&self, cnst: &stable_mir::ty::Const) -> String {
         internal(cnst).to_string()
+    }
+
+    fn adt_literal(&self, adt: &AdtDef) -> Opaque {
+        let mut tables = self.0.borrow_mut();
+        let internal = adt.internal(&mut *tables);
+        opaque(&internal)
     }
 
     fn span_of_an_item(&self, def_id: stable_mir::DefId) -> Span {

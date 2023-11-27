@@ -15,8 +15,8 @@ use crate::ty::{
     TraitDef, Ty, TyKind, VariantDef,
 };
 use crate::{
-    mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
-    TraitDecls,
+    mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Opaque,
+    Symbol, TraitDecls,
 };
 
 /// This trait defines the interface between stable_mir and the Rust compiler.
@@ -105,6 +105,9 @@ pub trait Context {
 
     /// Returns literal value of a const as a string.
     fn const_literal(&self, cnst: &Const) -> String;
+
+    /// Returns literal version of a Adt as a Opaque
+    fn adt_literal(&self, adt: &AdtDef) -> Opaque;
 
     /// `Span` of an item
     fn span_of_an_item(&self, def_id: DefId) -> Span;
