@@ -353,8 +353,13 @@ macro_rules! nonzero_unsigned_operations {
                 #[inline]
                 pub const fn checked_add(self, other: $Int) -> Option<$Ty> {
                     if let Some(result) = self.get().checked_add(other) {
-                        // SAFETY: $Int::checked_add returns None on overflow
-                        // so the result cannot be zero.
+                        // SAFETY:
+                        // - `checked_add` returns `None` on overflow
+                        // - `self` and `other` are non-zero
+                        // - the only way to get zero from an addition without overflow is for both
+                        //   sides to be zero
+                        //
+                        // So the result cannot be zero.
                         Some(unsafe { $Ty::new_unchecked(result) })
                     } else {
                         None
@@ -386,8 +391,13 @@ macro_rules! nonzero_unsigned_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn saturating_add(self, other: $Int) -> $Ty {
-                    // SAFETY: $Int::saturating_add returns $Int::MAX on overflow
-                    // so the result cannot be zero.
+                    // SAFETY:
+                    // - `saturating_add` returns `u*::MAX` on overflow, which is non-zero
+                    // - `self` and `other` are non-zero
+                    // - the only way to get zero from an addition without overflow is for both
+                    //   sides to be zero
+                    //
+                    // So the result cannot be zero.
                     unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
                 }
 
@@ -1000,9 +1010,13 @@ macro_rules! nonzero_unsigned_signed_operations {
                 #[inline]
                 pub const fn checked_mul(self, other: $Ty) -> Option<$Ty> {
                     if let Some(result) = self.get().checked_mul(other.get()) {
-                        // SAFETY: checked_mul returns None on overflow
-                        // and `other` is also non-null
-                        // so the result cannot be zero.
+                        // SAFETY:
+                        // - `checked_mul` returns `None` on overflow
+                        // - `self` and `other` are non-zero
+                        // - the only way to get zero from a multiplication without overflow is for one
+                        //   of the sides to be zero
+                        //
+                        // So the result cannot be zero.
                         Some(unsafe { $Ty::new_unchecked(result) })
                     } else {
                         None
@@ -1034,9 +1048,14 @@ macro_rules! nonzero_unsigned_signed_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn saturating_mul(self, other: $Ty) -> $Ty {
-                    // SAFETY: saturating_mul returns u*::MAX on overflow
-                    // and `other` is also non-null
-                    // so the result cannot be zero.
+                    // SAFETY:
+                    // - `saturating_mul` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
+                    //   all of which are non-zero
+                    // - `self` and `other` are non-zero
+                    // - the only way to get zero from a multiplication without overflow is for one
+                    //   of the sides to be zero
+                    //
+                    // So the result cannot be zero.
                     unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
                 }
 
@@ -1107,8 +1126,13 @@ macro_rules! nonzero_unsigned_signed_operations {
                 #[inline]
                 pub const fn checked_pow(self, other: u32) -> Option<$Ty> {
                     if let Some(result) = self.get().checked_pow(other) {
-                        // SAFETY: checked_pow returns None on overflow
-                        // so the result cannot be zero.
+                        // SAFETY:
+                        // - `checked_pow` returns `None` on overflow/underflow
+                        // - `self` is non-zero
+                        // - the only way to get zero from an exponentiation without overflow is
+                        //   for base to be zero
+                        //
+                        // So the result cannot be zero.
                         Some(unsafe { $Ty::new_unchecked(result) })
                     } else {
                         None
@@ -1149,8 +1173,14 @@ macro_rules! nonzero_unsigned_signed_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn saturating_pow(self, other: u32) -> $Ty {
-                    // SAFETY: saturating_pow returns u*::MAX on overflow
-                    // so the result cannot be zero.
+                    // SAFETY:
+                    // - `saturating_pow` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
+                    //   all of which are non-zero
+                    // - `self` is non-zero
+                    // - the only way to get zero from an exponentiation without overflow is
+                    //   for base to be zero
+                    //
+                    // So the result cannot be zero.
                     unsafe { $Ty::new_unchecked(self.get().saturating_pow(other)) }
                 }
             }
