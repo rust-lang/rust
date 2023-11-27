@@ -57,12 +57,12 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 8;
+const METADATA_VERSION: u8 = 9;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
 /// This header is followed by the length of the compressed data, then
-/// the position of the `CrateRoot`, which is encoded as a 32-bit big-endian
+/// the position of the `CrateRoot`, which is encoded as a 64-bit little-endian
 /// unsigned integer, and further followed by the rustc version string.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
