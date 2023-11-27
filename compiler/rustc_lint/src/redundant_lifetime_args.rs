@@ -82,17 +82,28 @@ fn check<'tcx>(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, owner_id: hir::
 
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
+
+    // Compute the implied outlives bounds for the item. This ensures that we treat
+    // a signature with an argument like `&'a &'b ()` as implicitly having `'b: 'a`.
     let Ok(assumed_wf_types) = ocx.assumed_wf_types(param_env, owner_id.def_id) else {
         return;
     };
-
     let implied_bounds = infcx.implied_bounds_tys(param_env, owner_id.def_id, assumed_wf_types);
     let outlives_env = &OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
+    // The ordering of this lifetime map is a bit subtle.
+    //
+    // Specifically, we want to find a "candidate" lifetime that precedes a "victim" lifetime,
+    // where we can prove that `'candidate = 'victim`.
+    //
+    // `'static` must come first in this list because we can never replace `'static` with
+    // something else, but if we find some lifetime `'a` where `'a = 'static`, we want to
+    // suggest replacing `'a` with `'static`.
     let mut lifetimes = vec![tcx.lifetimes.re_static];
     lifetimes.extend(
         ty::GenericArgs::identity_for_item(tcx, owner_id).iter().filter_map(|arg| arg.as_region()),
     );
+    // If we are in a function, add its late-bound lifetimes too.
     if matches!(def_kind, DefKind::Fn | DefKind::AssocFn) {
         for var in tcx.fn_sig(owner_id).instantiate_identity().bound_vars() {
             let ty::BoundVariableKind::Region(kind) = var else { continue };
@@ -101,20 +112,23 @@ fn check<'tcx>(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, owner_id: hir::
     }
 
     // Keep track of lifetimes which have already been replaced with other lifetimes.
+    // This makes sure that if `'a = 'b = 'c`, we don't say `'c` should be replaced by
+    // both `'a` and `'b`.
     let mut shadowed = FxHashSet::default();
 
     for (idx, &candidate) in lifetimes.iter().enumerate() {
+        // Don't suggest removing a lifetime twice.
         if shadowed.contains(&candidate) {
-            // Don't suggest removing a lifetime twice.
             continue;
         }
 
+        // Can't rename a named lifetime named `'_` without ambiguity.
         if !candidate.has_name() {
-            // Can't rename a named lifetime with `'_` without ambiguity.
             continue;
         }
 
         for &victim in &lifetimes[(idx + 1)..] {
+            // We only care about lifetimes that are "real", i.e. that have a def-id.
             let (ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
             | ty::ReLateParam(ty::LateParamRegion {
                 bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
@@ -124,15 +138,21 @@ fn check<'tcx>(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, owner_id: hir::
                 continue;
             };
 
+            // Do not rename lifetimes not local to this item since they'll overlap
+            // with the lint running on the parent. We still want to consider parent
+            // lifetimes which make child lifetimes redundant, otherwise we would
+            // have truncated the `identity_for_item` args above.
             if tcx.parent(def_id) != owner_id.to_def_id() {
-                // Do not rename generics not local to this item since
-                // they'll overlap with this lint running on the parent.
                 continue;
             }
 
             let infcx = infcx.fork();
+
+            // Require that `'candidate = 'victim`
             infcx.sub_regions(SubregionOrigin::RelateRegionParamBound(DUMMY_SP), candidate, victim);
             infcx.sub_regions(SubregionOrigin::RelateRegionParamBound(DUMMY_SP), victim, candidate);
+
+            // If there are no lifetime errors, then we have proven that `'candidate = 'victim`!
             if infcx.resolve_regions(outlives_env).is_empty() {
                 shadowed.insert(victim);
                 tcx.emit_spanned_lint(
@@ -150,6 +170,8 @@ fn check<'tcx>(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, owner_id: hir::
 #[diag(lint_redundant_lifetime_args)]
 #[note]
 struct RedundantLifetimeArgsLint<'tcx> {
-    candidate: ty::Region<'tcx>,
+    /// The lifetime we have found to be redundant.
     victim: ty::Region<'tcx>,
+    // The lifetime we can replace the victim with.
+    candidate: ty::Region<'tcx>,
 }
