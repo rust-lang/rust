@@ -490,7 +490,7 @@ macro_rules! uint_impl {
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning
-        /// `None` if overflow occurred.
+        /// `None` if underflow occurred.
         ///
         /// # Examples
         ///
@@ -510,7 +510,7 @@ macro_rules! uint_impl {
             if unlikely!(b) {None} else {Some(a)}
         }
 
-        /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
+        /// Unchecked integer subtraction. Computes `self - rhs`, assuming underflow 
         /// cannot occur.
         ///
         /// # Safety
