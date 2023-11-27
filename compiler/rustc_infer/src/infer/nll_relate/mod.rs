@@ -113,9 +113,6 @@ pub trait TypeRelatingDelegate<'tcx> {
     fn forbid_inference_vars() -> bool;
 }
 
-#[derive(Copy, Clone)]
-struct UniversallyQuantified(bool);
-
 impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,

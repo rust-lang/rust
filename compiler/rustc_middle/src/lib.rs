@@ -77,9 +77,6 @@ extern crate tracing;
 #[macro_use]
 extern crate smallvec;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
-
 #[cfg(test)]
 mod tests;
 
@@ -110,4 +107,4 @@ pub mod dep_graph;
 // Allows macros to refer to this crate as `::rustc_middle`
 extern crate self as rustc_middle;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

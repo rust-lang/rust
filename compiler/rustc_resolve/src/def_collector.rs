@@ -111,9 +111,14 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 return visit::walk_item(self, i);
             }
         };
-        let def = self.create_def(i.id, def_data, i.span);
+        let def_id = self.create_def(i.id, def_data, i.span);
 
-        self.with_parent(def, |this| {
+        if let ItemKind::MacroDef(..) = i.kind {
+            let macro_data = self.resolver.compile_macro(i, self.resolver.tcx.sess.edition());
+            self.resolver.macro_map.insert(def_id.to_def_id(), macro_data);
+        }
+
+        self.with_parent(def_id, |this| {
             this.with_impl_trait(ImplTraitContext::Existential, |this| {
                 match i.kind {
                     ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {

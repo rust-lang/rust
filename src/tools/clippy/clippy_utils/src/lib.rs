@@ -709,7 +709,7 @@ pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
 /// ```
 pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> Option<&'tcx TraitRef<'tcx>> {
     // Get the implemented trait for the current function
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if parent_impl != hir::CRATE_OWNER_ID
         && let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl.def_id)
@@ -2567,7 +2567,7 @@ pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
     tcx.has_attr(def_id, sym::cfg)
         || hir
-            .parent_iter(hir.local_def_id_to_hir_id(def_id))
+            .parent_iter(tcx.local_def_id_to_hir_id(def_id))
             .flat_map(|(parent_id, _)| hir.attrs(parent_id))
             .any(|attr| attr.has_name(sym::cfg))
 }
@@ -2687,7 +2687,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                     .and(Binder::dummy(cx.tcx.type_of(id).instantiate_identity())),
             )),
             Self::Return(id) => {
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(id.def_id);
+                let hir_id = cx.tcx.local_def_id_to_hir_id(id.def_id);
                 if let Some(Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
                     ..

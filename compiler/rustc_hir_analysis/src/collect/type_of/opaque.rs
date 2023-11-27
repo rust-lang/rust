@@ -41,7 +41,7 @@ pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) {
 /// ```
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let scope = tcx.hir().get_defining_scope(hir_id);
     let mut locator = TaitConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
@@ -278,7 +278,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
 
     let mir_opaque_ty = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
     if let Some(mir_opaque_ty) = mir_opaque_ty {
-        let scope = tcx.hir().local_def_id_to_hir_id(owner_def_id);
+        let scope = tcx.local_def_id_to_hir_id(owner_def_id);
         debug!(?scope);
         let mut locator = RpitConstraintChecker { def_id, tcx, found: mir_opaque_ty };
 

@@ -325,7 +325,7 @@ pub(crate) fn run(
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
         calls.encode(&mut encoder);
-        encoder.finish().map_err(|e| e.to_string())?;
+        encoder.finish().map_err(|(_path, e)| e.to_string())?;
 
         Ok(())
     };

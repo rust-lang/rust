@@ -1,4 +1,4 @@
-use crate::errors::{FailCreateFileEncoder, FailSeekFile, FailWriteFile};
+use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
@@ -42,6 +42,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SpanData, SyntaxContext};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
+use std::fs::File;
 use std::hash::Hash;
 use std::io::{Read, Seek, Write};
 use std::num::NonZeroUsize;
@@ -856,8 +857,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::Impl { .. }
-        | DefKind::Closure
-        | DefKind::Coroutine => true,
+        | DefKind::Closure => true,
         DefKind::ForeignMod | DefKind::GlobalAsm => false,
     }
 }
@@ -897,8 +897,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::LifetimeParam
-        | DefKind::GlobalAsm
-        | DefKind::Coroutine => false,
+        | DefKind::GlobalAsm => false,
     }
 }
 
@@ -933,8 +932,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Closure
-        | DefKind::Coroutine => false,
+        | DefKind::Closure => false,
     }
 }
 
@@ -969,7 +967,6 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ExternCrate => false,
     }
 }
@@ -1005,7 +1002,6 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ExternCrate => false,
     }
 }
@@ -1048,6 +1044,8 @@ fn should_encode_mir(
         | DefKind::AssocConst
         | DefKind::Static(..)
         | DefKind::Const => (true, false),
+        // Coroutines require optimized MIR to compute layout.
+        DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
@@ -1061,8 +1059,6 @@ fn should_encode_mir(
                 || tcx.is_const_default_method(def_id.to_def_id());
             (is_const_fn, opt)
         }
-        // Coroutines require optimized MIR to compute layout.
-        DefKind::Coroutine => (false, true),
         // The others don't have MIR.
         _ => (false, false),
     }
@@ -1098,7 +1094,6 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ExternCrate => false,
         DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
     }
@@ -1127,8 +1122,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Field
         | DefKind::TyParam
-        | DefKind::Closure
-        | DefKind::Coroutine => true,
+        | DefKind::Closure => true,
         DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::ConstParam
@@ -1157,7 +1151,6 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst => true,
@@ -1218,7 +1211,6 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::AssocConst
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst
@@ -1257,7 +1249,6 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Impl { of_trait: false }
         | DefKind::ForeignTy
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::InlineConst
         | DefKind::AssocTy
@@ -1292,7 +1283,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::Closure
-        | DefKind::Coroutine
         | DefKind::ConstParam
         | DefKind::AssocTy
         | DefKind::TyParam
@@ -1354,9 +1344,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         for local_id in tcx.iter_local_def_id() {
             let def_id = local_id.to_def_id();
-            let def_kind = tcx.opt_def_kind(local_id);
-            let Some(def_kind) = def_kind else { continue };
-            self.tables.opt_def_kind.set_some(def_id.index, def_kind);
+            let def_kind = tcx.def_kind(local_id);
+            self.tables.def_kind.set_some(def_id.index, def_kind);
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
                 record!(self.tables.def_span[def_id] <- def_span);
@@ -1393,7 +1382,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_fn_sig(def_kind) {
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             }
-            if should_encode_generics(def_kind) {
+            // FIXME: Some anonymous constants produced by `#[rustc_legacy_const_generics]`
+            // do not have corresponding HIR nodes, so some queries usually making sense for
+            // anonymous constants will not work on them and panic. It's not clear whether it
+            // can cause any observable issues or not.
+            let anon_const_without_hir = def_kind == DefKind::AnonConst
+                && tcx.hir().find(tcx.local_def_id_to_hir_id(local_id)).is_none();
+            if should_encode_generics(def_kind) && !anon_const_without_hir {
                 let g = tcx.generics_of(def_id);
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
@@ -1407,7 +1402,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            if should_encode_type(tcx, local_id, def_kind) {
+            if should_encode_type(tcx, local_id, def_kind) && !anon_const_without_hir {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
             if should_encode_constness(def_kind) {
@@ -1447,8 +1442,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.encode_info_for_assoc_item(def_id);
                 }
             }
-            if let DefKind::Coroutine = def_kind {
-                let data = self.tcx.coroutine_kind(def_id).unwrap();
+            if def_kind == DefKind::Closure
+                && let Some(data) = self.tcx.coroutine_kind(def_id)
+            {
                 record!(self.tables.coroutine_kind[def_id] <- data);
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
@@ -1630,7 +1626,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
-                if let DefKind::Coroutine = self.tcx.def_kind(def_id)
+                if self.tcx.is_coroutine(def_id.to_def_id())
                     && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
                 {
                     record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
@@ -1657,7 +1653,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
 
-            if let DefKind::Coroutine = self.tcx.def_kind(def_id)
+            if self.tcx.is_coroutine(def_id.to_def_id())
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
@@ -1785,7 +1781,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.proc_macro_quoted_spans.set_some(i, span);
             }
 
-            self.tables.opt_def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
+            self.tables.def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             let vis = tcx.local_visibility(CRATE_DEF_ID).map_id(|def_id| def_id.local_def_index);
@@ -1806,7 +1802,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // so we manually encode just the information that we need
             for &proc_macro in &tcx.resolutions(()).proc_macros {
                 let id = proc_macro;
-                let proc_macro = hir.local_def_id_to_hir_id(proc_macro);
+                let proc_macro = tcx.local_def_id_to_hir_id(proc_macro);
                 let mut name = hir.name(proc_macro);
                 let span = hir.span(proc_macro);
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
@@ -1833,7 +1829,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                self.tables.opt_def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
+                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
                 self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
@@ -2250,25 +2246,34 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();
 
-    ecx.opaque.flush();
+    // Make sure we report any errors from writing to the file.
+    // If we forget this, compilation can succeed with an incomplete rmeta file,
+    // causing an ICE when the rmeta file is read by another compilation.
+    if let Err((path, err)) = ecx.opaque.finish() {
+        tcx.sess.emit_err(FailWriteFile { path: &path, err });
+    }
 
-    let mut file = ecx.opaque.file();
+    let file = ecx.opaque.file();
+    if let Err(err) = encode_root_position(file, root.position.get()) {
+        tcx.sess.emit_err(FailWriteFile { path: ecx.opaque.path(), err });
+    }
+
+    // Record metadata size for self-profiling
+    tcx.prof.artifact_size("crate_metadata", "crate_metadata", file.metadata().unwrap().len());
+}
+
+fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {
     // We will return to this position after writing the root position.
     let pos_before_seek = file.stream_position().unwrap();
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
-    file.seek(std::io::SeekFrom::Start(header as u64))
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailSeekFile { err }));
-    let pos = root.position.get();
-    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailWriteFile { err }));
+    file.seek(std::io::SeekFrom::Start(header as u64))?;
+    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])?;
 
     // Return to the position where we are before writing the root position.
-    file.seek(std::io::SeekFrom::Start(pos_before_seek)).unwrap();
-
-    // Record metadata size for self-profiling
-    tcx.prof.artifact_size("crate_metadata", "crate_metadata", file.metadata().unwrap().len());
+    file.seek(std::io::SeekFrom::Start(pos_before_seek))?;
+    Ok(())
 }
 
 pub fn provide(providers: &mut Providers) {

@@ -68,7 +68,7 @@ use crate::{
     region_infer::TypeTest,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
-    BorrowckInferCtxt, Upvar,
+    BorrowckInferCtxt,
 };
 
 macro_rules! span_mirbug {
@@ -138,7 +138,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
-    upvars: &[Upvar<'tcx>],
+    upvars: &[&ty::CapturedPlace<'tcx>],
     use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
@@ -318,7 +318,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 .borrowck_context
                 .constraints
                 .liveness_constraints
-                .add_element(live_region_vid, location);
+                .add_location(live_region_vid, location);
         });
 
         // HACK(compiler-errors): Constants that are gathered into Body.required_consts
@@ -592,16 +592,16 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             }
             self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
         }
-        for region in liveness_constraints.rows() {
+        for region in liveness_constraints.regions() {
             // If the region is live at at least one location in the promoted MIR,
             // then add a liveness constraint to the main MIR for this region
             // at the location provided as an argument to this method
-            if liveness_constraints.get_elements(region).next().is_some() {
+            if liveness_constraints.is_live_anywhere(region) {
                 self.cx
                     .borrowck_context
                     .constraints
                     .liveness_constraints
-                    .add_element(region, location);
+                    .add_location(region, location);
             }
         }
     }
@@ -857,7 +857,7 @@ struct BorrowCheckContext<'a, 'tcx> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     pub(crate) constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    upvars: &'a [Upvar<'tcx>],
+    upvars: &'a [&'a ty::CapturedPlace<'tcx>],
 
     /// The set of loans that are live at a given point in the CFG, filled in by `liveness::trace`,
     /// when using `-Zpolonius=next`.
@@ -899,7 +899,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    pub(crate) liveness_constraints: LivenessValues<RegionVid>,
+    pub(crate) liveness_constraints: LivenessValues,
 
     pub(crate) outlives_constraints: OutlivesConstraintSet<'tcx>,
 
@@ -1443,7 +1443,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.borrowck_context
                         .constraints
                         .liveness_constraints
-                        .add_element(region_vid, term_location);
+                        .add_location(region_vid, term_location);
                 }
 
                 self.check_call_inputs(body, term, func, &sig, args, term_location, *call_source);
@@ -2678,8 +2678,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
         let parent_args = match tcx.def_kind(def_id) {
+            DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => {
+                args.as_coroutine().parent_args()
+            }
             DefKind::Closure => args.as_closure().parent_args(),
-            DefKind::Coroutine => args.as_coroutine().parent_args(),
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };

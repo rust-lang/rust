@@ -823,7 +823,7 @@ impl Map {
     ) {
         // Allocate a value slot if it doesn't have one, and the user requested one.
         assert!(self.places[place].value_index.is_none());
-        if tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.abi.is_scalar()) {
+        if tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.abi.is_scalar()) {
             self.places[place].value_index = Some(self.value_count.into());
             self.value_count += 1;
         }

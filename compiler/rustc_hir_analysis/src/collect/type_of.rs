@@ -18,7 +18,7 @@ mod opaque;
 fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     use hir::*;
     use rustc_middle::ty::Ty;
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let Node::AnonConst(_) = tcx.hir().get(hir_id) else { panic!() };
 
@@ -350,7 +350,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
         }
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let icx = ItemCtxt::new(tcx, def_id);
 
@@ -517,7 +517,7 @@ pub(super) fn type_of_opaque(
     if let Some(def_id) = def_id.as_local() {
         use rustc_hir::*;
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         Ok(ty::EarlyBinder::bind(match tcx.hir().get(hir_id) {
             Node::Item(item) => match item.kind {
                 ItemKind::OpaqueTy(OpaqueTy {

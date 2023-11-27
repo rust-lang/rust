@@ -67,7 +67,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         with_msg: &mut dyn FnMut(&str) -> io::Result<()>,
     ) -> io::Result<()> {
         for region in self.definitions.indices() {
-            let value = self.liveness_constraints.region_value_str(region);
+            let value = self.liveness_constraints.pretty_print_live_points(region);
             if value != "{}" {
                 with_msg(&format!("{region:?} live at {value}"))?;
             }

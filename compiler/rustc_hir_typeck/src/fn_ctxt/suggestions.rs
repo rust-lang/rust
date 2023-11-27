@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.hir().local_def_id_to_hir_id(self.body_id))
+            .get(self.tcx.local_def_id_to_hir_id(self.body_id))
             .copied()
     }
 
@@ -609,7 +609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
-        // This guards the `unwrap` and `mk_box` below.
+        // This guards the `new_box` below.
         if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
             return false;
         }

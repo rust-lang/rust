@@ -30,10 +30,10 @@ use rustc_span::Span;
 use std::any::Any;
 use std::cell::Cell;
 
-/// Extract the `LintStore` from the query context.
-/// This function exists because we've erased `LintStore` as `dyn Any` in the session.
+/// Extract the [`LintStore`] from [`Session`].
+///
+/// This function exists because [`Session::lint_store`] is type-erased.
 pub fn unerased_lint_store(sess: &Session) -> &LintStore {
-    assert!(sess.lint_store.is_some());
     let store: &Lrc<_> = sess.lint_store.as_ref().unwrap();
     let store: &dyn Any = &**store;
     store.downcast_ref().unwrap()
@@ -356,7 +356,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
-        last_node_with_lint_attrs: tcx.hir().local_def_id_to_hir_id(module_def_id),
+        last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(module_def_id.into()),
         generics: None,
         only_module: true,
     };

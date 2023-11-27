@@ -50,9 +50,6 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         join(
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
-                    if let Err(err) = tcx.dep_graph.encode(&tcx.sess.prof) {
-                        sess.emit_err(errors::WriteDepGraph { path: &staging_dep_graph_path, err });
-                    }
                     if let Err(err) = fs::rename(&staging_dep_graph_path, &dep_graph_path) {
                         sess.emit_err(errors::MoveDepGraph {
                             from: &staging_dep_graph_path,

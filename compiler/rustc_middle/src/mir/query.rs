@@ -42,64 +42,6 @@ pub enum UnsafetyViolationDetails {
     CallToFunctionWith,
 }
 
-impl UnsafetyViolationDetails {
-    pub fn description_and_note(&self) -> (&'static str, &'static str) {
-        use UnsafetyViolationDetails::*;
-        match self {
-            CallToUnsafeFunction => (
-                "call to unsafe function",
-                "consult the function's documentation for information on how to avoid undefined \
-                 behavior",
-            ),
-            UseOfInlineAssembly => (
-                "use of inline assembly",
-                "inline assembly is entirely unchecked and can cause undefined behavior",
-            ),
-            InitializingTypeWith => (
-                "initializing type with `rustc_layout_scalar_valid_range` attr",
-                "initializing a layout restricted type's field with a value outside the valid \
-                 range is undefined behavior",
-            ),
-            CastOfPointerToInt => {
-                ("cast of pointer to int", "casting pointers to integers in constants")
-            }
-            UseOfMutableStatic => (
-                "use of mutable static",
-                "mutable statics can be mutated by multiple threads: aliasing violations or data \
-                 races will cause undefined behavior",
-            ),
-            UseOfExternStatic => (
-                "use of extern static",
-                "extern statics are not controlled by the Rust type system: invalid data, \
-                 aliasing violations or data races will cause undefined behavior",
-            ),
-            DerefOfRawPointer => (
-                "dereference of raw pointer",
-                "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
-                 and cause data races: all of these are undefined behavior",
-            ),
-            AccessToUnionField => (
-                "access to union field",
-                "the field may not be properly initialized: using uninitialized data will cause \
-                 undefined behavior",
-            ),
-            MutationOfLayoutConstrainedField => (
-                "mutation of layout constrained field",
-                "mutating layout constrained fields cannot statically be checked for valid values",
-            ),
-            BorrowOfLayoutConstrainedField => (
-                "borrow of layout constrained field with interior mutability",
-                "references to fields of layout constrained fields lose the constraints. Coupled \
-                 with interior mutability, the field can be changed to invalid values",
-            ),
-            CallToFunctionWith => (
-                "call to function with `#[target_feature]`",
-                "can only be called if the required target features are available",
-            ),
-        }
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,

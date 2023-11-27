@@ -68,7 +68,7 @@ fn check_inline(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// Checks that function uses non-Rust ABI.
 fn check_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, abi: Abi) {
     if abi == Abi::Rust {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let span = tcx.def_span(def_id);
         tcx.emit_spanned_lint(
             UNDEFINED_NAKED_FUNCTION_ABI,

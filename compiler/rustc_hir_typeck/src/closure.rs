@@ -624,7 +624,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trace!("decl = {:#?}", decl);
         debug!(?body.coroutine_kind);
 
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(expr_def_id);
+        let hir_id = self.tcx.local_def_id_to_hir_id(expr_def_id);
         let bound_vars = self.tcx.late_bound_vars(hir_id);
 
         // First, convert the types that the user supplied (if any).

@@ -365,10 +365,15 @@ fn adjust_for_rust_scalar<'tcx>(
 }
 
 /// Ensure that the ABI makes basic sense.
-fn fn_abi_sanity_check<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) {
+fn fn_abi_sanity_check<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    spec_abi: SpecAbi,
+) {
     fn fn_arg_sanity_check<'tcx>(
         cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        spec_abi: SpecAbi,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
     ) {
         match &arg.mode {
@@ -398,8 +403,8 @@ fn fn_abi_sanity_check<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, fn_abi: &FnAbi<'
                     // (See issue: https://github.com/rust-lang/rust/issues/117271)
                     assert!(
                         matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
-                            || fn_abi.conv == Conv::PtxKernel,
-                        "`PassMode::Direct` for aggregates only allowed on wasm and `extern \"ptx-kernel\"` fns\nProblematic type: {:#?}",
+                            || matches!(spec_abi, SpecAbi::PtxKernel | SpecAbi::Unadjusted),
+                        r#"`PassMode::Direct` for aggregates only allowed for "unadjusted" and "ptx-kernel" functions and on wasm\nProblematic type: {:#?}"#,
                         arg.layout,
                     );
                 }
@@ -429,9 +434,9 @@ fn fn_abi_sanity_check<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, fn_abi: &FnAbi<'
     }
 
     for arg in fn_abi.args.iter() {
-        fn_arg_sanity_check(cx, fn_abi, arg);
+        fn_arg_sanity_check(cx, fn_abi, spec_abi, arg);
     }
-    fn_arg_sanity_check(cx, fn_abi, &fn_abi.ret);
+    fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret);
 }
 
 // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
@@ -560,7 +565,7 @@ fn fn_abi_new_uncached<'tcx>(
     };
     fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
-    fn_abi_sanity_check(cx, &fn_abi);
+    fn_abi_sanity_check(cx, &fn_abi, sig.abi);
     Ok(cx.tcx.arena.alloc(fn_abi))
 }
 
@@ -572,6 +577,24 @@ fn fn_abi_adjust_for_abi<'tcx>(
     fn_def_id: Option<DefId>,
 ) -> Result<(), &'tcx FnAbiError<'tcx>> {
     if abi == SpecAbi::Unadjusted {
+        // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
+        // some LLVM intrinsics.
+        fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx, Ty<'tcx>>) {
+            // This still uses `PassMode::Pair` for ScalarPair types. That's unlikely to be intended,
+            // but who knows what breaks if we change this now.
+            if matches!(arg.layout.abi, Abi::Aggregate { .. }) {
+                assert!(
+                    arg.layout.abi.is_sized(),
+                    "'unadjusted' ABI does not support unsized arguments"
+                );
+            }
+            arg.make_direct_deprecated();
+        }
+
+        unadjust(&mut fn_abi.ret);
+        for arg in fn_abi.args.iter_mut() {
+            unadjust(arg);
+        }
         return Ok(());
     }
 

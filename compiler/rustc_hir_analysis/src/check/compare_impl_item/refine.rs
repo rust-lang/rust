@@ -91,7 +91,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
         // This opaque also needs to be from the impl method -- otherwise,
         // it's a refinement to a TAIT.
-        if !tcx.hir().get_if_local(impl_opaque.def_id).map_or(false, |node| {
+        if !tcx.hir().get_if_local(impl_opaque.def_id).is_some_and(|node| {
             matches!(
                 node.expect_item().expect_opaque_ty().origin,
                 hir::OpaqueTyOrigin::AsyncFn(def_id)  | hir::OpaqueTyOrigin::FnReturn(def_id)

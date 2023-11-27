@@ -2058,8 +2058,8 @@ pub enum QPath<'hir> {
     /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(&'hir Ty<'hir>, &'hir PathSegment<'hir>),
 
-    /// Reference to a `#[lang = "foo"]` item. `HirId` of the inner expr.
-    LangItem(LangItem, Span, Option<HirId>),
+    /// Reference to a `#[lang = "foo"]` item.
+    LangItem(LangItem, Span),
 }
 
 impl<'hir> QPath<'hir> {
@@ -2068,7 +2068,7 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, ps) => qself.span.to(ps.ident.span),
-            QPath::LangItem(_, span, _) => span,
+            QPath::LangItem(_, span) => span,
         }
     }
 
@@ -2078,7 +2078,7 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, _) => qself.span,
-            QPath::LangItem(_, span, _) => span,
+            QPath::LangItem(_, span) => span,
         }
     }
 }

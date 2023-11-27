@@ -642,15 +642,23 @@ impl<'tcx> Cx<'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value =
-                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
+                            let value = mir::Const::identity_unevaluated(
+                                tcx,
+                                anon_const.def_id.to_def_id(),
+                            )
+                            .instantiate_identity()
+                            .normalize(tcx, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value =
-                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
+                            let value = mir::Const::identity_unevaluated(
+                                tcx,
+                                anon_const.def_id.to_def_id(),
+                            )
+                            .instantiate_identity()
+                            .normalize(tcx, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }
@@ -891,7 +899,7 @@ impl<'tcx> Cx<'tcx> {
             }
 
             Res::Def(DefKind::ConstParam, def_id) => {
-                let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+                let hir_id = self.tcx.local_def_id_to_hir_id(def_id.expect_local());
                 let generics = self.tcx.generics_of(hir_id.owner);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = self.tcx.hir().name(hir_id);

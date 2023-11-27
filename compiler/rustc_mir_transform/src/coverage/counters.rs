@@ -1,18 +1,16 @@
-use super::graph;
-
-use graph::{BasicCoverageBlock, BcbBranch, CoverageGraph, TraverseCoverageGraphWithLoops};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::*;
 
+use super::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverageGraphWithLoops};
+
 use std::fmt::{self, Debug};
 
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub(super) enum BcbCounter {
     Counter { id: CounterId },
     Expression { id: ExpressionId },
@@ -88,9 +86,18 @@ impl CoverageCounters {
         BcbCounter::Counter { id }
     }
 
-    fn make_expression(&mut self, lhs: CovTerm, op: Op, rhs: CovTerm) -> BcbCounter {
-        let id = self.expressions.push(Expression { lhs, op, rhs });
+    fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
+        let expression = Expression { lhs: lhs.as_term(), op, rhs: rhs.as_term() };
+        let id = self.expressions.push(expression);
         BcbCounter::Expression { id }
+    }
+
+    /// Variant of `make_expression` that makes `lhs` optional and assumes [`Op::Add`].
+    ///
+    /// This is useful when using [`Iterator::fold`] to build an arbitrary-length sum.
+    fn make_sum_expression(&mut self, lhs: Option<BcbCounter>, rhs: BcbCounter) -> BcbCounter {
+        let Some(lhs) = lhs else { return rhs };
+        self.make_expression(lhs, Op::Add, rhs)
     }
 
     /// Counter IDs start from one and go up.
@@ -109,7 +116,7 @@ impl CoverageCounters {
         self.expressions.len()
     }
 
-    fn set_bcb_counter(&mut self, bcb: BasicCoverageBlock, counter_kind: BcbCounter) -> CovTerm {
+    fn set_bcb_counter(&mut self, bcb: BasicCoverageBlock, counter_kind: BcbCounter) -> BcbCounter {
         assert!(
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
@@ -118,14 +125,13 @@ impl CoverageCounters {
             "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
         );
 
-        let term = counter_kind.as_term();
         if let Some(replaced) = self.bcb_counters[bcb].replace(counter_kind) {
             bug!(
                 "attempt to set a BasicCoverageBlock coverage counter more than once; \
                 {bcb:?} already had counter {replaced:?}",
             );
         } else {
-            term
+            counter_kind
         }
     }
 
@@ -134,7 +140,7 @@ impl CoverageCounters {
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
         counter_kind: BcbCounter,
-    ) -> CovTerm {
+    ) -> BcbCounter {
         // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
         // have an expression (to be injected into an existing `BasicBlock` represented by this
         // `BasicCoverageBlock`).
@@ -148,19 +154,18 @@ impl CoverageCounters {
         }
 
         self.bcb_has_incoming_edge_counters.insert(to_bcb);
-        let term = counter_kind.as_term();
         if let Some(replaced) = self.bcb_edge_counters.insert((from_bcb, to_bcb), counter_kind) {
             bug!(
                 "attempt to set an edge counter more than once; from_bcb: \
                 {from_bcb:?} already had counter {replaced:?}",
             );
         } else {
-            term
+            counter_kind
         }
     }
 
-    pub(super) fn bcb_counter(&self, bcb: BasicCoverageBlock) -> Option<&BcbCounter> {
-        self.bcb_counters[bcb].as_ref()
+    pub(super) fn bcb_counter(&self, bcb: BasicCoverageBlock) -> Option<BcbCounter> {
+        self.bcb_counters[bcb]
     }
 
     pub(super) fn bcb_node_counters(
@@ -226,11 +231,7 @@ impl<'a> MakeBcbCounters<'a> {
         while let Some(bcb) = traversal.next() {
             if bcb_has_coverage_spans(bcb) {
                 debug!("{:?} has at least one coverage span. Get or make its counter", bcb);
-                let branching_counter_operand = self.get_or_make_counter_operand(bcb);
-
-                if self.bcb_needs_branch_counters(bcb) {
-                    self.make_branch_counters(&traversal, bcb, branching_counter_operand);
-                }
+                self.make_node_and_branch_counters(&traversal, bcb);
             } else {
                 debug!(
                     "{:?} does not have any coverage spans. A counter will only be added if \
@@ -247,100 +248,93 @@ impl<'a> MakeBcbCounters<'a> {
         );
     }
 
-    fn make_branch_counters(
+    fn make_node_and_branch_counters(
         &mut self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
-        branching_bcb: BasicCoverageBlock,
-        branching_counter_operand: CovTerm,
+        from_bcb: BasicCoverageBlock,
     ) {
-        let branches = self.bcb_branches(branching_bcb);
-        debug!(
-            "{:?} has some branch(es) without counters:\n  {}",
-            branching_bcb,
-            branches
+        // First, ensure that this node has a counter of some kind.
+        // We might also use its term later to compute one of the branch counters.
+        let from_bcb_operand = self.get_or_make_counter_operand(from_bcb);
+
+        let branch_target_bcbs = self.basic_coverage_blocks.successors[from_bcb].as_slice();
+
+        // If this node doesn't have multiple out-edges, or all of its out-edges
+        // already have counters, then we don't need to create edge counters.
+        let needs_branch_counters = branch_target_bcbs.len() > 1
+            && branch_target_bcbs
                 .iter()
-                .map(|branch| { format!("{:?}: {:?}", branch, self.branch_counter(branch)) })
+                .any(|&to_bcb| self.branch_has_no_counter(from_bcb, to_bcb));
+        if !needs_branch_counters {
+            return;
+        }
+
+        debug!(
+            "{from_bcb:?} has some branch(es) without counters:\n  {}",
+            branch_target_bcbs
+                .iter()
+                .map(|&to_bcb| {
+                    format!("{from_bcb:?}->{to_bcb:?}: {:?}", self.branch_counter(from_bcb, to_bcb))
+                })
                 .collect::<Vec<_>>()
                 .join("\n  "),
         );
 
-        // Use the `traversal` state to decide if a subset of the branches exit a loop, making it
-        // likely that branch is executed less than branches that do not exit the same loop. In this
-        // case, any branch that does not exit the loop (and has not already been assigned a
-        // counter) should be counted by expression, if possible. (If a preferred expression branch
-        // is not selected based on the loop context, select any branch without an existing
-        // counter.)
-        let expression_branch = self.choose_preferred_expression_branch(traversal, &branches);
+        // Of the branch edges that don't have counters yet, one can be given an expression
+        // (computed from the other edges) instead of a dedicated counter.
+        let expression_to_bcb = self.choose_preferred_expression_branch(traversal, from_bcb);
 
-        // Assign a Counter or Expression to each branch, plus additional `Expression`s, as needed,
-        // to sum up intermediate results.
-        let mut some_sumup_counter_operand = None;
-        for branch in branches {
-            // Skip the selected `expression_branch`, if any. It's expression will be assigned after
-            // all others.
-            if branch != expression_branch {
-                let branch_counter_operand = if branch.is_only_path_to_target() {
-                    debug!(
-                        "  {:?} has only one incoming edge (from {:?}), so adding a \
-                        counter",
-                        branch, branching_bcb
-                    );
-                    self.get_or_make_counter_operand(branch.target_bcb)
-                } else {
-                    debug!("  {:?} has multiple incoming edges, so adding an edge counter", branch);
-                    self.get_or_make_edge_counter_operand(branching_bcb, branch.target_bcb)
-                };
-                if let Some(sumup_counter_operand) =
-                    some_sumup_counter_operand.replace(branch_counter_operand)
-                {
-                    let intermediate_expression = self.coverage_counters.make_expression(
-                        branch_counter_operand,
-                        Op::Add,
-                        sumup_counter_operand,
-                    );
-                    debug!("  [new intermediate expression: {:?}]", intermediate_expression);
-                    let intermediate_expression_operand = intermediate_expression.as_term();
-                    some_sumup_counter_operand.replace(intermediate_expression_operand);
-                }
-            }
-        }
+        // For each branch arm other than the one that was chosen to get an expression,
+        // ensure that it has a counter (existing counter/expression or a new counter),
+        // and accumulate the corresponding terms into a single sum term.
+        let sum_of_all_other_branches: BcbCounter = {
+            let _span = debug_span!("sum_of_all_other_branches", ?expression_to_bcb).entered();
+            branch_target_bcbs
+                .iter()
+                .copied()
+                // Skip the chosen branch, since we'll calculate it from the other branches.
+                .filter(|&to_bcb| to_bcb != expression_to_bcb)
+                .fold(None, |accum, to_bcb| {
+                    let _span = debug_span!("to_bcb", ?accum, ?to_bcb).entered();
+                    let branch_counter = self.get_or_make_edge_counter_operand(from_bcb, to_bcb);
+                    Some(self.coverage_counters.make_sum_expression(accum, branch_counter))
+                })
+                .expect("there must be at least one other branch")
+        };
 
-        // Assign the final expression to the `expression_branch` by subtracting the total of all
-        // other branches from the counter of the branching BCB.
-        let sumup_counter_operand =
-            some_sumup_counter_operand.expect("sumup_counter_operand should have a value");
+        // For the branch that was chosen to get an expression, create that expression
+        // by taking the count of the node we're branching from, and subtracting the
+        // sum of all the other branches.
         debug!(
-            "Making an expression for the selected expression_branch: {:?} \
-            (expression_branch predecessors: {:?})",
-            expression_branch,
-            self.bcb_predecessors(expression_branch.target_bcb),
+            "Making an expression for the selected expression_branch: \
+            {expression_to_bcb:?} (expression_branch predecessors: {:?})",
+            self.bcb_predecessors(expression_to_bcb),
         );
         let expression = self.coverage_counters.make_expression(
-            branching_counter_operand,
+            from_bcb_operand,
             Op::Subtract,
-            sumup_counter_operand,
+            sum_of_all_other_branches,
         );
-        debug!("{:?} gets an expression: {:?}", expression_branch, expression);
-        let bcb = expression_branch.target_bcb;
-        if expression_branch.is_only_path_to_target() {
-            self.coverage_counters.set_bcb_counter(bcb, expression);
+        debug!("{expression_to_bcb:?} gets an expression: {expression:?}");
+        if self.basic_coverage_blocks.bcb_has_multiple_in_edges(expression_to_bcb) {
+            self.coverage_counters.set_bcb_edge_counter(from_bcb, expression_to_bcb, expression);
         } else {
-            self.coverage_counters.set_bcb_edge_counter(branching_bcb, bcb, expression);
+            self.coverage_counters.set_bcb_counter(expression_to_bcb, expression);
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> CovTerm {
+    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
         // If the BCB already has a counter, return it.
-        if let Some(counter_kind) = &self.coverage_counters.bcb_counters[bcb] {
+        if let Some(counter_kind) = self.coverage_counters.bcb_counters[bcb] {
             debug!("{bcb:?} already has a counter: {counter_kind:?}");
-            return counter_kind.as_term();
+            return counter_kind;
         }
 
         // A BCB with only one incoming edge gets a simple `Counter` (via `make_counter()`).
         // Also, a BCB that loops back to itself gets a simple `Counter`. This may indicate the
         // program results in a tight infinite loop, but it should still compile.
-        let one_path_to_target = self.bcb_has_one_path_to_target(bcb);
+        let one_path_to_target = !self.basic_coverage_blocks.bcb_has_multiple_in_edges(bcb);
         if one_path_to_target || self.bcb_predecessors(bcb).contains(&bcb) {
             let counter_kind = self.coverage_counters.make_counter();
             if one_path_to_target {
@@ -355,40 +349,25 @@ impl<'a> MakeBcbCounters<'a> {
             return self.coverage_counters.set_bcb_counter(bcb, counter_kind);
         }
 
-        // A BCB with multiple incoming edges can compute its count by `Expression`, summing up the
-        // counters and/or expressions of its incoming edges. This will recursively get or create
-        // counters for those incoming edges first, then call `make_expression()` to sum them up,
-        // with additional intermediate expressions as needed.
-        let _sumup_debug_span = debug_span!("(preparing sum-up expression)").entered();
+        // A BCB with multiple incoming edges can compute its count by ensuring that counters
+        // exist for each of those edges, and then adding them up to get a total count.
+        let sum_of_in_edges: BcbCounter = {
+            let _span = debug_span!("sum_of_in_edges", ?bcb).entered();
+            // We avoid calling `self.bcb_predecessors` here so that we can
+            // call methods on `&mut self` inside the fold.
+            self.basic_coverage_blocks.predecessors[bcb]
+                .iter()
+                .copied()
+                .fold(None, |accum, from_bcb| {
+                    let _span = debug_span!("from_bcb", ?accum, ?from_bcb).entered();
+                    let edge_counter = self.get_or_make_edge_counter_operand(from_bcb, bcb);
+                    Some(self.coverage_counters.make_sum_expression(accum, edge_counter))
+                })
+                .expect("there must be at least one in-edge")
+        };
 
-        let mut predecessors = self.bcb_predecessors(bcb).to_owned().into_iter();
-        let first_edge_counter_operand =
-            self.get_or_make_edge_counter_operand(predecessors.next().unwrap(), bcb);
-        let mut some_sumup_edge_counter_operand = None;
-        for predecessor in predecessors {
-            let edge_counter_operand = self.get_or_make_edge_counter_operand(predecessor, bcb);
-            if let Some(sumup_edge_counter_operand) =
-                some_sumup_edge_counter_operand.replace(edge_counter_operand)
-            {
-                let intermediate_expression = self.coverage_counters.make_expression(
-                    sumup_edge_counter_operand,
-                    Op::Add,
-                    edge_counter_operand,
-                );
-                debug!("new intermediate expression: {intermediate_expression:?}");
-                let intermediate_expression_operand = intermediate_expression.as_term();
-                some_sumup_edge_counter_operand.replace(intermediate_expression_operand);
-            }
-        }
-        let counter_kind = self.coverage_counters.make_expression(
-            first_edge_counter_operand,
-            Op::Add,
-            some_sumup_edge_counter_operand.unwrap(),
-        );
-        drop(_sumup_debug_span);
-
-        debug!("{bcb:?} gets a new counter (sum of predecessor counters): {counter_kind:?}");
-        self.coverage_counters.set_bcb_counter(bcb, counter_kind)
+        debug!("{bcb:?} gets a new counter (sum of predecessor counters): {sum_of_in_edges:?}");
+        self.coverage_counters.set_bcb_counter(bcb, sum_of_in_edges)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -396,20 +375,26 @@ impl<'a> MakeBcbCounters<'a> {
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
-    ) -> CovTerm {
+    ) -> BcbCounter {
+        // If the target BCB has only one in-edge (i.e. this one), then create
+        // a node counter instead, since it will have the same value.
+        if !self.basic_coverage_blocks.bcb_has_multiple_in_edges(to_bcb) {
+            assert_eq!([from_bcb].as_slice(), self.basic_coverage_blocks.predecessors[to_bcb]);
+            return self.get_or_make_counter_operand(to_bcb);
+        }
+
         // If the source BCB has only one successor (assumed to be the given target), an edge
         // counter is unnecessary. Just get or make a counter for the source BCB.
-        let successors = self.bcb_successors(from_bcb).iter();
-        if successors.len() == 1 {
+        if self.bcb_successors(from_bcb).len() == 1 {
             return self.get_or_make_counter_operand(from_bcb);
         }
 
         // If the edge already has a counter, return it.
-        if let Some(counter_kind) =
+        if let Some(&counter_kind) =
             self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
         {
             debug!("Edge {from_bcb:?}->{to_bcb:?} already has a counter: {counter_kind:?}");
-            return counter_kind.as_term();
+            return counter_kind;
         }
 
         // Make a new counter to count this edge.
@@ -423,16 +408,19 @@ impl<'a> MakeBcbCounters<'a> {
     fn choose_preferred_expression_branch(
         &self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
-        branches: &[BcbBranch],
-    ) -> BcbBranch {
-        let good_reloop_branch = self.find_good_reloop_branch(traversal, branches);
-        if let Some(reloop_branch) = good_reloop_branch {
-            assert!(self.branch_has_no_counter(&reloop_branch));
-            debug!("Selecting reloop branch {reloop_branch:?} to get an expression");
-            reloop_branch
+        from_bcb: BasicCoverageBlock,
+    ) -> BasicCoverageBlock {
+        let good_reloop_branch = self.find_good_reloop_branch(traversal, from_bcb);
+        if let Some(reloop_target) = good_reloop_branch {
+            assert!(self.branch_has_no_counter(from_bcb, reloop_target));
+            debug!("Selecting reloop target {reloop_target:?} to get an expression");
+            reloop_target
         } else {
-            let &branch_without_counter =
-                branches.iter().find(|&branch| self.branch_has_no_counter(branch)).expect(
+            let &branch_without_counter = self
+                .bcb_successors(from_bcb)
+                .iter()
+                .find(|&&to_bcb| self.branch_has_no_counter(from_bcb, to_bcb))
+                .expect(
                     "needs_branch_counters was `true` so there should be at least one \
                     branch",
                 );
@@ -453,26 +441,28 @@ impl<'a> MakeBcbCounters<'a> {
     fn find_good_reloop_branch(
         &self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
-        branches: &[BcbBranch],
-    ) -> Option<BcbBranch> {
+        from_bcb: BasicCoverageBlock,
+    ) -> Option<BasicCoverageBlock> {
+        let branch_target_bcbs = self.bcb_successors(from_bcb);
+
         // Consider each loop on the current traversal context stack, top-down.
         for reloop_bcbs in traversal.reloop_bcbs_per_loop() {
             let mut all_branches_exit_this_loop = true;
 
             // Try to find a branch that doesn't exit this loop and doesn't
             // already have a counter.
-            for &branch in branches {
+            for &branch_target_bcb in branch_target_bcbs {
                 // A branch is a reloop branch if it dominates any BCB that has
                 // an edge back to the loop header. (Other branches are exits.)
                 let is_reloop_branch = reloop_bcbs.iter().any(|&reloop_bcb| {
-                    self.basic_coverage_blocks.dominates(branch.target_bcb, reloop_bcb)
+                    self.basic_coverage_blocks.dominates(branch_target_bcb, reloop_bcb)
                 });
 
                 if is_reloop_branch {
                     all_branches_exit_this_loop = false;
-                    if self.branch_has_no_counter(&branch) {
+                    if self.branch_has_no_counter(from_bcb, branch_target_bcb) {
                         // We found a good branch to be given an expression.
-                        return Some(branch);
+                        return Some(branch_target_bcb);
                     }
                     // Keep looking for another reloop branch without a counter.
                 } else {
@@ -505,36 +495,23 @@ impl<'a> MakeBcbCounters<'a> {
     }
 
     #[inline]
-    fn bcb_branches(&self, from_bcb: BasicCoverageBlock) -> Vec<BcbBranch> {
-        self.bcb_successors(from_bcb)
-            .iter()
-            .map(|&to_bcb| BcbBranch::from_to(from_bcb, to_bcb, self.basic_coverage_blocks))
-            .collect::<Vec<_>>()
+    fn branch_has_no_counter(
+        &self,
+        from_bcb: BasicCoverageBlock,
+        to_bcb: BasicCoverageBlock,
+    ) -> bool {
+        self.branch_counter(from_bcb, to_bcb).is_none()
     }
 
-    fn bcb_needs_branch_counters(&self, bcb: BasicCoverageBlock) -> bool {
-        let branch_needs_a_counter = |branch: &BcbBranch| self.branch_has_no_counter(branch);
-        let branches = self.bcb_branches(bcb);
-        branches.len() > 1 && branches.iter().any(branch_needs_a_counter)
-    }
-
-    fn branch_has_no_counter(&self, branch: &BcbBranch) -> bool {
-        self.branch_counter(branch).is_none()
-    }
-
-    fn branch_counter(&self, branch: &BcbBranch) -> Option<&BcbCounter> {
-        let to_bcb = branch.target_bcb;
-        if let Some(from_bcb) = branch.edge_from_bcb {
+    fn branch_counter(
+        &self,
+        from_bcb: BasicCoverageBlock,
+        to_bcb: BasicCoverageBlock,
+    ) -> Option<&BcbCounter> {
+        if self.basic_coverage_blocks.bcb_has_multiple_in_edges(to_bcb) {
             self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
         } else {
             self.coverage_counters.bcb_counters[to_bcb].as_ref()
         }
-    }
-
-    /// Returns true if the BasicCoverageBlock has zero or one incoming edge. (If zero, it should be
-    /// the entry point for the function.)
-    #[inline]
-    fn bcb_has_one_path_to_target(&self, bcb: BasicCoverageBlock) -> bool {
-        self.bcb_predecessors(bcb).len() <= 1
     }
 }

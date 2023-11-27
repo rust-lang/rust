@@ -982,7 +982,7 @@ impl<D: Deps> DepGraph<D> {
         }
     }
 
-    pub fn encode(&self, profiler: &SelfProfilerRef) -> FileEncodeResult {
+    pub fn finish_encoding(&self, profiler: &SelfProfilerRef) -> FileEncodeResult {
         if let Some(data) = &self.data {
             data.current.encoder.steal().finish(profiler)
         } else {

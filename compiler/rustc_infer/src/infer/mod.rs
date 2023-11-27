@@ -32,7 +32,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
-use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::visit::TypeVisitableExt;
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
@@ -1404,17 +1404,6 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let mut r = InferenceLiteralEraser { tcx: self.tcx };
         value.fold_with(&mut r)
-    }
-
-    /// Returns the first unresolved type or const variable contained in `T`.
-    pub fn first_unresolved_const_or_ty_var<T>(
-        &self,
-        value: &T,
-    ) -> Option<(ty::Term<'tcx>, Option<Span>)>
-    where
-        T: TypeVisitable<TyCtxt<'tcx>>,
-    {
-        value.visit_with(&mut resolve::UnresolvedTypeOrConstFinder::new(self)).break_value()
     }
 
     pub fn probe_const_var(&self, vid: ty::ConstVid) -> Result<ty::Const<'tcx>, ty::UniverseIndex> {

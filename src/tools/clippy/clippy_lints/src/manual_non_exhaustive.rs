@@ -192,7 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                     .contains(&(enum_id.to_def_id(), variant_id.to_def_id()))
             })
         {
-            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(enum_id);
+            let hir_id = cx.tcx.local_def_id_to_hir_id(enum_id);
             span_lint_hir_and_then(
                 cx,
                 MANUAL_NON_EXHAUSTIVE,

@@ -1448,7 +1448,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::ExprItemObligation(..)
                         | ObligationCauseCode::ExprBindingObligation(..)
                         | ObligationCauseCode::Coercion { .. }
-                        | ObligationCauseCode::OpaqueType
                 );
 
                 // constrain inference variables a bit more to nested obligations from normalize so
@@ -3076,7 +3075,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // Additional context information explaining why the closure only implements
         // a particular trait.
         if let Some(typeck_results) = &self.typeck_results {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+            let hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id.expect_local());
             match (found_kind, typeck_results.closure_kind_origins().get(hir_id)) {
                 (ty::ClosureKind::FnOnce, Some((span, place))) => {
                     err.fn_once_label = Some(ClosureFnOnceLabel {
