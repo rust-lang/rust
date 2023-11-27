@@ -320,3 +320,36 @@ communicate with the server to coordinate running tests (see
 [remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
 [src/bootstrap/test.rs]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/test.rs
 
+## Running rustc_codegen_gcc tests
+
+First thing to know is that it only supports linux x86_64 at the moment. We will
+extend its support later on.
+
+You need to update `codegen-backends` value in your `config.toml` file in the
+`[rust]` section and add "gcc" in the array:
+
+```toml
+codegen-backends = ["llvm", "gcc"]
+```
+
+Then you need to install libgccjit 12. For example with `apt`:
+
+```bash
+$ apt install libgccjit-12-dev
+```
+
+Now you can run the following command:
+
+```bash
+$ ./x.py test compiler/rustc_codegen_gcc/
+```
+
+If it cannot find the `.so` library (if you installed it with `apt` for example), you
+need to pass the library file path with `LIBRARY_PATH`:
+
+```bash
+$ LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x.py test compiler/rustc_codegen_gcc/
+```
+
+If you encounter bugs or problems, don't hesitate to open issues on
+[rustc_codegen_gcc repository](github.com/rust-lang/rustc_codegen_gcc/).
