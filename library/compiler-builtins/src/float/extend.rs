@@ -70,6 +70,7 @@ where
 }
 
 intrinsics! {
+    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_f2d]
     pub extern "C" fn  __extendsfdf2(a: f32) -> f64 {
