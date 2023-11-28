@@ -322,8 +322,7 @@ impl CallableSig {
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
             // FIXME: what to do about lifetime params? -> return PolyFnSig
-            // FIXME: use `Arc::from_iter` when it becomes available
-            params_and_return: Arc::from(
+            params_and_return: Arc::from_iter(
                 fn_ptr
                     .substitution
                     .clone()
@@ -332,8 +331,7 @@ impl CallableSig {
                     .0
                     .as_slice(Interner)
                     .iter()
-                    .map(|arg| arg.assert_ty_ref(Interner).clone())
-                    .collect::<Vec<_>>(),
+                    .map(|arg| arg.assert_ty_ref(Interner).clone()),
             ),
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,

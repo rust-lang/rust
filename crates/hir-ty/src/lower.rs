@@ -1459,8 +1459,7 @@ pub(crate) fn generic_predicates_for_param_recover(
     _param_id: &TypeOrConstParamId,
     _assoc_name: &Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
-    // FIXME: use `Arc::from_iter` when it becomes available
-    Arc::from(vec![])
+    Arc::from_iter(None)
 }
 
 pub(crate) fn trait_environment_for_body_query(
@@ -1603,44 +1602,35 @@ pub(crate) fn generic_defaults_query(
     let generic_params = generics(db.upcast(), def);
     let parent_start_idx = generic_params.len_self();
 
-    let defaults = Arc::from(
-        generic_params
-            .iter()
-            .enumerate()
-            .map(|(idx, (id, p))| {
-                match p {
-                    TypeOrConstParamData::TypeParamData(p) => {
-                        let mut ty = p
-                            .default
-                            .as_ref()
-                            .map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
-                        // Each default can only refer to previous parameters.
-                        // Type variable default referring to parameter coming
-                        // after it is forbidden (FIXME: report diagnostic)
-                        ty = fallback_bound_vars(ty, idx, parent_start_idx);
-                        crate::make_binders(db, &generic_params, ty.cast(Interner))
-                    }
-                    TypeOrConstParamData::ConstParamData(p) => {
-                        let mut val = p.default.as_ref().map_or_else(
-                            || {
-                                unknown_const_as_generic(
-                                    db.const_param_ty(ConstParamId::from_unchecked(id)),
-                                )
-                            },
-                            |c| {
-                                let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
-                                c.cast(Interner)
-                            },
-                        );
-                        // Each default can only refer to previous parameters, see above.
-                        val = fallback_bound_vars(val, idx, parent_start_idx);
-                        make_binders(db, &generic_params, val)
-                    }
-                }
-            })
-            // FIXME: use `Arc::from_iter` when it becomes available
-            .collect::<Vec<_>>(),
-    );
+    let defaults = Arc::from_iter(generic_params.iter().enumerate().map(|(idx, (id, p))| {
+        match p {
+            TypeOrConstParamData::TypeParamData(p) => {
+                let mut ty =
+                    p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
+                // Each default can only refer to previous parameters.
+                // Type variable default referring to parameter coming
+                // after it is forbidden (FIXME: report diagnostic)
+                ty = fallback_bound_vars(ty, idx, parent_start_idx);
+                crate::make_binders(db, &generic_params, ty.cast(Interner))
+            }
+            TypeOrConstParamData::ConstParamData(p) => {
+                let mut val = p.default.as_ref().map_or_else(
+                    || {
+                        unknown_const_as_generic(
+                            db.const_param_ty(ConstParamId::from_unchecked(id)),
+                        )
+                    },
+                    |c| {
+                        let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
+                        c.cast(Interner)
+                    },
+                );
+                // Each default can only refer to previous parameters, see above.
+                val = fallback_bound_vars(val, idx, parent_start_idx);
+                make_binders(db, &generic_params, val)
+            }
+        }
+    }));
 
     defaults
 }
@@ -1653,19 +1643,13 @@ pub(crate) fn generic_defaults_recover(
     let generic_params = generics(db.upcast(), *def);
     // FIXME: this code is not covered in tests.
     // we still need one default per parameter
-    let defaults = Arc::from(
-        generic_params
-            .iter_id()
-            .map(|id| {
-                let val = match id {
-                    Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
-                    Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
-                };
-                crate::make_binders(db, &generic_params, val)
-            })
-            // FIXME: use `Arc::from_iter` when it becomes available
-            .collect::<Vec<_>>(),
-    );
+    let defaults = Arc::from_iter(generic_params.iter_id().map(|id| {
+        let val = match id {
+            Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
+            Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
+        };
+        crate::make_binders(db, &generic_params, val)
+    }));
 
     defaults
 }

@@ -44,21 +44,18 @@ impl RawAttrs {
         owner: &dyn ast::HasAttrs,
         span_map: SpanMapRef<'_>,
     ) -> Self {
-        let entries = collect_attrs(owner)
-            .filter_map(|(id, attr)| match attr {
-                Either::Left(attr) => {
-                    attr.meta().and_then(|meta| Attr::from_src(db, meta, span_map, id))
-                }
-                Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
-                    id,
-                    input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
-                    path: Interned::new(ModPath::from(crate::name!(doc))),
-                    ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
-                }),
-            })
-            .collect::<Vec<_>>();
-        // FIXME: use `Arc::from_iter` when it becomes available
-        let entries: Arc<[Attr]> = Arc::from(entries);
+        let entries = collect_attrs(owner).filter_map(|(id, attr)| match attr {
+            Either::Left(attr) => {
+                attr.meta().and_then(|meta| Attr::from_src(db, meta, span_map, id))
+            }
+            Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
+                id,
+                input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
+                path: Interned::new(ModPath::from(crate::name!(doc))),
+                ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
+            }),
+        });
+        let entries: Arc<[Attr]> = Arc::from_iter(entries);
 
         Self { entries: if entries.is_empty() { None } else { Some(entries) } }
     }
@@ -79,19 +76,13 @@ impl RawAttrs {
             (Some(a), Some(b)) => {
                 let last_ast_index = a.last().map_or(0, |it| it.id.ast_index() + 1) as u32;
                 Self {
-                    entries: Some(Arc::from(
-                        a.iter()
-                            .cloned()
-                            .chain(b.iter().map(|it| {
-                                let mut it = it.clone();
-                                it.id.id = it.id.ast_index() as u32 + last_ast_index
-                                    | (it.id.cfg_attr_index().unwrap_or(0) as u32)
-                                        << AttrId::AST_INDEX_BITS;
-                                it
-                            }))
-                            // FIXME: use `Arc::from_iter` when it becomes available
-                            .collect::<Vec<_>>(),
-                    )),
+                    entries: Some(Arc::from_iter(a.iter().cloned().chain(b.iter().map(|it| {
+                        let mut it = it.clone();
+                        it.id.id = it.id.ast_index() as u32 + last_ast_index
+                            | (it.id.cfg_attr_index().unwrap_or(0) as u32)
+                                << AttrId::AST_INDEX_BITS;
+                        it
+                    })))),
                 }
             }
         }
@@ -108,49 +99,43 @@ impl RawAttrs {
         }
 
         let crate_graph = db.crate_graph();
-        let new_attrs = Arc::from(
-            self.iter()
-                .flat_map(|attr| -> SmallVec<[_; 1]> {
-                    let is_cfg_attr =
-                        attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
-                    if !is_cfg_attr {
-                        return smallvec![attr.clone()];
-                    }
+        let new_attrs = Arc::from_iter(self.iter().flat_map(|attr| -> SmallVec<[_; 1]> {
+            let is_cfg_attr =
+                attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
+            if !is_cfg_attr {
+                return smallvec![attr.clone()];
+            }
 
-                    let subtree = match attr.token_tree_value() {
-                        Some(it) => it,
-                        _ => return smallvec![attr.clone()],
+            let subtree = match attr.token_tree_value() {
+                Some(it) => it,
+                _ => return smallvec![attr.clone()],
+            };
+
+            let (cfg, parts) = match parse_cfg_attr_input(subtree) {
+                Some(it) => it,
+                None => return smallvec![attr.clone()],
+            };
+            let index = attr.id;
+            let attrs =
+                parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(|(idx, attr)| {
+                    let tree = Subtree {
+                        delimiter: tt::Delimiter::dummy_invisible(),
+                        token_trees: attr.to_vec(),
                     };
+                    Attr::from_tt(db, &tree, index.with_cfg_attr(idx))
+                });
 
-                    let (cfg, parts) = match parse_cfg_attr_input(subtree) {
-                        Some(it) => it,
-                        None => return smallvec![attr.clone()],
-                    };
-                    let index = attr.id;
-                    let attrs = parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(
-                        |(idx, attr)| {
-                            let tree = Subtree {
-                                delimiter: tt::Delimiter::dummy_invisible(),
-                                token_trees: attr.to_vec(),
-                            };
-                            Attr::from_tt(db, &tree, index.with_cfg_attr(idx))
-                        },
-                    );
+            let cfg_options = &crate_graph[krate].cfg_options;
+            let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
+            let cfg = CfgExpr::parse(&cfg);
+            if cfg_options.check(&cfg) == Some(false) {
+                smallvec![]
+            } else {
+                cov_mark::hit!(cfg_attr_active);
 
-                    let cfg_options = &crate_graph[krate].cfg_options;
-                    let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
-                    let cfg = CfgExpr::parse(&cfg);
-                    if cfg_options.check(&cfg) == Some(false) {
-                        smallvec![]
-                    } else {
-                        cov_mark::hit!(cfg_attr_active);
-
-                        attrs.collect()
-                    }
-                })
-                // FIXME: use `Arc::from_iter` when it becomes available
-                .collect::<Vec<_>>(),
-        );
+                attrs.collect()
+            }
+        }));
 
         RawAttrs { entries: Some(new_attrs) }
     }
