@@ -8,23 +8,19 @@ use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
-use rustc_target::abi::Align;
-use rustc_target::spec::LinkSelfContainedComponents;
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
-use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
-
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
-
-use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
-
+use rustc_target::abi::Align;
+use rustc_target::spec::LinkSelfContainedComponents;
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
