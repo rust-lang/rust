@@ -747,7 +747,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             avoid_breaking_exported_api,
         ))
     });
-    store.register_late_pass(move |_| Box::new(doc::DocMarkdown::new(doc_valid_idents, check_private_items)));
+    store.register_late_pass(move |_| Box::new(doc::Documentation::new(doc_valid_idents, check_private_items)));
     store.register_late_pass(|_| Box::new(neg_multiply::NegMultiply));
     store.register_late_pass(|_| Box::new(let_if_seq::LetIfSeq));
     store.register_late_pass(|_| Box::new(mixed_read_write_in_expression::EvalOrderDependence));

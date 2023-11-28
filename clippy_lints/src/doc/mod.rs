@@ -305,15 +305,14 @@ declare_clippy_lint! {
     "suspicious usage of (outer) doc comments"
 }
 
-#[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct DocMarkdown {
+pub struct Documentation {
     valid_idents: FxHashSet<String>,
     in_trait_impl: bool,
     check_private_items: bool,
 }
 
-impl DocMarkdown {
+impl Documentation {
     pub fn new(valid_idents: &[String], check_private_items: bool) -> Self {
         Self {
             valid_idents: valid_idents.iter().cloned().collect(),
@@ -323,7 +322,7 @@ impl DocMarkdown {
     }
 }
 
-impl_lint_pass!(DocMarkdown => [
+impl_lint_pass!(Documentation => [
     DOC_LINK_WITH_QUOTES,
     DOC_MARKDOWN,
     MISSING_SAFETY_DOC,
@@ -334,7 +333,7 @@ impl_lint_pass!(DocMarkdown => [
     SUSPICIOUS_DOC_COMMENTS
 ]);
 
-impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
+impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
         check_attrs(cx, &self.valid_idents, attrs);
