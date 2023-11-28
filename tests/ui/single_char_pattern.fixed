@@ -1,5 +1,5 @@
 #![allow(clippy::needless_raw_strings, clippy::needless_raw_string_hashes, unused_must_use)]
-
+#![warn(clippy::single_char_pattern)]
 use std::collections::HashSet;
 
 fn main() {
