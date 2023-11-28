@@ -67,7 +67,6 @@ use rustc_middle::{
     ty::{ResolverAstLowering, TyCtxt},
 };
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
-use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::SmallVec;
@@ -153,7 +152,6 @@ trait ResolverAstLoweringExt {
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
     fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId);
-    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind;
 }
 
 impl ResolverAstLoweringExt for ResolverAstLowering {
@@ -216,10 +214,6 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
     fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId) {
         let lifetimes = self.extra_lifetime_params_map.remove(&from).unwrap_or_default();
         self.extra_lifetime_params_map.insert(to, lifetimes);
-    }
-
-    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind {
-        self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
     }
 }
 
@@ -467,6 +461,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         parent: LocalDefId,
         node_id: ast::NodeId,
         data: DefPathData,
+        def_kind: DefKind,
         span: Span,
     ) -> LocalDefId {
         debug_assert_ne!(node_id, ast::DUMMY_NODE_ID);
@@ -478,7 +473,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.hir().def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.tcx.at(span).create_def(parent, data).def_id();
+        let def_id = self.tcx.at(span).create_def(parent, data, def_kind).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
         self.resolver.node_id_to_def_id.insert(node_id, def_id);
@@ -780,6 +775,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.current_hir_id_owner.def_id,
                     param,
                     DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                    DefKind::LifetimeParam,
                     ident.span,
                 );
                 debug!(?_def_id);
@@ -1192,6 +1188,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     parent_def_id.def_id,
                                     node_id,
                                     DefPathData::AnonConst,
+                                    DefKind::AnonConst,
                                     span,
                                 );
 
@@ -1429,6 +1426,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.current_hir_id_owner.def_id,
                             *def_node_id,
                             DefPathData::TypeNs(ident.name),
+                            DefKind::TyParam,
                             span,
                         );
                         let (param, bounds, path) = self.lower_universal_param_and_bounds(
@@ -1582,6 +1580,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.current_hir_id_owner.def_id,
             opaque_ty_node_id,
             DefPathData::ImplTrait,
+            DefKind::OpaqueTy,
             opaque_ty_span,
         );
         debug!(?opaque_ty_def_id);
@@ -1636,6 +1635,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     opaque_ty_def_id,
                     duplicated_lifetime_node_id,
                     DefPathData::LifetimeNs(lifetime.ident.name),
+                    DefKind::LifetimeParam,
                     lifetime.ident.span,
                 );
                 captured_to_synthesized_mapping.insert(old_def_id, duplicated_lifetime_def_id);
@@ -2505,8 +2505,13 @@ impl<'hir> GenericArgsCtor<'hir> {
         });
         lcx.attrs.insert(hir_id.local_id, std::slice::from_ref(attr));
 
-        let def_id =
-            lcx.create_def(lcx.current_hir_id_owner.def_id, id, DefPathData::AnonConst, span);
+        let def_id = lcx.create_def(
+            lcx.current_hir_id_owner.def_id,
+            id,
+            DefPathData::AnonConst,
+            DefKind::AnonConst,
+            span,
+        );
         lcx.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         self.args.push(hir::GenericArg::Const(hir::ConstArg {
             value: hir::AnonConst { def_id, hir_id, body },

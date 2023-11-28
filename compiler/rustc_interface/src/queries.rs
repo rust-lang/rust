@@ -8,6 +8,7 @@ use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
@@ -171,6 +172,9 @@ impl<'tcx> Queries<'tcx> {
                 )));
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
                 feed.output_filenames(Arc::new(outputs));
+
+                let feed = tcx.feed_local_def_id(CRATE_DEF_ID);
+                feed.def_kind(DefKind::Mod);
             });
             Ok(qcx)
         })

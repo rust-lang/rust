@@ -480,7 +480,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(MacroDef { body, macro_rules }) => {
                 let body = P(self.lower_delim_args(body));
-                let macro_kind = self.resolver.decl_macro_kind(self.local_def_id(id));
+                let DefKind::Macro(macro_kind) = self.tcx.def_kind(self.local_def_id(id)) else {
+                    unreachable!()
+                };
                 let macro_def = self.arena.alloc(ast::MacroDef { body, macro_rules: *macro_rules });
                 hir::ItemKind::Macro(macro_def, macro_kind)
             }
@@ -1399,6 +1401,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.local_def_id(parent_node_id),
                     param_node_id,
                     DefPathData::TypeNs(sym::host),
+                    DefKind::ConstParam,
                     span,
                 );
                 self.host_param_id = Some(def_id);
@@ -1457,8 +1460,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let Some((span, hir_id, def_id)) = host_param_parts {
             let const_node_id = self.next_node_id();
-            let anon_const: LocalDefId =
-                self.create_def(def_id, const_node_id, DefPathData::AnonConst, span);
+            let anon_const = self.create_def(
+                def_id,
+                const_node_id,
+                DefPathData::AnonConst,
+                DefKind::AnonConst,
+                span,
+            );
 
             let const_id = self.next_id();
             let const_expr_id = self.next_id();
