@@ -242,11 +242,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let error = try_execute.find_cycle_in_stack(
-        qcx.try_collect_active_jobs().unwrap(),
-        &qcx.current_query_job(),
-        span,
-    );
+    let error =
+        try_execute.find_cycle_in_stack(qcx.collect_active_jobs(), &qcx.current_query_job(), span);
     (mk_cycle(query, qcx, error), None)
 }
 
