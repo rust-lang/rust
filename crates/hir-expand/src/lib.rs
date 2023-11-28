@@ -44,7 +44,7 @@ use crate::{
     db::TokenExpander,
     mod_path::ModPath,
     proc_macro::ProcMacroExpander,
-    span::ExpansionSpanMap,
+    span::{ExpansionSpanMap, SpanMap},
 };
 
 pub use crate::ast_id_map::{AstId, ErasedAstId, ErasedFileAstId};
@@ -172,7 +172,6 @@ pub trait HirFileIdExt {
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
     fn original_file(self, db: &dyn db::ExpandDatabase) -> FileId;
-    fn expansion_level(self, db: &dyn db::ExpandDatabase) -> u32;
 
     /// If this is a macro call, returns the syntax node of the call.
     fn call_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<SyntaxNode>>;
@@ -216,18 +215,6 @@ impl HirFileIdExt for HirFileId {
                 }
             }
         }
-    }
-
-    fn expansion_level(self, db: &dyn db::ExpandDatabase) -> u32 {
-        let mut level = 0;
-        let mut curr = self;
-        while let Some(macro_file) = curr.macro_file() {
-            let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-
-            level += 1;
-            curr = loc.kind.file_id();
-        }
-        level
     }
 
     fn call_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<SyntaxNode>> {
@@ -330,6 +317,32 @@ impl HirFileIdExt for HirFileId {
     }
 }
 
+pub trait MacroFileIdExt {
+    fn expansion_level(self, db: &dyn db::ExpandDatabase) -> u32;
+    fn expansion_info(self, db: &dyn db::ExpandDatabase) -> ExpansionInfo;
+}
+
+impl MacroFileIdExt for MacroFileId {
+    fn expansion_level(self, db: &dyn db::ExpandDatabase) -> u32 {
+        let mut level = 0;
+        let mut macro_file = self;
+        loop {
+            let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+
+            level += 1;
+            macro_file = match loc.kind.file_id().repr() {
+                HirFileIdRepr::FileId(_) => break level,
+                HirFileIdRepr::MacroFile(it) => it,
+            };
+        }
+    }
+
+    /// Return expansion information if it is a macro-expansion file
+    fn expansion_info(self, db: &dyn db::ExpandDatabase) -> ExpansionInfo {
+        ExpansionInfo::new(db, self)
+    }
+}
+
 impl MacroDefId {
     pub fn as_lazy_macro(
         self,
@@ -398,7 +411,7 @@ impl MacroCallLoc {
         match file_id.repr() {
             HirFileIdRepr::FileId(file_id) => db.real_span_map(file_id).span_for_range(range),
             HirFileIdRepr::MacroFile(m) => {
-                db.parse_macro_expansion(m).value.1.span_for_range(range)
+                db.parse_macro_expansion(m).value.1.span_at(range.start())
             }
         }
     }
@@ -565,9 +578,8 @@ pub struct ExpansionInfo {
 
     macro_def: TokenExpander,
     macro_arg: Arc<tt::Subtree>,
-    exp_map: Arc<ExpansionSpanMap>,
-    /// [`None`] if the call is in a real file
-    arg_map: Option<Arc<ExpansionSpanMap>>,
+    pub exp_map: Arc<ExpansionSpanMap>,
+    arg_map: SpanMap,
 }
 
 impl ExpansionInfo {
@@ -582,38 +594,14 @@ impl ExpansionInfo {
     /// Maps the passed in file range down into a macro expansion if it is the input to a macro call.
     pub fn map_range_down<'a>(
         &'a self,
-        db: &'a dyn db::ExpandDatabase,
-        FileRange { file_id, range: absolute_range }: FileRange,
+        span: SpanData,
         // FIXME: use this for range mapping, so that we can resolve inline format args
         _relative_token_offset: Option<TextSize>,
         // FIXME: ret ty should be wrapped in InMacroFile
     ) -> Option<impl Iterator<Item = InFile<SyntaxToken>> + 'a> {
-        // search for all entries in the span map that have the given span and return the
-        // corresponding text ranges inside the expansion
-        // FIXME: Make this proper
-        let span_map = &self.exp_map.span_map;
-        let (start, end) = if span_map
-            .first()
-            .map_or(false, |(_, span)| span.anchor.file_id == file_id)
-        {
-            (0, span_map.partition_point(|a| a.1.anchor.file_id == file_id))
-        } else {
-            let start = span_map.partition_point(|a| a.1.anchor.file_id != file_id);
-            (start, start + span_map[start..].partition_point(|a| a.1.anchor.file_id == file_id))
-        };
-        let tokens = span_map[start..end]
-            .iter()
-            .filter_map(move |(range, span)| {
-                // we need to resolve the relative ranges here to make sure that we are in fact
-                // considering differently anchored spans (this might occur with proc-macros)
-                let offset = db
-                    .ast_id_map(span.anchor.file_id.into())
-                    .get_erased(span.anchor.ast_id)
-                    .text_range()
-                    .start();
-                let abs_range = span.range + offset;
-                absolute_range.eq(&abs_range).then_some(*range)
-            })
+        let tokens = self
+            .exp_map
+            .ranges_with_span(span)
             .flat_map(move |range| self.expanded.value.covering_element(range).into_token());
 
         Some(tokens.map(move |token| InFile::new(self.expanded.file_id.into(), token)))
@@ -626,7 +614,7 @@ impl ExpansionInfo {
         range: TextRange,
     ) -> (FileRange, SyntaxContextId) {
         debug_assert!(self.expanded.value.text_range().contains_range(range));
-        let span = self.exp_map.span_for_range(range);
+        let span = self.exp_map.span_at(range.start());
         let anchor_offset = db
             .ast_id_map(span.anchor.file_id.into())
             .get_erased(span.anchor.ast_id)
@@ -672,15 +660,15 @@ impl ExpansionInfo {
         token: TextRange,
     ) -> InFile<smallvec::SmallVec<[TextRange; 1]>> {
         debug_assert!(self.expanded.value.text_range().contains_range(token));
-        let span = self.exp_map.span_for_range(token);
+        let span = self.exp_map.span_at(token.start());
         match &self.arg_map {
-            None => {
+            SpanMap::RealSpanMap(_) => {
                 let file_id = span.anchor.file_id.into();
                 let anchor_offset =
                     db.ast_id_map(file_id).get_erased(span.anchor.ast_id).text_range().start();
                 InFile { file_id, value: smallvec::smallvec![span.range + anchor_offset] }
             }
-            Some(arg_map) => {
+            SpanMap::ExpansionSpanMap(arg_map) => {
                 let arg_range = self
                     .arg
                     .value
@@ -701,8 +689,7 @@ impl ExpansionInfo {
         let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
         let arg_tt = loc.kind.arg(db);
-        let arg_map =
-            arg_tt.file_id.macro_file().map(|file| db.parse_macro_expansion(file).value.1);
+        let arg_map = db.span_map(arg_tt.file_id);
 
         let macro_def = db.macro_expander(loc.def);
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;

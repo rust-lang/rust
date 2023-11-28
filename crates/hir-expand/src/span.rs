@@ -11,7 +11,7 @@ use crate::db::ExpandDatabase;
 pub type ExpansionSpanMap = TokenMap<SpanData>;
 
 /// Spanmap for a macro file or a real file
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SpanMap {
     /// Spanmap for a macro file
     ExpansionSpanMap(Arc<ExpansionSpanMap>),
@@ -46,7 +46,7 @@ impl mbe::SpanMapper<SpanData> for RealSpanMap {
 impl SpanMap {
     pub fn span_for_range(&self, range: TextRange) -> SpanData {
         match self {
-            Self::ExpansionSpanMap(span_map) => span_map.span_for_range(range),
+            Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
         }
     }
@@ -62,7 +62,7 @@ impl SpanMap {
 impl SpanMapRef<'_> {
     pub fn span_for_range(self, range: TextRange) -> SpanData {
         match self {
-            Self::ExpansionSpanMap(span_map) => span_map.span_for_range(range),
+            Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
         }
     }

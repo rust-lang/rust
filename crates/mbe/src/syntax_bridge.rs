@@ -23,7 +23,7 @@ pub trait SpanMapper<S: Span> {
 
 impl<S: Span> SpanMapper<S> for TokenMap<S> {
     fn span_for(&self, range: TextRange) -> S {
-        self.span_for_range(range)
+        self.span_at(range.start())
     }
 }
 
@@ -152,8 +152,8 @@ where
 {
     let mut map = TokenMap::empty();
     node.descendants_with_tokens().filter_map(NodeOrToken::into_token).for_each(|t| {
-        map.insert(
-            t.text_range(),
+        map.push(
+            t.text_range().start(),
             SpanData { range: t.text_range() - anchor_offset, anchor, ctx: Ctx::DUMMY },
         );
     });
@@ -730,15 +730,13 @@ where
                 self.inner.start_node(SyntaxKind::NAME_REF);
                 self.inner.token(SyntaxKind::INT_NUMBER, left);
                 self.inner.finish_node();
-                let range = TextRange::at(self.text_pos, TextSize::of(left));
-                self.token_map.insert(range, span);
+                self.token_map.push(self.text_pos + TextSize::of(left), span);
 
                 // here we move the exit up, the original exit has been deleted in process
                 self.inner.finish_node();
 
                 self.inner.token(SyntaxKind::DOT, ".");
-                let range = TextRange::at(range.end(), TextSize::of("."));
-                self.token_map.insert(range, span);
+                self.token_map.push(self.text_pos + TextSize::of(left) + TextSize::of("."), span);
 
                 if has_pseudo_dot {
                     assert!(right.is_empty(), "{left}.{right}");
@@ -746,8 +744,7 @@ where
                     assert!(!right.is_empty(), "{left}.{right}");
                     self.inner.start_node(SyntaxKind::NAME_REF);
                     self.inner.token(SyntaxKind::INT_NUMBER, right);
-                    let range = TextRange::at(range.end(), TextSize::of(right));
-                    self.token_map.insert(range, span);
+                    self.token_map.push(self.text_pos + TextSize::of(text), span);
                     self.inner.finish_node();
 
                     // the parser creates an unbalanced start node, we are required to close it here
@@ -772,7 +769,7 @@ where
                 break;
             }
             last = self.cursor;
-            let text: &str = loop {
+            let (text, span) = loop {
                 break match self.cursor.token_tree() {
                     Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
                         // Mark the range if needed
@@ -788,19 +785,13 @@ where
                             }
                             tt::Leaf::Literal(lit) => (lit.text.as_str(), lit.span),
                         };
-                        let range = TextRange::at(self.text_pos, TextSize::of(text));
-                        self.token_map.insert(range, span);
                         self.cursor = self.cursor.bump();
-                        text
+                        (text, span)
                     }
                     Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
                         self.cursor = self.cursor.subtree().unwrap();
                         match delim_to_str(subtree.delimiter.kind, false) {
-                            Some(it) => {
-                                let range = TextRange::at(self.text_pos, TextSize::of(it));
-                                self.token_map.insert(range, subtree.delimiter.open);
-                                it
-                            }
+                            Some(it) => (it, subtree.delimiter.open),
                             None => continue,
                         }
                     }
@@ -808,11 +799,7 @@ where
                         let parent = self.cursor.end().unwrap();
                         self.cursor = self.cursor.bump();
                         match delim_to_str(parent.delimiter.kind, true) {
-                            Some(it) => {
-                                let range = TextRange::at(self.text_pos, TextSize::of(it));
-                                self.token_map.insert(range, parent.delimiter.close);
-                                it
-                            }
+                            Some(it) => (it, parent.delimiter.close),
                             None => continue,
                         }
                     }
@@ -820,6 +807,7 @@ where
             };
             self.buf += text;
             self.text_pos += TextSize::of(text);
+            self.token_map.push(self.text_pos, span);
         }
 
         self.inner.token(kind, self.buf.as_str());
@@ -839,8 +827,8 @@ where
             // need to add whitespace either.
             if curr.spacing == tt::Spacing::Alone && curr.char != ';' && next.char != '\'' {
                 self.inner.token(WHITESPACE, " ");
-                self.token_map.insert(TextRange::at(self.text_pos, TextSize::of(' ')), curr.span);
                 self.text_pos += TextSize::of(' ');
+                self.token_map.push(self.text_pos, curr.span);
             }
         }
     }

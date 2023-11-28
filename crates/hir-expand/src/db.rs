@@ -254,7 +254,7 @@ pub fn expand_speculative(
     };
 
     let expand_to = macro_expand_to(db, actual_macro_call);
-    let (node, rev_tmap) = token_tree_to_syntax_node(db, &speculative_expansion.value, expand_to);
+    let (node, rev_tmap) = token_tree_to_syntax_node(&speculative_expansion.value, expand_to);
 
     let syntax_node = node.syntax_node();
     let token = rev_tmap
@@ -312,7 +312,7 @@ fn parse_macro_expansion(
     tracing::debug!("expanded = {}", tt.as_debug_string());
     tracing::debug!("kind = {:?}", expand_to);
 
-    let (parse, rev_token_map) = token_tree_to_syntax_node(db, &tt, expand_to);
+    let (parse, rev_token_map) = token_tree_to_syntax_node(&tt, expand_to);
 
     ExpandResult { value: (parse, Arc::new(rev_token_map)), err }
 }
@@ -674,7 +674,6 @@ fn macro_expand_to(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandTo {
 }
 
 fn token_tree_to_syntax_node(
-    db: &dyn ExpandDatabase,
     tt: &tt::Subtree,
     expand_to: ExpandTo,
 ) -> (Parse<SyntaxNode>, ExpansionSpanMap) {
@@ -685,18 +684,7 @@ fn token_tree_to_syntax_node(
         ExpandTo::Type => mbe::TopEntryPoint::Type,
         ExpandTo::Expr => mbe::TopEntryPoint::Expr,
     };
-    let (parse, mut span_map) = mbe::token_tree_to_syntax_node(tt, entry_point);
-    // FIXME: now what the hell is going on here
-    span_map.span_map.sort_by(|(_, a), (_, b)| {
-        a.anchor.file_id.cmp(&b.anchor.file_id).then_with(|| {
-            let map = db.ast_id_map(a.anchor.file_id.into());
-            map.get_erased(a.anchor.ast_id)
-                .text_range()
-                .start()
-                .cmp(&map.get_erased(b.anchor.ast_id).text_range().start())
-        })
-    });
-    (parse, span_map)
+    mbe::token_tree_to_syntax_node(tt, entry_point)
 }
 
 fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<Arc<tt::Subtree>>> {

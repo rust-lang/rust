@@ -33,10 +33,11 @@ impl SyntaxContext for SyntaxContextId {
 impl SyntaxContextId {
     // TODO: This is very much UB, salsa exposes no way to create an InternId in a const context
     // currently (which kind of makes sense but we need it here!)
-    pub const ROOT: Self = SyntaxContextId(unsafe { core::mem::transmute(1) });
+    pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
     // TODO: This is very much UB, salsa exposes no way to create an InternId in a const context
     // currently (which kind of makes sense but we need it here!)
-    pub const SELF_REF: Self = SyntaxContextId(unsafe { core::mem::transmute(!0u32) });
+    pub const SELF_REF: Self =
+        SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 1) });
 
     pub fn is_root(self) -> bool {
         self == Self::ROOT
@@ -107,6 +108,7 @@ impl fmt::Debug for HirFileId {
 pub struct MacroFileId {
     pub macro_call_id: MacroCallId,
 }
+
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

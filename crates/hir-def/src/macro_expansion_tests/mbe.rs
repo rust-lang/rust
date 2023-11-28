@@ -36,7 +36,7 @@ macro_rules! f {
 }
 
 struct#FileId(0):1@58..64\2# MyTraitMap2#FileId(0):2@31..42\0# {#FileId(0):1@72..73\2#
-    map#FileId(0):1@86..89\2#:#FileId(0):1@89..90\2# #FileId(0):1@89..90\2#::#FileId(0):1@92..93\2#std#FileId(0):1@93..96\2#::#FileId(0):1@97..98\2#collections#FileId(0):1@98..109\2#::#FileId(0):1@110..111\2#HashSet#FileId(0):1@111..118\2#<#FileId(0):1@118..119\2#(#FileId(0):1@119..120\2#)#FileId(0):1@120..121\2#>#FileId(0):1@121..122\2#,#FileId(0):1@122..123\2#
+    map#FileId(0):1@86..89\2#:#FileId(0):1@89..90\2# #FileId(0):1@89..90\2#::#FileId(0):1@91..92\2#std#FileId(0):1@93..96\2#::#FileId(0):1@96..97\2#collections#FileId(0):1@98..109\2#::#FileId(0):1@109..110\2#HashSet#FileId(0):1@111..118\2#<#FileId(0):1@118..119\2#(#FileId(0):1@119..120\2#)#FileId(0):1@120..121\2#>#FileId(0):1@121..122\2#,#FileId(0):1@122..123\2#
 }#FileId(0):1@132..133\2#
 "#]],
     );

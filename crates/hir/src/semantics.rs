@@ -17,6 +17,7 @@ use hir_def::{
 };
 use hir_expand::{
     db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, HirFileIdExt, MacroCallId,
+    MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -117,11 +118,11 @@ pub struct Semantics<'db, DB> {
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
-    expansion_info_cache: RefCell<FxHashMap<HirFileId, Option<ExpansionInfo>>>,
-    // Rootnode to HirFileId cache
+    expansion_info_cache: RefCell<FxHashMap<MacroFileId, ExpansionInfo>>,
+    /// Rootnode to HirFileId cache
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
-    // MacroCall to its expansion's HirFileId cache
-    macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, HirFileId>>,
+    /// MacroCall to its expansion's MacroFileId cache
+    macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroFileId>>,
 }
 
 impl<DB> fmt::Debug for Semantics<'_, DB> {
@@ -258,7 +259,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
         let file_id = sa.expand(self.db, InFile::new(sa.file_id, macro_call))?;
-        let node = self.parse_or_expand(file_id);
+        let node = self.parse_or_expand(file_id.into());
         Some(node)
     }
 
@@ -527,6 +528,7 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
+    // FIXME: should only take real file inputs for simplicity
     fn descend_into_macros_impl(
         &self,
         token: SyntaxToken,
@@ -537,31 +539,22 @@ impl<'db> SemanticsImpl<'db> {
     ) {
         // FIXME: Clean this up
         let _p = profile::span("descend_into_macros");
-        let parent = match token.parent() {
+        let sa = match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
             Some(it) => it,
             None => return,
         };
-        let sa = match self.analyze_no_infer(&parent) {
-            Some(it) => it,
-            None => return,
-        };
-        let def_map = sa.resolver.def_map();
-        let absolute_range = match sa.file_id.repr() {
+
+        let mut cache = self.expansion_info_cache.borrow_mut();
+        let mut mcache = self.macro_call_cache.borrow_mut();
+        let span = match sa.file_id.repr() {
             base_db::span::HirFileIdRepr::FileId(file_id) => {
-                FileRange { file_id, range: token.text_range() }
+                self.db.real_span_map(file_id).span_for_range(token.text_range())
             }
-            base_db::span::HirFileIdRepr::MacroFile(m) => {
-                let span =
-                    self.db.parse_macro_expansion(m).value.1.span_for_range(token.text_range());
-                let range = span.range
-                    + self
-                        .db
-                        .ast_id_map(span.anchor.file_id.into())
-                        .get_erased(span.anchor.ast_id)
-                        .text_range()
-                        .start();
-                FileRange { file_id: span.anchor.file_id, range }
-            }
+            base_db::span::HirFileIdRepr::MacroFile(macro_file) => cache
+                .entry(macro_file)
+                .or_insert_with(|| macro_file.expansion_info(self.db.upcast()))
+                .exp_map
+                .span_at(token.text_range().start()),
         };
 
         // fetch span information of token in real file, then use that look through expansions of
@@ -569,24 +562,21 @@ impl<'db> SemanticsImpl<'db> {
         // what about things where spans change? Due to being joined etc, that is we don't find the
         // exact span anymore?
 
+        let def_map = sa.resolver.def_map();
         let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
-        let mut cache = self.expansion_info_cache.borrow_mut();
-        let mut mcache = self.macro_call_cache.borrow_mut();
 
         let mut process_expansion_for_token =
             |stack: &mut SmallVec<_>, macro_file, _token: InFile<&_>| {
                 let expansion_info = cache
                     .entry(macro_file)
-                    .or_insert_with(|| macro_file.expansion_info(self.db.upcast()))
-                    .as_ref()?;
+                    .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
 
                 {
                     let InFile { file_id, value } = expansion_info.expanded();
                     self.cache(value, file_id);
                 }
 
-                let mapped_tokens =
-                    expansion_info.map_range_down(self.db.upcast(), absolute_range, None)?;
+                let mapped_tokens = expansion_info.map_range_down(span, None)?;
                 let len = stack.len();
 
                 // requeue the tokens we got from mapping our current token down
@@ -599,9 +589,9 @@ impl<'db> SemanticsImpl<'db> {
         // either due to not being in a macro-call or because its unused push it into the result vec,
         // otherwise push the remapped tokens back into the queue as they can potentially be remapped again.
         while let Some(token) = stack.pop() {
-            self.db.unwind_if_cancelled();
             let was_not_remapped = (|| {
                 // First expand into attribute invocations
+
                 let containing_attribute_macro_call = self.with_ctx(|ctx| {
                     token.value.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
                         if item.attrs().next().is_none() {
@@ -612,7 +602,7 @@ impl<'db> SemanticsImpl<'db> {
                     })
                 });
                 if let Some(call_id) = containing_attribute_macro_call {
-                    let file_id = call_id.as_file();
+                    let file_id = call_id.as_macro_file();
                     return process_expansion_for_token(&mut stack, file_id, token.as_ref());
                 }
 
@@ -629,7 +619,8 @@ impl<'db> SemanticsImpl<'db> {
                 }
 
                 if let Some(macro_call) = ast::MacroCall::cast(parent.clone()) {
-                    let mcall = token.with_value(macro_call);
+                    let mcall: hir_expand::files::InFileWrapper<HirFileId, ast::MacroCall> =
+                        token.with_value(macro_call);
                     let file_id = match mcache.get(&mcall) {
                         Some(&it) => it,
                         None => {
@@ -659,7 +650,7 @@ impl<'db> SemanticsImpl<'db> {
                         match derive_call {
                             Some(call_id) => {
                                 // resolved to a derive
-                                let file_id = call_id.as_file();
+                                let file_id = call_id.as_macro_file();
                                 return process_expansion_for_token(
                                     &mut stack,
                                     file_id,
@@ -698,7 +689,7 @@ impl<'db> SemanticsImpl<'db> {
                     for (.., derive) in helpers.iter().filter(|(helper, ..)| *helper == attr_name) {
                         res = res.or(process_expansion_for_token(
                             &mut stack,
-                            derive.as_file(),
+                            derive.as_macro_file(),
                             token.as_ref(),
                         ));
                     }
@@ -1052,7 +1043,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn with_ctx<F: FnOnce(&mut SourceToDefCtx<'_, '_>) -> T, T>(&self, f: F) -> T {
         let mut cache = self.s2d_cache.borrow_mut();
-        let mut ctx = SourceToDefCtx { db: self.db, cache: &mut cache };
+        let mut ctx = SourceToDefCtx { db: self.db, dynmap_cache: &mut cache };
         f(&mut ctx)
     }
 

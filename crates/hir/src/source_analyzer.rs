@@ -29,7 +29,7 @@ use hir_expand::{
     mod_path::path,
     name,
     name::{AsName, Name},
-    HirFileId, HirFileIdExt, InFile,
+    HirFileId, HirFileIdExt, InFile, MacroFileId, MacroFileIdExt,
 };
 use hir_ty::{
     diagnostics::{
@@ -753,14 +753,15 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<HirFileId> {
+    ) -> Option<MacroFileId> {
         let krate = self.resolver.krate();
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
             self.resolver
                 .resolve_path_as_macro(db.upcast(), &path, Some(MacroSubNs::Bang))
                 .map(|(it, _)| macro_id_to_def_id(db.upcast(), it))
         })?;
-        Some(macro_call_id.as_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
+        // why the 64?
+        Some(macro_call_id.as_macro_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
     }
 
     pub(crate) fn resolve_variant(

@@ -308,7 +308,7 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
-                let call_site = span_map.span_for_range(path.syntax().text_range()).ctx;
+                let call_site = span_map.span_at(path.syntax().text_range().start()).ctx;
                 Some((
                     ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(&span_map))?,
                     call_site,
