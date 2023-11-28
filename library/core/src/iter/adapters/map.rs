@@ -2,7 +2,8 @@ use crate::fmt;
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen, UncheckedIterator};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, UncheckedIterator};
+use crate::num::NonZeroUsize;
 use crate::ops::Try;
 
 /// An iterator that maps the values of `iter` with `f`.
@@ -179,6 +180,9 @@ where
 #[stable(feature = "fused", since = "1.26.0")]
 impl<B, I: FusedIterator, F> FusedIterator for Map<I, F> where F: FnMut(I::Item) -> B {}
 
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<I: TrustedFused, F> TrustedFused for Map<I, F> {}
+
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<B, I, F> TrustedLen for Map<I, F>
 where
@@ -228,4 +232,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<B, I: InPlaceIterable, F> InPlaceIterable for Map<I, F> where F: FnMut(I::Item) -> B {}
+unsafe impl<I: InPlaceIterable, F> InPlaceIterable for Map<I, F> {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}

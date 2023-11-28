@@ -1,7 +1,8 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
-use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
+use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedFused};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, UncheckedIterator};
+use crate::num::NonZeroUsize;
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -446,6 +447,14 @@ where
 {
 }
 
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<A, B> TrustedFused for Zip<A, B>
+where
+    A: TrustedFused,
+    B: TrustedFused,
+{
+}
+
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A, B> TrustedLen for Zip<A, B>
 where
@@ -479,7 +488,10 @@ where
 
 // Since SourceIter forwards the left hand side we do the same here
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> {}
+unsafe impl<A: InPlaceIterable, B> InPlaceIterable for Zip<A, B> {
+    const EXPAND_BY: Option<NonZeroUsize> = A::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = A::MERGE_BY;
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Debug, B: Debug> Debug for Zip<A, B> {

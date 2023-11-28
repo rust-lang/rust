@@ -18,6 +18,8 @@ pub use self::{
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::marker::InPlaceIterable;
+#[unstable(issue = "none", feature = "trusted_fused")]
+pub use self::marker::TrustedFused;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
 

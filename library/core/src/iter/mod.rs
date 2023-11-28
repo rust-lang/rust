@@ -417,6 +417,8 @@ pub use self::sources::{successors, Successors};
 pub use self::traits::FusedIterator;
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::traits::InPlaceIterable;
+#[unstable(issue = "none", feature = "trusted_fused")]
+pub use self::traits::TrustedFused;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
 #[unstable(feature = "trusted_step", issue = "85731")]

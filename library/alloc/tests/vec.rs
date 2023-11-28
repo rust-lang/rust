@@ -1,6 +1,7 @@
+use alloc::vec::Vec;
 use core::alloc::{Allocator, Layout};
-use core::assert_eq;
-use core::iter::IntoIterator;
+use core::{assert_eq, assert_ne};
+use core::iter::{IntoIterator, Iterator};
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 use std::alloc::System;
@@ -1182,6 +1183,46 @@ fn test_from_iter_specialization_with_iterator_adapters() {
     let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();
     assert_eq!(srcptr, sinkptr as *const usize);
+}
+
+#[test]
+fn test_in_place_specialization_step_up_down() {
+    fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {}
+    let src = vec![[0u8; 4]; 256];
+    let srcptr = src.as_ptr();
+    let src_cap = src.capacity();
+    let iter = src.into_iter().flatten();
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr as *const u8, sinkptr);
+    assert_eq!(src_cap * 4, sink.capacity());
+
+    let iter = sink.into_iter().array_chunks::<4>();
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+    assert_eq!(src_cap, sink.capacity());
+
+    let mut src: Vec<u8> = Vec::with_capacity(17);
+    let src_bytes = src.capacity();
+    src.resize(8, 0u8);
+    let sink: Vec<[u8; 4]> = src.into_iter().array_chunks::<4>().collect();
+    let sink_bytes = sink.capacity() * 4;
+    assert_ne!(src_bytes, sink_bytes);
+    assert_eq!(sink.len(), 2);
+
+    let src = vec![[0u8; 4]; 256];
+    let srcptr = src.as_ptr();
+    let iter = src
+        .into_iter()
+        .flat_map(|a| {
+            a.into_iter().map(|b| b.wrapping_add(1))
+        });
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    assert_eq!(srcptr as *const u8, sink.as_ptr());
 }
 
 #[test]
