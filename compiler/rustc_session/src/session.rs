@@ -10,8 +10,6 @@ use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
 
-pub use rustc_ast::attr::MarkedAttrs;
-pub use rustc_ast::Attribute;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
@@ -48,7 +46,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{atomic::AtomicBool, Arc};
 
-pub struct OptimizationFuel {
+struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
     remaining: u64,
     /// We're rejecting all further optimizations.
@@ -1682,7 +1680,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
 /// Holds data on the current incremental compilation session, if there is one.
 #[derive(Debug)]
-pub enum IncrCompSession {
+enum IncrCompSession {
     /// This is the state the session will be in until the incr. comp. dir is
     /// needed.
     NotInitialized,
@@ -1750,7 +1748,7 @@ impl EarlyErrorHandler {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub(crate) fn early_struct_error(
+    pub fn early_struct_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, !> {

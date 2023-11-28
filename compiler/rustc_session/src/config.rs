@@ -2294,7 +2294,7 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
-pub(crate) fn parse_assert_incr_state(
+fn parse_assert_incr_state(
     handler: &EarlyErrorHandler,
     opt_assertion: &Option<String>,
 ) -> Option<IncrementalStateAssertion> {
