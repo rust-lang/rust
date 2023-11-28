@@ -223,7 +223,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         // ```
         //
         // In that case, the impl-trait is lowered as an additional generic parameter.
-        self.with_impl_trait(ImplTraitContext::Universal(self.parent_def), |this| {
+        self.with_impl_trait(ImplTraitContext::Universal, |this| {
             visit::walk_generic_param(this, param)
         });
     }
@@ -310,9 +310,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         if p.is_placeholder {
             self.visit_macro_invoc(p.id)
         } else {
-            self.with_impl_trait(ImplTraitContext::Universal(self.parent_def), |this| {
-                visit::walk_param(this, p)
-            })
+            self.with_impl_trait(ImplTraitContext::Universal, |this| visit::walk_param(this, p))
         }
     }
 

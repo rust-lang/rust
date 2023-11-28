@@ -385,7 +385,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 enum Context {
     Safe,
     /// in an `unsafe fn`
-    UnsafeFn(HirId),
+    UnsafeFn,
     /// in a *used* `unsafe` block
     /// (i.e. a block without unused-unsafe warning)
     UnsafeBlock(HirId),
@@ -407,7 +407,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
             };
             let unused_unsafe = match (self.context, used) {
                 (_, false) => UnusedUnsafe::Unused,
-                (Context::Safe, true) | (Context::UnsafeFn(_), true) => {
+                (Context::Safe, true) | (Context::UnsafeFn, true) => {
                     let previous_context = self.context;
                     self.context = Context::UnsafeBlock(block.hir_id);
                     intravisit::walk_block(self, block);
@@ -454,7 +454,7 @@ fn check_unused_unsafe(
     let body = tcx.hir().body(body_id);
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let context = match tcx.hir().fn_sig_by_hir_id(hir_id) {
-        Some(sig) if sig.header.unsafety == hir::Unsafety::Unsafe => Context::UnsafeFn(hir_id),
+        Some(sig) if sig.header.unsafety == hir::Unsafety::Unsafe => Context::UnsafeFn,
         _ => Context::Safe,
     };
 
