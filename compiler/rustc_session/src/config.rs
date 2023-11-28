@@ -2456,6 +2456,17 @@ pub fn parse_externs(
     matches: &getopts::Matches,
     unstable_opts: &UnstableOptions,
 ) -> Externs {
+    fn is_ascii_ident(string: &str) -> bool {
+        let mut chars = string.chars();
+        if let Some(start) = chars.next()
+            && (start.is_ascii_alphabetic() || start == '_')
+        {
+            chars.all(|char| char.is_ascii_alphanumeric() || char == '_')
+        } else {
+            false
+        }
+    }
+
     let is_unstable_enabled = unstable_opts.unstable_options;
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for arg in matches.opt_strs("extern") {
@@ -2468,12 +2479,12 @@ pub fn parse_externs(
             Some((opts, name)) => (Some(opts), name.to_string()),
         };
 
-        if !crate::utils::is_ascii_ident(&name) {
+        if !is_ascii_ident(&name) {
             let mut error = handler.early_struct_error(format!(
                 "crate name `{name}` passed to `--extern` is not a valid ASCII identifier"
             ));
             let adjusted_name = name.replace('-', "_");
-            if crate::utils::is_ascii_ident(&adjusted_name) {
+            if is_ascii_ident(&adjusted_name) {
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
                 ));
