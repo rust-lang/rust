@@ -1083,6 +1083,11 @@ def bootstrap(args):
         include_file = 'config.{}.toml'.format(profile_aliases.get(profile) or profile)
         include_dir = os.path.join(rust_root, 'src', 'bootstrap', 'defaults')
         include_path = os.path.join(include_dir, include_file)
+
+        if not os.path.exists(include_path):
+            raise Exception("Unrecognized config profile '{}'. Check src/bootstrap/defaults"
+            " for available options.".format(profile))
+
         # HACK: This works because `self.get_toml()` returns the first match it finds for a
         # specific key, so appending our defaults at the end allows the user to override them
         with open(include_path) as included_toml:

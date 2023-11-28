@@ -1308,6 +1308,8 @@ impl<'a> Linker for WasmLd<'a> {
     }
 
     fn optimize(&mut self) {
+        // The -O flag is, as of late 2023, only used for merging of strings and debuginfo, and
+        // only differentiates -O0 and -O1. It does not apply to LTO.
         self.cmd.arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
@@ -1360,7 +1362,31 @@ impl<'a> Linker for WasmLd<'a> {
     fn subsystem(&mut self, _subsystem: &str) {}
 
     fn linker_plugin_lto(&mut self) {
-        // Do nothing for now
+        match self.sess.opts.cg.linker_plugin_lto {
+            LinkerPluginLto::Disabled => {
+                // Nothing to do
+            }
+            LinkerPluginLto::LinkerPluginAuto => {
+                self.push_linker_plugin_lto_args();
+            }
+            LinkerPluginLto::LinkerPlugin(_) => {
+                self.push_linker_plugin_lto_args();
+            }
+        }
+    }
+}
+
+impl<'a> WasmLd<'a> {
+    fn push_linker_plugin_lto_args(&mut self) {
+        let opt_level = match self.sess.opts.optimize {
+            config::OptLevel::No => "O0",
+            config::OptLevel::Less => "O1",
+            config::OptLevel::Default => "O2",
+            config::OptLevel::Aggressive => "O3",
+            // wasm-ld only handles integer LTO opt levels. Use O2
+            config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
+        };
+        self.cmd.arg(&format!("--lto-{opt_level}"));
     }
 }
 
