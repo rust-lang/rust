@@ -1516,6 +1516,7 @@ pub enum ExprKind {
 pub enum GenBlockKind {
     Async,
     Gen,
+    AsyncGen,
 }
 
 impl fmt::Display for GenBlockKind {
@@ -1529,6 +1530,7 @@ impl GenBlockKind {
         match self {
             GenBlockKind::Async => "async",
             GenBlockKind::Gen => "gen",
+            GenBlockKind::AsyncGen => "async gen",
         }
     }
 }

@@ -2517,12 +2517,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 CoroutineKind::Gen(kind) => match kind {
                     CoroutineSource::Block => "gen block",
                     CoroutineSource::Closure => "gen closure",
-                    _ => bug!("gen block/closure expected, but gen function found."),
+                    CoroutineSource::Fn => {
+                        bug!("gen block/closure expected, but gen function found.")
+                    }
+                },
+                CoroutineKind::AsyncGen(kind) => match kind {
+                    CoroutineSource::Block => "async gen block",
+                    CoroutineSource::Closure => "async gen closure",
+                    CoroutineSource::Fn => {
+                        bug!("gen block/closure expected, but gen function found.")
+                    }
                 },
                 CoroutineKind::Async(async_kind) => match async_kind {
                     CoroutineSource::Block => "async block",
                     CoroutineSource::Closure => "async closure",
-                    _ => bug!("async block/closure expected, but async function found."),
+                    CoroutineSource::Fn => {
+                        bug!("async block/closure expected, but async function found.")
+                    }
                 },
                 CoroutineKind::Coroutine => "coroutine",
             },

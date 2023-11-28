@@ -2587,6 +2587,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         CoroutineKind::Async(CoroutineSource::Closure) => {
                             format!("future created by async closure is not {trait_name}")
                         }
+                        CoroutineKind::AsyncGen(CoroutineSource::Fn) => self
+                            .tcx
+                            .parent(coroutine_did)
+                            .as_local()
+                            .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
+                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                            .map(|name| {
+                                format!("async iterator returned by `{name}` is not {trait_name}")
+                            })?,
+                        CoroutineKind::AsyncGen(CoroutineSource::Block) => {
+                            format!("async iterator created by async gen block is not {trait_name}")
+                        }
+                        CoroutineKind::AsyncGen(CoroutineSource::Closure) => {
+                            format!(
+                                "async iterator created by async gen closure is not {trait_name}"
+                            )
+                        }
                         CoroutineKind::Gen(CoroutineSource::Fn) => self
                             .tcx
                             .parent(coroutine_did)
@@ -3127,7 +3144,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
                     None
                     | Some(hir::CoroutineKind::Coroutine)
-                    | Some(hir::CoroutineKind::Gen(_)) => "yield",
+                    | Some(hir::CoroutineKind::Gen(_))
+                    // FIXME(gen_blocks): This could be yield or await...
+                    | Some(hir::CoroutineKind::AsyncGen(_)) => "yield",
                     Some(hir::CoroutineKind::Async(..)) => "await",
                 };
                 err.note(format!(

@@ -2359,8 +2359,10 @@ impl<'a> Parser<'a> {
                             || case == Case::Insensitive
                                 && t.is_non_raw_ident_where(|i| quals.iter().any(|qual| qual.as_str() == i.name.as_str().to_lowercase()))
                         )
-                        // Rule out unsafe extern block.
-                        && !self.is_unsafe_foreign_mod())
+                        // Rule out `unsafe extern {`.
+                        && !self.is_unsafe_foreign_mod()
+                        // Rule out `async gen {` and `async gen move {`
+                        && !self.is_async_gen_block())
                 })
             // `extern ABI fn`
             || self.check_keyword_case(kw::Extern, case)

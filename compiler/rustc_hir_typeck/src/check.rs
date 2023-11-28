@@ -59,7 +59,9 @@ pub(super) fn check_fn<'a, 'tcx>(
         && can_be_coroutine.is_some()
     {
         let yield_ty = match kind {
-            hir::CoroutineKind::Gen(..) | hir::CoroutineKind::Coroutine => {
+            hir::CoroutineKind::Gen(..)
+            | hir::CoroutineKind::AsyncGen(..)
+            | hir::CoroutineKind::Coroutine => {
                 let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::TypeInference,
                     span,

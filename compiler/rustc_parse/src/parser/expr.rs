@@ -1442,8 +1442,9 @@ impl<'a> Parser<'a> {
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
                 // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 if this.check_keyword(kw::Async) {
-                    if this.is_gen_block(kw::Async) {
-                        // Check for `async {` and `async move {`.
+                    if this.is_gen_block(kw::Async, 0) || this.is_gen_block(kw::Gen, 1) {
+                        // Check for `async {` and `async move {`,
+                        // or `async gen {` and `async gen move {`.
                         this.parse_gen_block()
                     } else {
                         this.parse_expr_closure()
@@ -1451,7 +1452,7 @@ impl<'a> Parser<'a> {
                 } else if this.eat_keyword(kw::Await) {
                     this.recover_incorrect_await_syntax(lo, this.prev_token.span)
                 } else if this.token.uninterpolated_span().at_least_rust_2024() {
-                    if this.is_gen_block(kw::Gen) {
+                    if this.is_gen_block(kw::Gen, 0) {
                         this.parse_gen_block()
                     } else {
                         this.parse_expr_lit()
@@ -3179,7 +3180,7 @@ impl<'a> Parser<'a> {
     fn parse_gen_block(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         let kind = if self.eat_keyword(kw::Async) {
-            GenBlockKind::Async
+            if self.eat_keyword(kw::Gen) { GenBlockKind::AsyncGen } else { GenBlockKind::Async }
         } else {
             assert!(self.eat_keyword(kw::Gen));
             self.sess.gated_spans.gate(sym::gen_blocks, lo.to(self.token.span));
@@ -3191,20 +3192,24 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 
-    fn is_gen_block(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw)
+    fn is_gen_block(&self, kw: Symbol, lookahead: usize) -> bool {
+        self.is_keyword_ahead(lookahead, &[kw])
             && ((
                 // `async move {`
-                self.is_keyword_ahead(1, &[kw::Move])
-                    && self.look_ahead(2, |t| {
+                self.is_keyword_ahead(lookahead + 1, &[kw::Move])
+                    && self.look_ahead(lookahead + 2, |t| {
                         *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                     })
             ) || (
                 // `async {`
-                self.look_ahead(1, |t| {
+                self.look_ahead(lookahead + 1, |t| {
                     *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                 })
             ))
+    }
+
+    pub(super) fn is_async_gen_block(&self) -> bool {
+        self.token.is_keyword(kw::Async) && self.is_gen_block(kw::Gen, 1)
     }
 
     fn is_certainly_not_a_block(&self) -> bool {
