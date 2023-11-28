@@ -7,7 +7,6 @@ use hir::definitions::DefPathData;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -55,42 +54,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
-        let allow_gen_future = Some(if self.tcx.features().async_fn_track_caller {
-            [sym::gen_future, sym::closure_track_caller][..].into()
-        } else {
-            [sym::gen_future][..].into()
-        });
-        let mut lctx = LoweringContext {
-            // Pseudo-globals.
-            tcx: self.tcx,
-            resolver: self.resolver,
-            arena: self.tcx.hir_arena,
-
-            // HirId handling.
-            bodies: Vec::new(),
-            attrs: SortedMap::default(),
-            children: Vec::default(),
-            current_hir_id_owner: hir::CRATE_OWNER_ID,
-            item_local_id_counter: hir::ItemLocalId::new(0),
-            node_id_to_local_id: Default::default(),
-            trait_map: Default::default(),
-
-            // Lowering state.
-            catch_scope: None,
-            loop_scope: None,
-            is_in_loop_condition: false,
-            is_in_trait_impl: false,
-            is_in_dyn_type: false,
-            coroutine_kind: None,
-            task_context: None,
-            current_item: None,
-            impl_trait_defs: Vec::new(),
-            impl_trait_bounds: Vec::new(),
-            allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
-            allow_gen_future,
-            generics_def_id_map: Default::default(),
-            host_param_id: None,
-        };
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
