@@ -132,8 +132,8 @@ struct LoweringContext<'a, 'hir> {
     /// NodeIds that are lowered inside the current HIR owner.
     node_id_to_local_id: FxHashMap<NodeId, hir::ItemLocalId>,
 
-    allow_try_trait: Option<Lrc<[Symbol]>>,
-    allow_gen_future: Option<Lrc<[Symbol]>>,
+    allow_try_trait: Lrc<[Symbol]>,
+    allow_gen_future: Lrc<[Symbol]>,
 
     /// Mapping from generics `def_id`s to TAIT generics `def_id`s.
     /// For each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
@@ -172,12 +172,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_item: None,
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
-            allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
-            allow_gen_future: Some(if tcx.features().async_fn_track_caller {
-                [sym::gen_future, sym::closure_track_caller][..].into()
+            allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
+            allow_gen_future: if tcx.features().async_fn_track_caller {
+                [sym::gen_future, sym::closure_track_caller].into()
             } else {
-                [sym::gen_future][..].into()
-            }),
+                [sym::gen_future].into()
+            },
             generics_def_id_map: Default::default(),
             host_param_id: None,
         }
