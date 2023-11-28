@@ -1811,6 +1811,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ".expect(\"REASON\")",
             )
         };
+
+        let sugg = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+            Some(ident) => format!(": {ident}{sugg}"),
+            None => sugg.to_string(),
+        };
+
         err.span_suggestion_verbose(
             expr.span.shrink_to_hi(),
             msg,
