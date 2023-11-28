@@ -233,7 +233,17 @@ pub fn expand_speculative(
     let speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => {
             tt.delimiter = tt::Delimiter::UNSPECIFIED;
-            expander.expand(db, loc.def.krate, loc.krate, &tt, attr_arg.as_ref())
+            let call_site = loc.span(db);
+            expander.expand(
+                db,
+                loc.def.krate,
+                loc.krate,
+                &tt,
+                attr_arg.as_ref(),
+                call_site,
+                call_site,
+                call_site,
+            )
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
             pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?)
@@ -398,17 +408,23 @@ fn macro_arg(
             MacroCallKind::Attr { ast_id, .. } => ast_id.to_ptr(db).to_node(&root).syntax().clone(),
         };
         let censor = censor_for_macro_input(&loc, &syntax);
-        // let mut fixups = fixup::fixup_syntax(&node);
-        // fixups.replace.extend(censor.into_iter().map(|node| (node.into(), Vec::new())));
-        // let (mut tt, tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
-        //     &node,
-        //     fixups.token_map,
-        //     fixups.next_id,
-        //     fixups.replace,
-        //     fixups.append,
-        // );
-
-        let mut tt = mbe::syntax_node_to_token_tree_censored(&syntax, map.as_ref(), censor);
+        let mut tt = match loc.kind {
+            MacroCallKind::FnLike { .. } => {
+                mbe::syntax_node_to_token_tree_censored(&syntax, map.as_ref(), censor)
+            }
+            MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
+                // let mut fixups = crate::fixup::fixup_syntax(&syntax);
+                // fixups.replace.extend(censor.into_iter().map(|node| (node.into(), Vec::new())));
+                // let (mut tt, tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
+                //     &node,
+                //     fixups.token_map,
+                //     fixups.next_id,
+                //     fixups.replace,
+                //     fixups.append,
+                // );
+                mbe::syntax_node_to_token_tree_censored(&syntax, map.as_ref(), censor)
+            }
+        };
 
         if loc.def.is_proc_macro() {
             // proc macros expect their inputs without parentheses, MBEs expect it with them included
@@ -658,8 +674,19 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         _ => None,
     };
 
-    let ExpandResult { value: tt, err } =
-        expander.expand(db, loc.def.krate, loc.krate, &macro_arg, attr_arg);
+    let call_site = loc.span(db);
+    let ExpandResult { value: tt, err } = expander.expand(
+        db,
+        loc.def.krate,
+        loc.krate,
+        &macro_arg,
+        attr_arg,
+        // FIXME
+        call_site,
+        call_site,
+        // FIXME
+        call_site,
+    );
 
     // Set a hard limit for the expanded tt
     if let Err(value) = check_tt_count(&tt) {

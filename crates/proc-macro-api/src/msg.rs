@@ -10,21 +10,15 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::ProcMacroKind;
 
-pub use crate::msg::flat::FlatTree;
+pub use crate::msg::flat::{FlatTree, TokenId};
 
 // The versions of the server protocol
 pub const NO_VERSION_CHECK_VERSION: u32 = 0;
 pub const VERSION_CHECK_VERSION: u32 = 1;
 pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
-/// This version changes how spans are encoded, kind of. Prior to this version,
-/// spans were represented as a single u32 which effectively forced spans to be
-/// token ids. Starting with this version, the span fields are still u32,
-/// but if the size of the span is greater than 1 then the span data is encoded in
-/// an additional vector where the span represents the offset into that vector.
-/// This allows encoding bigger spans while supporting the previous versions.
-pub const VARIABLE_SIZED_SPANS: u32 = 2;
+pub const HAS_GLOBAL_SPANS: u32 = 3;
 
-pub const CURRENT_API_VERSION: u32 = VARIABLE_SIZED_SPANS;
+pub const CURRENT_API_VERSION: u32 = HAS_GLOBAL_SPANS;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
@@ -66,6 +60,24 @@ pub struct ExpandMacro {
     pub env: Vec<(String, String)>,
 
     pub current_dir: Option<String>,
+    /// marker for serde skip stuff
+    #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
+    pub has_global_spans: ExpnGlobals,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpnGlobals {
+    #[serde(skip_serializing)]
+    pub serialize: bool,
+    pub def_site: usize,
+    pub call_site: usize,
+    pub mixed_site: usize,
+}
+
+impl ExpnGlobals {
+    fn skip_serializing_if(&self) -> bool {
+        !self.serialize
+    }
 }
 
 pub trait Message: Serialize + DeserializeOwned {
@@ -120,38 +132,89 @@ fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
     Ok(())
 }
 
-/*TODO
-
 #[cfg(test)]
 mod tests {
-    use tt::{
-        Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, SpanAnchor, Subtree,
-        TokenId, TokenTree,
+    use base_db::{
+        span::{ErasedFileAstId, SpanAnchor, SpanData, SyntaxContextId},
+        FileId,
     };
+    use la_arena::RawIdx;
+    use text_size::{TextRange, TextSize};
+    use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Subtree, TokenTree};
 
     use super::*;
 
-    fn fixture_token_tree() -> Subtree<TokenId> {
-        let mut subtree = Subtree { delimiter: Delimiter::unspecified(), token_trees: Vec::new() };
-        subtree
-            .token_trees
-            .push(TokenTree::Leaf(Ident { text: "struct".into(), span: TokenId(0) }.into()));
-        subtree
-            .token_trees
-            .push(TokenTree::Leaf(Ident { text: "Foo".into(), span: TokenId(1) }.into()));
+    fn fixture_token_tree() -> Subtree<SpanData> {
+        let anchor =
+            SpanAnchor { file_id: FileId(0), ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)) };
+        let mut subtree = Subtree {
+            delimiter: Delimiter {
+                open: SpanData {
+                    range: TextRange::empty(TextSize::new(0)),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+                close: SpanData {
+                    range: TextRange::empty(TextSize::new(13)),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+                kind: DelimiterKind::Invisible,
+            },
+            token_trees: Vec::new(),
+        };
+        subtree.token_trees.push(TokenTree::Leaf(
+            Ident {
+                text: "struct".into(),
+                span: SpanData {
+                    range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+            }
+            .into(),
+        ));
+        subtree.token_trees.push(TokenTree::Leaf(
+            Ident {
+                text: "Foo".into(),
+                span: SpanData {
+                    range: TextRange::at(TextSize::new(5), TextSize::of("Foo")),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+            }
+            .into(),
+        ));
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Literal(Literal {
             text: "Foo".into(),
-            span: TokenId::DUMMY,
+
+            span: SpanData {
+                range: TextRange::at(TextSize::new(8), TextSize::of("Foo")),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
+            },
         })));
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Punct(Punct {
             char: '@',
-            span: TokenId::DUMMY,
+            span: SpanData {
+                range: TextRange::at(TextSize::new(11), TextSize::of('@')),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
+            },
             spacing: Spacing::Joint,
         })));
         subtree.token_trees.push(TokenTree::Subtree(Subtree {
             delimiter: Delimiter {
-                open: TokenId(2),
-                close: TokenId::DUMMY,
+                open: SpanData {
+                    range: TextRange::at(TextSize::new(12), TextSize::of('{')),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+                close: SpanData {
+                    range: TextRange::at(TextSize::new(13), TextSize::of('}')),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
                 kind: DelimiterKind::Brace,
             },
             token_trees: vec![],
@@ -162,20 +225,26 @@ mod tests {
     #[test]
     fn test_proc_macro_rpc_works() {
         let tt = fixture_token_tree();
+        let mut span_data_table = Default::default();
         let task = ExpandMacro {
-            macro_body: FlatTree::new(&tt, CURRENT_API_VERSION),
+            macro_body: FlatTree::new(&tt, CURRENT_API_VERSION, &mut span_data_table),
             macro_name: Default::default(),
             attributes: None,
             lib: std::env::current_dir().unwrap(),
             env: Default::default(),
             current_dir: Default::default(),
+            has_global_spans: ExpnGlobals {
+                serialize: true,
+                def_site: 0,
+                call_site: 0,
+                mixed_site: 0,
+            },
         };
 
         let json = serde_json::to_string(&task).unwrap();
         // println!("{}", json);
         let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(tt, back.macro_body.to_subtree(CURRENT_API_VERSION));
+        assert_eq!(tt, back.macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table));
     }
 }
-*/

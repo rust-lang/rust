@@ -51,7 +51,7 @@ impl<S: Span> Bindings<S> {
                 marker(&mut span);
                 let subtree = tt::Subtree {
                     delimiter: tt::Delimiter {
-                        // TODO split span
+                        // FIXME split span
                         open: span,
                         close: span,
                         kind: delimiter.kind,

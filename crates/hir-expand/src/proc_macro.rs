@@ -1,6 +1,6 @@
 //! Proc Macro Expander stub
 
-use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
+use base_db::{span::SpanData, CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
 use stdx::never;
 
 use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
@@ -33,6 +33,9 @@ impl ProcMacroExpander {
         calling_crate: CrateId,
         tt: &tt::Subtree,
         attr_arg: Option<&tt::Subtree>,
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
     ) -> ExpandResult<tt::Subtree> {
         match self.proc_macro_id {
             ProcMacroId(DUMMY_ID) => {
@@ -68,7 +71,8 @@ impl ProcMacroExpander {
                 let krate_graph = db.crate_graph();
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
-                match proc_macro.expander.expand(tt, attr_arg, env) {
+                match proc_macro.expander.expand(tt, attr_arg, env, def_site, call_site, mixed_site)
+                {
                     Ok(t) => ExpandResult::ok(t),
                     Err(err) => match err {
                         // Don't discard the item in case something unexpected happened while expanding attributes

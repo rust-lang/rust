@@ -56,7 +56,7 @@ fn integrated_highlighting_benchmark() {
         analysis.highlight_as_html(file_id, false).unwrap();
     }
 
-    profile::init_from("*>1");
+    profile::init_from("*>100");
 
     {
         let _it = stdx::timeit("change");

@@ -16,7 +16,7 @@ mod proc_macros;
 
 use std::{iter, ops::Range, sync};
 
-use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
+use base_db::{fixture::WithFixture, span::SpanData, ProcMacro, SourceDatabase};
 use expect_test::Expect;
 use hir_expand::{db::ExpandDatabase, span::SpanMapRef, HirFileIdExt, InFile, MacroFileId};
 use stdx::format_to;
@@ -307,6 +307,9 @@ impl base_db::ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         subtree: &Subtree,
         _: Option<&Subtree>,
         _: &base_db::Env,
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
     ) -> Result<Subtree, base_db::ProcMacroExpansionError> {
         let (parse, _) =
             ::mbe::token_tree_to_syntax_node(subtree, ::mbe::TopEntryPoint::MacroItems);

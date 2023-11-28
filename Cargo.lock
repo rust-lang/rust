@@ -1255,6 +1255,9 @@ checksum = "e0a7ae3ac2f1173085d398531c705756c94a4c56843785df85a60c1a0afac116"
 name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
+ "base-db",
+ "indexmap",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap2",
  "object 0.32.0",
  "paths",

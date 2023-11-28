@@ -262,6 +262,9 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
         subtree: &tt::Subtree<SpanData>,
         attrs: Option<&tt::Subtree<SpanData>>,
         env: &Env,
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
     ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError>;
 }
 

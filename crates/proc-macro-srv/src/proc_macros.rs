@@ -1,7 +1,7 @@
 //! Proc macro ABI
 
 use libloading::Library;
-use proc_macro_api::{ProcMacroKind, RustCInfo};
+use proc_macro_api::{msg::TokenId, ProcMacroKind, RustCInfo};
 
 use crate::{dylib::LoadProcMacroDylibError, server::SYMBOL_INTERNER, tt};
 
@@ -45,6 +45,9 @@ impl ProcMacros {
         macro_name: &str,
         macro_body: &tt::Subtree,
         attributes: Option<&tt::Subtree>,
+        def_site: TokenId,
+        call_site: TokenId,
+        mixed_site: TokenId,
     ) -> Result<tt::Subtree, crate::PanicMessage> {
         let parsed_body = crate::server::TokenStream::with_subtree(macro_body.clone());
 
@@ -59,34 +62,56 @@ impl ProcMacros {
                 } if *trait_name == macro_name => {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
+                        crate::server::RustAnalyzer {
+                            interner: &SYMBOL_INTERNER,
+                            call_site,
+                            def_site,
+                            mixed_site,
+                        },
                         parsed_body,
                         true,
                     );
-                    return res.map(|it| it.into_subtree()).map_err(crate::PanicMessage::from);
+                    return res
+                        .map(|it| it.into_subtree(call_site))
+                        .map_err(crate::PanicMessage::from);
                 }
                 proc_macro::bridge::client::ProcMacro::Bang { name, client }
                     if *name == macro_name =>
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
+                        crate::server::RustAnalyzer {
+                            interner: &SYMBOL_INTERNER,
+                            call_site,
+                            def_site,
+                            mixed_site,
+                        },
                         parsed_body,
                         true,
                     );
-                    return res.map(|it| it.into_subtree()).map_err(crate::PanicMessage::from);
+                    return res
+                        .map(|it| it.into_subtree(call_site))
+                        .map_err(crate::PanicMessage::from);
                 }
                 proc_macro::bridge::client::ProcMacro::Attr { name, client }
                     if *name == macro_name =>
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
+                        crate::server::RustAnalyzer {
+                            interner: &SYMBOL_INTERNER,
+
+                            call_site,
+                            def_site,
+                            mixed_site,
+                        },
                         parsed_attributes,
                         parsed_body,
                         true,
                     );
-                    return res.map(|it| it.into_subtree()).map_err(crate::PanicMessage::from);
+                    return res
+                        .map(|it| it.into_subtree(call_site))
+                        .map_err(crate::PanicMessage::from);
                 }
                 _ => continue,
             }

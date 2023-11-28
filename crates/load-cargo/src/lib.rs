@@ -376,16 +376,16 @@ impl ProcMacroExpander for Expander {
         subtree: &tt::Subtree<SpanData>,
         attrs: Option<&tt::Subtree<SpanData>>,
         env: &Env,
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
     ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
-        let _ = (subtree, attrs, env);
-
-        // let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
-        // match self.0.expand(subtree, attrs, env) {
-        //     Ok(Ok(subtree)) => Ok(subtree),
-        //     Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
-        //     Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
-        // }
-        todo!()
+        let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        match self.0.expand(subtree, attrs, env, def_site, call_site, mixed_site) {
+            Ok(Ok(subtree)) => Ok(subtree),
+            Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
+            Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
+        }
     }
 }
 
@@ -399,6 +399,9 @@ impl ProcMacroExpander for IdentityExpander {
         subtree: &tt::Subtree<SpanData>,
         _: Option<&tt::Subtree<SpanData>>,
         _: &Env,
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
     ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
@@ -414,6 +417,9 @@ impl ProcMacroExpander for EmptyExpander {
         _: &tt::Subtree<SpanData>,
         _: Option<&tt::Subtree<SpanData>>,
         _: &Env,
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
     ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
         Ok(tt::Subtree::empty())
     }
