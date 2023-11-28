@@ -7,8 +7,8 @@ LL | |         do_something();
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::infinite-loops` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::infinite_loops)]`
+   = note: `-D clippy::infinite-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::infinite_loop)]`
 help: if this is intentional, consider specifing `!` as function return
    |
 LL | fn no_break() -> ! {
@@ -71,14 +71,7 @@ LL | |         do_something();
 LL | |     }
    | |_____^
    |
-help: if this is not intended, try adding a `break` or `return` condition in this loop
-  --> $DIR/infinite_loops.rs:33:5
-   |
-LL | /     loop {
-LL | |
-LL | |         do_something();
-LL | |     }
-   | |_____^
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
 
 error: infinite loop detected
   --> $DIR/infinite_loops.rs:46:5
@@ -251,5 +244,16 @@ help: if this is intentional, consider specifing `!` as function return
 LL |     let _loop_forever = || -> ! {
    |                            ++++
 
-error: aborting due to 16 previous errors
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:361:8
+   |
+LL |       Ok(loop {
+   |  ________^
+LL | |         do_something()
+LL | |     })
+   | |_____^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: aborting due to 17 previous errors
 

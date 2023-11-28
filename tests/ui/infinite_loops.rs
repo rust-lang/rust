@@ -1,6 +1,6 @@
 //@no-rustfix
 #![allow(clippy::never_loop)]
-#![warn(clippy::infinite_loops)]
+#![warn(clippy::infinite_loop)]
 
 fn do_something() {}
 
@@ -355,6 +355,12 @@ fn inf_loop_in_closure() {
             do_something();
         }
     };
+}
+
+fn inf_loop_in_res() -> Result<(), i32> {
+    Ok(loop {
+        do_something()
+    })
 }
 
 fn main() {}

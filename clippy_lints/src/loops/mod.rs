@@ -3,7 +3,7 @@ mod explicit_counter_loop;
 mod explicit_into_iter_loop;
 mod explicit_iter_loop;
 mod for_kv_map;
-mod infinite_loops;
+mod infinite_loop;
 mod iter_next_loop;
 mod manual_find;
 mod manual_flatten;
@@ -642,7 +642,7 @@ declare_clippy_lint! {
     /// and lint accordingly.
     ///
     /// ### Why is this bad?
-    /// A loop should be gently exited somewhere, or at lease mark its parent function as
+    /// A loop should be gently exited somewhere, or at least mark its parent function as
     /// never return (`!`).
     ///
     /// ### Example
@@ -673,9 +673,9 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.75.0"]
-    pub INFINITE_LOOPS,
+    pub INFINITE_LOOP,
     restriction,
-    "possibly unintended infinite loops"
+    "possibly unintended infinite loop"
 }
 
 pub struct Loops {
@@ -712,7 +712,7 @@ impl_lint_pass!(Loops => [
     MANUAL_FIND,
     MANUAL_WHILE_LET_SOME,
     UNUSED_ENUMERATE_INDEX,
-    INFINITE_LOOPS,
+    INFINITE_LOOP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -755,7 +755,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             empty_loop::check(cx, expr, block);
             while_let_loop::check(cx, expr, block);
-            infinite_loops::check(cx, expr, block, label);
+            infinite_loop::check(cx, expr, block, label);
         }
 
         while_let_on_iterator::check(cx, expr);

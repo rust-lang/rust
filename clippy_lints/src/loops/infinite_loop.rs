@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 
-use super::INFINITE_LOOPS;
+use super::INFINITE_LOOP;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     loop_block: &'tcx hir::Block<'_>,
     label: Option<Label>,
 ) {
-    if is_lint_allowed(cx, INFINITE_LOOPS, expr.hir_id) {
+    if is_lint_allowed(cx, INFINITE_LOOP, expr.hir_id) {
         return;
     }
 
@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(
     let is_finite_loop = loop_visitor.is_finite;
 
     if !is_finite_loop {
-        span_lint_and_then(cx, INFINITE_LOOPS, expr.span, "infinite loop detected", |diag| {
+        span_lint_and_then(cx, INFINITE_LOOP, expr.span, "infinite loop detected", |diag| {
             if let FnRetTy::DefaultReturn(ret_span) = parent_fn_ret {
                 diag.span_suggestion(
                     ret_span,
@@ -54,10 +54,7 @@ pub(super) fn check<'tcx>(
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                diag.span_help(
-                    expr.span,
-                    "if this is not intended, try adding a `break` or `return` condition in this loop",
-                );
+                diag.help("if this is not intended, try adding a `break` or `return` condition in the loop");
             }
         });
     }
