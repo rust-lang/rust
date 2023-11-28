@@ -340,7 +340,9 @@ fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -
         *item = Some(v);
         Some(())
     } else {
-        sess.dcx().emit_err(session_diagnostics::IncorrectMetaItem { span: meta.span });
+        if !matches!(meta.kind, MetaItemKind::NameValue(MetaItemLit { kind: LitKind::Err, .. })) {
+            sess.dcx().emit_err(session_diagnostics::IncorrectMetaItem { span: meta.span });
+        }
         None
     }
 }

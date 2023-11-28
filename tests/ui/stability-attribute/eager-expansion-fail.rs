@@ -10,16 +10,10 @@ macro_rules! not_a_literal {
 
 macro_rules! m {
     () => {
-        #[stable(feature = 1 + 1, since = "?")]
-        //~^ expression in the value of this attribute must be a literal or macro call
-        //~^^ incorrect meta item
-        //~^^^ incorrect meta item
+        #[stable(feature = 1 + 1, since = "?")] //~ expression in the value of this attribute must be a literal or macro call
         pub struct Math; //~ struct has missing stability attribute
 
-        #[stable(feature = not_a_literal!(), since = "?")]
-        //~^ expression in the value of this attribute must be a literal or macro call
-        //~^^ incorrect meta item
-        //~^^^ incorrect meta item
+        #[stable(feature = not_a_literal!(), since = "?")] //~ expression in the value of this attribute must be a literal or macro call
         pub struct NotLiteral; //~ struct has missing stability attribute
     };
 }

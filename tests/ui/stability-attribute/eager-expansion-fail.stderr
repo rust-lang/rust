@@ -10,7 +10,7 @@ LL | m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expression in the value of this attribute must be a literal or macro call
-  --> $DIR/eager-expansion-fail.rs:19:28
+  --> $DIR/eager-expansion-fail.rs:16:28
    |
 LL |         #[stable(feature = not_a_literal!(), since = "?")]
    |                            ^^^^^^^^^^^^^^^^
@@ -20,54 +20,8 @@ LL | m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0539]: incorrect meta item
-  --> $DIR/eager-expansion-fail.rs:13:18
-   |
-LL |         #[stable(feature = 1 + 1, since = "?")]
-   |                  ^^^^^^^^^^^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0539]: incorrect meta item
-  --> $DIR/eager-expansion-fail.rs:13:18
-   |
-LL |         #[stable(feature = 1 + 1, since = "?")]
-   |                  ^^^^^^^^^^^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0539]: incorrect meta item
-  --> $DIR/eager-expansion-fail.rs:19:18
-   |
-LL |         #[stable(feature = not_a_literal!(), since = "?")]
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0539]: incorrect meta item
-  --> $DIR/eager-expansion-fail.rs:19:18
-   |
-LL |         #[stable(feature = not_a_literal!(), since = "?")]
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: struct has missing stability attribute
-  --> $DIR/eager-expansion-fail.rs:17:9
+  --> $DIR/eager-expansion-fail.rs:14:9
    |
 LL |         pub struct Math;
    |         ^^^^^^^^^^^^^^^^
@@ -78,7 +32,7 @@ LL | m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: struct has missing stability attribute
-  --> $DIR/eager-expansion-fail.rs:23:9
+  --> $DIR/eager-expansion-fail.rs:17:9
    |
 LL |         pub struct NotLiteral;
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -88,6 +42,5 @@ LL | m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 8 previous errors
+error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0539`.
