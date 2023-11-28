@@ -44,7 +44,7 @@ use tempfile::Builder as TempFileBuilder;
 use itertools::Itertools;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{read, File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::ops::Deref;
@@ -2527,7 +2527,7 @@ fn add_native_libs_from_crate(
             NativeLibKind::WasmImportModule => {}
             NativeLibKind::LinkArg => {
                 if link_static {
-                    cmd.arg(name);
+                    cmd.linker_arg(OsStr::new(name), verbatim);
                 }
             }
         }

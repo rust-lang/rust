@@ -16,7 +16,7 @@
 //!
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
-
+#![feature(type_alias_impl_trait)]
 #[macro_use]
 extern crate scoped_tls;
 
@@ -184,7 +184,7 @@ impl std::fmt::Display for Opaque {
 
 impl std::fmt::Debug for Opaque {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        write!(f, "{}", self.0)
     }
 }
 

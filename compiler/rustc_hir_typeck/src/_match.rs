@@ -139,7 +139,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &cause,
                 Some(arm.body),
                 arm_ty,
-                |err| self.suggest_removing_semicolon_for_coerce(err, expr, arm_ty, prior_arm),
+                |err| {
+                    self.explain_never_type_coerced_to_unit(err, arm, arm_ty, prior_arm, expr);
+                },
                 false,
             );
 
@@ -175,6 +177,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
         coercion.complete(self)
+    }
+
+    fn explain_never_type_coerced_to_unit(
+        &self,
+        err: &mut Diagnostic,
+        arm: &hir::Arm<'tcx>,
+        arm_ty: Ty<'tcx>,
+        prior_arm: Option<(Option<hir::HirId>, Ty<'tcx>, Span)>,
+        expr: &hir::Expr<'tcx>,
+    ) {
+        if let hir::ExprKind::Block(block, _) = arm.body.kind
+            && let Some(expr) = block.expr
+            && let arm_tail_ty = self.node_ty(expr.hir_id)
+            && arm_tail_ty.is_never()
+            && !arm_ty.is_never()
+        {
+            err.span_label(
+                expr.span,
+                format!(
+                    "this expression is of type `!`, but it is coerced to `{arm_ty}` due to its \
+                     surrounding expression",
+                ),
+            );
+            self.suggest_mismatched_types_on_tail(
+                err,
+                expr,
+                arm_ty,
+                prior_arm.map_or(arm_tail_ty, |(_, ty, _)| ty),
+                expr.hir_id,
+            );
+        }
+        self.suggest_removing_semicolon_for_coerce(err, expr, arm_ty, prior_arm)
     }
 
     fn suggest_removing_semicolon_for_coerce(

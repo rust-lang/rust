@@ -1821,11 +1821,8 @@ fn maybe_expand_private_type_alias<'tcx>(
                     }
                     _ => None,
                 });
-                if let Some(ct) = const_ {
-                    args.insert(
-                        param.def_id.to_def_id(),
-                        SubstParam::Constant(clean_const(ct, cx)),
-                    );
+                if let Some(_) = const_ {
+                    args.insert(param.def_id.to_def_id(), SubstParam::Constant);
                 }
                 // FIXME(const_generics_defaults)
                 indices.consts += 1;

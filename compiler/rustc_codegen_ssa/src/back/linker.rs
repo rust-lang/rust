@@ -196,6 +196,14 @@ pub trait Linker {
     fn add_no_exec(&mut self) {}
     fn add_as_needed(&mut self) {}
     fn reset_per_library_state(&mut self) {}
+    fn linker_arg(&mut self, arg: &OsStr, verbatim: bool) {
+        self.linker_args(&[arg], verbatim);
+    }
+    fn linker_args(&mut self, args: &[&OsStr], _verbatim: bool) {
+        args.into_iter().for_each(|a| {
+            self.cmd().arg(a);
+        });
+    }
 }
 
 impl dyn Linker + '_ {
@@ -223,38 +231,12 @@ pub struct GccLinker<'a> {
 }
 
 impl<'a> GccLinker<'a> {
-    /// Passes an argument directly to the linker.
-    ///
-    /// When the linker is not ld-like such as when using a compiler as a linker, the argument is
-    /// prepended by `-Wl,`.
-    fn linker_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
-        self.linker_args(&[arg]);
-        self
+    fn linker_arg(&mut self, arg: impl AsRef<OsStr>) {
+        Linker::linker_arg(self, arg.as_ref(), false);
     }
-
-    /// Passes a series of arguments directly to the linker.
-    ///
-    /// When the linker is ld-like, the arguments are simply appended to the command. When the
-    /// linker is not ld-like such as when using a compiler as a linker, the arguments are joined by
-    /// commas to form an argument that is then prepended with `-Wl`. In this situation, only a
-    /// single argument is appended to the command to ensure that the order of the arguments is
-    /// preserved by the compiler.
-    fn linker_args(&mut self, args: &[impl AsRef<OsStr>]) -> &mut Self {
-        if self.is_ld {
-            args.into_iter().for_each(|a| {
-                self.cmd.arg(a);
-            });
-        } else {
-            if !args.is_empty() {
-                let mut s = OsString::from("-Wl");
-                for a in args {
-                    s.push(",");
-                    s.push(a);
-                }
-                self.cmd.arg(s);
-            }
-        }
-        self
+    fn linker_args(&mut self, args: &[impl AsRef<OsStr>]) {
+        let args_vec: Vec<&OsStr> = args.iter().map(|x| x.as_ref()).collect();
+        Linker::linker_args(self, &args_vec, false);
     }
 
     fn takes_hints(&self) -> bool {
@@ -361,6 +343,30 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
+    /// Passes a series of arguments directly to the linker.
+    ///
+    /// When the linker is ld-like, the arguments are simply appended to the command. When the
+    /// linker is not ld-like such as when using a compiler as a linker, the arguments are joined by
+    /// commas to form an argument that is then prepended with `-Wl`. In this situation, only a
+    /// single argument is appended to the command to ensure that the order of the arguments is
+    /// preserved by the compiler.
+    fn linker_args(&mut self, args: &[&OsStr], verbatim: bool) {
+        if self.is_ld || verbatim {
+            args.into_iter().for_each(|a| {
+                self.cmd.arg(a);
+            });
+        } else {
+            if !args.is_empty() {
+                let mut s = OsString::from("-Wl");
+                for a in args {
+                    s.push(",");
+                    s.push(a);
+                }
+                self.cmd.arg(s);
+            }
+        }
+    }
+
     fn cmd(&mut self) -> &mut Command {
         &mut self.cmd
     }
@@ -531,7 +537,7 @@ impl<'a> Linker for GccLinker<'a> {
             self.linker_arg("-force_load");
             self.linker_arg(&lib);
         } else {
-            self.linker_arg("--whole-archive").cmd.arg(lib);
+            self.linker_args(&[OsString::from("--whole-archive"), lib.into()]);
             self.linker_arg("--no-whole-archive");
         }
     }
