@@ -125,6 +125,10 @@ pub trait MutVisitor: Sized {
         noop_visit_asyncness(a, self);
     }
 
+    fn visit_genness(&mut self, a: &mut Gen) {
+        noop_visit_genness(a, self);
+    }
+
     fn visit_closure_binder(&mut self, b: &mut ClosureBinder) {
         noop_visit_closure_binder(b, self);
     }
@@ -881,6 +885,16 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut Async, vis: &mut T) {
     }
 }
 
+pub fn noop_visit_genness<T: MutVisitor>(genness: &mut Gen, vis: &mut T) {
+    match genness {
+        Gen::Yes { span: _, closure_id, return_impl_trait_id } => {
+            vis.visit_id(closure_id);
+            vis.visit_id(return_impl_trait_id);
+        }
+        Gen::No => {}
+    }
+}
+
 pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
     let FnDecl { inputs, output } = decl.deref_mut();
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
@@ -1170,9 +1184,10 @@ fn visit_const_item<T: MutVisitor>(
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
-    let FnHeader { unsafety, asyncness, constness, ext: _ } = header;
+    let FnHeader { unsafety, asyncness, constness, ext: _, genness } = header;
     visit_constness(constness, vis);
     vis.visit_asyncness(asyncness);
+    vis.visit_genness(genness);
     visit_unsafety(unsafety, vis);
 }
 

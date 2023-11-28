@@ -2543,6 +2543,7 @@ impl<'a> Parser<'a> {
                             constness: recover_constness,
                             unsafety: recover_unsafety,
                             asyncness: recover_asyncness,
+                            genness, // FIXME(eholk): add keyword recovery logic here too.
                             ext,
                         });
                     }
@@ -2552,7 +2553,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(FnHeader { constness, unsafety, asyncness, ext })
+        Ok(FnHeader { constness, unsafety, asyncness, ext, genness })
     }
 
     /// Parses the parameter list and result type of a function declaration.

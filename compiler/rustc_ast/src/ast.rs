@@ -2837,16 +2837,19 @@ pub struct FnHeader {
     pub constness: Const,
     /// The `extern` keyword and corresponding ABI string, if any
     pub ext: Extern,
+    /// The `gen` keyword, if any
+    pub genness: Gen,
 }
 
 impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
-        let Self { unsafety, asyncness, constness, ext } = self;
+        let Self { unsafety, asyncness, constness, ext, genness } = self;
         matches!(unsafety, Unsafe::Yes(_))
             || asyncness.is_async()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
+            || matches!(genness, Gen::Yes { .. })
     }
 }
 
@@ -2857,6 +2860,7 @@ impl Default for FnHeader {
             asyncness: Async::No,
             constness: Const::No,
             ext: Extern::None,
+            genness: Gen::No,
         }
     }
 }
@@ -3177,7 +3181,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 152);
+    static_assert_size!(Fn, 168);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);

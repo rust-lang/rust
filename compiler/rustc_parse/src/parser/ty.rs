@@ -596,7 +596,7 @@ impl<'a> Parser<'a> {
             tokens: None,
         };
         let span_start = self.token.span;
-        let ast::FnHeader { ext, unsafety, constness, asyncness } =
+        let ast::FnHeader { ext, unsafety, constness, asyncness, genness: _ } =
             self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
         if self.may_recover() && self.token.kind == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
@@ -612,6 +612,7 @@ impl<'a> Parser<'a> {
         if let ast::Async::Yes { span, .. } = asyncness {
             self.sess.emit_err(FnPointerCannotBeAsync { span: whole_span, qualifier: span });
         }
+        // FIXME(eholk): emit a similar error for `gen fn()`
         let decl_span = span_start.to(self.token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
     }
