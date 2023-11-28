@@ -1,3 +1,7 @@
+//! Functions for panicking on overflow.
+//!
+//! In particular, these are used by the `strict_` methods on integers.
+
 #[cold]
 #[track_caller]
 pub const fn add() -> ! {

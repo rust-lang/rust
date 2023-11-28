@@ -451,7 +451,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_add(self, rhs: Self) -> Option<Self> {
             let (a, b) = self.overflowing_add(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Strict integer addition. Computes `self + rhs`, panicking
@@ -461,7 +461,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -484,7 +484,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_add(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_add(rhs);
-            if unlikely!(b) {overflow_panic::add()} else {a}
+            if unlikely!(b) { overflow_panic::add() } else { a }
         }
 
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
@@ -531,7 +531,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_add_unsigned(self, rhs: $UnsignedT) -> Option<Self> {
             let (a, b) = self.overflowing_add_unsigned(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Strict addition with an unsigned integer. Computes `self + rhs`,
@@ -541,7 +541,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -564,7 +564,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_add_unsigned(self, rhs: $UnsignedT) -> Self {
             let (a, b) = self.overflowing_add_unsigned(rhs);
-            if unlikely!(b) {overflow_panic::add()} else {a}
+            if unlikely!(b) { overflow_panic::add() } else { a }
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning `None` if
@@ -585,7 +585,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
             let (a, b) = self.overflowing_sub(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Strict integer subtraction. Computes `self - rhs`, panicking if
@@ -595,7 +595,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -618,7 +618,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_sub(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_sub(rhs);
-            if unlikely!(b) {overflow_panic::sub()} else {a}
+            if unlikely!(b) { overflow_panic::sub() } else { a }
         }
 
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
@@ -665,7 +665,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_sub_unsigned(self, rhs: $UnsignedT) -> Option<Self> {
             let (a, b) = self.overflowing_sub_unsigned(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Strict subtraction with an unsigned integer. Computes `self - rhs`,
@@ -675,7 +675,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -698,7 +698,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_sub_unsigned(self, rhs: $UnsignedT) -> Self {
             let (a, b) = self.overflowing_sub_unsigned(rhs);
-            if unlikely!(b) {overflow_panic::sub()} else {a}
+            if unlikely!(b) { overflow_panic::sub() } else { a }
         }
 
         /// Checked integer multiplication. Computes `self * rhs`, returning `None` if
@@ -719,7 +719,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
             let (a, b) = self.overflowing_mul(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Strict integer multiplication. Computes `self * rhs`, panicking if
@@ -729,7 +729,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -752,7 +752,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_mul(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_mul(rhs);
-            if unlikely!(b) {overflow_panic::mul()} else {a}
+            if unlikely!(b) { overflow_panic::mul() } else { a }
         }
 
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
@@ -816,7 +816,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is when one divides `MIN / -1` on a signed type (where
         /// `MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
@@ -848,7 +848,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_div(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_div(rhs);
-            if unlikely!(b) {overflow_panic::div()} else {a}
+            if unlikely!(b) { overflow_panic::div() } else { a }
         }
 
         /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
@@ -886,7 +886,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is when one divides `MIN / -1` on a signed type (where
         /// `MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
@@ -918,7 +918,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_div_euclid(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_div_euclid(rhs);
-            if unlikely!(b) {overflow_panic::div()} else {a}
+            if unlikely!(b) { overflow_panic::div() } else { a }
         }
 
         /// Checked integer remainder. Computes `self % rhs`, returning `None` if
@@ -956,7 +956,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is `x % y` for `MIN / -1` on a
         /// signed type (where `MIN` is the negative minimal value), which is invalid due to implementation artifacts.
@@ -987,7 +987,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_rem(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_rem(rhs);
-            if unlikely!(b) {overflow_panic::rem()} else {a}
+            if unlikely!(b) { overflow_panic::rem() } else { a }
         }
 
         /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`, returning `None`
@@ -1025,7 +1025,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is `x % y` for `MIN / -1` on a
         /// signed type (where `MIN` is the negative minimal value), which is invalid due to implementation artifacts.
@@ -1056,7 +1056,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_rem_euclid(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_rem_euclid(rhs);
-            if unlikely!(b) {overflow_panic::rem()} else {a}
+            if unlikely!(b) { overflow_panic::rem() } else { a }
         }
 
         /// Checked negation. Computes `-self`, returning `None` if `self == MIN`.
@@ -1076,7 +1076,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_neg(self) -> Option<Self> {
             let (a, b) = self.overflowing_neg();
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Unchecked negation. Computes `-self`, assuming overflow cannot occur.
@@ -1110,7 +1110,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -1133,7 +1133,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_neg(self) -> Self {
             let (a, b) = self.overflowing_neg();
-            if unlikely!(b) {overflow_panic::neg()} else {a}
+            if unlikely!(b) { overflow_panic::neg() } else { a }
         }
 
         /// Checked shift left. Computes `self << rhs`, returning `None` if `rhs` is larger
@@ -1154,7 +1154,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shl(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Strict shift left. Computes `self << rhs`, panicking if `rhs` is larger
@@ -1164,7 +1164,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -1187,7 +1187,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_shl(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shl(rhs);
-            if unlikely!(b) {overflow_panic::shl()} else {a}
+            if unlikely!(b) { overflow_panic::shl() } else { a }
         }
 
         /// Unchecked shift left. Computes `self << rhs`, assuming that
@@ -1235,7 +1235,7 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shr(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            if unlikely!(b) { None } else { Some(a) }
         }
 
         /// Strict shift right. Computes `self >> rhs`, panicking `rhs` is
@@ -1245,7 +1245,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -1268,7 +1268,7 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_shr(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shr(rhs);
-            if unlikely!(b) {overflow_panic::shr()} else {a}
+            if unlikely!(b) { overflow_panic::shr() } else { a }
         }
 
         /// Unchecked shift right. Computes `self >> rhs`, assuming that
@@ -1329,7 +1329,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
@@ -1403,7 +1403,7 @@ macro_rules! int_impl {
         ///
         /// ## Overflow behavior
         ///
-        /// This function will always panic on overflow, regardless of if overflow checks are enabled.
+        /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// # Examples
         ///
