@@ -1,6 +1,8 @@
 // unit-test: ConstProp
 // compile-flags: -O
-// skip-filecheck
+
+// Regression test for https://github.com/rust-lang/rust/issues/118328
+
 #![allow(unused_assignments)]
 
 struct SizeOfConst<T>(std::marker::PhantomData<T>);
@@ -8,8 +10,12 @@ impl<T> SizeOfConst<T> {
     const SIZE: usize = std::mem::size_of::<T>();
 }
 
-// EMIT_MIR issue_118328.size_of.ConstProp.diff
+// EMIT_MIR overwrite_with_const_with_params.size_of.ConstProp.diff
 fn size_of<T>() -> usize {
+    // CHECK-LABEL: fn size_of(
+    // CHECK: _1 = const 0_usize;
+    // CHECK-NEXT: _1 = const _;
+    // CHECK-NEXT: _0 = _1;
     let mut a = 0;
     a = SizeOfConst::<T>::SIZE;
     a
