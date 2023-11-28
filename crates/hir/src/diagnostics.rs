@@ -55,6 +55,7 @@ diagnostics![
     ReplaceFilterMapNextWithFindMap,
     TraitImplIncorrectSafety,
     TraitImplMissingAssocItems,
+    TraitImplReduntantAssocItems,
     TraitImplOrphan,
     TypedHole,
     TypeMismatch,
@@ -309,4 +310,11 @@ pub struct TraitImplMissingAssocItems {
     pub file_id: HirFileId,
     pub impl_: AstPtr<ast::Impl>,
     pub missing: Vec<(Name, AssocItem)>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplReduntantAssocItems {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+    pub reduntant: Vec<(Name, AssocItem)>,
 }

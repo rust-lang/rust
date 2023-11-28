@@ -693,6 +693,25 @@ impl Module {
                     },
                 ));
 
+                let reduntant: Vec<_> = impl_assoc_items_scratch.iter()
+                .filter(|(id, name)| {
+                    !required_items.clone().any(|(impl_name, impl_item)| {
+                        discriminant(impl_item) == discriminant(id) && impl_name == name
+                    })
+                })
+                .map(|(item, name)| (name.clone(), AssocItem::from(*item)))
+                .collect();
+                if !reduntant.is_empty() {
+                    acc.push(
+                        TraitImplReduntantAssocItems {
+                            impl_: ast_id_map.get(node.ast_id()),
+                            file_id,
+                            reduntant,
+                        }
+                        .into(),
+                    )
+                }
+
                 let missing: Vec<_> = required_items
                     .filter(|(name, id)| {
                         !impl_assoc_items_scratch.iter().any(|(impl_item, impl_name)| {
