@@ -9,7 +9,6 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
-#[ignore] // todo
 fn complete_dot_in_attr() {
     check(
         r#"
@@ -41,7 +40,6 @@ fn main() {
 }
 
 #[test]
-#[ignore] // TODO
 fn complete_dot_in_attr2() {
     check(
         r#"

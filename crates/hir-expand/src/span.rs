@@ -1,3 +1,5 @@
+//! Spanmaps allow turning absolute ranges into relative ranges for incrementality purposes as well
+//! as associating spans with text ranges in a particular file.
 use base_db::{
     span::{ErasedFileAstId, SpanAnchor, SpanData, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
     FileId,

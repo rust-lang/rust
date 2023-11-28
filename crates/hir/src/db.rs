@@ -23,7 +23,7 @@ pub use hir_def::db::{
 };
 pub use hir_expand::db::{
     AstIdMapQuery, DeclMacroExpanderQuery, ExpandDatabase, ExpandDatabaseStorage,
-    ExpandProcMacroQuery, IncludeExpandQuery, InternMacroCallQuery, MacroArgQuery,
-    MacroExpandQuery, ParseMacroExpansionErrorQuery, ParseMacroExpansionQuery, RealSpanMapQuery,
+    ExpandProcMacroQuery, IncludeExpandQuery, InternMacroCallQuery, InternSyntaxContextQuery,
+    MacroArgQuery, ParseMacroExpansionErrorQuery, ParseMacroExpansionQuery, RealSpanMapQuery,
 };
 pub use hir_ty::db::*;

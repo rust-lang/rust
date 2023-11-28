@@ -1,3 +1,4 @@
+//! Things to wrap other things in file ids.
 use std::iter;
 
 use base_db::{

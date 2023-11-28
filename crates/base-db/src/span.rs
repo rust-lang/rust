@@ -1,4 +1,4 @@
-/// File and span related types.
+//! File and span related types.
 // FIXME: This should probably be moved into its own crate.
 use std::fmt;
 
@@ -26,19 +26,15 @@ impl fmt::Display for SyntaxContextId {
 
 impl SyntaxContext for SyntaxContextId {
     const DUMMY: Self = Self::ROOT;
-    // veykril(HACK): salsa doesn't allow us fetching the id of the current input to be allocated so
-    // we need a special value that behaves as the current context.
 }
 // inherent trait impls please tyvm
 impl SyntaxContextId {
-    // TODO: This is very much UB, salsa exposes no way to create an InternId in a const context
-    // currently (which kind of makes sense but we need it here!)
     pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
-    // TODO: This is very much UB, salsa exposes no way to create an InternId in a const context
-    // currently (which kind of makes sense but we need it here!)
+    // veykril(HACK): salsa doesn't allow us fetching the id of the current input to be allocated so
+    // we need a special value that behaves as the current context.
     pub const SELF_REF: Self =
         SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 1) });
-    /// Used syntax fixups
+    // Used for syntax fixups
     pub const FAKE: Self = SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 2) });
 
     pub fn is_root(self) -> bool {

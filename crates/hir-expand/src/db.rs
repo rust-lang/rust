@@ -146,9 +146,6 @@ pub trait ExpandDatabase: SourceDatabase {
         id: AstId<ast::Macro>,
     ) -> Arc<DeclarativeMacroExpander>;
 
-    /// Expand macro call to a token tree.
-    // This query is LRU cached
-    fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Arc<tt::Subtree>>;
     #[salsa::invoke(crate::builtin_fn_macro::include_arg_to_tt)]
     fn include_expand(
         &self,
@@ -315,7 +312,7 @@ fn parse_macro_expansion(
     macro_file: MacroFileId,
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
     let _p = profile::span("parse_macro_expansion");
-    let mbe::ValueResult { value: tt, err } = db.macro_expand(macro_file.macro_call_id);
+    let mbe::ValueResult { value: tt, err } = macro_expand(db, macro_file.macro_call_id);
 
     let expand_to = macro_expand_to(db, macro_file.macro_call_id);
 

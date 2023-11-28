@@ -74,7 +74,6 @@ fn foo() {
 }
 
 #[test]
-#[ignore] // TODO
 fn attribute_macro_syntax_completion_2() {
     // common case of dot completion while typing
     check(

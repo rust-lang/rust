@@ -43,7 +43,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::msg::ENCODE_CLOSE_SPAN_VERSION;
 
-pub type SpanDataIndexMap = IndexSet<SpanData>;
+type SpanDataIndexMap = IndexSet<SpanData>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TokenId(pub u32);
@@ -52,12 +52,6 @@ impl std::fmt::Debug for TokenId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
-}
-
-impl TokenId {
-    pub const DEF_SITE: Self = TokenId(0);
-    pub const CALL_SITE: Self = TokenId(0);
-    pub const MIXED_SITE: Self = TokenId(0);
 }
 
 impl tt::Span for TokenId {

@@ -52,7 +52,7 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
     while let Some(event) = preorder.next() {
         let syntax::WalkEvent::Enter(node) = event else { continue };
 
-        /* TODO
+        /*
         if can_handle_error(&node) && has_error_to_handle(&node) {
             // the node contains an error node, we have to completely replace it by something valid
             let (original_tree, new_tmap, new_next_id) =
@@ -295,7 +295,7 @@ pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) 
             tt::TokenTree::Leaf(leaf) => leaf.span().ctx != SyntaxContextId::FAKE,
             tt::TokenTree::Subtree(st) => st.delimiter.open.ctx != SyntaxContextId::FAKE,
         })
-        // .flat_map(|tt| match tt { TODO
+        // .flat_map(|tt| match tt {
         //     tt::TokenTree::Subtree(mut tt) => {
         //         reverse_fixups(&mut tt, undo_info);
         //         SmallVec::from_const([tt.into()])

@@ -31,9 +31,8 @@ use std::{
     time::SystemTime,
 };
 
-use ::tt::Span;
 use proc_macro_api::{
-    msg::{self, ExpnGlobals, TokenId, CURRENT_API_VERSION, HAS_GLOBAL_SPANS},
+    msg::{self, ExpnGlobals, TokenId, CURRENT_API_VERSION},
     ProcMacroKind,
 };
 

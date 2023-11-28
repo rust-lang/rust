@@ -101,8 +101,8 @@ impl RootDatabase {
             hir::db::ExpandProcMacroQuery
             hir::db::IncludeExpandQuery
             hir::db::InternMacroCallQuery
+            hir::db::InternSyntaxContextQuery
             hir::db::MacroArgQuery
-            hir::db::MacroExpandQuery
             hir::db::ParseMacroExpansionQuery
             hir::db::RealSpanMapQuery
 
