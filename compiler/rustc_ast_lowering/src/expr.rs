@@ -778,10 +778,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.coroutine_kind {
             Some(hir::CoroutineKind::Async(_)) => {}
             Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) | None => {
-                self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
+                return hir::ExprKind::Err(self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
-                });
+                }));
             }
         }
         let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
@@ -1500,7 +1500,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.coroutine_kind {
             Some(hir::CoroutineKind::Gen(_)) => {}
             Some(hir::CoroutineKind::Async(_)) => {
-                self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span });
+                return hir::ExprKind::Err(self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span }));
             }
             Some(hir::CoroutineKind::Coroutine) | None => {
                 if !self.tcx.features().coroutines {
