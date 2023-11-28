@@ -1,11 +1,11 @@
-error[E0119]: conflicting implementations of trait `MyTrait` for type `Box<(MyType,)>`
-  --> $DIR/normalize-for-errors.rs:17:1
+error[E0119]: conflicting implementations of trait `MyTrait<_>` for type `(Box<(MyType,)>, _)`
+  --> $DIR/normalize-for-errors.rs:16:1
    |
-LL | impl<T: Copy> MyTrait for T {}
-   | --------------------------- first implementation here
+LL | impl<T: Copy, S: Iterator> MyTrait<S> for (T, S::Item) {}
+   | ------------------------------------------------------ first implementation here
 LL |
-LL | impl MyTrait for Box<<(MyType,) as Mirror>::Assoc> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Box<(MyType,)>`
+LL | impl<S: Iterator> MyTrait<S> for (Box<<(MyType,) as Mirror>::Assoc>, S::Item) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(Box<(MyType,)>, _)`
    |
    = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::boxed::Box<(MyType,)>` in future versions
 

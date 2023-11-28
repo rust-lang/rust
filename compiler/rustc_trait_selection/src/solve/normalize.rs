@@ -10,7 +10,7 @@ use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
-use rustc_middle::ty::{FallibleTypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
 
 use super::FulfillmentCtxt;
@@ -40,19 +40,6 @@ pub(crate) fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCt
     let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes };
 
     value.try_fold_with(&mut folder)
-}
-
-// Deeply normalize a value and return it
-pub(crate) fn deeply_normalize_for_diagnostics<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
-    infcx: &InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    t: T,
-) -> T {
-    infcx
-        .commit_if_ok(|_| {
-            deeply_normalize(infcx.at(&ObligationCause::dummy(), param_env), t.clone())
-        })
-        .unwrap_or(t)
 }
 
 struct NormalizationFolder<'me, 'tcx> {
@@ -242,5 +229,44 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         } else {
             ensure_sufficient_stack(|| self.normalize_unevaluated_const(ct.ty(), uv))
         }
+    }
+}
+
+// Deeply normalize a value and return it
+pub(crate) fn deeply_normalize_for_diagnostics<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    t: T,
+) -> T {
+    t.fold_with(&mut DeeplyNormalizeForDiagnosticsFolder {
+        at: infcx.at(&ObligationCause::dummy(), param_env),
+    })
+}
+
+struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx> {
+    at: At<'a, 'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.at.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        deeply_normalize_with_skipped_universes(
+            self.at,
+            ty,
+            vec![None; ty.outer_exclusive_binder().as_usize()],
+        )
+        .unwrap_or_else(|_| ty.super_fold_with(self))
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        deeply_normalize_with_skipped_universes(
+            self.at,
+            ct,
+            vec![None; ct.outer_exclusive_binder().as_usize()],
+        )
+        .unwrap_or_else(|_| ct.super_fold_with(self))
     }
 }
