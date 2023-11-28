@@ -39,8 +39,8 @@ const EXPECTED = [
             { 'path': 'impl_trait', 'name': 'Aaaaaaa' },
         ],
         'in_args': [
-            { 'path': 'impl_trait::Ccccccc', 'name': 'eeeeeee' },
             { 'path': 'impl_trait::Ccccccc', 'name': 'fffffff' },
+            { 'path': 'impl_trait::Ccccccc', 'name': 'eeeeeee' },
         ],
         'returned': [
             { 'path': 'impl_trait', 'name': 'bbbbbbb' },

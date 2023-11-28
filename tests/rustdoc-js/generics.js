@@ -1,4 +1,5 @@
 // exact-check
+// ignore-order
 
 const EXPECTED = [
     {
