@@ -37,8 +37,6 @@ pub struct Stacks {
     history: AllocHistory,
     /// The set of tags that have been exposed inside this allocation.
     exposed_tags: FxHashSet<BorTag>,
-    /// Whether this memory has been modified since the last time the tag GC ran
-    modified_since_last_gc: bool,
 }
 
 /// Indicates which permissions to grant to the retagged pointer.
@@ -450,15 +448,10 @@ impl<'tcx> Stack {
 /// Integration with the BorTag garbage collector
 impl Stacks {
     pub fn remove_unreachable_tags(&mut self, live_tags: &FxHashSet<BorTag>) {
-        if self.modified_since_last_gc {
-            for (_stack_range, stack) in self.stacks.iter_mut_all() {
-                if stack.len() > 64 {
-                    stack.retain(live_tags);
-                }
-            }
-            self.history.retain(live_tags);
-            self.modified_since_last_gc = false;
+        for (_stack_range, stack) in self.stacks.iter_mut_all() {
+            stack.retain(live_tags);
         }
+        self.history.retain(live_tags);
     }
 }
 
@@ -488,7 +481,6 @@ impl<'tcx> Stacks {
             stacks: RangeMap::new(size, stack),
             history: AllocHistory::new(id, item, machine),
             exposed_tags: FxHashSet::default(),
-            modified_since_last_gc: false,
         }
     }
 
@@ -503,7 +495,6 @@ impl<'tcx> Stacks {
             &mut FxHashSet<BorTag>,
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
-        self.modified_since_last_gc = true;
         for (stack_range, stack) in self.stacks.iter_mut(range.start, range.size) {
             let mut dcx = dcx_builder.build(&mut self.history, Size::from_bytes(stack_range.start));
             f(stack, &mut dcx, &mut self.exposed_tags)?;
