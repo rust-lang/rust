@@ -136,39 +136,9 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 
     fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
         let def_id = self.resolver.node_id_to_def_id[&item.id];
-
         let parent_id = self.tcx.local_parent(def_id);
         let parent_hir = self.lower_node(parent_id).unwrap();
-        self.with_lctx(item.id, |lctx| {
-            // Evaluate with the lifetimes in `params` in-scope.
-            // This is used to track which lifetimes have already been defined,
-            // and which need to be replicated when lowering an async fn.
-
-            match parent_hir.node().expect_item().kind {
-                hir::ItemKind::Impl(impl_) => {
-                    lctx.is_in_trait_impl = impl_.of_trait.is_some();
-                }
-                hir::ItemKind::Trait(_, _, generics, _, _) if lctx.tcx.features().effects => {
-                    lctx.host_param_id = generics
-                        .params
-                        .iter()
-                        .find(|param| {
-                            parent_hir
-                                .attrs
-                                .get(param.hir_id.local_id)
-                                .iter()
-                                .any(|attr| attr.has_name(sym::rustc_host))
-                        })
-                        .map(|param| param.def_id);
-                }
-                _ => {}
-            }
-
-            match ctxt {
-                AssocCtxt::Trait => hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)),
-                AssocCtxt::Impl => hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)),
-            }
-        })
+        self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt, parent_hir))
     }
 
     fn lower_foreign_item(&mut self, item: &ForeignItem) {
@@ -606,6 +576,42 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let path = self.lower_use_path(res, &prefix, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
+        }
+    }
+
+    fn lower_assoc_item(
+        &mut self,
+        item: &AssocItem,
+        ctxt: AssocCtxt,
+        parent_hir: &'hir hir::OwnerInfo<'hir>,
+    ) -> hir::OwnerNode<'hir> {
+        // Evaluate with the lifetimes in `params` in-scope.
+        // This is used to track which lifetimes have already been defined,
+        // and which need to be replicated when lowering an async fn.
+
+        match parent_hir.node().expect_item().kind {
+            hir::ItemKind::Impl(impl_) => {
+                self.is_in_trait_impl = impl_.of_trait.is_some();
+            }
+            hir::ItemKind::Trait(_, _, generics, _, _) if self.tcx.features().effects => {
+                self.host_param_id = generics
+                    .params
+                    .iter()
+                    .find(|param| {
+                        parent_hir
+                            .attrs
+                            .get(param.hir_id.local_id)
+                            .iter()
+                            .any(|attr| attr.has_name(sym::rustc_host))
+                    })
+                    .map(|param| param.def_id);
+            }
+            _ => {}
+        }
+
+        match ctxt {
+            AssocCtxt::Trait => hir::OwnerNode::TraitItem(self.lower_trait_item(item)),
+            AssocCtxt::Impl => hir::OwnerNode::ImplItem(self.lower_impl_item(item)),
         }
     }
 
