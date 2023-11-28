@@ -188,7 +188,11 @@ fn find_best_match_for_name_impl(
         return Some(*c);
     }
 
-    let mut dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
+    // `fn edit_distance()` use `chars()` to calculate edit distance, so we must
+    // also use `chars()` (and not `str::len()`) to calculate length here.
+    let lookup_len = lookup.chars().count();
+
+    let mut dist = dist.unwrap_or_else(|| cmp::max(lookup_len, 3) / 3);
     let mut best = None;
     // store the candidates with the same distance, only for `use_substring_score` current.
     let mut next_candidates = vec![];
