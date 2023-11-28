@@ -1,7 +1,6 @@
 use super::{BorrowedBuf, BufReader, BufWriter, Read, Result, Write, DEFAULT_BUF_SIZE};
 use crate::alloc::Allocator;
 use crate::cmp;
-use crate::cmp::min;
 use crate::collections::VecDeque;
 use crate::io::IoSlice;
 use crate::mem::MaybeUninit;
@@ -256,79 +255,17 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
     }
 }
 
-impl<A: Allocator> BufferedWriterSpec for Vec<u8, A> {
+impl BufferedWriterSpec for Vec<u8> {
     fn buffer_size(&self) -> usize {
         cmp::max(DEFAULT_BUF_SIZE, self.capacity() - self.len())
     }
 
     fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
-        let mut bytes = 0;
-
-        // avoid inflating empty/small vecs before we have determined that there's anything to read
-        if self.capacity() < DEFAULT_BUF_SIZE {
-            let stack_read_limit = DEFAULT_BUF_SIZE as u64;
-            bytes = stack_buffer_copy(&mut reader.take(stack_read_limit), self)?;
-            // fewer bytes than requested -> EOF reached
-            if bytes < stack_read_limit {
-                return Ok(bytes);
-            }
-        }
-
-        // don't immediately offer the vec's whole spare capacity, otherwise
-        // we might have to fully initialize it if the reader doesn't have a custom read_buf() impl
-        let mut max_read_size = DEFAULT_BUF_SIZE;
-
-        loop {
-            self.reserve(DEFAULT_BUF_SIZE);
-            let mut initialized_spare_capacity = 0;
-
-            loop {
-                let buf = self.spare_capacity_mut();
-                let read_size = min(max_read_size, buf.len());
-                let mut buf = BorrowedBuf::from(&mut buf[..read_size]);
-                // SAFETY: init is either 0 or the init_len from the previous iteration.
-                unsafe {
-                    buf.set_init(initialized_spare_capacity);
-                }
-                match reader.read_buf(buf.unfilled()) {
-                    Ok(()) => {
-                        let bytes_read = buf.len();
-
-                        // EOF
-                        if bytes_read == 0 {
-                            return Ok(bytes);
-                        }
-
-                        // the reader is returning short reads but it doesn't call ensure_init()
-                        if buf.init_len() < buf.capacity() {
-                            max_read_size = usize::MAX;
-                        }
-                        // the reader hasn't returned short reads so far
-                        if bytes_read == buf.capacity() {
-                            max_read_size *= 2;
-                        }
-
-                        initialized_spare_capacity = buf.init_len() - bytes_read;
-                        bytes += bytes_read as u64;
-                        // SAFETY: BorrowedBuf guarantees all of its filled bytes are init
-                        // and the number of read bytes can't exceed the spare capacity since
-                        // that's what the buffer is borrowing from.
-                        unsafe { self.set_len(self.len() + bytes_read) };
-
-                        // spare capacity full, reserve more
-                        if self.len() == self.capacity() {
-                            break;
-                        }
-                    }
-                    Err(e) if e.is_interrupted() => continue,
-                    Err(e) => return Err(e),
-                }
-            }
-        }
+        reader.read_to_end(self).map(|bytes| u64::try_from(bytes).expect("usize overflowed u64"))
     }
 }
 
-fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
+pub fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     reader: &mut R,
     writer: &mut W,
 ) -> Result<u64> {
