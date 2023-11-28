@@ -310,6 +310,10 @@ impl Thread {
         target_os = "android",
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "tvos",
+        target_os = "watchos"
     )))]
     pub fn sleep_until(deadline: Instant) {
         let now = Instant::now();
@@ -351,6 +355,31 @@ impl Thread {
         }
     }
 
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+    pub fn sleep_until(deadline: crate::time::Instant) {
+        // does not count during sleep/suspend same as clock monotonic
+        // does instant use mach_absolute_time?
+        // https://developer.apple.com/library/archive/technotes/tn2169/_index.html
+
+        use super::time::Timespec;
+        use core::mem::MaybeUninit;
+
+        let Timespec { tv_sec, tv_nsec } = deadline.into_inner().into_timespec();
+        let nanos = (tv_sec as u64).saturating_mul(1_000_000_000).saturating_add(tv_nsec.0 as u64);
+
+        let mut info = MaybeUninit::uninit();
+        unsafe {
+            let ret = mach_timebase_info(info.as_mut_ptr());
+            assert_eq!(ret, KERN_SUCCESS);
+
+            let info = info.assume_init();
+            let ticks = nanos * (info.denom as u64) / (info.numer as u64);
+
+            mach_wait_until(ticks);
+            assert_eq!(ret, KERN_SUCCESS);
+        }
+    }
+
     pub fn join(self) {
         let id = self.into_id();
         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
@@ -364,6 +393,23 @@ impl Thread {
     pub fn into_id(self) -> libc::pthread_t {
         ManuallyDrop::new(self).id
     }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+const KERN_SUCCESS: libc::c_int = 0;
+
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[repr(C)]
+struct mach_timebase_info_type {
+    numer: u32,
+    denom: u32,
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+extern "C" {
+    fn mach_wait_until(deadline: u64) -> libc::c_int;
+    fn mach_timebase_info(info: *mut mach_timebase_info_type) -> libc::c_int;
+
 }
 
 impl Drop for Thread {
