@@ -130,7 +130,7 @@ pub(crate) struct UnstableConstFn {
     pub span: Span,
     pub def_path: String,
 
-    #[label(const_eval_declared_here)]
+    #[label(const_eval_unstable_declared_here)]
     pub declared: Span,
 }
 
