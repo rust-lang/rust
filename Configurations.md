@@ -1098,7 +1098,7 @@ See also [`format_macro_bodies`](#format_macro_bodies).
 
 ## `format_macro_bodies`
 
-Format the bodies of macros.
+Format the bodies of declarative macro definitions.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`

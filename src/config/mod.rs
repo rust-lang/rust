@@ -74,7 +74,7 @@ create_config! {
     format_strings: bool, false, false, "Format string literals where necessary";
     format_macro_matchers: bool, false, false,
         "Format the metavariable matching patterns in macros";
-    format_macro_bodies: bool, true, false, "Format the bodies of macros";
+    format_macro_bodies: bool, true, false, "Format the bodies of declarative macro definitions";
     skip_macro_invocations: MacroSelectors, MacroSelectors::default(), false,
         "Skip formatting the bodies of macros invoked with the following names.";
     hex_literal_case: HexLiteralCase, HexLiteralCase::Preserve, false,
