@@ -8,7 +8,6 @@ use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
@@ -373,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
-                self.enforce_context_effects(call_expr.hir_id, call_expr.span, def_id, args);
+                self.enforce_context_effects(call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Unit testing: function items annotated with
@@ -770,7 +769,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self, span))]
     pub(super) fn enforce_context_effects(
         &self,
-        call_expr_hir: HirId,
         span: Span,
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,

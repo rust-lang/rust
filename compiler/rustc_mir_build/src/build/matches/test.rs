@@ -494,14 +494,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-
-        let mut args: Vec<ty::GenericArg<'tcx>> = vec![ty.into(), ty.into()];
-        // If `PartialEq` is `#[const_trait]`, then add a const effect param
-        if self.tcx.generics_of(eq_def_id).host_effect_index.is_some() {
-            args.push(self.tcx.expected_const_effect_param_for_body(self.def_id).into());
-        }
-
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, args);
+        let method = trait_method(
+            self.tcx,
+            eq_def_id,
+            sym::eq,
+            self.tcx.with_opt_const_effect_param(self.def_id, eq_def_id, [ty, ty]),
+        );
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);

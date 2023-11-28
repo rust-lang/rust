@@ -813,6 +813,23 @@ impl<'tcx> TyCtxt<'tcx> {
             None => self.consts.true_,
         }
     }
+
+    /// Constructs generic args for an item, optionally appending a const effect param type
+    pub fn with_opt_const_effect_param(
+        self,
+        caller_def_id: LocalDefId,
+        callee_def_id: DefId,
+        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> ty::GenericArgsRef<'tcx> {
+        let generics = self.generics_of(callee_def_id);
+        assert_eq!(generics.parent, None);
+
+        let opt_const_param = generics.host_effect_index.is_some().then(|| {
+            ty::GenericArg::from(self.expected_const_effect_param_for_body(caller_def_id))
+        });
+
+        self.mk_args_from_iter(args.into_iter().map(|arg| arg.into()).chain(opt_const_param))
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {

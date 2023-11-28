@@ -344,9 +344,9 @@ trait PartialEq<Rhs: ?Sized = Self> {
     }
 }
 
-impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
+impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
 where
-    A: PartialEq<B>,
+    A: ~const PartialEq<B>,
 {
     fn eq(&self, other: &&B) -> bool {
         PartialEq::eq(*self, *other)

@@ -265,20 +265,19 @@ impl<'tcx> ConstToPat<'tcx> {
         // error, because that's never worked, due to compiler
         // using `PartialEq::eq` in this scenario in the past.)
         let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, Some(self.span));
-        let mut args: Vec<ty::GenericArg<'tcx>> = vec![ty.into(), ty.into()];
-        // If `PartialEq` is `#[const_trait]`, then add a const effect param
-        if tcx.generics_of(partial_eq_trait_id).host_effect_index.is_some() {
-            args.push(
-                tcx.expected_const_effect_param_for_body(tcx.hir().enclosing_body_owner(self.id))
-                    .into(),
-            );
-        }
-
         let partial_eq_obligation = Obligation::new(
             tcx,
             ObligationCause::dummy(),
             self.param_env,
-            ty::TraitRef::new(tcx, partial_eq_trait_id, args),
+            ty::TraitRef::new(
+                tcx,
+                partial_eq_trait_id,
+                tcx.with_opt_const_effect_param(
+                    tcx.hir().enclosing_body_owner(self.id),
+                    partial_eq_trait_id,
+                    [ty, ty],
+                ),
+            ),
         );
 
         // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
