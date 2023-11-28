@@ -355,7 +355,7 @@ macro_rules! nonzero_unsigned_operations {
                     if let Some(result) = self.get().checked_add(other) {
                         // SAFETY:
                         // - `checked_add` returns `None` on overflow
-                        // - `self` and `other` are non-zero
+                        // - `self` is non-zero
                         // - the only way to get zero from an addition without overflow is for both
                         //   sides to be zero
                         //
@@ -393,7 +393,7 @@ macro_rules! nonzero_unsigned_operations {
                 pub const fn saturating_add(self, other: $Int) -> $Ty {
                     // SAFETY:
                     // - `saturating_add` returns `u*::MAX` on overflow, which is non-zero
-                    // - `self` and `other` are non-zero
+                    // - `self` is non-zero
                     // - the only way to get zero from an addition without overflow is for both
                     //   sides to be zero
                     //

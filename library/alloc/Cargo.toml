@@ -17,11 +17,11 @@ rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.3.0"
 
 [[test]]
-name = "collectionstests"
+name = "alloctests"
 path = "tests/lib.rs"
 
 [[bench]]
-name = "collectionsbenches"
+name = "allocbenches"
 path = "benches/lib.rs"
 test = true
 

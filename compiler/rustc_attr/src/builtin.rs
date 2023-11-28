@@ -985,7 +985,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         Ok(literal) => acc.push(ReprPacked(literal)),
                         Err(message) => literal_error = Some(message),
                     };
-                } else if matches!(name, sym::C | sym::simd | sym::transparent)
+                } else if matches!(name, sym::Rust | sym::C | sym::simd | sym::transparent)
                     || int_type_of_word(name).is_some()
                 {
                     recognised = true;
@@ -1018,7 +1018,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             });
                         } else if matches!(
                             meta_item.name_or_empty(),
-                            sym::C | sym::simd | sym::transparent
+                            sym::Rust | sym::C | sym::simd | sym::transparent
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;
@@ -1043,7 +1043,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             );
                         } else if matches!(
                             meta_item.name_or_empty(),
-                            sym::C | sym::simd | sym::transparent
+                            sym::Rust | sym::C | sym::simd | sym::transparent
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;

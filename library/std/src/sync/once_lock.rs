@@ -13,22 +13,54 @@ use crate::sync::Once;
 ///
 /// # Examples
 ///
+/// Using `OnceCell` to store a function’s previously computed value (a.k.a.
+/// ‘lazy static’ or ‘memoizing’):
+///
+/// ```
+/// use std::collections::HashMap;
+/// use std::sync::OnceLock;
+///
+/// fn hash_map() -> &'static HashMap<u32, char> {
+///     static HASHMAP: OnceLock<HashMap<u32, char>> = OnceLock::new();
+///     HASHMAP.get_or_init(|| {
+///         let mut m = HashMap::new();
+///         m.insert(0, 'a');
+///         m.insert(1, 'b');
+///         m.insert(2, 'c');
+///         m
+///     })
+/// }
+///
+/// // The `HashMap` is built, stored in the `OnceLock`, and returned.
+/// let _ = hash_map();
+///
+/// // The `HashMap` is retrieved from the `OnceLock` and returned.
+/// let _ = hash_map();
+/// ```
+///
+/// Writing to a `OnceLock` from a separate thread:
+///
 /// ```
 /// use std::sync::OnceLock;
 ///
-/// static CELL: OnceLock<String> = OnceLock::new();
+/// static CELL: OnceLock<usize> = OnceLock::new();
+///
+/// // `OnceLock` has not been written to yet.
 /// assert!(CELL.get().is_none());
 ///
+/// // Spawn a thread and write to `OnceLock`.
 /// std::thread::spawn(|| {
-///     let value: &String = CELL.get_or_init(|| {
-///         "Hello, World!".to_string()
-///     });
-///     assert_eq!(value, "Hello, World!");
-/// }).join().unwrap();
+///     let value = CELL.get_or_init(|| 12345);
+///     assert_eq!(value, &12345);
+/// })
+/// .join()
+/// .unwrap();
 ///
-/// let value: Option<&String> = CELL.get();
-/// assert!(value.is_some());
-/// assert_eq!(value.unwrap().as_str(), "Hello, World!");
+/// // `OnceLock` now contains the value.
+/// assert_eq!(
+///     CELL.get(),
+///     Some(&12345),
+/// );
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceLock<T> {
