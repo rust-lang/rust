@@ -1329,25 +1329,6 @@ function initSearch(rawSearchIndex) {
                 return 0;
             });
 
-            let nameSplit = null;
-            if (parsedQuery.elems.length === 1) {
-                const hasPath = typeof parsedQuery.elems[0].path === "undefined";
-                nameSplit = hasPath ? null : parsedQuery.elems[0].path;
-            }
-
-            for (const result of result_list) {
-                // this validation does not make sense when searching by types
-                if (result.dontValidate) {
-                    continue;
-                }
-                const name = result.item.name.toLowerCase(),
-                    path = result.item.path.toLowerCase(),
-                    parent = result.item.parent;
-
-                if (!isType && !validateResult(name, path, nameSplit, parent)) {
-                    result.id = -1;
-                }
-            }
             return transformResults(result_list);
         }
 
@@ -2282,44 +2263,6 @@ function initSearch(rawSearchIndex) {
             ret.query.error = null;
         }
         return ret;
-    }
-
-    /**
-     * Validate performs the following boolean logic. For example:
-     * "File::open" will give IF A PARENT EXISTS => ("file" && "open")
-     * exists in (name || path || parent) OR => ("file" && "open") exists in
-     * (name || path )
-     *
-     * This could be written functionally, but I wanted to minimise
-     * functions on stack.
-     *
-     * @param  {string} name   - The name of the result
-     * @param  {string} path   - The path of the result
-     * @param  {string} keys   - The keys to be used (["file", "open"])
-     * @param  {Object} parent - The parent of the result
-     *
-     * @return {boolean}       - Whether the result is valid or not
-     */
-    function validateResult(name, path, keys, parent, maxEditDistance) {
-        if (!keys || !keys.length) {
-            return true;
-        }
-        for (const key of keys) {
-            // each check is for validation so we negate the conditions and invalidate
-            if (!(
-                // check for an exact name match
-                name.indexOf(key) > -1 ||
-                // then an exact path match
-                path.indexOf(key) > -1 ||
-                // next if there is a parent, check for exact parent match
-                (parent !== undefined && parent.name !== undefined &&
-                    parent.name.toLowerCase().indexOf(key) > -1) ||
-                // lastly check to see if the name was an editDistance match
-                editDistance(name, key, maxEditDistance) <= maxEditDistance)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     function nextTab(direction) {
