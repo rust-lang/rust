@@ -194,25 +194,19 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         visit::walk_use_tree(self, use_tree, id);
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        let def_kind = match foreign_item.kind {
-            ForeignItemKind::Static(_, mt, _) => DefKind::Static(mt),
-            ForeignItemKind::Fn(_) => DefKind::Fn,
-            ForeignItemKind::TyAlias(_) => DefKind::ForeignTy,
-            ForeignItemKind::MacCall(_) => return self.visit_macro_invoc(foreign_item.id),
+    fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
+        let (def_data, def_kind) = match fi.kind {
+            ForeignItemKind::Static(_, mt, _) => {
+                (DefPathData::ValueNs(fi.ident.name), DefKind::Static(mt))
+            }
+            ForeignItemKind::Fn(_) => (DefPathData::ValueNs(fi.ident.name), DefKind::Fn),
+            ForeignItemKind::TyAlias(_) => (DefPathData::TypeNs(fi.ident.name), DefKind::ForeignTy),
+            ForeignItemKind::MacCall(_) => return self.visit_macro_invoc(fi.id),
         };
 
-        // FIXME: The namespace is incorrect for foreign types.
-        let def = self.create_def(
-            foreign_item.id,
-            DefPathData::ValueNs(foreign_item.ident.name),
-            def_kind,
-            foreign_item.span,
-        );
+        let def = self.create_def(fi.id, def_data, def_kind, fi.span);
 
-        self.with_parent(def, |this| {
-            visit::walk_foreign_item(this, foreign_item);
-        });
+        self.with_parent(def, |this| visit::walk_foreign_item(this, fi));
     }
 
     fn visit_variant(&mut self, v: &'a Variant) {

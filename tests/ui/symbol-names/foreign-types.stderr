@@ -1,4 +1,4 @@
-error: symbol-name(_RMCsCRATE_HASH_13foreign_typesINtB<REF>_5CheckNvB<REF>_11ForeignTypeE)
+error: symbol-name(_RMCsCRATE_HASH_13foreign_typesINtB<REF>_5CheckNtB<REF>_11ForeignTypeE)
   --> $DIR/foreign-types.rs:13:1
    |
 LL | #[rustc_symbol_name]
