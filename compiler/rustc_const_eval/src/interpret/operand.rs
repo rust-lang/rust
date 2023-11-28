@@ -93,6 +93,17 @@ impl<Prov: Provenance> Immediate<Prov> {
             Immediate::Uninit => bug!("Got uninit where a scalar pair was expected"),
         }
     }
+
+    /// Returns the scalar from the first component and optionally the 2nd component as metadata.
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
+    pub fn to_scalar_and_meta(self) -> (Scalar<Prov>, MemPlaceMeta<Prov>) {
+        match self {
+            Immediate::ScalarPair(val1, val2) => (val1, MemPlaceMeta::Meta(val2)),
+            Immediate::Scalar(val) => (val, MemPlaceMeta::None),
+            Immediate::Uninit => bug!("Got uninit where a scalar or scalar pair was expected"),
+        }
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together

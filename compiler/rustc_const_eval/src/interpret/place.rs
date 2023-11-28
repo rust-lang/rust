@@ -406,11 +406,7 @@ where
         let pointee_type =
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
         let layout = self.layout_of(pointee_type)?;
-        let (ptr, meta) = match **val {
-            Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
-            Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta)),
-            Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
-        };
+        let (ptr, meta) = val.to_scalar_and_meta();
 
         // `ref_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
         // we hence can't call `size_and_align_of` since that asserts more validity than we want.
