@@ -1,5 +1,5 @@
 error: expression in the value of this attribute must be a literal or macro call
-  --> $DIR/eager-expansion-fail.rs:13:28
+  --> $DIR/eager-expansion-fail.rs:19:28
    |
 LL |         #[stable(feature = 1 + 1, since = "?")]
    |                            ^^^^^
@@ -10,7 +10,7 @@ LL | m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expression in the value of this attribute must be a literal or macro call
-  --> $DIR/eager-expansion-fail.rs:16:28
+  --> $DIR/eager-expansion-fail.rs:22:28
    |
 LL |         #[stable(feature = not_a_literal!(), since = "?")]
    |                            ^^^^^^^^^^^^^^^^
@@ -20,8 +20,19 @@ LL | m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error: expected unsuffixed literal or identifier, found `deprecation_msg`
+  --> $DIR/eager-expansion-fail.rs:26:31
+   |
+LL |         #[deprecated(reason = deprecation_msg!())]
+   |                               ^^^^^^^^^^^^^^^
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: struct has missing stability attribute
-  --> $DIR/eager-expansion-fail.rs:14:9
+  --> $DIR/eager-expansion-fail.rs:20:9
    |
 LL |         pub struct Math;
    |         ^^^^^^^^^^^^^^^^
@@ -32,7 +43,7 @@ LL | m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: struct has missing stability attribute
-  --> $DIR/eager-expansion-fail.rs:17:9
+  --> $DIR/eager-expansion-fail.rs:23:9
    |
 LL |         pub struct NotLiteral;
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -42,5 +53,5 @@ LL | m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
