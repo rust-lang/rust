@@ -1,10 +1,9 @@
-use crate::mir::pretty::{function_body, pretty_statement};
+use crate::mir::pretty::{function_body, pretty_statement, pretty_terminator};
 use crate::ty::{
     AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
 };
 use crate::{Error, Opaque, Span, Symbol};
-use std::io;
-
+use std::{io, slice};
 /// The SMIR representation of a single function.
 #[derive(Clone, Debug)]
 pub struct Body {
@@ -83,6 +82,8 @@ impl Body {
                         Ok(())
                     })
                     .collect::<Vec<_>>();
+                pretty_terminator(&block.terminator.kind, w)?;
+                writeln!(w, "").unwrap();
                 writeln!(w, "    }}").unwrap();
                 Ok(())
             })
@@ -100,7 +101,7 @@ pub struct LocalDecl {
     pub mutability: Mutability,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BasicBlock {
     pub statements: Vec<Statement>,
     pub terminator: Terminator,
@@ -112,6 +113,14 @@ pub struct Terminator {
     pub span: Span,
 }
 
+impl Terminator {
+    pub fn successors(&self) -> Successors<'_> {
+        self.kind.successors()
+    }
+}
+
+pub type Successors<'a> = impl Iterator<Item = usize> + 'a;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TerminatorKind {
     Goto {
@@ -119,7 +128,7 @@ pub enum TerminatorKind {
     },
     SwitchInt {
         discr: Operand,
-        targets: Vec<SwitchTarget>,
+        targets: SwitchTargets,
         otherwise: usize,
     },
     Resume,
@@ -154,6 +163,58 @@ pub enum TerminatorKind {
         destination: Option<usize>,
         unwind: UnwindAction,
     },
+}
+
+impl TerminatorKind {
+    pub fn successors(&self) -> Successors<'_> {
+        use self::TerminatorKind::*;
+        match *self {
+            Call { target: Some(t), unwind: UnwindAction::Cleanup(ref u), .. }
+            | Drop { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
+            | Assert { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
+            | InlineAsm { destination: Some(t), unwind: UnwindAction::Cleanup(ref u), .. } => {
+                Some(t).into_iter().chain(slice::from_ref(u).into_iter().copied())
+            }
+            Goto { target: t }
+            | Call { target: None, unwind: UnwindAction::Cleanup(t), .. }
+            | Call { target: Some(t), unwind: _, .. }
+            | Drop { target: t, unwind: _, .. }
+            | Assert { target: t, unwind: _, .. }
+            | InlineAsm { destination: None, unwind: UnwindAction::Cleanup(t), .. }
+            | InlineAsm { destination: Some(t), unwind: _, .. } => {
+                Some(t).into_iter().chain((&[]).into_iter().copied())
+            }
+
+            CoroutineDrop
+            | Return
+            | Resume
+            | Abort
+            | Unreachable
+            | Call { target: None, unwind: _, .. }
+            | InlineAsm { destination: None, unwind: _, .. } => {
+                None.into_iter().chain((&[]).into_iter().copied())
+            }
+            SwitchInt { ref targets, .. } => {
+                None.into_iter().chain(targets.targets.iter().copied())
+            }
+        }
+    }
+
+    pub fn unwind(&self) -> Option<&UnwindAction> {
+        match *self {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::CoroutineDrop
+            | TerminatorKind::Resume
+            | TerminatorKind::Abort
+            | TerminatorKind::SwitchInt { .. } => None,
+            TerminatorKind::Call { ref unwind, .. }
+            | TerminatorKind::Assert { ref unwind, .. }
+            | TerminatorKind::Drop { ref unwind, .. }
+            | TerminatorKind::InlineAsm { ref unwind, .. } => Some(unwind),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -602,9 +663,9 @@ pub struct Constant {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SwitchTarget {
-    pub value: u128,
-    pub target: usize,
+pub struct SwitchTargets {
+    pub value: Vec<u128>,
+    pub targets: Vec<usize>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
