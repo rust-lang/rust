@@ -297,6 +297,7 @@
 #![feature(no_sanitize)]
 #![feature(platform_intrinsics)]
 #![feature(prelude_import)]
+#![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(staged_api)]
@@ -387,7 +388,6 @@
 //
 // Only for const-ness:
 // tidy-alphabetical-start
-#![feature(const_collections_with_hasher)]
 #![feature(const_hash)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
