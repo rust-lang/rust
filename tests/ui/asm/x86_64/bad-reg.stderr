@@ -106,21 +106,21 @@ error: register class `mmx_reg` can only be used as a clobber, not as an input o
 LL |         asm!("{}", out(mmx_reg) _);
    |                    ^^^^^^^^^^^^^^
 
-error: register `al` conflicts with register `ax`
+error: register `al` conflicts with register `eax`
   --> $DIR/bad-reg.rs:58:33
    |
 LL |         asm!("", in("eax") foo, in("al") bar);
    |                  -------------  ^^^^^^^^^^^^ register `al`
    |                  |
-   |                  register `ax`
+   |                  register `eax`
 
-error: register `ax` conflicts with register `ax`
+error: register `rax` conflicts with register `rax`
   --> $DIR/bad-reg.rs:61:33
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
-   |                  -------------  ^^^^^^^^^^^^^^ register `ax`
+   |                  -------------  ^^^^^^^^^^^^^^ register `rax`
    |                  |
-   |                  register `ax`
+   |                  register `rax`
    |
 help: use `lateout` instead of `out` to avoid conflict
   --> $DIR/bad-reg.rs:61:18
