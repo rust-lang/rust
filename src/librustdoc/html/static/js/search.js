@@ -287,10 +287,6 @@ function initSearch(rawSearchIndex) {
         }
     }
 
-    function isWhitespace(c) {
-        return " \t\n\r".indexOf(c) !== -1;
-    }
-
     function isSpecialStartCharacter(c) {
         return "<\"".indexOf(c) !== -1;
     }
@@ -408,7 +404,7 @@ function initSearch(rawSearchIndex) {
      * @return {boolean}
      */
     function isPathSeparator(c) {
-        return c === ":" || isWhitespace(c);
+        return c === ":" || c === " ";
     }
 
     /**
@@ -425,7 +421,7 @@ function initSearch(rawSearchIndex) {
             const c = parserState.userQuery[pos - 1];
             if (c === lookingFor) {
                 return true;
-            } else if (!isWhitespace(c)) {
+            } else if (c !== " ") {
                 break;
             }
             pos -= 1;
@@ -454,7 +450,7 @@ function initSearch(rawSearchIndex) {
     function skipWhitespace(parserState) {
         while (parserState.pos < parserState.userQuery.length) {
             const c = parserState.userQuery[parserState.pos];
-            if (!isWhitespace(c)) {
+            if (c !== " ") {
                 break;
             }
             parserState.pos += 1;
@@ -599,7 +595,7 @@ function initSearch(rawSearchIndex) {
                     } else {
                         while (parserState.pos + 1 < parserState.length) {
                             const next_c = parserState.userQuery[parserState.pos + 1];
-                            if (!isWhitespace(next_c)) {
+                            if (next_c !== " ") {
                                 break;
                             }
                             parserState.pos += 1;
@@ -953,7 +949,7 @@ function initSearch(rawSearchIndex) {
                 query.literalSearch = false;
                 foundStopChar = true;
                 continue;
-            } else if (isWhitespace(c)) {
+            } else if (c === " ") {
                 skipWhitespace(parserState);
                 continue;
             }
@@ -1113,7 +1109,7 @@ function initSearch(rawSearchIndex) {
                 }
             }
         }
-        userQuery = userQuery.trim();
+        userQuery = userQuery.trim().replace(/\r|\n|\t/g, " ");
         const parserState = {
             length: userQuery.length,
             pos: 0,

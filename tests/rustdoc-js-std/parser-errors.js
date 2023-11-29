@@ -162,6 +162,15 @@ const PARSED = [
         error: "Unexpected `:: ::`",
     },
     {
+        query: "a::\t::b",
+        elems: [],
+        foundElems: 0,
+        original: "a:: ::b",
+        returned: [],
+        userQuery: "a:: ::b",
+        error: "Unexpected `:: ::`",
+    },
+    {
         query: "a::b::",
         elems: [],
         foundElems: 0,
