@@ -1,7 +1,7 @@
 //@compile-flags: -Cdebug-assertions=no
 
 #[repr(transparent)]
-struct HasDrop(u8);
+struct HasDrop(#[allow(dead_code)] u8);
 
 impl Drop for HasDrop {
     fn drop(&mut self) {}

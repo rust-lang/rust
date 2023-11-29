@@ -4,7 +4,7 @@
 use std::mem;
 
 const SZ: usize = 100;
-struct P<T: ?Sized>([u8; SZ], T);
+struct P<T: ?Sized>(#[allow(dead_code)] [u8; SZ], T);
 
 type Ack<T> = P<P<T>>;
 
