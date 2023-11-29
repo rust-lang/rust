@@ -248,6 +248,12 @@ impl WaitableTimer {
         let result = unsafe { c::SetWaitableTimer(self.handle, &time, 0, None, null(), c::FALSE) };
         if result != 0 { Ok(()) } else { Err(()) }
     }
+    pub fn set_deadline(&self, deadline: Instant) -> Result<(), ()> {
+        // Convert the Instant to a format similar to FILETIME.
+        let time = checked_dur2intervals(&deadline.t).ok_or(())?;
+        let result = unsafe { c::SetWaitableTimer(self.handle, &time, 0, None, null(), c::FALSE) };
+        if result != 0 { Ok(()) } else { Err(()) }
+    }
     pub fn wait(&self) -> Result<(), ()> {
         let result = unsafe { c::WaitForSingleObject(self.handle, c::INFINITE) };
         if result != c::WAIT_FAILED { Ok(()) } else { Err(()) }
