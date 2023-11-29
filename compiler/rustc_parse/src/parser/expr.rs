@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use super::diagnostics::SnapshotParser;
 use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
@@ -2477,7 +2478,7 @@ impl<'a> Parser<'a> {
         let mut cond =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, None)?;
 
-        CondChecker { parser: self, forbid_let_reason: None }.visit_expr(&mut cond);
+        CondChecker::new(self).visit_expr(&mut cond);
 
         if let ExprKind::Let(_, _, _, None) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
@@ -2493,6 +2494,8 @@ impl<'a> Parser<'a> {
             let err = errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
                 reason: ForbiddenLetReason::OtherForbidden,
+                missing_let: None,
+                comparison: None,
             };
             if self.prev_token.kind == token::BinOp(token::Or) {
                 // This was part of a closure, the that part of the parser recover.
@@ -2876,7 +2879,7 @@ impl<'a> Parser<'a> {
                 let if_span = this.prev_token.span;
                 let mut cond = this.parse_match_guard_condition()?;
 
-                CondChecker { parser: this, forbid_let_reason: None }.visit_expr(&mut cond);
+                CondChecker::new(this).visit_expr(&mut cond);
 
                 let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
                 if has_let_expr {
@@ -3552,6 +3555,14 @@ pub(crate) enum ForbiddenLetReason {
 struct CondChecker<'a> {
     parser: &'a Parser<'a>,
     forbid_let_reason: Option<ForbiddenLetReason>,
+    missing_let: Option<errors::MaybeMissingLet>,
+    comparison: Option<errors::MaybeComparison>,
+}
+
+impl<'a> CondChecker<'a> {
+    fn new(parser: &'a Parser<'a>) -> Self {
+        CondChecker { parser, forbid_let_reason: None, missing_let: None, comparison: None }
+    }
 }
 
 impl MutVisitor for CondChecker<'_> {
@@ -3562,11 +3573,13 @@ impl MutVisitor for CondChecker<'_> {
         match e.kind {
             ExprKind::Let(_, _, _, ref mut is_recovered @ None) => {
                 if let Some(reason) = self.forbid_let_reason {
-                    *is_recovered = Some(
-                        self.parser
-                            .sess
-                            .emit_err(errors::ExpectedExpressionFoundLet { span, reason }),
-                    );
+                    *is_recovered =
+                        Some(self.parser.sess.emit_err(errors::ExpectedExpressionFoundLet {
+                            span,
+                            reason,
+                            missing_let: self.missing_let,
+                            comparison: self.comparison,
+                        }));
                 } else {
                     self.parser.sess.gated_spans.gate(sym::let_chains, span);
                 }
@@ -3590,9 +3603,28 @@ impl MutVisitor for CondChecker<'_> {
                 noop_visit_expr(e, self);
                 self.forbid_let_reason = forbid_let_reason;
             }
+            ExprKind::Assign(ref lhs, _, span) => {
+                let forbid_let_reason = self.forbid_let_reason;
+                self.forbid_let_reason = Some(OtherForbidden);
+                let missing_let = self.missing_let;
+                if let ExprKind::Binary(_, _, rhs) = &lhs.kind
+                    && let ExprKind::Path(_, _)
+                    | ExprKind::Struct(_)
+                    | ExprKind::Call(_, _)
+                    | ExprKind::Array(_) = rhs.kind
+                {
+                    self.missing_let =
+                        Some(errors::MaybeMissingLet { span: rhs.span.shrink_to_lo() });
+                }
+                let comparison = self.comparison;
+                self.comparison = Some(errors::MaybeComparison { span: span.shrink_to_hi() });
+                noop_visit_expr(e, self);
+                self.forbid_let_reason = forbid_let_reason;
+                self.missing_let = missing_let;
+                self.comparison = comparison;
+            }
             ExprKind::Unary(_, _)
             | ExprKind::Await(_, _)
-            | ExprKind::Assign(_, _, _)
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Range(_, _, _)
             | ExprKind::Try(_)
