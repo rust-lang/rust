@@ -1,10 +1,10 @@
-error[E0283]: type annotations needed: cannot satisfy `T: FnMut<(&'a (),)>`
+error[E0283]: type annotations needed: cannot satisfy `T: FnMut(&'a ())`
   --> $DIR/issue-85735.rs:7:8
    |
 LL |     T: FnMut(&'a ()),
    |        ^^^^^^^^^^^^^
    |
-note: multiple `impl`s or `where` clauses satisfying `T: FnMut<(&'a (),)>` found
+note: multiple `impl`s or `where` clauses satisfying `T: FnMut(&'a ())` found
   --> $DIR/issue-85735.rs:7:8
    |
 LL |     T: FnMut(&'a ()),
