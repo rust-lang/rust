@@ -2294,13 +2294,6 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
-fn select_debuginfo_compression(
-    _handler: &EarlyErrorHandler,
-    unstable_opts: &UnstableOptions,
-) -> DebugInfoCompression {
-    unstable_opts.debuginfo_compression
-}
-
 pub(crate) fn parse_assert_incr_state(
     handler: &EarlyErrorHandler,
     opt_assertion: &Option<String>,
@@ -2799,8 +2792,7 @@ pub fn build_session_options(
     // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
-    let debuginfo_compression: DebugInfoCompression =
-        select_debuginfo_compression(handler, &unstable_opts);
+    let debuginfo_compression = unstable_opts.debuginfo_compression;
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
