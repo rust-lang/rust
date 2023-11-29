@@ -8,7 +8,7 @@
       let mut _3: u8;
       scope 1 {
       }
-      scope 2 (inlined <u8 as Add>::add) {
+      scope 2 (inlined #[track_caller] <u8 as Add>::add) {
           debug self => _2;
           debug other => _3;
           let mut _4: (u8, bool);
