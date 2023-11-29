@@ -645,6 +645,7 @@ impl Pat {
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
             | PatKind::Rest
+            | PatKind::Never
             | PatKind::Lit(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
@@ -794,6 +795,9 @@ pub enum PatKind {
     /// In all of these cases, an additional restriction applies,
     /// only one rest pattern may occur in the pattern sequences.
     Rest,
+
+    // A never pattern `!`
+    Never,
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),

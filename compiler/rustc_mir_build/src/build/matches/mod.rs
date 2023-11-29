@@ -827,6 +827,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Constant { .. }
             | PatKind::Range { .. }
             | PatKind::Wild
+            | PatKind::Never
             | PatKind::Error(_) => {}
 
             PatKind::Deref { ref subpattern } => {

@@ -1557,6 +1557,12 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 let pats = expand_or_pat(pat);
                 fields = Fields::from_iter(cx, pats.into_iter().map(mkpat));
             }
+            PatKind::Never => {
+                // FIXME(never_patterns): handle `!` in exhaustiveness. This is a sane default
+                // in the meantime.
+                ctor = Wildcard;
+                fields = Fields::empty();
+            }
             PatKind::Error(_) => {
                 ctor = Opaque(OpaqueId::new());
                 fields = Fields::empty();
