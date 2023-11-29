@@ -2,7 +2,7 @@ use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
 
-use crate::raw_vec::RawVec;
+use crate::{raw_vec::RawVec, alloc::{failure_handling::Fatal, Global}};
 
 use super::{SpecExtend, Vec};
 
@@ -28,7 +28,7 @@ where
             Some(element) => {
                 let (lower, _) = iterator.size_hint();
                 let initial_capacity =
-                    cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
+                    cmp::max(RawVec::<T, Global, Fatal>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
                 let mut vector = Vec::with_capacity(initial_capacity);
                 unsafe {
                     // SAFETY: We requested capacity at least 1

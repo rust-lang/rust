@@ -241,6 +241,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::alloc::failure_handling::Fallible;
 #[cfg(not(test))]
 use crate::boxed::Box;
 #[cfg(test)]
@@ -2528,7 +2529,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
 
             // Create a `Vec<T, &A>` with length 0, to deallocate the buffer
             // without dropping its contents or the allocator
-            let _ = Vec::from_raw_parts_in(vec_ptr, 0, cap, &alloc);
+            let _ = Vec::<_, _, Fallible>::from_raw_parts_in(vec_ptr, 0, cap, &alloc);
 
             Self::from_ptr_in(rc_ptr, alloc)
         }

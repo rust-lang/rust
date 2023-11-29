@@ -12,6 +12,9 @@ use core::ptr::{self, NonNull};
 #[doc(inline)]
 pub use core::alloc::*;
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub mod failure_handling;
+
 #[cfg(test)]
 mod tests;
 

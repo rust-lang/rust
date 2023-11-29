@@ -30,6 +30,7 @@ use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
+use crate::alloc::failure_handling::Fallible;
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
 #[cfg(not(no_global_oom_handling))]
@@ -3390,7 +3391,7 @@ impl<T, A: Allocator + Clone> From<Vec<T, A>> for Arc<[T], A> {
 
             // Create a `Vec<T, &A>` with length 0, to deallocate the buffer
             // without dropping its contents or the allocator
-            let _ = Vec::from_raw_parts_in(vec_ptr, 0, cap, &alloc);
+            let _ = Vec::<_, _, Fallible>::from_raw_parts_in(vec_ptr, 0, cap, &alloc);
 
             Self::from_ptr_in(rc_ptr, alloc)
         }

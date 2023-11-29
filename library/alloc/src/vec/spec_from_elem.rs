@@ -1,5 +1,6 @@
 use core::ptr;
 
+use crate::alloc::failure_handling::Fatal;
 use crate::alloc::Allocator;
 use crate::raw_vec::RawVec;
 
@@ -7,11 +8,11 @@ use super::{IsZero, Vec};
 
 // Specialization trait used for Vec::from_elem
 pub(super) trait SpecFromElem: Sized {
-    fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A>;
+    fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A, Fatal>;
 }
 
 impl<T: Clone> SpecFromElem for T {
-    default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
+    default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A, Fatal> {
         let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, elem);
         v
@@ -20,7 +21,7 @@ impl<T: Clone> SpecFromElem for T {
 
 impl<T: Clone + IsZero> SpecFromElem for T {
     #[inline]
-    default fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
+    default fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A, Fatal> {
         if elem.is_zero() {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
@@ -32,7 +33,7 @@ impl<T: Clone + IsZero> SpecFromElem for T {
 
 impl SpecFromElem for i8 {
     #[inline]
-    fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {
+    fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A, Fatal> {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
