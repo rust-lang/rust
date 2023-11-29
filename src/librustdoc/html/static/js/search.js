@@ -512,18 +512,15 @@ function initSearch(rawSearchIndex) {
                 bindingName,
             };
         }
+        const quadcolon = /::\s*::/.exec(path);
         if (path.startsWith("::")) {
             throw ["Paths cannot start with ", "::"];
         } else if (path.endsWith("::")) {
             throw ["Paths cannot end with ", "::"];
-        } else if (path.includes("::::")) {
-            throw ["Unexpected ", "::::"];
-        } else if (path.includes(" ::")) {
-            throw ["Unexpected ", " ::"];
-        } else if (path.includes(":: ")) {
-            throw ["Unexpected ", ":: "];
+        } else if (quadcolon !== null) {
+            throw ["Unexpected ", quadcolon[0]];
         }
-        const pathSegments = path.split(/::|\s+/);
+        const pathSegments = path.split(/(?:::\s*)|(?:\s+(?:::\s*)?)/);
         // In case we only have something like `<p>`, there is no name.
         if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === "")) {
             if (generics.length > 0 || prevIs(parserState, ">")) {
