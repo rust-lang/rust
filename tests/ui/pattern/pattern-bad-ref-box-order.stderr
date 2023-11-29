@@ -4,23 +4,5 @@ error: switch the order of `ref` and `box`
 LL |         Some(ref box _i) => {},
    |              ^^^^^^^ help: swap them: `box ref`
 
-error: expected one of `)`, `,`, or `|`, found `_i`
-  --> $DIR/pattern-bad-ref-box-order.rs:8:22
-   |
-LL |         Some(ref box _i) => {},
-   |                     -^^ expected one of `)`, `,`, or `|`
-   |                     |
-   |                     help: missing `,`
+error: aborting due to 1 previous error
 
-error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
-  --> $DIR/pattern-bad-ref-box-order.rs:8:22
-   |
-LL |         Some(ref box _i) => {},
-   |                      ^^ expected 1 field, found 2
-  --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-   = note: tuple variant has 1 field
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0023`.

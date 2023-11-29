@@ -391,10 +391,10 @@ impl<'a> Parser<'a> {
             self.parse_pat_ident_mut(syntax_loc)?
         } else if self.eat_keyword(kw::Ref) {
             if self.check_keyword(kw::Box) {
-                // Suggest `box ref` and quit parsing pattern to prevent series of
-                // misguided diagnostics from later stages of the compiler.
+                // Suggest `box ref`.
                 let span = self.prev_token.span.to(self.token.span);
-                return Err(self.sess.create_err(SwitchRefBoxOrder { span }));
+                self.bump();
+                self.sess.emit_err(SwitchRefBoxOrder { span });
             }
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
