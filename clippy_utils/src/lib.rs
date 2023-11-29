@@ -1707,6 +1707,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
 
     match pat.kind {
         PatKind::Wild => false,
+        PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) | PatKind::Range(..) => true,
