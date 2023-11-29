@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                                     db.note(format!(
                                         "`{}` doesn't implement `{}`",
                                         trait_pred.self_ty(),
-                                        trait_pred.trait_ref.print_only_trait_path(),
+                                        trait_pred.trait_ref.print_trait_sugared(),
                                     ));
                                 }
                             }
