@@ -19,10 +19,10 @@ pub(crate) mod printf {
             }
         }
 
-        pub fn position(&self) -> Option<InnerSpan> {
+        pub fn position(&self) -> InnerSpan {
             match self {
-                Substitution::Format(fmt) => Some(fmt.position),
-                &Substitution::Escape((start, end)) => Some(InnerSpan::new(start, end)),
+                Substitution::Format(fmt) => fmt.position,
+                &Substitution::Escape((start, end)) => InnerSpan::new(start, end),
             }
         }
 
@@ -302,10 +302,9 @@ pub(crate) mod printf {
         fn next(&mut self) -> Option<Self::Item> {
             let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
-            if let Some(InnerSpan { start, end }) = sub.position() {
-                sub.set_position(start + self.pos, end + self.pos);
-                self.pos += end;
-            }
+            let InnerSpan { start, end } = sub.position();
+            sub.set_position(start + self.pos, end + self.pos);
+            self.pos += end;
             Some(sub)
         }
 
@@ -629,9 +628,9 @@ pub mod shell {
             }
         }
 
-        pub fn position(&self) -> Option<InnerSpan> {
+        pub fn position(&self) -> InnerSpan {
             let (Self::Ordinal(_, pos) | Self::Name(_, pos) | Self::Escape(pos)) = self;
-            Some(InnerSpan::new(pos.0, pos.1))
+            InnerSpan::new(pos.0, pos.1)
         }
 
         pub fn set_position(&mut self, start: usize, end: usize) {
@@ -664,10 +663,9 @@ pub mod shell {
         fn next(&mut self) -> Option<Self::Item> {
             let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
-            if let Some(InnerSpan { start, end }) = sub.position() {
-                sub.set_position(start + self.pos, end + self.pos);
-                self.pos += end;
-            }
+            let InnerSpan { start, end } = sub.position();
+            sub.set_position(start + self.pos, end + self.pos);
+            self.pos += end;
             Some(sub)
         }
 

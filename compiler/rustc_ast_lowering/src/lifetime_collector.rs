@@ -108,7 +108,7 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
     }
 }
 
-pub fn lifetimes_in_bounds(
+pub(crate) fn lifetimes_in_bounds(
     resolver: &ResolverAstLowering,
     bounds: &GenericBounds,
 ) -> Vec<Lifetime> {

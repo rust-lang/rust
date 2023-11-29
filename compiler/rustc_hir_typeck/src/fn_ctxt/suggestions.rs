@@ -442,12 +442,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected,
                 )
             });
+
+            let prefix_wrap = |sugg: &str| {
+                if let Some(name) = self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                    format!(": {}{}", name, sugg)
+                } else {
+                    sugg.to_string()
+                }
+            };
+
             // FIXME: This could/should be extended to suggest `as_mut` and `as_deref_mut`,
             // but those checks need to be a bit more delicate and the benefit is diminishing.
             if self.can_eq(self.param_env, found_ty_inner, peeled) && error_tys_equate_as_ref {
+                let sugg = prefix_wrap(".as_ref()");
                 err.subdiagnostic(errors::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
-                    sugg: ".as_ref()",
+                    sugg,
                     expected,
                     found,
                     borrow_removal_span,
@@ -458,9 +468,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.can_eq(self.param_env, deref_ty, peeled)
                 && error_tys_equate_as_ref
             {
+                let sugg = prefix_wrap(".as_deref()");
                 err.subdiagnostic(errors::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
-                    sugg: ".as_deref()",
+                    sugg,
                     expected,
                     found,
                     borrow_removal_span,
@@ -474,10 +485,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.can_eq(self.param_env, found, expected)
                 })
             {
+                let sugg = prefix_wrap(".map(|x| x.as_str())");
                 err.span_suggestion_verbose(
                     expr.span.shrink_to_hi(),
                     fluent::hir_typeck_convert_to_str,
-                    ".map(|x| x.as_str())",
+                    sugg,
                     Applicability::MachineApplicable,
                 );
                 return true;
@@ -628,12 +640,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.help("use `Box::pin`");
                         }
                         _ => {
+                            let prefix = if let Some(name) =
+                                self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr)
+                            {
+                                format!("{}: ", name)
+                            } else {
+                                String::new()
+                            };
+                            let suggestion = vec![
+                                (expr.span.shrink_to_lo(), format!("{prefix}Box::pin(")),
+                                (expr.span.shrink_to_hi(), ")".to_string()),
+                            ];
                             err.multipart_suggestion(
                                 "you need to pin and box this expression",
-                                vec![
-                                    (expr.span.shrink_to_lo(), "Box::pin(".to_string()),
-                                    (expr.span.shrink_to_hi(), ")".to_string()),
-                                ],
+                                suggestion,
                                 Applicability::MaybeIncorrect,
                             );
                         }
@@ -1214,7 +1234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span = parent_callsite;
             }
 
-            let sugg = if expr.precedence().order() >= PREC_POSTFIX {
+            let mut sugg = if expr.precedence().order() >= PREC_POSTFIX {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
             } else {
                 vec![
@@ -1222,6 +1242,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (span.shrink_to_hi(), ").into()".to_owned()),
                 ]
             };
+            if let Some(name) = self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
+            }
             diag.multipart_suggestion(
                 format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
                 sugg,
@@ -1811,6 +1834,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ".expect(\"REASON\")",
             )
         };
+
+        let sugg = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+            Some(ident) => format!(": {ident}{sugg}"),
+            None => sugg.to_string(),
+        };
+
         err.span_suggestion_verbose(
             expr.span.shrink_to_hi(),
             msg,

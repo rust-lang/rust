@@ -530,7 +530,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     this.mark_span_with_reason(
                         DesugaringKind::TryBlock,
                         expr.span,
-                        this.allow_try_trait.clone(),
+                        Some(this.allow_try_trait.clone()),
                     ),
                     expr,
                 )
@@ -538,7 +538,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let try_span = this.mark_span_with_reason(
                     DesugaringKind::TryBlock,
                     this.tcx.sess.source_map().end_point(body.span),
-                    this.allow_try_trait.clone(),
+                    Some(this.allow_try_trait.clone()),
                 );
 
                 (try_span, this.expr_unit(try_span))
@@ -618,8 +618,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
 
         // Resume argument type: `ResumeTy`
-        let unstable_span =
-            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::Async,
+            span,
+            Some(self.allow_gen_future.clone()),
+        );
         let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span);
         let input_ty = hir::Ty {
             hir_id: self.next_id(),
@@ -741,7 +744,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let unstable_span = self.mark_span_with_reason(
                 DesugaringKind::Async,
                 span,
-                self.allow_gen_future.clone(),
+                Some(self.allow_gen_future.clone()),
             );
             self.lower_attrs(
                 inner_hir_id,
@@ -788,7 +791,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
             full_span,
-            self.allow_gen_future.clone(),
+            Some(self.allow_gen_future.clone()),
         );
         let expr = self.lower_expr_mut(expr);
         let expr_hir_id = expr.hir_id;
@@ -1646,13 +1649,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             span,
-            self.allow_try_trait.clone(),
+            Some(self.allow_try_trait.clone()),
         );
         let try_span = self.tcx.sess.source_map().end_point(span);
         let try_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             try_span,
-            self.allow_try_trait.clone(),
+            Some(self.allow_try_trait.clone()),
         );
 
         // `Try::branch(<expr>)`
@@ -1745,7 +1748,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::YeetExpr,
             span,
-            self.allow_try_trait.clone(),
+            Some(self.allow_try_trait.clone()),
         );
 
         let from_yeet_expr = self.wrap_in_try_constructor(
