@@ -237,8 +237,7 @@ pub trait MirVisitor {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort
-            | TerminatorKind::Unreachable
-            | TerminatorKind::CoroutineDrop => {}
+            | TerminatorKind::Unreachable => {}
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.visit_operand(cond, location);
                 self.visit_assert_msg(msg, location);
@@ -268,7 +267,7 @@ pub trait MirVisitor {
                 let local = RETURN_LOCAL;
                 self.visit_local(&local, PlaceContext::NON_MUTATING, location);
             }
-            TerminatorKind::SwitchInt { discr, targets: _, otherwise: _ } => {
+            TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.visit_operand(discr, location);
             }
         }

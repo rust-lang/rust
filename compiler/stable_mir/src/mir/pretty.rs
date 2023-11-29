@@ -76,7 +76,8 @@ pub fn pretty_statement(statement: &StatementKind) -> String {
 
 pub fn pretty_terminator<W: io::Write>(terminator: &TerminatorKind, w: &mut W) -> io::Result<()> {
     write!(w, "{}", pretty_terminator_head(terminator))?;
-    let successor_count = terminator.successors().count();
+    let successors = terminator.successors();
+    let successor_count = successors.len();
     let labels = pretty_successor_labels(terminator);
 
     let show_unwind = !matches!(terminator.unwind(), None | Some(UnwindAction::Cleanup(_)));
@@ -98,12 +99,12 @@ pub fn pretty_terminator<W: io::Write>(terminator: &TerminatorKind, w: &mut W) -
             Ok(())
         }
         (1, false) => {
-            write!(w, " -> {:?}", terminator.successors().next().unwrap())?;
+            write!(w, " -> {:?}", successors[0])?;
             Ok(())
         }
         _ => {
             write!(w, " -> [")?;
-            for (i, target) in terminator.successors().enumerate() {
+            for (i, target) in successors.iter().enumerate() {
                 if i > 0 {
                     write!(w, ", ")?;
                 }
@@ -157,7 +158,6 @@ pub fn pretty_terminator_head(terminator: &TerminatorKind) -> String {
             pretty.push_str(")");
             pretty
         }
-        CoroutineDrop => format!("        coroutine_drop"),
         InlineAsm { .. } => todo!(),
     }
 }
@@ -165,12 +165,11 @@ pub fn pretty_terminator_head(terminator: &TerminatorKind) -> String {
 pub fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
     use self::TerminatorKind::*;
     match terminator {
-        Resume | Abort | Return | Unreachable | CoroutineDrop => vec![],
+        Resume | Abort | Return | Unreachable => vec![],
         Goto { .. } => vec!["".to_string()],
         SwitchInt { targets, .. } => targets
-            .value
-            .iter()
-            .map(|target| format!("{}", target))
+            .branches()
+            .map(|(val, _target)| format!("{val}"))
             .chain(iter::once("otherwise".into()))
             .collect(),
         Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
