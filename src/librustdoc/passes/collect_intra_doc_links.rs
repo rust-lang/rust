@@ -1924,6 +1924,7 @@ fn resolution_failure(
                             Variant
                             | Field
                             | Closure
+                            | Coroutine
                             | AssocTy
                             | AssocConst
                             | AssocFn

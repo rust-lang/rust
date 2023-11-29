@@ -373,7 +373,10 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
             // just "functions", like consts, statics, etc. Filter those out.
             // If `ignore_unused_generics` was specified, filter out any
             // generic functions from consideration as well.
-            if !matches!(kind, DefKind::Fn | DefKind::AssocFn | DefKind::Closure) {
+            if !matches!(
+                kind,
+                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Coroutine
+            ) {
                 return None;
             }
             if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {

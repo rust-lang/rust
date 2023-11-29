@@ -149,7 +149,8 @@ impl From<DefKind> for ItemType {
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::Closure => Self::ForeignType,
+            | DefKind::Closure
+            | DefKind::Coroutine => Self::ForeignType,
         }
     }
 }

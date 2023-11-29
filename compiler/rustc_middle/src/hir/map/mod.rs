@@ -231,7 +231,8 @@ impl<'hir> Map<'hir> {
             Node::ConstBlock(_) => DefKind::InlineConst,
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Closure(_) => DefKind::Closure,
+                ExprKind::Closure(Closure { movability: None, .. }) => DefKind::Closure,
+                ExprKind::Closure(Closure { movability: Some(_), .. }) => DefKind::Coroutine,
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
             Node::GenericParam(param) => match param.kind {
@@ -435,7 +436,7 @@ impl<'hir> Map<'hir> {
             }
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
-            DefKind::Closure => BodyOwnerKind::Closure,
+            DefKind::Closure | DefKind::Coroutine => BodyOwnerKind::Closure,
             DefKind::Static(mt) => BodyOwnerKind::Static(mt),
             dk => bug!("{:?} is not a body node: {:?}", def_id, dk),
         }

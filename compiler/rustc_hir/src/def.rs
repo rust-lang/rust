@@ -114,6 +114,7 @@ pub enum DefKind {
         of_trait: bool,
     },
     Closure,
+    Coroutine,
 }
 
 impl DefKind {
@@ -156,6 +157,7 @@ impl DefKind {
             DefKind::Field => "field",
             DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
+            DefKind::Coroutine => "coroutine",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
         }
@@ -214,6 +216,7 @@ impl DefKind {
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
             | DefKind::Closure
+            | DefKind::Coroutine
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
@@ -223,7 +226,7 @@ impl DefKind {
 
     #[inline]
     pub fn is_fn_like(self) -> bool {
-        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure)
+        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Coroutine)
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.
@@ -233,6 +236,7 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure
+            | DefKind::Coroutine
             | DefKind::Static(_) => true,
             DefKind::Mod
             | DefKind::Struct
