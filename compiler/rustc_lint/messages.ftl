@@ -95,6 +95,7 @@ lint_builtin_missing_doc = missing documentation for {$article} {$desc}
 
 lint_builtin_mutable_transmutes =
     transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+    .note = transmute from `{$from}` to `{$to}`
 
 lint_builtin_no_mangle_fn = declaration of a `no_mangle` function
 lint_builtin_no_mangle_generic = functions generic over types or consts must be mangled
@@ -139,6 +140,10 @@ lint_builtin_unreachable_pub = unreachable `pub` {$what}
     .help = or consider exporting it for use by other crates
 
 lint_builtin_unsafe_block = usage of an `unsafe` block
+
+lint_builtin_unsafe_cell_transmutes =
+    transmuting &T to &UnsafeCell<T> is undefined behavior, even if the reference is unused, consider using UnsafeCell on the original data
+    .note = transmute from `{$from}` to `{$to}`
 
 lint_builtin_unsafe_impl = implementation of an `unsafe` trait
 

@@ -230,7 +230,19 @@ pub struct BuiltinConstNoMangle {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_mutable_transmutes)]
-pub struct BuiltinMutablesTransmutes;
+#[note]
+pub struct BuiltinMutablesTransmutes {
+    pub from: String,
+    pub to: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_unsafe_cell_transmutes)]
+#[note]
+pub struct BuiltinUnsafeCellTransmutes {
+    pub from: String,
+    pub to: String,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unstable_features)]
