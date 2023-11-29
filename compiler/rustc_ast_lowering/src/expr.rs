@@ -72,7 +72,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(c) => {
-                    let c = self.with_new_scopes(|this| hir::ConstBlock {
+                    let c = self.with_new_scopes(c.value.span, |this| hir::ConstBlock {
                         def_id: this.local_def_id(c.id),
                         hir_id: this.lower_node_id(c.id),
                         body: this.lower_const_body(c.value.span, Some(&c.value)),
@@ -189,7 +189,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                     e.span,
                     hir::CoroutineSource::Block,
-                    |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
+                    |this| this.with_new_scopes(e.span, |this| this.lower_block_expr(block)),
                 ),
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
                 ExprKind::Closure(box Closure {
@@ -323,7 +323,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                     e.span,
                     hir::CoroutineSource::Block,
-                    |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
+                    |this| this.with_new_scopes(e.span, |this| this.lower_block_expr(block)),
                 ),
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err(
@@ -350,30 +350,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_binop(&mut self, b: BinOp) -> hir::BinOp {
-        Spanned {
-            node: match b.node {
-                BinOpKind::Add => hir::BinOpKind::Add,
-                BinOpKind::Sub => hir::BinOpKind::Sub,
-                BinOpKind::Mul => hir::BinOpKind::Mul,
-                BinOpKind::Div => hir::BinOpKind::Div,
-                BinOpKind::Rem => hir::BinOpKind::Rem,
-                BinOpKind::And => hir::BinOpKind::And,
-                BinOpKind::Or => hir::BinOpKind::Or,
-                BinOpKind::BitXor => hir::BinOpKind::BitXor,
-                BinOpKind::BitAnd => hir::BinOpKind::BitAnd,
-                BinOpKind::BitOr => hir::BinOpKind::BitOr,
-                BinOpKind::Shl => hir::BinOpKind::Shl,
-                BinOpKind::Shr => hir::BinOpKind::Shr,
-                BinOpKind::Eq => hir::BinOpKind::Eq,
-                BinOpKind::Lt => hir::BinOpKind::Lt,
-                BinOpKind::Le => hir::BinOpKind::Le,
-                BinOpKind::Ne => hir::BinOpKind::Ne,
-                BinOpKind::Ge => hir::BinOpKind::Ge,
-                BinOpKind::Gt => hir::BinOpKind::Gt,
-            },
-            span: self.lower_span(b.span),
-        }
+    fn lower_binop(&mut self, b: BinOp) -> BinOp {
+        Spanned { node: b.node, span: self.lower_span(b.span) }
     }
 
     fn lower_legacy_const_generics(
@@ -781,10 +759,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.coroutine_kind {
             Some(hir::CoroutineKind::Async(_)) => {}
             Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) | None => {
-                self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
+                return hir::ExprKind::Err(self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
-                });
+                }));
             }
         }
         let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
@@ -944,9 +922,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        let (body_id, coroutine_option) = self.with_new_scopes(move |this| {
-            let prev = this.current_item;
-            this.current_item = Some(fn_decl_span);
+        let (body_id, coroutine_option) = self.with_new_scopes(fn_decl_span, move |this| {
             let mut coroutine_kind = None;
             let body_id = this.lower_fn_body(decl, |this| {
                 let e = this.lower_expr_mut(body);
@@ -955,7 +931,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             });
             let coroutine_option =
                 this.coroutine_movability_for_fn(decl, fn_decl_span, coroutine_kind, movability);
-            this.current_item = prev;
             (body_id, coroutine_option)
         });
 
@@ -1041,7 +1016,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let outer_decl =
             FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
 
-        let body = self.with_new_scopes(|this| {
+        let body = self.with_new_scopes(fn_decl_span, |this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
                 this.tcx.sess.emit_err(AsyncNonMoveClosureNotSupported { fn_decl_span });
@@ -1063,7 +1038,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     async_ret_ty,
                     body.span,
                     hir::CoroutineSource::Closure,
-                    |this| this.with_new_scopes(|this| this.lower_expr_mut(body)),
+                    |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
                 );
                 let hir_id = this.lower_node_id(inner_closure_id);
                 this.maybe_forward_track_caller(body.span, closure_hir_id, hir_id);
@@ -1503,7 +1478,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.coroutine_kind {
             Some(hir::CoroutineKind::Gen(_)) => {}
             Some(hir::CoroutineKind::Async(_)) => {
-                self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span });
+                return hir::ExprKind::Err(
+                    self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span }),
+                );
             }
             Some(hir::CoroutineKind::Coroutine) | None => {
                 if !self.tcx.features().coroutines {

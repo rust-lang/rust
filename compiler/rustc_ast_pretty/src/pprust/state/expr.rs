@@ -255,12 +255,12 @@ impl<'a> State<'a> {
 
         self.print_expr_maybe_paren(lhs, left_prec);
         self.space();
-        self.word_space(op.node.to_string());
+        self.word_space(op.node.as_str());
         self.print_expr_maybe_paren(rhs, right_prec)
     }
 
     fn print_expr_unary(&mut self, op: ast::UnOp, expr: &ast::Expr) {
-        self.word(ast::UnOp::to_string(op));
+        self.word(op.as_str());
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
@@ -470,7 +470,7 @@ impl<'a> State<'a> {
                 let prec = AssocOp::Assign.precedence() as i8;
                 self.print_expr_maybe_paren(lhs, prec + 1);
                 self.space();
-                self.word(op.node.to_string());
+                self.word(op.node.as_str());
                 self.word_space("=");
                 self.print_expr_maybe_paren(rhs, prec);
             }

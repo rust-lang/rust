@@ -2023,6 +2023,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 /// Specialization trait used for `From<&[T]>`.
 trait RcFromSlice<T> {
     fn from_slice(slice: &[T]) -> Self;

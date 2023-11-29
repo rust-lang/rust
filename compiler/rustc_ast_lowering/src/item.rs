@@ -202,9 +202,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body,
                 ..
             }) => {
-                self.with_new_scopes(|this| {
-                    this.current_item = Some(ident.span);
-
+                self.with_new_scopes(ident.span, |this| {
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
@@ -837,7 +835,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
             ),
             AssocItemKind::Fn(box Fn { sig, generics, body, .. }) => {
-                self.current_item = Some(i.span);
                 let asyncness = sig.header.asyncness;
                 let body_id = self.lower_maybe_async_body(
                     i.span,

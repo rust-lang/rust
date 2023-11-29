@@ -878,7 +878,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         result
     }
 
-    fn with_new_scopes<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn with_new_scopes<T>(&mut self, scope_span: Span, f: impl FnOnce(&mut Self) -> T) -> T {
+        let current_item = self.current_item;
+        self.current_item = Some(scope_span);
+
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
@@ -889,6 +892,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.loop_scope = loop_scope;
 
         self.is_in_loop_condition = was_in_loop_condition;
+
+        self.current_item = current_item;
 
         ret
     }
@@ -1239,7 +1244,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     tokens: None,
                                 };
 
-                                let ct = self.with_new_scopes(|this| hir::AnonConst {
+                                let ct = self.with_new_scopes(span, |this| hir::AnonConst {
                                     def_id,
                                     hir_id: this.lower_node_id(node_id),
                                     body: this.lower_const_body(path_expr.span, Some(&path_expr)),
@@ -2246,7 +2251,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
-        self.with_new_scopes(|this| hir::AnonConst {
+        self.with_new_scopes(c.value.span, |this| hir::AnonConst {
             def_id: this.local_def_id(c.id),
             hir_id: this.lower_node_id(c.id),
             body: this.lower_const_body(c.value.span, Some(&c.value)),
