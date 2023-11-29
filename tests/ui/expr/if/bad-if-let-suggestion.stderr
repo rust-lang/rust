@@ -1,19 +1,27 @@
 error: expected expression, found `let` statement
-  --> $DIR/bad-if-let-suggestion.rs:5:8
+  --> $DIR/bad-if-let-suggestion.rs:2:8
    |
 LL |     if let x = 1 && i = 2 {}
    |        ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to continue the let-chain
+   |
+LL |     if let x = 1 && let i = 2 {}
+   |                     +++
+help: you might have meant to compare for equality
+   |
+LL |     if let x = 1 && i == 2 {}
+   |                        +
 
 error[E0425]: cannot find value `i` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:5:21
+  --> $DIR/bad-if-let-suggestion.rs:2:21
    |
 LL |     if let x = 1 && i = 2 {}
    |                     ^ not found in this scope
 
 error[E0425]: cannot find value `i` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:12:9
+  --> $DIR/bad-if-let-suggestion.rs:9:9
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -22,7 +30,7 @@ LL |     if (i + j) = i {}
    |         ^ help: a function with a similar name exists: `a`
 
 error[E0425]: cannot find value `j` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:12:13
+  --> $DIR/bad-if-let-suggestion.rs:9:13
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -31,7 +39,7 @@ LL |     if (i + j) = i {}
    |             ^ help: a function with a similar name exists: `a`
 
 error[E0425]: cannot find value `i` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:12:18
+  --> $DIR/bad-if-let-suggestion.rs:9:18
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -40,7 +48,7 @@ LL |     if (i + j) = i {}
    |                  ^ help: a function with a similar name exists: `a`
 
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:19:8
+  --> $DIR/bad-if-let-suggestion.rs:16:8
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -49,7 +57,7 @@ LL |     if x[0] = 1 {}
    |        ^ help: a function with a similar name exists: `a`
 
 error[E0308]: mismatched types
-  --> $DIR/bad-if-let-suggestion.rs:5:8
+  --> $DIR/bad-if-let-suggestion.rs:2:8
    |
 LL |     if let x = 1 && i = 2 {}
    |        ^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`

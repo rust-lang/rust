@@ -415,6 +415,32 @@ pub(crate) struct ExpectedExpressionFoundLet {
     pub span: Span,
     #[subdiagnostic]
     pub reason: ForbiddenLetReason,
+    #[subdiagnostic]
+    pub missing_let: Option<MaybeMissingLet>,
+    #[subdiagnostic]
+    pub comparison: Option<MaybeComparison>,
+}
+
+#[derive(Subdiagnostic, Clone, Copy)]
+#[multipart_suggestion(
+    parse_maybe_missing_let,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct MaybeMissingLet {
+    #[suggestion_part(code = "let ")]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic, Clone, Copy)]
+#[multipart_suggestion(
+    parse_maybe_comparison,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct MaybeComparison {
+    #[suggestion_part(code = "=")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
