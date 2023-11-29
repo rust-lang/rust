@@ -3143,6 +3143,12 @@ impl PpMode {
     }
 }
 
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub enum WasiExecModel {
+    Command,
+    Reactor,
+}
+
 /// Command-line arguments passed to the compiler have to be incorporated with
 /// the dependency tracking system for incremental compilation. This module
 /// provides some utilities to make this more convenient.
@@ -3168,9 +3174,9 @@ pub(crate) mod dep_tracking {
         LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
         Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
         SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        WasiExecModel,
     };
     use crate::lint;
-    use crate::options::WasiExecModel;
     use crate::utils::NativeLib;
     use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;

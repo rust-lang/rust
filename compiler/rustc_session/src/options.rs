@@ -1973,9 +1973,3 @@ written to standard error output)"),
     // - compiler/rustc_interface/src/tests.rs
     // - src/doc/unstable-book/src/compiler-flags
 }
-
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum WasiExecModel {
-    Command,
-    Reactor,
-}
