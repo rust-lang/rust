@@ -187,14 +187,11 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
 }
 
 fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str, String)> {
-    match output.kind {
-        TyKind::Tup(tys) if tys.is_empty() => {
-            let sugg = "remove the return type";
-            Some((sugg, String::new()))
-        },
-        _ => {
-            let sugg = "return the output of the future directly";
-            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {snip}")))
-        },
+    if let TyKind::Tup([]) = output.kind {
+        let sugg = "remove the return type";
+        Some((sugg, String::new()))
+    } else {
+        let sugg = "return the output of the future directly";
+        snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {snip}")))
     }
 }

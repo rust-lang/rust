@@ -193,3 +193,60 @@ mod issue11465 {
         }
     }
 }
+
+fn issue11807() {
+    #![allow(clippy::single_match)]
+
+    match Some(Some("")) {
+        Some(Some("")) => {},
+        _ => {},
+    }
+
+    match Some(Some(String::new())) {
+        // Do not lint: String deref-coerces to &str
+        Some(Some(x)) if x.is_empty() => {},
+        _ => {},
+    }
+
+    match Some(Some(&[] as &[i32])) {
+        Some(Some([])) => {},
+        _ => {},
+    }
+
+    match Some(Some([] as [i32; 0])) {
+        Some(Some([])) => {},
+        _ => {},
+    }
+
+    match Some(Some(Vec::<()>::new())) {
+        // Do not lint: Vec deref-coerces to &[T]
+        Some(Some(x)) if x.is_empty() => {},
+        _ => {},
+    }
+
+    match Some(Some(&[] as &[i32])) {
+        Some(Some([..])) => {},
+        _ => {},
+    }
+
+    match Some(Some(&[] as &[i32])) {
+        Some(Some([1, ..])) => {},
+        _ => {},
+    }
+
+    match Some(Some(&[] as &[i32])) {
+        Some(Some([1, 2, ..])) => {},
+        _ => {},
+    }
+
+    match Some(Some(&[] as &[i32])) {
+        Some(Some([.., 1, 2])) => {},
+        _ => {},
+    }
+
+    match Some(Some(Vec::<i32>::new())) {
+        // Do not lint: deref coercion
+        Some(Some(x)) if x.starts_with(&[1, 2]) => {},
+        _ => {},
+    }
+}
