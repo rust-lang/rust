@@ -3503,6 +3503,7 @@ impl<T> FromIterator<T> for Arc<[T]> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 /// Specialization trait used for collecting into `Arc<[T]>`.
 trait ToArcSlice<T>: Iterator<Item = T> + Sized {
     fn to_arc_slice(self) -> Arc<[T]>;
