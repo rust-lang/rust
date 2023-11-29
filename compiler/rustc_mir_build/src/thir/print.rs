@@ -642,6 +642,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             PatKind::Wild => {
                 print_indented!(self, "Wild", depth_lvl + 1);
             }
+            PatKind::Never => {
+                print_indented!(self, "Never", depth_lvl + 1);
+            }
             PatKind::AscribeUserType { ascription, subpattern } => {
                 print_indented!(self, "AscribeUserType: {", depth_lvl + 1);
                 print_indented!(self, format!("ascription: {:?}", ascription), depth_lvl + 2);

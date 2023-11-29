@@ -1097,6 +1097,7 @@ symbols! {
         negative_impls,
         neon,
         never,
+        never_patterns,
         never_type,
         never_type_fallback,
         new,

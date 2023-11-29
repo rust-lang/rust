@@ -155,7 +155,7 @@ macro_rules! declare_features {
 // was set.
 //
 // Note that the features are grouped into internal/user-facing and then
-// sorted by version inside those groups. This is enforced with tidy.
+// sorted alphabetically inside those groups. This is enforced with tidy.
 //
 // N.B., `tools/tidy/src/features.rs` parses this information directly out of the
 // source, so take care when modifying it.
@@ -520,6 +520,8 @@ declare_features! (
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
     /// Allow negative trait implementations.
     (unstable, negative_impls, "1.44.0", Some(68318), None),
+    /// Allows the `!` pattern.
+    (incomplete, never_patterns, "CURRENT_RUSTC_VERSION", Some(118155), None),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
     (unstable, never_type, "1.13.0", Some(35121), None),
     /// Allows diverging expressions to fall back to `!` rather than `()`.

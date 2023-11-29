@@ -247,8 +247,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.requires_unsafe(pat.span, AccessToUnionField);
                     return; // we can return here since this already requires unsafe
                 }
-                // wildcard doesn't take anything
+                // wildcard/never don't take anything
                 PatKind::Wild |
+                PatKind::Never |
                 // these just wrap other patterns
                 PatKind::Or { .. } |
                 PatKind::InlineConstant { .. } |
