@@ -1,6 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
-use stdx::non_empty_vec::NonEmptyVec;
+use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::{never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
     AstToken, NodeOrToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
@@ -74,14 +75,15 @@ where
     Ctx: SyntaxContext,
     SpanMap: SpanMapper<SpanData<Anchor, Ctx>>,
 {
-    let mut c = Converter::new(node, vec![], map);
+    let mut c = Converter::new(node, map, Default::default(), Default::default());
     convert_tokens(&mut c)
 }
 
-pub fn syntax_node_to_token_tree_censored<Anchor, Ctx, SpanMap>(
+pub fn syntax_node_to_token_tree_modified<Anchor, Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
-    censored: Vec<SyntaxNode>,
+    append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Anchor, Ctx>>>>,
+    remove: FxHashSet<SyntaxNode>,
 ) -> tt::Subtree<SpanData<Anchor, Ctx>>
 where
     SpanMap: SpanMapper<SpanData<Anchor, Ctx>>,
@@ -89,7 +91,7 @@ where
     Anchor: Copy,
     Ctx: SyntaxContext,
 {
-    let mut c = Converter::new(node, censored, map);
+    let mut c = Converter::new(node, map, append, remove);
     convert_tokens(&mut c)
 }
 
@@ -237,102 +239,105 @@ where
     while let Some((token, abs_range)) = conv.bump() {
         let tt::Subtree { delimiter, token_trees: result } = stack.last_mut();
 
-        let kind = token.kind(conv);
-
-        let tt = match kind {
-            // Desugar doc comments into doc attributes
-            COMMENT => {
-                let span = conv.span_for(abs_range);
-                if let Some(tokens) = conv.convert_doc_comment(&token, span) {
-                    result.extend(tokens);
-                }
-                continue;
-            }
-            _ if kind.is_punct() && kind != UNDERSCORE => {
-                let expected = match delimiter.kind {
-                    tt::DelimiterKind::Parenthesis => Some(T![')']),
-                    tt::DelimiterKind::Brace => Some(T!['}']),
-                    tt::DelimiterKind::Bracket => Some(T![']']),
-                    tt::DelimiterKind::Invisible => None,
-                };
-
-                // Current token is a closing delimiter that we expect, fix up the closing span
-                // and end the subtree here
-                if matches!(expected, Some(expected) if expected == kind) {
-                    if let Some(mut subtree) = stack.pop() {
-                        subtree.delimiter.close = conv.span_for(abs_range);
-                        stack.last_mut().token_trees.push(subtree.into());
+        let tt = match token.as_leaf() {
+            Some(leaf) => tt::TokenTree::Leaf(leaf.clone()),
+            None => match token.kind(conv) {
+                // Desugar doc comments into doc attributes
+                COMMENT => {
+                    let span = conv.span_for(abs_range);
+                    if let Some(tokens) = conv.convert_doc_comment(&token, span) {
+                        result.extend(tokens);
                     }
                     continue;
                 }
-
-                let delim = match kind {
-                    T!['('] => Some(tt::DelimiterKind::Parenthesis),
-                    T!['{'] => Some(tt::DelimiterKind::Brace),
-                    T!['['] => Some(tt::DelimiterKind::Bracket),
-                    _ => None,
-                };
-
-                // Start a new subtree
-                if let Some(kind) = delim {
-                    let open = conv.span_for(abs_range);
-                    stack.push(tt::Subtree {
-                        delimiter: tt::Delimiter {
-                            open,
-                            // will be overwritten on subtree close above
-                            close: open,
-                            kind,
-                        },
-                        token_trees: vec![],
-                    });
-                    continue;
-                }
-
-                let spacing = match conv.peek().map(|next| next.kind(conv)) {
-                    Some(kind) if is_single_token_op(kind) => tt::Spacing::Joint,
-                    _ => tt::Spacing::Alone,
-                };
-                let Some(char) = token.to_char(conv) else {
-                    panic!("Token from lexer must be single char: token = {token:#?}")
-                };
-                tt::Leaf::from(tt::Punct { char, spacing, span: conv.span_for(abs_range) }).into()
-            }
-            _ => {
-                macro_rules! make_leaf {
-                    ($i:ident) => {
-                        tt::$i { span: conv.span_for(abs_range), text: token.to_text(conv) }.into()
+                kind if kind.is_punct() && kind != UNDERSCORE => {
+                    let expected = match delimiter.kind {
+                        tt::DelimiterKind::Parenthesis => Some(T![')']),
+                        tt::DelimiterKind::Brace => Some(T!['}']),
+                        tt::DelimiterKind::Bracket => Some(T![']']),
+                        tt::DelimiterKind::Invisible => None,
                     };
-                }
-                let leaf: tt::Leaf<_> = match kind {
-                    T![true] | T![false] => make_leaf!(Ident),
-                    IDENT => make_leaf!(Ident),
-                    UNDERSCORE => make_leaf!(Ident),
-                    k if k.is_keyword() => make_leaf!(Ident),
-                    k if k.is_literal() => make_leaf!(Literal),
-                    LIFETIME_IDENT => {
-                        let apostrophe = tt::Leaf::from(tt::Punct {
-                            char: '\'',
-                            spacing: tt::Spacing::Joint,
-                            span: conv
-                                .span_for(TextRange::at(abs_range.start(), TextSize::of('\''))),
-                        });
-                        result.push(apostrophe.into());
 
-                        let ident = tt::Leaf::from(tt::Ident {
-                            text: SmolStr::new(&token.to_text(conv)[1..]),
-                            span: conv.span_for(TextRange::at(
-                                abs_range.start() + TextSize::of('\''),
-                                abs_range.end(),
-                            )),
-                        });
-                        result.push(ident.into());
+                    // Current token is a closing delimiter that we expect, fix up the closing span
+                    // and end the subtree here
+                    if matches!(expected, Some(expected) if expected == kind) {
+                        if let Some(mut subtree) = stack.pop() {
+                            subtree.delimiter.close = conv.span_for(abs_range);
+                            stack.last_mut().token_trees.push(subtree.into());
+                        }
                         continue;
                     }
-                    _ => continue,
-                };
 
-                leaf.into()
-            }
+                    let delim = match kind {
+                        T!['('] => Some(tt::DelimiterKind::Parenthesis),
+                        T!['{'] => Some(tt::DelimiterKind::Brace),
+                        T!['['] => Some(tt::DelimiterKind::Bracket),
+                        _ => None,
+                    };
+
+                    // Start a new subtree
+                    if let Some(kind) = delim {
+                        let open = conv.span_for(abs_range);
+                        stack.push(tt::Subtree {
+                            delimiter: tt::Delimiter {
+                                open,
+                                // will be overwritten on subtree close above
+                                close: open,
+                                kind,
+                            },
+                            token_trees: vec![],
+                        });
+                        continue;
+                    }
+
+                    let spacing = match conv.peek().map(|next| next.kind(conv)) {
+                        Some(kind) if is_single_token_op(kind) => tt::Spacing::Joint,
+                        _ => tt::Spacing::Alone,
+                    };
+                    let Some(char) = token.to_char(conv) else {
+                        panic!("Token from lexer must be single char: token = {token:#?}")
+                    };
+                    tt::Leaf::from(tt::Punct { char, spacing, span: conv.span_for(abs_range) })
+                        .into()
+                }
+                kind => {
+                    macro_rules! make_leaf {
+                        ($i:ident) => {
+                            tt::$i { span: conv.span_for(abs_range), text: token.to_text(conv) }
+                                .into()
+                        };
+                    }
+                    let leaf: tt::Leaf<_> = match kind {
+                        T![true] | T![false] => make_leaf!(Ident),
+                        IDENT => make_leaf!(Ident),
+                        UNDERSCORE => make_leaf!(Ident),
+                        k if k.is_keyword() => make_leaf!(Ident),
+                        k if k.is_literal() => make_leaf!(Literal),
+                        LIFETIME_IDENT => {
+                            let apostrophe = tt::Leaf::from(tt::Punct {
+                                char: '\'',
+                                spacing: tt::Spacing::Joint,
+                                span: conv
+                                    .span_for(TextRange::at(abs_range.start(), TextSize::of('\''))),
+                            });
+                            result.push(apostrophe.into());
+
+                            let ident = tt::Leaf::from(tt::Ident {
+                                text: SmolStr::new(&token.to_text(conv)[1..]),
+                                span: conv.span_for(TextRange::at(
+                                    abs_range.start() + TextSize::of('\''),
+                                    abs_range.end(),
+                                )),
+                            });
+                            result.push(ident.into());
+                            continue;
+                        }
+                        _ => continue,
+                    };
+
+                    leaf.into()
+                }
+            },
         };
 
         result.push(tt);
@@ -470,16 +475,20 @@ struct StaticRawConverter<'a, S> {
     span: S,
 }
 
-trait SrcToken<Ctx>: std::fmt::Debug {
+trait SrcToken<Ctx, S>: std::fmt::Debug {
     fn kind(&self, ctx: &Ctx) -> SyntaxKind;
 
     fn to_char(&self, ctx: &Ctx) -> Option<char>;
 
     fn to_text(&self, ctx: &Ctx) -> SmolStr;
+
+    fn as_leaf(&self) -> Option<&tt::Leaf<S>> {
+        None
+    }
 }
 
 trait TokenConverter<S>: Sized {
-    type Token: SrcToken<Self>;
+    type Token: SrcToken<Self, S>;
 
     fn convert_doc_comment(&self, token: &Self::Token, span: S) -> Option<Vec<tt::TokenTree<S>>>;
 
@@ -490,7 +499,7 @@ trait TokenConverter<S>: Sized {
     fn span_for(&self, range: TextRange) -> S;
 }
 
-impl<Anchor> SrcToken<RawConverter<'_, Anchor>> for usize {
+impl<Anchor, S> SrcToken<RawConverter<'_, Anchor>, S> for usize {
     fn kind(&self, ctx: &RawConverter<'_, Anchor>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
@@ -504,7 +513,7 @@ impl<Anchor> SrcToken<RawConverter<'_, Anchor>> for usize {
     }
 }
 
-impl<S: Span> SrcToken<StaticRawConverter<'_, S>> for usize {
+impl<S: Span> SrcToken<StaticRawConverter<'_, S>, S> for usize {
     fn kind(&self, ctx: &StaticRawConverter<'_, S>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
@@ -593,32 +602,79 @@ where
     }
 }
 
-struct Converter<SpanMap> {
+struct Converter<SpanMap, S> {
     current: Option<SyntaxToken>,
+    current_leafs: Vec<tt::Leaf<S>>,
     preorder: PreorderWithTokens,
     range: TextRange,
     punct_offset: Option<(SyntaxToken, TextSize)>,
     /// Used to make the emitted text ranges in the spans relative to the span anchor.
     map: SpanMap,
-    censored: Vec<SyntaxNode>,
+    append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
+    remove: FxHashSet<SyntaxNode>,
 }
 
-impl<SpanMap> Converter<SpanMap> {
-    fn new(node: &SyntaxNode, censored: Vec<SyntaxNode>, map: SpanMap) -> Self {
-        let range = node.text_range();
-        let mut preorder = node.preorder_with_tokens();
-        let first = Self::next_token(&mut preorder, &censored);
-        Converter { current: first, preorder, range, punct_offset: None, censored, map }
+impl<SpanMap, S> Converter<SpanMap, S> {
+    fn new(
+        node: &SyntaxNode,
+        map: SpanMap,
+        append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
+        remove: FxHashSet<SyntaxNode>,
+    ) -> Self {
+        let mut this = Converter {
+            current: None,
+            preorder: node.preorder_with_tokens(),
+            range: node.text_range(),
+            punct_offset: None,
+            map,
+            append,
+            remove,
+            current_leafs: vec![],
+        };
+        let first = this.next_token();
+        this.current = first;
+        this
     }
 
-    fn next_token(preorder: &mut PreorderWithTokens, censor: &[SyntaxNode]) -> Option<SyntaxToken> {
-        while let Some(ev) = preorder.next() {
+    fn next_token(&mut self) -> Option<SyntaxToken> {
+        // while let Some(ev) = self.preorder.next() {
+        //     match ev {
+        //         WalkEvent::Enter(SyntaxElement::Token(t)) => {
+        //             if let Some(leafs) = self.append.remove(&t.clone().into()) {
+        //                 self.current_leafs.extend(leafs);
+        //             }
+        //             return Some(t);
+        //         }
+        //         WalkEvent::Enter(SyntaxElement::Node(n)) if self.remove.contains(&n) => {
+        //             self.preorder.skip_subtree();
+        //             if let Some(leafs) = self.append.remove(&n.into()) {
+        //                 self.current_leafs.extend(leafs);
+        //             }
+        //         }
+        //         _ => (),
+        //     }
+        // }
+        // None;
+
+        while let Some(ev) = self.preorder.next() {
             match ev {
                 WalkEvent::Enter(SyntaxElement::Token(t)) => return Some(t),
-                WalkEvent::Enter(SyntaxElement::Node(n)) if censor.contains(&n) => {
-                    preorder.skip_subtree()
+                WalkEvent::Enter(SyntaxElement::Node(n)) if self.remove.contains(&n) => {
+                    self.preorder.skip_subtree();
+                    if let Some(mut v) = self.append.remove(&n.into()) {
+                        v.reverse();
+                        self.current_leafs.extend(v);
+                        return None;
+                    }
                 }
-                _ => (),
+                WalkEvent::Enter(SyntaxElement::Node(_)) => (),
+                WalkEvent::Leave(ele) => {
+                    if let Some(mut v) = self.append.remove(&ele) {
+                        v.reverse();
+                        self.current_leafs.extend(v);
+                        return None;
+                    }
+                }
             }
         }
         None
@@ -626,45 +682,62 @@ impl<SpanMap> Converter<SpanMap> {
 }
 
 #[derive(Debug)]
-enum SynToken {
+enum SynToken<S> {
     Ordinary(SyntaxToken),
-    Punct(SyntaxToken, usize),
+    Punct { token: SyntaxToken, offset: usize },
+    Leaf(tt::Leaf<S>),
 }
 
-impl SynToken {
+impl<S> SynToken<S> {
     fn token(&self) -> &SyntaxToken {
         match self {
-            SynToken::Ordinary(it) | SynToken::Punct(it, _) => it,
+            SynToken::Ordinary(it) | SynToken::Punct { token: it, offset: _ } => it,
+            SynToken::Leaf(_) => unreachable!(),
         }
     }
 }
 
-impl<SpanMap> SrcToken<Converter<SpanMap>> for SynToken {
-    fn kind(&self, ctx: &Converter<SpanMap>) -> SyntaxKind {
+impl<SpanMap, S: std::fmt::Debug> SrcToken<Converter<SpanMap, S>, S> for SynToken<S> {
+    fn kind(&self, ctx: &Converter<SpanMap, S>) -> SyntaxKind {
         match self {
             SynToken::Ordinary(token) => token.kind(),
-            SynToken::Punct(..) => SyntaxKind::from_char(self.to_char(ctx).unwrap()).unwrap(),
+            SynToken::Punct { .. } => SyntaxKind::from_char(self.to_char(ctx).unwrap()).unwrap(),
+            SynToken::Leaf(_) => {
+                never!();
+                SyntaxKind::ERROR
+            }
         }
     }
-    fn to_char(&self, _ctx: &Converter<SpanMap>) -> Option<char> {
+    fn to_char(&self, _ctx: &Converter<SpanMap, S>) -> Option<char> {
         match self {
             SynToken::Ordinary(_) => None,
-            SynToken::Punct(it, i) => it.text().chars().nth(*i),
+            SynToken::Punct { token: it, offset: i } => it.text().chars().nth(*i),
+            SynToken::Leaf(_) => None,
         }
     }
-    fn to_text(&self, _ctx: &Converter<SpanMap>) -> SmolStr {
+    fn to_text(&self, _ctx: &Converter<SpanMap, S>) -> SmolStr {
         match self {
-            SynToken::Ordinary(token) | SynToken::Punct(token, _) => token.text().into(),
+            SynToken::Ordinary(token) | SynToken::Punct { token, offset: _ } => token.text().into(),
+            SynToken::Leaf(_) => {
+                never!();
+                "".into()
+            }
+        }
+    }
+    fn as_leaf(&self) -> Option<&tt::Leaf<S>> {
+        match self {
+            SynToken::Ordinary(_) | SynToken::Punct { .. } => None,
+            SynToken::Leaf(it) => Some(it),
         }
     }
 }
 
-impl<S, SpanMap> TokenConverter<S> for Converter<SpanMap>
+impl<S, SpanMap> TokenConverter<S> for Converter<SpanMap, S>
 where
     S: Span,
     SpanMap: SpanMapper<S>,
 {
-    type Token = SynToken;
+    type Token = SynToken<S>;
     fn convert_doc_comment(&self, token: &Self::Token, span: S) -> Option<Vec<tt::TokenTree<S>>> {
         convert_doc_comment(token.token(), span)
     }
@@ -676,20 +749,31 @@ where
                 let range = punct.text_range();
                 self.punct_offset = Some((punct.clone(), offset));
                 let range = TextRange::at(range.start() + offset, TextSize::of('.'));
-                return Some((SynToken::Punct(punct, u32::from(offset) as usize), range));
+                return Some((
+                    SynToken::Punct { token: punct, offset: u32::from(offset) as usize },
+                    range,
+                ));
             }
+        }
+
+        if let Some(leaf) = self.current_leafs.pop() {
+            if self.current_leafs.is_empty() {
+                self.current = self.next_token();
+            }
+            return Some((SynToken::Leaf(leaf), TextRange::empty(TextSize::new(0))));
         }
 
         let curr = self.current.clone()?;
         if !self.range.contains_range(curr.text_range()) {
             return None;
         }
-        self.current = Self::next_token(&mut self.preorder, &self.censored);
+
+        self.current = self.next_token();
         let token = if curr.kind().is_punct() {
             self.punct_offset = Some((curr.clone(), 0.into()));
             let range = curr.text_range();
             let range = TextRange::at(range.start(), TextSize::of('.'));
-            (SynToken::Punct(curr, 0 as usize), range)
+            (SynToken::Punct { token: curr, offset: 0 as usize }, range)
         } else {
             self.punct_offset = None;
             let range = curr.text_range();
@@ -703,7 +787,7 @@ where
         if let Some((punct, mut offset)) = self.punct_offset.clone() {
             offset += TextSize::of('.');
             if usize::from(offset) < punct.text().len() {
-                return Some(SynToken::Punct(punct, usize::from(offset)));
+                return Some(SynToken::Punct { token: punct, offset: usize::from(offset) });
             }
         }
 
@@ -713,7 +797,7 @@ where
         }
 
         let token = if curr.kind().is_punct() {
-            SynToken::Punct(curr, 0 as usize)
+            SynToken::Punct { token: curr, offset: 0 as usize }
         } else {
             SynToken::Ordinary(curr)
         };

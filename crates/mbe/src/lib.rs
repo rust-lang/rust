@@ -36,7 +36,7 @@ pub use crate::{
     syntax_bridge::{
         map_from_syntax_node, parse_exprs_with_sep, parse_to_token_tree,
         parse_to_token_tree_static_span, syntax_node_to_token_tree,
-        syntax_node_to_token_tree_censored, token_tree_to_syntax_node, SpanMapper,
+        syntax_node_to_token_tree_modified, token_tree_to_syntax_node, SpanMapper,
     },
     token_map::TokenMap,
 };

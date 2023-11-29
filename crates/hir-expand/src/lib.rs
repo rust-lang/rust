@@ -20,7 +20,7 @@ pub mod mod_path;
 pub mod attrs;
 pub mod span;
 pub mod files;
-// mod fixup;
+mod fixup;
 
 use triomphe::Arc;
 
@@ -42,6 +42,7 @@ use crate::{
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::TokenExpander,
+    fixup::SyntaxFixupUndoInfo,
     mod_path::ModPath,
     proc_macro::ProcMacroExpander,
     span::{ExpansionSpanMap, SpanMap},
@@ -695,8 +696,14 @@ impl ExpansionInfo {
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
-        let macro_arg = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
-            Arc::new(tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: Vec::new() })
+        let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
+            (
+                Arc::new(tt::Subtree {
+                    delimiter: tt::Delimiter::UNSPECIFIED,
+                    token_trees: Vec::new(),
+                }),
+                SyntaxFixupUndoInfo::NONE,
+            )
         });
 
         let def = loc.def.ast_id().left().and_then(|id| {

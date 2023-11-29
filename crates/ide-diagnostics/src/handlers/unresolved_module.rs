@@ -150,7 +150,7 @@ mod baz {}
                             ],
                         ),
                         main_node: Some(
-                            InFile {
+                            InFileWrapper {
                                 file_id: FileId(
                                     0,
                                 ),

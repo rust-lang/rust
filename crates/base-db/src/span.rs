@@ -34,8 +34,6 @@ impl SyntaxContextId {
     // we need a special value that behaves as the current context.
     pub const SELF_REF: Self =
         SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 1) });
-    // Used for syntax fixups
-    pub const FAKE: Self = SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 2) });
 
     pub fn is_root(self) -> bool {
         self == Self::ROOT
