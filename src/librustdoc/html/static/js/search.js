@@ -473,8 +473,6 @@ function initSearch(rawSearchIndex) {
         const path = name.trim();
         if (path.length === 0 && generics.length === 0) {
             throw ["Unexpected ", parserState.userQuery[parserState.pos]];
-        } else if (path === "*") {
-            throw ["Unexpected ", "*"];
         }
         if (query.literalSearch && parserState.totalElems - parserState.genericsElems > 0) {
             throw ["Cannot have more than one element if you use quotes"];
