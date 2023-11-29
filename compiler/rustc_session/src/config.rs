@@ -2145,25 +2145,27 @@ fn collect_print_requests(
     }
 
     const PRINT_KINDS: &[(&str, PrintKind)] = &[
-        ("crate-name", PrintKind::CrateName),
-        ("file-names", PrintKind::FileNames),
-        ("sysroot", PrintKind::Sysroot),
-        ("target-libdir", PrintKind::TargetLibdir),
-        ("cfg", PrintKind::Cfg),
+        // tidy-alphabetical-start
+        ("all-target-specs-json", PrintKind::AllTargetSpecs),
         ("calling-conventions", PrintKind::CallingConventions),
-        ("target-list", PrintKind::TargetList),
+        ("cfg", PrintKind::Cfg),
+        ("code-models", PrintKind::CodeModels),
+        ("crate-name", PrintKind::CrateName),
+        ("deployment-target", PrintKind::DeploymentTarget),
+        ("file-names", PrintKind::FileNames),
+        ("link-args", PrintKind::LinkArgs),
+        ("native-static-libs", PrintKind::NativeStaticLibs),
+        ("relocation-models", PrintKind::RelocationModels),
+        ("split-debuginfo", PrintKind::SplitDebuginfo),
+        ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+        ("sysroot", PrintKind::Sysroot),
         ("target-cpus", PrintKind::TargetCPUs),
         ("target-features", PrintKind::TargetFeatures),
-        ("relocation-models", PrintKind::RelocationModels),
-        ("code-models", PrintKind::CodeModels),
-        ("tls-models", PrintKind::TlsModels),
-        ("native-static-libs", PrintKind::NativeStaticLibs),
-        ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+        ("target-libdir", PrintKind::TargetLibdir),
+        ("target-list", PrintKind::TargetList),
         ("target-spec-json", PrintKind::TargetSpec),
-        ("all-target-specs-json", PrintKind::AllTargetSpecs),
-        ("link-args", PrintKind::LinkArgs),
-        ("split-debuginfo", PrintKind::SplitDebuginfo),
-        ("deployment-target", PrintKind::DeploymentTarget),
+        ("tls-models", PrintKind::TlsModels),
+        // tidy-alphabetical-end
     ];
 
     // We disallow reusing the same path in multiple prints, such as `--print
