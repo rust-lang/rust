@@ -141,7 +141,19 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the first pattern (`p_0`).
-        let mut first_pat = self.parse_pat_no_top_alt(expected, syntax_loc)?;
+        let mut first_pat = match self.parse_pat_no_top_alt(expected, syntax_loc) {
+            Ok(pat) => pat,
+            Err(mut err)
+                if self.token.is_reserved_ident()
+                    && !self.token.is_keyword(kw::In)
+                    && !self.token.is_keyword(kw::If) =>
+            {
+                err.emit();
+                self.bump();
+                self.mk_pat(self.token.span, PatKind::Wild)
+            }
+            Err(err) => return Err(err),
+        };
         if rc == RecoverComma::Yes {
             self.maybe_recover_unexpected_comma(
                 first_pat.span,
@@ -835,7 +847,7 @@ impl<'a> Parser<'a> {
         binding_annotation: BindingAnnotation,
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, PatKind> {
-        let ident = self.parse_ident()?;
+        let ident = self.parse_ident_common(false)?;
 
         if self.may_recover()
             && !matches!(syntax_loc, Some(PatternLocation::FunctionParameter))

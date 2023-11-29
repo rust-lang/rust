@@ -8,10 +8,12 @@ fn 1234test() {
 
     let 23name = 123;
     //~^ ERROR expected identifier, found `23name`
-
+}
+fn foo() {
     let 2x: i32 = 123;
     //~^ ERROR expected identifier, found `2x`
-
+}
+fn bar() {
     let 1x = 123;
     //~^ ERROR expected identifier, found `1x`
 }

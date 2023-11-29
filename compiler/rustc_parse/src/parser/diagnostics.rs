@@ -11,12 +11,12 @@ use crate::errors::{
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, InInTypo, IncorrectAwait, IncorrectSemicolon,
-    IncorrectUseOfAwait, ParenthesesInForHead, ParenthesesInForHeadSugg,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
-    StructLiteralNeedingParensSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
-    TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
+    IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
+    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
+    StructLiteralNeedingParens, StructLiteralNeedingParensSugg, SuggAddMissingLetStmt,
+    SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator, UnexpectedConstInGenericParam,
+    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
+    UseEqInstead, WrapType,
 };
 
 use crate::fluent_generated as fluent;
@@ -1991,56 +1991,6 @@ impl<'a> Parser<'a> {
             Ok(self.mk_expr_err(lo.to(hi)))
         } else {
             Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
-        }
-    }
-
-    /// Recovers a situation like `for ( $pat in $expr )`
-    /// and suggest writing `for $pat in $expr` instead.
-    ///
-    /// This should be called before parsing the `$block`.
-    pub(super) fn recover_parens_around_for_head(
-        &mut self,
-        pat: P<Pat>,
-        begin_paren: Option<Span>,
-    ) -> P<Pat> {
-        match (&self.token.kind, begin_paren) {
-            (token::CloseDelim(Delimiter::Parenthesis), Some(begin_par_sp)) => {
-                self.bump();
-
-                let sm = self.sess.source_map();
-                let left = begin_par_sp;
-                let right = self.prev_token.span;
-                let left_snippet = if let Ok(snip) = sm.span_to_prev_source(left)
-                    && !snip.ends_with(' ')
-                {
-                    " ".to_string()
-                } else {
-                    "".to_string()
-                };
-
-                let right_snippet = if let Ok(snip) = sm.span_to_next_source(right)
-                    && !snip.starts_with(' ')
-                {
-                    " ".to_string()
-                } else {
-                    "".to_string()
-                };
-
-                self.sess.emit_err(ParenthesesInForHead {
-                    span: vec![left, right],
-                    // With e.g. `for (x) in y)` this would replace `(x) in y)`
-                    // with `x) in y)` which is syntactically invalid.
-                    // However, this is prevented before we get here.
-                    sugg: ParenthesesInForHeadSugg { left, right, left_snippet, right_snippet },
-                });
-
-                // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
-                pat.and_then(|pat| match pat.kind {
-                    PatKind::Paren(pat) => pat,
-                    _ => P(pat),
-                })
-            }
-            _ => pat,
         }
     }
 

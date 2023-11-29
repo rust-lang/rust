@@ -1415,8 +1415,8 @@ impl<'a> Parser<'a> {
             self.bump();
             (thin_vec![], false)
         } else {
-            self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant()).map_err(
-                |mut err| {
+            self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant(id.span))
+                .map_err(|mut err| {
                     err.span_label(id.span, "while parsing this enum");
                     if self.token == token::Colon {
                         let snapshot = self.create_snapshot_for_diagnostic();
@@ -1436,20 +1436,22 @@ impl<'a> Parser<'a> {
                         }
                         self.restore_snapshot(snapshot);
                     }
-                    self.recover_stmt();
+                    self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
+                    self.bump(); // }
                     err
-                },
-            )?
+                })?
         };
 
         let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
         Ok((id, ItemKind::Enum(enum_definition, generics)))
     }
 
-    fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
+    fn parse_enum_variant(&mut self, span: Span) -> PResult<'a, Option<Variant>> {
         self.recover_diff_marker();
         let variant_attrs = self.parse_outer_attributes()?;
         self.recover_diff_marker();
+        let help = "enum variants can be `Variant`, `Variant = <integer>`, \
+                    `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`";
         self.collect_tokens_trailing_token(
             variant_attrs,
             ForceCollect::No,
@@ -1476,10 +1478,39 @@ impl<'a> Parser<'a> {
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
                     // Parse a struct variant.
                     let (fields, recovered) =
-                        this.parse_record_struct_body("struct", ident.span, false)?;
+                        match this.parse_record_struct_body("struct", ident.span, false) {
+                            Ok((fields, recovered)) => (fields, recovered),
+                            Err(mut err) => {
+                                if this.token == token::Colon {
+                                    // We handle `enum` to `struct` suggestion in the caller.
+                                    return Err(err);
+                                }
+                                this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
+                                this.bump(); // }
+                                err.span_label(span, "while parsing this enum");
+                                err.help(help);
+                                err.emit();
+                                (thin_vec![], true)
+                            }
+                        };
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
-                    VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
+                    let body = match this.parse_tuple_struct_body() {
+                        Ok(body) => body,
+                        Err(mut err) => {
+                            if this.token == token::Colon {
+                                // We handle `enum` to `struct` suggestion in the caller.
+                                return Err(err);
+                            }
+                            this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
+                            this.bump(); // )
+                            err.span_label(span, "while parsing this enum");
+                            err.help(help);
+                            err.emit();
+                            thin_vec![]
+                        }
+                    };
+                    VariantData::Tuple(body, DUMMY_NODE_ID)
                 } else {
                     VariantData::Unit(DUMMY_NODE_ID)
                 };
@@ -1500,8 +1531,9 @@ impl<'a> Parser<'a> {
 
                 Ok((Some(vr), TrailingToken::MaybeComma))
             },
-        ).map_err(|mut err| {
-            err.help("enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`");
+        )
+        .map_err(|mut err| {
+            err.help(help);
             err
         })
     }

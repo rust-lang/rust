@@ -8,11 +8,10 @@ fn main() {
     for(_x)in 1..10 {}
     //~^ ERROR unnecessary parentheses around pattern
 
-    if(2 == 1){}
+    if(2 == 1) {}
     //~^ ERROR unnecessary parentheses around `if` condition
 
     // reported by parser
-    for(_x in 1..10){}
-    //~^ ERROR expected one of
-    //~| ERROR unexpected parentheses surrounding
+    for(_x in 1..10) {}
+    //~^ ERROR unexpected parentheses surrounding
 }

@@ -1,53 +1,53 @@
 error: expected identifier, found `1234test`
-  --> $DIR/issue-104088.rs:1:4
+  --> $DIR/binding-name-starting-with-number.rs:1:4
    |
 LL | fn 1234test() {
    |    ^^^^^^^^ expected identifier
    |
 help: identifiers cannot start with a number
-  --> $DIR/issue-104088.rs:1:4
+  --> $DIR/binding-name-starting-with-number.rs:1:4
    |
 LL | fn 1234test() {
    |    ^^^^
 
 error: expected identifier, found `23name`
-  --> $DIR/issue-104088.rs:9:9
+  --> $DIR/binding-name-starting-with-number.rs:9:9
    |
 LL |     let 23name = 123;
    |         ^^^^^^ expected identifier
    |
 help: identifiers cannot start with a number
-  --> $DIR/issue-104088.rs:9:9
+  --> $DIR/binding-name-starting-with-number.rs:9:9
    |
 LL |     let 23name = 123;
    |         ^^
 
 error: expected identifier, found `2x`
-  --> $DIR/issue-104088.rs:12:9
+  --> $DIR/binding-name-starting-with-number.rs:13:9
    |
 LL |     let 2x: i32 = 123;
    |         ^^ expected identifier
    |
 help: identifiers cannot start with a number
-  --> $DIR/issue-104088.rs:12:9
+  --> $DIR/binding-name-starting-with-number.rs:13:9
    |
 LL |     let 2x: i32 = 123;
    |         ^
 
 error: expected identifier, found `1x`
-  --> $DIR/issue-104088.rs:15:9
+  --> $DIR/binding-name-starting-with-number.rs:17:9
    |
 LL |     let 1x = 123;
    |         ^^ expected identifier
    |
 help: identifiers cannot start with a number
-  --> $DIR/issue-104088.rs:15:9
+  --> $DIR/binding-name-starting-with-number.rs:17:9
    |
 LL |     let 1x = 123;
    |         ^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-104088.rs:5:12
+  --> $DIR/binding-name-starting-with-number.rs:5:12
    |
 LL |     if let 2e1 = 123 {
    |            ^^^   --- this expression has type `{integer}`

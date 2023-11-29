@@ -13,6 +13,5 @@ fn main() {
 
     // reported by parser
     for _x in 1..10 {}
-    //~^ ERROR expected one of
-    //~| ERROR unexpected parentheses surrounding
+    //~^ ERROR unexpected parentheses surrounding
 }
