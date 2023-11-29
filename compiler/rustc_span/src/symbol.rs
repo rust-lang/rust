@@ -934,6 +934,7 @@ symbols! {
         likely,
         line,
         link,
+        link_arg_attribute,
         link_args,
         link_cfg,
         link_llvm_intrinsics,

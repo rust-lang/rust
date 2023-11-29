@@ -500,6 +500,9 @@ declare_features! (
     (incomplete, lazy_type_alias, "1.72.0", Some(112792), None),
     /// Allows `if/while p && let q = r && ...` chains.
     (unstable, let_chains, "1.37.0", Some(53667), None),
+    /// Allows using `#[link(kind = "link-arg", name = "...")]`
+    /// to pass custom arguments to the linker.
+    (unstable, link_arg_attribute, "CURRENT_RUSTC_VERSION", Some(99427), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (unstable, lint_reasons, "1.31.0", Some(54503), None),
     /// Give access to additional metadata about declarative macro meta-variables.
