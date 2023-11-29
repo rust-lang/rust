@@ -13,4 +13,6 @@ impl<'a> Bar<'a> {
     fn d<'b: 'a>(&'b self) {} //~ ERROR unnecessary lifetime parameter `'b`
 }
 
+fn ok(x: &'static &()) {}
+
 fn main() {}
