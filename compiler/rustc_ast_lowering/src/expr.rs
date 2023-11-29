@@ -350,30 +350,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_binop(&mut self, b: BinOp) -> hir::BinOp {
-        Spanned {
-            node: match b.node {
-                BinOpKind::Add => hir::BinOpKind::Add,
-                BinOpKind::Sub => hir::BinOpKind::Sub,
-                BinOpKind::Mul => hir::BinOpKind::Mul,
-                BinOpKind::Div => hir::BinOpKind::Div,
-                BinOpKind::Rem => hir::BinOpKind::Rem,
-                BinOpKind::And => hir::BinOpKind::And,
-                BinOpKind::Or => hir::BinOpKind::Or,
-                BinOpKind::BitXor => hir::BinOpKind::BitXor,
-                BinOpKind::BitAnd => hir::BinOpKind::BitAnd,
-                BinOpKind::BitOr => hir::BinOpKind::BitOr,
-                BinOpKind::Shl => hir::BinOpKind::Shl,
-                BinOpKind::Shr => hir::BinOpKind::Shr,
-                BinOpKind::Eq => hir::BinOpKind::Eq,
-                BinOpKind::Lt => hir::BinOpKind::Lt,
-                BinOpKind::Le => hir::BinOpKind::Le,
-                BinOpKind::Ne => hir::BinOpKind::Ne,
-                BinOpKind::Ge => hir::BinOpKind::Ge,
-                BinOpKind::Gt => hir::BinOpKind::Gt,
-            },
-            span: self.lower_span(b.span),
-        }
+    fn lower_binop(&mut self, b: BinOp) -> BinOp {
+        Spanned { node: b.node, span: self.lower_span(b.span) }
     }
 
     fn lower_legacy_const_generics(
