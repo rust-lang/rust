@@ -7,9 +7,9 @@
 // @has - '//*[@class="item-name"]/a[@class="type"]' 'AtomicU8'
 // @has - '//*[@class="item-name"]/a[@class="constant"]' 'AtomicU8'
 // We also ensure we don't have another item displayed.
-// @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 2
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Type Aliases'
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Constants'
+// @count - '//*[@id="main-content"]/*[@class="section-header"]' 2
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Type Aliases'
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Constants'
 
 mod other {
     pub type AtomicU8 = ();

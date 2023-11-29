@@ -5,10 +5,10 @@
 
 // @has 'foo/index.html'
 // Checking there are only three sections.
-// @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 3
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Structs'
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Functions'
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Traits'
+// @count - '//*[@id="main-content"]/*[@class="section-header"]' 3
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Structs'
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Functions'
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Traits'
 // Checking that there are only three items.
 // @count - '//*[@id="main-content"]//*[@class="item-name"]' 3
 // @has - '//*[@id="main-content"]//a[@href="struct.Bar.html"]' 'Bar'

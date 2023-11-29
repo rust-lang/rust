@@ -430,7 +430,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             last_section = Some(my_section);
             write!(
                 w,
-                "<h2 id=\"{id}\" class=\"small-section-header\">\
+                "<h2 id=\"{id}\" class=\"section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>{ITEM_TABLE_OPEN}",
                 id = cx.derive_id(my_section.id()),
@@ -827,7 +827,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
             w,
-            "<h2 id=\"{0}\" class=\"small-section-header\">\
+            "<h2 id=\"{0}\" class=\"section-header\">\
                 {1}<a href=\"#{0}\" class=\"anchor\">§</a>\
              </h2>{2}",
             id, title, extra_content
@@ -1260,7 +1260,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     if let Some(inner_type) = &t.inner_type {
         write!(
             w,
-            "<h2 id=\"aliased-type\" class=\"small-section-header\">\
+            "<h2 id=\"aliased-type\" class=\"section-header\">\
                 Aliased Type<a href=\"#aliased-type\" class=\"anchor\">§</a></h2>"
         );
 
@@ -1685,7 +1685,7 @@ fn item_variants(
     let tcx = cx.tcx();
     write!(
         w,
-        "<h2 id=\"variants\" class=\"variants small-section-header\">\
+        "<h2 id=\"variants\" class=\"variants section-header\">\
             Variants{}<a href=\"#variants\" class=\"anchor\">§</a>\
         </h2>\
         {}\
@@ -1772,7 +1772,7 @@ fn item_variants(
                         write!(
                             w,
                             "<div class=\"sub-variant-field\">\
-                                 <span id=\"{id}\" class=\"small-section-header\">\
+                                 <span id=\"{id}\" class=\"section-header\">\
                                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
                                      <code>{f}: {t}</code>\
                                  </span>",
@@ -1929,7 +1929,7 @@ fn item_fields(
         if fields.peek().is_some() {
             write!(
                 w,
-                "<h2 id=\"fields\" class=\"fields small-section-header\">\
+                "<h2 id=\"fields\" class=\"fields section-header\">\
                      {}{}<a href=\"#fields\" class=\"anchor\">§</a>\
                  </h2>\
                  {}",
@@ -1943,7 +1943,7 @@ fn item_fields(
                 let id = cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
                 write!(
                     w,
-                    "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
+                    "<span id=\"{id}\" class=\"{item_type} section-header\">\
                          <a href=\"#{id}\" class=\"anchor field\">§</a>\
                          <code>{field_name}: {ty}</code>\
                      </span>",

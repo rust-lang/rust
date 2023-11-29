@@ -31,7 +31,7 @@ define-function: (
             ALL,
         )
         go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-        assert-css: (".small-section-header a", {"color": |color|}, ALL)
+        assert-css: (".section-header a", {"color": |color|}, ALL)
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
         // We select headings (h2, h3, h...).
         assert-css: (".docblock > :not(p) > a", {"color": |headings_color|}, ALL)

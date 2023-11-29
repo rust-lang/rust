@@ -9,7 +9,7 @@
 
 // Checking there is only a "Functions" header and no "Opaque types".
 // @has async_fn_opaque_item/index.html
-// @count - '//*[@class="small-section-header"]' 1
-// @has - '//*[@class="small-section-header"]' 'Functions'
+// @count - '//*[@class="section-header"]' 1
+// @has - '//*[@class="section-header"]' 'Functions'
 
 pub async fn test() {}

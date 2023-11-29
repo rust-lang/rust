@@ -65,7 +65,7 @@ pub union OneOr<A: Copy> {
 // @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
-// @count - '//*[@class="structfield small-section-header"]' 2
+// @count - '//*[@class="structfield section-header"]' 2
 // @matches - '//pre[@class="rust item-decl"]//code' "union OneOrF64"
 pub type OneOrF64 = OneOr<f64>;
 
@@ -81,7 +81,7 @@ pub struct One<T> {
 // @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
-// @count - '//*[@class="structfield small-section-header"]' 1
+// @count - '//*[@class="structfield section-header"]' 1
 // @matches - '//pre[@class="rust item-decl"]//code' "struct OneU64"
 // @matches - '//pre[@class="rust item-decl"]//code' "pub val"
 pub type OneU64 = One<u64>;
