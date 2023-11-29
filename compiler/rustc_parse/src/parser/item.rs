@@ -2410,6 +2410,10 @@ impl<'a> Parser<'a> {
             }
         }
 
+        if let Gen::Yes { span, .. } = genness {
+            self.sess.gated_spans.gate(sym::gen_blocks, span);
+        }
+
         if !self.eat_keyword_case(kw::Fn, case) {
             // It is possible for `expect_one_of` to recover given the contents of
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
