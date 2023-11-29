@@ -15,14 +15,14 @@ use rustc_span::Symbol;
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use super::{collect_paths_for_type, ensure_trailing_slash, Context};
+use super::{collect_paths_for_type, ensure_trailing_slash, Context, RenderMode};
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::formats::{Impl, RenderMode};
+use crate::formats::Impl;
 use crate::html::format::Buffer;
 use crate::html::render::{AssocItemLink, ImplRenderingParameters};
 use crate::html::{layout, static_files};
