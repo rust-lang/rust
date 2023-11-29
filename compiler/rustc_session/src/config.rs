@@ -2121,16 +2121,6 @@ fn should_override_cgus_and_disable_thinlto(
     (disable_local_thinlto, codegen_units)
 }
 
-fn check_thread_count(handler: &EarlyErrorHandler, unstable_opts: &UnstableOptions) {
-    if unstable_opts.threads == 0 {
-        handler.early_error("value for threads must be a positive non-zero integer");
-    }
-
-    if unstable_opts.threads > 1 && unstable_opts.fuel.is_some() {
-        handler.early_error("optimization fuel is incompatible with multiple threads");
-    }
-}
-
 fn collect_print_requests(
     handler: &EarlyErrorHandler,
     cg: &mut CodegenOptions,
@@ -2646,7 +2636,13 @@ pub fn build_session_options(
     let (disable_local_thinlto, mut codegen_units) =
         should_override_cgus_and_disable_thinlto(handler, &output_types, matches, cg.codegen_units);
 
-    check_thread_count(handler, &unstable_opts);
+    if unstable_opts.threads == 0 {
+        handler.early_error("value for threads must be a positive non-zero integer");
+    }
+
+    if unstable_opts.threads > 1 && unstable_opts.fuel.is_some() {
+        handler.early_error("optimization fuel is incompatible with multiple threads");
+    }
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
 
