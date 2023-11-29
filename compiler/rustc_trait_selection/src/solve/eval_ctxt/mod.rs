@@ -146,7 +146,7 @@ pub trait InferCtxtEvalExt<'tcx> {
 }
 
 impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "debug", skip(self))]
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
