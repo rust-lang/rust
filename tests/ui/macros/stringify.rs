@@ -83,6 +83,7 @@ fn test_expr() {
     // ExprKind::Call
     c1!(expr, [ f() ], "f()");
     c1!(expr, [ f::<u8>() ], "f::<u8>()");
+    c2!(expr, [ f ::  < u8>( ) ], "f::<u8>()", "f :: < u8>()");
     c1!(expr, [ f::<1>() ], "f::<1>()");
     c1!(expr, [ f::<'a, u8, 1>() ], "f::<'a, u8, 1>()");
     c1!(expr, [ f(true) ], "f(true)");
@@ -245,6 +246,7 @@ fn test_expr() {
     c1!(expr, [ ..hi ], "..hi");
     c1!(expr, [ lo.. ], "lo..");
     c1!(expr, [ lo..hi ], "lo..hi");
+    c2!(expr, [ lo .. hi ], "lo..hi", "lo .. hi");
     c1!(expr, [ ..=hi ], "..=hi");
     c1!(expr, [ lo..=hi ], "lo..=hi");
     c1!(expr, [ -2..=-1 ], "-2..=-1");
@@ -532,6 +534,7 @@ fn test_pat() {
     // PatKind::Struct
     c1!(pat, [ Struct {} ], "Struct {}");
     c1!(pat, [ Struct::<u8> {} ], "Struct::<u8> {}");
+    c2!(pat, [ Struct ::< u8 > {} ], "Struct::<u8> {}", "Struct ::< u8 > {}");
     c1!(pat, [ Struct::<'static> {} ], "Struct::<'static> {}");
     c1!(pat, [ Struct { x } ], "Struct { x }");
     c1!(pat, [ Struct { x: _x } ], "Struct { x: _x }");
@@ -667,6 +670,7 @@ fn test_ty() {
     c1!(ty, [ &'a T ], "&'a T");
     c1!(ty, [ &'a mut [T] ], "&'a mut [T]");
     c1!(ty, [ &A<B<C<D<E>>>> ], "&A<B<C<D<E>>>>");
+    c2!(ty, [ &A<B<C<D<E> > > > ], "&A<B<C<D<E>>>>", "&A<B<C<D<E> > > >");
 
     // TyKind::BareFn
     c1!(ty, [ fn() ], "fn()");
