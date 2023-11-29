@@ -143,17 +143,17 @@
 //!
 //! ```
 //! # #![allow(dead_code)]
-//! use std::cell::RefCell;
+//! use std::cell::OnceCell;
 //!
 //! struct Graph {
 //!     edges: Vec<(i32, i32)>,
-//!     span_tree_cache: RefCell<Option<Vec<(i32, i32)>>>
+//!     span_tree_cache: OnceCell<Vec<(i32, i32)>>
 //! }
 //!
 //! impl Graph {
 //!     fn minimum_spanning_tree(&self) -> Vec<(i32, i32)> {
-//!         self.span_tree_cache.borrow_mut()
-//!             .get_or_insert_with(|| self.calc_span_tree())
+//!         self.span_tree_cache
+//!             .get_or_init(|| self.calc_span_tree())
 //!             .clone()
 //!     }
 //!
