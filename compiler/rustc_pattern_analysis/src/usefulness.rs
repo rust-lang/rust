@@ -300,6 +300,74 @@
 //!
 //!
 //!
+//! # `Missing` and relevant constructors
+//!
+//! Take the following example:
+//!
+//! ```compile_fail,E0004
+//! enum Direction { North, South, East, West }
+//! # let wind = (Direction::North, 0u8);
+//! match wind {
+//!     (Direction::North, _) => {} // arm 1
+//!     (_, 50..) => {} // arm 2
+//! }
+//! ```
+//!
+//! Remember that we represent the "everything else" cases with [`Constructor::Missing`]. When we
+//! specialize with `Missing` in the first column, we have one arm left:
+//!
+//! ```ignore(partial code)
+//!     (50..) => {} // arm 2
+//! ```
+//!
+//! We then conclude that arm 2 is useful, and that the match is non-exhaustive with witness
+//! `(Missing, 0..50)` (which we would display to the user as `(_, 0..50)`).
+//!
+//! When we then specialize with `North`, we have two arms left:
+//!
+//! ```ignore(partial code)
+//!     (_) => {} // arm 1
+//!     (50..) => {} // arm 2
+//! ```
+//!
+//! Because `Missing` only matches wildcard rows, specializing with `Missing` is guaranteed to
+//! result in a subset of the rows obtained from specializing with anything else. This means that
+//! any row with a wildcard found useful when specializing with anything else would also be found
+//! useful in the `Missing` case. In our example, after specializing with `North` here we will not
+//! gain new information regarding the usefulness of arm 2 or of the fake wildcard row used for
+//! exhaustiveness. This allows us to skip cases.
+//!
+//! When specializing, if there is a `Missing` case we call the other constructors "irrelevant".
+//! When there is no `Missing` case there are no irrelevant constructors.
+//!
+//! What happens then is: when we specialize a wildcard with an irrelevant constructor, we know we
+//! won't get new info for this row; we consider that row "irrelevant". Whenever all the rows are
+//! found irrelevant, we can safely skip the case entirely.
+//!
+//! In the example above, we will entirely skip the `(North, 50..)` case. This skipping was
+//! developped as a solution to #118437. It doesn't look like much but it can save us from
+//! exponential blowup.
+//!
+//! There's a subtlety regarding exhaustiveness: while this shortcutting doesn't affect correctness,
+//! it can affect which witnesses are reported. For example, in the following:
+//!
+//! ```compile_fail,E0004
+//! # let foo = (true, true, true);
+//! match foo {
+//!     (true, _, true) => {}
+//!     (_, true, _) => {}
+//! }
+//! ```
+//!
+//! In this example we will skip the `(true, true, _)` case entirely. Thus `(true, true, false)`
+//! will not be reported as missing. In fact we go further than this: we deliberately do not report
+//! any cases that are irrelevant for the fake wildcard row. For example, in `match ... { (true,
+//! true) => {} }` we will not report `(true, false)` as missing. This was a deliberate choice made
+//! early in the development of rust; it so happens that it is beneficial for performance reasons
+//! too.
+//!
+//!
+//!
 //! # Or-patterns
 //!
 //! What we have described so far works well if there are no or-patterns. To handle them, if the
@@ -674,11 +742,15 @@ impl fmt::Display for ValidityConstraint {
 struct PatStack<'a, 'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
     pats: SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]>,
+    /// Sometimes we know that as far as this row is concerned, the current case is already handled
+    /// by a different, more general, case. When all rows are irrelevant this allows us to skip many
+    /// branches. This is purely an optimization. See at the top for details.
+    relevant: bool,
 }
 
 impl<'a, 'p, Cx: TypeCx> PatStack<'a, 'p, Cx> {
     fn from_pattern(pat: &'a DeconstructedPat<'p, Cx>) -> Self {
-        PatStack { pats: smallvec![pat] }
+        PatStack { pats: smallvec![pat], relevant: true }
     }
 
     fn is_empty(&self) -> bool {
@@ -713,12 +785,17 @@ impl<'a, 'p, Cx: TypeCx> PatStack<'a, 'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
+        ctor_is_relevant: bool,
     ) -> PatStack<'a, 'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
         let mut new_pats = self.head().specialize(pcx, ctor);
         new_pats.extend_from_slice(&self.pats[1..]);
-        PatStack { pats: new_pats }
+        // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
+        // row has a wildcard and `ctor` is relevant for wildcards.
+        let ctor_is_relevant =
+            !matches!(self.head().ctor(), Constructor::Wildcard) || ctor_is_relevant;
+        PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant }
     }
 }
 
@@ -784,10 +861,11 @@ impl<'a, 'p, Cx: TypeCx> MatrixRow<'a, 'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
+        ctor_is_relevant: bool,
         parent_row: usize,
     ) -> MatrixRow<'a, 'p, Cx> {
         MatrixRow {
-            pats: self.pats.pop_head_constructor(pcx, ctor),
+            pats: self.pats.pop_head_constructor(pcx, ctor, ctor_is_relevant),
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
@@ -913,8 +991,9 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
+        ctor_is_relevant: bool,
     ) -> Matrix<'a, 'p, Cx> {
-        let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
+        let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor, ctor_is_relevant);
         let new_validity = self.place_validity[0].specialize(ctor);
         let new_place_validity = std::iter::repeat(new_validity)
             .take(ctor.arity(pcx))
@@ -924,7 +1003,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
             Matrix { rows: Vec::new(), wildcard_row, place_validity: new_place_validity };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row = row.pop_head_constructor(pcx, ctor, i);
+                let new_row = row.pop_head_constructor(pcx, ctor, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
         }
@@ -1122,7 +1201,10 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
         if matches!(ctor, Constructor::Missing) {
             // We got the special `Missing` constructor that stands for the constructors not present
             // in the match.
-            if !report_individual_missing_ctors {
+            if missing_ctors.is_empty() {
+                // Nothing to report.
+                *self = Self::empty();
+            } else if !report_individual_missing_ctors {
                 // Report `_` as missing.
                 let pat = WitnessPat::wild_from_ctor(pcx, Constructor::Wildcard);
                 self.push_pattern(pat);
@@ -1181,6 +1263,15 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 ) -> WitnessMatrix<Cx> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
+    if !matrix.wildcard_row.relevant && matrix.rows().all(|r| !r.pats.relevant) {
+        // Here we know that nothing will contribute further to exhaustiveness or usefulness. This
+        // is purely an optimization: skipping this check doesn't affect correctness. This check
+        // does change runtime behavior from exponential to quadratic on some matches found in the
+        // wild, so it's pretty important. It also affects which missing patterns will be reported.
+        // See the top of the file for details.
+        return WitnessMatrix::empty();
+    }
+
     let Some(ty) = matrix.head_ty() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
@@ -1193,8 +1284,14 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
                 return WitnessMatrix::empty();
             }
         }
-        // No (unguarded) rows, so the match is not exhaustive. We return a new witness.
-        return WitnessMatrix::unit_witness();
+        // No (unguarded) rows, so the match is not exhaustive. We return a new witness unless
+        // irrelevant.
+        return if matrix.wildcard_row.relevant {
+            WitnessMatrix::unit_witness()
+        } else {
+            // We can omit the witness without affecting correctness, so we do.
+            WitnessMatrix::empty()
+        };
     };
 
     debug!("ty: {ty:?}");
@@ -1237,32 +1334,21 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 
     let mut ret = WitnessMatrix::empty();
     for ctor in split_ctors {
-        debug!("specialize({:?})", ctor);
         // Dig into rows that match `ctor`.
-        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
+        debug!("specialize({:?})", ctor);
+        // `ctor` is *irrelevant* if there's another constructor in `split_ctors` that matches
+        // strictly fewer rows. In that case we can sometimes skip it. See the top of the file for
+        // details.
+        let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
+        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant);
         let mut witnesses = ensure_sufficient_stack(|| {
             compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
         });
 
-        let counts_for_exhaustiveness = match ctor {
-            Constructor::Missing => !missing_ctors.is_empty(),
-            // If there are missing constructors we'll report those instead. Since `Missing` matches
-            // only the wildcard rows, it matches fewer rows than this constructor, and is therefore
-            // guaranteed to result in the same or more witnesses. So skipping this does not
-            // jeopardize correctness.
-            _ => missing_ctors.is_empty(),
-        };
-        if counts_for_exhaustiveness {
-            // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
-            witnesses.apply_constructor(
-                pcx,
-                &missing_ctors,
-                &ctor,
-                report_individual_missing_ctors,
-            );
-            // Accumulate the found witnesses.
-            ret.extend(witnesses);
-        }
+        // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
+        witnesses.apply_constructor(pcx, &missing_ctors, &ctor, report_individual_missing_ctors);
+        // Accumulate the found witnesses.
+        ret.extend(witnesses);
 
         // A parent row is useful if any of its children is.
         for child_row in spec_matrix.rows() {
