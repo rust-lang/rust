@@ -80,7 +80,6 @@ enum IfBlockType<'hir> {
         Ty<'hir>,
         Symbol,
         &'hir Expr<'hir>,
-        Option<&'hir Expr<'hir>>,
     ),
     /// An `if let Xxx(a) = b { c } else { d }` expression.
     ///
@@ -143,7 +142,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
 
 fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_>) -> bool {
     match *if_block {
-        IfBlockType::IfIs(caller, caller_ty, call_sym, if_then, _) => {
+        IfBlockType::IfIs(caller, caller_ty, call_sym, if_then) => {
             // If the block could be identified as `if x.is_none()/is_err()`,
             // we then only need to check the if_then return to see if it is none/err.
             is_type_diagnostic_item(cx, caller_ty, smbl)
@@ -235,7 +234,7 @@ impl QuestionMark {
             && !is_else_clause(cx.tcx, expr)
             && let ExprKind::MethodCall(segment, caller, ..) = &cond.kind
             && let caller_ty = cx.typeck_results().expr_ty(caller)
-            && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then, r#else)
+            && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then)
             && (is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block))
         {
             let mut applicability = Applicability::MachineApplicable;
