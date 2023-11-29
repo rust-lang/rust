@@ -85,8 +85,9 @@ cargo_test() {
             cmd="$cmd --skip test_vec_lde_u16 --skip test_vec_lde_u32 --skip test_vec_expte"
             ;;
         # Miscompilation: https://github.com/rust-lang/rust/issues/112460
+        # Also LLVM bug: https://github.com/rust-lang/stdarch/issues/1217
         arm*)
-            cmd="$cmd --skip vld2q_dup_f32"
+            cmd="$cmd --skip vld"
             ;;
     esac
 

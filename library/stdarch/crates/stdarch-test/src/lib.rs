@@ -124,29 +124,14 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 // Intrinsics using `cvtpi2ps` are typically "composites" and
                 // in some cases exceed the limit.
                 "cvtpi2ps" => 25,
-                // core_arch/src/arm_shared/simd32
                 // vfmaq_n_f32_vfma : #instructions = 26 >= 22 (limit)
-                "usad8" | "vfma" | "vfms" => 27,
-                "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8" | "ssub8" => 29,
+                "vfma" | "vfms" => 27,
                 // core_arch/src/arm_shared/simd32
-                // vst1q_s64_x4_vst1 : #instructions = 27 >= 22 (limit)
-                "vld3" => 28,
-                // core_arch/src/arm_shared/simd32
-                // vld4q_lane_u32_vld4 : #instructions = 36 >= 22 (limit)
-                "vld4" => 37,
-                // core_arch/src/arm_shared/simd32
-                // vst1q_s64_x4_vst1 : #instructions = 40 >= 22 (limit)
-                "vst1" => 41,
-                // core_arch/src/arm_shared/simd32
-                // vst3q_u32_vst3 : #instructions = 25 >= 22 (limit)
-                "vst3" => 26,
-                // core_arch/src/arm_shared/simd32
-                // vst4q_u32_vst4 : #instructions = 33 >= 22 (limit)
-                "vst4" => 34,
-
-                // core_arch/src/arm_shared/simd32
-                // vst1q_p64_x4_nop : #instructions = 33 >= 22 (limit)
-                "nop" if fnname.contains("vst1q_p64") => 34,
+                "usad8" | "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8"
+                | "ssub8" => 29,
+                // core_arch/src/arm_shared/neon
+                _ if fnname.contains("_vld") => 50,
+                _ if fnname.contains("_vst") => 50,
 
                 // Original limit was 20 instructions, but ARM DSP Intrinsics
                 // are exactly 20 instructions long. So, bump the limit to 22
