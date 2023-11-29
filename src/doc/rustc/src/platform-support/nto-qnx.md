@@ -121,10 +121,8 @@ export build_env='
 
 env $build_env \
     ./x.py build \
-        --target aarch64-unknown-nto-qnx710 \
-        --target x86_64-pc-nto-qnx710 \
-        --target x86_64-unknown-linux-gnu \
-        rustc library/core library/alloc
+        --target aarch64-unknown-nto-qnx710,x86_64-pc-nto-qnx710,x86_64-unknown-linux-gnu \
+        rustc library/core library/alloc library/std
 ```
 
 ## Running the Rust test suite

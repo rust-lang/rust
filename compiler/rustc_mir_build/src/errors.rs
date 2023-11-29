@@ -2,6 +2,7 @@ use crate::{
     fluent_generated as fluent,
     thir::pattern::{deconstruct_pat::WitnessPat, MatchCheckCtxt},
 };
+use rustc_errors::DiagnosticArgValue;
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
@@ -124,11 +125,17 @@ pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe)]
-#[note]
+#[help]
 pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub missing_target_features_count: usize,
+    #[note]
+    pub note: Option<()>,
+    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
@@ -369,24 +376,36 @@ pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed
 
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_fn_with_requires_unsafe, code = "E0133")]
-#[note]
+#[help]
 pub struct CallToFunctionWithRequiresUnsafe<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
     pub function: &'a str,
+    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub missing_target_features_count: usize,
+    #[note]
+    pub note: Option<()>,
+    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_fn_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
-#[note]
+#[help]
 pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
     pub function: &'a str,
+    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub missing_target_features_count: usize,
+    #[note]
+    pub note: Option<()>,
+    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }

@@ -287,19 +287,20 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
             .safety;
         match safety {
             // `unsafe` blocks are required in safe code
-            Safety::Safe => violations.into_iter().for_each(|&violation| {
+            Safety::Safe => violations.into_iter().for_each(|violation| {
                 match violation.kind {
                     UnsafetyViolationKind::General => {}
                     UnsafetyViolationKind::UnsafeFn => {
                         bug!("`UnsafetyViolationKind::UnsafeFn` in an `Safe` context")
                     }
                 }
-                if !self.violations.contains(&violation) {
-                    self.violations.push(violation)
+                if !self.violations.contains(violation) {
+                    self.violations.push(violation.clone())
                 }
             }),
             // With the RFC 2585, no longer allow `unsafe` operations in `unsafe fn`s
-            Safety::FnUnsafe => violations.into_iter().for_each(|&(mut violation)| {
+            Safety::FnUnsafe => violations.into_iter().for_each(|violation| {
+                let mut violation = violation.clone();
                 violation.kind = UnsafetyViolationKind::UnsafeFn;
                 if !self.violations.contains(&violation) {
                     self.violations.push(violation)
@@ -367,9 +368,22 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 
         // Is `callee_features` a subset of `calling_features`?
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {
+            let missing: Vec<_> = callee_features
+                .iter()
+                .copied()
+                .filter(|feature| !self_features.contains(feature))
+                .collect();
+            let build_enabled = self
+                .tcx
+                .sess
+                .target_features
+                .iter()
+                .copied()
+                .filter(|feature| missing.contains(feature))
+                .collect();
             self.require_unsafe(
                 UnsafetyViolationKind::General,
-                UnsafetyViolationDetails::CallToFunctionWith,
+                UnsafetyViolationDetails::CallToFunctionWith { missing, build_enabled },
             )
         }
     }
@@ -528,8 +542,9 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // Only suggest wrapping the entire function body in an unsafe block once
     let mut suggest_unsafe_block = true;
 
-    for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
-        let details = errors::RequiresUnsafeDetail { violation: details, span: source_info.span };
+    for &UnsafetyViolation { source_info, lint_root, kind, ref details } in violations.iter() {
+        let details =
+            errors::RequiresUnsafeDetail { violation: details.clone(), span: source_info.span };
 
         match kind {
             UnsafetyViolationKind::General => {

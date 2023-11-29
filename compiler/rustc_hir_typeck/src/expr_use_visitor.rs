@@ -401,11 +401,16 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
                 match &pat.kind {
                     PatKind::Binding(.., opt_sub_pat) => {
-                        // If the opt_sub_pat is None, than the binding does not count as
+                        // If the opt_sub_pat is None, then the binding does not count as
                         // a wildcard for the purpose of borrowing discr.
                         if opt_sub_pat.is_none() {
                             needs_to_be_read = true;
                         }
+                    }
+                    PatKind::Never => {
+                        // A never pattern reads the value.
+                        // FIXME(never_patterns): does this do what I expect?
+                        needs_to_be_read = true;
                     }
                     PatKind::Path(qpath) => {
                         // A `Path` pattern is just a name like `Foo`. This is either a
