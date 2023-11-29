@@ -1246,7 +1246,7 @@ fn default_configuration(sess: &Session) -> Cfg {
     // NOTE: This should be kept in sync with `CheckCfg::fill_well_known` below.
     let end = &sess.target.endian;
     let arch = &sess.target.arch;
-    let wordsz = sess.target.pointer_width.to_string();
+    let wordsz = sess.target.pointer_width as u64;
     let os = &sess.target.os;
     let env = &sess.target.env;
     let abi = &sess.target.abi;
@@ -1273,7 +1273,7 @@ fn default_configuration(sess: &Session) -> Cfg {
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
     ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
-    ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
+    ret.insert((sym::target_pointer_width, Some(sym::integer(wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_abi, Some(Symbol::intern(abi))));
     if sess.is_nightly_build() {
@@ -1293,19 +1293,18 @@ fn default_configuration(sess: &Session) -> Cfg {
     ] {
         if i >= min_atomic_width && i <= max_atomic_width {
             has_atomic = true;
-            let mut insert_atomic = |s, align: Align| {
-                ret.insert((sym::target_has_atomic_load_store, Some(Symbol::intern(s))));
+            let mut insert_atomic = |sym, align: Align| {
+                ret.insert((sym::target_has_atomic_load_store, Some(sym)));
                 if atomic_cas {
-                    ret.insert((sym::target_has_atomic, Some(Symbol::intern(s))));
+                    ret.insert((sym::target_has_atomic, Some(sym)));
                 }
                 if align.bits() == i {
-                    ret.insert((sym::target_has_atomic_equal_alignment, Some(Symbol::intern(s))));
+                    ret.insert((sym::target_has_atomic_equal_alignment, Some(sym)));
                 }
             };
-            let s = i.to_string();
-            insert_atomic(&s, align);
-            if s == wordsz {
-                insert_atomic("ptr", layout.pointer_align.abi);
+            insert_atomic(sym::integer(i), align);
+            if wordsz == i {
+                insert_atomic(sym::ptr, layout.pointer_align.abi);
             }
         }
     }
