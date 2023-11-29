@@ -493,6 +493,21 @@ enum ParenthesizedGenericArgs {
     Err,
 }
 
+/// Describes a return type transformation that can be performed by `LoweringContext::lower_fn_decl`
+#[derive(Debug)]
+enum FnReturnTransformation {
+    /// Replaces a return type `T` with `impl Future<Output = T>`.
+    ///
+    /// The `NodeId` is the ID of the return type `impl Trait` item, and the `Span` points to the
+    /// `async` keyword.
+    Async(NodeId, Span),
+    /// Replaces a return type `T` with `impl Iterator<Item = T>`.
+    ///
+    /// The `NodeId` is the ID of the return type `impl Trait` item, and the `Span` points to the
+    /// `gen` keyword.
+    Iterator(NodeId, Span),
+}
+
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_def(
         &mut self,
@@ -1778,13 +1793,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }))
     }
 
-    // Lowers a function declaration.
-    //
-    // `decl`: the unlowered (AST) function declaration.
-    // `fn_node_id`: `impl Trait` arguments are lowered into generic parameters on the given `NodeId`.
-    // `make_ret_async`: if `Some`, converts `-> T` into `-> impl Future<Output = T>` in the
-    //      return type. This is used for `async fn` declarations. The `NodeId` is the ID of the
-    //      return type `impl Trait` item, and the `Span` points to the `async` keyword.
+    /// Lowers a function declaration.
+    ///
+    /// `decl`: the unlowered (AST) function declaration.
+    ///
+    /// `fn_node_id`: `impl Trait` arguments are lowered into generic parameters on the given
+    /// `NodeId`.
+    ///
+    /// `transform_return_type`: if `Some`, applies some conversion to the return type, such as is
+    /// needed for `async fn` and `gen fn`. See [`FnReturnTransformation`] for more details.
     #[instrument(level = "debug", skip(self))]
     fn lower_fn_decl(
         &mut self,
@@ -1792,7 +1809,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fn_node_id: NodeId,
         fn_span: Span,
         kind: FnDeclKind,
-        make_ret_async: Option<(NodeId, Span)>,
+        transform_return_type: Option<FnReturnTransformation>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
 
@@ -1821,11 +1838,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty_direct(&param.ty, &itctx)
         }));
 
-        let output = if let Some((ret_id, _span)) = make_ret_async {
-            let fn_def_id = self.local_def_id(fn_node_id);
-            self.lower_async_fn_ret_ty(&decl.output, fn_def_id, ret_id, kind, fn_span)
-        } else {
-            match &decl.output {
+        let output = match transform_return_type {
+            Some(transform) => {
+                let fn_def_id = self.local_def_id(fn_node_id);
+                self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, transform, kind, fn_span)
+            }
+            None => match &decl.output {
                 FnRetTy::Ty(ty) => {
                     let context = if kind.return_impl_trait_allowed() {
                         let fn_def_id = self.local_def_id(fn_node_id);
@@ -1849,7 +1867,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     hir::FnRetTy::Return(self.lower_ty(ty, &context))
                 }
                 FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(self.lower_span(*span)),
-            }
+            },
         };
 
         self.arena.alloc(hir::FnDecl {
@@ -1888,16 +1906,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // `fn_node_id`: `NodeId` of the parent function (used to create child impl trait definition)
     // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
     #[instrument(level = "debug", skip(self))]
-    fn lower_async_fn_ret_ty(
+    fn lower_coroutine_fn_ret_ty(
         &mut self,
         output: &FnRetTy,
         fn_def_id: LocalDefId,
-        opaque_ty_node_id: NodeId,
+        transform: FnReturnTransformation,
         fn_kind: FnDeclKind,
         fn_span: Span,
     ) -> hir::FnRetTy<'hir> {
         let span = self.lower_span(fn_span);
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
+
+        let opaque_ty_node_id = match transform {
+            FnReturnTransformation::Async(opaque_ty_node_id, _)
+            | FnReturnTransformation::Iterator(opaque_ty_node_id, _) => opaque_ty_node_id,
+        };
 
         let captured_lifetimes: Vec<_> = self
             .resolver
@@ -1914,8 +1937,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span,
             opaque_ty_span,
             |this| {
-                let future_bound = this.lower_async_fn_output_type_to_future_bound(
+                let future_bound = this.lower_coroutine_fn_output_type_to_future_bound(
                     output,
+                    transform,
                     span,
                     ImplTraitContext::ReturnPositionOpaqueTy {
                         origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
@@ -1931,9 +1955,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Transforms `-> T` into `Future<Output = T>`.
-    fn lower_async_fn_output_type_to_future_bound(
+    fn lower_coroutine_fn_output_type_to_future_bound(
         &mut self,
         output: &FnRetTy,
+        transform: FnReturnTransformation,
         span: Span,
         nested_impl_trait_context: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
@@ -1948,17 +1973,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
 
-        // "<Output = T>"
+        // "<Output|Item = T>"
+        let (symbol, lang_item) = match transform {
+            FnReturnTransformation::Async(..) => (hir::FN_OUTPUT_NAME, hir::LangItem::Future),
+            FnReturnTransformation::Iterator(..) => {
+                (hir::ITERATOR_ITEM_NAME, hir::LangItem::Iterator)
+            }
+        };
+
         let future_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
-            bindings: arena_vec![self; self.output_ty_binding(span, output_ty)],
+            bindings: arena_vec![self; self.assoc_ty_binding(symbol, span, output_ty)],
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
 
         hir::GenericBound::LangItemTrait(
-            // ::std::future::Future<future_params>
-            hir::LangItem::Future,
+            lang_item,
             self.lower_span(span),
             self.next_id(),
             future_args,

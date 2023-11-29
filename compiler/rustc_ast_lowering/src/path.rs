@@ -389,7 +389,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
         let args = smallvec![GenericArg::Type(self.arena.alloc(self.ty_tup(*inputs_span, inputs)))];
-        let binding = self.output_ty_binding(output_ty.span, output_ty);
+        let binding = self.assoc_ty_binding(hir::FN_OUTPUT_NAME, output_ty.span, output_ty);
         (
             GenericArgsCtor {
                 args,
@@ -401,13 +401,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    /// An associated type binding `Output = $ty`.
-    pub(crate) fn output_ty_binding(
+    /// An associated type binding `$symbol = $ty`.
+    pub(crate) fn assoc_ty_binding(
         &mut self,
+        symbol: rustc_span::Symbol,
         span: Span,
         ty: &'hir hir::Ty<'hir>,
     ) -> hir::TypeBinding<'hir> {
-        let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
+        let ident = Ident::with_dummy_span(symbol);
         let kind = hir::TypeBindingKind::Equality { term: ty.into() };
         let args = arena_vec![self;];
         let bindings = arena_vec![self;];

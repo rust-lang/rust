@@ -156,7 +156,10 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
-            if let Async::Yes { closure_id, .. } = sig.header.asyncness {
+            // FIXME(eholk): handle `async gen fn`
+            if let (Async::Yes { closure_id, .. }, _) | (_, Gen::Yes { closure_id, .. }) =
+                (sig.header.asyncness, sig.header.genness)
+            {
                 self.visit_generics(generics);
 
                 // For async functions, we need to create their inner defs inside of a
