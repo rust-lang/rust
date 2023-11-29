@@ -105,6 +105,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 success_block.unit()
             }
             ExprKind::Unary { op: UnOp::Not, arg } => {
+                // Improve branch coverage instrumentation by noting conditions
+                // nested within one or more `!` expressions.
+                // (Skipped if branch coverage is not enabled.)
+                if let Some(branch_info) = this.coverage_branch_info.as_mut() {
+                    branch_info.visit_unary_not(this.thir, expr_id);
+                }
+
                 let local_scope = this.local_scope();
                 let (success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
@@ -148,6 +155,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let then_block = this.cfg.start_new_block();
                 let else_block = this.cfg.start_new_block();
                 let term = TerminatorKind::if_(operand, then_block, else_block);
+
+                // Record branch coverage info for this condition.
+                // (Does nothing if branch coverage is not enabled.)
+                this.visit_coverage_branch_condition(expr_id, then_block, else_block);
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
