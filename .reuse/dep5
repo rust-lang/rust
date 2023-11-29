@@ -107,9 +107,15 @@ License: MIT OR Apache-2.0
 # has a specific exception coded within it to ignore ./src/llvm-project so
 # any time LLVM is updated, please revisit this section. The copyrights are
 # taken from the relevant LLVM sub-folders: llvm, lld, lldb, compiler-rt and libunwind.
+#
+# The git hash for the CREDITS.TXT file is taken from the current git submodule
+# commit for ./src/llvm-project.
+#
+# The copyright years were compiled by looking at all the relevant
+# ./src/llvm-project/*/LICENSE.txt files
 
 Files: src/llvm-project/*
 Copyright: 2003-2019 by the contributors listed in [CREDITS.TXT](https://github.com/rust-lang/llvm-project/blob/7738295178045041669876bf32b0543ec8319a5c/llvm/CREDITS.TXT)
            2010 Apple Inc
            2003-2019 University of Illinois at Urbana-Champaign.
-License: NCSA OR Apache-2.0 WITH LLVM-exception
+License: NCSA AND Apache-2.0 WITH LLVM-exception
