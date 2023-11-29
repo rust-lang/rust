@@ -190,8 +190,8 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     condition! {
         name: "debug",
-        condition: cfg!(debug_assertions),
-        message: "when building with debug assertions",
+        condition: config.with_debug_assertions,
+        message: "when running tests with `ignore-debug` header",
     }
     condition! {
         name: config.debugger.as_ref().map(|d| d.to_str()),
