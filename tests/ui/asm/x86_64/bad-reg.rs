@@ -56,10 +56,10 @@ fn main() {
         // (except in/lateout which don't conflict)
 
         asm!("", in("eax") foo, in("al") bar);
-        //~^ ERROR register `al` conflicts with register `ax`
+        //~^ ERROR register `al` conflicts with register `eax`
         //~| ERROR `i32` cannot be used with this register class
         asm!("", in("rax") foo, out("rax") bar);
-        //~^ ERROR register `ax` conflicts with register `ax`
+        //~^ ERROR register `rax` conflicts with register `rax`
         asm!("", in("al") foo, lateout("al") bar);
         //~^ ERROR `i32` cannot be used with this register class
         //~| ERROR `i32` cannot be used with this register class
