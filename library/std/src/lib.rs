@@ -341,6 +341,7 @@
 #![feature(round_ties_even)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
+#![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
