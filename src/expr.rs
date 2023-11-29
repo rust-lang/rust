@@ -1947,7 +1947,7 @@ fn rewrite_unary_op(
 }
 
 pub(crate) enum RhsAssignKind<'ast> {
-    Expr(&'ast ast::ExprKind, Span),
+    Expr(&'ast ast::ExprKind, #[allow(unused_tuple_struct_fields)] Span),
     Bounds,
     Ty,
 }
