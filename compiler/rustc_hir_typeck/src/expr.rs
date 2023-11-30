@@ -2090,7 +2090,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [] => unreachable!(),
             };
             err.note(format!(
-                "... and other private field{s} {names}that {were} not provided",
+                "{}private field{s} {names}that {were} not provided",
+                if used_fields.is_empty() { "" } else { "...and other " },
                 s = pluralize!(remaining_private_fields_len),
                 were = pluralize!("was", remaining_private_fields_len),
             ));

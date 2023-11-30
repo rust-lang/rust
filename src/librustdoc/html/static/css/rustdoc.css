@@ -205,7 +205,7 @@ ul.all-items {
 
 #toggle-all-docs,
 a.anchor,
-.small-section-header a,
+.section-header a,
 #src-sidebar a,
 .rust a,
 .sidebar h2 a,
@@ -742,13 +742,13 @@ nav.sub {
 	margin: 0 0 15px 0;
 }
 
-.small-section-header {
+.section-header {
 	/* fields use <span> tags, but should get their own lines */
 	display: block;
 	position: relative;
 }
 
-.small-section-header:hover > .anchor, .impl:hover > .anchor,
+.section-header:hover > .anchor, .impl:hover > .anchor,
 .trait-impl:hover > .anchor, .variant:hover > .anchor {
 	display: initial;
 }
@@ -761,11 +761,11 @@ nav.sub {
 .anchor.field {
 	left: -5px;
 }
-.small-section-header > .anchor {
+.section-header > .anchor {
 	left: -15px;
 	padding-right: 8px;
 }
-h2.small-section-header > .anchor {
+h2.section-header > .anchor {
 	padding-right: 6px;
 }
 

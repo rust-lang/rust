@@ -1145,7 +1145,7 @@ impl<'a> AssocItemLink<'a> {
 fn write_impl_section_heading(mut w: impl fmt::Write, title: &str, id: &str) {
     write!(
         w,
-        "<h2 id=\"{id}\" class=\"small-section-header\">\
+        "<h2 id=\"{id}\" class=\"section-header\">\
             {title}\
             <a href=\"#{id}\" class=\"anchor\">§</a>\
          </h2>"
