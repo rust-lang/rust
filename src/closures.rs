@@ -29,7 +29,7 @@ pub(crate) fn rewrite_closure(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    is_async: &ast::Async,
+    coro_kind: &ast::CoroutineKind,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -40,7 +40,7 @@ pub(crate) fn rewrite_closure(
     debug!("rewrite_closure {:?}", body);
 
     let (prefix, extra_offset) = rewrite_closure_fn_decl(
-        binder, constness, capture, is_async, movability, fn_decl, body, span, context, shape,
+        binder, constness, capture, coro_kind, movability, fn_decl, body, span, context, shape,
     )?;
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
@@ -233,7 +233,7 @@ fn rewrite_closure_fn_decl(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    asyncness: &ast::Async,
+    coro_kind: &ast::CoroutineKind,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -263,7 +263,8 @@ fn rewrite_closure_fn_decl(
     } else {
         ""
     };
-    let is_async = if asyncness.is_async() { "async " } else { "" };
+    let is_async = if coro_kind.is_async() { "async " } else { "" };
+    let is_gen = if coro_kind.is_gen() { "gen " } else { "" };
     let mover = if matches!(capture, ast::CaptureBy::Value { .. }) {
         "move "
     } else {
@@ -272,7 +273,14 @@ fn rewrite_closure_fn_decl(
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
     let nested_shape = shape
-        .shrink_left(binder.len() + const_.len() + immovable.len() + is_async.len() + mover.len())?
+        .shrink_left(
+            binder.len()
+                + const_.len()
+                + immovable.len()
+                + is_async.len()
+                + is_gen.len()
+                + mover.len(),
+        )?
         .sub_width(4)?;
 
     // 1 = |
@@ -310,7 +318,7 @@ fn rewrite_closure_fn_decl(
         .tactic(tactic)
         .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
-    let mut prefix = format!("{binder}{const_}{immovable}{is_async}{mover}|{list_str}|");
+    let mut prefix = format!("{binder}{const_}{immovable}{is_async}{is_gen}{mover}|{list_str}|");
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
@@ -339,7 +347,7 @@ pub(crate) fn rewrite_last_closure(
             ref binder,
             constness,
             capture_clause,
-            ref asyncness,
+            ref coro_kind,
             movability,
             ref fn_decl,
             ref body,
@@ -360,7 +368,7 @@ pub(crate) fn rewrite_last_closure(
             binder,
             constness,
             capture_clause,
-            asyncness,
+            coro_kind,
             movability,
             fn_decl,
             body,
