@@ -23,7 +23,7 @@ pub trait Tr<T> {
     // @!has - '//section[@id="method.a"]/h4[@class="code-header"]' '~const'
     // @has - '//section[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Fn'
     // @!has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '~const'
-    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Fn'
+    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/div[@class="where"]' ': Fn'
     fn a<A: /* ~const */ Fn() + ~const Destruct>()
     where
         Option<A>: /* ~const */ Fn() + ~const Destruct,
@@ -35,7 +35,7 @@ pub trait Tr<T> {
 // @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]' '~const'
 // @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/a[@class="trait"]' 'Fn'
 // @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where"]' '~const'
-// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where fmt-newline"]' ': Fn'
+// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/div[@class="where"]' ': Fn'
 impl<T: /* ~const */ Fn() + ~const Destruct> const Tr<T> for T
 where
     Option<T>: /* ~const */ Fn() + ~const Destruct,
@@ -49,8 +49,8 @@ where
 
 // @!has foo/fn.foo.html '//pre[@class="rust item-decl"]/code/a[@class="trait"]' '~const'
 // @has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Fn'
-// @!has - '//pre[@class="rust item-decl"]/code/span[@class="where fmt-newline"]' '~const'
-// @has - '//pre[@class="rust item-decl"]/code/span[@class="where fmt-newline"]' ': Fn'
+// @!has - '//pre[@class="rust item-decl"]/code/div[@class="where"]' '~const'
+// @has - '//pre[@class="rust item-decl"]/code/div[@class="where"]' ': Fn'
 pub const fn foo<F: /* ~const */ Fn() + ~const Destruct>()
 where
     Option<F>: /* ~const */ Fn() + ~const Destruct,
@@ -62,7 +62,7 @@ impl<T> S<T> {
     // @!has foo/struct.S.html '//section[@id="method.foo"]/h4[@class="code-header"]' '~const'
     // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/a[@class="trait"]' 'Fn'
     // @!has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where"]' '~const'
-    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Fn'
+    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/div[@class="where"]' ': Fn'
     pub const fn foo<B, C: /* ~const */ Fn() + ~const Destruct>()
     where
         B: /* ~const */ Fn() + ~const Destruct,
