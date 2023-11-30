@@ -36,31 +36,36 @@ declare_clippy_lint! {
     /// if res { /* ... */ }
     /// ```
     #[clippy::version = "1.45.0"]
-    pub BLOCKS_IN_IF_CONDITIONS,
+    pub BLOCKS_IN_CONDITIONS,
     style,
     "useless or complex blocks that can be eliminated in conditions"
 }
 
-declare_lint_pass!(BlocksInIfConditions => [BLOCKS_IN_IF_CONDITIONS]);
+declare_lint_pass!(BlocksInConditions => [BLOCKS_IN_CONDITIONS]);
 
 const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression condition";
-const COMPLEX_BLOCK_MESSAGE: &str = "in an `if` condition, avoid complex blocks or closures with blocks; \
-                                    instead, move the block or closure higher and bind it with a `let`";
 
-impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
+impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        let Some((cond, keyword)) = higher::If::hir(expr).map(|hif| (hif.cond, "if")).or(
-            if let ExprKind::Match(match_ex, _, MatchSource::Normal) = expr.kind {
-                Some((match_ex, "match"))
+
+        let Some((cond, keyword, desc)) = higher::If::hir(expr)
+            .map(|hif| (hif.cond, "if", "an `if` condition"))
+            .or(if let ExprKind::Match(match_ex, _, MatchSource::Normal) = expr.kind {
+                Some((match_ex, "match", "a `match` scrutinee"))
             } else {
                 None
-            },
-        ) else {
+            })
+        else {
             return;
         };
+        let complex_block_message = &format!(
+            "in {desc}, avoid complex blocks or closures with blocks; \
+            instead, move the block or closure higher and bind it with a `let`",
+        );
+
         if let ExprKind::Block(block, _) = &cond.kind {
             if block.rules == BlockCheckMode::DefaultBlock {
                 if block.stmts.is_empty() {
@@ -73,20 +78,12 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
-                            BLOCKS_IN_IF_CONDITIONS,
+                            BLOCKS_IN_CONDITIONS,
                             cond.span,
                             BRACED_EXPR_MESSAGE,
                             "try",
-                            format!(
-                                "{}",
-                                snippet_block_with_applicability(
-                                    cx,
-                                    ex.span,
-                                    "..",
-                                    Some(expr.span),
-                                    &mut applicability
-                                )
-                            ),
+                            snippet_block_with_applicability(cx, ex.span, "..", Some(expr.span), &mut applicability)
+                                .to_string(),
                             applicability,
                         );
                     }
@@ -99,9 +96,9 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                     let mut applicability = Applicability::MachineApplicable;
                     span_lint_and_sugg(
                         cx,
-                        BLOCKS_IN_IF_CONDITIONS,
+                        BLOCKS_IN_CONDITIONS,
                         expr.span.with_hi(cond.span.hi()),
-                        COMPLEX_BLOCK_MESSAGE,
+                        complex_block_message,
                         "try",
                         format!(
                             "let res = {}; {keyword} res",
@@ -128,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                     let ex = &body.value;
                     if let ExprKind::Block(block, _) = ex.kind {
                         if !body.value.span.from_expansion() && !block.stmts.is_empty() {
-                            span_lint(cx, BLOCKS_IN_IF_CONDITIONS, ex.span, COMPLEX_BLOCK_MESSAGE);
+                            span_lint(cx, BLOCKS_IN_CONDITIONS, ex.span, complex_block_message);
                             return ControlFlow::Continue(Descend::No);
                         }
                     }
