@@ -10,12 +10,12 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{self, Abi, HasDataLayout, Size};
+use rustc_target::abi::{self, Abi, HasDataLayout, Primitive, Size};
 
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, Frame, InterpCx, InterpResult,
-    MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer, Projectable,
-    Provenance, Scalar,
+    MPlaceTy, Machine, MemPlace, MemPlaceMeta, MemoryKind, OffsetMode, PlaceTy, Pointer,
+    Projectable, Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -261,12 +261,29 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             {
                 Immediate::Uninit
             }
+            (
+                Immediate::Scalar(scalar),
+                Abi::Vector {
+                    element: abi::Scalar::Initialized { value: s @ Primitive::Int(..), .. },
+                    ..
+                },
+            ) => {
+                let size = s.size(cx);
+                assert_eq!(size, layout.size);
+                assert!(self.layout.size.bytes() <= 16);
+                let vector_bits: u128 = scalar.to_bits(self.layout.size).unwrap();
+                Immediate::Scalar(Scalar::Int(
+                    ty::ScalarInt::try_from_uint(size.truncate(vector_bits >> offset.bits()), size)
+                        .unwrap(),
+                ))
+            }
             // the field covers the entire type
             _ if layout.size == self.layout.size => {
                 assert_eq!(offset.bytes(), 0);
                 assert!(
                     match (self.layout.abi, layout.abi) {
                         (Abi::Scalar(..), Abi::Scalar(..)) => true,
+                        (Abi::Aggregate { sized: true }, Abi::Scalar(..)) => true,
                         (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
                         _ => false,
                     },
@@ -500,6 +517,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
                 Some(ImmTy::from_immediate(Immediate::ScalarPair(a_val, b_val), mplace.layout))
             }
+            Abi::Vector {
+                element: abi::Scalar::Initialized { value: s @ abi::Primitive::Int(..), .. },
+                ..
+            } => {
+                let size = s.size(self);
+                let stride = size.align_to(s.align(self).abi);
+                if mplace.layout.size.bytes() <= 16 {
+                    assert!(stride.bytes() > 0);
+                    let vector_scalar =
+                        alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size), false)?;
+                    Some(ImmTy { imm: Immediate::Scalar(vector_scalar), layout: mplace.layout })
+                } else {
+                    None
+                }
+            }
             _ => {
                 // Neither a scalar nor scalar pair.
                 None
@@ -539,12 +571,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        if !matches!(
-            op.layout().abi,
+        let can_primitive_read = match op.layout().abi {
             Abi::Scalar(abi::Scalar::Initialized { .. })
-                | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
-        ) {
-            span_bug!(self.cur_span(), "primitive read not possible for type: {}", op.layout().ty);
+            | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. }) => {
+                true
+            }
+            Abi::Vector {
+                element: abi::Scalar::Initialized { value: abi::Primitive::Int(..), .. },
+                ..
+            } => op.layout().size.bytes() <= 16,
+            _ => false,
+        };
+        if !can_primitive_read {
+            span_bug!(
+                self.cur_span(),
+                "primitive read not possible for type: {:?}",
+                op.layout().ty
+            );
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
@@ -599,7 +642,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ///
     /// Can (but does not always) trigger UB if `op` is uninitialized.
     pub fn operand_to_simd(
-        &self,
+        &mut self,
         op: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, u64)> {
         // Basically we just transmute this place into an array following simd_size_and_type.
@@ -612,7 +655,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_ub!(InvalidUninitBytes(None))
                 }
                 Immediate::Scalar(..) | Immediate::ScalarPair(..) => {
-                    bug!("arrays/slices can never have Scalar/ScalarPair layout")
+                    if let Abi::Vector {
+                        element: abi::Scalar::Initialized { value: abi::Primitive::Int(..), .. },
+                        ..
+                    } = op.layout.abi
+                        && op.layout.size.bytes() <= 16
+                    {
+                        let mplace = self.allocate(op.layout, MemoryKind::Stack)?;
+                        self.write_immediate(imm.imm, &mplace).unwrap();
+                        self.mplace_to_simd(&mplace)
+                    } else {
+                        bug!("arrays/slices can never have Scalar/ScalarPair layout")
+                    }
                 }
             },
         }

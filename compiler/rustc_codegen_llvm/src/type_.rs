@@ -60,11 +60,6 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMMetadataTypeInContext(self.llcx) }
     }
 
-    ///x Creates an integer type with the given number of bits, e.g., i24
-    pub(crate) fn type_ix(&self, num_bits: u64) -> &'ll Type {
-        unsafe { llvm::LLVMIntTypeInContext(self.llcx, num_bits as c_uint) }
-    }
-
     pub(crate) fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
@@ -128,6 +123,11 @@ impl<'ll> CodegenCx<'ll, '_> {
 }
 
 impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    /// Creates an integer type with the given number of bits, e.g., i24
+    fn type_ix(&self, num_bits: u64) -> &'ll Type {
+        unsafe { llvm::LLVMIntTypeInContext(self.llcx, num_bits as c_uint) }
+    }
+
     fn type_i1(&self) -> &'ll Type {
         unsafe { llvm::LLVMInt1TypeInContext(self.llcx) }
     }

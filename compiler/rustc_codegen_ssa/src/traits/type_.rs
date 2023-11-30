@@ -11,6 +11,7 @@ use rustc_target::abi::{AddressSpace, Integer};
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
 pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
+    fn type_ix(&self, num_bits: u64) -> Self::Type;
     fn type_i1(&self) -> Self::Type;
     fn type_i8(&self) -> Self::Type;
     fn type_i16(&self) -> Self::Type;

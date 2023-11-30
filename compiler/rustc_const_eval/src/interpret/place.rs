@@ -12,7 +12,8 @@ use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
+use rustc_target::abi;
+use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Primitive, Size, FIRST_VARIANT};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckAlignMsg, ImmTy,
@@ -696,17 +697,32 @@ where
         };
 
         match value {
-            Immediate::Scalar(scalar) => {
-                let Abi::Scalar(s) = layout.abi else {
-                    span_bug!(
-                        self.cur_span(),
-                        "write_immediate_to_mplace: invalid Scalar layout: {layout:#?}",
-                    )
-                };
-                let size = s.size(&tcx);
-                assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                alloc.write_scalar(alloc_range(Size::ZERO, size), scalar)
-            }
+            Immediate::Scalar(scalar) => match layout.abi {
+                Abi::Scalar(s) => {
+                    let size = s.size(&tcx);
+                    assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
+                    alloc.write_scalar(alloc_range(Size::ZERO, size), scalar)
+                }
+                Abi::Vector {
+                    element: abi::Scalar::Initialized { value: s @ Primitive::Int(..), .. },
+                    ..
+                } => {
+                    let size = s.size(&tcx);
+                    let stride = size.align_to(s.align(&tcx).abi);
+                    assert!(stride.bytes() > 0);
+                    if layout.size.bytes() > 16 {
+                        span_bug!(
+                            self.cur_span(),
+                            "write_immediate_to_mplace: invalid Vector layout: {layout:#?}",
+                        )
+                    }
+                    alloc.write_scalar(alloc_range(Size::ZERO, layout.size), scalar)
+                }
+                _ => span_bug!(
+                    self.cur_span(),
+                    "write_immediate_to_mplace: invalid Scalar layout: {layout:#?}",
+                ),
+            },
             Immediate::ScalarPair(a_val, b_val) => {
                 let Abi::ScalarPair(a, b) = layout.abi else {
                     span_bug!(
