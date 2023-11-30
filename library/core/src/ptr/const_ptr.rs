@@ -219,7 +219,8 @@ impl<T: ?Sized> *const T {
     /// later call [`from_exposed_addr`][] to reconstitute the original pointer including its
     /// provenance. (Reconstructing address space information, if required, is your responsibility.)
     ///
-    /// Using this method means that code is *not* following Strict Provenance rules. Supporting
+    /// Using this method means that code is *not* following [Strict
+    /// Provenance][../index.html#strict-provenance] rules. Supporting
     /// [`from_exposed_addr`][] complicates specification and reasoning and may not be supported by
     /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
     /// use [`addr`][pointer::addr] wherever possible.
@@ -230,13 +231,13 @@ impl<T: ?Sized> *const T {
     /// side-effect which is required for [`from_exposed_addr`][] to work is typically not
     /// available.
     ///
-    /// This API and its claimed semantics are part of the Strict Provenance experiment, see the
-    /// [module documentation][crate::ptr] for details.
+    /// It is unclear whether this method can be given a satisfying unambiguous specification. This
+    /// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
     ///
     /// [`from_exposed_addr`]: from_exposed_addr
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "strict_provenance", issue = "95228")]
+    #[unstable(feature = "exposed_provenance", issue = "95228")]
     pub fn expose_addr(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         self.cast::<()>() as usize

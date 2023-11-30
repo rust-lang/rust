@@ -1,4 +1,4 @@
-#![feature(strict_provenance)]
+#![feature(strict_provenance, exposed_provenance)]
 
 // Ensure that a `ptr::invalid` ptr is truly invalid.
 fn main() {
