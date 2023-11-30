@@ -1,7 +1,7 @@
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CrateType, InstrumentCoverage, OptLevel, OutFileName, OutputType,
+    self, CrateType, FunctionReturn, InstrumentCoverage, OptLevel, OutFileName, OutputType,
     RemapPathScopeComponents, SwitchWithOptPath,
 };
 use crate::config::{ErrorOutputType, Input};
@@ -1676,6 +1676,28 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if let Some(compatible_list) = sess.target.linker_flavor.check_compatibility(flavor) {
             let flavor = flavor.desc();
             sess.emit_err(errors::IncompatibleLinkerFlavor { flavor, compatible_list });
+        }
+    }
+
+    if sess.opts.unstable_opts.function_return != FunctionReturn::default() {
+        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+            sess.emit_err(errors::FunctionReturnRequiresX86OrX8664);
+        }
+    }
+
+    // The code model check applies to `thunk` and `thunk-extern`, but not `thunk-inline`, so it is
+    // kept as a `match` to force a change if new ones are added, even if we currently only support
+    // `thunk-extern` like Clang.
+    match sess.opts.unstable_opts.function_return {
+        FunctionReturn::Keep => (),
+        FunctionReturn::ThunkExtern => {
+            // FIXME: In principle, the inherited base LLVM target code model could be large,
+            // but this only checks whether we were passed one explicitly (like Clang does).
+            if let Some(code_model) = sess.code_model()
+                && code_model == CodeModel::Large
+            {
+                sess.emit_err(errors::FunctionReturnThunkExternRequiresNonLargeCodeModel);
+            }
         }
     }
 }
