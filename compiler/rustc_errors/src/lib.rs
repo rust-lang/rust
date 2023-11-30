@@ -1502,18 +1502,18 @@ impl HandlerInner {
                 error_codes.sort();
                 if error_codes.len() > 1 {
                     let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
-                    self.failure(format!(
+                    self.failure_note(format!(
                         "Some errors have detailed explanations: {}{}",
                         error_codes[..limit].join(", "),
                         if error_codes.len() > 9 { "..." } else { "." }
                     ));
-                    self.failure(format!(
+                    self.failure_note(format!(
                         "For more information about an error, try \
                          `rustc --explain {}`.",
                         &error_codes[0]
                     ));
                 } else {
-                    self.failure(format!(
+                    self.failure_note(format!(
                         "For more information about this error, try \
                          `rustc --explain {}`.",
                         &error_codes[0]
@@ -1633,7 +1633,7 @@ impl HandlerInner {
         self.delayed_good_path_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
 
-    fn failure(&mut self, msg: impl Into<DiagnosticMessage>) {
+    fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
         self.emit_diagnostic(&mut Diagnostic::new(FailureNote, msg));
     }
 
