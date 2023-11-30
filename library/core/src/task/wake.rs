@@ -195,7 +195,7 @@ impl RawWakerVTable {
 #[lang = "Context"]
 pub struct Context<'a> {
     waker: Option<&'a Waker>,
-    local_waker: Option<&'a LocalWaker>,
+    local_waker: &'a LocalWaker,
     // Ensure we future-proof against variance changes by forcing
     // the lifetime to be invariant (argument-position lifetimes
     // are contravariant while return-position lifetimes are
@@ -238,11 +238,7 @@ impl<'a> Context<'a> {
     /// Returns a reference to the [`LocalWaker`] for the current task.
     #[unstable(feature = "local_waker", issue = "none")]
     pub fn local_waker(&self) -> &'a LocalWaker {
-        // Safety:
-        // It is safe to transmute a `&Waker` into a `&LocalWaker` since both are a transparent
-        // wrapper around a local waker. Also, the Option<&Waker> here cannot be None since it is
-        // impossible to construct a Context without any waker set.
-        self.local_waker.unwrap_or_else(|| unsafe { transmute(self.waker) })
+        &self.local_waker
     }
 }
 
@@ -325,7 +321,7 @@ impl<'a> ContextBuilder<'a> {
     }
 
     /// Builds the `Context`.
-    ///  
+    ///
     /// # Panics
     /// Panics if no `Waker` or `LocalWaker` is set.
     #[inline]
@@ -337,6 +333,16 @@ impl<'a> ContextBuilder<'a> {
             waker.is_some() || local_waker.is_some(),
             "at least one waker must be set with either the `local_waker` or `waker` methods on `ContextBuilder`."
         );
+        let local_waker = match local_waker {
+            Some(local_waker) => local_waker,
+            None => {
+                // SAFETY:
+                // It is safe to transmute a `&Waker` into a `&LocalWaker` since both are a transparent
+                // wrapper around a local waker. Also, the Option<&Waker> here cannot be None because
+                // of the previous assert.
+                unsafe { transmute(self.waker) }
+            }
+        };
         Context { waker, local_waker, _marker: PhantomData, _marker2: PhantomData }
     }
 }
@@ -576,9 +582,10 @@ impl fmt::Debug for Waker {
 ///         return Poll::Ready(())
 ///     })
 /// }
-/// # async {
+/// # #[allow(unused_must_use)]
+/// # async fn __() {
 /// yield_now().await;
-/// # };
+/// # }
 /// ```
 ///
 /// [`Future::poll()`]: core::future::Future::poll
