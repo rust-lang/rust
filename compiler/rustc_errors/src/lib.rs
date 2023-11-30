@@ -648,7 +648,7 @@ impl Handler {
     // This is here to not allow mutation of flags;
     // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {
-        self.inner.lock().flags.can_emit_warnings
+        self.inner.borrow_mut().flags.can_emit_warnings
     }
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.
@@ -675,14 +675,13 @@ impl Handler {
     /// Stash a given diagnostic with the given `Span` and [`StashKey`] as the key.
     /// Retrieve a stashed diagnostic with `steal_diagnostic`.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
-        let mut inner = self.inner.borrow_mut();
-        inner.stash((span.with_parent(None), key), diag);
+        self.inner.borrow_mut().stash((span.with_parent(None), key), diag);
     }
 
     /// Steal a previously stashed diagnostic with the given `Span` and [`StashKey`] as the key.
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
-        let mut inner = self.inner.borrow_mut();
-        inner
+        self.inner
+            .borrow_mut()
             .steal((span.with_parent(None), key))
             .map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
     }
@@ -1197,8 +1196,7 @@ impl Handler {
         mut diag: Diagnostic,
         sp: impl Into<MultiSpan>,
     ) -> Option<ErrorGuaranteed> {
-        let mut inner = self.inner.borrow_mut();
-        inner.emit_diagnostic(diag.set_span(sp))
+        self.inner.borrow_mut().emit_diagnostic(diag.set_span(sp))
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -1266,7 +1264,7 @@ impl Handler {
     }
 
     pub fn flush_delayed(&self) {
-        let mut inner = self.inner.lock();
+        let mut inner = self.inner.borrow_mut();
         let bugs = std::mem::replace(&mut inner.span_delayed_bugs, Vec::new());
         inner.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
     }
