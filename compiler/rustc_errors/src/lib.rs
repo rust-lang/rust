@@ -1055,8 +1055,7 @@ impl Handler {
 
     #[rustc_lint_diagnostics]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
-        let mut db = DiagnosticBuilder::new(self, Warning(None), msg);
-        db.emit();
+        DiagnosticBuilder::new(self, Warning(None), msg).emit();
     }
 
     #[rustc_lint_diagnostics]
