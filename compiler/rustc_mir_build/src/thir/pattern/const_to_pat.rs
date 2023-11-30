@@ -258,18 +258,26 @@ impl<'tcx> ConstToPat<'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn type_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
+        let tcx = self.tcx();
         // double-check there even *is* a semantic `PartialEq` to dispatch to.
         //
         // (If there isn't, then we can safely issue a hard
         // error, because that's never worked, due to compiler
         // using `PartialEq::eq` in this scenario in the past.)
-        let tcx = self.tcx();
         let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, Some(self.span));
         let partial_eq_obligation = Obligation::new(
             tcx,
             ObligationCause::dummy(),
             self.param_env,
-            ty::TraitRef::new(tcx, partial_eq_trait_id, [ty, ty]),
+            ty::TraitRef::new(
+                tcx,
+                partial_eq_trait_id,
+                tcx.with_opt_const_effect_param(
+                    tcx.hir().enclosing_body_owner(self.id),
+                    partial_eq_trait_id,
+                    [ty, ty],
+                ),
+            ),
         );
 
         // This *could* accept a type that isn't actually `PartialEq`, because region bounds get

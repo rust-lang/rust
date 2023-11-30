@@ -336,11 +336,20 @@ fn from_str(s: &str) -> Result<bool, ()> {
 }
 
 #[lang = "eq"]
-// FIXME #[const_trait]
+#[const_trait]
 trait PartialEq<Rhs: ?Sized = Self> {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool {
         !self.eq(other)
+    }
+}
+
+impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
+where
+    A: ~const PartialEq<B>,
+{
+    fn eq(&self, other: &&B) -> bool {
+        PartialEq::eq(*self, *other)
     }
 }
 
