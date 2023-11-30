@@ -1091,187 +1091,289 @@ pub struct poly64x2x4_t(
 extern "unadjusted" {
     // absolute value (64-bit)
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.abs.v8i8"
+    )]
     fn vabs_s8_(a: int8x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.abs.v4i16"
+    )]
     fn vabs_s16_(a: int16x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.abs.v2i32"
+    )]
     fn vabs_s32_(a: int32x2_t) -> int32x2_t;
     // absolute value (128-bit)
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v16i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v16i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.abs.v16i8"
+    )]
     fn vabsq_s8_(a: int8x16_t) -> int8x16_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v8i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v8i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.abs.v8i16"
+    )]
     fn vabsq_s16_(a: int16x8_t) -> int16x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v4i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v4i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.abs.v4i32"
+    )]
     fn vabsq_s32_(a: int32x4_t) -> int32x4_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.sminp.v8i8"
+    )]
     fn vpmins_v8i8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.sminp.v4i16"
+    )]
     fn vpmins_v4i16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.sminp.v2i32"
+    )]
     fn vpmins_v2i32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpminu.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.uminp.v8i8"
+    )]
     fn vpminu_v8i8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpminu.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.uminp.v4i16"
+    )]
     fn vpminu_v4i16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpminu.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.uminp.v2i32"
+    )]
     fn vpminu_v2i32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v2f32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminp.v2f32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.fminp.v2f32"
+    )]
     fn vpminf_v2f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.smaxp.v8i8"
+    )]
     fn vpmaxs_v8i8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.smaxp.v4i16"
+    )]
     fn vpmaxs_v4i16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.smaxp.v2i32"
+    )]
     fn vpmaxs_v2i32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxu.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.umaxp.v8i8"
+    )]
     fn vpmaxu_v8i8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxu.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.umaxp.v4i16"
+    )]
     fn vpmaxu_v4i16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxu.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.umaxp.v2i32"
+    )]
     fn vpmaxu_v2i32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v2f32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxp.v2f32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.fmaxp.v2f32"
+    )]
     fn vpmaxf_v2f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vraddhn.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.raddhn.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.raddhn.v8i8"
+    )]
     fn vraddhn_s16_(a: int16x8_t, b: int16x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vraddhn.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.raddhn.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.raddhn.v4i16"
+    )]
     fn vraddhn_s32_(a: int32x4_t, b: int32x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vraddhn.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.raddhn.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.raddhn.v2i32"
+    )]
     fn vraddhn_s64_(a: int64x2_t, b: int64x2_t) -> int32x2_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.addp.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.addp.v4i16"
+    )]
     fn vpadd_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.addp.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.addp.v2i32"
+    )]
     fn vpadd_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.addp.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.neon.addp.v8i8"
+    )]
     fn vpadd_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddls.v4i16.v8i8")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.saddlp.v4i16.v8i8"
     )]
     pub(crate) fn vpaddl_s8_(a: int8x8_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddls.v2i32.v4i16")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.saddlp.v2i32.v4i16"
     )]
     pub(crate) fn vpaddl_s16_(a: int16x4_t) -> int32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddls.v1i64.v2i32")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.saddlp.v1i64.v2i32"
     )]
     pub(crate) fn vpaddl_s32_(a: int32x2_t) -> int64x1_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddls.v8i16.v16i8")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.saddlp.v8i16.v16i8"
     )]
     pub(crate) fn vpaddlq_s8_(a: int8x16_t) -> int16x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddls.v4i32.v8i16")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.saddlp.v4i32.v8i16"
     )]
     pub(crate) fn vpaddlq_s16_(a: int16x8_t) -> int32x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddls.v2i64.v4i32")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.saddlp.v2i64.v4i32"
     )]
     pub(crate) fn vpaddlq_s32_(a: int32x4_t) -> int64x2_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddlu.v4i16.v8i8")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.uaddlp.v4i16.v8i8"
     )]
     pub(crate) fn vpaddl_u8_(a: uint8x8_t) -> uint16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddlu.v2i32.v4i16")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.uaddlp.v2i32.v4i16"
     )]
     pub(crate) fn vpaddl_u16_(a: uint16x4_t) -> uint32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddlu.v1i64.v2i32")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.uaddlp.v1i64.v2i32"
     )]
     pub(crate) fn vpaddl_u32_(a: uint32x2_t) -> uint64x1_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddlu.v8i16.v16i8")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.uaddlp.v8i16.v16i8"
     )]
     pub(crate) fn vpaddlq_u8_(a: uint8x16_t) -> uint16x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddlu.v4i32.v8i16")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.uaddlp.v4i32.v8i16"
     )]
     pub(crate) fn vpaddlq_u16_(a: uint16x8_t) -> uint32x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddlu.v2i64.v4i32")]
     #[cfg_attr(
-        target_arch = "aarch64",
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.neon.uaddlp.v2i64.v4i32"
     )]
     pub(crate) fn vpaddlq_u32_(a: uint32x4_t) -> uint64x2_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctpop.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctpop.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctpop.v8i8"
+    )]
     fn vcnt_s8_(a: int8x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctpop.v16i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctpop.v16i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctpop.v16i8"
+    )]
     fn vcntq_s8_(a: int8x16_t) -> int8x16_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v8i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctlz.v8i8"
+    )]
     fn vclz_s8_(a: int8x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v16i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v16i8")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctlz.v16i8"
+    )]
     fn vclzq_s8_(a: int8x16_t) -> int8x16_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v4i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctlz.v4i16"
+    )]
     fn vclz_s16_(a: int16x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v8i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v8i16")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctlz.v8i16"
+    )]
     fn vclzq_s16_(a: int16x8_t) -> int16x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v2i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctlz.v2i32"
+    )]
     fn vclz_s32_(a: int32x2_t) -> int32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v4i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v4i32")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.ctlz.v4i32"
+    )]
     fn vclzq_s32_(a: int32x4_t) -> int32x4_t;
 }
 
@@ -1281,7 +1383,10 @@ extern "unadjusted" {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 7)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1301,7 +1406,10 @@ pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> in
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 15))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 15))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 15)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1321,7 +1429,10 @@ pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 3)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1341,7 +1452,10 @@ pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) ->
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 7)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1361,7 +1475,10 @@ pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 1)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1381,7 +1498,10 @@ pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) ->
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 3)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1401,7 +1521,10 @@ pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ldr, LANE = 0)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1421,7 +1544,10 @@ pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) ->
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 1)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1441,7 +1567,10 @@ pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 7)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1461,7 +1590,10 @@ pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> u
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 15))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 15))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 15)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1481,7 +1613,10 @@ pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) ->
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 3)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1501,7 +1636,10 @@ pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 7)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1521,7 +1659,10 @@ pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 1)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1541,7 +1682,10 @@ pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 3)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1561,7 +1705,10 @@ pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ldr, LANE = 0)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1581,7 +1728,10 @@ pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 1)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1601,7 +1751,10 @@ pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 7)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1621,7 +1774,10 @@ pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> p
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 15))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 15))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 15)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1641,7 +1797,10 @@ pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) ->
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 3)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1661,7 +1820,10 @@ pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 7)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1683,7 +1845,10 @@ pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ldr, LANE = 0)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1705,7 +1870,10 @@ pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 1)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1725,7 +1893,10 @@ pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 1)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1745,7 +1916,10 @@ pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1, LANE = 3)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1764,7 +1938,10 @@ pub unsafe fn vld1q_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x4_t)
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1783,7 +1960,10 @@ pub unsafe fn vld1_dup_s8(ptr: *const i8) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1802,7 +1982,10 @@ pub unsafe fn vld1q_dup_s8(ptr: *const i8) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1821,7 +2004,10 @@ pub unsafe fn vld1_dup_s16(ptr: *const i16) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1840,7 +2026,10 @@ pub unsafe fn vld1q_dup_s16(ptr: *const i16) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1859,7 +2048,10 @@ pub unsafe fn vld1_dup_s32(ptr: *const i32) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1878,7 +2070,10 @@ pub unsafe fn vld1q_dup_s32(ptr: *const i32) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ldr)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1888,7 +2083,7 @@ pub unsafe fn vld1q_dup_s32(ptr: *const i32) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_s64(ptr: *const i64) -> int64x1_t {
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         crate::core_arch::aarch64::vld1_s64(ptr)
     }
@@ -1903,7 +2098,10 @@ pub unsafe fn vld1_dup_s64(ptr: *const i64) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1922,7 +2120,10 @@ pub unsafe fn vld1q_dup_s64(ptr: *const i64) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1941,7 +2142,10 @@ pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1960,7 +2164,10 @@ pub unsafe fn vld1q_dup_u8(ptr: *const u8) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1979,7 +2186,10 @@ pub unsafe fn vld1_dup_u16(ptr: *const u16) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -1998,7 +2208,10 @@ pub unsafe fn vld1q_dup_u16(ptr: *const u16) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2017,7 +2230,10 @@ pub unsafe fn vld1_dup_u32(ptr: *const u32) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2036,7 +2252,10 @@ pub unsafe fn vld1q_dup_u32(ptr: *const u32) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ldr)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2046,7 +2265,7 @@ pub unsafe fn vld1q_dup_u32(ptr: *const u32) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_u64(ptr: *const u64) -> uint64x1_t {
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         crate::core_arch::aarch64::vld1_u64(ptr)
     }
@@ -2061,7 +2280,10 @@ pub unsafe fn vld1_dup_u64(ptr: *const u64) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2080,7 +2302,10 @@ pub unsafe fn vld1q_dup_u64(ptr: *const u64) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2099,7 +2324,10 @@ pub unsafe fn vld1_dup_p8(ptr: *const p8) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2118,7 +2346,10 @@ pub unsafe fn vld1q_dup_p8(ptr: *const p8) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2137,7 +2368,10 @@ pub unsafe fn vld1_dup_p16(ptr: *const p16) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2156,7 +2390,10 @@ pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2177,7 +2414,10 @@ pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ldr)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2187,7 +2427,7 @@ pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_p64(ptr: *const p64) -> poly64x1_t {
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         crate::core_arch::aarch64::vld1_p64(ptr)
     }
@@ -2204,7 +2444,10 @@ pub unsafe fn vld1_dup_p64(ptr: *const p64) -> poly64x1_t {
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2223,7 +2466,10 @@ pub unsafe fn vld1q_dup_p64(ptr: *const p64) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1r)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2242,7 +2488,10 @@ pub unsafe fn vld1q_dup_f32(ptr: *const f32) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.s8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("saba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("saba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2258,7 +2507,10 @@ pub unsafe fn vaba_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.s16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("saba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("saba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2274,7 +2526,10 @@ pub unsafe fn vaba_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.s32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("saba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("saba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2290,7 +2545,10 @@ pub unsafe fn vaba_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.u8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("uaba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("uaba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2306,7 +2564,10 @@ pub unsafe fn vaba_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.u16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("uaba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("uaba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2322,7 +2583,10 @@ pub unsafe fn vaba_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.u32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("uaba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("uaba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2339,7 +2603,10 @@ pub unsafe fn vaba_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.s8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("saba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("saba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2355,7 +2622,10 @@ pub unsafe fn vabaq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.s16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("saba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("saba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2371,7 +2641,10 @@ pub unsafe fn vabaq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.s32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("saba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("saba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2387,7 +2660,10 @@ pub unsafe fn vabaq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.u8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("uaba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("uaba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2403,7 +2679,10 @@ pub unsafe fn vabaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.u16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("uaba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("uaba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2419,7 +2698,10 @@ pub unsafe fn vabaq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vaba.u32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("uaba"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("uaba")
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2437,7 +2719,10 @@ pub unsafe fn vabaq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(abs))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(abs)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2454,7 +2739,10 @@ pub unsafe fn vabs_s8(a: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(abs))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(abs)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2471,7 +2759,10 @@ pub unsafe fn vabs_s16(a: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(abs))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(abs)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2488,7 +2779,10 @@ pub unsafe fn vabs_s32(a: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(abs))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(abs)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2505,7 +2799,10 @@ pub unsafe fn vabsq_s8(a: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(abs))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(abs)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2522,7 +2819,10 @@ pub unsafe fn vabsq_s16(a: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(abs))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(abs)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2540,7 +2840,10 @@ pub unsafe fn vabsq_s32(a: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2557,7 +2860,10 @@ pub unsafe fn vpadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2574,7 +2880,10 @@ pub unsafe fn vpadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2591,7 +2900,10 @@ pub unsafe fn vpadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2608,7 +2920,10 @@ pub unsafe fn vpadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2625,7 +2940,10 @@ pub unsafe fn vpadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2643,7 +2961,10 @@ pub unsafe fn vpadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2661,7 +2982,10 @@ pub unsafe fn vadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2679,7 +3003,10 @@ pub unsafe fn vaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2697,7 +3024,10 @@ pub unsafe fn vadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2715,7 +3045,10 @@ pub unsafe fn vaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2733,7 +3066,10 @@ pub unsafe fn vadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2751,7 +3087,10 @@ pub unsafe fn vaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2769,7 +3108,10 @@ pub unsafe fn vaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2787,7 +3129,10 @@ pub unsafe fn vadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2805,7 +3150,10 @@ pub unsafe fn vaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2823,7 +3171,10 @@ pub unsafe fn vadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2841,7 +3192,10 @@ pub unsafe fn vaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2859,7 +3213,10 @@ pub unsafe fn vadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2877,7 +3234,10 @@ pub unsafe fn vaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(add))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(add)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2895,7 +3255,10 @@ pub unsafe fn vaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fadd))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fadd)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2913,7 +3276,10 @@ pub unsafe fn vadd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vadd))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fadd))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fadd)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2931,7 +3297,10 @@ pub unsafe fn vaddq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2951,7 +3320,10 @@ pub unsafe fn vaddl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2971,7 +3343,10 @@ pub unsafe fn vaddl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -2991,7 +3366,10 @@ pub unsafe fn vaddl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3011,7 +3389,10 @@ pub unsafe fn vaddl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3031,7 +3412,10 @@ pub unsafe fn vaddl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3051,7 +3435,10 @@ pub unsafe fn vaddl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddl2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3073,7 +3460,10 @@ pub unsafe fn vaddl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddl2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3095,7 +3485,10 @@ pub unsafe fn vaddl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddl2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3117,7 +3510,10 @@ pub unsafe fn vaddl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddl2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3139,7 +3535,10 @@ pub unsafe fn vaddl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddl2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3161,7 +3560,10 @@ pub unsafe fn vaddl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddl2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3183,7 +3585,10 @@ pub unsafe fn vaddl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddw)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3202,7 +3607,10 @@ pub unsafe fn vaddw_s8(a: int16x8_t, b: int8x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddw)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3221,7 +3629,10 @@ pub unsafe fn vaddw_s16(a: int32x4_t, b: int16x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddw)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3240,7 +3651,10 @@ pub unsafe fn vaddw_s32(a: int64x2_t, b: int32x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddw)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3259,7 +3673,10 @@ pub unsafe fn vaddw_u8(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddw)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3278,7 +3695,10 @@ pub unsafe fn vaddw_u16(a: uint32x4_t, b: uint16x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddw)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3297,7 +3717,10 @@ pub unsafe fn vaddw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddw2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3317,7 +3740,10 @@ pub unsafe fn vaddw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddw2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3337,7 +3763,10 @@ pub unsafe fn vaddw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddw2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3357,7 +3786,10 @@ pub unsafe fn vaddw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddw2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3377,7 +3809,10 @@ pub unsafe fn vaddw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddw2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3397,7 +3832,10 @@ pub unsafe fn vaddw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddw2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3417,7 +3855,10 @@ pub unsafe fn vaddw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3435,7 +3876,10 @@ pub unsafe fn vaddhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3453,7 +3897,10 @@ pub unsafe fn vaddhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3471,7 +3918,10 @@ pub unsafe fn vaddhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3489,7 +3939,10 @@ pub unsafe fn vaddhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3507,7 +3960,10 @@ pub unsafe fn vaddhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3525,7 +3981,10 @@ pub unsafe fn vaddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3544,7 +4003,10 @@ pub unsafe fn vaddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x1
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3563,7 +4025,10 @@ pub unsafe fn vaddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int16
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3582,7 +4047,10 @@ pub unsafe fn vaddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int32
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3601,7 +4069,10 @@ pub unsafe fn vaddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> uin
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3620,7 +4091,10 @@ pub unsafe fn vaddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> ui
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(addhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3639,7 +4113,10 @@ pub unsafe fn vaddhn_high_u64(r: uint32x2_t, a: uint64x2_t, b: uint64x2_t) -> ui
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3657,7 +4134,10 @@ pub unsafe fn vraddhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3675,7 +4155,10 @@ pub unsafe fn vraddhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i64))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3693,7 +4176,10 @@ pub unsafe fn vraddhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3711,7 +4197,10 @@ pub unsafe fn vraddhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3729,7 +4218,10 @@ pub unsafe fn vraddhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i64))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3747,7 +4239,10 @@ pub unsafe fn vraddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3766,7 +4261,10 @@ pub unsafe fn vraddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3785,7 +4283,10 @@ pub unsafe fn vraddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int1
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i64))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3804,7 +4305,10 @@ pub unsafe fn vraddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int3
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3823,7 +4327,10 @@ pub unsafe fn vraddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> ui
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3842,7 +4349,10 @@ pub unsafe fn vraddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> u
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vraddhn.i64))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(raddhn2)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3861,7 +4371,10 @@ pub unsafe fn vraddhn_high_u64(r: uint32x2_t, a: uint64x2_t, b: uint64x2_t) -> u
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.s8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3879,7 +4392,10 @@ pub unsafe fn vpaddl_s8(a: int8x8_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.s16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3897,7 +4413,10 @@ pub unsafe fn vpaddl_s16(a: int16x4_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.s32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3915,7 +4434,10 @@ pub unsafe fn vpaddl_s32(a: int32x2_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.s8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3933,7 +4455,10 @@ pub unsafe fn vpaddlq_s8(a: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.s16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3951,7 +4476,10 @@ pub unsafe fn vpaddlq_s16(a: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.s32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(saddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3969,7 +4497,10 @@ pub unsafe fn vpaddlq_s32(a: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.u8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -3987,7 +4518,10 @@ pub unsafe fn vpaddl_u8(a: uint8x8_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.u16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4005,7 +4539,10 @@ pub unsafe fn vpaddl_u16(a: uint16x4_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.u32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4023,7 +4560,10 @@ pub unsafe fn vpaddl_u32(a: uint32x2_t) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.u8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4041,7 +4581,10 @@ pub unsafe fn vpaddlq_u8(a: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.u16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4059,7 +4602,10 @@ pub unsafe fn vpaddlq_u16(a: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpaddl.u32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddlp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uaddlp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4077,7 +4623,10 @@ pub unsafe fn vpaddlq_u32(a: uint32x4_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(xtn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(xtn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4095,7 +4644,10 @@ pub unsafe fn vmovn_s16(a: int16x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(xtn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(xtn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4113,7 +4665,10 @@ pub unsafe fn vmovn_s32(a: int32x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(xtn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(xtn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4131,7 +4686,10 @@ pub unsafe fn vmovn_s64(a: int64x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(xtn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(xtn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4149,7 +4707,10 @@ pub unsafe fn vmovn_u16(a: uint16x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(xtn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(xtn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4167,7 +4728,10 @@ pub unsafe fn vmovn_u32(a: uint32x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(xtn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(xtn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4185,7 +4749,10 @@ pub unsafe fn vmovn_u64(a: uint64x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sxtl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sxtl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4203,7 +4770,10 @@ pub unsafe fn vmovl_s8(a: int8x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sxtl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sxtl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4221,7 +4791,10 @@ pub unsafe fn vmovl_s16(a: int16x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sxtl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sxtl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4239,7 +4812,10 @@ pub unsafe fn vmovl_s32(a: int32x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uxtl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uxtl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4257,7 +4833,10 @@ pub unsafe fn vmovl_u8(a: uint8x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uxtl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uxtl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4275,7 +4854,10 @@ pub unsafe fn vmovl_u16(a: uint16x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmovl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uxtl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uxtl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4293,7 +4875,10 @@ pub unsafe fn vmovl_u32(a: uint32x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4312,7 +4897,10 @@ pub unsafe fn vmvn_s8(a: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4333,7 +4921,10 @@ pub unsafe fn vmvnq_s8(a: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4352,7 +4943,10 @@ pub unsafe fn vmvn_s16(a: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4371,7 +4965,10 @@ pub unsafe fn vmvnq_s16(a: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4390,7 +4987,10 @@ pub unsafe fn vmvn_s32(a: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4409,7 +5009,10 @@ pub unsafe fn vmvnq_s32(a: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4428,7 +5031,10 @@ pub unsafe fn vmvn_u8(a: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4449,7 +5055,10 @@ pub unsafe fn vmvnq_u8(a: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4468,7 +5077,10 @@ pub unsafe fn vmvn_u16(a: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4489,7 +5101,10 @@ pub unsafe fn vmvnq_u16(a: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4508,7 +5123,10 @@ pub unsafe fn vmvn_u32(a: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4527,7 +5145,10 @@ pub unsafe fn vmvnq_u32(a: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4546,7 +5167,10 @@ pub unsafe fn vmvn_p8(a: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmvn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mvn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mvn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4567,7 +5191,10 @@ pub unsafe fn vmvnq_p8(a: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4586,7 +5213,10 @@ pub unsafe fn vbic_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4607,7 +5237,10 @@ pub unsafe fn vbicq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4626,7 +5259,10 @@ pub unsafe fn vbic_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4645,7 +5281,10 @@ pub unsafe fn vbicq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4664,7 +5303,10 @@ pub unsafe fn vbic_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4683,7 +5325,10 @@ pub unsafe fn vbicq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4702,7 +5347,10 @@ pub unsafe fn vbic_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4721,7 +5369,10 @@ pub unsafe fn vbicq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4740,7 +5391,10 @@ pub unsafe fn vbic_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4761,7 +5415,10 @@ pub unsafe fn vbicq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4780,7 +5437,10 @@ pub unsafe fn vbic_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4799,7 +5459,10 @@ pub unsafe fn vbicq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4818,7 +5481,10 @@ pub unsafe fn vbic_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4837,7 +5503,10 @@ pub unsafe fn vbicq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4856,7 +5525,10 @@ pub unsafe fn vbic_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbic))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bic))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bic)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4879,7 +5551,10 @@ pub unsafe fn vbicq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4901,7 +5576,10 @@ pub unsafe fn vbsl_s8(a: uint8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4923,7 +5601,10 @@ pub unsafe fn vbsl_s16(a: uint16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4945,7 +5626,10 @@ pub unsafe fn vbsl_s32(a: uint32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4967,7 +5651,10 @@ pub unsafe fn vbsl_s64(a: uint64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -4986,7 +5673,10 @@ pub unsafe fn vbsl_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5005,7 +5695,10 @@ pub unsafe fn vbsl_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5024,7 +5717,10 @@ pub unsafe fn vbsl_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5043,7 +5739,10 @@ pub unsafe fn vbsl_u64(a: uint64x1_t, b: uint64x1_t, c: uint64x1_t) -> uint64x1_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5065,7 +5764,10 @@ pub unsafe fn vbsl_f32(a: uint32x2_t, b: float32x2_t, c: float32x2_t) -> float32
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5087,7 +5789,10 @@ pub unsafe fn vbsl_p8(a: uint8x8_t, b: poly8x8_t, c: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5109,7 +5814,10 @@ pub unsafe fn vbsl_p16(a: uint16x4_t, b: poly16x4_t, c: poly16x4_t) -> poly16x4_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5133,7 +5841,10 @@ pub unsafe fn vbslq_s8(a: uint8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5155,7 +5866,10 @@ pub unsafe fn vbslq_s16(a: uint16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t 
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5177,7 +5891,10 @@ pub unsafe fn vbslq_s32(a: uint32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t 
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5199,7 +5916,10 @@ pub unsafe fn vbslq_s64(a: uint64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t 
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5220,7 +5940,10 @@ pub unsafe fn vbslq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5239,7 +5962,10 @@ pub unsafe fn vbslq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5258,7 +5984,10 @@ pub unsafe fn vbslq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5277,7 +6006,10 @@ pub unsafe fn vbslq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5301,7 +6033,10 @@ pub unsafe fn vbslq_p8(a: uint8x16_t, b: poly8x16_t, c: poly8x16_t) -> poly8x16_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5323,7 +6058,10 @@ pub unsafe fn vbslq_p16(a: uint16x8_t, b: poly16x8_t, c: poly16x8_t) -> poly16x8
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5345,7 +6083,10 @@ pub unsafe fn vbslq_f32(a: uint32x4_t, b: float32x4_t, c: float32x4_t) -> float3
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5364,7 +6105,10 @@ pub unsafe fn vorn_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5385,7 +6129,10 @@ pub unsafe fn vornq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5404,7 +6151,10 @@ pub unsafe fn vorn_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5423,7 +6173,10 @@ pub unsafe fn vornq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5442,7 +6195,10 @@ pub unsafe fn vorn_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5461,7 +6217,10 @@ pub unsafe fn vornq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5480,7 +6239,10 @@ pub unsafe fn vorn_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5499,7 +6261,10 @@ pub unsafe fn vornq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5518,7 +6283,10 @@ pub unsafe fn vorn_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5539,7 +6307,10 @@ pub unsafe fn vornq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5558,7 +6329,10 @@ pub unsafe fn vorn_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5577,7 +6351,10 @@ pub unsafe fn vornq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5596,7 +6373,10 @@ pub unsafe fn vorn_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5615,7 +6395,10 @@ pub unsafe fn vornq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5634,7 +6417,10 @@ pub unsafe fn vorn_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorn))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orn))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(orn)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5653,7 +6439,10 @@ pub unsafe fn vornq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sminp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sminp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5671,7 +6460,10 @@ pub unsafe fn vpmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sminp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sminp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5689,7 +6481,10 @@ pub unsafe fn vpmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sminp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sminp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5707,7 +6502,10 @@ pub unsafe fn vpmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uminp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uminp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5725,7 +6523,10 @@ pub unsafe fn vpmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uminp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uminp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5743,7 +6544,10 @@ pub unsafe fn vpmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uminp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uminp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5761,7 +6565,10 @@ pub unsafe fn vpmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fminp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fminp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5779,7 +6586,10 @@ pub unsafe fn vpmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smaxp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(smaxp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5797,7 +6607,10 @@ pub unsafe fn vpmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smaxp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(smaxp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5815,7 +6628,10 @@ pub unsafe fn vpmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smaxp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(smaxp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5833,7 +6649,10 @@ pub unsafe fn vpmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umaxp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(umaxp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5851,7 +6670,10 @@ pub unsafe fn vpmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umaxp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(umaxp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5869,7 +6691,10 @@ pub unsafe fn vpmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umaxp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(umaxp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -5887,7 +6712,10 @@ pub unsafe fn vpmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmaxp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fmaxp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6361,7 +7189,10 @@ pub unsafe fn vgetq_lane_p8<const IMM5: i32>(v: poly8x16_t) -> p8 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6379,7 +7210,10 @@ pub unsafe fn vget_high_s8(a: int8x16_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6397,7 +7231,10 @@ pub unsafe fn vget_high_s16(a: int16x8_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6415,7 +7252,10 @@ pub unsafe fn vget_high_s32(a: int32x4_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6433,7 +7273,10 @@ pub unsafe fn vget_high_s64(a: int64x2_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6451,7 +7294,10 @@ pub unsafe fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6469,7 +7315,10 @@ pub unsafe fn vget_high_u16(a: uint16x8_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6487,7 +7336,10 @@ pub unsafe fn vget_high_u32(a: uint32x4_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6505,7 +7357,10 @@ pub unsafe fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6523,7 +7378,10 @@ pub unsafe fn vget_high_p8(a: poly8x16_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6541,7 +7399,10 @@ pub unsafe fn vget_high_p16(a: poly16x8_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6746,7 +7607,10 @@ pub unsafe fn vget_low_f32(a: float32x4_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6767,7 +7631,10 @@ pub unsafe fn vdupq_n_s8(value: i8) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6785,7 +7652,10 @@ pub unsafe fn vdupq_n_s16(value: i16) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6803,7 +7673,10 @@ pub unsafe fn vdupq_n_s32(value: i32) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6821,7 +7694,10 @@ pub unsafe fn vdupq_n_s64(value: i64) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6842,7 +7718,10 @@ pub unsafe fn vdupq_n_u8(value: u8) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6860,7 +7739,10 @@ pub unsafe fn vdupq_n_u16(value: u16) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6878,7 +7760,10 @@ pub unsafe fn vdupq_n_u32(value: u32) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6896,7 +7781,10 @@ pub unsafe fn vdupq_n_u64(value: u64) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6917,7 +7805,10 @@ pub unsafe fn vdupq_n_p8(value: p8) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6935,7 +7826,10 @@ pub unsafe fn vdupq_n_p16(value: p16) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6956,7 +7850,10 @@ pub unsafe fn vdupq_n_f32(value: f32) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6970,7 +7867,10 @@ unsafe fn vdupq_n_f32_vfp4(value: f32) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -6988,7 +7888,10 @@ pub unsafe fn vdup_n_s8(value: i8) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7006,7 +7909,10 @@ pub unsafe fn vdup_n_s16(value: i16) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7024,7 +7930,10 @@ pub unsafe fn vdup_n_s32(value: i32) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmov))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fmov)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7042,7 +7951,10 @@ pub unsafe fn vdup_n_s64(value: i64) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7060,7 +7972,10 @@ pub unsafe fn vdup_n_u8(value: u8) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7078,7 +7993,10 @@ pub unsafe fn vdup_n_u16(value: u16) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7096,7 +8014,10 @@ pub unsafe fn vdup_n_u32(value: u32) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmov))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fmov)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7114,7 +8035,10 @@ pub unsafe fn vdup_n_u64(value: u64) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7132,7 +8056,10 @@ pub unsafe fn vdup_n_p8(value: p8) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7150,7 +8077,10 @@ pub unsafe fn vdup_n_p16(value: p16) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7171,7 +8101,10 @@ pub unsafe fn vdup_n_f32(value: f32) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7185,7 +8118,10 @@ unsafe fn vdup_n_f32_vfp4(value: f32) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7203,7 +8139,10 @@ pub unsafe fn vldrq_p128(a: *const p128) -> p128 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7221,7 +8160,10 @@ pub unsafe fn vstrq_p128(a: *mut p128, b: p128) {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7239,7 +8181,10 @@ pub unsafe fn vmov_n_s8(value: i8) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7257,7 +8202,10 @@ pub unsafe fn vmov_n_s16(value: i16) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7275,7 +8223,10 @@ pub unsafe fn vmov_n_s32(value: i32) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmov))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fmov)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7293,7 +8244,10 @@ pub unsafe fn vmov_n_s64(value: i64) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7311,7 +8265,10 @@ pub unsafe fn vmov_n_u8(value: u8) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7329,7 +8286,10 @@ pub unsafe fn vmov_n_u16(value: u16) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7347,7 +8307,10 @@ pub unsafe fn vmov_n_u32(value: u32) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmov))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(fmov)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7365,7 +8328,10 @@ pub unsafe fn vmov_n_u64(value: u64) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7383,7 +8349,10 @@ pub unsafe fn vmov_n_p8(value: p8) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7401,7 +8370,10 @@ pub unsafe fn vmov_n_p16(value: p16) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7419,7 +8391,10 @@ pub unsafe fn vmov_n_f32(value: f32) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7437,7 +8412,10 @@ pub unsafe fn vmovq_n_s8(value: i8) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7455,7 +8433,10 @@ pub unsafe fn vmovq_n_s16(value: i16) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7473,7 +8454,10 @@ pub unsafe fn vmovq_n_s32(value: i32) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7491,7 +8475,10 @@ pub unsafe fn vmovq_n_s64(value: i64) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7509,7 +8496,10 @@ pub unsafe fn vmovq_n_u8(value: u8) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7527,7 +8517,10 @@ pub unsafe fn vmovq_n_u16(value: u16) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7545,7 +8538,10 @@ pub unsafe fn vmovq_n_u32(value: u32) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7563,7 +8559,10 @@ pub unsafe fn vmovq_n_u64(value: u64) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7581,7 +8580,10 @@ pub unsafe fn vmovq_n_p8(value: p8) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7599,7 +8601,10 @@ pub unsafe fn vmovq_n_p16(value: p16) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(dup)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7617,7 +8622,10 @@ pub unsafe fn vmovq_n_f32(value: f32) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("nop", N = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("nop", N = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("nop", N = 0)
+)]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(
     not(target_arch = "arm"),
@@ -7637,7 +8645,10 @@ pub unsafe fn vext_s64<const N: i32>(a: int64x1_t, _b: int64x1_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("nop", N = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("nop", N = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr("nop", N = 0)
+)]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(
     not(target_arch = "arm"),
@@ -7657,7 +8668,10 @@ pub unsafe fn vext_u64<const N: i32>(a: uint64x1_t, _b: uint64x1_t) -> uint64x1_
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(cnt)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7674,7 +8688,10 @@ pub unsafe fn vcnt_s8(a: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(cnt)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7691,7 +8708,10 @@ pub unsafe fn vcntq_s8(a: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(cnt)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7708,7 +8728,10 @@ pub unsafe fn vcnt_u8(a: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(cnt)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7725,7 +8748,10 @@ pub unsafe fn vcntq_u8(a: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(cnt)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7742,7 +8768,10 @@ pub unsafe fn vcnt_p8(a: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(cnt)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7760,7 +8789,10 @@ pub unsafe fn vcntq_p8(a: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev16)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7778,7 +8810,10 @@ pub unsafe fn vrev16_s8(a: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev16)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7796,7 +8831,10 @@ pub unsafe fn vrev16q_s8(a: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev16)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7814,7 +8852,10 @@ pub unsafe fn vrev16_u8(a: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev16)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7832,7 +8873,10 @@ pub unsafe fn vrev16q_u8(a: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev16)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7850,7 +8894,10 @@ pub unsafe fn vrev16_p8(a: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev16)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7868,7 +8915,10 @@ pub unsafe fn vrev16q_p8(a: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7886,7 +8936,10 @@ pub unsafe fn vrev32_s8(a: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7904,7 +8957,10 @@ pub unsafe fn vrev32q_s8(a: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7922,7 +8978,10 @@ pub unsafe fn vrev32_u8(a: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7940,7 +8999,10 @@ pub unsafe fn vrev32q_u8(a: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7958,7 +9020,10 @@ pub unsafe fn vrev32_s16(a: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7976,7 +9041,10 @@ pub unsafe fn vrev32q_s16(a: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -7994,7 +9062,10 @@ pub unsafe fn vrev32_p16(a: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8012,7 +9083,10 @@ pub unsafe fn vrev32q_p16(a: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8030,7 +9104,10 @@ pub unsafe fn vrev32_u16(a: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8048,7 +9125,10 @@ pub unsafe fn vrev32q_u16(a: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8066,7 +9146,10 @@ pub unsafe fn vrev32_p8(a: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev32)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8084,7 +9167,10 @@ pub unsafe fn vrev32q_p8(a: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8102,7 +9188,10 @@ pub unsafe fn vrev64_s8(a: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8120,7 +9209,10 @@ pub unsafe fn vrev64q_s8(a: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8138,7 +9230,10 @@ pub unsafe fn vrev64_s16(a: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8156,7 +9251,10 @@ pub unsafe fn vrev64q_s16(a: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8174,7 +9272,10 @@ pub unsafe fn vrev64_s32(a: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8192,7 +9293,10 @@ pub unsafe fn vrev64q_s32(a: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8210,7 +9314,10 @@ pub unsafe fn vrev64_u8(a: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8228,7 +9335,10 @@ pub unsafe fn vrev64q_u8(a: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8246,7 +9356,10 @@ pub unsafe fn vrev64_u16(a: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8264,7 +9377,10 @@ pub unsafe fn vrev64q_u16(a: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8282,7 +9398,10 @@ pub unsafe fn vrev64_u32(a: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8300,7 +9419,10 @@ pub unsafe fn vrev64q_u32(a: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8318,7 +9440,10 @@ pub unsafe fn vrev64_f32(a: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8336,7 +9461,10 @@ pub unsafe fn vrev64q_f32(a: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8354,7 +9482,10 @@ pub unsafe fn vrev64_p8(a: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8372,7 +9503,10 @@ pub unsafe fn vrev64q_p8(a: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8390,7 +9524,10 @@ pub unsafe fn vrev64_p16(a: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(rev64)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8408,7 +9545,10 @@ pub unsafe fn vrev64q_p16(a: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.s8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8422,7 +9562,7 @@ pub unsafe fn vpadal_s8(a: int16x4_t, b: int8x8_t) -> int16x4_t {
     {
         crate::core_arch::arm::neon::vpadal_s8_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddl_s8_(b), a)
     }
@@ -8433,7 +9573,10 @@ pub unsafe fn vpadal_s8(a: int16x4_t, b: int8x8_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.s16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8447,7 +9590,7 @@ pub unsafe fn vpadal_s16(a: int32x2_t, b: int16x4_t) -> int32x2_t {
     {
         crate::core_arch::arm::neon::vpadal_s16_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddl_s16_(b), a)
     }
@@ -8458,7 +9601,10 @@ pub unsafe fn vpadal_s16(a: int32x2_t, b: int16x4_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.s32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8472,7 +9618,7 @@ pub unsafe fn vpadal_s32(a: int64x1_t, b: int32x2_t) -> int64x1_t {
     {
         crate::core_arch::arm::neon::vpadal_s32_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddl_s32_(b), a)
     }
@@ -8483,7 +9629,10 @@ pub unsafe fn vpadal_s32(a: int64x1_t, b: int32x2_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.s8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8497,7 +9646,7 @@ pub unsafe fn vpadalq_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
     {
         crate::core_arch::arm::neon::vpadalq_s8_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddlq_s8_(b), a)
     }
@@ -8508,7 +9657,10 @@ pub unsafe fn vpadalq_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.s16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8522,7 +9674,7 @@ pub unsafe fn vpadalq_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
     {
         crate::core_arch::arm::neon::vpadalq_s16_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddlq_s16_(b), a)
     }
@@ -8533,7 +9685,10 @@ pub unsafe fn vpadalq_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.s32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(sadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8547,7 +9702,7 @@ pub unsafe fn vpadalq_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
     {
         crate::core_arch::arm::neon::vpadalq_s32_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddlq_s32_(b), a)
     }
@@ -8558,7 +9713,10 @@ pub unsafe fn vpadalq_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.u8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8572,7 +9730,7 @@ pub unsafe fn vpadal_u8(a: uint16x4_t, b: uint8x8_t) -> uint16x4_t {
     {
         crate::core_arch::arm::neon::vpadal_u8_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddl_u8_(b), a)
     }
@@ -8583,7 +9741,10 @@ pub unsafe fn vpadal_u8(a: uint16x4_t, b: uint8x8_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.u16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8597,7 +9758,7 @@ pub unsafe fn vpadal_u16(a: uint32x2_t, b: uint16x4_t) -> uint32x2_t {
     {
         crate::core_arch::arm::neon::vpadal_u16_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddl_u16_(b), a)
     }
@@ -8608,7 +9769,10 @@ pub unsafe fn vpadal_u16(a: uint32x2_t, b: uint16x4_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.u32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8622,7 +9786,7 @@ pub unsafe fn vpadal_u32(a: uint64x1_t, b: uint32x2_t) -> uint64x1_t {
     {
         crate::core_arch::arm::neon::vpadal_u32_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddl_u32_(b), a)
     }
@@ -8633,7 +9797,10 @@ pub unsafe fn vpadal_u32(a: uint64x1_t, b: uint32x2_t) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.u8))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8647,7 +9814,7 @@ pub unsafe fn vpadalq_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
     {
         crate::core_arch::arm::neon::vpadalq_u8_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddlq_u8_(b), a)
     }
@@ -8658,7 +9825,10 @@ pub unsafe fn vpadalq_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.u16))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8672,7 +9842,7 @@ pub unsafe fn vpadalq_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
     {
         crate::core_arch::arm::neon::vpadalq_u16_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddlq_u16_(b), a)
     }
@@ -8683,7 +9853,10 @@ pub unsafe fn vpadalq_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadal.u32))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uadalp))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(uadalp)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -8697,7 +9870,7 @@ pub unsafe fn vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
     {
         crate::core_arch::arm::neon::vpadalq_u32_(a, b)
     }
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     {
         simd_add(vpaddlq_u32_(b), a)
     }
@@ -8708,7 +9881,10 @@ pub unsafe fn vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
 #[target_feature(enable = "neon,i8mm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smmla))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(smmla)
+)]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
@@ -8722,7 +9898,7 @@ pub unsafe fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t 
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.smmla.v4i32.v16i8")]
         #[cfg_attr(
-            target_arch = "aarch64",
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smmla.v4i32.v16i8"
         )]
         fn vmmlaq_s32_(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t;
@@ -8735,7 +9911,10 @@ pub unsafe fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t 
 #[target_feature(enable = "neon,i8mm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ummla))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ummla)
+)]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
@@ -8749,7 +9928,7 @@ pub unsafe fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.ummla.v4i32.v16i8")]
         #[cfg_attr(
-            target_arch = "aarch64",
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ummla.v4i32.v16i8"
         )]
         fn vmmlaq_u32_(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t;
@@ -8762,7 +9941,10 @@ pub unsafe fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x
 #[target_feature(enable = "neon,i8mm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usmmla))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(usmmla)
+)]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
@@ -8776,7 +9958,7 @@ pub unsafe fn vusmmlaq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.usmmla.v4i32.v16i8")]
         #[cfg_attr(
-            target_arch = "aarch64",
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usmmla.v4i32.v16i8"
         )]
         fn vusmmlaq_s32_(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t;
@@ -8968,7 +10150,10 @@ pub unsafe fn vcombine_u16(low: uint16x4_t, high: uint16x4_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(mov)
+)]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -9018,7 +10203,7 @@ pub unsafe fn vcombine_p64(low: poly64x1_t, high: poly64x1_t) -> poly64x2_t {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     use crate::core_arch::aarch64::*;
     #[cfg(target_arch = "arm")]
     use crate::core_arch::arm::*;
@@ -14624,7 +15809,7 @@ mod tests {
     test_vcombine!(test_vcombine_s64 => vcombine_s64([-3_i64], [13_i64]));
     test_vcombine!(test_vcombine_u64 => vcombine_u64([3_u64], [13_u64]));
     test_vcombine!(test_vcombine_p64 => vcombine_p64([3_u64], [13_u64]));
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     test_vcombine!(test_vcombine_f64 => vcombine_f64([-3_f64], [13_f64]));
 }
 

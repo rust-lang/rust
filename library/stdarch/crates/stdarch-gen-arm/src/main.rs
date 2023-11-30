@@ -577,7 +577,7 @@ impl TargetFeature {
         format!(r#"#[cfg_attr(target_arch = "{arch}", {name}(enable = "{value}"))]"#)
     }
 
-    /// Generate target_feature attributes for a test that will compile for both "arm" and "aarch64".
+    /// Generate target_feature attributes for a test that will compile for "arm", "aarch64" and "arm64ec".
     fn to_target_feature_attr_shared(&self) -> Lines {
         let arm = self.as_target_feature_arg_arm().split(',');
         let aarch64 = self.as_target_feature_arg_aarch64().split(',');
@@ -603,11 +603,16 @@ impl TargetFeature {
                 "target_feature",
                 aarch64.join(","),
             ));
+            lines.push(Self::attr_for_arch(
+                "arm64ec",
+                "target_feature",
+                aarch64.join(","),
+            ));
         }
         lines.into()
     }
 
-    /// Generate a target_feature attribute for a test that will compile only for "aarch64".
+    /// Generate a target_feature attribute for a test that will compile only for "aarch64" and "arm64ec".
     fn to_target_feature_attr_aarch64(&self) -> Lines {
         Lines::single(Self::attr(
             "target_feature",
@@ -623,7 +628,7 @@ impl TargetFeature {
         ))
     }
 
-    /// Generate simd_test attributes for a test that will compile for both "arm" and "aarch64".
+    /// Generate simd_test attributes for a test that will compile for "arm", "aarch64" and "arm64ec".
     fn to_simd_test_attr_shared(&self) -> Lines {
         let arm = self.as_simd_test_arg_arm();
         let aarch64 = self.as_simd_test_arg_aarch64();
@@ -633,12 +638,13 @@ impl TargetFeature {
             vec![
                 Self::attr_for_arch("arm", "simd_test", arm),
                 Self::attr_for_arch("aarch64", "simd_test", aarch64),
+                Self::attr_for_arch("arm64ec", "simd_test", aarch64),
             ]
             .into()
         }
     }
 
-    /// Generate a simd_test attribute for a test that will compile only for "aarch64".
+    /// Generate a simd_test attribute for a test that will compile only for "aarch64" and "arm64ec".
     fn to_simd_test_attr_aarch64(&self) -> Lines {
         Lines::single(Self::attr("simd_test", self.as_simd_test_arg_aarch64()))
     }
@@ -1453,7 +1459,7 @@ fn gen_aarch64(
         ext_c = format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{}")]
         fn {}({}){};
     }}
     "#,
@@ -2087,7 +2093,7 @@ fn gen_arm(
                 r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
         #[cfg_attr(target_arch = "arm", link_name = "{}")]
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{}")]
         fn {}({}) -> {};
     }}
 "#,
@@ -2297,7 +2303,7 @@ fn gen_arm(
         ext_c_aarch64.push_str(&format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{}")]
         fn {}({}){};
     }}
 "#,
@@ -2567,7 +2573,7 @@ fn gen_arm(
 {function_doc}
 #[inline]{target_feature}
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr({assert_arm}{const_assert}))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({assert_aarch64}{const_assert}))]{const_legacy}
+#[cfg_attr(all(test, any(target_arch = "aarch64", target_arch = "arm64ec")), assert_instr({assert_aarch64}{const_assert}))]{const_legacy}
 #[cfg_attr(not(target_arch = "arm"), {stable_aarch64})]
 #[cfg_attr(target_arch = "arm", {stable_arm})]
 {call}

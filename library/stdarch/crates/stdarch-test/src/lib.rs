@@ -99,7 +99,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
             // failed inlining something.
             s[0].starts_with("call ") && s[1].starts_with("pop") // FIXME: original logic but does not match comment
         })
-    } else if cfg!(target_arch = "aarch64") {
+    } else if cfg!(any(target_arch = "aarch64", target_arch = "arm64ec")) {
         instrs.iter().any(|s| s.starts_with("bl "))
     } else {
         // FIXME: Add detection for other archs

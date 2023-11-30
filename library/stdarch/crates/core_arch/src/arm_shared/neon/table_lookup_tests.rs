@@ -4,7 +4,7 @@
 
 use super::*;
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 use crate::core_arch::aarch64::*;
 
 #[cfg(target_arch = "arm")]
@@ -309,7 +309,7 @@ test_vtbx!(
 
 // Aarch64 tests
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl1_s8 => vqtbl1_s8:
     - table[int8x16_t]: [
@@ -320,7 +320,7 @@ test_vtbl!(
     - ctrl[i8x8]: [4_i8, 11, 16, 10, 6, 19, 7, 18] => [68_i8, -117, 0, -84, 102, 0, 119, 0]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl1q_s8 => vqtbl1q_s8:
     - table[int8x16_t]: [
@@ -331,7 +331,7 @@ test_vtbl!(
         => [0_i8, -121, -17, -72, 34, -116, 51, -104, 68, -117, 0, -84, 102, 0, 119, 0]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl1_u8 => vqtbl1_u8:
     - table[uint8x16_t]: [
@@ -342,7 +342,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 11, 16, 10, 6, 19, 7, 18] => [68_u8, 117, 0, 84, 102, 0, 119, 0]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl1q_u8 => vqtbl1q_u8:
     - table[uint8x16_t]: [
@@ -353,7 +353,7 @@ test_vtbl!(
         => [0_u8, 121, 17, 72, 34, 116, 51, 104, 68, 117, 0, 84, 102, 0, 119, 0]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl1_p8 => vqtbl1_p8:
     - table[poly8x16_t]: [
@@ -364,7 +364,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 11, 16, 10, 6, 19, 7, 18] => [68_u8, 117, 0, 84, 102, 0, 119, 0]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl1q_p8 => vqtbl1q_p8:
     - table[poly8x16_t]: [
@@ -375,7 +375,7 @@ test_vtbl!(
         => [0_u8, 121, 17, 72, 34, 116, 51, 104, 68, 117, 0, 84, 102, 0, 119, 0]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl2_s8 => vqtbl2_s8:
     - table[int8x16x2_t]: [
@@ -388,7 +388,7 @@ test_vtbl!(
     - ctrl[i8x8]: [4_i8, 31, 32, 10, 6, 49, 7, 18] => [4_i8, -31, 0, 10, 6, 0, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl2q_s8 => vqtbl2q_s8:
     - table[int8x16x2_t]: [
@@ -401,7 +401,7 @@ test_vtbl!(
         => [0_i8, -15, -1, 24, 2, -13, -3, -29, 4, -31, 0, 10, 6, 0, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl2_u8 => vqtbl2_u8:
     - table[uint8x16x2_t]: [
@@ -414,7 +414,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 31, 32, 10, 6, 49, 7, 18] => [4_u8, 31, 0, 10, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl2q_u8 => vqtbl2q_u8:
     - table[uint8x16x2_t]: [
@@ -427,7 +427,7 @@ test_vtbl!(
         => [0_u8, 15, 1, 24, 2, 13, 3, 29, 4, 31, 0, 10, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl2_p8 => vqtbl2_p8:
     - table[poly8x16x2_t]: [
@@ -440,7 +440,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 31, 32, 10, 6, 49, 7, 18] => [4_u8, 31, 0, 10, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl2q_p8 => vqtbl2q_p8:
     - table[poly8x16x2_t]: [
@@ -453,7 +453,7 @@ test_vtbl!(
         => [0_u8, 15, 1, 24, 2, 13, 3, 29, 4, 31, 0, 10, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl3_s8 => vqtbl3_s8:
     - table[int8x16x3_t]: [
@@ -468,7 +468,7 @@ test_vtbl!(
     - ctrl[i8x8]: [4_i8, 32, 46, 51, 6, 49, 7, 18] => [4_i8, 32, 46, 0, 6, 0, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl3q_s8 => vqtbl3q_s8:
     - table[int8x16x3_t]: [
@@ -483,7 +483,7 @@ test_vtbl!(
         => [0_i8, -15, -1, 24, 2, -13, -3, -29, 4, 32, 46, 0, 6, 0, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl3_u8 => vqtbl3_u8:
     - table[uint8x16x3_t]: [
@@ -498,7 +498,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 32, 46, 51, 6, 49, 7, 18] => [4_u8, 32, 46, 0, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl3q_u8 => vqtbl3q_u8:
     - table[uint8x16x3_t]: [
@@ -513,7 +513,7 @@ test_vtbl!(
         => [0_u8, 15, 1, 24, 2, 13, 3, 29, 4, 32, 46, 0, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl3_p8 => vqtbl3_p8:
     - table[poly8x16x3_t]: [
@@ -528,7 +528,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 32, 46, 51, 6, 49, 7, 18] => [4_u8, 32, 46, 0, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl3q_p8 => vqtbl3q_p8:
     - table[poly8x16x3_t]: [
@@ -543,7 +543,7 @@ test_vtbl!(
         => [0_u8, 15, 1, 24, 2, 13, 3, 29, 4, 32, 46, 0, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl4_s8 => vqtbl4_s8:
     - table[int8x16x4_t]: [
@@ -560,7 +560,7 @@ test_vtbl!(
     - ctrl[i8x8]: [4_i8, 46, 64, 51, 6, 71, 7, 18] => [4_i8, 46, 0, -51, 6, 0, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl4q_s8 => vqtbl4q_s8:
     - table[int8x16x4_t]: [
@@ -577,7 +577,7 @@ test_vtbl!(
         => [0_i8, -15, -1, 24, 2, -13, -3, -29, 4, 46, 0, -51, 6, 0, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl4_u8 => vqtbl4_u8:
     - table[uint8x16x4_t]: [
@@ -594,7 +594,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 46, 64, 51, 6, 71, 7, 18] => [4_u8, 46, 0, 51, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl4q_u8 => vqtbl4q_u8:
     - table[uint8x16x4_t]: [
@@ -611,7 +611,7 @@ test_vtbl!(
         => [0_u8, 15, 1, 24, 2, 13, 3, 29, 4, 46, 0, 51, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl4_p8 => vqtbl4_p8:
     - table[poly8x16x4_t]: [
@@ -628,7 +628,7 @@ test_vtbl!(
     - ctrl[u8x8]: [4_u8, 46, 64, 51, 6, 71, 7, 18] => [4_u8, 46, 0, 51, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbl!(
     test_vqtbl4q_p8 => vqtbl4q_p8:
     - table[poly8x16x4_t]: [
@@ -645,7 +645,7 @@ test_vtbl!(
         => [0_u8, 15, 1, 24, 2, 13, 3, 29, 4, 46, 0, 51, 6, 0, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx1_s8 => vqtbx1_s8:
     - table[int8x16_t]: [
@@ -657,7 +657,7 @@ test_vtbx!(
     - ctrl[i8x8]: [4_i8, 11, 16, 10, 6, 19, 7, 18] => [68_i8, -117, 102, -84, 102, -105, 119, -107]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx1q_s8 => vqtbx1q_s8:
     - table[int8x16_t]: [
@@ -672,7 +672,7 @@ test_vtbx!(
         => [100_i8, -121, -17, -72, 34, -116, 51, -104, 68, -117, 110, -84, 102, -113, 119, -115]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx1_u8 => vqtbx1_u8:
     - table[uint8x16_t]: [
@@ -684,7 +684,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 11, 16, 10, 6, 19, 7, 18] => [68_u8, 117, 102, 84, 102, 105, 119, 107]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx1q_u8 => vqtbx1q_u8:
     - table[uint8x16_t]: [
@@ -699,7 +699,7 @@ test_vtbx!(
         => [100_u8, 121, 17, 72, 34, 116, 51, 104, 68, 117, 110, 84, 102, 113, 119, 115]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx1_p8 => vqtbx1_p8:
     - table[poly8x16_t]: [
@@ -711,7 +711,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 11, 16, 10, 6, 19, 7, 18] => [68_u8, 117, 102, 84, 102, 105, 119, 107]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx1q_p8 => vqtbx1q_p8:
     - table[poly8x16_t]: [
@@ -726,7 +726,7 @@ test_vtbx!(
         => [100_u8, 121, 17, 72, 34, 116, 51, 104, 68, 117, 110, 84, 102, 113, 119, 115]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx2_s8 => vqtbx2_s8:
     - table[int8x16x2_t]: [
@@ -740,7 +740,7 @@ test_vtbx!(
     - ctrl[i8x8]: [4_i8, 31, 32, 10, 6, 49, 7, 18] => [4_i8, -31, 102, 10, 6, -105, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx2q_s8 => vqtbx2q_s8:
     - table[int8x16x2_t]: [
@@ -757,7 +757,7 @@ test_vtbx!(
         => [100_i8, -15, -1, 24, 2, -13, -3, -29, 4, -31, 110, 10, 6, -113, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx2_u8 => vqtbx2_u8:
     - table[uint8x16x2_t]: [
@@ -771,7 +771,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 31, 32, 10, 6, 49, 7, 18] => [4_u8, 31, 102, 10, 6, 105, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx2q_u8 => vqtbx2q_u8:
     - table[uint8x16x2_t]: [
@@ -788,7 +788,7 @@ test_vtbx!(
         => [100_u8, 15, 1, 24, 2, 13, 3, 29, 4, 31, 110, 10, 6, 113, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx2_p8 => vqtbx2_p8:
     - table[poly8x16x2_t]: [
@@ -802,7 +802,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 31, 32, 10, 6, 49, 7, 18] => [4_u8, 31, 102, 10, 6, 105, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx2q_p8 => vqtbx2q_p8:
     - table[poly8x16x2_t]: [
@@ -819,7 +819,7 @@ test_vtbx!(
         => [100_u8, 15, 1, 24, 2, 13, 3, 29, 4, 31, 110, 10, 6, 113, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx3_s8 => vqtbx3_s8:
     - table[int8x16x3_t]: [
@@ -835,7 +835,7 @@ test_vtbx!(
     - ctrl[i8x8]: [4_i8, 32, 46, 51, 6, 49, 7, 18] => [4_i8, 32, 46, -103, 6, -105, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx3q_s8 => vqtbx3q_s8:
     - table[int8x16x3_t]: [
@@ -854,7 +854,7 @@ test_vtbx!(
         => [100_i8, -15, -1, 24, 2, -13, -3, -29, 4, 32, 46, -111, 6, -113, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx3_u8 => vqtbx3_u8:
     - table[uint8x16x3_t]: [
@@ -870,7 +870,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 32, 46, 51, 6, 49, 7, 18] => [4_u8, 32, 46, 103, 6, 105, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx3q_u8 => vqtbx3q_u8:
     - table[uint8x16x3_t]: [
@@ -889,7 +889,7 @@ test_vtbx!(
         => [100_u8, 15, 1, 24, 2, 13, 3, 29, 4, 32, 46, 111, 6, 113, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx3_p8 => vqtbx3_p8:
     - table[poly8x16x3_t]: [
@@ -905,7 +905,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 32, 46, 51, 6, 49, 7, 18] => [4_u8, 32, 46, 103, 6, 105, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx3q_p8 => vqtbx3q_p8:
     - table[poly8x16x3_t]: [
@@ -924,7 +924,7 @@ test_vtbx!(
         => [100_u8, 15, 1, 24, 2, 13, 3, 29, 4, 32, 46, 111, 6, 113, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx4_s8 => vqtbx4_s8:
     - table[int8x16x4_t]: [
@@ -942,7 +942,7 @@ test_vtbx!(
     - ctrl[i8x8]: [4_i8, 46, 64, 51, 6, 71, 7, 18] => [4_i8, 46, 102, -51, 6, -105, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx4q_s8 => vqtbx4q_s8:
     - table[int8x16x4_t]: [
@@ -963,7 +963,7 @@ test_vtbx!(
         => [100_i8, -15, -1, 24, 2, -13, -3, -29, 4, 46, 110, -51, 6, -113, -7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx4_u8 => vqtbx4_u8:
     - table[uint8x16x4_t]: [
@@ -981,7 +981,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 46, 64, 51, 6, 71, 7, 18] => [4_u8, 46, 102, 51, 6, 105, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx4q_u8 => vqtbx4q_u8:
     - table[uint8x16x4_t]: [
@@ -1002,7 +1002,7 @@ test_vtbx!(
         => [100_u8, 15, 1, 24, 2, 13, 3, 29, 4, 46, 110, 51, 6, 113, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx4_p8 => vqtbx4_p8:
     - table[poly8x16x4_t]: [
@@ -1020,7 +1020,7 @@ test_vtbx!(
     - ctrl[u8x8]: [4_u8, 46, 64, 51, 6, 71, 7, 18] => [4_u8, 46, 102, 51, 6, 105, 7, 18]
 );
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 test_vtbx!(
     test_vqtbx4q_p8 => vqtbx4q_p8:
     - table[poly8x16x4_t]: [

@@ -163,7 +163,7 @@ fn parse(output: &str) -> HashSet<Function> {
                     .collect::<Vec<String>>()
             };
 
-            if cfg!(target_arch = "aarch64") {
+            if cfg!(any(target_arch = "aarch64", target_arch = "arm64ec")) {
                 // Normalize [us]shll.* ..., #0 instructions to the preferred form: [us]xtl.* ...
                 // as LLVM objdump does not do that.
                 // See https://developer.arm.com/documentation/ddi0602/latest/SIMD-FP-Instructions/UXTL--UXTL2--Unsigned-extend-Long--an-alias-of-USHLL--USHLL2-

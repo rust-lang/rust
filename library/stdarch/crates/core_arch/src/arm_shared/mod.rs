@@ -66,11 +66,21 @@ pub use crc::*;
 
 // NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
 #[cfg(target_endian = "little")]
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_feature = "v7",
+    doc
+))]
 mod crypto;
 // NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
 #[cfg(target_endian = "little")]
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_feature = "v7",
+    doc
+))]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
@@ -83,10 +93,20 @@ pub use self::crypto::*;
 
 // NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
 #[cfg(target_endian = "little")]
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_feature = "v7",
+    doc
+))]
 pub(crate) mod neon;
 #[cfg(target_endian = "little")]
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_feature = "v7",
+    doc
+))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -98,7 +118,12 @@ pub(crate) mod neon;
 pub use self::neon::*;
 
 #[cfg(test)]
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_feature = "v7",
+    doc
+))]
 pub(crate) mod test_support;
 
 mod sealed {

@@ -2074,7 +2074,10 @@ pub unsafe fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
 #[target_feature(enable = "neon")]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, IMM5 = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, IMM5 = 0)
+)]
 pub unsafe fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
     static_assert!(IMM5 == 0);
     simd_extract!(v, IMM5 as u32)
@@ -2085,7 +2088,10 @@ pub unsafe fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
 #[target_feature(enable = "neon")]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, IMM5 = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, IMM5 = 0)
+)]
 pub unsafe fn vgetq_lane_f64<const IMM5: i32>(v: float64x2_t) -> f64 {
     static_assert_uimm_bits!(IMM5, 1);
     simd_extract!(v, IMM5 as u32)
@@ -3417,7 +3423,10 @@ pub unsafe fn vsm3tt1aq_u32<const IMM2: i32>(
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt1a")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.crypto.sm3tt1a"
+        )]
         fn vsm3tt1aq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
     }
     vsm3tt1aq_u32_(a, b, c, IMM2 as i64)
@@ -3437,7 +3446,10 @@ pub unsafe fn vsm3tt1bq_u32<const IMM2: i32>(
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt1b")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.crypto.sm3tt1b"
+        )]
         fn vsm3tt1bq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
     }
     vsm3tt1bq_u32_(a, b, c, IMM2 as i64)
@@ -3457,7 +3469,10 @@ pub unsafe fn vsm3tt2aq_u32<const IMM2: i32>(
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt2a")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.crypto.sm3tt2a"
+        )]
         fn vsm3tt2aq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
     }
     vsm3tt2aq_u32_(a, b, c, IMM2 as i64)
@@ -3477,7 +3492,10 @@ pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt2b")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.crypto.sm3tt2b"
+        )]
         fn vsm3tt2bq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
     }
     vsm3tt2bq_u32_(a, b, c, IMM2 as i64)
@@ -3493,7 +3511,10 @@ pub unsafe fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64
     static_assert_uimm_bits!(IMM6, 6);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.xar")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.crypto.xar"
+        )]
         fn vxarq_u64_(a: uint64x2_t, b: uint64x2_t, n: i64) -> uint64x2_t;
     }
     vxarq_u64_(a, b, IMM6 as i64)

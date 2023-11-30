@@ -4,7 +4,7 @@
 
 use super::*;
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 use crate::core_arch::aarch64::*;
 
 #[cfg(target_arch = "arm")]

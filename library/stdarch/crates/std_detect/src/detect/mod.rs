@@ -63,7 +63,7 @@ cfg_if! {
         mod aarch64;
         #[path = "os/openbsd/aarch64.rs"]
         mod os;
-    } else if #[cfg(all(target_os = "windows", target_arch = "aarch64"))] {
+    } else if #[cfg(all(target_os = "windows", any(target_arch = "aarch64", target_arch = "arm64ec")))] {
         #[path = "os/windows/aarch64.rs"]
         mod os;
     } else if #[cfg(all(target_os = "macos", target_arch = "aarch64", feature = "libc"))] {
@@ -93,6 +93,7 @@ pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
             target_arch = "x86_64",
             target_arch = "arm",
             target_arch = "aarch64",
+            target_arch = "arm64ec",
             target_arch = "riscv32",
             target_arch = "riscv64",
             target_arch = "powerpc",

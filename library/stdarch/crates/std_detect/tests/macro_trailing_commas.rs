@@ -3,6 +3,7 @@
     any(
         target_arch = "arm",
         target_arch = "aarch64",
+        target_arch = "arm64ec",
         target_arch = "x86",
         target_arch = "x86_64",
         target_arch = "powerpc",
@@ -18,6 +19,7 @@
 #[cfg(any(
     target_arch = "arm",
     target_arch = "aarch64",
+    target_arch = "arm64ec",
     target_arch = "x86",
     target_arch = "x86_64",
     target_arch = "powerpc",

@@ -29,7 +29,7 @@ cfg_if! {
     } else if #[cfg(target_arch = "arm")] {
         #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
         pub use arm::*;
-    } else if #[cfg(target_arch = "aarch64")] {
+    } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
         #[stable(feature = "simd_aarch64", since = "1.60.0")]
         pub use aarch64::*;
     } else if #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))] {

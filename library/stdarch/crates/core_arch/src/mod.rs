@@ -6,7 +6,12 @@ mod macros;
 #[cfg(any(target_arch = "riscv32", target_arch = "riscv64", doc))]
 mod riscv_shared;
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64", doc))]
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    doc
+))]
 mod arm_shared;
 
 mod simd;
@@ -52,8 +57,8 @@ pub mod arch {
     /// Platform-specific intrinsics for the `aarch64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "aarch64", doc))]
-    #[doc(cfg(target_arch = "aarch64"))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec", doc))]
+    #[doc(cfg(any(target_arch = "aarch64", target_arch = "arm64ec")))]
     #[stable(feature = "neon_intrinsics", since = "1.59.0")]
     pub mod aarch64 {
         #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -282,8 +287,8 @@ mod x86;
 #[doc(cfg(target_arch = "x86_64"))]
 mod x86_64;
 
-#[cfg(any(target_arch = "aarch64", doc))]
-#[doc(cfg(target_arch = "aarch64"))]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec", doc))]
+#[doc(cfg(any(target_arch = "aarch64", target_arch = "arm64ec")))]
 mod aarch64;
 #[cfg(any(target_arch = "arm", doc))]
 #[doc(cfg(any(target_arch = "arm")))]

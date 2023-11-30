@@ -2,48 +2,90 @@ use crate::core_arch::arm_shared::{uint32x4_t, uint8x16_t};
 
 #[allow(improper_ctypes)]
 extern "unadjusted" {
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aese")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.aese"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aese")]
     fn vaeseq_u8_(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aesd")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.aesd"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aesd")]
     fn vaesdq_u8_(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aesmc")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.aesmc"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aesmc")]
     fn vaesmcq_u8_(data: uint8x16_t) -> uint8x16_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aesimc")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.aesimc"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aesimc")]
     fn vaesimcq_u8_(data: uint8x16_t) -> uint8x16_t;
 
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1h")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha1h"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1h")]
     fn vsha1h_u32_(hash_e: u32) -> u32;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1su0")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha1su0"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1su0")]
     fn vsha1su0q_u32_(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> uint32x4_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1su1")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha1su1"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1su1")]
     fn vsha1su1q_u32_(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1c")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha1c"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1c")]
     fn vsha1cq_u32_(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1p")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha1p"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1p")]
     fn vsha1pq_u32_(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1m")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha1m"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1m")]
     fn vsha1mq_u32_(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t;
 
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256h")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha256h"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256h")]
     fn vsha256hq_u32_(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256h2")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha256h2"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256h2")]
     fn vsha256h2q_u32_(hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t) -> uint32x4_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256su0")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha256su0"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256su0")]
     fn vsha256su0q_u32_(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256su1")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crypto.sha256su1"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256su1")]
     fn vsha256su1q_u32_(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t;
 }

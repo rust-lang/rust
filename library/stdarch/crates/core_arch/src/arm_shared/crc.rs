@@ -1,26 +1,50 @@
 extern "unadjusted" {
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32b")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32b"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32b")]
     fn crc32b_(crc: u32, data: u32) -> u32;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32h")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32h"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32h")]
     fn crc32h_(crc: u32, data: u32) -> u32;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32w")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32w"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")]
     fn crc32w_(crc: u32, data: u32) -> u32;
 
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32cb")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32cb"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cb")]
     fn crc32cb_(crc: u32, data: u32) -> u32;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32ch")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32ch"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32ch")]
     fn crc32ch_(crc: u32, data: u32) -> u32;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32cw")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32cw"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")]
     fn crc32cw_(crc: u32, data: u32) -> u32;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32x")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32x"
+    )]
     fn crc32x_(crc: u32, data: u64) -> u32;
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crc32cx")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.crc32cx"
+    )]
     fn crc32cx_(crc: u32, data: u64) -> u32;
 }
 
@@ -104,7 +128,7 @@ pub unsafe fn __crc32cw(crc: u32, data: u32) -> u32 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32d)
 #[inline]
 #[target_feature(enable = "crc")]
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(crc32x))]
 #[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
@@ -133,7 +157,7 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32cd)
 #[inline]
 #[target_feature(enable = "crc")]
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(crc32cx))]
 #[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {

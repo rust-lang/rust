@@ -9,6 +9,7 @@
     any(
         target_arch = "arm",
         target_arch = "aarch64",
+        target_arch = "arm64ec",
         target_arch = "x86",
         target_arch = "x86_64",
         target_arch = "powerpc",
@@ -101,7 +102,10 @@ fn aarch64_linux() {
 }
 
 #[test]
-#[cfg(all(target_arch = "aarch64", target_os = "windows"))]
+#[cfg(all(
+    any(target_arch = "aarch64", target_arch = "arm64ec"),
+    target_os = "windows"
+))]
 fn aarch64_windows() {
     println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
     println!("fp: {:?}", is_aarch64_feature_detected!("fp"));

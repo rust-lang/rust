@@ -4,6 +4,7 @@
 #[cfg(not(any(
     // v8
     target_arch = "aarch64",
+    target_arch = "arm64ec",
     // v7
     target_feature = "v7",
     // v6-M
@@ -13,6 +14,7 @@ mod cp15;
 
 #[cfg(not(any(
     target_arch = "aarch64",
+    target_arch = "arm64ec",
     target_feature = "v7",
     target_feature = "mclass"
 )))]
@@ -22,6 +24,7 @@ pub use self::cp15::*;
 // Dedicated instructions
 #[cfg(any(
     target_arch = "aarch64",
+    target_arch = "arm64ec",
     target_feature = "v7",
     target_feature = "mclass"
 ))]
@@ -47,6 +50,7 @@ macro_rules! dmb_dsb {
 
 #[cfg(any(
     target_arch = "aarch64",
+    target_arch = "arm64ec",
     target_feature = "v7",
     target_feature = "mclass"
 ))]
@@ -54,23 +58,32 @@ mod common;
 
 #[cfg(any(
     target_arch = "aarch64",
+    target_arch = "arm64ec",
     target_feature = "v7",
     target_feature = "mclass"
 ))]
 #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::common::*;
 
-#[cfg(any(target_arch = "aarch64", target_feature = "v7",))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_feature = "v7",
+))]
 mod not_mclass;
 
-#[cfg(any(target_arch = "aarch64", target_feature = "v7",))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_feature = "v7",
+))]
 #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::not_mclass::*;
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 mod v8;
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::v8::*;
 
@@ -132,15 +145,24 @@ where
 }
 
 extern "unadjusted" {
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.dmb")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.dmb"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.dmb")]
     fn dmb(_: i32);
 
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.dsb")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.dsb"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.dsb")]
     fn dsb(_: i32);
 
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.isb")]
+    #[cfg_attr(
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        link_name = "llvm.aarch64.isb"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.isb")]
     fn isb(_: i32);
 }
