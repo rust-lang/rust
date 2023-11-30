@@ -2414,6 +2414,12 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::gen_blocks, span);
         }
 
+        if let (Async::Yes { span: async_span, .. }, Gen::Yes { span: gen_span, .. }) =
+            (asyncness, genness)
+        {
+            self.sess.emit_err(errors::AsyncGenFn { span: async_span.to(gen_span) });
+        }
+
         if !self.eat_keyword_case(kw::Fn, case) {
             // It is possible for `expect_one_of` to recover given the contents of
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
