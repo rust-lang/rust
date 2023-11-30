@@ -91,7 +91,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 Some(tcx.fn_sig(did))
             } else {
                 tcx.sess
-                    .delay_span_bug(attr.span, "this attribute can only be applied to functions");
+                    .span_delayed_bug(attr.span, "this attribute can only be applied to functions");
                 None
             }
         };

@@ -102,7 +102,7 @@ impl<'a> PostExpansionVisitor<'a> {
             }
             Err(abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
-                    self.sess.parse_sess.span_diagnostic.delay_span_bug(
+                    self.sess.parse_sess.span_diagnostic.span_delayed_bug(
                         span,
                         format!(
                             "unrecognized ABI not caught in lowering: {}",

@@ -232,7 +232,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
             let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
-                let reported = infcx.tcx.sess.delay_span_bug(
+                let reported = infcx.tcx.sess.span_delayed_bug(
                     decl.hidden_type.span,
                     format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
@@ -274,9 +274,9 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
 #[track_caller]
 fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: String) {
     // We sometimes see MIR failures (notably predicate failures) due to
-    // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
+    // the fact that we check rvalue sized predicates here. So use `span_delayed_bug`
     // to avoid reporting bugs in those cases.
-    tcx.sess.diagnostic().delay_span_bug(span, msg);
+    tcx.sess.diagnostic().span_delayed_bug(span, msg);
 }
 
 enum FieldAccessError {
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         if result.is_err() {
-            self.infcx.tcx.sess.delay_span_bug(
+            self.infcx.tcx.sess.span_delayed_bug(
                 self.body.span,
                 "failed re-defining predefined opaques in mir typeck",
             );

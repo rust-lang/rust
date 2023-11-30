@@ -1326,7 +1326,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = match &t.kind {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => {
-                hir::TyKind::Err(self.tcx.sess.delay_span_bug(t.span, "TyKind::Err lowered"))
+                hir::TyKind::Err(self.tcx.sess.span_delayed_bug(t.span, "TyKind::Err lowered"))
             }
             // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
             #[allow(rustc::untranslatable_diagnostic)]
@@ -1510,7 +1510,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
             TyKind::CVarArgs => {
-                let guar = self.tcx.sess.delay_span_bug(
+                let guar = self.tcx.sess.span_delayed_bug(
                     t.span,
                     "`TyKind::CVarArgs` should have been handled elsewhere",
                 );
@@ -1653,7 +1653,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     } else {
                         self.tcx
                             .sess
-                            .delay_span_bug(lifetime.ident.span, "no def-id for fresh lifetime");
+                            .span_delayed_bug(lifetime.ident.span, "no def-id for fresh lifetime");
                         continue;
                     }
                 }
@@ -2515,9 +2515,10 @@ impl<'hir> GenericArgsCtor<'hir> {
         let hir_id = lcx.next_id();
 
         let Some(host_param_id) = lcx.host_param_id else {
-            lcx.tcx
-                .sess
-                .delay_span_bug(span, "no host param id for call in const yet no errors reported");
+            lcx.tcx.sess.span_delayed_bug(
+                span,
+                "no host param id for call in const yet no errors reported",
+            );
             return;
         };
 

@@ -391,7 +391,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def) {
                     Ok(ecx.tcx.mir_for_ctfe(def))
                 } else if ecx.tcx.def_kind(def) == DefKind::AssocConst {
-                    let guar = ecx.tcx.sess.delay_span_bug(
+                    let guar = ecx.tcx.sess.span_delayed_bug(
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );
@@ -622,7 +622,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     let guard = ecx
                         .tcx
                         .sess
-                        .delay_span_bug(span, "The deny lint should have already errored");
+                        .span_delayed_bug(span, "The deny lint should have already errored");
                     throw_inval!(AlreadyReported(guard.into()));
                 }
             } else if new_steps > start && new_steps.is_power_of_two() {

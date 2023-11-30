@@ -38,16 +38,16 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
     })
 }
 
-/// A query to trigger a `delay_span_bug`. Clearly, if one has a `tcx` one can already trigger a
-/// `delay_span_bug`, so what is the point of this? It exists to help us test `delay_span_bug`'s
+/// A query to trigger a `span_delayed_bug`. Clearly, if one has a `tcx` one can already trigger a
+/// `span_delayed_bug`, so what is the point of this? It exists to help us test `span_delayed_bug`'s
 /// interactions with the query system and incremental.
-pub fn trigger_delay_span_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
-    tcx.sess.delay_span_bug(
+pub fn trigger_span_delayed_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
+    tcx.sess.span_delayed_bug(
         tcx.def_span(key),
-        "delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]",
+        "delayed span bug triggered by #[rustc_error(span_delayed_bug_from_inside_query)]",
     );
 }
 
 pub fn provide(providers: &mut crate::query::Providers) {
-    *providers = crate::query::Providers { trigger_delay_span_bug, ..*providers };
+    *providers = crate::query::Providers { trigger_span_delayed_bug, ..*providers };
 }

@@ -1549,7 +1549,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // any superfluous errors we might encounter while trying to
                 // emit or provide suggestions on how to fix the initial error.
                 fcx.set_tainted_by_errors(
-                    fcx.tcx.sess.delay_span_bug(cause.span, "coercion error but no error emitted"),
+                    fcx.tcx
+                        .sess
+                        .span_delayed_bug(cause.span, "coercion error but no error emitted"),
                 );
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like

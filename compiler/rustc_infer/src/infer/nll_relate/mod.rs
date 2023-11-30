@@ -494,7 +494,7 @@ where
                     // shouldn't ever fail. Instead, it unconditionally emits an
                     // alias-relate goal.
                     assert!(!self.infcx.next_trait_solver());
-                    self.tcx().sess.delay_span_bug(
+                    self.tcx().sess.span_delayed_bug(
                         self.delegate.span(),
                         "failure to relate an opaque to itself should result in an error later on",
                     );
@@ -552,7 +552,7 @@ where
         match b.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
-                self.infcx.tcx.sess.delay_span_bug(
+                self.infcx.tcx.sess.span_delayed_bug(
                     self.delegate.span(),
                     format!("unexpected inference var {b:?}",),
                 );

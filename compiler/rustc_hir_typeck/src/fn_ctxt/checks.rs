@@ -517,7 +517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
         self.set_tainted_by_errors(
-            tcx.sess.delay_span_bug(call_span, "no errors reported for args"),
+            tcx.sess.span_delayed_bug(call_span, "no errors reported for args"),
         );
 
         // Get the argument span in the context of the call span so that
@@ -1361,7 +1361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let variant = match def {
             Res::Err => {
                 let guar =
-                    self.tcx.sess.delay_span_bug(path_span, "`Res::Err` but no error emitted");
+                    self.tcx.sess.span_delayed_bug(path_span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(guar);
                 return Err(guar);
             }

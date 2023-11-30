@@ -138,7 +138,7 @@ where
                 && let Some(span) = root.query.span
             {
                 error.stash(span, StashKey::Cycle);
-                qcx.dep_context().sess().delay_span_bug(span, "delayed cycle error")
+                qcx.dep_context().sess().span_delayed_bug(span, "delayed cycle error")
             } else {
                 error.emit()
             };
@@ -421,7 +421,7 @@ where
                 // We have an inconsistency. This can happen if one of the two
                 // results is tainted by errors. In this case, delay a bug to
                 // ensure compilation is doomed.
-                qcx.dep_context().sess().delay_span_bug(
+                qcx.dep_context().sess().span_delayed_bug(
                     DUMMY_SP,
                     format!(
                         "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\

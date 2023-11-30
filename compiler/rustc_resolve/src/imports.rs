@@ -1059,7 +1059,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         if res == Res::Err || has_ambiguity_error {
                             this.tcx
                                 .sess
-                                .delay_span_bug(import.span, "some error happened for an import");
+                                .span_delayed_bug(import.span, "some error happened for an import");
                             return;
                         }
                         if let Ok(initial_res) = initial_res {

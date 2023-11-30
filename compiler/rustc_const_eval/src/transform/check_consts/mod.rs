@@ -112,7 +112,7 @@ pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         None if is_parent_const_stable_trait(tcx, def_id) => {
             // Remove this when `#![feature(const_trait_impl)]` is stabilized,
             // returning `true` unconditionally.
-            tcx.sess.delay_span_bug(
+            tcx.sess.span_delayed_bug(
                 tcx.def_span(def_id),
                 "trait implementations cannot be const stable yet",
             );

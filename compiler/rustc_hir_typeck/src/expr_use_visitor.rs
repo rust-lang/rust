@@ -538,7 +538,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             // The struct path probably didn't resolve
             if self.mc.typeck_results.opt_field_index(field.hir_id).is_none() {
-                self.tcx().sess.delay_span_bug(field.span, "couldn't resolve index for field");
+                self.tcx().sess.span_delayed_bug(field.span, "couldn't resolve index for field");
             }
         }
 

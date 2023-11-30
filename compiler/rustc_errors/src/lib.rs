@@ -528,7 +528,7 @@ pub struct HandlerFlags {
     /// If true, immediately emit diagnostics that would otherwise be buffered.
     /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
     pub dont_buffer_diagnostics: bool,
-    /// If true, immediately print bugs registered with `delay_span_bug`.
+    /// If true, immediately print bugs registered with `span_delayed_bug`.
     /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
     /// Show macro backtraces.
@@ -546,7 +546,7 @@ impl Drop for HandlerInner {
 
         if !self.has_errors() {
             let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
-            self.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+            self.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
         }
 
         // FIXME(eddyb) this explains what `delayed_good_path_bugs` are!
@@ -996,14 +996,14 @@ impl Handler {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
-    /// For documentation on this, see `Session::delay_span_bug`.
+    /// For documentation on this, see `Session::span_delayed_bug`.
     #[track_caller]
-    pub fn delay_span_bug(
+    pub fn span_delayed_bug(
         &self,
         span: impl Into<MultiSpan>,
         msg: impl Into<String>,
     ) -> ErrorGuaranteed {
-        self.inner.borrow_mut().delay_span_bug(span, msg)
+        self.inner.borrow_mut().span_delayed_bug(span, msg)
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
@@ -1268,7 +1268,7 @@ impl Handler {
     pub fn flush_delayed(&self) {
         let mut inner = self.inner.lock();
         let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
-        inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+        inner.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
     }
 }
 
@@ -1594,14 +1594,17 @@ impl HandlerInner {
         self.emit_diagnostic(diag.set_span(sp));
     }
 
-    /// For documentation on this, see `Session::delay_span_bug`.
+    /// For documentation on this, see `Session::span_delayed_bug`.
+    ///
+    /// Note: this function used to be called `delay_span_bug`. It was renamed
+    /// to match similar functions like `span_bug`, `span_err`, etc.
     #[track_caller]
-    fn delay_span_bug(
+    fn span_delayed_bug(
         &mut self,
         sp: impl Into<MultiSpan>,
         msg: impl Into<String>,
     ) -> ErrorGuaranteed {
-        // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
+        // This is technically `self.treat_err_as_bug()` but `span_delayed_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
         if self.flags.treat_err_as_bug.is_some_and(|c| {

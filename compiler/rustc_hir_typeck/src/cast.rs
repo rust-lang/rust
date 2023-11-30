@@ -142,7 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let reported = self
                     .tcx
                     .sess
-                    .delay_span_bug(span, format!("`{t:?}` should be sized but is not?"));
+                    .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
                 return Err(reported);
             }
         })

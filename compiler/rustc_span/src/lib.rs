@@ -2247,7 +2247,7 @@ pub struct ErrorGuaranteed(());
 impl ErrorGuaranteed {
     /// To be used only if you really know what you are doing... ideally, we would find a way to
     /// eliminate all calls to this method.
-    #[deprecated = "`Session::delay_span_bug` should be preferred over this function"]
+    #[deprecated = "`Session::span_delayed_bug` should be preferred over this function"]
     pub fn unchecked_claim_error_was_emitted() -> Self {
         ErrorGuaranteed(())
     }

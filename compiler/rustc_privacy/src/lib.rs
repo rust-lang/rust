@@ -1268,7 +1268,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 } else {
                     self.tcx
                         .sess
-                        .delay_span_bug(expr.span, "no type-dependent def for method call");
+                        .span_delayed_bug(expr.span, "no type-dependent def for method call");
                 }
             }
             _ => {}
@@ -1843,7 +1843,7 @@ fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
                             ..
                         }) => tr.path.res.opt_def_id().map_or_else(
                             || {
-                                tcx.sess.delay_span_bug(tr.path.span, "trait without a def-id");
+                                tcx.sess.span_delayed_bug(tr.path.span, "trait without a def-id");
                                 ty::Visibility::Public
                             },
                             |def_id| tcx.visibility(def_id).expect_local(),

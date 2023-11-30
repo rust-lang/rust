@@ -578,7 +578,7 @@ impl Session {
         if self.err_count() == old_count {
             Ok(result)
         } else {
-            Err(self.delay_span_bug(
+            Err(self.span_delayed_bug(
                 rustc_span::DUMMY_SP,
                 "`self.err_count()` changed but an error was not emitted",
             ))
@@ -619,18 +619,22 @@ impl Session {
     ///
     /// This can be used in code paths that should never run on successful compilations.
     /// For example, it can be used to create an [`ErrorGuaranteed`]
-    /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission directly).
+    /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission
+    /// directly).
     ///
     /// If no span is available, use [`DUMMY_SP`].
     ///
     /// [`DUMMY_SP`]: rustc_span::DUMMY_SP
+    ///
+    /// Note: this function used to be called `delay_span_bug`. It was renamed
+    /// to match similar functions like `span_err`, `span_warn`, etc.
     #[track_caller]
-    pub fn delay_span_bug<S: Into<MultiSpan>>(
+    pub fn span_delayed_bug<S: Into<MultiSpan>>(
         &self,
         sp: S,
         msg: impl Into<String>,
     ) -> ErrorGuaranteed {
-        self.diagnostic().delay_span_bug(sp, msg)
+        self.diagnostic().span_delayed_bug(sp, msg)
     }
 
     /// Used for code paths of expensive computations that should only take place when
