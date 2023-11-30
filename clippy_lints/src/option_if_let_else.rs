@@ -239,21 +239,24 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
         if_then,
         if_else: Some(if_else),
     }) = higher::IfLet::hir(cx, expr)
+        && !cx.typeck_results().expr_ty(expr).is_unit()
+        && !is_else_clause(cx.tcx, expr)
     {
-        if !is_else_clause(cx.tcx, expr) {
-            return try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, let_expr, if_then, if_else);
-        }
+        try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, let_expr, if_then, if_else)
+    } else {
+        None
     }
-    None
 }
 
 fn detect_option_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurrence> {
-    if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind {
-        if let Some((let_pat, if_then, if_else)) = try_convert_match(cx, arms) {
-            return try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, ex, if_then, if_else);
-        }
+    if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind
+        && !cx.typeck_results().expr_ty(expr).is_unit()
+        && let Some((let_pat, if_then, if_else)) = try_convert_match(cx, arms)
+    {
+        try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, ex, if_then, if_else)
+    } else {
+        None
     }
-    None
 }
 
 fn try_convert_match<'tcx>(
