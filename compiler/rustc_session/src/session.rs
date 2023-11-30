@@ -814,12 +814,7 @@ impl Session {
         if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
     }
 
-    pub fn init_incr_comp_session(
-        &self,
-        session_dir: PathBuf,
-        lock_file: flock::Lock,
-        load_dep_graph: bool,
-    ) {
+    pub fn init_incr_comp_session(&self, session_dir: PathBuf, lock_file: flock::Lock) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
         if let IncrCompSession::NotInitialized = *incr_comp_session {
@@ -827,8 +822,7 @@ impl Session {
             panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
         }
 
-        *incr_comp_session =
-            IncrCompSession::Active { session_directory: session_dir, lock_file, load_dep_graph };
+        *incr_comp_session = IncrCompSession::Active { session_directory: session_dir, lock_file };
     }
 
     pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
@@ -1686,7 +1680,7 @@ enum IncrCompSession {
     NotInitialized,
     /// This is the state during which the session directory is private and can
     /// be modified.
-    Active { session_directory: PathBuf, lock_file: flock::Lock, load_dep_graph: bool },
+    Active { session_directory: PathBuf, lock_file: flock::Lock },
     /// This is the state after the session directory has been finalized. In this
     /// state, the contents of the directory must not be modified any more.
     Finalized { session_directory: PathBuf },
