@@ -551,8 +551,8 @@ impl Session {
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.diagnostic().has_errors()
     }
-    pub fn has_errors_or_delayed_span_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.diagnostic().has_errors_or_delayed_span_bugs()
+    pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.diagnostic().has_errors_or_span_delayed_bugs()
     }
     pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
         self.diagnostic().is_compilation_going_to_fail()

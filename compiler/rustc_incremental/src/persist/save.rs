@@ -32,7 +32,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             return;
         }
         // This is going to be deleted in finalize_session_directory, so let's not create it
-        if let Some(_) = sess.has_errors_or_delayed_span_bugs() {
+        if let Some(_) = sess.has_errors_or_span_delayed_bugs() {
             return;
         }
 
@@ -87,7 +87,7 @@ pub fn save_work_product_index(
         return;
     }
     // This is going to be deleted in finalize_session_directory, so let's not create it
-    if let Some(_) = sess.has_errors_or_delayed_span_bugs() {
+    if let Some(_) = sess.has_errors_or_span_delayed_bugs() {
         return;
     }
 

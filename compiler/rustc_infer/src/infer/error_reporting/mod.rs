@@ -131,7 +131,7 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 
 impl Drop for TypeErrCtxt<'_, '_> {
     fn drop(&mut self) {
-        if let Some(_) = self.infcx.tcx.sess.has_errors_or_delayed_span_bugs() {
+        if let Some(_) = self.infcx.tcx.sess.has_errors_or_span_delayed_bugs() {
             // ok, emitted an error.
         } else {
             self.infcx

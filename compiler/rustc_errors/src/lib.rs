@@ -431,7 +431,7 @@ struct HandlerInner {
     warn_count: usize,
     deduplicated_err_count: usize,
     emitter: Box<DynEmitter>,
-    delayed_span_bugs: Vec<DelayedDiagnostic>,
+    span_delayed_bugs: Vec<DelayedDiagnostic>,
     delayed_good_path_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
     /// This is used for the `delayed_good_path_bugs` check.
@@ -545,12 +545,12 @@ impl Drop for HandlerInner {
         self.emit_stashed_diagnostics();
 
         if !self.has_errors() {
-            let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
+            let bugs = std::mem::replace(&mut self.span_delayed_bugs, Vec::new());
             self.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
         }
 
         // FIXME(eddyb) this explains what `delayed_good_path_bugs` are!
-        // They're `delayed_span_bugs` but for "require some diagnostic happened"
+        // They're `span_delayed_bugs` but for "require some diagnostic happened"
         // instead of "require some error happened". Sadly that isn't ideal, as
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
@@ -609,7 +609,7 @@ impl Handler {
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
                 emitter,
-                delayed_span_bugs: Vec::new(),
+                span_delayed_bugs: Vec::new(),
                 delayed_good_path_bugs: Vec::new(),
                 suppressed_expected_diag: false,
                 taught_diagnostics: Default::default(),
@@ -664,7 +664,7 @@ impl Handler {
         inner.deduplicated_warn_count = 0;
 
         // actually free the underlying memory (which `clear` would not do)
-        inner.delayed_span_bugs = Default::default();
+        inner.span_delayed_bugs = Default::default();
         inner.delayed_good_path_bugs = Default::default();
         inner.taught_diagnostics = Default::default();
         inner.emitted_diagnostic_codes = Default::default();
@@ -1078,8 +1078,8 @@ impl Handler {
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
     }
-    pub fn has_errors_or_delayed_span_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors_or_delayed_span_bugs().then(|| {
+    pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.inner.borrow().has_errors_or_span_delayed_bugs().then(|| {
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
@@ -1267,7 +1267,7 @@ impl Handler {
 
     pub fn flush_delayed(&self) {
         let mut inner = self.inner.lock();
-        let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
+        let bugs = std::mem::replace(&mut inner.span_delayed_bugs, Vec::new());
         inner.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
     }
 }
@@ -1325,11 +1325,11 @@ impl HandlerInner {
 
         if diagnostic.level == Level::DelayedBug {
             // FIXME(eddyb) this should check for `has_errors` and stop pushing
-            // once *any* errors were emitted (and truncate `delayed_span_bugs`
+            // once *any* errors were emitted (and truncate `span_delayed_bugs`
             // when an error is first emitted, also), but maybe there's a case
             // in which that's not sound? otherwise this is really inefficient.
             let backtrace = std::backtrace::Backtrace::capture();
-            self.delayed_span_bugs
+            self.span_delayed_bugs
                 .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
             if !self.flags.report_delayed_bugs {
@@ -1444,7 +1444,7 @@ impl HandlerInner {
     }
 
     fn delayed_bug_count(&self) -> usize {
-        self.delayed_span_bugs.len() + self.delayed_good_path_bugs.len()
+        self.span_delayed_bugs.len() + self.delayed_good_path_bugs.len()
     }
 
     fn print_error_count(&mut self, registry: &Registry) {
@@ -1565,15 +1565,15 @@ impl HandlerInner {
     fn has_errors_or_lint_errors(&self) -> bool {
         self.has_errors() || self.lint_err_count > 0
     }
-    fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.has_errors() || !self.delayed_span_bugs.is_empty()
+    fn has_errors_or_span_delayed_bugs(&self) -> bool {
+        self.has_errors() || !self.span_delayed_bugs.is_empty()
     }
     fn has_any_message(&self) -> bool {
         self.err_count() > 0 || self.lint_err_count > 0 || self.warn_count > 0
     }
 
     fn is_compilation_going_to_fail(&self) -> bool {
-        self.has_errors() || self.lint_err_count > 0 || !self.delayed_span_bugs.is_empty()
+        self.has_errors() || self.lint_err_count > 0 || !self.span_delayed_bugs.is_empty()
     }
 
     fn abort_if_errors(&mut self) {
