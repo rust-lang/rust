@@ -4,8 +4,8 @@
 #![crate_name = "foo"]
 
 // @has 'foo/associations/index.html'
-// @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 1
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Traits'
+// @count - '//*[@id="main-content"]/*[@class="section-header"]' 1
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Traits'
 // @has - '//*[@id="main-content"]//a[@href="trait.GroupedBy.html"]' 'GroupedBy'
 // @has 'foo/associations/trait.GroupedBy.html'
 pub mod associations {
@@ -16,8 +16,8 @@ pub mod associations {
 }
 
 // @has 'foo/prelude/index.html'
-// @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 1
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Re-exports'
+// @count - '//*[@id="main-content"]/*[@class="section-header"]' 1
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Re-exports'
 // @has - '//*[@id="main-content"]//*[@id="reexport.GroupedBy"]' 'pub use associations::GroupedBy;'
 pub mod prelude {
     pub use associations::GroupedBy;

@@ -8,11 +8,11 @@
 
 // @has 'foo/index.html'
 // Checking there is no "trait" entry.
-// @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 4
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Structs'
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Constants'
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Functions'
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Macros'
+// @count - '//*[@id="main-content"]/*[@class="section-header"]' 4
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Structs'
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Constants'
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Functions'
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Macros'
 
 // @has - '//a[@href="fn.foo.html"]' 'foo'
 fn foo() {
@@ -50,11 +50,11 @@ const BAR: i32 = {
 
     // @has 'foo/struct.Bar.html'
     // @has - '//*[@id="method.foo"]/*[@class="code-header"]' 'pub(crate) fn foo()'
-    // @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 3
+    // @count - '//*[@id="main-content"]/*[@class="section-header"]' 3
     // We now check that the `Foo` trait is not documented nor visible on `Bar` page.
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Implementations'
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Auto Trait Implementations'
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Blanket Implementations'
+    // @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Implementations'
+    // @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Auto Trait Implementations'
+    // @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Blanket Implementations'
     // @!has - '//*[@href="trait.Foo.html#method.babar"]/*[@class="code-header"]' 'fn babar()'
     impl Bar {
         fn foo() {}
