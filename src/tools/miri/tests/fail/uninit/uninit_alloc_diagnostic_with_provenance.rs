@@ -1,3 +1,4 @@
+//@compile-flags: -Zmiri-disable-validation
 //@error-in-other-file: memory is uninitialized at [0x4..0x8]
 //@normalize-stderr-test: "a[0-9]+" -> "ALLOC"
 #![feature(strict_provenance)]
