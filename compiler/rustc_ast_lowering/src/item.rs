@@ -1,5 +1,3 @@
-use crate::FnReturnTransformation;
-
 use super::errors::{InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
@@ -208,35 +206,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let asyncness = header.asyncness;
-                    let genness = header.genness;
+                    let coro_kind = header.coro_kind;
                     let body_id = this.lower_maybe_coroutine_body(
                         span,
                         hir_id,
                         decl,
-                        asyncness,
-                        genness,
+                        coro_kind,
                         body.as_deref(),
                     );
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
                         this.lower_generics(generics, header.constness, id, &itctx, |this| {
-                            let ret_id = asyncness
-                                .opt_return_id()
-                                .map(|(node_id, span)| {
-                                    crate::FnReturnTransformation::Async(node_id, span)
-                                })
-                                .or_else(|| match genness {
-                                    Gen::Yes { span, closure_id: _, return_impl_trait_id } => {
-                                        Some(crate::FnReturnTransformation::Iterator(
-                                            return_impl_trait_id,
-                                            span,
-                                        ))
-                                    }
-                                    _ => None,
-                                });
-                            this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
+                            this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coro_kind)
                         });
                     let sig = hir::FnSig {
                         decl,
@@ -620,7 +602,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     i.id,
                                     sig.span,
                                     FnDeclKind::ExternFn,
-                                    None,
+                                    CoroutineKind::None,
                                 ),
                                 this.lower_fn_params_to_names(fdec),
                             )
@@ -747,28 +729,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (generics, kind, expr.is_some())
             }
             AssocItemKind::Fn(box Fn { sig, generics, body: None, .. }) => {
-                let asyncness = sig.header.asyncness;
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    asyncness
-                        .opt_return_id()
-                        .map(|(node_id, span)| crate::FnReturnTransformation::Async(node_id, span)),
+                    sig.header.coro_kind,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
             AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), .. }) => {
-                let asyncness = sig.header.asyncness;
-                let genness = sig.header.genness;
                 let body_id = self.lower_maybe_coroutine_body(
                     i.span,
                     hir_id,
                     &sig.decl,
-                    asyncness,
-                    genness,
+                    sig.header.coro_kind,
                     Some(body),
                 );
                 let (generics, sig) = self.lower_method_sig(
@@ -776,9 +752,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    asyncness
-                        .opt_return_id()
-                        .map(|(node_id, span)| crate::FnReturnTransformation::Async(node_id, span)),
+                    sig.header.coro_kind,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
@@ -867,14 +841,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
             ),
             AssocItemKind::Fn(box Fn { sig, generics, body, .. }) => {
-                let asyncness = sig.header.asyncness;
-                let genness = sig.header.genness;
+                self.current_item = Some(i.span);
                 let body_id = self.lower_maybe_coroutine_body(
                     i.span,
                     hir_id,
                     &sig.decl,
-                    asyncness,
-                    genness,
+                    sig.header.coro_kind,
                     body.as_deref(),
                 );
                 let (generics, sig) = self.lower_method_sig(
@@ -882,9 +854,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
-                    asyncness
-                        .opt_return_id()
-                        .map(|(node_id, span)| crate::FnReturnTransformation::Async(node_id, span)),
+                    sig.header.coro_kind,
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -1055,15 +1025,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         fn_id: hir::HirId,
         decl: &FnDecl,
-        asyncness: Async,
-        genness: Gen,
+        coro_kind: CoroutineKind,
         body: Option<&Block>,
     ) -> hir::BodyId {
-        let (closure_id, body) = match (asyncness, genness, body) {
-            // FIXME(eholk): do something reasonable for `async gen fn`. Probably that's an error
-            // for now since it's not supported.
-            (Async::Yes { closure_id, .. }, _, Some(body))
-            | (_, Gen::Yes { closure_id, .. }, Some(body)) => (closure_id, body),
+        let (closure_id, body) = match (coro_kind, body) {
+            (
+                CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. },
+                Some(body),
+            ) => (closure_id, body),
             _ => return self.lower_fn_body_block(span, decl, body),
         };
 
@@ -1232,8 +1201,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 this.expr_block(body)
             };
-            let coroutine_expr = match (asyncness, genness) {
-                (Async::Yes { .. }, _) => this.make_async_expr(
+            let coroutine_expr = match coro_kind {
+                CoroutineKind::Async { .. } => this.make_async_expr(
                     CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
                     closure_id,
                     None,
@@ -1241,7 +1210,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::CoroutineSource::Fn,
                     mkbody,
                 ),
-                (_, Gen::Yes { .. }) => this.make_gen_expr(
+                CoroutineKind::Gen { .. } => this.make_gen_expr(
                     CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
                     closure_id,
                     None,
@@ -1249,7 +1218,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::CoroutineSource::Fn,
                     mkbody,
                 ),
-                _ => unreachable!("we must have either an async fn or a gen fn"),
+                CoroutineKind::None => unreachable!("we must have either an async fn or a gen fn"),
             };
 
             let hir_id = this.lower_node_id(closure_id);
@@ -1266,21 +1235,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig: &FnSig,
         id: NodeId,
         kind: FnDeclKind,
-        transform_return_type: Option<FnReturnTransformation>,
+        coro_kind: CoroutineKind,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) =
             self.lower_generics(generics, sig.header.constness, id, &itctx, |this| {
-                this.lower_fn_decl(&sig.decl, id, sig.span, kind, transform_return_type)
+                this.lower_fn_decl(&sig.decl, id, sig.span, kind, coro_kind)
             });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
+        let asyncness = if let CoroutineKind::Async { span, .. } = h.coro_kind {
+            hir::IsAsync::Async(span)
+        } else {
+            hir::IsAsync::NotAsync
+        };
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
-            asyncness: self.lower_asyncness(h.asyncness),
+            asyncness: asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
         }
@@ -1320,13 +1294,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }),
             command: "rustc --print=calling-conventions".to_string(),
         });
-    }
-
-    fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
-        match a {
-            Async::Yes { span, .. } => hir::IsAsync::Async(span),
-            Async::No => hir::IsAsync::NotAsync,
-        }
     }
 
     pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {

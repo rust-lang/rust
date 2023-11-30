@@ -3,6 +3,8 @@
 // run-pass
 #![feature(gen_blocks)]
 
+// make sure that a ridiculously simple gen fn works as an iterator.
+
 gen fn foo() -> i32 {
     yield 1;
     yield 2;

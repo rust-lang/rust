@@ -493,21 +493,6 @@ enum ParenthesizedGenericArgs {
     Err,
 }
 
-/// Describes a return type transformation that can be performed by `LoweringContext::lower_fn_decl`
-#[derive(Debug)]
-enum FnReturnTransformation {
-    /// Replaces a return type `T` with `impl Future<Output = T>`.
-    ///
-    /// The `NodeId` is the ID of the return type `impl Trait` item, and the `Span` points to the
-    /// `async` keyword.
-    Async(NodeId, Span),
-    /// Replaces a return type `T` with `impl Iterator<Item = T>`.
-    ///
-    /// The `NodeId` is the ID of the return type `impl Trait` item, and the `Span` points to the
-    /// `gen` keyword.
-    Iterator(NodeId, Span),
-}
-
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_def(
         &mut self,
@@ -1374,7 +1359,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     generic_params,
                     unsafety: self.lower_unsafety(f.unsafety),
                     abi: self.lower_extern(f.ext),
-                    decl: self.lower_fn_decl(&f.decl, t.id, t.span, FnDeclKind::Pointer, None),
+                    decl: self.lower_fn_decl(
+                        &f.decl,
+                        t.id,
+                        t.span,
+                        FnDeclKind::Pointer,
+                        CoroutineKind::None,
+                    ),
                     param_names: self.lower_fn_params_to_names(&f.decl),
                 }))
             }
@@ -1809,7 +1800,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fn_node_id: NodeId,
         fn_span: Span,
         kind: FnDeclKind,
-        transform_return_type: Option<FnReturnTransformation>,
+        coro: CoroutineKind,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
 
@@ -1838,12 +1829,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty_direct(&param.ty, &itctx)
         }));
 
-        let output = match transform_return_type {
-            Some(transform) => {
+        let output = match coro {
+            CoroutineKind::Async { .. } | CoroutineKind::Gen { .. } => {
                 let fn_def_id = self.local_def_id(fn_node_id);
-                self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, transform, kind, fn_span)
+                self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, coro, kind, fn_span)
             }
-            None => match &decl.output {
+            CoroutineKind::None => match &decl.output {
                 FnRetTy::Ty(ty) => {
                     let context = if kind.return_impl_trait_allowed() {
                         let fn_def_id = self.local_def_id(fn_node_id);
@@ -1910,16 +1901,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         output: &FnRetTy,
         fn_def_id: LocalDefId,
-        transform: FnReturnTransformation,
+        coro: CoroutineKind,
         fn_kind: FnDeclKind,
         fn_span: Span,
     ) -> hir::FnRetTy<'hir> {
         let span = self.lower_span(fn_span);
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_node_id = match transform {
-            FnReturnTransformation::Async(opaque_ty_node_id, _)
-            | FnReturnTransformation::Iterator(opaque_ty_node_id, _) => opaque_ty_node_id,
+        let opaque_ty_node_id = match coro {
+            CoroutineKind::Async { return_impl_trait_id, .. }
+            | CoroutineKind::Gen { return_impl_trait_id, .. } => return_impl_trait_id,
+            CoroutineKind::None => {
+                unreachable!("lower_coroutine_fn_ret_ty must be called with either Async or Gen")
+            }
         };
 
         let captured_lifetimes: Vec<_> = self
@@ -1939,7 +1933,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             |this| {
                 let future_bound = this.lower_coroutine_fn_output_type_to_future_bound(
                     output,
-                    transform,
+                    coro,
                     span,
                     ImplTraitContext::ReturnPositionOpaqueTy {
                         origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
@@ -1958,7 +1952,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_coroutine_fn_output_type_to_future_bound(
         &mut self,
         output: &FnRetTy,
-        transform: FnReturnTransformation,
+        coro: CoroutineKind,
         span: Span,
         nested_impl_trait_context: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
@@ -1974,11 +1968,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         // "<Output|Item = T>"
-        let (symbol, lang_item) = match transform {
-            FnReturnTransformation::Async(..) => (hir::FN_OUTPUT_NAME, hir::LangItem::Future),
-            FnReturnTransformation::Iterator(..) => {
-                (hir::ITERATOR_ITEM_NAME, hir::LangItem::Iterator)
-            }
+        let (symbol, lang_item) = match coro {
+            CoroutineKind::Async { .. } => (hir::FN_OUTPUT_NAME, hir::LangItem::Future),
+            CoroutineKind::Gen { .. } => (hir::ITERATOR_ITEM_NAME, hir::LangItem::Iterator),
+            CoroutineKind::None => panic!("attemping to lower output type of non-coroutine fn"),
         };
 
         let future_args = self.arena.alloc(hir::GenericArgs {

@@ -1271,7 +1271,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         // Functions cannot both be `const async`
         if let Some(&FnHeader {
             constness: Const::Yes(cspan),
-            asyncness: Async::Yes { span: aspan, .. },
+            coro_kind: CoroutineKind::Async { span: aspan, .. },
             ..
         }) = fk.header()
         {
