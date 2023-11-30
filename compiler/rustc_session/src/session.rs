@@ -478,7 +478,7 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) {
+    ) -> ErrorGuaranteed {
         self.diagnostic().span_err_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]

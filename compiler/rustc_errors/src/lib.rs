@@ -970,11 +970,12 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) {
+    ) -> ErrorGuaranteed {
         self.emit_diag_at_span(
             Diagnostic::new_with_code(Error { lint: false }, Some(code), msg),
             span,
-        );
+        )
+        .unwrap()
     }
 
     #[rustc_lint_diagnostics]
