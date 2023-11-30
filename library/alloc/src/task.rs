@@ -7,8 +7,9 @@
 //! `#[cfg(target_has_atomic = "ptr")]`.
 
 use core::mem::ManuallyDrop;
-use core::task::{RawWaker, RawWakerVTable, Waker};
+use core::task::{LocalWaker, RawWaker, RawWakerVTable, Waker};
 
+use crate::rc::Rc;
 use crate::sync::Arc;
 
 /// The implementation of waking a task on an executor.
@@ -149,6 +150,168 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 
     RawWaker::new(
         Arc::into_raw(waker) as *const (),
+        &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
+    )
+}
+
+/// An analogous trait to `Wake` but used to construct a `LocalWaker`. This API
+/// works in exactly the same way as `Wake`, except that it uses an `Rc` instead
+/// of an `Arc`, and the result is a `LocalWaker` instead of a `Waker`.
+///
+/// The benefits of using `LocalWaker` over `Waker` are that it allows the local waker
+/// to hold data that does not implement `Send` and `Sync`. Additionally, it saves calls
+/// to `Arc::clone`, which requires atomic synchronization.
+///
+
+/// # Examples
+///
+/// A
+///
+/// This is a simplified example of a `spawn` and a `block_on` function. The `spawn` function
+/// is used to push new tasks onto the run queue, while the block on function will remove them
+/// and poll them. When a task is woken, it will put itself back on the run queue to be polled by the executor.
+///
+/// **Note:** A real world example would interlieve poll calls with calls to an io reactor to wait for events instead
+/// of spinning on a loop.
+///
+/// ```rust
+/// use std::task::{LocalWake, ContextBuilder, LocalWaker};
+/// use std::future::Future;
+/// use std::pin::Pin;
+/// use std::rc::Rc;
+/// use std::cell::RefCell;
+/// use std::collections::VecDeque;
+///
+///
+/// thread_local! {
+///     // A queue containing all tasks ready to do progress
+///     static RUN_QUEUE: RefCell<VecDeque<Rc<Task>>> = RefCell::default();
+/// }
+///
+/// type BoxedFuture = Pin<Box<dyn Future<Output = ()>>>;
+///
+/// struct Task(RefCell<BoxedFuture>);
+///
+/// impl LocalWake for Task {
+///     fn wake(self: Rc<Self>) {
+///         RUN_QUEUE.with_borrow_mut(|queue| {
+///             queue.push_back(self)
+///         })
+///     }
+/// }
+///
+/// fn spawn<F>(future: F)
+/// where
+///     F: Future<Output=()> + 'static + Send + Sync
+/// {
+///     let task = Rc::new(Box::pin(future));
+///     RUN_QUEUE.with_borrow_mut(|queue| {
+///         queue.push_back(task)
+///     });
+/// }
+///
+/// fn block_on<F>(future: F)
+/// where
+///     F: Future<Output=()> + 'static + Sync + Send
+/// {
+///     spawn(future);
+///     loop {
+///         let Some(task) = RUN_QUEUE.with_borrow_mut(|queue|queue.pop_front()) else {
+///             // we exit, since there are no more tasks remaining on the queue
+///             return;
+///         };
+///         // cast the Rc<Task> into a `LocalWaker`
+///         let waker: LocalWaker = task.into();
+///         // Build the context using `ContextBuilder`
+///         let mut cx = ContextBuilder::new()
+///             .local_waker(&waker)
+///             .build();
+///
+///         // Poll the task
+///         task.0
+///             .borrow_mut()
+///             .as_mut()
+///             .poll(&mut cx);
+///     }
+/// }
+/// ```
+///
+#[unstable(feature = "local_waker", issue = "none")]
+pub trait LocalWake {
+    /// Wake this task.
+    #[unstable(feature = "local_waker", issue = "none")]
+    fn wake(self: Rc<Self>);
+
+    /// Wake this task without consuming the local waker.
+    ///
+    /// If an executor supports a cheaper way to wake without consuming the
+    /// waker, it should override this method. By default, it clones the
+    /// [`Rc`] and calls [`wake`] on the clone.
+    ///
+    /// [`wake`]: Rc::wake
+    #[unstable(feature = "local_waker", issue = "none")]
+    fn wake_by_ref(self: &Rc<Self>) {
+        self.clone().wake();
+    }
+}
+
+#[unstable(feature = "local_waker", issue = "none")]
+impl<W: LocalWake + 'static> From<Rc<W>> for LocalWaker {
+    /// Use a `Wake`-able type as a `LocalWaker`.
+    ///
+    /// No heap allocations or atomic operations are used for this conversion.
+    fn from(waker: Rc<W>) -> LocalWaker {
+        // SAFETY: This is safe because raw_waker safely constructs
+        // a RawWaker from Rc<W>.
+        unsafe { LocalWaker::from_raw(local_raw_waker(waker)) }
+    }
+}
+#[allow(ineffective_unstable_trait_impl)]
+#[unstable(feature = "local_waker", issue = "none")]
+impl<W: LocalWake + 'static> From<Rc<W>> for RawWaker {
+    /// Use a `Wake`-able type as a `RawWaker`.
+    ///
+    /// No heap allocations or atomic operations are used for this conversion.
+    fn from(waker: Rc<W>) -> RawWaker {
+        local_raw_waker(waker)
+    }
+}
+
+// NB: This private function for constructing a RawWaker is used, rather than
+// inlining this into the `From<Rc<W>> for RawWaker` impl, to ensure that
+// the safety of `From<Rc<W>> for Waker` does not depend on the correct
+// trait dispatch - instead both impls call this function directly and
+// explicitly.
+#[inline(always)]
+fn local_raw_waker<W: LocalWake + 'static>(waker: Rc<W>) -> RawWaker {
+    // Increment the reference count of the Rc to clone it.
+    unsafe fn clone_waker<W: LocalWake + 'static>(waker: *const ()) -> RawWaker {
+        unsafe { Rc::increment_strong_count(waker as *const W) };
+        RawWaker::new(
+            waker as *const (),
+            &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
+        )
+    }
+
+    // Wake by value, moving the Rc into the LocalWake::wake function
+    unsafe fn wake<W: LocalWake + 'static>(waker: *const ()) {
+        let waker = unsafe { Rc::from_raw(waker as *const W) };
+        <W as LocalWake>::wake(waker);
+    }
+
+    // Wake by reference, wrap the waker in ManuallyDrop to avoid dropping it
+    unsafe fn wake_by_ref<W: LocalWake + 'static>(waker: *const ()) {
+        let waker = unsafe { ManuallyDrop::new(Rc::from_raw(waker as *const W)) };
+        <W as LocalWake>::wake_by_ref(&waker);
+    }
+
+    // Decrement the reference count of the Rc on drop
+    unsafe fn drop_waker<W: LocalWake + 'static>(waker: *const ()) {
+        unsafe { Rc::decrement_strong_count(waker as *const W) };
+    }
+
+    RawWaker::new(
+        Rc::into_raw(waker) as *const (),
         &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
     )
 }
