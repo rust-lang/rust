@@ -69,7 +69,7 @@ impl<'a> State<'a> {
     ///
     /// These cases need parens due to the parse error observed in #26461: `if return {}`
     /// parses as the erroneous construct `if (return {})`, not `if (return) {}`.
-    pub(super) fn cond_needs_par(expr: &ast::Expr) -> bool {
+    fn cond_needs_par(expr: &ast::Expr) -> bool {
         match expr.kind {
             ast::ExprKind::Break(..)
             | ast::ExprKind::Closure(..)
