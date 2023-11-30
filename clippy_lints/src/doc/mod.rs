@@ -201,6 +201,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `#[test]` in doctests unless they are marked with
+    /// either `ignore`, `no_run` or `compile_fail`.
+    ///
+    /// ### Why is this bad?
+    /// Code in examples marked as `#[test]` will somewhat
+    /// surprisingly not be run by `cargo test`. If you really want
+    /// to show how to test stuff in an example, mark it `no_run` to
+    /// make the intent clear.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// /// An example of a doctest with a `main()` function
+    /// ///
+    /// /// # Examples
+    /// ///
+    /// /// ```
+    /// /// #[test]
+    /// /// fn equality_works() {
+    /// ///     assert_eq!(1_u8, 1);
+    /// /// }
+    /// /// ```
+    /// fn test_attr_in_doctest() {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    #[clippy::version = "1.40.0"]
+    pub TEST_ATTR_IN_DOCTEST,
+    suspicious,
+    "presence of `#[test]` in code examples"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Detects the syntax `['foo']` in documentation comments (notice quotes instead of backticks)
     /// outside of code blocks
     /// ### Why is this bad?
@@ -329,6 +362,7 @@ impl_lint_pass!(Documentation => [
     MISSING_ERRORS_DOC,
     MISSING_PANICS_DOC,
     NEEDLESS_DOCTEST_MAIN,
+    TEST_ATTR_IN_DOCTEST,
     UNNECESSARY_SAFETY_DOC,
     SUSPICIOUS_DOC_COMMENTS
 ]);
@@ -515,6 +549,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut in_heading = false;
     let mut is_rust = false;
     let mut no_test = false;
+    let mut ignore = false;
     let mut edition = None;
     let mut ticks_unbalanced = false;
     let mut text_to_check: Vec<(CowStr<'_>, Range<usize>)> = Vec::new();
@@ -530,6 +565,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                             break;
                         } else if item == "no_test" {
                             no_test = true;
+                        } else if item == "no_run" || item == "compile_fail" {
+                            ignore = true;
                         }
                         if let Some(stripped) = item.strip_prefix("edition") {
                             is_rust = true;
@@ -543,6 +580,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             End(CodeBlock(_)) => {
                 in_code = false;
                 is_rust = false;
+                ignore = false;
             },
             Start(Link(_, url, _)) => in_link = Some(url),
             End(Link(..)) => in_link = None,
@@ -596,7 +634,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 if in_code {
                     if is_rust && !no_test {
                         let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
-                        needless_doctest_main::check(cx, &text, edition, range.clone(), fragments);
+                        needless_doctest_main::check(cx, &text, edition, range.clone(), fragments, ignore);
                     }
                 } else {
                     if in_link.is_some() {
