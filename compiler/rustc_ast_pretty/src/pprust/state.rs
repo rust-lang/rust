@@ -1159,8 +1159,11 @@ impl<'a> State<'a> {
         self.print_pat(pat);
         self.space();
         self.word_space("=");
-        let npals = || parser::needs_par_as_let_scrutinee(expr.precedence().order());
-        self.print_expr_cond_paren(expr, Self::cond_needs_par(expr) || npals())
+        self.print_expr_cond_paren(
+            expr,
+            Self::cond_needs_par(expr)
+                || parser::needs_par_as_let_scrutinee(expr.precedence().order()),
+        );
     }
 
     fn print_mac(&mut self, m: &ast::MacCall) {
