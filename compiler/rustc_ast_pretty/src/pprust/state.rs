@@ -1161,16 +1161,8 @@ impl<'a> State<'a> {
         self.word_space("=");
         self.print_expr_cond_paren(
             expr,
-            match expr.kind {
-                ast::ExprKind::Break(..)
-                | ast::ExprKind::Closure(..)
-                | ast::ExprKind::Ret(..)
-                | ast::ExprKind::Yeet(..) => true,
-                _ => {
-                    parser::contains_exterior_struct_lit(expr)
-                        || parser::needs_par_as_let_scrutinee(expr.precedence().order())
-                }
-            },
+            parser::contains_exterior_struct_lit(expr)
+                || parser::needs_par_as_let_scrutinee(expr.precedence().order()),
         );
     }
 
