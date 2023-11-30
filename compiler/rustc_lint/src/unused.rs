@@ -291,7 +291,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         .map(|inner| MustUsePath::Pinned(Box::new(inner)))
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
+                ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
                     elaborate(
                         cx.tcx,
                         cx.tcx.explicit_item_bounds(def).instantiate_identity_iter_copied(),
