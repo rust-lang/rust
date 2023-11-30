@@ -510,7 +510,9 @@ impl RwLock {
                 // `state`, so the first non-null tail field will be current
                 // (invariant 2). Invariant 4 is fullfilled since `find_tail`
                 // was called on this node, which ensures all backlinks are set.
-                unsafe { to_node(state).as_ref().tail.set(Some(prev)); }
+                unsafe {
+                    to_node(state).as_ref().tail.set(Some(prev));
+                }
 
                 // Release the queue lock. Doing this by subtraction is more
                 // efficient on modern processors since it is a single instruction
@@ -520,14 +522,18 @@ impl RwLock {
 
                 // The tail was split off and the lock released. Mark the node as
                 // completed.
-                unsafe { return Node::complete(tail); }
+                unsafe {
+                    return Node::complete(tail);
+                }
             } else {
                 // The next waiter is a reader or the queue only consists of one
                 // waiter. Just wake all threads.
 
                 // The lock cannot be locked (checked above), so mark it as
                 // unlocked to reset the queue.
-                if let Err(new) = self.state.compare_exchange_weak(state, UNLOCKED, Release, Acquire) {
+                if let Err(new) =
+                    self.state.compare_exchange_weak(state, UNLOCKED, Release, Acquire)
+                {
                     state = new;
                     continue;
                 }
@@ -535,7 +541,9 @@ impl RwLock {
                 let mut current = tail;
                 loop {
                     let prev = unsafe { current.as_ref().prev.get() };
-                    unsafe { Node::complete(current); }
+                    unsafe {
+                        Node::complete(current);
+                    }
                     match prev {
                         Some(prev) => current = prev,
                         None => return,
