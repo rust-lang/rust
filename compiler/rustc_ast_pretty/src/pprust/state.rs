@@ -7,6 +7,7 @@ mod item;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
+use crate::pprust::state::expr::FixupContext;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
@@ -798,7 +799,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn expr_to_string(&self, e: &ast::Expr) -> String {
-        Self::to_string(|s| s.print_expr(e))
+        Self::to_string(|s| s.print_expr(e, FixupContext::default()))
     }
 
     fn meta_item_lit_to_string(&self, lit: &ast::MetaItemLit) -> String {
@@ -903,7 +904,7 @@ impl<'a> State<'a> {
     }
 
     fn commasep_exprs(&mut self, b: Breaks, exprs: &[P<ast::Expr>]) {
-        self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
+        self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e, FixupContext::default()), |e| e.span)
     }
 
     pub fn print_opt_lifetime(&mut self, lifetime: &Option<ast::Lifetime>) {
@@ -940,7 +941,7 @@ impl<'a> State<'a> {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.print_lifetime(*lt),
             GenericArg::Type(ty) => self.print_type(ty),
-            GenericArg::Const(ct) => self.print_expr(&ct.value),
+            GenericArg::Const(ct) => self.print_expr(&ct.value, FixupContext::default()),
         }
     }
 
@@ -1007,12 +1008,12 @@ impl<'a> State<'a> {
                 self.word("[");
                 self.print_type(ty);
                 self.word("; ");
-                self.print_expr(&length.value);
+                self.print_expr(&length.value, FixupContext::default());
                 self.word("]");
             }
             ast::TyKind::Typeof(e) => {
                 self.word("typeof(");
-                self.print_expr(&e.value);
+                self.print_expr(&e.value, FixupContext::default());
                 self.word(")");
             }
             ast::TyKind::Infer => {
@@ -1068,7 +1069,7 @@ impl<'a> State<'a> {
                 if let Some((init, els)) = loc.kind.init_else_opt() {
                     self.nbsp();
                     self.word_space("=");
-                    self.print_expr(init);
+                    self.print_expr(init, FixupContext::default());
                     if let Some(els) = els {
                         self.cbox(INDENT_UNIT);
                         self.ibox(INDENT_UNIT);
@@ -1082,14 +1083,14 @@ impl<'a> State<'a> {
             ast::StmtKind::Item(item) => self.print_item(item),
             ast::StmtKind::Expr(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(expr, false);
+                self.print_expr_outer_attr_style(expr, false, FixupContext::default());
                 if classify::expr_requires_semi_to_be_stmt(expr) {
                     self.word(";");
                 }
             }
             ast::StmtKind::Semi(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(expr, false);
+                self.print_expr_outer_attr_style(expr, false, FixupContext::default());
                 self.word(";");
             }
             ast::StmtKind::Empty => {
@@ -1141,7 +1142,7 @@ impl<'a> State<'a> {
                 ast::StmtKind::Expr(expr) if i == blk.stmts.len() - 1 => {
                     self.maybe_print_comment(st.span.lo());
                     self.space_if_not_bol();
-                    self.print_expr_outer_attr_style(expr, false);
+                    self.print_expr_outer_attr_style(expr, false, FixupContext::default());
                     self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
                 }
                 _ => self.print_stmt(st),
@@ -1154,15 +1155,40 @@ impl<'a> State<'a> {
     }
 
     /// Print a `let pat = expr` expression.
-    fn print_let(&mut self, pat: &ast::Pat, expr: &ast::Expr) {
+    ///
+    /// Parentheses are inserted surrounding `expr` if a round-trip through the
+    /// parser would otherwise work out the wrong way in a condition position.
+    ///
+    /// For example each of the following would mean the wrong thing without
+    /// parentheses.
+    ///
+    /// ```ignore
+    /// if let _ = (Struct {}) {}
+    ///
+    /// if let _ = (true && false) {}
+    /// ```
+    ///
+    /// In a match guard, the second case still requires parens, but the first
+    /// case no longer does because anything until `=>` is considered part of
+    /// the match guard expression. Parsing of the expression is not terminated
+    /// by `{` in that position.
+    ///
+    /// ```ignore
+    /// match () {
+    ///     () if let _ = Struct {} => {}
+    ///     () if let _ = (true && false) => {}
+    /// }
+    /// ```
+    fn print_let(&mut self, pat: &ast::Pat, expr: &ast::Expr, fixup: FixupContext) {
         self.word("let ");
         self.print_pat(pat);
         self.space();
         self.word_space("=");
         self.print_expr_cond_paren(
             expr,
-            parser::contains_exterior_struct_lit(expr)
+            fixup.parenthesize_exterior_struct_lit && parser::contains_exterior_struct_lit(expr)
                 || parser::needs_par_as_let_scrutinee(expr.precedence().order()),
+            FixupContext::default(),
         );
     }
 
@@ -1210,7 +1236,7 @@ impl<'a> State<'a> {
                         print_reg_or_class(s, reg);
                         s.pclose();
                         s.space();
-                        s.print_expr(expr);
+                        s.print_expr(expr, FixupContext::default());
                     }
                     InlineAsmOperand::Out { reg, late, expr } => {
                         s.word(if *late { "lateout" } else { "out" });
@@ -1219,7 +1245,7 @@ impl<'a> State<'a> {
                         s.pclose();
                         s.space();
                         match expr {
-                            Some(expr) => s.print_expr(expr),
+                            Some(expr) => s.print_expr(expr, FixupContext::default()),
                             None => s.word("_"),
                         }
                     }
@@ -1229,7 +1255,7 @@ impl<'a> State<'a> {
                         print_reg_or_class(s, reg);
                         s.pclose();
                         s.space();
-                        s.print_expr(expr);
+                        s.print_expr(expr, FixupContext::default());
                     }
                     InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
                         s.word(if *late { "inlateout" } else { "inout" });
@@ -1237,18 +1263,18 @@ impl<'a> State<'a> {
                         print_reg_or_class(s, reg);
                         s.pclose();
                         s.space();
-                        s.print_expr(in_expr);
+                        s.print_expr(in_expr, FixupContext::default());
                         s.space();
                         s.word_space("=>");
                         match out_expr {
-                            Some(out_expr) => s.print_expr(out_expr),
+                            Some(out_expr) => s.print_expr(out_expr, FixupContext::default()),
                             None => s.word("_"),
                         }
                     }
                     InlineAsmOperand::Const { anon_const } => {
                         s.word("const");
                         s.space();
-                        s.print_expr(&anon_const.value);
+                        s.print_expr(&anon_const.value, FixupContext::default());
                     }
                     InlineAsmOperand::Sym { sym } => {
                         s.word("sym");
@@ -1442,10 +1468,10 @@ impl<'a> State<'a> {
                     self.print_pat(inner);
                 }
             }
-            PatKind::Lit(e) => self.print_expr(e),
+            PatKind::Lit(e) => self.print_expr(e, FixupContext::default()),
             PatKind::Range(begin, end, Spanned { node: end_kind, .. }) => {
                 if let Some(e) = begin {
-                    self.print_expr(e);
+                    self.print_expr(e, FixupContext::default());
                 }
                 match end_kind {
                     RangeEnd::Included(RangeSyntax::DotDotDot) => self.word("..."),
@@ -1453,7 +1479,7 @@ impl<'a> State<'a> {
                     RangeEnd::Excluded => self.word(".."),
                 }
                 if let Some(e) = end {
-                    self.print_expr(e);
+                    self.print_expr(e, FixupContext::default());
                 }
             }
             PatKind::Slice(elts) => {
@@ -1607,7 +1633,7 @@ impl<'a> State<'a> {
                     if let Some(default) = default {
                         s.space();
                         s.word_space("=");
-                        s.print_expr(&default.value);
+                        s.print_expr(&default.value, FixupContext::default());
                     }
                 }
             }

@@ -152,7 +152,7 @@ fn test_expr() {
     );
     c2!(expr,
         [ match () { _ if let _ = Struct {} => {} } ],
-        "match () { _ if let _ = (Struct {}) => {} }", // FIXME: do not parenthesize
+        "match () { _ if let _ = Struct {} => {} }",
         "match() { _ if let _ = Struct {} => {} }",
     );
 
