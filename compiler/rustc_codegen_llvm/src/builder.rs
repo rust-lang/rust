@@ -1080,7 +1080,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         order: rustc_codegen_ssa::common::AtomicOrdering,
         failure_order: rustc_codegen_ssa::common::AtomicOrdering,
         weak: bool,
-    ) -> &'ll Value {
+    ) -> (&'ll Value, &'ll Value) {
         let weak = if weak { llvm::True } else { llvm::False };
         unsafe {
             let value = llvm::LLVMBuildAtomicCmpXchg(
@@ -1093,7 +1093,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::False, // SingleThreaded
             );
             llvm::LLVMSetWeak(value, weak);
-            value
+            let val = self.extract_value(value, 0);
+            let success = self.extract_value(value, 1);
+            (val, success)
         }
     }
     fn atomic_rmw(

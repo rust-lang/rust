@@ -339,7 +339,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 cmp = bx.ptrtoint(cmp, bx.type_isize());
                                 src = bx.ptrtoint(src, bx.type_isize());
                             }
-                            let pair = bx.atomic_cmpxchg(
+                            let (val, success) = bx.atomic_cmpxchg(
                                 dst,
                                 cmp,
                                 src,
@@ -347,8 +347,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 parse_ordering(bx, failure),
                                 weak,
                             );
-                            let val = bx.extract_value(pair, 0);
-                            let success = bx.extract_value(pair, 1);
                             let val = bx.from_immediate(val);
                             let success = bx.from_immediate(success);
 
