@@ -27,7 +27,7 @@ pub fn main() {
     struct r#yield(u8, u8);
     let mut mut yield(become, await) = r#yield(0, 0);
     //~^ ERROR `mut` on a binding may not be repeated
-    //~| ERROR `mut` must be attached to each individual binding
+    //~| ERROR `mut` must be followed by a named binding
     //~| ERROR expected identifier, found reserved keyword `yield`
     //~| ERROR expected identifier, found reserved keyword `become`
     //~| ERROR expected identifier, found keyword `await`

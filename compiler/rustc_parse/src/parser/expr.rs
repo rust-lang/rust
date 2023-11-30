@@ -10,7 +10,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{GenBlockKind, Path, PathSegment};
+use ast::{GenBlockKind, Pat, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -2609,30 +2609,72 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
-    fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
-        // Record whether we are about to parse `for (`.
-        // This is used below for recovery in case of `for ( $stuff ) $block`
-        // in which case we will suggest `for $stuff $block`.
-        let begin_paren = match self.token.kind {
-            token::OpenDelim(Delimiter::Parenthesis) => Some(self.token.span),
-            _ => None,
+    fn parse_for_head(&mut self) -> PResult<'a, (P<Pat>, P<Expr>)> {
+        let begin_paren = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+            // Record whether we are about to parse `for (`.
+            // This is used below for recovery in case of `for ( $stuff ) $block`
+            // in which case we will suggest `for $stuff $block`.
+            let start_span = self.token.span;
+            let left = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
+            Some((start_span, left))
+        } else {
+            None
         };
-
-        let pat = self.parse_pat_allow_top_alt(
-            None,
-            RecoverComma::Yes,
-            RecoverColon::Yes,
-            CommaRecoveryMode::LikelyTuple,
-        )?;
+        // Try to parse the pattern `for ($PAT) in $EXPR`.
+        let pat = match (
+            self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::LikelyTuple,
+            ),
+            begin_paren,
+        ) {
+            (Ok(pat), _) => pat, // Happy path.
+            (Err(err), Some((start_span, left))) if self.eat_keyword(kw::In) => {
+                // We know for sure we have seen `for ($SOMETHING in`. In the happy path this would
+                // happen right before the return of this method.
+                let expr = match self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None) {
+                    Ok(expr) => expr,
+                    Err(expr_err) => {
+                        // We don't know what followed the `in`, so cancel and bubble up the
+                        // original error.
+                        expr_err.cancel();
+                        return Err(err);
+                    }
+                };
+                return if self.token.kind == token::CloseDelim(Delimiter::Parenthesis) {
+                    // We know for sure we have seen `for ($SOMETHING in $EXPR)`, so we recover the
+                    // parser state and emit a targetted suggestion.
+                    let span = vec![start_span, self.token.span];
+                    let right = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
+                    self.bump(); // )
+                    err.cancel();
+                    self.sess.emit_err(errors::ParenthesesInForHead {
+                        span,
+                        // With e.g. `for (x) in y)` this would replace `(x) in y)`
+                        // with `x) in y)` which is syntactically invalid.
+                        // However, this is prevented before we get here.
+                        sugg: errors::ParenthesesInForHeadSugg { left, right },
+                    });
+                    Ok((self.mk_pat(start_span.to(right), ast::PatKind::Wild), expr))
+                } else {
+                    Err(err) // Some other error, bubble up.
+                };
+            }
+            (Err(err), _) => return Err(err), // Some other error, bubble up.
+        };
         if !self.eat_keyword(kw::In) {
             self.error_missing_in_for_loop();
         }
         self.check_for_for_in_in_typo(self.prev_token.span);
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+        Ok((pat, expr))
+    }
 
-        let pat = self.recover_parens_around_for_head(pat, begin_paren);
-
+    /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
+    fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+        let (pat, expr) = self.parse_for_head()?;
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
             && !matches!(self.token.kind, token::OpenDelim(Delimiter::Brace))
@@ -2853,47 +2895,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
-        // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
-        // `&&` tokens.
-        fn check_let_expr(expr: &Expr) -> (bool, bool) {
-            match &expr.kind {
-                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
-                    let lhs_rslt = check_let_expr(lhs);
-                    let rhs_rslt = check_let_expr(rhs);
-                    (lhs_rslt.0 || rhs_rslt.0, false)
-                }
-                ExprKind::Let(..) => (true, true),
-                _ => (false, true),
-            }
-        }
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
-            let pat = this.parse_pat_allow_top_alt(
-                None,
-                RecoverComma::Yes,
-                RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
-            )?;
-            let guard = if this.eat_keyword(kw::If) {
-                let if_span = this.prev_token.span;
-                let mut cond = this.parse_match_guard_condition()?;
-
-                CondChecker::new(this).visit_expr(&mut cond);
-
-                let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
-                if has_let_expr {
-                    if does_not_have_bin_op {
-                        // Remove the last feature gating of a `let` expression since it's stable.
-                        this.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
-                    }
-                    let span = if_span.to(cond.span);
-                    this.sess.gated_spans.gate(sym::if_let_guard, span);
-                }
-                Some(cond)
-            } else {
-                None
-            };
+            let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
             let arrow_span = this.token.span;
             if let Err(mut err) = this.expect(&token::FatArrow) {
                 // We might have a `=>` -> `=` or `->` typo (issue #89396).
@@ -3021,6 +3026,90 @@ impl<'a> Parser<'a> {
                 TrailingToken::None,
             ))
         })
+    }
+
+    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<P<Expr>>> {
+        // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
+        // `&&` tokens.
+        fn check_let_expr(expr: &Expr) -> (bool, bool) {
+            match &expr.kind {
+                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
+                    let lhs_rslt = check_let_expr(lhs);
+                    let rhs_rslt = check_let_expr(rhs);
+                    (lhs_rslt.0 || rhs_rslt.0, false)
+                }
+                ExprKind::Let(..) => (true, true),
+                _ => (false, true),
+            }
+        }
+        if !self.eat_keyword(kw::If) {
+            // No match arm guard present.
+            return Ok(None);
+        }
+
+        let if_span = self.prev_token.span;
+        let mut cond = self.parse_match_guard_condition()?;
+
+        CondChecker::new(self).visit_expr(&mut cond);
+
+        let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
+        if has_let_expr {
+            if does_not_have_bin_op {
+                // Remove the last feature gating of a `let` expression since it's stable.
+                self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+            }
+            let span = if_span.to(cond.span);
+            self.sess.gated_spans.gate(sym::if_let_guard, span);
+        }
+        Ok(Some(cond))
+    }
+
+    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (P<Pat>, Option<P<Expr>>)> {
+        if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+            // Detect and recover from `($pat if $cond) => $arm`.
+            let left = self.token.span;
+            match self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            ) {
+                Ok(pat) => Ok((pat, self.parse_match_arm_guard()?)),
+                Err(err)
+                    if let prev_sp = self.prev_token.span
+                        && let true = self.eat_keyword(kw::If) =>
+                {
+                    // We know for certain we've found `($pat if` so far.
+                    let mut cond = match self.parse_match_guard_condition() {
+                        Ok(cond) => cond,
+                        Err(cond_err) => {
+                            cond_err.cancel();
+                            return Err(err);
+                        }
+                    };
+                    err.cancel();
+                    CondChecker::new(self).visit_expr(&mut cond);
+                    self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
+                    self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+                    let right = self.prev_token.span;
+                    self.sess.emit_err(errors::ParenthesesInMatchPat {
+                        span: vec![left, right],
+                        sugg: errors::ParenthesesInMatchPatSugg { left, right },
+                    });
+                    Ok((self.mk_pat(left.to(prev_sp), ast::PatKind::Wild), Some(cond)))
+                }
+                Err(err) => Err(err),
+            }
+        } else {
+            // Regular parser flow:
+            let pat = self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?;
+            Ok((pat, self.parse_match_arm_guard()?))
+        }
     }
 
     fn parse_match_guard_condition(&mut self) -> PResult<'a, P<Expr>> {
