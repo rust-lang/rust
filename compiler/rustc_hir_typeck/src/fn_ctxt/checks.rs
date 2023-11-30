@@ -282,12 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 span: provided_arg.span,
                             });
                         } else {
-                            self.enforce_context_effects(
-                                provided_arg.hir_id,
-                                provided_arg.span,
-                                def_id,
-                                args,
-                            )
+                            self.enforce_context_effects(provided_arg.span, def_id, args)
                         }
                     }
                 } else {

@@ -58,6 +58,13 @@ impl CfgOptions {
         self.enabled.insert(CfgAtom::KeyValue { key, value });
     }
 
+    pub fn difference<'a>(
+        &'a self,
+        other: &'a CfgOptions,
+    ) -> impl Iterator<Item = &'a CfgAtom> + 'a {
+        self.enabled.difference(&other.enabled)
+    }
+
     pub fn apply_diff(&mut self, diff: CfgDiff) {
         for atom in diff.enable {
             self.enabled.insert(atom);

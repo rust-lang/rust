@@ -950,10 +950,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     BuiltinMacroState::NotYetSeen(builtin_ext) => {
                         ext.kind = builtin_ext;
                         rule_spans = Vec::new();
-                        if item.id != ast::DUMMY_NODE_ID {
-                            self.builtin_macro_kinds
-                                .insert(self.local_def_id(item.id), ext.macro_kind());
-                        }
                     }
                     BuiltinMacroState::AlreadySeen(span) => {
                         struct_span_err!(

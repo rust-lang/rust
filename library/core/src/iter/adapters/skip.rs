@@ -1,4 +1,5 @@
 use crate::intrinsics::unlikely;
+use crate::iter::TrustedFused;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
 use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
@@ -214,6 +215,9 @@ where
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Skip<I> where I: FusedIterator {}
 
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<I: TrustedFused> TrustedFused for Skip<I> {}
+
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I> SourceIter for Skip<I>
 where
@@ -229,4 +233,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: InPlaceIterable> InPlaceIterable for Skip<I> {}
+unsafe impl<I: InPlaceIterable> InPlaceIterable for Skip<I> {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}

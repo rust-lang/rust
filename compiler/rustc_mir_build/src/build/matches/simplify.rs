@@ -194,6 +194,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
+            PatKind::Never => {
+                // A never pattern acts like a load from the place.
+                // FIXME(never_patterns): load from the place
+                Ok(())
+            }
+
             PatKind::Constant { .. } => {
                 // FIXME normalize patterns when possible
                 Err(match_pair)

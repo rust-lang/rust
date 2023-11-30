@@ -430,6 +430,7 @@ mod desc {
     pub const parse_inlining_threshold: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
+    pub const parse_function_return: &str = "`keep` or `thunk-extern`";
 }
 
 mod parse {
@@ -1359,6 +1360,15 @@ mod parse {
         slot.push((key.to_string(), value, behavior));
         true
     }
+
+    pub(crate) fn parse_function_return(slot: &mut FunctionReturn, v: Option<&str>) -> bool {
+        match v {
+            Some("keep") => *slot = FunctionReturn::Keep,
+            Some("thunk-extern") => *slot = FunctionReturn::ThunkExtern,
+            _ => return false,
+        }
+        true
+    }
 }
 
 options! {
@@ -1603,6 +1613,8 @@ options! {
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
+    function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED],
+        "replace returns with jumps to `__x86_return_thunk` (default: `keep`)"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether each function should go in its own section"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],

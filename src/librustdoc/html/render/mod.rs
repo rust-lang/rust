@@ -66,7 +66,7 @@ use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::formats::{AssocItemRender, Impl, RenderMode};
+use crate::formats::Impl;
 use crate::html::escape::Escape;
 use crate::html::format::{
     display_fn, href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
@@ -87,6 +87,21 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{v}/") } else { f.write_str(v) }
     })
+}
+
+/// Specifies whether rendering directly implemented trait items or ones from a certain Deref
+/// impl.
+pub(crate) enum AssocItemRender<'a> {
+    All,
+    DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
+}
+
+/// For different handling of associated items from the Deref target of a type rather than the type
+/// itself.
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum RenderMode {
+    Normal,
+    ForDeref { mut_: bool },
 }
 
 // Helper structs for rendering items/sidebars and carrying along contextual

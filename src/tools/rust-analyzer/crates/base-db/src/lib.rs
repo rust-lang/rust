@@ -12,6 +12,7 @@ use rustc_hash::FxHashSet;
 use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 use triomphe::Arc;
 
+pub use crate::input::DependencyKind;
 pub use crate::{
     change::Change,
     input::{

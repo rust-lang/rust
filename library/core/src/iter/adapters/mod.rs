@@ -1,4 +1,5 @@
 use crate::iter::{InPlaceIterable, Iterator};
+use crate::num::NonZeroUsize;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 mod array_chunks;
@@ -119,8 +120,9 @@ pub unsafe trait SourceIter {
     ///
     /// # Safety
     ///
-    /// Implementations of must return the same mutable reference for their lifetime, unless
+    /// Implementations must return the same mutable reference for their lifetime, unless
     /// replaced by a caller.
+    ///
     /// Callers may only replace the reference when they stopped iteration and drop the
     /// iterator pipeline after extracting the source.
     ///
@@ -228,7 +230,10 @@ where
 // in order to return `Some(_)`. Since `iter` has type `I: InPlaceIterable` it's
 // guaranteed that at least one item will be moved out from the underlying source.
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, T, R> InPlaceIterable for GenericShunt<'_, I, R> where
-    I: Iterator<Item: Try<Output = T, Residual = R>> + InPlaceIterable
+unsafe impl<I, R> InPlaceIterable for GenericShunt<'_, I, R>
+where
+    I: InPlaceIterable,
 {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
 }

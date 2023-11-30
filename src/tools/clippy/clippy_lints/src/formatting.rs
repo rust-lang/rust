@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
 use clippy_utils::is_span_if;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
+use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -144,7 +144,7 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
             let eq_span = lhs.span.between(rhs.span);
             if let ExprKind::Unary(op, ref sub_rhs) = rhs.kind {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
-                    let op = UnOp::to_string(op);
+                    let op = op.as_str();
                     let eqop_span = lhs.span.between(sub_rhs.span);
                     if eq_snippet.ends_with('=') {
                         span_lint_and_note(
@@ -177,11 +177,11 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
         && let unop_operand_span = rhs.span.until(un_rhs.span)
         && let Some(binop_snippet) = snippet_opt(cx, binop_span)
         && let Some(unop_operand_snippet) = snippet_opt(cx, unop_operand_span)
-        && let binop_str = BinOpKind::to_string(&binop.node)
+        && let binop_str = binop.node.as_str()
         // no space after BinOp operator and space after UnOp operator
         && binop_snippet.ends_with(binop_str) && unop_operand_snippet.ends_with(' ')
     {
-        let unop_str = UnOp::to_string(op);
+        let unop_str = op.as_str();
         let eqop_span = lhs.span.between(un_rhs.span);
         span_lint_and_help(
             cx,

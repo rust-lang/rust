@@ -580,7 +580,7 @@ pub enum ResolveDocLinks {
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
 /// should only depend on the output types, not the paths they're written to.
-#[derive(Clone, Debug, Hash, HashStable_Generic)]
+#[derive(Clone, Debug, Hash, HashStable_Generic, Encodable, Decodable)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<OutFileName>>);
 
 impl OutputTypes {
@@ -818,7 +818,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash, Debug, HashStable_Generic, PartialEq)]
+#[derive(Clone, Hash, Debug, HashStable_Generic, PartialEq, Encodable, Decodable)]
 pub enum OutFileName {
     Real(PathBuf),
     Stdout,
@@ -890,7 +890,7 @@ impl OutFileName {
     }
 }
 
-#[derive(Clone, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Hash, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
     /// Crate name. Never contains '-'.
@@ -3164,9 +3164,9 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
-        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
+        ErrorOutputType, FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay,
+        LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType,
+        OutputTypes, Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
         SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
@@ -3273,6 +3273,7 @@ pub(crate) mod dep_tracking {
         TraitSolver,
         Polonius,
         InliningThreshold,
+        FunctionReturn,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3450,4 +3451,15 @@ impl Default for InliningThreshold {
     fn default() -> Self {
         Self::Sometimes(100)
     }
+}
+
+/// The different settings that the `-Zfunction-return` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+pub enum FunctionReturn {
+    /// Keep the function return unmodified.
+    #[default]
+    Keep,
+
+    /// Replace returns with jumps to thunk, without emitting the thunk.
+    ThunkExtern,
 }

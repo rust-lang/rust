@@ -2352,7 +2352,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             } else {
-                                err.note("the result of `format_args!` can only be assigned directly if no placeholders in it's arguments are used");
+                                err.note("the result of `format_args!` can only be assigned directly if no placeholders in its arguments are used");
                                 err.note("to learn more, visit <https://doc.rust-lang.org/std/macro.format_args.html>");
                             }
                             suggested = true;

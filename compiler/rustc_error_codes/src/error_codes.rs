@@ -653,3 +653,4 @@ E0795: include_str!("./error_codes/E0795.md"),
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
+//  E0744, // merged into E0728

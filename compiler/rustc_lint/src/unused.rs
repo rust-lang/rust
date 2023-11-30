@@ -656,7 +656,7 @@ trait UnusedDelimLint {
     ) -> bool {
         if followed_by_else {
             match inner.kind {
-                ast::ExprKind::Binary(op, ..) if op.node.lazy() => return true,
+                ast::ExprKind::Binary(op, ..) if op.node.is_lazy() => return true,
                 _ if classify::expr_trailing_brace(inner).is_some() => return true,
                 _ => {}
             }
@@ -1016,7 +1016,7 @@ impl UnusedDelimLint for UnusedParens {
                                 rustc_span::source_map::Spanned { node, .. },
                                 _,
                                 _,
-                            ) if node.lazy()))
+                            ) if node.is_lazy()))
                 {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                 }
@@ -1154,7 +1154,7 @@ impl EarlyLintPass for UnusedParens {
             // Do not lint on `(..)` as that will result in the other arms being useless.
             Paren(_)
             // The other cases do not contain sub-patterns.
-            | Wild | Rest | Lit(..) | MacCall(..) | Range(..) | Ident(.., None) | Path(..) => {},
+            | Wild | Never | Rest | Lit(..) | MacCall(..) | Range(..) | Ident(.., None) | Path(..) => {},
             // These are list-like patterns; parens can always be removed.
             TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
                 self.check_unused_parens_pat(cx, p, false, false, keep_space);

@@ -39,7 +39,7 @@ use std::any::Any;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
@@ -553,13 +553,17 @@ fn resolver_for_lowering<'tcx>(
     tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate))))
 }
 
-fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
+pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
+    // Make sure name resolution and macro expansion is run for
+    // the side-effect of providing a complete set of all
+    // accessed files and env vars.
+    let _ = tcx.resolver_for_lowering(());
+
     let sess = tcx.sess;
-    let _timer = sess.timer("prepare_outputs");
-    let (_, krate) = &*tcx.resolver_for_lowering(()).borrow();
+    let _timer = sess.timer("write_dep_info");
     let crate_name = tcx.crate_name(LOCAL_CRATE);
 
-    let outputs = util::build_output_filenames(&krate.attrs, sess);
+    let outputs = tcx.output_filenames(());
     let output_paths =
         generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
 
@@ -596,15 +600,12 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
             }
         }
     }
-
-    outputs.into()
 }
 
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.output_filenames = output_filenames;
     providers.resolver_for_lowering = resolver_for_lowering;
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);

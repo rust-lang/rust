@@ -984,6 +984,11 @@ fn main() {}
 //- /src/old_file.rs
 
 //- /src/old_folder/mod.rs
+mod nested;
+
+//- /src/old_folder/nested.rs
+struct foo;
+use crate::old_folder::nested::foo as bar;
 
 //- /src/from_mod/mod.rs
 
@@ -1075,6 +1080,27 @@ fn main() {}
                     "end": {
                       "line": 3,
                       "character": 14
+                    }
+                  },
+                  "newText": "new_folder"
+                }
+              ]
+            },
+            {
+              "textDocument": {
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").to_str().unwrap().to_string().replace("C:\\", "/c:/").replace('\\', "/")),
+                "version": null
+              },
+              "edits": [
+                {
+                  "range": {
+                    "start": {
+                      "line": 1,
+                      "character": 11
+                    },
+                    "end": {
+                      "line": 1,
+                      "character": 21
                     }
                   },
                   "newText": "new_folder"

@@ -645,6 +645,7 @@ impl Pat {
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
             | PatKind::Rest
+            | PatKind::Never
             | PatKind::Lit(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
@@ -795,6 +796,9 @@ pub enum PatKind {
     /// only one rest pattern may occur in the pattern sequences.
     Rest,
 
+    // A never pattern `!`
+    Never,
+
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),
 
@@ -817,7 +821,7 @@ pub enum BorrowKind {
     Raw,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum BinOpKind {
     /// The `+` operator (addition)
     Add,
@@ -858,9 +862,9 @@ pub enum BinOpKind {
 }
 
 impl BinOpKind {
-    pub fn to_string(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         use BinOpKind::*;
-        match *self {
+        match self {
             Add => "+",
             Sub => "-",
             Mul => "*",
@@ -881,18 +885,24 @@ impl BinOpKind {
             Gt => ">",
         }
     }
-    pub fn lazy(&self) -> bool {
+
+    pub fn is_lazy(&self) -> bool {
         matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
     pub fn is_comparison(&self) -> bool {
         use BinOpKind::*;
-        // Note for developers: please keep this as is;
+        // Note for developers: please keep this match exhaustive;
         // we want compilation to fail if another variant is added.
         match *self {
             Eq | Lt | Le | Ne | Gt | Ge => true,
             And | Or | Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr => false,
         }
+    }
+
+    /// Returns `true` if the binary operator takes its arguments by value.
+    pub fn is_by_value(self) -> bool {
+        !self.is_comparison()
     }
 }
 
@@ -901,7 +911,7 @@ pub type BinOp = Spanned<BinOpKind>;
 /// Unary operator.
 ///
 /// Note that `&data` is not an operator, it's an `AddrOf` expression.
-#[derive(Clone, Encodable, Decodable, Debug, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum UnOp {
     /// The `*` operator for dereferencing
     Deref,
@@ -912,12 +922,17 @@ pub enum UnOp {
 }
 
 impl UnOp {
-    pub fn to_string(op: UnOp) -> &'static str {
-        match op {
+    pub fn as_str(&self) -> &'static str {
+        match self {
             UnOp::Deref => "*",
             UnOp::Not => "!",
             UnOp::Neg => "-",
         }
+    }
+
+    /// Returns `true` if the unary operator takes its argument by value.
+    pub fn is_by_value(self) -> bool {
+        matches!(self, Self::Neg | Self::Not)
     }
 }
 

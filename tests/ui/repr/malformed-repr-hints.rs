@@ -19,6 +19,15 @@ struct S3;
 //~^ ERROR: incorrect `repr(align)` attribute format
 struct S4;
 
+// Regression test for issue #118334:
+#[repr(Rust(u8))]
+//~^ ERROR: invalid representation hint
+#[repr(Rust(0))]
+//~^ ERROR: invalid representation hint
+#[repr(Rust = 0)]
+//~^ ERROR: invalid representation hint
+struct S5;
+
 #[repr(i8())]
 //~^ ERROR: invalid representation hint
 enum E1 { A, B }

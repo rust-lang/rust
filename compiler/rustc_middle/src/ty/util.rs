@@ -779,6 +779,57 @@ impl<'tcx> TyCtxt<'tcx> {
             // the language.
             || self.extern_crate(key.as_def_id()).is_some_and(|e| e.is_direct())
     }
+
+    pub fn expected_const_effect_param_for_body(self, def_id: LocalDefId) -> ty::Const<'tcx> {
+        // if the callee does have the param, we need to equate the param to some const
+        // value no matter whether the effects feature is enabled in the local crate,
+        // because inference will fail if we don't.
+        let mut host_always_on =
+            !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
+
+        // Compute the constness required by the context.
+        let const_context = self.hir().body_const_context(def_id);
+
+        let kind = self.def_kind(def_id);
+        debug_assert_ne!(kind, DefKind::ConstParam);
+
+        if self.has_attr(def_id, sym::rustc_do_not_const_check) {
+            trace!("do not const check this context");
+            host_always_on = true;
+        }
+
+        match const_context {
+            _ if host_always_on => self.consts.true_,
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { .. }) => {
+                self.consts.false_
+            }
+            Some(hir::ConstContext::ConstFn) => {
+                let host_idx = self
+                    .generics_of(def_id)
+                    .host_effect_index
+                    .expect("ConstContext::Maybe must have host effect param");
+                ty::GenericArgs::identity_for_item(self, def_id).const_at(host_idx)
+            }
+            None => self.consts.true_,
+        }
+    }
+
+    /// Constructs generic args for an item, optionally appending a const effect param type
+    pub fn with_opt_const_effect_param(
+        self,
+        caller_def_id: LocalDefId,
+        callee_def_id: DefId,
+        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> ty::GenericArgsRef<'tcx> {
+        let generics = self.generics_of(callee_def_id);
+        assert_eq!(generics.parent, None);
+
+        let opt_const_param = generics.host_effect_index.is_some().then(|| {
+            ty::GenericArg::from(self.expected_const_effect_param_for_body(caller_def_id))
+        });
+
+        self.mk_args_from_iter(args.into_iter().map(|arg| arg.into()).chain(opt_const_param))
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {

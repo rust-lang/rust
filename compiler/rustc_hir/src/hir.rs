@@ -7,8 +7,8 @@ use crate::LangItem;
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
-pub use rustc_ast::{BindingAnnotation, BorrowKind, ByRef, ImplPolarity, IsAuto};
-pub use rustc_ast::{CaptureBy, Movability, Mutability};
+pub use rustc_ast::{BinOp, BinOpKind, BindingAnnotation, BorrowKind, ByRef, CaptureBy};
+pub use rustc_ast::{ImplPolarity, IsAuto, Movability, Mutability, UnOp};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -1002,7 +1002,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
+            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
@@ -1029,7 +1029,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {}
+            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {}
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
@@ -1142,6 +1142,9 @@ pub enum PatKind<'hir> {
     /// Invariant: `pats.len() >= 2`.
     Or(&'hir [Pat<'hir>]),
 
+    /// A never pattern `!`.
+    Never,
+
     /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
     Path(QPath<'hir>),
 
@@ -1172,155 +1175,6 @@ pub enum PatKind<'hir> {
     /// PatKind::Slice([Binding(a), Binding(b)], Some(Wild), [Binding(c), Binding(d)])
     /// ```
     Slice(&'hir [Pat<'hir>], Option<&'hir Pat<'hir>>, &'hir [Pat<'hir>]),
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
-pub enum BinOpKind {
-    /// The `+` operator (addition).
-    Add,
-    /// The `-` operator (subtraction).
-    Sub,
-    /// The `*` operator (multiplication).
-    Mul,
-    /// The `/` operator (division).
-    Div,
-    /// The `%` operator (modulus).
-    Rem,
-    /// The `&&` operator (logical and).
-    And,
-    /// The `||` operator (logical or).
-    Or,
-    /// The `^` operator (bitwise xor).
-    BitXor,
-    /// The `&` operator (bitwise and).
-    BitAnd,
-    /// The `|` operator (bitwise or).
-    BitOr,
-    /// The `<<` operator (shift left).
-    Shl,
-    /// The `>>` operator (shift right).
-    Shr,
-    /// The `==` operator (equality).
-    Eq,
-    /// The `<` operator (less than).
-    Lt,
-    /// The `<=` operator (less than or equal to).
-    Le,
-    /// The `!=` operator (not equal to).
-    Ne,
-    /// The `>=` operator (greater than or equal to).
-    Ge,
-    /// The `>` operator (greater than).
-    Gt,
-}
-
-impl BinOpKind {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            BinOpKind::Add => "+",
-            BinOpKind::Sub => "-",
-            BinOpKind::Mul => "*",
-            BinOpKind::Div => "/",
-            BinOpKind::Rem => "%",
-            BinOpKind::And => "&&",
-            BinOpKind::Or => "||",
-            BinOpKind::BitXor => "^",
-            BinOpKind::BitAnd => "&",
-            BinOpKind::BitOr => "|",
-            BinOpKind::Shl => "<<",
-            BinOpKind::Shr => ">>",
-            BinOpKind::Eq => "==",
-            BinOpKind::Lt => "<",
-            BinOpKind::Le => "<=",
-            BinOpKind::Ne => "!=",
-            BinOpKind::Ge => ">=",
-            BinOpKind::Gt => ">",
-        }
-    }
-
-    pub fn is_lazy(self) -> bool {
-        matches!(self, BinOpKind::And | BinOpKind::Or)
-    }
-
-    pub fn is_comparison(self) -> bool {
-        match self {
-            BinOpKind::Eq
-            | BinOpKind::Lt
-            | BinOpKind::Le
-            | BinOpKind::Ne
-            | BinOpKind::Gt
-            | BinOpKind::Ge => true,
-            BinOpKind::And
-            | BinOpKind::Or
-            | BinOpKind::Add
-            | BinOpKind::Sub
-            | BinOpKind::Mul
-            | BinOpKind::Div
-            | BinOpKind::Rem
-            | BinOpKind::BitXor
-            | BinOpKind::BitAnd
-            | BinOpKind::BitOr
-            | BinOpKind::Shl
-            | BinOpKind::Shr => false,
-        }
-    }
-
-    /// Returns `true` if the binary operator takes its arguments by value.
-    pub fn is_by_value(self) -> bool {
-        !self.is_comparison()
-    }
-}
-
-impl Into<ast::BinOpKind> for BinOpKind {
-    fn into(self) -> ast::BinOpKind {
-        match self {
-            BinOpKind::Add => ast::BinOpKind::Add,
-            BinOpKind::Sub => ast::BinOpKind::Sub,
-            BinOpKind::Mul => ast::BinOpKind::Mul,
-            BinOpKind::Div => ast::BinOpKind::Div,
-            BinOpKind::Rem => ast::BinOpKind::Rem,
-            BinOpKind::And => ast::BinOpKind::And,
-            BinOpKind::Or => ast::BinOpKind::Or,
-            BinOpKind::BitXor => ast::BinOpKind::BitXor,
-            BinOpKind::BitAnd => ast::BinOpKind::BitAnd,
-            BinOpKind::BitOr => ast::BinOpKind::BitOr,
-            BinOpKind::Shl => ast::BinOpKind::Shl,
-            BinOpKind::Shr => ast::BinOpKind::Shr,
-            BinOpKind::Eq => ast::BinOpKind::Eq,
-            BinOpKind::Lt => ast::BinOpKind::Lt,
-            BinOpKind::Le => ast::BinOpKind::Le,
-            BinOpKind::Ne => ast::BinOpKind::Ne,
-            BinOpKind::Ge => ast::BinOpKind::Ge,
-            BinOpKind::Gt => ast::BinOpKind::Gt,
-        }
-    }
-}
-
-pub type BinOp = Spanned<BinOpKind>;
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
-pub enum UnOp {
-    /// The `*` operator (dereferencing).
-    Deref,
-    /// The `!` operator (logical negation).
-    Not,
-    /// The `-` operator (negation).
-    Neg,
-}
-
-impl UnOp {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Deref => "*",
-            Self::Not => "!",
-            Self::Neg => "-",
-        }
-    }
-
-    /// Returns `true` if the unary operator takes its argument by value.
-    pub fn is_by_value(self) -> bool {
-        matches!(self, Self::Neg | Self::Not)
-    }
 }
 
 /// A statement.

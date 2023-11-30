@@ -7,7 +7,6 @@ use hir::definitions::DefPathData;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -55,42 +54,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
-        let allow_gen_future = Some(if self.tcx.features().async_fn_track_caller {
-            [sym::gen_future, sym::closure_track_caller][..].into()
-        } else {
-            [sym::gen_future][..].into()
-        });
-        let mut lctx = LoweringContext {
-            // Pseudo-globals.
-            tcx: self.tcx,
-            resolver: self.resolver,
-            arena: self.tcx.hir_arena,
-
-            // HirId handling.
-            bodies: Vec::new(),
-            attrs: SortedMap::default(),
-            children: Vec::default(),
-            current_hir_id_owner: hir::CRATE_OWNER_ID,
-            item_local_id_counter: hir::ItemLocalId::new(0),
-            node_id_to_local_id: Default::default(),
-            trait_map: Default::default(),
-
-            // Lowering state.
-            catch_scope: None,
-            loop_scope: None,
-            is_in_loop_condition: false,
-            is_in_trait_impl: false,
-            is_in_dyn_type: false,
-            coroutine_kind: None,
-            task_context: None,
-            current_item: None,
-            impl_trait_defs: Vec::new(),
-            impl_trait_bounds: Vec::new(),
-            allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
-            allow_gen_future,
-            generics_def_id_map: Default::default(),
-            host_param_id: None,
-        };
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
@@ -136,39 +100,9 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 
     fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
         let def_id = self.resolver.node_id_to_def_id[&item.id];
-
         let parent_id = self.tcx.local_parent(def_id);
         let parent_hir = self.lower_node(parent_id).unwrap();
-        self.with_lctx(item.id, |lctx| {
-            // Evaluate with the lifetimes in `params` in-scope.
-            // This is used to track which lifetimes have already been defined,
-            // and which need to be replicated when lowering an async fn.
-
-            match parent_hir.node().expect_item().kind {
-                hir::ItemKind::Impl(impl_) => {
-                    lctx.is_in_trait_impl = impl_.of_trait.is_some();
-                }
-                hir::ItemKind::Trait(_, _, generics, _, _) if lctx.tcx.features().effects => {
-                    lctx.host_param_id = generics
-                        .params
-                        .iter()
-                        .find(|param| {
-                            parent_hir
-                                .attrs
-                                .get(param.hir_id.local_id)
-                                .iter()
-                                .any(|attr| attr.has_name(sym::rustc_host))
-                        })
-                        .map(|param| param.def_id);
-                }
-                _ => {}
-            }
-
-            match ctxt {
-                AssocCtxt::Trait => hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)),
-                AssocCtxt::Impl => hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)),
-            }
-        })
+        self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt, parent_hir))
     }
 
     fn lower_foreign_item(&mut self, item: &ForeignItem) {
@@ -268,9 +202,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body,
                 ..
             }) => {
-                self.with_new_scopes(|this| {
-                    this.current_item = Some(ident.span);
-
+                self.with_new_scopes(ident.span, |this| {
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
@@ -480,7 +412,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(MacroDef { body, macro_rules }) => {
                 let body = P(self.lower_delim_args(body));
-                let macro_kind = self.resolver.decl_macro_kind(self.local_def_id(id));
+                let DefKind::Macro(macro_kind) = self.tcx.def_kind(self.local_def_id(id)) else {
+                    unreachable!()
+                };
                 let macro_def = self.arena.alloc(ast::MacroDef { body, macro_rules: *macro_rules });
                 hir::ItemKind::Macro(macro_def, macro_kind)
             }
@@ -606,6 +540,42 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let path = self.lower_use_path(res, &prefix, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
+        }
+    }
+
+    fn lower_assoc_item(
+        &mut self,
+        item: &AssocItem,
+        ctxt: AssocCtxt,
+        parent_hir: &'hir hir::OwnerInfo<'hir>,
+    ) -> hir::OwnerNode<'hir> {
+        // Evaluate with the lifetimes in `params` in-scope.
+        // This is used to track which lifetimes have already been defined,
+        // and which need to be replicated when lowering an async fn.
+
+        match parent_hir.node().expect_item().kind {
+            hir::ItemKind::Impl(impl_) => {
+                self.is_in_trait_impl = impl_.of_trait.is_some();
+            }
+            hir::ItemKind::Trait(_, _, generics, _, _) if self.tcx.features().effects => {
+                self.host_param_id = generics
+                    .params
+                    .iter()
+                    .find(|param| {
+                        parent_hir
+                            .attrs
+                            .get(param.hir_id.local_id)
+                            .iter()
+                            .any(|attr| attr.has_name(sym::rustc_host))
+                    })
+                    .map(|param| param.def_id);
+            }
+            _ => {}
+        }
+
+        match ctxt {
+            AssocCtxt::Trait => hir::OwnerNode::TraitItem(self.lower_trait_item(item)),
+            AssocCtxt::Impl => hir::OwnerNode::ImplItem(self.lower_impl_item(item)),
         }
     }
 
@@ -865,7 +835,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
             ),
             AssocItemKind::Fn(box Fn { sig, generics, body, .. }) => {
-                self.current_item = Some(i.span);
                 let asyncness = sig.header.asyncness;
                 let body_id = self.lower_maybe_async_body(
                     i.span,
@@ -1399,6 +1368,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.local_def_id(parent_node_id),
                     param_node_id,
                     DefPathData::TypeNs(sym::host),
+                    DefKind::ConstParam,
                     span,
                 );
                 self.host_param_id = Some(def_id);
@@ -1457,8 +1427,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let Some((span, hir_id, def_id)) = host_param_parts {
             let const_node_id = self.next_node_id();
-            let anon_const: LocalDefId =
-                self.create_def(def_id, const_node_id, DefPathData::AnonConst, span);
+            let anon_const = self.create_def(
+                def_id,
+                const_node_id,
+                DefPathData::AnonConst,
+                DefKind::AnonConst,
+                span,
+            );
 
             let const_id = self.next_id();
             let const_expr_id = self.next_id();

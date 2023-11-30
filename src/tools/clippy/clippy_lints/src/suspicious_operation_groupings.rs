@@ -298,7 +298,7 @@ fn replace_left_sugg(
 ) -> String {
     format!(
         "{left_suggestion} {} {}",
-        binop.op.to_string(),
+        binop.op.as_str(),
         snippet_with_applicability(cx, binop.right.span, "..", applicability),
     )
 }
@@ -312,7 +312,7 @@ fn replace_right_sugg(
     format!(
         "{} {} {right_suggestion}",
         snippet_with_applicability(cx, binop.left.span, "..", applicability),
-        binop.op.to_string(),
+        binop.op.as_str(),
     )
 }
 

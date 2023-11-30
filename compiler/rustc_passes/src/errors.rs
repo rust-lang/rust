@@ -1005,15 +1005,6 @@ pub struct FeaturePreviouslyDeclared<'a, 'b> {
     pub prev_declared: &'b str,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_expr_not_allowed_in_context, code = "E0744")]
-pub struct ExprNotAllowedInContext<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub expr: String,
-    pub context: &'a str,
-}
-
 pub struct BreakNonLoop<'a> {
     pub span: Span,
     pub head: Option<Span>,

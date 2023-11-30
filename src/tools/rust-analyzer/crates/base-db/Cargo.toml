@@ -12,7 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-salsa = "0.17.0-pre.2"
+rust-analyzer-salsa = "0.17.0-pre.3"
 rustc-hash = "1.1.0"
 
 triomphe.workspace = true

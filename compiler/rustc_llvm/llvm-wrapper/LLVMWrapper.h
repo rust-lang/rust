@@ -42,11 +42,7 @@
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/Linker/Linker.h"
 
-#if LLVM_VERSION_GE(16, 0)
 #include "llvm/TargetParser/Triple.h"
-#else
-#include "llvm/ADT/Triple.h"
-#endif
 
 extern "C" void LLVMRustSetLastError(const char *);
 
@@ -93,6 +89,7 @@ enum LLVMRustAttribute {
   AllocatedPointer = 38,
   AllocAlign = 39,
   SanitizeSafeStack = 40,
+  FnRetThunkExtern = 41,
 };
 
 typedef struct OpaqueRustString *RustStringRef;

@@ -8,6 +8,7 @@ use crate::iter::{TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::ops::Try;
 use crate::option;
 use crate::slice::{self, Split as SliceSplit};
+use core::num::NonZeroUsize;
 
 use super::from_utf8_unchecked;
 use super::pattern::Pattern;
@@ -47,6 +48,55 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn count(self) -> usize {
         super::count::count_chars(self.as_str())
+    }
+
+    #[inline]
+    fn advance_by(&mut self, mut remainder: usize) -> Result<(), NonZeroUsize> {
+        const CHUNK_SIZE: usize = 32;
+
+        if remainder >= CHUNK_SIZE {
+            let mut chunks = self.iter.as_slice().array_chunks::<CHUNK_SIZE>();
+            let mut bytes_skipped: usize = 0;
+
+            while remainder > CHUNK_SIZE
+                && let Some(chunk) = chunks.next()
+            {
+                bytes_skipped += CHUNK_SIZE;
+
+                let mut start_bytes = [false; CHUNK_SIZE];
+
+                for i in 0..CHUNK_SIZE {
+                    start_bytes[i] = !super::validations::utf8_is_cont_byte(chunk[i]);
+                }
+
+                remainder -= start_bytes.into_iter().map(|i| i as u8).sum::<u8>() as usize;
+            }
+
+            // SAFETY: The amount of bytes exists since we just iterated over them,
+            // so advance_by will succeed.
+            unsafe { self.iter.advance_by(bytes_skipped).unwrap_unchecked() };
+
+            // skip trailing continuation bytes
+            while self.iter.len() > 0 {
+                let b = self.iter.as_slice()[0];
+                if !super::validations::utf8_is_cont_byte(b) {
+                    break;
+                }
+                // SAFETY: We just peeked at the byte, therefore it exists
+                unsafe { self.iter.advance_by(1).unwrap_unchecked() };
+            }
+        }
+
+        while (remainder > 0) && (self.iter.len() > 0) {
+            remainder -= 1;
+            let b = self.iter.as_slice()[0];
+            let slurp = super::validations::utf8_char_width(b);
+            // SAFETY: utf8 validity requires that the string must contain
+            // the continuation bytes (if any)
+            unsafe { self.iter.advance_by(slurp).unwrap_unchecked() };
+        }
+
+        NonZeroUsize::new(remainder).map_or(Ok(()), Err)
     }
 
     #[inline]

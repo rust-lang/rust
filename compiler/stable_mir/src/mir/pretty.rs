@@ -1,7 +1,11 @@
 use crate::crate_def::CrateDef;
-use crate::mir::{Operand, Rvalue, StatementKind};
+use crate::mir::{Operand, Rvalue, StatementKind, UnwindAction};
 use crate::ty::{DynKind, FloatTy, IntTy, RigidTy, TyKind, UintTy};
 use crate::{with, Body, CrateItem, Mutability};
+use std::io::Write;
+use std::{io, iter};
+
+use super::{AssertMessage, BinOp, TerminatorKind};
 
 pub fn function_name(item: CrateItem) -> String {
     let mut pretty_name = String::new();
@@ -68,6 +72,209 @@ pub fn pretty_statement(statement: &StatementKind) -> String {
         StatementKind::Nop => (),
     }
     pretty
+}
+
+pub fn pretty_terminator<W: io::Write>(terminator: &TerminatorKind, w: &mut W) -> io::Result<()> {
+    write!(w, "{}", pretty_terminator_head(terminator))?;
+    let successor_count = terminator.successors().count();
+    let labels = pretty_successor_labels(terminator);
+
+    let show_unwind = !matches!(terminator.unwind(), None | Some(UnwindAction::Cleanup(_)));
+    let fmt_unwind = |fmt: &mut dyn Write| -> io::Result<()> {
+        write!(fmt, "unwind ")?;
+        match terminator.unwind() {
+            None | Some(UnwindAction::Cleanup(_)) => unreachable!(),
+            Some(UnwindAction::Continue) => write!(fmt, "continue"),
+            Some(UnwindAction::Unreachable) => write!(fmt, "unreachable"),
+            Some(UnwindAction::Terminate) => write!(fmt, "terminate"),
+        }
+    };
+
+    match (successor_count, show_unwind) {
+        (0, false) => Ok(()),
+        (0, true) => {
+            write!(w, " -> ")?;
+            fmt_unwind(w)?;
+            Ok(())
+        }
+        (1, false) => {
+            write!(w, " -> {:?}", terminator.successors().next().unwrap())?;
+            Ok(())
+        }
+        _ => {
+            write!(w, " -> [")?;
+            for (i, target) in terminator.successors().enumerate() {
+                if i > 0 {
+                    write!(w, ", ")?;
+                }
+                write!(w, "{}: bb{:?}", labels[i], target)?;
+            }
+            if show_unwind {
+                write!(w, ", ")?;
+                fmt_unwind(w)?;
+            }
+            write!(w, "]")
+        }
+    }?;
+
+    Ok(())
+}
+
+pub fn pretty_terminator_head(terminator: &TerminatorKind) -> String {
+    use self::TerminatorKind::*;
+    let mut pretty = String::new();
+    match terminator {
+        Goto { .. } => format!("        goto"),
+        SwitchInt { discr, .. } => {
+            format!("        switchInt(_{})", pretty_operand(discr))
+        }
+        Resume => format!("        resume"),
+        Abort => format!("        abort"),
+        Return => format!("        return"),
+        Unreachable => format!("        unreachable"),
+        Drop { place, .. } => format!("        drop(_{:?})", place.local),
+        Call { func, args, destination, .. } => {
+            pretty.push_str("        ");
+            pretty.push_str(format!("_{} = ", destination.local).as_str());
+            pretty.push_str(&pretty_operand(func));
+            pretty.push_str("(");
+            args.iter().enumerate().for_each(|(i, arg)| {
+                if i > 0 {
+                    pretty.push_str(", ");
+                }
+                pretty.push_str(&pretty_operand(arg));
+            });
+            pretty.push_str(")");
+            pretty
+        }
+        Assert { cond, expected, msg, target: _, unwind: _ } => {
+            pretty.push_str("        assert(");
+            if !expected {
+                pretty.push_str("!");
+            }
+            pretty.push_str(format!("{} bool),", &pretty_operand(cond)).as_str());
+            pretty.push_str(&pretty_assert_message(msg));
+            pretty.push_str(")");
+            pretty
+        }
+        CoroutineDrop => format!("        coroutine_drop"),
+        InlineAsm { .. } => todo!(),
+    }
+}
+
+pub fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
+    use self::TerminatorKind::*;
+    match terminator {
+        Resume | Abort | Return | Unreachable | CoroutineDrop => vec![],
+        Goto { .. } => vec!["".to_string()],
+        SwitchInt { targets, .. } => targets
+            .value
+            .iter()
+            .map(|target| format!("{}", target))
+            .chain(iter::once("otherwise".into()))
+            .collect(),
+        Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
+        Drop { unwind: _, .. } => vec!["return".into()],
+        Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
+            vec!["return".into(), "unwind".into()]
+        }
+        Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
+        Call { target: None, unwind: UnwindAction::Cleanup(_), .. } => vec!["unwind".into()],
+        Call { target: None, unwind: _, .. } => vec![],
+        Assert { unwind: UnwindAction::Cleanup(_), .. } => {
+            vec!["success".into(), "unwind".into()]
+        }
+        Assert { unwind: _, .. } => vec!["success".into()],
+        InlineAsm { .. } => todo!(),
+    }
+}
+
+pub fn pretty_assert_message(msg: &AssertMessage) -> String {
+    let mut pretty = String::new();
+    match msg {
+        AssertMessage::BoundsCheck { len, index } => {
+            let pretty_len = pretty_operand(len);
+            let pretty_index = pretty_operand(index);
+            pretty.push_str(format!("\"index out of bounds: the length is {{}} but the index is {{}}\", {pretty_len}, {pretty_index}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Add, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} + {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Sub, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} - {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Mul, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} * {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Div, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} / {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Rem, l, r) => {
+            let pretty_l = pretty_operand(l);
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(format!("\"attempt to compute `{{}} % {{}}`, which would overflow\", {pretty_l}, {pretty_r}").as_str());
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Shr, _, r) => {
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(
+                format!("\"attempt to shift right by `{{}}`, which would overflow\", {pretty_r}")
+                    .as_str(),
+            );
+            pretty
+        }
+        AssertMessage::Overflow(BinOp::Shl, _, r) => {
+            let pretty_r = pretty_operand(r);
+            pretty.push_str(
+                format!("\"attempt to shift left by `{{}}`, which would overflow\", {pretty_r}")
+                    .as_str(),
+            );
+            pretty
+        }
+        AssertMessage::OverflowNeg(op) => {
+            let pretty_op = pretty_operand(op);
+            pretty.push_str(
+                format!("\"attempt to negate `{{}}`, which would overflow\", {pretty_op}").as_str(),
+            );
+            pretty
+        }
+        AssertMessage::DivisionByZero(op) => {
+            let pretty_op = pretty_operand(op);
+            pretty.push_str(format!("\"attempt to divide `{{}}` by zero\", {pretty_op}").as_str());
+            pretty
+        }
+        AssertMessage::RemainderByZero(op) => {
+            let pretty_op = pretty_operand(op);
+            pretty.push_str(
+                format!("\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {pretty_op}").as_str(),
+            );
+            pretty
+        }
+        AssertMessage::ResumedAfterReturn(_) => {
+            format!("attempt to resume a generator after completion")
+        }
+        AssertMessage::ResumedAfterPanic(_) => format!("attempt to resume a panicked generator"),
+        AssertMessage::MisalignedPointerDereference { required, found } => {
+            let pretty_required = pretty_operand(required);
+            let pretty_found = pretty_operand(found);
+            pretty.push_str(format!("\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\",{pretty_required}, {pretty_found}").as_str());
+            pretty
+        }
+        _ => todo!(),
+    }
 }
 
 pub fn pretty_operand(operand: &Operand) -> String {

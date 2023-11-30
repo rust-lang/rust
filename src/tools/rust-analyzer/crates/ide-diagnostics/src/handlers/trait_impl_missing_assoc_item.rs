@@ -36,6 +36,19 @@ mod tests {
     use crate::tests::check_diagnostics;
 
     #[test]
+    fn trait_with_default_value() {
+        check_diagnostics(
+            r#"
+trait Marker {
+    const FLAG: bool = false;
+}
+struct Foo;
+impl Marker for Foo {}
+            "#,
+        )
+    }
+
+    #[test]
     fn simple() {
         check_diagnostics(
             r#"

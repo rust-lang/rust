@@ -13,10 +13,8 @@
 //[s390x] needs-llvm-components: systemz
 //[i686] compile-flags: --target i686-unknown-linux-gnu
 //[i686] needs-llvm-components: x86
-//[i686] min-llvm-version: 16
 //[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //[x86_64] needs-llvm-components: x86
-//[x86_64] min-llvm-version: 16
 
 #![crate_type = "rlib"]
 #![feature(no_core, lang_items)]

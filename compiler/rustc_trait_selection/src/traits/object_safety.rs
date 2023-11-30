@@ -192,7 +192,7 @@ fn lint_object_unsafe_trait(
             );
             if node.is_some() {
                 // Only provide the help if its a local trait, otherwise it's not
-                violation.solution(err);
+                violation.solution().add_to(err);
             }
             err
         },

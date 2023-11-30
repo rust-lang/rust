@@ -81,6 +81,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
+        .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
         .optmulti("", "skip", "skip tests matching SUBSTRING. Can be passed multiple times", "SUBSTRING")
         .optflag("", "exact", "filters match exactly")
         .optopt(
@@ -203,6 +204,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
+    let with_debug_assertions = matches.opt_present("with-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
@@ -238,6 +240,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
+        with_debug_assertions,
         filters: matches.free.clone(),
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),

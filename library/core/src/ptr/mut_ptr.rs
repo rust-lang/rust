@@ -1920,10 +1920,10 @@ impl<T> *mut [T] {
     ///
     /// ```
     /// #![feature(slice_ptr_len)]
+    /// use std::ptr;
     ///
-    /// let mut a = [1, 2, 3];
-    /// let ptr = &mut a as *mut [_];
-    /// assert!(!ptr.is_empty());
+    /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
+    /// assert!(!slice.is_empty());
     /// ```
     #[inline(always)]
     #[unstable(feature = "slice_ptr_len", issue = "71146")]

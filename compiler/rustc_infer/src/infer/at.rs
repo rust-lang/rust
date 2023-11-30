@@ -448,7 +448,11 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+            values: PolyTraitRefs(ExpectedFound::new(
+                a_is_expected,
+                ty::Binder::dummy(a),
+                ty::Binder::dummy(b),
+            )),
         }
     }
 }

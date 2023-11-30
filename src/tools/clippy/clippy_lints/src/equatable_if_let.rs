@@ -46,7 +46,7 @@ fn unary_pattern(pat: &Pat<'_>) -> bool {
         pats.iter().all(unary_pattern)
     }
     match &pat.kind {
-        PatKind::Slice(_, _, _) | PatKind::Range(_, _, _) | PatKind::Binding(..) | PatKind::Wild | PatKind::Or(_) => {
+        PatKind::Slice(_, _, _) | PatKind::Range(_, _, _) | PatKind::Binding(..) | PatKind::Wild | PatKind::Never | PatKind::Or(_) => {
             false
         },
         PatKind::Struct(_, a, etc) => !etc && a.iter().all(|x| unary_pattern(x.pat)),

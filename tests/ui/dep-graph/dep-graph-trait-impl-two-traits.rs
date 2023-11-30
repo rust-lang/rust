@@ -29,7 +29,7 @@ mod x {
 mod y {
     use {Foo, Bar};
 
-    #[rustc_then_this_would_need(typeck)] //~ ERROR OK
+    #[rustc_then_this_would_need(typeck)] //~ ERROR no path
     pub fn call_bar() {
         char::bar('a');
     }

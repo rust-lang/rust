@@ -26,6 +26,10 @@ use crate::{
 pub struct CompletionItem {
     /// Label in the completion pop up which identifies completion.
     pub label: SmolStr,
+    /// Additional label details in the completion pop up that are
+    /// displayed and aligned on the right side after the label.
+    pub label_detail: Option<SmolStr>,
+
     /// Range of identifier that is being completed.
     ///
     /// It should be used primarily for UI, but we also use this to convert
@@ -425,13 +429,14 @@ impl Builder {
     pub(crate) fn build(self, db: &RootDatabase) -> CompletionItem {
         let _p = profile::span("item::Builder::build");
 
-        let mut label = self.label;
+        let label = self.label;
+        let mut label_detail = None;
         let mut lookup = self.lookup.unwrap_or_else(|| label.clone());
         let insert_text = self.insert_text.unwrap_or_else(|| label.to_string());
 
         if !self.doc_aliases.is_empty() {
             let doc_aliases = self.doc_aliases.iter().join(", ");
-            label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
+            label_detail.replace(SmolStr::from(format!(" (alias {doc_aliases})")));
             let lookup_doc_aliases = self
                 .doc_aliases
                 .iter()
@@ -454,10 +459,17 @@ impl Builder {
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
             if let Some(original_path) = import_edit.original_path.as_ref() {
-                label = SmolStr::from(format!("{label} (use {})", original_path.display(db)));
+                label_detail.replace(SmolStr::from(format!(
+                    "{} (use {})",
+                    label_detail.as_deref().unwrap_or_default(),
+                    original_path.display(db)
+                )));
             }
         } else if let Some(trait_name) = self.trait_name {
-            label = SmolStr::from(format!("{label} (as {trait_name})"));
+            label_detail.replace(SmolStr::from(format!(
+                "{} (as {trait_name})",
+                label_detail.as_deref().unwrap_or_default(),
+            )));
         }
 
         let text_edit = match self.text_edit {
@@ -479,6 +491,7 @@ impl Builder {
         CompletionItem {
             source_range: self.source_range,
             label,
+            label_detail,
             text_edit,
             is_snippet: self.is_snippet,
             detail: self.detail,

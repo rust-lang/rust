@@ -875,6 +875,9 @@ impl<'a> Parser<'a> {
                                     if self.token == token::Colon {
                                         // we will try to recover in `maybe_recover_struct_lit_bad_delims`
                                         return Err(expect_err);
+                                    } else if let [token::CloseDelim(Delimiter::Parenthesis)] = kets
+                                    {
+                                        return Err(expect_err);
                                     } else {
                                         expect_err.emit();
                                         break;

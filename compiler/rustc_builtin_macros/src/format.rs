@@ -672,30 +672,22 @@ fn report_missing_placeholders(
                     if explained.contains(&sub) {
                         continue;
                     }
-                    explained.insert(sub.clone());
+                    explained.insert(sub);
 
                     if !found_foreign {
                         found_foreign = true;
                         show_doc_note = true;
                     }
 
-                    if let Some(inner_sp) = pos {
-                        let sp = fmt_span.from_inner(inner_sp);
+                    let sp = fmt_span.from_inner(pos);
 
-                        if success {
-                            suggestions.push((sp, trn));
-                        } else {
-                            diag.span_note(
-                                sp,
-                                format!("format specifiers use curly braces, and {}", trn),
-                            );
-                        }
+                    if success {
+                        suggestions.push((sp, trn));
                     } else {
-                        if success {
-                            diag.help(format!("`{}` should be written as `{}`", sub, trn));
-                        } else {
-                            diag.note(format!("`{}` should use curly braces, and {}", sub, trn));
-                        }
+                        diag.span_note(
+                            sp,
+                            format!("format specifiers use curly braces, and {}", trn),
+                        );
                     }
                 }
 

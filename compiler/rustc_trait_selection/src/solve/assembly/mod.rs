@@ -490,6 +490,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_unsize_to_dyn_candidate<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -507,6 +508,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,

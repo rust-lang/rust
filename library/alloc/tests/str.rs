@@ -1171,6 +1171,17 @@ fn test_iterator() {
 }
 
 #[test]
+fn test_iterator_advance() {
+    let s = "「赤錆」と呼ばれる鉄錆は、水の存在下での鉄の自然酸化によって生じる、オキシ水酸化鉄(III) 等の（含水）酸化物粒子の疎な凝集膜であるとみなせる。";
+    let chars: Vec<char> = s.chars().collect();
+    let mut it = s.chars();
+    it.advance_by(1).unwrap();
+    assert_eq!(it.next(), Some(chars[1]));
+    it.advance_by(33).unwrap();
+    assert_eq!(it.next(), Some(chars[35]));
+}
+
+#[test]
 fn test_rev_iterator() {
     let s = "ศไทย中华Việt Nam";
     let v = ['m', 'a', 'N', ' ', 't', 'ệ', 'i', 'V', '华', '中', 'ย', 'ท', 'ไ', 'ศ'];

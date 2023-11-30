@@ -436,3 +436,11 @@ pub struct IncompatibleLinkerFlavor {
     pub flavor: &'static str,
     pub compatible_list: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(session_function_return_requires_x86_or_x86_64)]
+pub(crate) struct FunctionReturnRequiresX86OrX8664;
+
+#[derive(Diagnostic)]
+#[diag(session_function_return_thunk_extern_requires_non_large_code_model)]
+pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;

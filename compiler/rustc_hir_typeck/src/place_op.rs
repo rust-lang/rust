@@ -38,7 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span_bug!(expr.span, "input to deref is not a ref?");
         }
         let ty = self.make_overloaded_place_return_type(method).ty;
-        self.write_method_call(expr.hir_id, method);
+        self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
         Some(ty)
     }
 
@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 self.apply_adjustments(base_expr, adjustments);
 
-                self.write_method_call(expr.hir_id, method);
+                self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
                 return Some((input_ty, self.make_overloaded_place_return_type(method).ty));
             }
@@ -404,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => return,
         };
         debug!("convert_place_op_to_mutable: method={:?}", method);
-        self.write_method_call(expr.hir_id, method);
+        self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
         let ty::Ref(region, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() else {
             span_bug!(expr.span, "input to mutable place op is not a mut ref?");

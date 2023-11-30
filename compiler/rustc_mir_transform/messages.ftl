@@ -42,8 +42,19 @@ mir_transform_requires_unsafe = {$details} is unsafe and requires unsafe {$op_in
     }
     .not_inherited = items do not inherit unsafety from separate enclosing items
 
+mir_transform_target_feature_call_help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
+    [1] feature
+    *[count] features
+    }: {$missing_target_features}
+
 mir_transform_target_feature_call_label = call to function with `#[target_feature]`
-mir_transform_target_feature_call_note = can only be called if the required target features are available
+mir_transform_target_feature_call_note = the {$build_target_features} target {$build_target_features_count ->
+    [1] feature
+    *[count] features
+    } being enabled in the build configuration does not remove the requirement to list {$build_target_features_count ->
+    [1] it
+    *[count] them
+    } in `#[target_feature]`
 
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses

@@ -8,7 +8,7 @@ fn main() {
     }
 
     // recover...
-    let a = 1;
+    let () = 1; //~ ERROR mismatched types
     enum Test2 {
         Fine,
     }
@@ -24,5 +24,6 @@ fn main() {
         enum Test4 {
             Nope(i32 {}) //~ ERROR: found `{`
         }
+        let () = 1; //~ ERROR mismatched types
     }
 }

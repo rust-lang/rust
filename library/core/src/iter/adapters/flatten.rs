@@ -1,7 +1,13 @@
-use crate::fmt;
-use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
+use crate::iter::adapters::SourceIter;
+use crate::iter::{
+    Cloned, Copied, DoubleEndedIterator, Filter, FilterMap, Fuse, FusedIterator, InPlaceIterable,
+    Iterator, Map, TrustedFused, TrustedLen,
+};
+use crate::iter::{Once, OnceWith};
 use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
+use crate::result;
+use crate::{array, fmt, option};
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
@@ -143,6 +149,91 @@ where
     F: FnMut(I::Item) -> U,
     FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>: TrustedLen,
 {
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, U, F> InPlaceIterable for FlatMap<I, U, F>
+where
+    I: InPlaceIterable,
+    U: BoundedSize + IntoIterator,
+{
+    const EXPAND_BY: Option<NonZeroUsize> = const {
+        match (I::EXPAND_BY, U::UPPER_BOUND) {
+            (Some(m), Some(n)) => m.checked_mul(n),
+            _ => None,
+        }
+    };
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, U, F> SourceIter for FlatMap<I, U, F>
+where
+    I: SourceIter + TrustedFused,
+    U: IntoIterator,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.inner.iter) }
+    }
+}
+
+/// Marker trait for iterators/iterables which have a statically known upper
+/// bound of the number of items they can produce.
+///
+/// # Safety
+///
+/// Implementations must not yield more elements than indicated by UPPER_BOUND if it is `Some`.
+/// Used in specializations.  Implementations must not be conditional on lifetimes or
+/// user-implementable traits.
+#[rustc_specialization_trait]
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe trait BoundedSize {
+    const UPPER_BOUND: Option<NonZeroUsize> = NonZeroUsize::new(1);
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> BoundedSize for Option<T> {}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> BoundedSize for option::IntoIter<T> {}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T, U> BoundedSize for Result<T, U> {}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> BoundedSize for result::IntoIter<T> {}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> BoundedSize for Once<T> {}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> BoundedSize for OnceWith<T> {}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T, const N: usize> BoundedSize for [T; N] {
+    const UPPER_BOUND: Option<NonZeroUsize> = NonZeroUsize::new(N);
+}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T, const N: usize> BoundedSize for array::IntoIter<T, N> {
+    const UPPER_BOUND: Option<NonZeroUsize> = NonZeroUsize::new(N);
+}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: BoundedSize, P> BoundedSize for Filter<I, P> {
+    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: BoundedSize, P> BoundedSize for FilterMap<I, P> {
+    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: BoundedSize, F> BoundedSize for Map<I, F> {
+    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: BoundedSize> BoundedSize for Copied<I> {
+    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+}
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: BoundedSize> BoundedSize for Cloned<I> {
+    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
 }
 
 /// An iterator that flattens one level of nesting in an iterator of things
@@ -287,6 +378,36 @@ where
     I: Iterator<Item: IntoIterator>,
     FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>: TrustedLen,
 {
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> InPlaceIterable for Flatten<I>
+where
+    I: InPlaceIterable + Iterator,
+    <I as Iterator>::Item: IntoIterator + BoundedSize,
+{
+    const EXPAND_BY: Option<NonZeroUsize> = const {
+        match (I::EXPAND_BY, I::Item::UPPER_BOUND) {
+            (Some(m), Some(n)) => m.checked_mul(n),
+            _ => None,
+        }
+    };
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> SourceIter for Flatten<I>
+where
+    I: SourceIter + TrustedFused + Iterator,
+    <I as Iterator>::Item: IntoIterator,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.inner.iter) }
+    }
 }
 
 #[stable(feature = "default_iters", since = "1.70.0")]

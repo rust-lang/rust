@@ -10,6 +10,7 @@ import { type Config, prepareVSCodeConfig } from "./config";
 import { randomUUID } from "crypto";
 import { sep as pathSeparator } from "path";
 import { unwrapUndefinable } from "./undefinable";
+import { RaLanguageClient } from "./lang_client";
 
 export interface Env {
     [name: string]: string;
@@ -363,7 +364,7 @@ export async function createClient(
         },
     };
 
-    const client = new lc.LanguageClient(
+    const client = new RaLanguageClient(
         "rust-analyzer",
         "Rust Analyzer Language Server",
         serverOptions,

@@ -382,7 +382,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         | AssocOp::GreaterEqual => {
             format!(
                 "{lhs} {} {rhs}",
-                op.to_ast_binop().expect("Those are AST ops").to_string()
+                op.to_ast_binop().expect("Those are AST ops").as_str()
             )
         },
         AssocOp::Assign => format!("{lhs} = {rhs}"),

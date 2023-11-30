@@ -667,21 +667,21 @@ impl Module {
                 let items = &db.trait_data(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
-                    AssocItemId::ConstId(_) => true,
+                    AssocItemId::ConstId(id) => Const::from(id).value(db).is_none(),
                     AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
                 });
-                impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().map(
+                impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().filter_map(
                     |&item| {
-                        (
+                        Some((
                             item,
                             match item {
                                 AssocItemId::FunctionId(it) => db.function_data(it).name.clone(),
                                 AssocItemId::ConstId(it) => {
-                                    db.const_data(it).name.as_ref().unwrap().clone()
+                                    db.const_data(it).name.as_ref()?.clone()
                                 }
                                 AssocItemId::TypeAliasId(it) => db.type_alias_data(it).name.clone(),
                             },
-                        )
+                        ))
                     },
                 ));
 

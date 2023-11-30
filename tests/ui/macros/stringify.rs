@@ -11,6 +11,7 @@
 #![feature(decl_macro)]
 #![feature(explicit_tail_calls)]
 #![feature(more_qualified_paths)]
+#![feature(never_patterns)]
 #![feature(raw_ref_op)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
@@ -634,6 +635,10 @@ fn test_pat() {
 
     // PatKind::Rest
     c1!(pat, [ .. ], "..");
+
+    // PatKind::Never
+    c1!(pat, [ Some(!) ], "Some(!)");
+    c1!(pat, [ None | Some(!) ], "None | Some(!)");
 
     // PatKind::Paren
     c1!(pat, [ (pat) ], "(pat)");

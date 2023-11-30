@@ -1095,4 +1095,81 @@ fn test(s: S<Unknown>) {
             "#]],
         );
     }
+
+    #[test]
+    fn assoc_impl_1() {
+        check(
+            r#"
+//- minicore: deref
+fn main() {
+    let foo: Foo<&u8> = Foo::new(&42_u8);
+    foo.$0
+}
+
+trait Bar {
+    fn bar(&self);
+}
+
+impl Bar for u8 {
+    fn bar(&self) {}
+}
+
+struct Foo<F> {
+    foo: F,
+}
+
+impl<F> Foo<F> {
+    fn new(foo: F) -> Foo<F> {
+        Foo { foo }
+    }
+}
+
+impl<F: core::ops::Deref<Target = impl Bar>> Foo<F> {
+    fn foobar(&self) {
+        self.foo.deref().bar()
+    }
+}
+"#,
+            expect![[r#"
+                fd foo      &u8
+                me foobar() fn(&self)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn assoc_impl_2() {
+        check(
+            r#"
+//- minicore: deref
+fn main() {
+    let foo: Foo<&u8> = Foo::new(&42_u8);
+    foo.$0
+}
+
+trait Bar {
+    fn bar(&self);
+}
+
+struct Foo<F> {
+    foo: F,
+}
+
+impl<F> Foo<F> {
+    fn new(foo: F) -> Foo<F> {
+        Foo { foo }
+    }
+}
+
+impl<B: Bar, F: core::ops::Deref<Target = B>> Foo<F> {
+    fn foobar(&self) {
+        self.foo.deref().bar()
+    }
+}
+"#,
+            expect![[r#"
+            fd foo &u8
+        "#]],
+        );
+    }
 }

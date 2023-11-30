@@ -1629,7 +1629,7 @@ mod prim_ref {}
 ///
 /// ### Trait implementations
 ///
-/// In this documentation the shorthand `fn (T₁, T₂, …, Tₙ)` is used to represent non-variadic
+/// In this documentation the shorthand `fn(T₁, T₂, …, Tₙ)` is used to represent non-variadic
 /// function pointers of varying length. Note that this is a convenience notation to avoid
 /// repetitive documentation, not valid Rust syntax.
 ///

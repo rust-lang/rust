@@ -42,6 +42,7 @@ use rustc_target::abi::FieldIdx;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -100,7 +101,7 @@ use renumber::RegionCtxt;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 /// Associate some local constants with the `'tcx` lifetime
-struct TyCtxtConsts<'tcx>(TyCtxt<'tcx>);
+struct TyCtxtConsts<'tcx>(PhantomData<&'tcx ()>);
 impl<'tcx> TyCtxtConsts<'tcx> {
     const DEREF_PROJECTION: &'tcx [PlaceElem<'tcx>; 1] = &[ProjectionElem::Deref];
 }
