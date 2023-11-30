@@ -822,7 +822,8 @@ impl Session {
             panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
         }
 
-        *incr_comp_session = IncrCompSession::Active { session_directory: session_dir, lock_file };
+        *incr_comp_session =
+            IncrCompSession::Active { session_directory: session_dir, _lock_file: lock_file };
     }
 
     pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
@@ -1679,8 +1680,10 @@ enum IncrCompSession {
     /// needed.
     NotInitialized,
     /// This is the state during which the session directory is private and can
-    /// be modified.
-    Active { session_directory: PathBuf, lock_file: flock::Lock },
+    /// be modified. `_lock_file` is never directly used, but its presence
+    /// alone has an effect, because the file will unlock when the session is
+    /// dropped.
+    Active { session_directory: PathBuf, _lock_file: flock::Lock },
     /// This is the state after the session directory has been finalized. In this
     /// state, the contents of the directory must not be modified any more.
     Finalized { session_directory: PathBuf },
