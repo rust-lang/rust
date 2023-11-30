@@ -432,9 +432,9 @@ struct HandlerInner {
     deduplicated_err_count: usize,
     emitter: Box<DynEmitter>,
     span_delayed_bugs: Vec<DelayedDiagnostic>,
-    delayed_good_path_bugs: Vec<DelayedDiagnostic>,
+    good_path_delayed_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
-    /// This is used for the `delayed_good_path_bugs` check.
+    /// This is used for the `good_path_delayed_bugs` check.
     suppressed_expected_diag: bool,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
@@ -549,16 +549,16 @@ impl Drop for HandlerInner {
             self.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
         }
 
-        // FIXME(eddyb) this explains what `delayed_good_path_bugs` are!
+        // FIXME(eddyb) this explains what `good_path_delayed_bugs` are!
         // They're `span_delayed_bugs` but for "require some diagnostic happened"
         // instead of "require some error happened". Sadly that isn't ideal, as
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
         if !self.has_any_message() && !self.suppressed_expected_diag && !std::thread::panicking() {
-            let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
+            let bugs = std::mem::replace(&mut self.good_path_delayed_bugs, Vec::new());
             self.flush_delayed(
                 bugs,
-                "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
+                "no warnings or errors encountered even though `good_path_delayed_bugs` issued",
             );
         }
 
@@ -610,7 +610,7 @@ impl Handler {
                 deduplicated_warn_count: 0,
                 emitter,
                 span_delayed_bugs: Vec::new(),
-                delayed_good_path_bugs: Vec::new(),
+                good_path_delayed_bugs: Vec::new(),
                 suppressed_expected_diag: false,
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
@@ -665,7 +665,7 @@ impl Handler {
 
         // actually free the underlying memory (which `clear` would not do)
         inner.span_delayed_bugs = Default::default();
-        inner.delayed_good_path_bugs = Default::default();
+        inner.good_path_delayed_bugs = Default::default();
         inner.taught_diagnostics = Default::default();
         inner.emitted_diagnostic_codes = Default::default();
         inner.emitted_diagnostics = Default::default();
@@ -1008,8 +1008,8 @@ impl Handler {
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
-    pub fn delay_good_path_bug(&self, msg: impl Into<DiagnosticMessage>) {
-        self.inner.borrow_mut().delay_good_path_bug(msg)
+    pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
+        self.inner.borrow_mut().good_path_delayed_bug(msg)
     }
 
     #[track_caller]
@@ -1444,7 +1444,7 @@ impl HandlerInner {
     }
 
     fn delayed_bug_count(&self) -> usize {
-        self.span_delayed_bugs.len() + self.delayed_good_path_bugs.len()
+        self.span_delayed_bugs.len() + self.good_path_delayed_bugs.len()
     }
 
     fn print_error_count(&mut self, registry: &Registry) {
@@ -1620,13 +1620,13 @@ impl HandlerInner {
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
-    fn delay_good_path_bug(&mut self, msg: impl Into<DiagnosticMessage>) {
+    fn good_path_delayed_bug(&mut self, msg: impl Into<DiagnosticMessage>) {
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         if self.flags.report_delayed_bugs {
             self.emit_diagnostic(&mut diagnostic);
         }
         let backtrace = std::backtrace::Backtrace::capture();
-        self.delayed_good_path_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
+        self.good_path_delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
 
     fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {

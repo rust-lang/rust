@@ -640,7 +640,7 @@ impl Session {
     /// Used for code paths of expensive computations that should only take place when
     /// warnings or errors are emitted. If no messages are emitted ("good path"), then
     /// it's likely a bug.
-    pub fn delay_good_path_bug(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
         if self.opts.unstable_opts.print_type_sizes
             || self.opts.unstable_opts.query_dep_graph
             || self.opts.unstable_opts.dump_mir.is_some()
@@ -651,7 +651,7 @@ impl Session {
             return;
         }
 
-        self.diagnostic().delay_good_path_bug(msg)
+        self.diagnostic().good_path_delayed_bug(msg)
     }
 
     #[rustc_lint_diagnostics]
@@ -883,7 +883,7 @@ impl Session {
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
                     if self.diagnostic().can_emit_warnings() {
                         // We only call `msg` in case we can actually emit warnings.
-                        // Otherwise, this could cause a `delay_good_path_bug` to
+                        // Otherwise, this could cause a `good_path_delayed_bug` to
                         // trigger (issue #79546).
                         self.emit_warning(errors::OptimisationFuelExhausted { msg: msg() });
                     }

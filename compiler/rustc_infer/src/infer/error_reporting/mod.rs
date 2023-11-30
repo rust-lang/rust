@@ -137,7 +137,7 @@ impl Drop for TypeErrCtxt<'_, '_> {
             self.infcx
                 .tcx
                 .sess
-                .delay_good_path_bug("used a `TypeErrCtxt` without raising an error or lint");
+                .good_path_delayed_bug("used a `TypeErrCtxt` without raising an error or lint");
         }
     }
 }
