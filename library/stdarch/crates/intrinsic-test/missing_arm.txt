@@ -213,23 +213,3 @@ vrndxq_f32
 #vrshrn_n_u64
 #vshrq_n_u64
 #vshr_n_u64
-
-# Seems to be miscompiled.
-vtbl2_p8
-vtbl2_s8
-vtbl2_u8
-vtbl3_p8
-vtbl3_s8
-vtbl3_u8
-vtbl4_p8
-vtbl4_s8
-vtbl4_u8
-vtbx2_p8
-vtbx2_s8
-vtbx2_u8
-vtbx3_p8
-vtbx3_s8
-vtbx3_u8
-vtbx4_p8
-vtbx4_s8
-vtbx4_u8
