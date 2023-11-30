@@ -693,6 +693,17 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if !p.at(T!['}']) {
                     expr(p);
+
+                    if p.at(T![,]) {
+                        // test_err comma_after_functional_update_syntax
+                        // fn foo() {
+                        //     S { ..x, };
+                        //     S { ..x, a: 0 }
+                        // }
+
+                        // Do not bump, so we can support additional fields after this comma.
+                        p.error("cannot use a comma after the base struct");
+                    }
                 }
             }
             T!['{'] => {
