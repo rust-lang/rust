@@ -1,0 +1,18 @@
+// edition: 2024
+// compile-flags: -Zunstable-options
+// run-pass
+#![feature(gen_blocks)]
+
+gen fn foo() -> i32 {
+    yield 1;
+    yield 2;
+    yield 3;
+}
+
+fn main() {
+    let mut iter = foo();
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), None);
+}
