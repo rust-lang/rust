@@ -1032,7 +1032,7 @@ impl Handler {
 
     #[track_caller]
     #[rustc_lint_diagnostics]
-    pub fn span_note_diag(
+    pub fn struct_span_note(
         &self,
         span: Span,
         msg: impl Into<DiagnosticMessage>,

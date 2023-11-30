@@ -456,7 +456,7 @@ pub fn report_msg<'tcx>(
     let mut err = match diag_level {
         DiagLevel::Error => sess.struct_span_err(span, title).forget_guarantee(),
         DiagLevel::Warning => sess.struct_span_warn(span, title),
-        DiagLevel::Note => sess.diagnostic().span_note_diag(span, title),
+        DiagLevel::Note => sess.diagnostic().struct_span_note(span, title),
     };
 
     // Show main message.
