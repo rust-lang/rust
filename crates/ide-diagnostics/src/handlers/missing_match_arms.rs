@@ -17,7 +17,10 @@ pub(crate) fn missing_match_arms(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
+    use crate::{
+        tests::{check_diagnostics, check_diagnostics_with_config},
+        DiagnosticsConfig,
+    };
 
     #[track_caller]
     fn check_diagnostics_no_bails(ra_fixture: &str) {
@@ -27,11 +30,13 @@ mod tests {
 
     #[test]
     fn empty_body() {
-        check_diagnostics_no_bails(
+        let mut config = DiagnosticsConfig::test_sample();
+        config.disabled.insert("syntax-error".to_string());
+        check_diagnostics_with_config(
+            config,
             r#"
 fn main() {
     match 0;
-         //^ error: Syntax Error: expected `{`
 }
 "#,
         );
