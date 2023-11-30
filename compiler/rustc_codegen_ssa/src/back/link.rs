@@ -1477,7 +1477,7 @@ fn print_native_static_libs(
                 sess.emit_note(errors::StaticLibraryNativeArtifacts);
                 // Prefix for greppability
                 // Note: This must not be translated as tools are allowed to depend on this exact string.
-                sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
+                sess.note(format!("native-static-libs: {}", &lib_args.join(" ")));
             }
         }
     }

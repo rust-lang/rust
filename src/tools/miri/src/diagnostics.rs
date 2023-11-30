@@ -384,7 +384,7 @@ pub fn report_error<'tcx, 'mir>(
 
     // Include a note like `std` does when we omit frames from a backtrace
     if was_pruned {
-        ecx.tcx.sess.diagnostic().note_without_error(
+        ecx.tcx.sess.diagnostic().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }
@@ -431,7 +431,7 @@ pub fn report_leaks<'mir, 'tcx>(
         );
     }
     if any_pruned {
-        ecx.tcx.sess.diagnostic().note_without_error(
+        ecx.tcx.sess.diagnostic().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }

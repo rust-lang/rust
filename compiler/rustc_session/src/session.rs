@@ -653,30 +653,23 @@ impl Session {
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
-        self.diagnostic().note_without_error(msg)
+    pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
+        self.diagnostic().note(msg)
     }
 
     #[track_caller]
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn span_note_without_error<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) {
-        self.diagnostic().span_note_without_error(sp, msg)
+    pub fn span_note<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
+        self.diagnostic().span_note(sp, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn struct_note_without_error(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_note_without_error(msg)
+    pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
+        self.diagnostic().struct_note(msg)
     }
 
     #[inline]
@@ -1743,7 +1736,7 @@ impl EarlyErrorHandler {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_note_without_error(msg).emit()
+        self.handler.struct_note(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]

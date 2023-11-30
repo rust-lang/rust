@@ -927,10 +927,7 @@ impl Handler {
     /// Construct a builder at the `Note` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_note_without_error(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ()> {
+    pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Note, msg)
     }
 
@@ -1022,11 +1019,7 @@ impl Handler {
 
     #[track_caller]
     #[rustc_lint_diagnostics]
-    pub fn span_note_without_error(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-    ) {
+    pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.emit_diag_at_span(Diagnostic::new(Note, msg), span);
     }
 
@@ -1059,7 +1052,7 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
-    pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
         DiagnosticBuilder::new(self, Note, msg).emit();
     }
 

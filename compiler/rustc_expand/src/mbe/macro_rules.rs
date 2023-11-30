@@ -648,10 +648,8 @@ fn is_empty_token_tree(sess: &ParseSess, seq: &mbe::SequenceRepetition) -> bool 
                         iter.next();
                     }
                     let span = t.span.to(now.span);
-                    sess.span_diagnostic.span_note_without_error(
-                        span,
-                        "doc comments are ignored in matcher position",
-                    );
+                    sess.span_diagnostic
+                        .span_note(span, "doc comments are ignored in matcher position");
                 }
                 mbe::TokenTree::Sequence(_, sub_seq)
                     if (sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
