@@ -1,8 +1,7 @@
-// link-arg is not supposed to be usable in #[link] attributes
+#![feature(link_arg_attribute)]
 
-// compile-flags:
-// error-pattern: error[E0458]: unknown link kind `link-arg`, expected one of: static, dylib, framework, raw-dylib
-
-#[link(kind = "link-arg")]
+#[link(kind = "link-arg", name = "arg", modifiers = "+bundle")]
+//~^ ERROR linking modifier `bundle` is only compatible with `static` linking kind
 extern "C" {}
+
 pub fn main() {}
