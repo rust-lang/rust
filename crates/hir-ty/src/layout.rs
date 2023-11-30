@@ -110,7 +110,7 @@ struct LayoutCx<'a> {
 impl<'a> LayoutCalculator for LayoutCx<'a> {
     type TargetDataLayoutRef = &'a TargetDataLayout;
 
-    fn delay_bug(&self, txt: String) {
+    fn delayed_bug(&self, txt: String) {
         never!("{}", txt);
     }
 
