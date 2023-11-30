@@ -5,7 +5,7 @@
 
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::{DefiningAnchor, ObligationCause};
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt, Variance};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_trait_selection::traits::ObligationCtxt;
 
 /// Returns whether the two types are equal up to subtyping.
@@ -24,22 +24,16 @@ pub fn is_equal_up_to_subtyping<'tcx>(
     }
 
     // Check for subtyping in either direction.
-    relate_types(tcx, param_env, Variance::Covariant, src, dest)
-        || relate_types(tcx, param_env, Variance::Covariant, dest, src)
+    is_subtype(tcx, param_env, src, dest) || is_subtype(tcx, param_env, dest, src)
 }
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
 ///
-/// When validating assignments, the variance should be `Covariant`. When checking
-/// during `MirPhase` >= `MirPhase::Runtime(RuntimePhase::Initial)` variance should be `Invariant`
-/// because we want to check for type equality.
-///
 /// This mostly ignores opaque types as it can be used in constraining contexts
 /// while still computing the final underlying type.
-pub fn relate_types<'tcx>(
+pub fn is_subtype<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    variance: Variance,
     src: Ty<'tcx>,
     dest: Ty<'tcx>,
 ) -> bool {
@@ -54,7 +48,7 @@ pub fn relate_types<'tcx>(
     let cause = ObligationCause::dummy();
     let src = ocx.normalize(&cause, param_env, src);
     let dest = ocx.normalize(&cause, param_env, dest);
-    match ocx.relate(&cause, param_env, variance, src, dest) {
+    match ocx.sub(&cause, param_env, src, dest) {
         Ok(()) => {}
         Err(_) => return false,
     };

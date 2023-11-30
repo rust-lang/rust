@@ -157,7 +157,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     [
                         ..,
                         ProjectionElem::Index(_)
-                        | ProjectionElem::Subtype(_)
                         | ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::Subslice { .. }

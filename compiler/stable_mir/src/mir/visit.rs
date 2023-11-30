@@ -302,7 +302,6 @@ pub trait MirVisitor {
             ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
             ProjectionElem::Downcast(_idx) => {}
             ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
-            ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
         }
     }
 

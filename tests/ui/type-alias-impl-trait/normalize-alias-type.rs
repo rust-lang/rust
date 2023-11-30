@@ -1,4 +1,7 @@
-// check-pass
+// check-fail
+// failure-status: 101
+// dont-check-compiler-stderr
+// known-bug: unknown
 // compile-flags: -Z mir-opt-level=3
 #![feature(type_alias_impl_trait)]
 #![crate_type = "lib"]
