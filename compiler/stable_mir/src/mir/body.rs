@@ -672,10 +672,7 @@ pub struct SwitchTargets {
 impl SwitchTargets {
     /// All possible targets including the `otherwise` target.
     pub fn all_targets(&self) -> Successors {
-        Some(self.otherwise)
-            .into_iter()
-            .chain(self.branches.iter().map(|(_, target)| *target))
-            .collect()
+        self.branches.iter().map(|(_, target)| *target).chain(Some(self.otherwise)).collect()
     }
 
     /// The `otherwise` branch target.
