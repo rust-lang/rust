@@ -474,13 +474,11 @@ impl<'test> TestCx<'test> {
             self.fatal("missing --coverage-dump");
         };
 
-        let proc_res = self.compile_test_and_save_ir();
+        let (proc_res, llvm_ir_path) = self.compile_test_and_save_ir();
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
         drop(proc_res);
-
-        let llvm_ir_path = self.output_base_name().with_extension("ll");
 
         let mut dump_command = Command::new(coverage_dump_path);
         dump_command.arg(llvm_ir_path);
@@ -2785,10 +2783,54 @@ impl<'test> TestCx<'test> {
         proc_res.fatal(None, || on_failure(*self));
     }
 
+    fn get_output_file(&self, extension: &str) -> TargetLocation {
+        let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
+        if thin_lto {
+            TargetLocation::ThisDirectory(self.output_base_dir())
+        } else {
+            // This works with both `--emit asm` (as default output name for the assembly)
+            // and `ptx-linker` because the latter can write output at requested location.
+            let output_path = self.output_base_name().with_extension(extension);
+            let output_file = TargetLocation::ThisFile(output_path.clone());
+            output_file
+        }
+    }
+
+    fn get_filecheck_file(&self, extension: &str) -> PathBuf {
+        let thin_lto = self.props.compile_flags.iter().any(|s| s.ends_with("lto=thin"));
+        if thin_lto {
+            let name = self.testpaths.file.file_stem().unwrap().to_str().unwrap();
+            let canonical_name = name.replace('-', "_");
+            let mut output_file = None;
+            for entry in self.output_base_dir().read_dir().unwrap() {
+                if let Ok(entry) = entry {
+                    let entry_path = entry.path();
+                    let entry_file = entry_path.file_name().unwrap().to_str().unwrap();
+                    if entry_file.starts_with(&format!("{}.{}", name, canonical_name))
+                        && entry_file.ends_with(extension)
+                    {
+                        assert!(
+                            output_file.is_none(),
+                            "thinlto doesn't support multiple cgu tests"
+                        );
+                        output_file = Some(entry_file.to_string());
+                    }
+                }
+            }
+            if let Some(output_file) = output_file {
+                self.output_base_dir().join(output_file)
+            } else {
+                self.output_base_name().with_extension(extension)
+            }
+        } else {
+            self.output_base_name().with_extension(extension)
+        }
+    }
+
     // codegen tests (using FileCheck)
 
-    fn compile_test_and_save_ir(&self) -> ProcRes {
-        let output_file = TargetLocation::ThisDirectory(self.output_base_dir());
+    fn compile_test_and_save_ir(&self) -> (ProcRes, PathBuf) {
+        let output_file = self.get_output_file("ll");
         let input_file = &self.testpaths.file;
         let rustc = self.make_compile_args(
             input_file,
@@ -2799,15 +2841,13 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
 
-        self.compose_and_run_compiler(rustc, None)
+        let proc_res = self.compose_and_run_compiler(rustc, None);
+        let output_path = self.get_filecheck_file("ll");
+        (proc_res, output_path)
     }
 
     fn compile_test_and_save_assembly(&self) -> (ProcRes, PathBuf) {
-        // This works with both `--emit asm` (as default output name for the assembly)
-        // and `ptx-linker` because the latter can write output at requested location.
-        let output_path = self.output_base_name().with_extension("s");
-
-        let output_file = TargetLocation::ThisFile(output_path.clone());
+        let output_file = self.get_output_file("s");
         let input_file = &self.testpaths.file;
 
         let mut emit = Emit::None;
@@ -2837,7 +2877,9 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
 
-        (self.compose_and_run_compiler(rustc, None), output_path)
+        let proc_res = self.compose_and_run_compiler(rustc, None);
+        let output_path = self.get_filecheck_file("s");
+        (proc_res, output_path)
     }
 
     fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
@@ -2870,7 +2912,7 @@ impl<'test> TestCx<'test> {
             self.fatal("missing --llvm-filecheck");
         }
 
-        let proc_res = self.compile_test_and_save_ir();
+        let (proc_res, output_path) = self.compile_test_and_save_ir();
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
@@ -2878,8 +2920,6 @@ impl<'test> TestCx<'test> {
         if let Some(PassMode::Build) = self.pass_mode() {
             return;
         }
-
-        let output_path = self.output_base_name().with_extension("ll");
         let proc_res = self.verify_with_filecheck(&output_path);
         if !proc_res.status.success() {
             self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
