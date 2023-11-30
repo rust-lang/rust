@@ -178,6 +178,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = match pat.kind {
             PatKind::Wild => expected,
+            // FIXME(never_patterns): check the type is uninhabited. If that is not possible within
+            // typeck, do that in a later phase.
+            PatKind::Never => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
             PatKind::Binding(ba, var_id, _, sub) => {
@@ -287,9 +290,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::Box(_)
             | PatKind::Range(..)
             | PatKind::Slice(..) => AdjustMode::Peel,
+            // A never pattern behaves somewhat like a literal or unit variant.
+            PatKind::Never => AdjustMode::Peel,
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
             // All other literals result in non-reference types.
-            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo {}`.
+            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}`.
             //
             // Call `resolve_vars_if_possible` here for inline const blocks.
             PatKind::Lit(lt) => match self.resolve_vars_if_possible(self.check_expr(lt)).kind() {
@@ -743,6 +748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Slice(..) => "binding",
 
                         PatKind::Wild
+                        | PatKind::Never
                         | PatKind::Binding(..)
                         | PatKind::Path(..)
                         | PatKind::Box(..)

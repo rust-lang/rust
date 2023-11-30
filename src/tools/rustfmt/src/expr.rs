@@ -1933,7 +1933,7 @@ fn rewrite_unary_op(
     shape: Shape,
 ) -> Option<String> {
     // For some reason, an UnOp is not spanned like BinOp!
-    rewrite_unary_prefix(context, ast::UnOp::to_string(op), expr, shape)
+    rewrite_unary_prefix(context, op.as_str(), expr, shape)
 }
 
 pub(crate) enum RhsAssignKind<'ast> {

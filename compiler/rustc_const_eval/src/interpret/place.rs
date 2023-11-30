@@ -7,12 +7,11 @@ use std::assert_matches::assert_matches;
 use either::{Either, Left, Right};
 
 use rustc_ast::Mutability;
-use rustc_index::IndexSlice;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
+use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckAlignMsg, ImmTy,
@@ -975,34 +974,6 @@ where
         let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
         let layout = self.layout_of(self.tcx.types.str_).unwrap();
         Ok(self.ptr_with_meta_to_mplace(ptr.into(), MemPlaceMeta::Meta(meta), layout))
-    }
-
-    /// Writes the aggregate to the destination.
-    #[instrument(skip(self), level = "trace")]
-    pub fn write_aggregate(
-        &mut self,
-        kind: &mir::AggregateKind<'tcx>,
-        operands: &IndexSlice<FieldIdx, mir::Operand<'tcx>>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx> {
-        self.write_uninit(dest)?;
-        let (variant_index, variant_dest, active_field_index) = match *kind {
-            mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
-                let variant_dest = self.project_downcast(dest, variant_index)?;
-                (variant_index, variant_dest, active_field_index)
-            }
-            _ => (FIRST_VARIANT, dest.clone(), None),
-        };
-        if active_field_index.is_some() {
-            assert_eq!(operands.len(), 1);
-        }
-        for (field_index, operand) in operands.iter_enumerated() {
-            let field_index = active_field_index.unwrap_or(field_index);
-            let field_dest = self.project_field(&variant_dest, field_index.as_usize())?;
-            let op = self.eval_operand(operand, Some(field_dest.layout))?;
-            self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
-        }
-        self.write_discriminant(variant_index, dest)
     }
 
     pub fn raw_const_to_mplace(

@@ -2598,6 +2598,34 @@ fn test<T: Trait>() {
 }
 
 #[test]
+fn associated_type_in_type_bound() {
+    check_types(
+        r#"
+//- minicore: deref
+fn fb(f: Foo<&u8>) {
+    f.foobar();
+  //^^^^^^^^^^ u8
+}
+trait Bar {
+    fn bar(&self) -> u8;
+}
+impl Bar for u8 {
+    fn bar(&self) -> u8 { *self }
+}
+
+struct Foo<F> {
+    foo: F,
+}
+impl<F: core::ops::Deref<Target = impl Bar>> Foo<F> {
+    fn foobar(&self) -> u8 {
+        self.foo.deref().bar()
+    }
+}
+"#,
+    )
+}
+
+#[test]
 fn dyn_trait_through_chalk() {
     check_types(
         r#"

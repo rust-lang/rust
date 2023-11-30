@@ -1724,6 +1724,7 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.kind {
             PatKind::Wild => self.word("_"),
+            PatKind::Never => self.word("!"),
             PatKind::Binding(BindingAnnotation(by_ref, mutbl), _, ident, sub) => {
                 if by_ref == ByRef::Yes {
                     self.word_nbsp("ref");

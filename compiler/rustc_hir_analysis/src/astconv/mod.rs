@@ -26,12 +26,13 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
-use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{
-    self, Const, GenericArgKind, GenericArgsRef, IsSuggestable, Ty, TyCtxt, TypeVisitableExt,
+    self, Const, GenericArgKind, GenericArgsRef, IsSuggestable, ParamEnv, Ty, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -39,8 +40,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::wf::object_region_bounds;
-use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCtxt};
-use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 use std::fmt::Display;
 use std::slice;
@@ -1606,133 +1606,110 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // FIXME(inherent_associated_types): Acquiring the ParamEnv this early leads to cycle errors
         // when inside of an ADT (#108491) or where clause.
         let param_env = tcx.param_env(block.owner);
-        let cause = ObligationCause::misc(span, block.owner.def_id);
 
+        let mut universes = if self_ty.has_escaping_bound_vars() {
+            vec![None; self_ty.outer_exclusive_binder().as_usize()]
+        } else {
+            vec![]
+        };
+
+        let (impl_, (assoc_item, def_scope)) =
+            crate::traits::project::with_replaced_escaping_bound_vars(
+                infcx,
+                &mut universes,
+                self_ty,
+                |self_ty| {
+                    self.select_inherent_assoc_type_candidates(
+                        infcx, name, span, self_ty, param_env, candidates,
+                    )
+                },
+            )?;
+
+        self.check_assoc_ty(assoc_item, name, def_scope, block, span);
+
+        // FIXME(fmease): Currently creating throwaway `parent_args` to please
+        // `create_args_for_associated_item`. Modify the latter instead (or sth. similar) to
+        // not require the parent args logic.
+        let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
+        let args = self.create_args_for_associated_item(span, assoc_item, segment, parent_args);
+        let args = tcx.mk_args_from_iter(
+            std::iter::once(ty::GenericArg::from(self_ty))
+                .chain(args.into_iter().skip(parent_args.len())),
+        );
+
+        let ty = Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new(tcx, assoc_item, args));
+
+        Ok(Some((ty, assoc_item)))
+    }
+
+    fn select_inherent_assoc_type_candidates(
+        &self,
+        infcx: &InferCtxt<'tcx>,
+        name: Ident,
+        span: Span,
+        self_ty: Ty<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        candidates: Vec<(DefId, (DefId, DefId))>,
+    ) -> Result<(DefId, (DefId, DefId)), ErrorGuaranteed> {
+        let tcx = self.tcx();
         let mut fulfillment_errors = Vec::new();
-        let mut applicable_candidates: Vec<_> = infcx.probe(|_| {
-            // Regions are not considered during selection.
-            let self_ty = self_ty
-                .fold_with(&mut BoundVarEraser { tcx, universe: infcx.create_next_universe() });
 
-            struct BoundVarEraser<'tcx> {
-                tcx: TyCtxt<'tcx>,
-                universe: ty::UniverseIndex,
-            }
+        let applicable_candidates: Vec<_> = candidates
+            .iter()
+            .copied()
+            .filter(|&(impl_, _)| {
+                infcx.probe(|_| {
+                    let ocx = ObligationCtxt::new(infcx);
+                    let self_ty = ocx.normalize(&ObligationCause::dummy(), param_env, self_ty);
 
-            // FIXME(non_lifetime_binders): Don't assign the same universe to each placeholder.
-            impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarEraser<'tcx> {
-                fn interner(&self) -> TyCtxt<'tcx> {
-                    self.tcx
-                }
+                    let impl_args = infcx.fresh_args_for_item(span, impl_);
+                    let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
+                    let impl_ty = ocx.normalize(&ObligationCause::dummy(), param_env, impl_ty);
 
-                fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-                    // FIXME(@lcnr): This is broken, erasing bound regions
-                    // impacts selection as it results in different types.
-                    if r.is_bound() { self.tcx.lifetimes.re_erased } else { r }
-                }
-
-                fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                    match *ty.kind() {
-                        ty::Bound(_, bv) => Ty::new_placeholder(
-                            self.tcx,
-                            ty::PlaceholderType { universe: self.universe, bound: bv },
-                        ),
-                        _ => ty.super_fold_with(self),
+                    // Check that the self types can be related.
+                    if ocx.eq(&ObligationCause::dummy(), param_env, impl_ty, self_ty).is_err() {
+                        return false;
                     }
-                }
 
-                fn fold_const(
-                    &mut self,
-                    ct: ty::Const<'tcx>,
-                ) -> <TyCtxt<'tcx> as rustc_type_ir::Interner>::Const {
-                    assert!(!ct.ty().has_escaping_bound_vars());
+                    // Check whether the impl imposes obligations we have to worry about.
+                    let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
+                    let impl_bounds =
+                        ocx.normalize(&ObligationCause::dummy(), param_env, impl_bounds);
+                    let impl_obligations = traits::predicates_for_generics(
+                        |_, _| ObligationCause::dummy(),
+                        param_env,
+                        impl_bounds,
+                    );
+                    ocx.register_obligations(impl_obligations);
 
-                    match ct.kind() {
-                        ty::ConstKind::Bound(_, bv) => ty::Const::new_placeholder(
-                            self.tcx,
-                            ty::PlaceholderConst { universe: self.universe, bound: bv },
-                            ct.ty(),
-                        ),
-                        _ => ct.super_fold_with(self),
+                    let mut errors = ocx.select_where_possible();
+                    if !errors.is_empty() {
+                        fulfillment_errors.append(&mut errors);
+                        return false;
                     }
-                }
-            }
 
-            let InferOk { value: self_ty, obligations } =
-                infcx.at(&cause, param_env).normalize(self_ty);
-
-            candidates
-                .iter()
-                .copied()
-                .filter(|&(impl_, _)| {
-                    infcx.probe(|_| {
-                        let ocx = ObligationCtxt::new(infcx);
-                        ocx.register_obligations(obligations.clone());
-
-                        let impl_args = infcx.fresh_args_for_item(span, impl_);
-                        let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
-                        let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
-
-                        // Check that the self types can be related.
-                        if ocx.eq(&ObligationCause::dummy(), param_env, impl_ty, self_ty).is_err() {
-                            return false;
-                        }
-
-                        // Check whether the impl imposes obligations we have to worry about.
-                        let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
-                        let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
-                        let impl_obligations = traits::predicates_for_generics(
-                            |_, _| cause.clone(),
-                            param_env,
-                            impl_bounds,
-                        );
-                        ocx.register_obligations(impl_obligations);
-
-                        let mut errors = ocx.select_where_possible();
-                        if !errors.is_empty() {
-                            fulfillment_errors.append(&mut errors);
-                            return false;
-                        }
-
-                        true
-                    })
+                    true
                 })
-                .collect()
-        });
+            })
+            .collect();
 
-        if applicable_candidates.len() > 1 {
-            return Err(self.complain_about_ambiguous_inherent_assoc_type(
+        match &applicable_candidates[..] {
+            &[] => Err(self.complain_about_inherent_assoc_type_not_found(
+                name,
+                self_ty,
+                candidates,
+                fulfillment_errors,
+                span,
+            )),
+
+            &[applicable_candidate] => Ok(applicable_candidate),
+
+            &[_, ..] => Err(self.complain_about_ambiguous_inherent_assoc_type(
                 name,
                 applicable_candidates.into_iter().map(|(_, (candidate, _))| candidate).collect(),
                 span,
-            ));
+            )),
         }
-
-        if let Some((impl_, (assoc_item, def_scope))) = applicable_candidates.pop() {
-            self.check_assoc_ty(assoc_item, name, def_scope, block, span);
-
-            // FIXME(fmease): Currently creating throwaway `parent_args` to please
-            // `create_args_for_associated_item`. Modify the latter instead (or sth. similar) to
-            // not require the parent args logic.
-            let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
-            let args = self.create_args_for_associated_item(span, assoc_item, segment, parent_args);
-            let args = tcx.mk_args_from_iter(
-                std::iter::once(ty::GenericArg::from(self_ty))
-                    .chain(args.into_iter().skip(parent_args.len())),
-            );
-
-            let ty = Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new(tcx, assoc_item, args));
-
-            return Ok(Some((ty, assoc_item)));
-        }
-
-        Err(self.complain_about_inherent_assoc_type_not_found(
-            name,
-            self_ty,
-            candidates,
-            fulfillment_errors,
-            span,
-        ))
     }
 
     fn lookup_assoc_ty(

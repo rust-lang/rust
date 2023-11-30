@@ -216,6 +216,7 @@ impl CodegenResults {
         sess: &Session,
         rlink_file: &Path,
         codegen_results: &CodegenResults,
+        outputs: &OutputFilenames,
     ) -> Result<usize, io::Error> {
         let mut encoder = FileEncoder::new(rlink_file)?;
         encoder.emit_raw_bytes(RLINK_MAGIC);
@@ -224,10 +225,14 @@ impl CodegenResults {
         encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes());
         encoder.emit_str(sess.cfg_version);
         Encodable::encode(codegen_results, &mut encoder);
+        Encodable::encode(outputs, &mut encoder);
         encoder.finish().map_err(|(_path, err)| err)
     }
 
-    pub fn deserialize_rlink(sess: &Session, data: Vec<u8>) -> Result<Self, CodegenErrors> {
+    pub fn deserialize_rlink(
+        sess: &Session,
+        data: Vec<u8>,
+    ) -> Result<(Self, OutputFilenames), CodegenErrors> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
@@ -256,6 +261,7 @@ impl CodegenResults {
         }
 
         let codegen_results = CodegenResults::decode(&mut decoder);
-        Ok(codegen_results)
+        let outputs = OutputFilenames::decode(&mut decoder);
+        Ok((codegen_results, outputs))
     }
 }

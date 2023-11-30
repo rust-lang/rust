@@ -138,6 +138,14 @@ pub(crate) enum InvalidVariableDeclarationSub {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_switch_ref_box_order)]
+pub(crate) struct SwitchRefBoxOrder {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "box ref")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_invalid_comparison_operator)]
 pub(crate) struct InvalidComparisonOperator {
     #[primary_span]
@@ -407,6 +415,32 @@ pub(crate) struct ExpectedExpressionFoundLet {
     pub span: Span,
     #[subdiagnostic]
     pub reason: ForbiddenLetReason,
+    #[subdiagnostic]
+    pub missing_let: Option<MaybeMissingLet>,
+    #[subdiagnostic]
+    pub comparison: Option<MaybeComparison>,
+}
+
+#[derive(Subdiagnostic, Clone, Copy)]
+#[multipart_suggestion(
+    parse_maybe_missing_let,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct MaybeMissingLet {
+    #[suggestion_part(code = "let ")]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic, Clone, Copy)]
+#[multipart_suggestion(
+    parse_maybe_comparison,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct MaybeComparison {
+    #[suggestion_part(code = "=")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1241,12 +1275,28 @@ pub(crate) struct ParenthesesInForHead {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct ParenthesesInForHeadSugg {
-    #[suggestion_part(code = "{left_snippet}")]
+    #[suggestion_part(code = " ")]
     pub left: Span,
-    pub left_snippet: String,
-    #[suggestion_part(code = "{right_snippet}")]
+    #[suggestion_part(code = " ")]
     pub right: Span,
-    pub right_snippet: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_parentheses_in_match_arm_pattern)]
+pub(crate) struct ParenthesesInMatchPat {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg: ParenthesesInMatchPatSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct ParenthesesInMatchPatSugg {
+    #[suggestion_part(code = "")]
+    pub left: Span,
+    #[suggestion_part(code = "")]
+    pub right: Span,
 }
 
 #[derive(Diagnostic)]

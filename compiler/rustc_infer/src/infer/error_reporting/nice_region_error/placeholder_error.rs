@@ -197,11 +197,6 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         value_pairs: &ValuePairs<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (expected_args, found_args, trait_def_id) = match value_pairs {
-            ValuePairs::TraitRefs(ExpectedFound { expected, found })
-                if expected.def_id == found.def_id =>
-            {
-                (expected.args, found.args, expected.def_id)
-            }
             ValuePairs::PolyTraitRefs(ExpectedFound { expected, found })
                 if expected.def_id() == found.def_id() =>
             {

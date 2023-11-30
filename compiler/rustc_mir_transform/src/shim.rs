@@ -74,11 +74,13 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
                 let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
                 debug!("make_shim({:?}) = {:?}", instance, body);
 
-                // Run empty passes to mark phase change and perform validation.
                 pm::run_passes(
                     tcx,
                     &mut body,
-                    &[],
+                    &[
+                        &abort_unwinding_calls::AbortUnwindingCalls,
+                        &add_call_guards::CriticalCallEdges,
+                    ],
                     Some(MirPhase::Runtime(RuntimePhase::Optimized)),
                 );
 

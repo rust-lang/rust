@@ -626,7 +626,7 @@ pub struct SuggestConvertViaMethod<'tcx> {
     pub span: Span,
     #[suggestion_part(code = "")]
     pub borrow_removal_span: Option<Span>,
-    pub sugg: &'static str,
+    pub sugg: String,
     pub expected: Ty<'tcx>,
     pub found: Ty<'tcx>,
 }

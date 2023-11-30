@@ -1644,6 +1644,24 @@ impl<T> *const [T] {
         metadata(self)
     }
 
+    /// Returns `true` if the raw slice has a length of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_ptr_len)]
+    /// use std::ptr;
+    ///
+    /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
+    /// assert!(!slice.is_empty());
+    /// ```
+    #[inline(always)]
+    #[unstable(feature = "slice_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    pub const fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns a raw pointer to the slice's buffer.
     ///
     /// This is equivalent to casting `self` to `*const T`, but more type-safe.

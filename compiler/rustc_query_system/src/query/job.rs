@@ -620,13 +620,13 @@ pub fn print_query_stack<Qcx: QueryContext>(
     // state if it was responsible for triggering the panic.
     let mut count_printed = 0;
     let mut count_total = 0;
-    let query_map = qcx.try_collect_active_jobs();
+    let query_map = qcx.collect_active_jobs();
 
     if let Some(ref mut file) = file {
         let _ = writeln!(file, "\n\nquery stack during panic:");
     }
     while let Some(query) = current_query {
-        let Some(query_info) = query_map.as_ref().and_then(|map| map.get(&query)) else {
+        let Some(query_info) = query_map.get(&query) else {
             break;
         };
         if Some(count_printed) < num_frames || num_frames.is_none() {

@@ -13,9 +13,9 @@ use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
     input::{CrateName, CrateOrigin, LangCrateOrigin},
-    Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env, FileId, FilePosition,
-    FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacros, ReleaseChannel,
-    SourceDatabaseExt, SourceRoot, SourceRootId,
+    Change, CrateDisplayName, CrateGraph, CrateId, Dependency, DependencyKind, Edition, Env,
+    FileId, FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
+    ProcMacros, ReleaseChannel, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -237,7 +237,12 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         from_id,
-                        Dependency::with_prelude(CrateName::new(&to).unwrap(), to_id, prelude),
+                        Dependency::with_prelude(
+                            CrateName::new(&to).unwrap(),
+                            to_id,
+                            prelude,
+                            DependencyKind::Normal,
+                        ),
                     )
                     .unwrap();
             }
@@ -275,7 +280,14 @@ impl ChangeFixture {
 
             for krate in all_crates {
                 crate_graph
-                    .add_dep(krate, Dependency::new(CrateName::new("core").unwrap(), core_crate))
+                    .add_dep(
+                        krate,
+                        Dependency::new(
+                            CrateName::new("core").unwrap(),
+                            core_crate,
+                            DependencyKind::Normal,
+                        ),
+                    )
                     .unwrap();
             }
         }
@@ -317,7 +329,11 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         krate,
-                        Dependency::new(CrateName::new("proc_macros").unwrap(), proc_macros_crate),
+                        Dependency::new(
+                            CrateName::new("proc_macros").unwrap(),
+                            proc_macros_crate,
+                            DependencyKind::Normal,
+                        ),
                     )
                     .unwrap();
             }

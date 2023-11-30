@@ -1,7 +1,7 @@
 use crate::util;
 
 use rustc_ast::token;
-use rustc_ast::{self as ast, LitKind, MetaItemKind};
+use rustc_ast::{LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -15,9 +15,7 @@ use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
-use rustc_session::config::{
-    self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames,
-};
+use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::parse::ParseSess;
 use rustc_session::{lint, CompilerIO, EarlyErrorHandler, Session};
@@ -41,16 +39,6 @@ pub struct Compiler {
     pub sess: Session,
     pub codegen_backend: Box<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
-}
-
-impl Compiler {
-    pub fn build_output_filenames(
-        &self,
-        sess: &Session,
-        attrs: &[ast::Attribute],
-    ) -> OutputFilenames {
-        util::build_output_filenames(attrs, sess)
-    }
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.

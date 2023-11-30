@@ -384,7 +384,6 @@ pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),
     Aliases(ExpectedFound<ty::AliasTy<'tcx>>),
-    TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
     PolySigs(ExpectedFound<ty::PolyFnSig<'tcx>>),
     ExistentialTraitRef(ExpectedFound<ty::PolyExistentialTraitRef<'tcx>>),

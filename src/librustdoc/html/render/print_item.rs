@@ -22,12 +22,13 @@ use super::{
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
     render_impl, render_rightside, render_stability_since_raw,
-    render_stability_since_raw_with_extra, AssocItemLink, Context, ImplRenderingParameters,
+    render_stability_since_raw_with_extra, AssocItemLink, AssocItemRender, Context,
+    ImplRenderingParameters, RenderMode,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
-use crate::formats::{AssocItemRender, Impl, RenderMode};
+use crate::formats::Impl;
 use crate::html::escape::Escape;
 use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,

@@ -635,7 +635,12 @@ impl<'tcx> Pat<'tcx> {
 
         use PatKind::*;
         match &self.kind {
-            Wild | Range(..) | Binding { subpattern: None, .. } | Constant { .. } | Error(_) => {}
+            Wild
+            | Never
+            | Range(..)
+            | Binding { subpattern: None, .. }
+            | Constant { .. }
+            | Error(_) => {}
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
@@ -808,6 +813,9 @@ pub enum PatKind<'tcx> {
     Or {
         pats: Box<[Box<Pat<'tcx>>]>,
     },
+
+    /// A never pattern `!`.
+    Never,
 
     /// An error has been encountered during lowering. We probably shouldn't report more lints
     /// related to this pattern.
@@ -1069,6 +1077,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
         match self.kind {
             PatKind::Wild => write!(f, "_"),
+            PatKind::Never => write!(f, "!"),
             PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{subpattern}: _"),
             PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
                 let is_mut = match mode {

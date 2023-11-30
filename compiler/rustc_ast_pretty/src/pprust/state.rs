@@ -151,7 +151,7 @@ pub fn print_crate<'a>(
 /// Note: some old proc macros parse pretty-printed output, so changes here can
 /// break old code. For example:
 /// - #63896: `#[allow(unused,` must be printed rather than `#[allow(unused ,`
-/// - #73345: `#[allow(unused)] must be printed rather than `# [allow(unused)]
+/// - #73345: `#[allow(unused)]` must be printed rather than `# [allow(unused)]`
 ///
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use token::*;
@@ -1343,6 +1343,7 @@ impl<'a> State<'a> {
         is that it doesn't matter */
         match &pat.kind {
             PatKind::Wild => self.word("_"),
+            PatKind::Never => self.word("!"),
             PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, sub) => {
                 if *by_ref == ByRef::Yes {
                     self.word_nbsp("ref");

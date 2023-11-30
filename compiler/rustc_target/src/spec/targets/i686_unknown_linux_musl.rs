@@ -5,7 +5,7 @@ pub fn target() -> Target {
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "-Wl,-melf_i386"]);
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
 
     // The unwinder used by i686-unknown-linux-musl, the LLVM libunwind
     // implementation, apparently relies on frame pointers existing... somehow.

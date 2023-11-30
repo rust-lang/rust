@@ -663,8 +663,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coerce.coerce_forced_unit(
                         self,
                         &cause,
-                        |err| {
-                            self.suggest_mismatched_types_on_tail(err, expr, ty, e_ty, target_id);
+                        |mut err| {
+                            self.suggest_missing_semicolon(&mut err, expr, e_ty, false);
+                            self.suggest_mismatched_types_on_tail(
+                                &mut err, expr, ty, e_ty, target_id,
+                            );
                             let error = Some(Sorts(ExpectedFound { expected: ty, found: e_ty }));
                             self.annotate_loop_expected_due_to_inference(err, expr, error);
                             if let Some(val) = ty_kind_suggestion(ty) {
@@ -1312,9 +1315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(method) => {
                 // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
                 // trigger this codepath causing `structurally_resolve_type` to emit an error.
-
-                self.enforce_context_effects(expr.hir_id, expr.span, method.def_id, method.args);
-                self.write_method_call(expr.hir_id, method);
+                self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
                 Ok(method)
             }
             Err(error) => {

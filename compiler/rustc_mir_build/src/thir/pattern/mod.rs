@@ -251,6 +251,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
 
+            hir::PatKind::Never => PatKind::Never,
+
             hir::PatKind::Lit(value) => self.lower_lit(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {

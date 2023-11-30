@@ -288,6 +288,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// in [`EvalCtxt::assemble_candidates_via_self_ty`] does not have to normalize
     /// the self type. It is required when structurally matching on any other
     /// arguments of a trait goal, e.g. when assembling builtin unsize candidates.
+    #[instrument(level = "debug", skip(self), ret)]
     fn try_normalize_ty(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,

@@ -4,11 +4,12 @@
 
 use either::Either;
 
+use rustc_index::IndexSlice;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 
-use super::{ImmTy, InterpCx, Machine, Projectable};
+use super::{ImmTy, InterpCx, InterpResult, Machine, PlaceTy, Projectable, Scalar};
 use crate::util;
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -187,34 +188,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Repeat(ref operand, _) => {
-                let src = self.eval_operand(operand, None)?;
-                assert!(src.layout.is_sized());
-                let dest = self.force_allocation(&dest)?;
-                let length = dest.len(self)?;
-
-                if length == 0 {
-                    // Nothing to copy... but let's still make sure that `dest` as a place is valid.
-                    self.get_place_alloc_mut(&dest)?;
-                } else {
-                    // Write the src to the first element.
-                    let first = self.project_index(&dest, 0)?;
-                    self.copy_op(&src, &first, /*allow_transmute*/ false)?;
-
-                    // This is performance-sensitive code for big static/const arrays! So we
-                    // avoid writing each operand individually and instead just make many copies
-                    // of the first element.
-                    let elem_size = first.layout.size;
-                    let first_ptr = first.ptr();
-                    let rest_ptr = first_ptr.offset(elem_size, self)?;
-                    // No alignment requirement since `copy_op` above already checked it.
-                    self.mem_copy_repeatedly(
-                        first_ptr,
-                        rest_ptr,
-                        elem_size,
-                        length - 1,
-                        /*nonoverlapping:*/ true,
-                    )?;
-                }
+                self.write_repeat(operand, &dest)?;
             }
 
             Len(place) => {
@@ -303,6 +277,73 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         trace!("{:?}", self.dump_place(&dest));
+
+        Ok(())
+    }
+
+    /// Writes the aggregate to the destination.
+    #[instrument(skip(self), level = "trace")]
+    fn write_aggregate(
+        &mut self,
+        kind: &mir::AggregateKind<'tcx>,
+        operands: &IndexSlice<FieldIdx, mir::Operand<'tcx>>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.write_uninit(dest)?; // make sure all the padding ends up as uninit
+        let (variant_index, variant_dest, active_field_index) = match *kind {
+            mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                let variant_dest = self.project_downcast(dest, variant_index)?;
+                (variant_index, variant_dest, active_field_index)
+            }
+            _ => (FIRST_VARIANT, dest.clone(), None),
+        };
+        if active_field_index.is_some() {
+            assert_eq!(operands.len(), 1);
+        }
+        for (field_index, operand) in operands.iter_enumerated() {
+            let field_index = active_field_index.unwrap_or(field_index);
+            let field_dest = self.project_field(&variant_dest, field_index.as_usize())?;
+            let op = self.eval_operand(operand, Some(field_dest.layout))?;
+            self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
+        }
+        self.write_discriminant(variant_index, dest)
+    }
+
+    /// Repeats `operand` into the destination. `dest` must have array type, and that type
+    /// determines how often `operand` is repeated.
+    fn write_repeat(
+        &mut self,
+        operand: &mir::Operand<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        let src = self.eval_operand(operand, None)?;
+        assert!(src.layout.is_sized());
+        let dest = self.force_allocation(&dest)?;
+        let length = dest.len(self)?;
+
+        if length == 0 {
+            // Nothing to copy... but let's still make sure that `dest` as a place is valid.
+            self.get_place_alloc_mut(&dest)?;
+        } else {
+            // Write the src to the first element.
+            let first = self.project_index(&dest, 0)?;
+            self.copy_op(&src, &first, /*allow_transmute*/ false)?;
+
+            // This is performance-sensitive code for big static/const arrays! So we
+            // avoid writing each operand individually and instead just make many copies
+            // of the first element.
+            let elem_size = first.layout.size;
+            let first_ptr = first.ptr();
+            let rest_ptr = first_ptr.offset(elem_size, self)?;
+            // No alignment requirement since `copy_op` above already checked it.
+            self.mem_copy_repeatedly(
+                first_ptr,
+                rest_ptr,
+                elem_size,
+                length - 1,
+                /*nonoverlapping:*/ true,
+            )?;
+        }
 
         Ok(())
     }

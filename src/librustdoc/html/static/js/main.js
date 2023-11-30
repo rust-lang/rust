@@ -1318,8 +1318,7 @@ function preLoadCss(cssUrl) {
 
         const infos = [
             `For a full list of all search features, take a look <a \
-href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
-#the-search-interface">here</a>.`,
+href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.html">here</a>.`,
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \

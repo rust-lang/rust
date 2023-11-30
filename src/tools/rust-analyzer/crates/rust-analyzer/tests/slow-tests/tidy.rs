@@ -316,7 +316,7 @@ fn check_trailing_ws(path: &Path, text: &str) {
         return;
     }
     for (line_number, line) in text.lines().enumerate() {
-        if line.chars().last().map(char::is_whitespace) == Some(true) {
+        if line.chars().last().is_some_and(char::is_whitespace) {
             panic!("Trailing whitespace in {} at line {}", path.display(), line_number + 1)
         }
     }

@@ -27,7 +27,7 @@ pub enum UnsafetyViolationKind {
     UnsafeFn,
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationDetails {
     CallToUnsafeFunction,
     UseOfInlineAssembly,
@@ -39,10 +39,17 @@ pub enum UnsafetyViolationDetails {
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
-    CallToFunctionWith,
+    CallToFunctionWith {
+        /// Target features enabled in callee's `#[target_feature]` but missing in
+        /// caller's `#[target_feature]`.
+        missing: Vec<Symbol>,
+        /// Target features in `missing` that are enabled at compile time
+        /// (e.g., with `-C target-feature`).
+        build_enabled: Vec<Symbol>,
+    },
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub lint_root: hir::HirId,

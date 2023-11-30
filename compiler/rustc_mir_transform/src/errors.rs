@@ -1,6 +1,8 @@
+use std::borrow::Cow;
+
 use rustc_errors::{
-    Applicability, DecorateLint, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Handler,
-    IntoDiagnostic,
+    Applicability, DecorateLint, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage,
+    EmissionGuarantee, Handler, IntoDiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
@@ -8,6 +10,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
+
+use crate::fluent_generated as fluent;
 
 #[derive(LintDiagnostic)]
 pub(crate) enum ConstMutate {
@@ -61,72 +65,105 @@ pub(crate) struct RequiresUnsafe {
 impl<'sess, G: EmissionGuarantee> IntoDiagnostic<'sess, G> for RequiresUnsafe {
     #[track_caller]
     fn into_diagnostic(self, handler: &'sess Handler) -> DiagnosticBuilder<'sess, G> {
-        let mut diag =
-            handler.struct_diagnostic(crate::fluent_generated::mir_transform_requires_unsafe);
+        let mut diag = handler.struct_diagnostic(fluent::mir_transform_requires_unsafe);
         diag.code(rustc_errors::DiagnosticId::Error("E0133".to_string()));
         diag.set_span(self.span);
         diag.span_label(self.span, self.details.label());
-        diag.note(self.details.note());
         let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
         diag.set_arg("details", desc);
         diag.set_arg("op_in_unsafe_fn_allowed", self.op_in_unsafe_fn_allowed);
+        self.details.add_subdiagnostics(&mut diag);
         if let Some(sp) = self.enclosing {
-            diag.span_label(sp, crate::fluent_generated::mir_transform_not_inherited);
+            diag.span_label(sp, fluent::mir_transform_not_inherited);
         }
         diag
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct RequiresUnsafeDetail {
     pub span: Span,
     pub violation: UnsafetyViolationDetails,
 }
 
 impl RequiresUnsafeDetail {
-    fn note(self) -> DiagnosticMessage {
+    fn add_subdiagnostics<G: EmissionGuarantee>(&self, diag: &mut DiagnosticBuilder<'_, G>) {
         use UnsafetyViolationDetails::*;
         match self.violation {
-            CallToUnsafeFunction => crate::fluent_generated::mir_transform_call_to_unsafe_note,
-            UseOfInlineAssembly => crate::fluent_generated::mir_transform_use_of_asm_note,
-            InitializingTypeWith => {
-                crate::fluent_generated::mir_transform_initializing_valid_range_note
+            CallToUnsafeFunction => {
+                diag.note(fluent::mir_transform_call_to_unsafe_note);
             }
-            CastOfPointerToInt => crate::fluent_generated::mir_transform_const_ptr2int_note,
-            UseOfMutableStatic => crate::fluent_generated::mir_transform_use_of_static_mut_note,
-            UseOfExternStatic => crate::fluent_generated::mir_transform_use_of_extern_static_note,
-            DerefOfRawPointer => crate::fluent_generated::mir_transform_deref_ptr_note,
-            AccessToUnionField => crate::fluent_generated::mir_transform_union_access_note,
+            UseOfInlineAssembly => {
+                diag.note(fluent::mir_transform_use_of_asm_note);
+            }
+            InitializingTypeWith => {
+                diag.note(fluent::mir_transform_initializing_valid_range_note);
+            }
+            CastOfPointerToInt => {
+                diag.note(fluent::mir_transform_const_ptr2int_note);
+            }
+            UseOfMutableStatic => {
+                diag.note(fluent::mir_transform_use_of_static_mut_note);
+            }
+            UseOfExternStatic => {
+                diag.note(fluent::mir_transform_use_of_extern_static_note);
+            }
+            DerefOfRawPointer => {
+                diag.note(fluent::mir_transform_deref_ptr_note);
+            }
+            AccessToUnionField => {
+                diag.note(fluent::mir_transform_union_access_note);
+            }
             MutationOfLayoutConstrainedField => {
-                crate::fluent_generated::mir_transform_mutation_layout_constrained_note
+                diag.note(fluent::mir_transform_mutation_layout_constrained_note);
             }
             BorrowOfLayoutConstrainedField => {
-                crate::fluent_generated::mir_transform_mutation_layout_constrained_borrow_note
+                diag.note(fluent::mir_transform_mutation_layout_constrained_borrow_note);
             }
-            CallToFunctionWith => crate::fluent_generated::mir_transform_target_feature_call_note,
+            CallToFunctionWith { ref missing, ref build_enabled } => {
+                diag.help(fluent::mir_transform_target_feature_call_help);
+                diag.set_arg(
+                    "missing_target_features",
+                    DiagnosticArgValue::StrListSepByAnd(
+                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                    ),
+                );
+                diag.set_arg("missing_target_features_count", missing.len());
+                if !build_enabled.is_empty() {
+                    diag.note(fluent::mir_transform_target_feature_call_note);
+                    diag.set_arg(
+                        "build_target_features",
+                        DiagnosticArgValue::StrListSepByAnd(
+                            build_enabled
+                                .iter()
+                                .map(|feature| Cow::from(feature.as_str()))
+                                .collect(),
+                        ),
+                    );
+                    diag.set_arg("build_target_features_count", build_enabled.len());
+                }
+            }
         }
     }
 
-    fn label(self) -> DiagnosticMessage {
+    fn label(&self) -> DiagnosticMessage {
         use UnsafetyViolationDetails::*;
         match self.violation {
-            CallToUnsafeFunction => crate::fluent_generated::mir_transform_call_to_unsafe_label,
-            UseOfInlineAssembly => crate::fluent_generated::mir_transform_use_of_asm_label,
-            InitializingTypeWith => {
-                crate::fluent_generated::mir_transform_initializing_valid_range_label
-            }
-            CastOfPointerToInt => crate::fluent_generated::mir_transform_const_ptr2int_label,
-            UseOfMutableStatic => crate::fluent_generated::mir_transform_use_of_static_mut_label,
-            UseOfExternStatic => crate::fluent_generated::mir_transform_use_of_extern_static_label,
-            DerefOfRawPointer => crate::fluent_generated::mir_transform_deref_ptr_label,
-            AccessToUnionField => crate::fluent_generated::mir_transform_union_access_label,
+            CallToUnsafeFunction => fluent::mir_transform_call_to_unsafe_label,
+            UseOfInlineAssembly => fluent::mir_transform_use_of_asm_label,
+            InitializingTypeWith => fluent::mir_transform_initializing_valid_range_label,
+            CastOfPointerToInt => fluent::mir_transform_const_ptr2int_label,
+            UseOfMutableStatic => fluent::mir_transform_use_of_static_mut_label,
+            UseOfExternStatic => fluent::mir_transform_use_of_extern_static_label,
+            DerefOfRawPointer => fluent::mir_transform_deref_ptr_label,
+            AccessToUnionField => fluent::mir_transform_union_access_label,
             MutationOfLayoutConstrainedField => {
-                crate::fluent_generated::mir_transform_mutation_layout_constrained_label
+                fluent::mir_transform_mutation_layout_constrained_label
             }
             BorrowOfLayoutConstrainedField => {
-                crate::fluent_generated::mir_transform_mutation_layout_constrained_borrow_label
+                fluent::mir_transform_mutation_layout_constrained_borrow_label
             }
-            CallToFunctionWith => crate::fluent_generated::mir_transform_target_feature_call_label,
+            CallToFunctionWith { .. } => fluent::mir_transform_target_feature_call_label,
         }
     }
 }
@@ -151,12 +188,12 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
         let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
         diag.set_arg("details", desc);
         diag.span_label(self.details.span, self.details.label());
-        diag.note(self.details.note());
+        self.details.add_subdiagnostics(diag);
 
         if let Some((start, end, fn_sig)) = self.suggest_unsafe_block {
-            diag.span_note(fn_sig, crate::fluent_generated::mir_transform_note);
+            diag.span_note(fn_sig, fluent::mir_transform_note);
             diag.tool_only_multipart_suggestion(
-                crate::fluent_generated::mir_transform_suggestion,
+                fluent::mir_transform_suggestion,
                 vec![(start, " unsafe {".into()), (end, "}".into())],
                 Applicability::MaybeIncorrect,
             );
@@ -166,7 +203,7 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
     }
 
     fn msg(&self) -> DiagnosticMessage {
-        crate::fluent_generated::mir_transform_unsafe_op_in_unsafe_fn
+        fluent::mir_transform_unsafe_op_in_unsafe_fn
     }
 }
 
@@ -193,12 +230,8 @@ impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
 
     fn msg(&self) -> DiagnosticMessage {
         match self {
-            AssertLint::ArithmeticOverflow(..) => {
-                crate::fluent_generated::mir_transform_arithmetic_overflow
-            }
-            AssertLint::UnconditionalPanic(..) => {
-                crate::fluent_generated::mir_transform_operation_will_panic
-            }
+            AssertLint::ArithmeticOverflow(..) => fluent::mir_transform_arithmetic_overflow,
+            AssertLint::UnconditionalPanic(..) => fluent::mir_transform_operation_will_panic,
         }
     }
 }
@@ -255,11 +288,11 @@ impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
         self,
         diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
     ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        diag.span_label(self.yield_sp, crate::fluent_generated::_subdiag::label);
+        diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {
             diag.subdiagnostic(reason);
         }
-        diag.span_help(self.src_sp, crate::fluent_generated::_subdiag::help);
+        diag.span_help(self.src_sp, fluent::_subdiag::help);
         diag.set_arg("pre", self.pre);
         diag.set_arg("def_path", self.tcx.def_path_str(self.def_id));
         diag.set_arg("post", self.post);
@@ -267,7 +300,7 @@ impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
-        crate::fluent_generated::mir_transform_must_not_suspend
+        fluent::mir_transform_must_not_suspend
     }
 }
 

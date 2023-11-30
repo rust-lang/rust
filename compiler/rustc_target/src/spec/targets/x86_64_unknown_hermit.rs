@@ -12,7 +12,7 @@ pub fn target() -> Target {
             features: "+rdrnd,+rdseed".into(),
             plt_by_default: false,
             max_atomic_width: Some(64),
-            stack_probes: StackProbeType::X86,
+            stack_probes: StackProbeType::Inline,
             ..base::hermit::opts()
         },
     }

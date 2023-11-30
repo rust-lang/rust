@@ -171,6 +171,7 @@ struct WithHeader<H>(NonNull<u8>, PhantomData<H>);
 /// An opaque representation of `WithHeader<H>` to avoid the
 /// projection invariance of `<T as Pointee>::Metadata`.
 #[repr(transparent)]
+#[allow(unused_tuple_struct_fields)] // Field only used through `WithHeader` type above.
 struct WithOpaqueHeader(NonNull<u8>);
 
 impl WithOpaqueHeader {

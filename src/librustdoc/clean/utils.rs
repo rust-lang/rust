@@ -303,7 +303,8 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     debug!("trying to get a name from pattern: {p:?}");
 
     Symbol::intern(&match p.kind {
-        PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
+        // FIXME(never_patterns): does this make sense?
+        PatKind::Wild | PatKind::Never | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Or(pats) => {

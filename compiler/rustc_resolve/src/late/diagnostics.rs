@@ -744,6 +744,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 err,
                 span,
                 source,
+                path,
                 res,
                 &path_str,
                 &base_error.fallback_label,
@@ -1328,6 +1329,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diagnostic,
         span: Span,
         source: PathSource<'_>,
+        path: &[Segment],
         res: Res,
         path_str: &str,
         fallback_label: &str,
@@ -1523,12 +1525,20 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 | PathSource::Struct,
             ) => {
                 err.span_label(span, fallback_label.to_string());
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "use `!` to invoke the macro",
-                    "!",
-                    Applicability::MaybeIncorrect,
-                );
+
+                // Don't suggest `!` for a macro invocation if there are generic args
+                if path
+                    .last()
+                    .is_some_and(|segment| !segment.has_generic_args && !segment.has_lifetime_args)
+                {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_hi(),
+                        "use `!` to invoke the macro",
+                        "!",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+
                 if path_str == "try" && span.is_rust_2015() {
                     err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }

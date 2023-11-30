@@ -80,14 +80,14 @@ impl QueryContext for QueryCtxt<'_> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
-    fn try_collect_active_jobs(self) -> Option<QueryMap> {
+    fn collect_active_jobs(self) -> QueryMap {
         let mut jobs = QueryMap::default();
 
         for collect in super::TRY_COLLECT_ACTIVE_JOBS.iter() {
             collect(self.tcx, &mut jobs);
         }
 
-        Some(jobs)
+        jobs
     }
 
     // Interactions with on_disk_cache
@@ -155,11 +155,11 @@ impl QueryContext for QueryCtxt<'_> {
     fn depth_limit_error(self, job: QueryJobId) {
         let mut span = None;
         let mut layout_of_depth = None;
-        if let Some(map) = self.try_collect_active_jobs() {
-            if let Some((info, depth)) = job.try_find_layout_root(map, dep_kinds::layout_of) {
-                span = Some(info.job.span);
-                layout_of_depth = Some(LayoutOfDepth { desc: info.query.description, depth });
-            }
+        if let Some((info, depth)) =
+            job.try_find_layout_root(self.collect_active_jobs(), dep_kinds::layout_of)
+        {
+            span = Some(info.job.span);
+            layout_of_depth = Some(LayoutOfDepth { desc: info.query.description, depth });
         }
 
         let suggested_limit = match self.recursion_limit() {

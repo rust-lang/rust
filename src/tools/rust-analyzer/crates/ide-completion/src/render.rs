@@ -557,7 +557,11 @@ mod tests {
 
                 let tag = it.kind.tag();
                 let relevance = display_relevance(it.relevance);
-                items.push(format!("{tag} {} {relevance}\n", it.label));
+                items.push(format!(
+                    "{tag} {}{} {relevance}\n",
+                    it.label,
+                    it.label_detail.clone().unwrap_or_default(),
+                ));
 
                 if let Some((label, _indel, relevance)) = it.ref_match() {
                     let relevance = display_relevance(relevance);

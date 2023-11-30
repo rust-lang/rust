@@ -31,6 +31,7 @@ macro_rules! forward_ref_binop {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
+            #[track_caller]
             fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(*self, other)
             }
@@ -41,6 +42,7 @@ macro_rules! forward_ref_binop {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
+            #[track_caller]
             fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(self, *other)
             }
@@ -51,6 +53,7 @@ macro_rules! forward_ref_binop {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
+            #[track_caller]
             fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(*self, *other)
             }
@@ -69,6 +72,7 @@ macro_rules! forward_ref_op_assign {
         #[$attr]
         impl $imp<&$u> for $t {
             #[inline]
+            #[track_caller]
             fn $method(&mut self, other: &$u) {
                 $imp::$method(self, *other);
             }

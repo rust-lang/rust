@@ -438,9 +438,13 @@ fn fatally_break_rust(tcx: TyCtxt<'_>) {
     }
 }
 
+/// `expected` here is the expected number of explicit generic arguments on the trait.
 fn has_expected_num_generic_args(tcx: TyCtxt<'_>, trait_did: DefId, expected: usize) -> bool {
     let generics = tcx.generics_of(trait_did);
-    generics.count() == expected + if generics.has_self { 1 } else { 0 }
+    generics.count()
+        == expected
+            + if generics.has_self { 1 } else { 0 }
+            + if generics.host_effect_index.is_some() { 1 } else { 0 }
 }
 
 pub fn provide(providers: &mut Providers) {

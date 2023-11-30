@@ -1667,9 +1667,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             .report(diag);
                         (false, Mismatch::Fixed("signature"))
                     }
-                    ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
-                        (false, Mismatch::Fixed("trait"))
-                    }
+                    ValuePairs::PolyTraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(infer::ExpectedFound { expected, .. }) => {
                         (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
                     }
@@ -2219,18 +2217,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Aliases(exp_found) => self.expected_found_str(exp_found),
             infer::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             infer::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(exp_found) => {
-                let pretty_exp_found = ty::error::ExpectedFound {
-                    expected: exp_found.expected.print_only_trait_path(),
-                    found: exp_found.found.print_only_trait_path(),
-                };
-                match self.expected_found_str(pretty_exp_found) {
-                    Some((expected, found, _, _)) if expected == found => {
-                        self.expected_found_str(exp_found)
-                    }
-                    ret => ret,
-                }
-            }
             infer::PolyTraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),

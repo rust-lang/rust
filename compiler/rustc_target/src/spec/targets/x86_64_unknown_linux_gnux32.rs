@@ -6,7 +6,7 @@ pub fn target() -> Target {
     base.abi = "x32".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mx32"]);
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
     base.has_thread_local = false;
     // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI
     // breaks code gen. See LLVM bug 36743

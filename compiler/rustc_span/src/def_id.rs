@@ -222,7 +222,6 @@ rustc_index::newtype_index! {
     }
 }
 
-// njn: I don't understand these
 impl<E: Encoder> Encodable<E> for DefIndex {
     default fn encode(&self, _: &mut E) {
         panic!("cannot encode `DefIndex` with `{}`", std::any::type_name::<E>());

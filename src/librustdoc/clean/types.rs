@@ -2546,7 +2546,7 @@ pub(crate) enum TypeBindingKind {
 pub(crate) enum SubstParam {
     Type(Type),
     Lifetime(Lifetime),
-    Constant(Constant),
+    Constant,
 }
 
 impl SubstParam {

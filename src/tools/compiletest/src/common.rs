@@ -242,6 +242,9 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
+    /// Whether to run tests with `ignore-debug` header
+    pub with_debug_assertions: bool,
+
     /// Only run tests that match these filters
     pub filters: Vec<String>,
 

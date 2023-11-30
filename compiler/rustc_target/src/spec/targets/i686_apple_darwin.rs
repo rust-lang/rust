@@ -7,7 +7,7 @@ pub fn target() -> Target {
     let mut base = opts("macos", arch);
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
     base.frame_pointer = FramePointer::Always;
 
     Target {

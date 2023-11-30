@@ -339,7 +339,7 @@ impl FlattenPair for ast::Expr {
                     if let Some(pop) = stack.pop() {
                         match pop.kind {
                             ast::ExprKind::Binary(op, _, ref rhs) => {
-                                separators.push(op.node.to_string());
+                                separators.push(op.node.as_str());
                                 node = rhs;
                             }
                             _ => unreachable!(),

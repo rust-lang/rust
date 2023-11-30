@@ -1,5 +1,6 @@
 use crate::fmt;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedFused};
+use crate::num::NonZeroUsize;
 use crate::ops::Try;
 use core::array;
 use core::mem::{ManuallyDrop, MaybeUninit};
@@ -189,6 +190,9 @@ where
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator, P> FusedIterator for Filter<I, P> where P: FnMut(&I::Item) -> bool {}
 
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<I: TrustedFused, F> TrustedFused for Filter<I, F> {}
+
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<P, I> SourceIter for Filter<I, P>
 where
@@ -204,4 +208,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> where P: FnMut(&I::Item) -> bool {}
+unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}

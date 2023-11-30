@@ -291,7 +291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .push(autoref);
                     }
                 }
-                self.write_method_call(expr.hir_id, method);
+                self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
                 method.sig.output()
             }
@@ -781,7 +781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, None, Op::Unary(op, ex.span), expected) {
             Ok(method) => {
-                self.write_method_call(ex.hir_id, method);
+                self.write_method_call_and_enforce_effects(ex.hir_id, ex.span, method);
                 method.sig.output()
             }
             Err(errors) => {

@@ -28,7 +28,6 @@ pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
-#[path = "../unsupported/thread_parking.rs"]
 pub mod thread_parking;
 pub mod time;
 

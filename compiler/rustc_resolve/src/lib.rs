@@ -172,7 +172,7 @@ impl<'a> ParentScope<'a> {
 #[derive(Copy, Debug, Clone)]
 enum ImplTraitContext {
     Existential,
-    Universal(LocalDefId),
+    Universal,
 }
 
 #[derive(Debug)]
@@ -1034,9 +1034,6 @@ pub struct Resolver<'a, 'tcx> {
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
-    /// A small map keeping true kinds of built-in macros that appear to be fn-like on
-    /// the surface (`macro` items in libcore), but are actually attributes or derives.
-    builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
     registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, NameBinding<'a>>,
     macro_map: FxHashMap<DefId, MacroData>,
@@ -1216,6 +1213,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         parent: LocalDefId,
         node_id: ast::NodeId,
         data: DefPathData,
+        def_kind: DefKind,
         expn_id: ExpnId,
         span: Span,
     ) -> LocalDefId {
@@ -1229,6 +1227,9 @@ impl<'tcx> Resolver<'_, 'tcx> {
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
         let def_id = self.tcx.untracked().definitions.write().create_def(parent, data);
+
+        let feed = self.tcx.feed_local_def_id(def_id);
+        feed.def_kind(def_kind);
 
         // Create the definition.
         if expn_id != ExpnId::root() {
@@ -1403,7 +1404,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             used_extern_options: Default::default(),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
-            builtin_macro_kinds: Default::default(),
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
@@ -1542,7 +1542,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             node_id_to_def_id: self.node_id_to_def_id,
             def_id_to_node_id: self.def_id_to_node_id,
             trait_map: self.trait_map,
-            builtin_macro_kinds: self.builtin_macro_kinds,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
         };
