@@ -2193,21 +2193,13 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();
 
-    join(
-        || encode_metadata_impl(tcx, path),
-        || {
-            if tcx.sess.threads() == 1 {
-                return;
-            }
-            // Prefetch some queries used by metadata encoding.
-            // This is not necessary for correctness, but is only done for performance reasons.
-            // It can be removed if it turns out to cause trouble or be detrimental to performance.
-            join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
-        },
-    );
-}
-
-fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
+    if tcx.sess.threads() != 1 {
+        // Prefetch some queries used by metadata encoding.
+        // This is not necessary for correctness, but is only done for performance reasons.
+        // It can be removed if it turns out to cause trouble or be detrimental to performance.
+        join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
+    }
+    
     let mut encoder = opaque::FileEncoder::new(path)
         .unwrap_or_else(|err| tcx.sess.emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
