@@ -9,11 +9,7 @@ use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy};
 use rustc_span::Symbol;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
-use stable_mir::ty::{
-    AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
-    ExistentialTraitRef, FloatTy, GenericArgKind, GenericArgs, IntTy, Region, RigidTy, Span,
-    TraitRef, Ty, UintTy,
-};
+use stable_mir::ty::{AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const, ExistentialTraitRef, FloatTy, GenericArgKind, GenericArgs, IndexedVal, IntTy, Region, RigidTy, Span, TraitRef, Ty, UintTy, VariantDef, VariantIdx};
 use stable_mir::{CrateItem, DefId};
 
 use super::RustcInternal;
@@ -138,6 +134,22 @@ impl<'tcx> RustcInternal<'tcx> for FloatTy {
             FloatTy::F32 => rustc_ty::FloatTy::F32,
             FloatTy::F64 => rustc_ty::FloatTy::F64,
         }
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for VariantIdx {
+    type T = rustc_target::abi::VariantIdx;
+
+    fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        rustc_target::abi::VariantIdx::from(self.to_index())
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for VariantDef {
+    type T = &'tcx rustc_ty::VariantDef;
+
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        self.adt_def.internal(tables).variant(self.idx.internal(tables))
     }
 }
 

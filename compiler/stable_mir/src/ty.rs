@@ -30,6 +30,16 @@ impl Ty {
     pub fn try_new_array(elem_ty: Ty, size: u64) -> Result<Ty, Error> {
         Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, Const::try_from_target_usize(size)?)))
     }
+
+    /// Create a new pointer type.
+    pub fn new_ptr(pointee_ty: Ty, mutability: Mutability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::RawPtr(pointee_ty, mutability))
+    }
+
+    /// Create a type representing `usize`.
+    pub fn usize_ty() -> Ty {
+        Ty::from_rigid_kind(RigidTy::Uint(UintTy::Usize))
+    }
 }
 
 impl Ty {
@@ -368,6 +378,49 @@ impl AdtDef {
 
     pub fn is_box(&self) -> bool {
         with(|cx| cx.adt_is_box(*self))
+    }
+
+    /// The number of variants in this ADT.
+    pub fn num_variants(&self) -> usize {
+        with(|cx| cx.adt_variants_len(*self))
+    }
+
+    /// Retrieve the variants in this ADT.
+    pub fn variants(&self) -> Vec<VariantDef> {
+        self.variants_iter().collect()
+    }
+
+    /// Iterate over the variants in this ADT.
+    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> + '_ {
+        (0..self.num_variants())
+            .map(|idx| VariantDef { idx: VariantIdx::to_val(idx), adt_def: *self })
+    }
+
+    pub fn variant(&self, idx: VariantIdx) -> Option<VariantDef> {
+        self.variants().get(idx.to_index()).copied()
+    }
+}
+
+/// Definition of a variant, which can be either a struct / union field or an enum variant.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VariantDef {
+    /// The variant index.
+    ///
+    /// ## Warning
+    /// Do not access this field directly!
+    pub idx: VariantIdx,
+    /// The data type where this variant comes from.
+    /// For now, we use this to retrieve information about the variant itself so we don't need to
+    /// cache more information.
+    ///
+    /// ## Warning
+    /// Do not access this field directly!
+    pub adt_def: AdtDef,
+}
+
+impl VariantDef {
+    pub fn name(&self) -> Symbol {
+        with(|cx| cx.variant_name(*self))
     }
 }
 
@@ -906,3 +959,21 @@ macro_rules! index_impl {
 index_impl!(ConstId);
 index_impl!(Ty);
 index_impl!(Span);
+
+/// The source-order index of a variant in a type.
+///
+/// For example, in the following types,
+/// ```ignore(illustrative)
+/// enum Demo1 {
+///    Variant0 { a: bool, b: i32 },
+///    Variant1 { c: u8, d: u64 },
+/// }
+/// struct Demo2 { e: u8, f: u16, g: u8 }
+/// ```
+/// `a` is in the variant with the `VariantIdx` of `0`,
+/// `c` is in the variant with the `VariantIdx` of `1`, and
+/// `g` is in the variant with the `VariantIdx` of `0`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VariantIdx(usize);
+
+index_impl!(VariantIdx);

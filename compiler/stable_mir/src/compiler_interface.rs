@@ -11,7 +11,7 @@ use crate::mir::Body;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs,
     GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl,
-    TraitDef, Ty, TyKind,
+    TraitDef, Ty, TyKind, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
@@ -70,6 +70,12 @@ pub trait Context {
 
     /// Retrieve the function signature for the given generic arguments.
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
+
+    /// The number of variants in this ADT.
+    fn adt_variants_len(&self, def: AdtDef) -> usize;
+
+    /// The name of a variant.
+    fn variant_name(&self, def: VariantDef) -> Symbol;
 
     /// Evaluate constant as a target usize.
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;

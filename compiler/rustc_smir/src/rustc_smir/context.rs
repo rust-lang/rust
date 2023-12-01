@@ -13,7 +13,7 @@ use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::Body;
 use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs, LineInfo,
-    PolyFnSig, RigidTy, Span, TyKind,
+    PolyFnSig, RigidTy, Span, TyKind, VariantDef,
 };
 use stable_mir::{self, Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
@@ -207,6 +207,16 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let def_id = def.0.internal(&mut *tables);
         let sig = tables.tcx.fn_sig(def_id).instantiate(tables.tcx, args.internal(&mut *tables));
         sig.stable(&mut *tables)
+    }
+
+    fn adt_variants_len(&self, def: AdtDef) -> usize {
+        let mut tables = self.0.borrow_mut();
+        def.internal(&mut *tables).variants().len()
+    }
+
+    fn variant_name(&self, def: VariantDef) -> Symbol {
+        let mut tables = self.0.borrow_mut();
+        def.internal(&mut *tables).name.to_string()
     }
 
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error> {
