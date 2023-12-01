@@ -173,6 +173,9 @@ impl<Prov: Provenance> std::fmt::Debug for LocalState<'_, Prov> {
 }
 
 /// Current value of a local variable
+///
+/// This does not store the type of the local; the type is given by `body.local_decls` and can never
+/// change, so by not storing here we avoid having to maintain that as an invariant.
 #[derive(Copy, Clone, Debug)] // Miri debug-prints these
 pub(super) enum LocalValue<Prov: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
