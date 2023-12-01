@@ -511,7 +511,7 @@ pub struct VarDebugInfo {
     pub name: Symbol,
 
     /// Source info of the user variable, including the scope
-    /// within which the variable is visible (to debuginfo)
+    /// within which the variable is visible (to debuginfo).
     pub source_info: SourceInfo,
 
     /// The user variable's data is split across several fragments,
