@@ -986,9 +986,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // should be fixed later.
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
                     && tcx.lookup_stability(callee).is_some_and(|s| s.is_unstable());
-                let can_call_any_function =
-                    super::rustc_allow_const_fn_unstable(tcx, caller, sym::any);
-                if callee_is_unstable_unmarked && !can_call_any_function {
+                let can_call_unmarked_function =
+                    super::rustc_allow_const_fn_unstable(tcx, caller, sym::any_unmarked);
+                if callee_is_unstable_unmarked && !can_call_unmarked_function {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
                     // `extern` functions, and these have no way to get marked `const`. So instead we

@@ -16,7 +16,7 @@ extern crate normal_const_fn;
 
 #[rustc_const_stable(feature = "stable_feature", since = "1.0.0")]
 #[stable(feature = "stable_feature", since = "1.0.0")]
-#[rustc_allow_const_fn_unstable(any)]
+#[rustc_allow_const_fn_unstable(any_unmarked)]
 pub const fn do_something() {
     normal_const_fn::do_something_else()
 }

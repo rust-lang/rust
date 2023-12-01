@@ -380,7 +380,7 @@ impl<T, S> HashSet<T, S> {
             since = "CURRENT_RUSTC_VERSION"
         )
     )]
-    #[rustc_allow_const_fn_unstable(any)]
+    #[rustc_allow_const_fn_unstable(any_unmarked)]
     pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
         HashSet { base: base::HashSet::with_hasher(hasher) }
     }

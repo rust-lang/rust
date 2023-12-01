@@ -290,7 +290,7 @@ impl<K, V, S> HashMap<K, V, S> {
             since = "CURRENT_RUSTC_VERSION"
         )
     )]
-    #[rustc_allow_const_fn_unstable(any)]
+    #[rustc_allow_const_fn_unstable(any_unmarked)]
     pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
