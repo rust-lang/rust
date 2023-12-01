@@ -160,5 +160,24 @@ LL |     let _ = f.v[0] + f.v[1];
    |                      ^^^^^^
    = note: asserting the length before indexing will elide bounds checks
 
-error: aborting due to 7 previous errors
+error: indexing into a slice multiple times without an `assert`
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:54:13
+   |
+LL |     let _ = x[0] + x[1];
+   |             ^^^^^^^^^^^
+   |
+   = help: consider asserting the length before indexing: `assert!(x.len() > 1);`
+note: slice indexed here
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:54:13
+   |
+LL |     let _ = x[0] + x[1];
+   |             ^^^^
+note: slice indexed here
+  --> $DIR/missing_asserts_for_indexing_unfixable.rs:54:20
+   |
+LL |     let _ = x[0] + x[1];
+   |                    ^^^^
+   = note: asserting the length before indexing will elide bounds checks
+
+error: aborting due to 8 previous errors
 

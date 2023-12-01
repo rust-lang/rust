@@ -3,7 +3,7 @@ use std::fmt;
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Expr, ExprKind, InlineAsmOptions};
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AsmStyle {

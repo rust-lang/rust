@@ -202,7 +202,7 @@ is. This file has already imported some initial things we will need:
 
 ```rust
 use rustc_lint::{EarlyLintPass, EarlyContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_ast::ast::*;
 ```
 
@@ -517,6 +517,8 @@ define_Conf! {
 ```
 
 [`clippy_config::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
+
+Afterwards update the documentation for the book as described in [Adding configuration to a lint](#adding-configuration-to-a-lint).
 
 ## Author lint
 

@@ -9,9 +9,9 @@ use clippy_utils::{eq_expr_value, hash_expr, higher};
 use rustc_ast::{LitKind, RangeLimits};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::{Applicability, Diagnostic};
-use rustc_hir::{BinOp, Block, Expr, ExprKind, UnOp};
+use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::{sym, Span};
 
@@ -390,10 +390,10 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
 }
 
 impl LateLintPass<'_> for MissingAssertsForIndexing {
-    fn check_block(&mut self, cx: &LateContext<'_>, block: &Block<'_>) {
+    fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let mut map = UnhashMap::default();
 
-        for_each_expr(block, |expr| {
+        for_each_expr(body.value, |expr| {
             check_index(cx, expr, &mut map);
             check_assert(cx, expr, &mut map);
             ControlFlow::<!, ()>::Continue(())

@@ -6,7 +6,7 @@ use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -46,9 +46,12 @@ fn unary_pattern(pat: &Pat<'_>) -> bool {
         pats.iter().all(unary_pattern)
     }
     match &pat.kind {
-        PatKind::Slice(_, _, _) | PatKind::Range(_, _, _) | PatKind::Binding(..) | PatKind::Wild | PatKind::Never | PatKind::Or(_) => {
-            false
-        },
+        PatKind::Slice(_, _, _)
+        | PatKind::Range(_, _, _)
+        | PatKind::Binding(..)
+        | PatKind::Wild
+        | PatKind::Never
+        | PatKind::Or(_) => false,
         PatKind::Struct(_, a, etc) => !etc && a.iter().all(|x| unary_pattern(x.pat)),
         PatKind::Tuple(a, etc) | PatKind::TupleStruct(_, a, etc) => etc.as_opt_usize().is_none() && array_rec(a),
         PatKind::Ref(x, _) | PatKind::Box(x) => unary_pattern(x),

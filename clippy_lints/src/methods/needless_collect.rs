@@ -225,7 +225,10 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let sig = cx.tcx.fn_sig(id).instantiate_identity()
         && sig.skip_binder().output().is_bool()
         && let [_, search_ty] = *sig.skip_binder().inputs()
-        && let ty::Ref(_, search_ty, Mutability::Not) = *cx.tcx.instantiate_bound_regions_with_erased(sig.rebind(search_ty)).kind()
+        && let ty::Ref(_, search_ty, Mutability::Not) = *cx
+            .tcx
+            .instantiate_bound_regions_with_erased(sig.rebind(search_ty))
+            .kind()
         && let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(iter_item) = cx.tcx.associated_items(iter_trait).find_by_name_and_kind(
             cx.tcx,
