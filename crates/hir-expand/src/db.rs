@@ -142,12 +142,6 @@ pub trait ExpandDatabase: SourceDatabase {
         def_crate: CrateId,
         id: AstId<ast::Macro>,
     ) -> Arc<DeclarativeMacroExpander>;
-
-    #[salsa::invoke(crate::builtin_fn_macro::include_arg_to_tt)]
-    fn include_expand(
-        &self,
-        arg_id: MacroCallId,
-    ) -> Result<(triomphe::Arc<tt::Subtree>, base_db::FileId), ExpandError>;
     /// Special case of the previous query for procedural macros. We can't LRU
     /// proc macros, since they are not deterministic in general, and
     /// non-determinism breaks salsa in a very, very, very bad way.

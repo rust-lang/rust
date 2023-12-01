@@ -17,7 +17,7 @@ use crate::{
     hygiene::span_with_def_site_ctxt,
     name, quote,
     tt::{self, DelimSpan},
-    EagerCallInfo, ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroCallLoc,
+    ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroCallLoc,
 };
 
 macro_rules! register_builtin {
@@ -575,36 +575,32 @@ fn parse_string(tt: &tt::Subtree) -> Result<String, ExpandError> {
 fn include_expand(
     db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
-    _tt: &tt::Subtree,
+    tt: &tt::Subtree,
     span: SpanData,
 ) -> ExpandResult<tt::Subtree> {
-    match db.include_expand(arg_id) {
-        Ok((res, _)) => ExpandResult::ok(res.as_ref().clone()),
-        Err(e) => ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e),
-    }
-}
-
-// FIXME: Check if this is still needed now after the token map rewrite
-pub(crate) fn include_arg_to_tt(
-    db: &dyn ExpandDatabase,
-    arg_id: MacroCallId,
-) -> Result<(triomphe::Arc<tt::Subtree>, FileId), ExpandError> {
-    let loc = db.lookup_intern_macro_call(arg_id);
-    let Some(EagerCallInfo { arg, arg_id, .. }) = loc.eager.as_deref() else {
-        panic!("include_arg_to_tt called on non include macro call: {:?}", &loc.eager);
+    let path = match parse_string(tt) {
+        Ok(it) => it,
+        Err(e) => {
+            return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e)
+        }
     };
-    let path = parse_string(&arg)?;
-    let file_id = relative_file(db, *arg_id, &path, false)?;
-
-    // why are we not going through a SyntaxNode here?
-    let subtree = parse_to_token_tree(
+    let file_id = match relative_file(db, arg_id, &path, false) {
+        Ok(file_id) => file_id,
+        Err(e) => {
+            return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e);
+        }
+    };
+    match parse_to_token_tree(
         SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-        // FIXME
         SyntaxContextId::ROOT,
         &db.file_text(file_id),
-    )
-    .ok_or(mbe::ExpandError::ConversionError)?;
-    Ok((triomphe::Arc::new(subtree), file_id))
+    ) {
+        Some(it) => ExpandResult::ok(it),
+        None => ExpandResult::new(
+            tt::Subtree::empty(DelimSpan { open: span, close: span }),
+            ExpandError::other("failed to parse included file"),
+        ),
+    }
 }
 
 fn include_bytes_expand(
@@ -613,9 +609,12 @@ fn include_bytes_expand(
     tt: &tt::Subtree,
     span: SpanData,
 ) -> ExpandResult<tt::Subtree> {
-    if let Err(e) = parse_string(tt) {
-        return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e);
-    }
+    let _path = match parse_string(tt) {
+        Ok(it) => it,
+        Err(e) => {
+            return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e)
+        }
+    };
 
     // FIXME: actually read the file here if the user asked for macro expansion
     let res = tt::Subtree {

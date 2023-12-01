@@ -208,12 +208,7 @@ impl HirFileIdExt for HirFileId {
             match file_id.repr() {
                 HirFileIdRepr::FileId(id) => break id,
                 HirFileIdRepr::MacroFile(MacroFileId { macro_call_id }) => {
-                    let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
-                    let is_include_expansion = loc.def.is_include() && loc.eager.is_some();
-                    file_id = match is_include_expansion.then(|| db.include_expand(macro_call_id)) {
-                        Some(Ok((_, file))) => file.into(),
-                        _ => loc.kind.file_id(),
-                    }
+                    file_id = db.lookup_intern_macro_call(macro_call_id).kind.file_id();
                 }
             }
         }
