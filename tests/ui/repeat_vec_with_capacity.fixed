@@ -23,7 +23,7 @@ fn main() {
     }
 
     {
-        std::iter::from_fn(|| Some(Vec::<()>::with_capacity(42)));
+        std::iter::repeat_with(|| Vec::<()>::with_capacity(42));
         //~^ ERROR: repeating `Vec::with_capacity` using `iter::repeat`, which does not retain capacity
     }
 

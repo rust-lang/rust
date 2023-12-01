@@ -7,7 +7,7 @@ use clippy_utils::{expr_or_init, fn_def_id, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -22,20 +22,25 @@ declare_clippy_lint! {
     /// expected that the yielded `Vec<_>` will have the requested capacity, otherwise one can simply write
     /// `iter::repeat(Vec::new())` instead and it will have the same effect.
     ///
-    /// Similarily for `vec![x; n]`, the element `x` is cloned to fill the vec.
+    /// Similarly for `vec![x; n]`, the element `x` is cloned to fill the vec.
     /// Unlike `iter::repeat` however, the vec repeat macro does not have to clone the value `n` times
     /// but just `n - 1` times, because it can reuse the passed value for the last slot.
     /// That means that the last `Vec<_>` gets the requested capacity but all other ones do not.
     ///
     /// ### Example
     /// ```rust
+    /// # use std::iter;
+    ///
     /// let _: Vec<Vec<u8>> = vec![Vec::with_capacity(42); 123];
+    /// let _: Vec<Vec<u8>> = iter::repeat(Vec::with_capacity(42)).take(123).collect();
     /// ```
     /// Use instead:
     /// ```rust
-    /// let _: Vec<Vec<u8>> = (0..123).map(|_| Vec::with_capacity(42)).collect();
-    /// //                                 ^^^ this closure executes 123 times
-    /// //                                     and the vecs will have the expected capacity
+    /// # use std::iter;
+    ///
+    /// let _: Vec<Vec<u8>> = iter::repeat_with(|| Vec::with_capacity(42)).take(123).collect();
+    /// //                                      ^^^ this closure executes 123 times
+    /// //                                          and the vecs will have the expected capacity
     /// ```
     #[clippy::version = "1.74.0"]
     pub REPEAT_VEC_WITH_CAPACITY,
@@ -96,7 +101,7 @@ fn check_repeat_fn(cx: &LateContext<'_>, expr: &Expr<'_>) {
             "iter::repeat",
             "none of the yielded `Vec`s will have the requested capacity",
             "if you intended to create an iterator that yields `Vec`s with an initial capacity, try",
-            format!("std::iter::from_fn(|| Some({}))", snippet(cx, repeat_expr.span, "..")),
+            format!("std::iter::repeat_with(|| {})", snippet(cx, repeat_expr.span, "..")),
         );
     }
 }

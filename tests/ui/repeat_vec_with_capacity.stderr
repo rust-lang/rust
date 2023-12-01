@@ -33,8 +33,8 @@ LL |         std::iter::repeat(Vec::<()>::with_capacity(42));
    = note: none of the yielded `Vec`s will have the requested capacity
 help: if you intended to create an iterator that yields `Vec`s with an initial capacity, try
    |
-LL |         std::iter::from_fn(|| Some(Vec::<()>::with_capacity(42)));
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |         std::iter::repeat_with(|| Vec::<()>::with_capacity(42));
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 
