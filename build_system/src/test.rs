@@ -3,11 +3,13 @@ use crate::config::ConfigInfo;
 use crate::utils::{
     get_gcc_path, get_toolchain, run_command, run_command_with_env,
     run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
+    remove_file,
 };
 
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
-use std::fs::remove_dir_all;
+use std::fs::{File, remove_dir_all};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -85,7 +87,6 @@ fn show_usage() {
 `test` command help:
 
     --release              : Build codegen in release mode
-    --release-sysroot      : Build sysroot in release mode
     --sysroot-panic-abort  : Build the sysroot without unwinding support.
     --no-default-features  : Add `--no-default-features` flag
     --features [arg]       : Add a new feature [arg]
@@ -104,7 +105,7 @@ fn show_usage() {
     println!("    --help                 : Show this help");
 }
 
-#[derive(Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
 enum Channel {
     #[default]
     Debug,
@@ -120,7 +121,7 @@ impl Channel {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct TestArg {
     no_default_features: bool,
     build_only: bool,
@@ -151,7 +152,6 @@ impl TestArg {
                     test_arg.channel = Channel::Release;
                     test_arg.config_info.sysroot_release_channel = true;
                 }
-                "--release-sysroot" => test_arg.config_info.sysroot_release_channel = true,
                 "--no-default-features" => {
                     // To prevent adding it more than once.
                     if !test_arg.no_default_features {
@@ -210,7 +210,18 @@ impl TestArg {
                 get_gcc_path()?
             };
         }
+        match (test_arg.current_part, test_arg.nb_parts) {
+            (Some(_), Some(_)) | (None, None) => {}
+            _ => {
+                return Err("If either `--current-part` or `--nb-parts` is specified, the other one \
+                            needs to be specified as well!".to_string());
+            }
+        }
         Ok(Some(test_arg))
+    }
+
+    pub fn is_using_gcc_master_branch(&self) -> bool {
+        !self.no_default_features
     }
 }
 
@@ -251,10 +262,7 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         "lib,dylib"
     }
     .to_string();
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/mini_core.rs",
         &"--crate-name",
@@ -268,10 +276,7 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[BUILD] example");
-    command.clear();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/example.rs",
         &"--crate-type",
@@ -283,10 +288,7 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] mini_core_hello_world");
-    command.clear();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/mini_core_hello_world.rs",
         &"--crate-name",
@@ -304,24 +306,19 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"abc",
         &"bcd",
     ];
-    run_command_in_vm(&command, env, args)?;
+    maybe_run_command_in_vm(&command, env, args)?;
     Ok(())
 }
 
 fn build_sysroot(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[BUILD] sysroot");
-    build::build_sysroot(
-        env,
-        args.config_info.sysroot_panic_abort,
-        args.config_info.sysroot_release_channel,
-        &args.config_info,
-    )?;
+    build::build_sysroot(env, &args.config_info)?;
     Ok(())
 }
 
 // TODO(GuillaumeGomez): when rewriting in Rust, refactor with the code in tests/lang_tests_common.rs if possible.
-fn run_command_in_vm(
+fn maybe_run_command_in_vm(
     command: &[&dyn AsRef<OsStr>],
     env: &Env,
     args: &TestArg,
@@ -358,12 +355,10 @@ fn run_command_in_vm(
 }
 
 fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
+    let cargo_target_dir = Path::new(&args.config_info.cargo_target_dir);
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] arbitrary_self_types_pointers_and_wrappers");
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/arbitrary_self_types_pointers_and_wrappers.rs",
         &"--crate-name",
@@ -374,19 +369,15 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &args.config_info.target_triple,
     ]);
     run_command_with_env(&command, None, Some(env))?;
-    run_command_in_vm(
-        &[&Path::new(&args.config_info.cargo_target_dir)
-            .join("arbitrary_self_types_pointers_and_wrappers")],
+    maybe_run_command_in_vm(
+        &[&cargo_target_dir.join("arbitrary_self_types_pointers_and_wrappers")],
         env,
         args,
     )?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] alloc_system");
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/alloc_system.rs",
         &"--crate-type",
@@ -394,19 +385,16 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--target",
         &args.config_info.target_triple,
     ]);
-    if !args.no_default_features {
+    if args.is_using_gcc_master_branch() {
         command.extend_from_slice(&[&"--cfg", &"feature=\"master\""]);
     }
     run_command_with_env(&command, None, Some(env))?;
 
     // FIXME: doesn't work on m68k.
-    if args.config_info.host_triple != args.config_info.target_triple {
+    if args.config_info.host_triple == args.config_info.target_triple {
         // FIXME: create a function "display_if_not_quiet" or something along the line.
         println!("[AOT] alloc_example");
-        let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-        for arg in args.config_info.rustc_command.iter() {
-            command.push(arg);
-        }
+        let mut command = args.config_info.rustc_command_vec();
         command.extend_from_slice(&[
             &"example/alloc_example.rs",
             &"--crate-type",
@@ -415,8 +403,8 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &args.config_info.target_triple,
         ]);
         run_command_with_env(&command, None, Some(env))?;
-        run_command_in_vm(
-            &[&Path::new(&args.config_info.cargo_target_dir).join("alloc_example")],
+        maybe_run_command_in_vm(
+            &[&cargo_target_dir.join("alloc_example")],
             env,
             args,
         )?;
@@ -425,10 +413,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] dst_field_align");
     // FIXME(antoyo): Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/dst-field-align.rs",
         &"--crate-name",
@@ -439,18 +424,15 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &args.config_info.target_triple,
     ]);
     run_command_with_env(&command, None, Some(env))?;
-    run_command_in_vm(
-        &[&Path::new(&args.config_info.cargo_target_dir).join("dst_field_align")],
+    maybe_run_command_in_vm(
+        &[&cargo_target_dir.join("dst_field_align")],
         env,
         args,
     )?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] std_example");
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/std_example.rs",
         &"--crate-type",
@@ -458,13 +440,13 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--target",
         &args.config_info.target_triple,
     ]);
-    if !args.no_default_features {
+    if args.is_using_gcc_master_branch() {
         command.extend_from_slice(&[&"--cfg", &"feature=\"master\""]);
     }
     run_command_with_env(&command, None, Some(env))?;
-    run_command_in_vm(
+    maybe_run_command_in_vm(
         &[
-            &Path::new(&args.config_info.cargo_target_dir).join("std_example"),
+            &cargo_target_dir.join("std_example"),
             &"--target",
             &args.config_info.target_triple,
         ],
@@ -472,12 +454,14 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         args,
     )?;
 
+    let test_flags = if let Some(test_flags) = env.get("TEST_FLAGS") {
+        split_args(test_flags)?
+    } else {
+        Vec::new()
+    };
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] subslice-patterns-const-eval");
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/subslice-patterns-const-eval.rs",
         &"--crate-type",
@@ -485,19 +469,19 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--target",
         &args.config_info.target_triple,
     ]);
+    for test_flag in &test_flags {
+        command.push(test_flag);
+    }
     run_command_with_env(&command, None, Some(env))?;
-    run_command_in_vm(
-        &[&Path::new(&args.config_info.cargo_target_dir).join("subslice-patterns-const-eval")],
+    maybe_run_command_in_vm(
+        &[&cargo_target_dir.join("subslice-patterns-const-eval")],
         env,
         args,
     )?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] track-caller-attribute");
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/track-caller-attribute.rs",
         &"--crate-type",
@@ -505,19 +489,19 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--target",
         &args.config_info.target_triple,
     ]);
+    for test_flag in &test_flags {
+        command.push(test_flag);
+    }
     run_command_with_env(&command, None, Some(env))?;
-    run_command_in_vm(
-        &[&Path::new(&args.config_info.cargo_target_dir).join("track-caller-attribute")],
+    maybe_run_command_in_vm(
+        &[&cargo_target_dir.join("track-caller-attribute")],
         env,
         args,
     )?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] mod_bench");
-    let mut command: Vec<&dyn AsRef<OsStr>> = Vec::new();
-    for arg in args.config_info.rustc_command.iter() {
-        command.push(arg);
-    }
+    let mut command = args.config_info.rustc_command_vec();
     command.extend_from_slice(&[
         &"example/mod_bench.rs",
         &"--crate-type",
@@ -547,6 +531,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
         None => return Err("Couldn't retrieve rustc commit hash".to_string()),
     };
     run_command_with_output_and_env(&[&"git", &"checkout", &rustc_commit], rust_dir, Some(env))?;
+    // FIXME: Is it really needed to empty `RUSTFLAGS` here?
     env.insert("RUSTFLAGS".to_string(), String::new());
     let cargo = String::from_utf8(
         run_command_with_env(&[&"rustup", &"which", &"cargo"], rust_dir, Some(env))?.stdout,
@@ -661,7 +646,7 @@ fn run_cargo_command(
     args: &TestArg,
 ) -> Result<(), String> {
     run_cargo_command_with_callback(command, cwd, env, args, |cargo_command, cwd, env| {
-        run_command_with_output_and_env(&cargo_command, cwd, Some(env))?;
+        run_command_with_output_and_env(cargo_command, cwd, Some(env))?;
         Ok(())
     })
 }
@@ -734,7 +719,7 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
 // hyperfine --runs ${RUN_RUNS:-10} $cargo_target_dir/mod_bench{,_inline} $cargo_target_dir/mod_bench_llvm_*
 
 fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
-    if args.no_default_features {
+    if !args.is_using_gcc_master_branch() {
         return Ok(());
     }
     let path = Path::new("rand");
@@ -746,7 +731,7 @@ fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 }
 
 fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String> {
-    if args.no_default_features {
+    if !args.is_using_gcc_master_branch() {
         return Ok(());
     }
     let path = Path::new("regex");
@@ -800,7 +785,7 @@ fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String>
 }
 
 fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
-    if args.no_default_features {
+    if !args.is_using_gcc_master_branch() {
         return Ok(());
     }
     // FIXME: create a function "display_if_not_quiet" or something along the line.
@@ -817,6 +802,7 @@ fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"test",
             &"--tests",
             &"--",
+            // FIXME: try removing `--exclude-should-panic` argument
             &"--exclude-should-panic",
             &"--test-threads",
             &"1",
@@ -848,24 +834,22 @@ fn extended_sysroot_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
-fn should_remove_ui_test(content: &str) -> bool {
-    for line in content
-        .lines()
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty())
-    {
-        if [
-            "// error-pattern:",
-            "// build-fail",
-            "// run-fail",
-            "-Cllvm-args",
-            "//~",
-            "// ~",
-        ]
-        .iter()
-        .any(|check| line.contains(check))
-        {
-            return true;
+fn should_remove_ui_test(file: File) -> bool {
+    for line in BufReader::new(file).lines() {
+        if let Ok(line) = line {
+            if [
+                "// error-pattern:",
+                "// build-fail",
+                "// run-fail",
+                "-Cllvm-args",
+                "//~",
+                "// ~",
+            ]
+            .iter()
+            .any(|check| line.contains(check))
+            {
+                return true;
+            }
         }
     }
     false
@@ -903,7 +887,7 @@ fn should_remove_test(path: &Path, path_str: &str) -> bool {
         .any(|to_ignore| path_str.ends_with(to_ignore))
 }
 
-fn test_rustc_inner<F>(env: &Env, args: &TestArg, callback: F) -> Result<(), String>
+fn test_rustc_inner<F>(env: &Env, args: &TestArg, prepare_files_callback: F) -> Result<(), String>
 where
     F: Fn() -> Result<bool, String>,
 {
@@ -937,24 +921,24 @@ where
         |_| Ok(()),
     )?;
 
+    // These two functions are used to remove files that are known to not be working currently
+    // with the GCC backend to reduce noise.
     fn dir_handling(dir: &Path) -> Result<(), String> {
         walk_dir(dir, dir_handling, file_handling)
     }
-    fn file_handling(file: &Path) -> Result<(), String> {
-        let path_str = file.display().to_string().replace("\\", "/");
+    fn file_handling(file_path: &Path) -> Result<(), String> {
+        let path_str = file_path.display().to_string().replace("\\", "/");
         if !path_str.ends_with(".rs") {
             return Ok(());
         } else if should_not_remove_test(&path_str) {
             return Ok(());
-        } else if should_remove_test(file, &path_str) {
-            return std::fs::remove_file(file)
-                .map_err(|error| format!("Failed to remove `{}`: {:?}", file.display(), error));
+        } else if should_remove_test(file_path, &path_str) {
+            return remove_file(&file_path);
         }
-        let file_content = std::fs::read_to_string(file)
-            .map_err(|error| format!("Failed to read `{}`: {:?}", file.display(), error))?;
-        if should_remove_ui_test(&file_content) {
-            std::fs::remove_file(file)
-                .map_err(|error| format!("Failed to remove `{}`: {:?}", file.display(), error))?;
+        let file = File::open(file_path)
+            .map_err(|error| format!("Failed to read `{}`: {:?}", file_path.display(), error))?;
+        if should_remove_ui_test(file) {
+            remove_file(&file_path)?;
         }
         Ok(())
     }
@@ -963,20 +947,18 @@ where
 
     walk_dir(rust_path.join("tests/ui"), dir_handling, file_handling)?;
     let file = rust_path.join("tests/ui/consts/const_cmp_type_id.rs");
-    std::fs::remove_file(&file)
-        .map_err(|error| format!("Failed to remove `{}`: {:?}", file.display(), error))?;
+    remove_file(&file)?;
     let file = rust_path.join("tests/ui/consts/issue-73976-monomorphic.rs");
-    std::fs::remove_file(&file)
-        .map_err(|error| format!("Failed to remove `{}`: {:?}", file.display(), error))?;
+    remove_file(&file)?;
 
-    if !callback()? {
+    if !prepare_files_callback()? {
         // FIXME: create a function "display_if_not_quiet" or something along the line.
         println!("Keeping all UI tests");
     }
 
     let nb_parts = args.nb_parts.unwrap_or(0);
     if nb_parts > 0 {
-        let current_part = args.current_part.unwrap_or(0);
+        let current_part = args.current_part.unwrap();
         // FIXME: create a function "display_if_not_quiet" or something along the line.
         println!(
             "Splitting ui_test into {} parts (and running part {})",
@@ -1017,18 +999,19 @@ where
                 continue;
             }
             let test_path = rust_path.join(path);
-            std::fs::remove_file(&test_path).map_err(|error| {
-                format!("Failed to remove `{}`: {:?}", test_path.display(), error)
-            })?;
+            remove_file(&test_path)?;
         }
     }
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rustc test suite");
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
-    let rustc_args = env
-        .get("RUSTFLAGS")
-        .expect("RUSTFLAGS should not be empty at this stage");
+    let rustc_args = format!(
+        "{} {}",
+        env.get("RUSTFLAGS")
+            .expect("RUSTFLAGS should not be empty at this stage"),
+        env.get("TEST_FLAGS").unwrap_or(&String::new()),
+    );
     run_command_with_output_and_env(
         &[
             &"./x.py",
@@ -1103,9 +1086,7 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
                 .filter(|line| !line.is_empty())
             {
                 let path = Path::new("rust").join(file);
-                std::fs::remove_file(&path).map_err(|error| {
-                    format!("failed to remove `{}`: {:?}", path.display(), error)
-                })?;
+                remove_file(&path)?;
             }
         } else {
             println!(
@@ -1159,9 +1140,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    let test_flags = split_args(env.get("TEST_FLAGS").unwrap_or(&String::new()));
-    args.config_info
-        .setup(&mut env, &test_flags, Some(&args.gcc_path))?;
+    args.config_info.setup(&mut env, Some(&args.gcc_path))?;
 
     if args.runners.is_empty() {
         run_all(&env, &args)?;

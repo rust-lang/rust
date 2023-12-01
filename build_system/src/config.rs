@@ -1,8 +1,9 @@
 use crate::utils::{get_gcc_path, get_os_name, rustc_version_info, split_args};
 use std::collections::HashMap;
 use std::env as std_env;
+use std::ffi::OsStr;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ConfigInfo {
     pub target_triple: String,
     pub host_triple: String,
@@ -32,7 +33,6 @@ impl ConfigInfo {
             },
             "--out-dir" => match args.next() {
                 Some(arg) if !arg.is_empty() => {
-                    // env.insert("CARGO_TARGET_DIR".to_string(), arg.to_string());
                     self.cargo_target_dir = arg.to_string();
                 }
                 _ => return Err("Expected a value after `--out-dir`, found nothing".to_string()),
@@ -44,10 +44,17 @@ impl ConfigInfo {
         Ok(true)
     }
 
+    pub fn rustc_command_vec(&self) -> Vec<&dyn AsRef<OsStr>> {
+        let mut command: Vec<&dyn AsRef<OsStr>> = Vec::with_capacity(self.rustc_command.len());
+        for arg in self.rustc_command.iter() {
+            command.push(arg);
+        }
+        command
+    }
+
     pub fn setup(
         &mut self,
         env: &mut HashMap<String, String>,
-        test_flags: &[String],
         gcc_path: Option<&str>,
     ) -> Result<(), String> {
         env.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
@@ -90,15 +97,10 @@ impl ConfigInfo {
         let mut linker = None;
 
         if self.host_triple != self.target_triple {
-            if self.target_triple == "m68k-unknown-linux-gnu" {
-                linker = Some("-Clinker=m68k-unknown-linux-gnu-gcc".to_string());
-            } else if self.target_triple == "aarch64-unknown-linux-gnu" {
-                // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-                linker = Some("-Clinker=aarch64-linux-gnu-gcc".to_string());
-            } else {
+            if self.target_triple.is_empty() {
                 return Err("Unknown non-native platform".to_string());
             }
-
+            linker = Some(format!("-Clinker={}-gcc", self.target_triple));
             self.run_in_vm = true;
         }
 
@@ -145,7 +147,7 @@ impl ConfigInfo {
 
         // This environment variable is useful in case we want to change options of rustc commands.
         if let Some(cg_rustflags) = env.get("CG_RUSTFLAGS") {
-            rustflags.extend_from_slice(&split_args(&cg_rustflags));
+            rustflags.extend_from_slice(&split_args(&cg_rustflags)?);
         }
 
         if let Some(linker) = linker {
@@ -162,7 +164,6 @@ impl ConfigInfo {
         if !env.contains_key(&"FAT_LTO".to_string()) {
             rustflags.push("-Clto=off".to_string());
         }
-        rustflags.extend_from_slice(test_flags);
         // FIXME(antoyo): remove once the atomic shim is gone
         if os_name == "Darwin" {
             rustflags.extend_from_slice(&[

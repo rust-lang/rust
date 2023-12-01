@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
@@ -48,16 +49,20 @@ fn check_exit_status(
     let input = input.iter().map(|i| i.as_ref()).collect::<Vec<&OsStr>>();
     eprintln!("Command `{:?}` failed", input);
     if let Some(output) = output {
-        unsafe {
-            let stdout = std::str::from_utf8_unchecked(&output.stdout);
-            if !stdout.is_empty() {
-                error.push_str("\n==== STDOUT ====\n");
-                error.push_str(stdout);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !stdout.is_empty() {
+            error.push_str("\n==== STDOUT ====\n");
+            match stdout {
+                Cow::Owned(s) => error.push_str(&s),
+                Cow::Borrowed(s) => error.push_str(s),
             }
-            let stderr = std::str::from_utf8_unchecked(&output.stderr);
-            if !stderr.is_empty() {
-                error.push_str("\n==== STDERR ====\n");
-                error.push_str(stderr);
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            error.push_str("\n==== STDERR ====\n");
+            match stderr {
+                Cow::Owned(s) => error.push_str(&s),
+                Cow::Borrowed(s) => error.push_str(s),
             }
         }
     }
@@ -295,17 +300,16 @@ where
     Ok(())
 }
 
-pub fn split_args(args: &str) -> Vec<String> {
+pub fn split_args(args: &str) -> Result<Vec<String>, String> {
     let mut out = Vec::new();
     let mut start = 0;
+    let args = args.trim();
     let mut iter = args.char_indices().peekable();
 
     while iter.peek().is_some() {
         while let Some((pos, c)) = iter.next() {
             if c == ' ' {
-                if pos != 0 {
-                    out.push(args[start..pos].to_string());
-                }
+                out.push(args[start..pos].to_string());
                 let mut found_start = false;
                 while let Some((pos, c)) = iter.peek() {
                     if *c != ' ' {
@@ -317,7 +321,7 @@ pub fn split_args(args: &str) -> Vec<String> {
                     }
                 }
                 if !found_start {
-                    return out;
+                    return Ok(out);
                 }
             } else if c == '"' || c == '\'' {
                 let end = c;
@@ -332,8 +336,7 @@ pub fn split_args(args: &str) -> Vec<String> {
                     }
                 }
                 if !found_end {
-                    out.push(args[start..].to_string());
-                    return out;
+                    return Err(format!("Didn't find `{}` at the end of `{}`", end, &args[start..]));
                 }
             } else if c == '\\' {
                 // We skip the escaped character.
@@ -345,5 +348,15 @@ pub fn split_args(args: &str) -> Vec<String> {
     if !s.is_empty() {
         out.push(s.to_string());
     }
-    out
+    Ok(out)
+}
+
+pub fn remove_file<P: AsRef<Path>>(file_path: &P) -> Result<(), String> {
+    std::fs::remove_file(file_path).map_err(|error| {
+        format!(
+            "Failed to remove `{}`: {:?}",
+            file_path.as_ref().display(),
+            error
+        )
+    })
 }

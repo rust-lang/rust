@@ -67,14 +67,8 @@ impl BuildArg {
     }
 }
 
-fn build_sysroot_inner(
-    env: &HashMap<String, String>,
-    sysroot_panic_abort: bool,
-    sysroot_release_channel: bool,
-    config: &ConfigInfo,
-    start_dir: Option<&Path>,
-) -> Result<(), String> {
-    let start_dir = start_dir.unwrap_or_else(|| Path::new("."));
+pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
+    let start_dir = Path::new("build_sysroot");
     // Cleanup for previous run
     // Clean target dir except for build scripts and incremental cache
     let _ = walk_dir(
@@ -121,12 +115,11 @@ fn build_sysroot_inner(
 
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
-    if sysroot_panic_abort {
+    if config.sysroot_panic_abort {
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
-    rustflags.push_str(" -Z force-unstable-if-unmarked");
     let mut env = env.clone();
-    let channel = if sysroot_release_channel {
+    let channel = if config.sysroot_release_channel {
         env.insert(
             "RUSTFLAGS".to_string(),
             format!("{} -Zmir-opt-level=3", rustflags),
@@ -194,21 +187,6 @@ fn build_sysroot_inner(
     Ok(())
 }
 
-pub fn build_sysroot(
-    env: &HashMap<String, String>,
-    sysroot_panic_abort: bool,
-    sysroot_release_channel: bool,
-    config: &ConfigInfo,
-) -> Result<(), String> {
-    build_sysroot_inner(
-        env,
-        sysroot_panic_abort,
-        sysroot_release_channel,
-        config,
-        Some(Path::new("build_sysroot")),
-    )
-}
-
 fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
@@ -229,8 +207,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     }
     run_command_with_output_and_env(&command, None, Some(&env))?;
 
-    args.config_info
-        .setup(&mut env, &[], Some(&args.gcc_path))?;
+    args.config_info.setup(&mut env, Some(&args.gcc_path))?;
 
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");
@@ -243,12 +220,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     })?;
 
     println!("[BUILD] sysroot");
-    build_sysroot(
-        &env,
-        args.config_info.sysroot_panic_abort,
-        args.config_info.sysroot_release_channel,
-        &args.config_info,
-    )?;
+    build_sysroot(&env, &args.config_info)?;
     Ok(())
 }
 
