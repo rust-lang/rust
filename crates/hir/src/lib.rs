@@ -67,7 +67,7 @@ use hir_ty::{
     known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
-    mir::{self, interpret_mir},
+    mir::interpret_mir,
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
@@ -129,9 +129,10 @@ pub use {
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         layout::LayoutError,
-        mir::MirEvalError,
         PointerCast, Safety,
     },
+    // FIXME: Properly encapsulate mir
+    hir_ty::{mir, Interner as ChalkTyInterner},
 };
 
 // These are negative re-exports: pub using these names is forbidden, they

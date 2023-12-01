@@ -1054,6 +1054,10 @@ pub mod option {
         Some(T),
     }
 
+    // region:copy
+    impl<T: Copy> Copy for Option<T> {}
+    // endregion:copy
+
     impl<T> Option<T> {
         pub const fn unwrap(self) -> T {
             match self {

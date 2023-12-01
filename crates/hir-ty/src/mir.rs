@@ -269,6 +269,10 @@ impl ProjectionStore {
 impl ProjectionId {
     pub const EMPTY: ProjectionId = ProjectionId(0);
 
+    pub fn is_empty(self) -> bool {
+        self == ProjectionId::EMPTY
+    }
+
     pub fn lookup(self, store: &ProjectionStore) -> &[PlaceElem] {
         store.id_to_proj.get(&self).unwrap()
     }
@@ -1069,6 +1073,10 @@ pub struct MirBody {
 }
 
 impl MirBody {
+    pub fn local_to_binding_map(&self) -> ArenaMap<LocalId, BindingId> {
+        self.binding_locals.iter().map(|(it, y)| (*y, it)).collect()
+    }
+
     fn walk_places(&mut self, mut f: impl FnMut(&mut Place, &mut ProjectionStore)) {
         fn for_operand(
             op: &mut Operand,
@@ -1188,3 +1196,9 @@ pub enum MirSpan {
 }
 
 impl_from!(ExprId, PatId for MirSpan);
+
+impl From<&ExprId> for MirSpan {
+    fn from(value: &ExprId) -> Self {
+        (*value).into()
+    }
+}
