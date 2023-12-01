@@ -11,5 +11,5 @@ all:
 	$(RUSTC) -C linker-plugin-lto -C opt-level=2 -C debuginfo=0 foo.rs
 	$(RUSTC) -C linker-plugin-lto -C opt-level=2 -C debuginfo=0 no_builtins.rs
 	$(RUSTC) main.rs -C lto -C opt-level=2 -C debuginfo=0 -C save-temps -C metadata=1 -C codegen-units=1
-	$(LLVM_BIN_DIR)/llvm-dis $(TMPDIR)/main.main.*-cgu.0.rcgu.lto.input.bc -o $(TMPDIR)/lto.ll
+	"$(LLVM_BIN_DIR)"/llvm-dis $(TMPDIR)/main.main.*-cgu.0.rcgu.lto.input.bc -o $(TMPDIR)/lto.ll
 	cat "$(TMPDIR)"/lto.ll | "$(LLVM_FILECHECK)" filecheck.lto.txt
