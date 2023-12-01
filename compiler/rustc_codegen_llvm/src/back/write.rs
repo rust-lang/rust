@@ -571,7 +571,6 @@ pub(crate) unsafe fn llvm_optimize(
         unroll_loops,
         config.vectorize_slp,
         config.vectorize_loop,
-        config.no_builtins,
         config.emit_lifetime_markers,
         sanitizer_options.as_ref(),
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
@@ -686,7 +685,6 @@ pub(crate) unsafe fn codegen(
         unsafe fn with_codegen<'ll, F, R>(
             tm: &'ll llvm::TargetMachine,
             llmod: &'ll llvm::Module,
-            no_builtins: bool,
             f: F,
         ) -> R
         where
@@ -694,7 +692,7 @@ pub(crate) unsafe fn codegen(
         {
             let cpm = llvm::LLVMCreatePassManager();
             llvm::LLVMAddAnalysisPasses(tm, cpm);
-            llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
+            llvm::LLVMRustAddLibraryInfo(cpm, llmod);
             f(cpm)
         }
 
@@ -797,7 +795,7 @@ pub(crate) unsafe fn codegen(
             } else {
                 llmod
             };
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
+            with_codegen(tm, llmod, |cpm| {
                 write_output_file(
                     diag_handler,
                     tm,
@@ -832,7 +830,7 @@ pub(crate) unsafe fn codegen(
                     (_, SplitDwarfKind::Split) => Some(dwo_out.as_path()),
                 };
 
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                with_codegen(tm, llmod, |cpm| {
                     write_output_file(
                         diag_handler,
                         tm,

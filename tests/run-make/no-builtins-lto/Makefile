@@ -1,9 +1,15 @@
 include ../tools.mk
 
+# only-x86_64
+
+# We want to check that `no_builtins` is correctly participating in LTO.
+# First, verify that the `foo::foo` symbol can be found when linking.
+# Next, verify that `memcpy` can be customized using `no_builtins` under LTO.
+# Others will use the built-in memcpy.
+
 all:
-	# Compile a `#![no_builtins]` rlib crate
-	$(RUSTC) no_builtins.rs
-	# Build an executable that depends on that crate using LTO. The no_builtins crate doesn't
-	# participate in LTO, so its rlib must be explicitly linked into the final binary. Verify this by
-	# grepping the linker arguments.
-	$(RUSTC) main.rs -C lto --print link-args | $(CGREP) 'libno_builtins.rlib'
+	$(RUSTC) -C linker-plugin-lto -C opt-level=2 -C debuginfo=0 foo.rs
+	$(RUSTC) -C linker-plugin-lto -C opt-level=2 -C debuginfo=0 no_builtins.rs
+	$(RUSTC) main.rs -C lto -C opt-level=2 -C debuginfo=0 -C save-temps -C metadata=1 -C codegen-units=1
+	"$(LLVM_BIN_DIR)"/llvm-dis $(TMPDIR)/main.main.*-cgu.0.rcgu.lto.input.bc -o $(TMPDIR)/lto.ll
+	cat "$(TMPDIR)"/lto.ll | "$(LLVM_FILECHECK)" filecheck.lto.txt

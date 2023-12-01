@@ -2163,13 +2163,8 @@ extern "C" {
         ArgsCstrBuff: *const c_char,
         ArgsCstrBuffLen: usize,
     ) -> *mut TargetMachine;
-
     pub fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);
-    pub fn LLVMRustAddLibraryInfo<'a>(
-        PM: &PassManager<'a>,
-        M: &'a Module,
-        DisableSimplifyLibCalls: bool,
-    );
+    pub fn LLVMRustAddLibraryInfo<'a>(PM: &PassManager<'a>, M: &'a Module);
     pub fn LLVMRustWriteOutputFile<'a>(
         T: &'a TargetMachine,
         PM: &PassManager<'a>,
@@ -2191,7 +2186,6 @@ extern "C" {
         UnrollLoops: bool,
         SLPVectorize: bool,
         LoopVectorize: bool,
-        DisableSimplifyLibCalls: bool,
         EmitLifetimeMarkers: bool,
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
