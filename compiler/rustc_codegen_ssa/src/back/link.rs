@@ -143,7 +143,7 @@ pub fn link_binary<'a>(
                 }
             }
             if sess.opts.json_artifact_notifications {
-                sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename, "link");
+                sess.diagnostic().emit_artifact_notification(&out_filename, "link");
             }
 
             if sess.prof.enabled() {

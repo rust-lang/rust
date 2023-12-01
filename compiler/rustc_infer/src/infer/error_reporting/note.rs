@@ -140,7 +140,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     span,
                     notes: reference_valid.into_iter().chain(content_valid).collect(),
                 }
-                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
+                .into_diagnostic(self.tcx.sess.diagnostic())
             }
             infer::RelateObjectBound(span) => {
                 let object_valid = note_and_explain::RegionExplanation::new(
@@ -161,7 +161,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     span,
                     notes: object_valid.into_iter().chain(pointer_valid).collect(),
                 }
-                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
+                .into_diagnostic(self.tcx.sess.diagnostic())
             }
             infer::RelateParamBound(span, ty, opt_span) => {
                 let prefix = match *sub {
@@ -177,7 +177,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self.tcx, sub, opt_span, prefix, suffix,
                 );
                 FulfillReqLifetime { span, ty: self.resolve_vars_if_possible(ty), note }
-                    .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
+                    .into_diagnostic(self.tcx.sess.diagnostic())
             }
             infer::RelateRegionParamBound(span) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
@@ -198,7 +198,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     span,
                     notes: param_instantiated.into_iter().chain(param_must_outlive).collect(),
                 }
-                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
+                .into_diagnostic(self.tcx.sess.diagnostic())
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 let pointer_valid = note_and_explain::RegionExplanation::new(
@@ -220,7 +220,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ty: self.resolve_vars_if_possible(ty),
                     notes: pointer_valid.into_iter().chain(data_valid).collect(),
                 }
-                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
+                .into_diagnostic(self.tcx.sess.diagnostic())
             }
             infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
                 let mut err = self.report_extra_impl_obligation(
@@ -281,7 +281,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     span,
                     notes: instantiated.into_iter().chain(must_outlive).collect(),
                 }
-                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
+                .into_diagnostic(self.tcx.sess.diagnostic())
             }
         };
         if sub.is_error() || sup.is_error() {

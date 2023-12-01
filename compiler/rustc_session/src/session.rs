@@ -302,7 +302,7 @@ impl Session {
         if diags.is_empty() {
             return;
         }
-        self.parse_sess.span_diagnostic.emit_future_breakage_report(diags);
+        self.diagnostic().emit_future_breakage_report(diags);
     }
 
     /// Returns true if the crate is a testing one.

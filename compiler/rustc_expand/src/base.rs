@@ -1119,7 +1119,7 @@ impl<'a> ExtCtxt<'a> {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
+        self.sess.diagnostic().struct_span_err(sp, msg)
     }
 
     #[track_caller]
@@ -1143,15 +1143,15 @@ impl<'a> ExtCtxt<'a> {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.sess.parse_sess.span_diagnostic.span_err(sp, msg);
+        self.sess.diagnostic().span_err(sp, msg);
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.sess.parse_sess.span_diagnostic.span_warn(sp, msg);
+        self.sess.diagnostic().span_warn(sp, msg);
     }
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<String>) -> ! {
-        self.sess.parse_sess.span_diagnostic.span_bug(sp, msg);
+        self.sess.diagnostic().span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {
         for (span, notes) in self.expansions.iter() {
@@ -1165,7 +1165,7 @@ impl<'a> ExtCtxt<'a> {
         self.expansions.clear();
     }
     pub fn bug(&self, msg: &'static str) -> ! {
-        self.sess.parse_sess.span_diagnostic.bug(msg);
+        self.sess.diagnostic().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
         self.ecfg.trace_mac
@@ -1286,9 +1286,8 @@ pub fn expr_to_string(
 
 /// Non-fatally assert that `tts` is empty. Note that this function
 /// returns even when `tts` is non-empty, macros that *need* to stop
-/// compilation should call
-/// `cx.parse_sess.span_diagnostic.abort_if_errors()` (this should be
-/// done as rarely as possible).
+/// compilation should call `cx.diagnostic().abort_if_errors()`
+/// (this should be done as rarely as possible).
 pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
     if !tts.is_empty() {
         cx.emit_err(errors::TakesNoArguments { span, name });

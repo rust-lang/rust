@@ -519,9 +519,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     match result {
         Ok(_) => {
             if sess.opts.json_artifact_notifications {
-                sess.parse_sess
-                    .span_diagnostic
-                    .emit_artifact_notification(deps_filename, "dep-info");
+                sess.diagnostic().emit_artifact_notification(deps_filename, "dep-info");
             }
         }
         Err(error) => {
