@@ -127,8 +127,6 @@ resolve_generic_params_from_outer_item_self_ty_param = can't use `Self` here
 
 resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
 
-resolve_glob_import_doesnt_reexport =
-    glob import doesn't reexport anything because no candidate is public enough
 
 resolve_ident_bound_more_than_once_in_parameter_list =
     identifier `{$identifier}` is bound more than once in this parameter list
