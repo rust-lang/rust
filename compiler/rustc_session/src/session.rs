@@ -461,7 +461,7 @@ impl Session {
     }
     #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.diagnostic().fatal(msg).raise()
+        self.diagnostic().fatal(msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]

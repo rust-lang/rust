@@ -1034,10 +1034,9 @@ impl Handler {
         db
     }
 
-    // NOTE: intentionally doesn't raise an error so rustc_codegen_ssa only reports fatal errors in the main thread
     #[rustc_lint_diagnostics]
-    pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> FatalError {
-        self.inner.borrow_mut().fatal(msg)
+    pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+        self.inner.borrow_mut().fatal_no_raise(msg).raise()
     }
 
     #[rustc_lint_diagnostics]
@@ -1469,10 +1468,10 @@ impl HandlerInner {
                 DiagnosticMessage::Str(warnings),
             )),
             (_, 0) => {
-                let _ = self.fatal(errors);
+                let _ = self.fatal_no_raise(errors);
             }
             (_, _) => {
-                let _ = self.fatal(format!("{errors}; {warnings}"));
+                let _ = self.fatal_no_raise(format!("{errors}; {warnings}"));
             }
         }
 
@@ -1631,7 +1630,9 @@ impl HandlerInner {
         self.emit_diagnostic(&mut Diagnostic::new(FailureNote, msg));
     }
 
-    fn fatal(&mut self, msg: impl Into<DiagnosticMessage>) -> FatalError {
+    // Note: unlike `Handler::fatal`, this doesn't return `!`, because that is
+    // inappropriate for some of its call sites.
+    fn fatal_no_raise(&mut self, msg: impl Into<DiagnosticMessage>) -> FatalError {
         self.emit(Fatal, msg);
         FatalError
     }
