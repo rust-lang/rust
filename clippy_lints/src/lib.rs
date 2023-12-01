@@ -153,6 +153,7 @@ mod implied_bounds_in_impls;
 mod inconsistent_struct_constructor;
 mod index_refutable_slice;
 mod indexing_slicing;
+mod ineffective_open_options;
 mod infinite_iter;
 mod inherent_impl;
 mod inherent_to_string;
@@ -1073,6 +1074,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
     store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
     store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
+    store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
