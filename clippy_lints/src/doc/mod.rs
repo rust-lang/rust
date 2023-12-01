@@ -700,7 +700,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, range: Range<u
                             ItemKind::Fn(box Fn {
                                 sig, body: Some(block), ..
                             }) if item.ident.name == sym::main => {
-                                let is_async = sig.header.coro_kind.is_async();
+                                let is_async = sig.header.coro_kind.map_or(false, |coro| coro.is_async());
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
                                     FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
