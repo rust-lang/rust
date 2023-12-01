@@ -440,6 +440,7 @@ pub struct SpanData {
     /// code was created by a macro expansion.
     pub ctxt: SyntaxContext,
     pub parent: Option<LocalDefId>,
+    pub span2: Span,
 }
 
 // Order spans by position in the file.
@@ -452,6 +453,7 @@ impl Ord for SpanData {
             // `LocalDefId` does not implement `Ord`.
             // The other fields are enough to determine in-file order.
             parent: _,
+            span2: _,
         } = self;
         let SpanData {
             lo: o_lo,
@@ -460,6 +462,7 @@ impl Ord for SpanData {
             // `LocalDefId` does not implement `Ord`.
             // The other fields are enough to determine in-file order.
             parent: _,
+            span2: _,
         } = other;
 
         (s_lo, s_hi, s_ctxt).cmp(&(o_lo, o_hi, o_ctxt))

@@ -132,8 +132,9 @@ impl Span {
         }
 
         // Partially-interned or fully-interned format.
-        let index =
-            with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
+        let index = with_span_interner(|interner| {
+            interner.intern(&SpanData { lo, hi, ctxt, parent, span2: DUMMY_SP })
+        });
         let ctxt_or_parent_or_marker = if ctxt2 <= MAX_CTXT {
             ctxt2 as u16 // partially-interned
         } else {
@@ -169,6 +170,7 @@ impl Span {
                     hi: BytePos(self.lo_or_index + len),
                     ctxt: SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32),
                     parent: None,
+                    span2: DUMMY_SP,
                 }
             } else {
                 // Inline-parent format.
@@ -182,6 +184,7 @@ impl Span {
                     hi: BytePos(self.lo_or_index + len),
                     ctxt: SyntaxContext::root(),
                     parent: Some(parent),
+                    span2: DUMMY_SP,
                 }
             }
         } else {

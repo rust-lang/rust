@@ -632,7 +632,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
         let hi = hi + source_file.translated_source_file.start_pos;
 
         // Do not try to decode parent for foreign spans.
-        SpanData { lo, hi, ctxt, parent: None }
+        SpanData { lo, hi, ctxt, parent: None, span2: DUMMY_SP }
     }
 }
 
