@@ -12,7 +12,7 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 
-use crate::{AssocItem, Field, Local, MacroKind, Type};
+use crate::{AssocItem, Field, Local, MacroKind, Trait, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -55,7 +55,7 @@ diagnostics![
     ReplaceFilterMapNextWithFindMap,
     TraitImplIncorrectSafety,
     TraitImplMissingAssocItems,
-    TraitImplReduntantAssocItems,
+    TraitImplRedundantAssocItems,
     TraitImplOrphan,
     TypedHole,
     TypeMismatch,
@@ -313,8 +313,8 @@ pub struct TraitImplMissingAssocItems {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TraitImplReduntantAssocItems {
+pub struct TraitImplRedundantAssocItems {
     pub file_id: HirFileId,
-    pub impl_: AstPtr<ast::Impl>,
-    pub reduntant: Vec<(Name, AssocItem)>,
+    pub trait_: Trait,
+    pub assoc_item: (Name, AssocItem),
 }

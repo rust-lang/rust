@@ -693,20 +693,20 @@ impl Module {
                     },
                 ));
 
-                let reduntant: Vec<_> = impl_assoc_items_scratch.iter()
-                .filter(|(id, name)| {
-                    !required_items.clone().any(|(impl_name, impl_item)| {
-                        discriminant(impl_item) == discriminant(id) && impl_name == name
+                let redundant = impl_assoc_items_scratch
+                    .iter()
+                    .filter(|(id, name)| {
+                        !items.iter().any(|(impl_name, impl_item)| {
+                            discriminant(impl_item) == discriminant(id) && impl_name == name
+                        })
                     })
-                })
-                .map(|(item, name)| (name.clone(), AssocItem::from(*item)))
-                .collect();
-                if !reduntant.is_empty() {
+                    .map(|(item, name)| (name.clone(), AssocItem::from(*item)));
+                for (name, assoc_item) in redundant {
                     acc.push(
-                        TraitImplReduntantAssocItems {
-                            impl_: ast_id_map.get(node.ast_id()),
+                        TraitImplRedundantAssocItems {
+                            trait_,
                             file_id,
-                            reduntant,
+                            assoc_item: (name, assoc_item),
                         }
                         .into(),
                     )
