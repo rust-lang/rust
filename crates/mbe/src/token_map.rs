@@ -17,16 +17,16 @@ pub struct TokenMap<S: Span> {
 }
 
 impl<S: Span> TokenMap<S> {
-    pub(crate) fn empty() -> Self {
+    pub fn empty() -> Self {
         Self { spans: Vec::new() }
     }
 
-    pub(crate) fn finish(&mut self) {
+    pub fn finish(&mut self) {
         assert!(self.spans.iter().tuple_windows().all(|(a, b)| a.0 < b.0));
         self.spans.shrink_to_fit();
     }
 
-    pub(crate) fn push(&mut self, offset: TextSize, span: S) {
+    pub fn push(&mut self, offset: TextSize, span: S) {
         self.spans.push((offset, span));
     }
 
@@ -53,5 +53,9 @@ impl<S: Span> TokenMap<S> {
         let start_entry = self.spans.partition_point(|&(it, _)| it <= start);
         let end_entry = self.spans[start_entry..].partition_point(|&(it, _)| it <= end); // FIXME: this might be wrong?
         (&self.spans[start_entry..][..end_entry]).iter().map(|&(_, s)| s)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (TextSize, S)> + '_ {
+        self.spans.iter().copied()
     }
 }
