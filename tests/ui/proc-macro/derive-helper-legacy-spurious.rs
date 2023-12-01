@@ -5,8 +5,10 @@
 #[macro_use]
 extern crate test_macros;
 
-#[derive(Empty)] //~ ERROR cannot determine resolution for the attribute macro `derive`
+#[derive(Empty, Clone)] // no error emitted here
 #[empty_helper] //~ ERROR cannot find attribute `empty_helper` in this scope
 struct Foo {}
 
-fn main() {}
+fn main() {
+    let _ = Foo.clone(); // no error emitted here
+}

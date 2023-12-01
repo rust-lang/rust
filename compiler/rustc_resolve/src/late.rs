@@ -3868,9 +3868,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         if qself.is_none() {
             let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
             let path = Path { segments: path.iter().map(path_seg).collect(), span, tokens: None };
-            if let Ok((_, res)) =
-                self.r.resolve_macro_path(&path, None, &self.parent_scope, false, false)
-            {
+            if let Ok((_, res)) = self.r.resolve_macro_path(
+                &path,
+                None,
+                AttrStyle::Outer,
+                &self.parent_scope,
+                false,
+                false,
+            ) {
                 return Ok(Some(PartialRes::new(res)));
             }
         }

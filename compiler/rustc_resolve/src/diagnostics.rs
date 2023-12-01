@@ -1039,6 +1039,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if let Ok((Some(ext), _)) = this.resolve_macro_path(
                                 derive,
                                 Some(MacroKind::Derive),
+                                ast::AttrStyle::Outer,
                                 parent_scope,
                                 false,
                                 false,

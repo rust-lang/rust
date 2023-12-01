@@ -15,7 +15,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, FatalError};
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
@@ -268,15 +268,19 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             }
         };
 
-        let (path, kind, inner_attr, derives) = match invoc.kind {
+        let (path, kind, attr_kind, derives) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, .. } => (
                 &attr.get_normal_item().path,
                 MacroKind::Attr,
-                attr.style == ast::AttrStyle::Inner,
+                attr.style,
                 self.arenas.alloc_ast_paths(derives),
             ),
-            InvocationKind::Bang { ref mac, .. } => (&mac.path, MacroKind::Bang, false, &[][..]),
-            InvocationKind::Derive { ref path, .. } => (path, MacroKind::Derive, false, &[][..]),
+            InvocationKind::Bang { ref mac, .. } => {
+                (&mac.path, MacroKind::Bang, ast::AttrStyle::Outer, &[][..])
+            }
+            InvocationKind::Derive { ref path, .. } => {
+                (path, MacroKind::Derive, ast::AttrStyle::Outer, &[][..])
+            }
         };
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
@@ -287,7 +291,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             path,
             kind,
             supports_macro_expansion,
-            inner_attr,
+            attr_kind,
             parent_scope,
             node_id,
             force,
@@ -373,6 +377,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                     match self.resolve_macro_path(
                         path,
                         Some(MacroKind::Derive),
+                        ast::AttrStyle::Outer,
                         &parent_scope,
                         true,
                         force,
@@ -498,19 +503,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         path: &ast::Path,
         kind: MacroKind,
         supports_macro_expansion: SupportsMacroExpansion,
-        inner_attr: bool,
+        attr_kind: ast::AttrStyle,
         parent_scope: &ParentScope<'a>,
         node_id: NodeId,
         force: bool,
         soft_custom_inner_attributes_gate: bool,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.resolve_macro_path(path, Some(kind), parent_scope, true, force)
-        {
-            Ok((Some(ext), res)) => (ext, res),
-            Ok((None, res)) => (self.dummy_ext(kind), res),
-            Err(Determinacy::Determined) => (self.dummy_ext(kind), Res::Err),
-            Err(Determinacy::Undetermined) => return Err(Indeterminate),
-        };
+        let (ext, res) =
+            match self.resolve_macro_path(path, Some(kind), attr_kind, parent_scope, true, force) {
+                Ok((Some(ext), res)) => (ext, res),
+                Ok((None, res)) => (self.dummy_ext(kind), res),
+                Err(Determinacy::Determined) => (self.dummy_ext(kind), Res::Err),
+                Err(Determinacy::Undetermined) => return Err(Indeterminate),
+            };
 
         // Report errors for the resolved macro.
         for segment in &path.segments {
@@ -549,7 +554,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             match supports_macro_expansion {
                 SupportsMacroExpansion::No => Some(("a", "non-macro attribute")),
                 SupportsMacroExpansion::Yes { supports_inner_attrs } => {
-                    if inner_attr && !supports_inner_attrs {
+                    if let ast::AttrStyle::Inner = attr_kind
+                        && !supports_inner_attrs
+                    {
                         Some(("a", "non-macro inner attribute"))
                     } else {
                         None
@@ -588,7 +595,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // We are trying to avoid reporting this error if other related errors were reported.
-        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes {
+        if res != Res::Err
+            && let ast::AttrStyle::Inner = attr_kind
+            && !self.tcx.features().custom_inner_attributes
+        {
             let msg = match res {
                 Res::Def(..) => "inner macro attributes are unstable",
                 Res::NonMacroAttr(..) => "custom inner attributes are unstable",
@@ -627,6 +637,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path: &ast::Path,
         kind: Option<MacroKind>,
+        attr_kind: ast::AttrStyle,
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
@@ -685,6 +696,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.single_segment_macro_resolutions.push((
                     path[0].ident,
                     kind,
+                    attr_kind,
                     *parent_scope,
                     binding.ok(),
                 ));
@@ -794,7 +806,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let macro_resolutions = mem::take(&mut self.single_segment_macro_resolutions);
-        for (ident, kind, parent_scope, initial_binding) in macro_resolutions {
+        let mut has_reported_inner_attr_error = false;
+        let mut raise_fatal_error = false;
+        for (ident, kind, attr_kind, parent_scope, initial_binding) in macro_resolutions {
             match self.early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::Macro(kind),
@@ -810,7 +824,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     });
                     let res = binding.res();
                     let seg = Segment::from_ident(ident);
-                    check_consistency(self, &[seg], ident.span, kind, initial_res, res);
+                    if has_reported_inner_attr_error
+                        && let Res::Def(DefKind::Macro(MacroKind::Attr), _) = res
+                        && let None = initial_res
+                    {
+                        // Do not emit an indeterminate resolution and later errors when an outer
+                        // attribute wasn't found, as this can be knock down effects. #118455
+                        raise_fatal_error = true;
+                    } else {
+                        let res = binding.res();
+                        check_consistency(self, &[seg], ident.span, kind, initial_res, res);
+                    };
                     if res == Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat) {
                         let node_id = self
                             .invocation_parents
@@ -825,7 +849,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         );
                     }
                 }
-                Err(..) => {
+                Err(_) => {
+                    if let ast::AttrStyle::Inner = attr_kind {
+                        has_reported_inner_attr_error = true;
+                    }
                     let expected = kind.descr_expected();
 
                     let mut err = self.tcx.sess.create_err(CannotFindIdentInThisScope {
@@ -850,6 +877,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 true,
                 None,
             );
+        }
+
+        if raise_fatal_error {
+            // When we encounter an inner attribute failure, and subsequent successful macro
+            // resolutions following early resolution failures. This is so when an outer attribute
+            // isn't found, and we encounter `derive` attributes, we won't raise errors caused by
+            // any code that relies on those derives having been evaluated. We don't attempt to
+            // recover because the behavior of those derives could have been modified by the outer
+            // attribute, causing *other* errors, so it is safest to just stop early instead.
+            FatalError.raise();
         }
     }
 

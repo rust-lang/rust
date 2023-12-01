@@ -443,6 +443,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             match this.resolve_macro_path(
                                 derive,
                                 Some(MacroKind::Derive),
+                                ast::AttrStyle::Outer,
                                 parent_scope,
                                 true,
                                 force,
