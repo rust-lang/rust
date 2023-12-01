@@ -6,7 +6,8 @@
 extern crate no_builtins;
 extern crate foo;
 
-#[link(name = "c")]
+#[cfg_attr(unix, link(name = "c"))]
+#[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
 extern "C" {}
 
 #[start]
