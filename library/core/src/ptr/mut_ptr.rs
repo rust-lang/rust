@@ -193,10 +193,10 @@ impl<T: ?Sized> *mut T {
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
-    /// required provenance, use [`expose_addr`][pointer::expose_addr] and
-    /// [`from_exposed_addr_mut`][from_exposed_addr_mut] instead. However, note that this makes
-    /// your code less portable and less amenable to tools that check for compliance with the Rust
-    /// memory model.
+    /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
+    /// or [`expose_addr`][pointer::expose_addr] and [`from_exposed_addr`][from_exposed_addr]
+    /// instead. However, note that this makes your code less portable and less amenable to tools
+    /// that check for compliance with the Rust memory model.
     ///
     /// On most platforms this will produce a value with the same bytes as the original
     /// pointer, because all the bytes are dedicated to describing the address.
