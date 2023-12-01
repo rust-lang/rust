@@ -65,19 +65,18 @@ use self::path_utils::*;
 
 pub mod borrow_set;
 mod borrowck_errors;
-mod constraint_generation;
 mod constraints;
 mod dataflow;
 mod def_use;
 mod diagnostics;
 mod facts;
-mod invalidation;
 mod location;
 mod member_constraints;
 mod nll;
 mod path_utils;
 mod place_ext;
 mod places_conflict;
+mod polonius;
 mod prefixes;
 mod region_infer;
 mod renumber;
@@ -195,8 +194,7 @@ fn do_mir_borrowck<'tcx>(
         nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
 
-    let location_table_owned = LocationTable::new(body);
-    let location_table = &location_table_owned;
+    let location_table = LocationTable::new(body);
 
     let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
     let promoted_move_data = promoted
@@ -228,7 +226,7 @@ fn do_mir_borrowck<'tcx>(
         free_regions,
         body,
         &promoted,
-        location_table,
+        &location_table,
         param_env,
         &mut flow_inits,
         &mdpe.move_data,
@@ -292,7 +290,7 @@ fn do_mir_borrowck<'tcx>(
             param_env,
             body: promoted_body,
             move_data: &move_data,
-            location_table, // no need to create a real one for the promoted, it is not used
+            location_table: &location_table, // no need to create a real one for the promoted, it is not used
             movable_coroutine,
             fn_self_span_reported: Default::default(),
             locals_are_invalidated_at_exit,
@@ -333,7 +331,7 @@ fn do_mir_borrowck<'tcx>(
         param_env,
         body,
         move_data: &mdpe.move_data,
-        location_table,
+        location_table: &location_table,
         movable_coroutine,
         locals_are_invalidated_at_exit,
         fn_self_span_reported: Default::default(),
@@ -435,7 +433,7 @@ fn do_mir_borrowck<'tcx>(
             promoted,
             borrow_set,
             region_inference_context: regioncx,
-            location_table: polonius_input.as_ref().map(|_| location_table_owned),
+            location_table: polonius_input.as_ref().map(|_| location_table),
             input_facts: polonius_input,
             output_facts,
         }))
@@ -1020,9 +1018,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         flow_state: &Flows<'cx, 'tcx>,
     ) -> bool {
         let mut error_reported = false;
-        let tcx = self.infcx.tcx;
-        let body = self.body;
-        let borrow_set = self.borrow_set.clone();
+        let borrow_set = Rc::clone(&self.borrow_set);
 
         // Use polonius output if it has been enabled.
         let mut polonius_output;
@@ -1039,8 +1035,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         each_borrow_involving_path(
             self,
-            tcx,
-            body,
+            self.infcx.tcx,
+            self.body,
             location,
             (sd, place_span.0),
             &borrow_set,
