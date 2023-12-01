@@ -68,11 +68,20 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 // (the kind has to be at this particular offset for compatibility with Linux's static initializer
 // macros, e.g. PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.)
 
+#[inline]
+fn mutex_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
+    if matches!(&*ecx.tcx.sess.target.os, "macos") { 4 } else { 0 }
+}
+
 fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, MutexId> {
-    ecx.mutex_get_or_create_id(mutex_op, ecx.libc_ty_layout("pthread_mutex_t"), 4)
+    ecx.mutex_get_or_create_id(
+        mutex_op,
+        ecx.libc_ty_layout("pthread_mutex_t"),
+        mutex_id_offset(ecx),
+    )
 }
 
 fn mutex_reset_id<'mir, 'tcx: 'mir>(
@@ -81,7 +90,7 @@ fn mutex_reset_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         mutex_op,
-        4,
+        mutex_id_offset(ecx),
         Scalar::from_i32(0),
         ecx.libc_ty_layout("pthread_mutex_t"),
         ecx.machine.layouts.u32,
@@ -124,13 +133,20 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 // (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: rwlock id as u32 or 0 if id is not assigned yet.
 
-const RWLOCK_ID_OFFSET: u64 = 4;
+#[inline]
+fn rwlock_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
+    if matches!(&*ecx.tcx.sess.target.os, "macos") { 4 } else { 0 }
+}
 
 fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, RwLockId> {
-    ecx.rwlock_get_or_create_id(rwlock_op, ecx.libc_ty_layout("pthread_rwlock_t"), RWLOCK_ID_OFFSET)
+    ecx.rwlock_get_or_create_id(
+        rwlock_op,
+        ecx.libc_ty_layout("pthread_rwlock_t"),
+        rwlock_id_offset(ecx),
+    )
 }
 
 // pthread_condattr_t
@@ -177,14 +193,18 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 // bytes 4-7: the conditional variable id as u32 or 0 if id is not assigned yet.
 // bytes 8-11: the clock id constant as i32
 
-const CONDVAR_ID_OFFSET: u64 = 4;
 const CONDVAR_CLOCK_OFFSET: u64 = 8;
+
+#[inline]
+fn cond_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
+    if matches!(&*ecx.tcx.sess.target.os, "macos") { 4 } else { 0 }
+}
 
 fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, CondvarId> {
-    ecx.condvar_get_or_create_id(cond_op, ecx.libc_ty_layout("pthread_cond_t"), CONDVAR_ID_OFFSET)
+    ecx.condvar_get_or_create_id(cond_op, ecx.libc_ty_layout("pthread_cond_t"), cond_id_offset(ecx))
 }
 
 fn cond_reset_id<'mir, 'tcx: 'mir>(
@@ -193,7 +213,7 @@ fn cond_reset_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         cond_op,
-        CONDVAR_ID_OFFSET,
+        cond_id_offset(ecx),
         Scalar::from_i32(0),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.u32,
@@ -287,7 +307,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_mutexattr_init` is not supported on {}",
                 this.tcx.sess.target.os
@@ -376,7 +396,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_mutex_init` is not supported on {}",
                 this.tcx.sess.target.os
@@ -537,7 +557,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_rwlock_rdlock` is not supported on {}",
                 this.tcx.sess.target.os
@@ -562,7 +582,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_rwlock_tryrdlock` is not supported on {}",
                 this.tcx.sess.target.os
@@ -586,7 +606,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_rwlock_wrlock` is not supported on {}",
                 this.tcx.sess.target.os
@@ -623,7 +643,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_rwlock_trywrlock` is not supported on {}",
                 this.tcx.sess.target.os
@@ -647,7 +667,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_rwlock_unlock` is not supported on {}",
                 this.tcx.sess.target.os
@@ -673,7 +693,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_rwlock_destroy` is not supported on {}",
                 this.tcx.sess.target.os
@@ -704,7 +724,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_condattr_init` is not supported on {}",
                 this.tcx.sess.target.os
@@ -728,9 +748,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         // Does not exist on macOS!
-        if !matches!(&*this.tcx.sess.target.os, "linux") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "solaris" | "illumos") {
             throw_unsup_format!(
-                "`pthread_condattr_init` is not supported on {}",
+                "`pthread_condattr_setclock` is not supported on {}",
                 this.tcx.sess.target.os
             );
         }
@@ -756,9 +776,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         // Does not exist on macOS!
-        if !matches!(&*this.tcx.sess.target.os, "linux") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "solaris" | "illumos") {
             throw_unsup_format!(
-                "`pthread_condattr_init` is not supported on {}",
+                "`pthread_condattr_getclock` is not supported on {}",
                 this.tcx.sess.target.os
             );
         }
@@ -793,7 +813,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
             throw_unsup_format!(
                 "`pthread_cond_init` is not supported on {}",
                 this.tcx.sess.target.os

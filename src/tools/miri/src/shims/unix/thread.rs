@@ -42,7 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
 
-        let thread_id = this.read_target_usize(thread)?;
+        let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
         this.join_thread_exclusive(thread_id.try_into().expect("thread ID should fit in u32"))?;
 
         Ok(0)

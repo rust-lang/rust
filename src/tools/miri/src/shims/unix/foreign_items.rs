@@ -13,6 +13,7 @@ use crate::*;
 use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
 use shims::unix::macos::foreign_items as macos;
+use shims::unix::solarish::foreign_items as solarish;
 
 pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
@@ -29,6 +30,7 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
                 "freebsd" => freebsd::is_dyn_sym(name),
                 "linux" => linux::is_dyn_sym(name),
                 "macos" => macos::is_dyn_sym(name),
+                "solaris" | "illumos" => solarish::is_dyn_sym(name),
                 _ => false,
             },
     }
@@ -591,8 +593,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "getentropy" => {
                 // This function is non-standard but exists with the same signature and behavior on
-                // Linux, macOS, and FreeBSD.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "freebsd") {
+                // Linux, macOS, FreeBSD and Solaris/Illumos.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "freebsd" | "illumos" | "solaris") {
                     throw_unsup_format!(
                         "`getentropy` is not supported on {}",
                         this.tcx.sess.target.os
@@ -608,6 +610,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=getentropy&sektion=3&format=html
                 // Linux: https://man7.org/linux/man-pages/man3/getentropy.3.html
                 // macOS: https://keith.github.io/xcode-man-pages/getentropy.2.html
+                // Solaris/Illumos: https://illumos.org/man/3C/getentropy
                 if bufsize > 256 {
                     let err = this.eval_libc("EIO");
                     this.set_last_error(err)?;
@@ -730,6 +733,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "freebsd" => freebsd::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "linux" => linux::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "macos" => macos::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
+                    "solaris" | "illumos" => solarish::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     _ => Ok(EmulateItemResult::NotSupported),
                 };
             }
