@@ -54,7 +54,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticArgFromDisplay, Handler, StashKey};
+use rustc_errors::{DiagnosticArgFromDisplay, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -761,10 +761,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
         self.resolver.get_import_res(id).present_items()
-    }
-
-    fn diagnostic(&self) -> &Handler {
-        self.tcx.sess.diagnostic()
     }
 
     /// Reuses the span but adds information like the kind of the desugaring and features that are
