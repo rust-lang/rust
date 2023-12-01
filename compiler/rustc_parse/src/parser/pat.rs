@@ -877,7 +877,7 @@ impl<'a> Parser<'a> {
         // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             return Err(EnumPatternInsteadOfIdentifier { span: self.prev_token.span }
-                .into_diagnostic(&self.sess.span_diagnostic));
+                .into_diagnostic(self.diagnostic()));
         }
 
         Ok(PatKind::Ident(binding_annotation, ident, sub))
@@ -991,7 +991,7 @@ impl<'a> Parser<'a> {
             // check that a comma comes after every field
             if !ate_comma {
                 let mut err = ExpectedCommaAfterPatternField { span: self.token.span }
-                    .into_diagnostic(&self.sess.span_diagnostic);
+                    .into_diagnostic(self.diagnostic());
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }
