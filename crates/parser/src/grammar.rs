@@ -376,6 +376,16 @@ fn error_block(p: &mut Parser<'_>, message: &str) {
     m.complete(p, ERROR);
 }
 
+// test_err top_level_let
+// let ref foo: fn() = 1 + 3;
+fn error_let_stmt(p: &mut Parser<'_>, message: &str) {
+    assert!(p.at(T![let]));
+    let m = p.start();
+    p.error(message);
+    expressions::let_stmt(p, expressions::Semicolon::Optional);
+    m.complete(p, ERROR);
+}
+
 /// The `parser` passed this is required to at least consume one token if it returns `true`.
 /// If the `parser` returns false, parsing will stop.
 fn delimited(
