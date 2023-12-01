@@ -1144,7 +1144,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
             let origin = tcx.opaque_type_origin(def_id);
             if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
             | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
-                && let hir::Node::TraitItem(trait_item) = tcx.hir().get_by_def_id(fn_def_id)
+                && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {
                 false
@@ -1161,7 +1161,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
             }
         }
         DefKind::TyParam => {
-            let hir::Node::GenericParam(param) = tcx.hir().get_by_def_id(def_id) else { bug!() };
+            let hir::Node::GenericParam(param) = tcx.hir_node_by_def_id(def_id) else { bug!() };
             let hir::GenericParamKind::Type { default, .. } = param.kind else { bug!() };
             default.is_some()
         }
@@ -1372,7 +1372,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // anonymous constants will not work on them and panic. It's not clear whether it
             // can cause any observable issues or not.
             let anon_const_without_hir = def_kind == DefKind::AnonConst
-                && tcx.hir().find(tcx.local_def_id_to_hir_id(local_id)).is_none();
+                && tcx.opt_hir_node(tcx.local_def_id_to_hir_id(local_id)).is_none();
             if should_encode_generics(def_kind) && !anon_const_without_hir {
                 let g = tcx.generics_of(def_id);
                 record!(self.tables.generics_of[def_id] <- g);

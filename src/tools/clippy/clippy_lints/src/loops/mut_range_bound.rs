@@ -40,7 +40,7 @@ fn mut_warn_with_span(cx: &LateContext<'_>, span: Option<Span>) {
 
 fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId> {
     if let Some(hir_id) = path_to_local(bound)
-        && let Node::Pat(pat) = cx.tcx.hir().get(hir_id)
+        && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
         && let PatKind::Binding(BindingAnnotation::MUT, ..) = pat.kind
     {
         return Some(hir_id);

@@ -1783,7 +1783,7 @@ fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
         Some(vis) => *vis,
         None => {
             let hir_id = tcx.local_def_id_to_hir_id(def_id);
-            match tcx.hir().get(hir_id) {
+            match tcx.hir_node(hir_id) {
                 // Unique types created for closures participate in type privacy checking.
                 // They have visibilities inherited from the module they are defined in.
                 Node::Expr(hir::Expr { kind: hir::ExprKind::Closure{..}, .. })
@@ -1800,7 +1800,7 @@ fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
                 // Visibilities of trait impl items are inherited from their traits
                 // and are not filled in resolve.
                 Node::ImplItem(impl_item) => {
-                    match tcx.hir().get_by_def_id(tcx.hir().get_parent_item(hir_id).def_id) {
+                    match tcx.hir_node_by_def_id(tcx.hir().get_parent_item(hir_id).def_id) {
                         Node::Item(hir::Item {
                             kind: hir::ItemKind::Impl(hir::Impl { of_trait: Some(tr), .. }),
                             ..

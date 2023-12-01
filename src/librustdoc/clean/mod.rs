@@ -1596,7 +1596,6 @@ fn first_non_private<'tcx>(
         // Absolute paths are not. We start from the parent of the item.
         [.., parent, leaf] => (parent.res.opt_def_id()?.as_local()?, leaf.ident),
     };
-    let hir = cx.tcx.hir();
     // First we try to get the `DefId` of the item.
     for child in
         cx.tcx.module_children_local(parent_def_id).iter().filter(move |c| c.ident == ident)
@@ -1612,7 +1611,8 @@ fn first_non_private<'tcx>(
             'reexps: for reexp in child.reexport_chain.iter() {
                 if let Some(use_def_id) = reexp.id()
                     && let Some(local_use_def_id) = use_def_id.as_local()
-                    && let Some(hir::Node::Item(item)) = hir.find_by_def_id(local_use_def_id)
+                    && let Some(hir::Node::Item(item)) =
+                        cx.tcx.opt_hir_node_by_def_id(local_use_def_id)
                     && !item.ident.name.is_empty()
                     && let hir::ItemKind::Use(path, _) = item.kind
                 {

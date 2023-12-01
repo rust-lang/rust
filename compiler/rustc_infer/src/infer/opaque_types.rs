@@ -683,8 +683,8 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hi
     let res = hir_id == scope;
     trace!(
         "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
-        tcx.hir().find(hir_id),
-        tcx.hir().get(opaque_hir_id),
+        tcx.opt_hir_node(hir_id),
+        tcx.hir_node(opaque_hir_id),
         res
     );
     res

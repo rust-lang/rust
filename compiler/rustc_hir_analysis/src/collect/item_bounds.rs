@@ -86,7 +86,7 @@ pub(super) fn explicit_item_bounds(
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-            let item = tcx.hir().get_by_def_id(opaque_def_id.expect_local()).expect_item();
+            let item = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_item();
             let opaque_ty = item.expect_opaque_ty();
             return ty::EarlyBinder::bind(opaque_type_bounds(
                 tcx,
@@ -105,8 +105,7 @@ pub(super) fn explicit_item_bounds(
         None => {}
     }
 
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let bounds = match tcx.hir().get(hir_id) {
+    let bounds = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),
             span,

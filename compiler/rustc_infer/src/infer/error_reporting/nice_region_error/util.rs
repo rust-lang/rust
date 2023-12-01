@@ -50,11 +50,10 @@ pub fn find_param_with_region<'tcx>(
 
     let hir = &tcx.hir();
     let def_id = id.as_local()?;
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     // FIXME: use def_kind
     // Don't perform this on closures
-    match hir.get(hir_id) {
+    match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             return None;
         }

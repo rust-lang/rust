@@ -42,7 +42,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         ]
         .into_iter()
         .find_map(|(id, ty)| {
-            let hir::Node::Block(blk) = self.tcx.hir().get(id?) else { return None };
+            let hir::Node::Block(blk) = self.tcx.hir_node(id?) else { return None };
             self.could_remove_semicolon(blk, ty)
         });
         match remove_semicolon {
@@ -62,7 +62,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let mut ret = None;
                 for (id, ty) in [(first_id, second_ty), (second_id, first_ty)] {
                     if let Some(id) = id
-                        && let hir::Node::Block(blk) = self.tcx.hir().get(id)
+                        && let hir::Node::Block(blk) = self.tcx.hir_node(id)
                         && let Some(diag) = self.consider_returning_binding_diag(blk, ty)
                     {
                         ret = Some(diag);

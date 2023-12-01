@@ -195,7 +195,7 @@ fn check_fn_inner<'tcx>(
             .iter()
             // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
             // `Node::GenericParam`.
-            .filter_map(|&def_id| cx.tcx.hir().get_by_def_id(def_id).ident())
+            .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
             .map(|ident| ident.to_string())
             .collect::<Vec<_>>()
             .join(", ");

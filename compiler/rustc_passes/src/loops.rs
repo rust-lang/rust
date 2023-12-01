@@ -4,7 +4,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Destination, Movability, Node};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -30,16 +29,16 @@ enum Context {
 }
 
 #[derive(Copy, Clone)]
-struct CheckLoopVisitor<'a, 'hir> {
+struct CheckLoopVisitor<'a, 'tcx> {
     sess: &'a Session,
-    hir_map: Map<'hir>,
+    tcx: TyCtxt<'tcx>,
     cx: Context,
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
-        &mut CheckLoopVisitor { sess: tcx.sess, hir_map: tcx.hir(), cx: Normal },
+        &mut CheckLoopVisitor { sess: tcx.sess, tcx, cx: Normal },
     );
 }
 
@@ -51,7 +50,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        self.hir_map
+        self.tcx.hir()
     }
 
     fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
@@ -136,13 +135,13 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
 
-                if let Some(Node::Block(_)) = loop_id.and_then(|id| self.hir_map.find(id)) {
+                if let Some(Node::Block(_)) = loop_id.and_then(|id| self.tcx.opt_hir_node(id)) {
                     return;
                 }
 
                 if let Some(break_expr) = opt_expr {
                     let (head, loop_label, loop_kind) = if let Some(loop_id) = loop_id {
-                        match self.hir_map.expect_expr(loop_id).kind {
+                        match self.tcx.hir().expect_expr(loop_id).kind {
                             hir::ExprKind::Loop(_, label, source, sp) => {
                                 (Some(sp), label, Some(source))
                             }
@@ -188,7 +187,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 match destination.target_id {
                     Ok(loop_id) => {
-                        if let Node::Block(block) = self.hir_map.find(loop_id).unwrap() {
+                        if let Node::Block(block) = self.tcx.opt_hir_node(loop_id).unwrap() {
                             self.sess.emit_err(ContinueLabeledBlock {
                                 span: e.span,
                                 block_span: block.span,

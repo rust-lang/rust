@@ -883,7 +883,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             kind: hir::ImplItemKind::Fn(..),
             span: encl_fn_span,
             ..
-        })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
+        })) = self.tcx.opt_hir_node_by_def_id(encl_item_id.def_id)
         {
             // We are inside a function body, so reporting "return statement
             // outside of function body" needs an explanation.
@@ -997,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         then: impl FnOnce(&hir::Expr<'_>),
     ) {
         let mut parent = self.tcx.hir().parent_id(original_expr_id);
-        while let Some(node) = self.tcx.hir().find(parent) {
+        while let Some(node) = self.tcx.opt_hir_node(parent) {
             match node {
                 hir::Node::Expr(hir::Expr {
                     kind:

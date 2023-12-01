@@ -218,7 +218,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
         ExprKind::Path(ref qpath) => match cx.qpath_res(qpath, expr.hir_id) {
             Res::Local(hir_id) => {
                 let parent_id = cx.tcx.hir().parent_id(hir_id);
-                if let Some(Node::Local(Local { init: Some(init), .. })) = cx.tcx.hir().find(parent_id) {
+                if let Some(Node::Local(Local { init: Some(init), .. })) = cx.tcx.hir_node(parent_id) {
                     path_to_matched_type(cx, init)
                 } else {
                     None

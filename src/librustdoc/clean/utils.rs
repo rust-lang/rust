@@ -439,7 +439,7 @@ fn print_const_with_custom_print_scalar<'tcx>(
 }
 
 pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
-    if let hir::Node::Expr(expr) = tcx.hir().get(hir_id) {
+    if let hir::Node::Expr(expr) = tcx.hir_node(hir_id) {
         if let hir::ExprKind::Lit(_) = &expr.kind {
             return true;
         }
@@ -641,7 +641,6 @@ pub(crate) fn inherits_doc_hidden(
     mut def_id: LocalDefId,
     stop_at: Option<LocalDefId>,
 ) -> bool {
-    let hir = tcx.hir();
     while let Some(id) = tcx.opt_local_parent(def_id) {
         if let Some(stop_at) = stop_at
             && id == stop_at
@@ -651,7 +650,7 @@ pub(crate) fn inherits_doc_hidden(
         def_id = id;
         if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
-        } else if let Some(node) = hir.find_by_def_id(def_id)
+        } else if let Some(node) = tcx.opt_hir_node_by_def_id(def_id)
             && matches!(node, hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),)
         {
             // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly

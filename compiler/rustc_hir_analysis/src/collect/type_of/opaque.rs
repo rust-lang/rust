@@ -50,8 +50,8 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
     if scope == hir::CRATE_HIR_ID {
         tcx.hir().walk_toplevel_module(&mut locator);
     } else {
-        trace!("scope={:#?}", tcx.hir().get(scope));
-        match tcx.hir().get(scope) {
+        trace!("scope={:#?}", tcx.hir_node(scope));
+        match tcx.hir_node(scope) {
             // We explicitly call `visit_*` methods, instead of using `intravisit::walk_*` methods
             // This allows our visitor to process the defining item itself, causing
             // it to pick up any 'sibling' defining uses.
@@ -95,7 +95,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         let reported = tcx.sess.emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
             name: tcx.item_name(parent_def_id.to_def_id()),
-            what: match tcx.hir().get(scope) {
+            what: match tcx.hir_node(scope) {
                 _ if scope == hir::CRATE_HIR_ID => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }) => "impl",
@@ -282,7 +282,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
         debug!(?scope);
         let mut locator = RpitConstraintChecker { def_id, tcx, found: mir_opaque_ty };
 
-        match tcx.hir().get(scope) {
+        match tcx.hir_node(scope) {
             Node::Item(it) => intravisit::walk_item(&mut locator, it),
             Node::ImplItem(it) => intravisit::walk_impl_item(&mut locator, it),
             Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),

@@ -984,13 +984,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
             obligation.cause.code()
-            && let Some(Node::Expr(arg)) = self.tcx.hir().find(*arg_hir_id)
+            && let Some(Node::Expr(arg)) = self.tcx.opt_hir_node(*arg_hir_id)
             && let arg = arg.peel_borrows()
             && let hir::ExprKind::Path(hir::QPath::Resolved(
                 None,
                 hir::Path { res: hir::def::Res::Local(hir_id), .. },
             )) = arg.kind
-            && let Some(Node::Pat(pat)) = self.tcx.hir().find(*hir_id)
+            && let Some(Node::Pat(pat)) = self.tcx.opt_hir_node(*hir_id)
             && let Some(preds) = self.reported_trait_errors.borrow().get(&pat.span)
             && preds.contains(&obligation.predicate)
         {
@@ -1028,7 +1028,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
-        let body_id = match self.tcx.hir().find(hir_id) {
+        let body_id = match self.tcx.opt_hir_node(hir_id) {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
                 body_id
             }
@@ -1154,7 +1154,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
-                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
+                && let Some(hir::Node::Pat(binding)) = self.tcx.opt_hir_node(*hir_id)
                 && let Some(parent) = self.tcx.hir().find_parent(binding.hir_id)
             {
                 // We've reached the root of the method call chain...
@@ -2499,7 +2499,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 ident: trait_name,
                                 kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs),
                                 ..
-                            })) = self.tcx.hir().find_by_def_id(local_def_id)
+                            })) = self.tcx.opt_hir_node_by_def_id(local_def_id)
                             && let Some(method_ref) = trait_item_refs
                                 .iter()
                                 .find(|item_ref| item_ref.ident == *assoc_item_name)
