@@ -1799,9 +1799,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         .iter()
                         .find(|cand| self.matches_by_doc_alias(cand.def_id))
                         .map(|cand| cand.name)
-                })
-                .unwrap();
-                Ok(applicable_close_candidates.into_iter().find(|method| method.name == best_name))
+                });
+                Ok(best_name.and_then(|best_name| {
+                    applicable_close_candidates.into_iter().find(|method| method.name == best_name)
+                }))
             }
         })
     }
