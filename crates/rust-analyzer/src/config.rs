@@ -381,6 +381,8 @@ config_data! {
         inlayHints_expressionAdjustmentHints_hideOutsideUnsafe: bool = "false",
         /// Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
         inlayHints_expressionAdjustmentHints_mode: AdjustmentHintsModeDef = "\"prefix\"",
+        /// Whether to show implicit drop hints.
+        inlayHints_implicitDrops_enable: bool                      = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -1391,6 +1393,7 @@ impl Config {
             type_hints: self.data.inlayHints_typeHints_enable,
             parameter_hints: self.data.inlayHints_parameterHints_enable,
             chaining_hints: self.data.inlayHints_chainingHints_enable,
+            implicit_drop_hints: self.data.inlayHints_implicitDrops_enable,
             discriminant_hints: match self.data.inlayHints_discriminantHints_enable {
                 DiscriminantHintsDef::Always => ide::DiscriminantHints::Always,
                 DiscriminantHintsDef::Never => ide::DiscriminantHints::Never,
