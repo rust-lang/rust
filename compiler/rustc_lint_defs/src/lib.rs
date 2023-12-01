@@ -583,6 +583,10 @@ pub enum BuiltinLintDiagnostics {
         elided: bool,
         span: Span,
     },
+    RedundantImportVisibility {
+        span: Span,
+        max_vis: String,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the

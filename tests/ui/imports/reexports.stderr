@@ -56,11 +56,18 @@ note: the lint level is defined here
 LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-warning: glob import doesn't reexport anything because no candidate is public enough
+warning: glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
   --> $DIR/reexports.rs:11:17
    |
 LL |         pub use super::*;
    |                 ^^^^^^^^
+   |
+note: the most public imported item is `pub(a)`
+  --> $DIR/reexports.rs:11:17
+   |
+LL |         pub use super::*;
+   |                 ^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
 
 warning: unused import: `super::*`
   --> $DIR/reexports.rs:11:17
