@@ -156,9 +156,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
-            // FIXME(eholk): handle `async gen fn`
-            if let CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. } =
-                sig.header.coro_kind
+            if let Some(
+                CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. },
+            ) = sig.header.coro_kind
             {
                 self.visit_generics(generics);
 
@@ -285,11 +285,11 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
                 match closure.coro_kind {
-                    CoroutineKind::Async { closure_id, .. }
-                    | CoroutineKind::Gen { closure_id, .. } => {
-                        self.create_def(closure_id, kw::Empty, DefKind::Closure, expr.span)
-                    }
-                    CoroutineKind::None => closure_def,
+                    Some(
+                        CoroutineKind::Async { closure_id, .. }
+                        | CoroutineKind::Gen { closure_id, .. },
+                    ) => self.create_def(closure_id, kw::Empty, DefKind::Closure, expr.span),
+                    None => closure_def,
                 }
             }
             ExprKind::Gen(_, _, _) => {

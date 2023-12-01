@@ -1492,7 +1492,6 @@ impl<'a> State<'a> {
 
     fn print_coro_kind(&mut self, coro_kind: ast::CoroutineKind) {
         match coro_kind {
-            ast::CoroutineKind::None => {}
             ast::CoroutineKind::Gen { .. } => {
                 self.word_nbsp("gen");
             }
@@ -1691,7 +1690,7 @@ impl<'a> State<'a> {
 
     fn print_fn_header_info(&mut self, header: ast::FnHeader) {
         self.print_constness(header.constness);
-        self.print_coro_kind(header.coro_kind);
+        header.coro_kind.map(|coro_kind| self.print_coro_kind(coro_kind));
         self.print_unsafety(header.unsafety);
 
         match header.ext {

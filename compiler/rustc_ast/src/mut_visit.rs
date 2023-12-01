@@ -878,7 +878,6 @@ pub fn noop_visit_coro_kind<T: MutVisitor>(coro_kind: &mut CoroutineKind, vis: &
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);
         }
-        CoroutineKind::None => {}
     }
 }
 
@@ -1173,7 +1172,7 @@ fn visit_const_item<T: MutVisitor>(
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     let FnHeader { unsafety, coro_kind, constness, ext: _ } = header;
     visit_constness(constness, vis);
-    vis.visit_coro_kind(coro_kind);
+    coro_kind.as_mut().map(|coro_kind| vis.visit_coro_kind(coro_kind));
     visit_unsafety(unsafety, vis);
 }
 
@@ -1416,7 +1415,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }) => {
             vis.visit_closure_binder(binder);
             visit_constness(constness, vis);
-            vis.visit_coro_kind(coro_kind);
+            coro_kind.as_mut().map(|coro_kind| vis.visit_coro_kind(coro_kind));
             vis.visit_capture_by(capture_clause);
             vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);

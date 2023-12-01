@@ -1311,7 +1311,7 @@ pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub constness: Const,
-    pub coro_kind: CoroutineKind,
+    pub coro_kind: Option<CoroutineKind>,
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,
     pub body: P<Expr>,
@@ -2417,8 +2417,6 @@ pub enum CoroutineKind {
     Async { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
     /// `gen`, which evaluates to `impl Iterator`
     Gen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    /// Neither `async` nor `gen`
-    None,
 }
 
 impl CoroutineKind {
@@ -2430,14 +2428,12 @@ impl CoroutineKind {
         matches!(self, CoroutineKind::Gen { .. })
     }
 
-    /// In this case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
-    pub fn opt_return_id(self) -> Option<(NodeId, Span)> {
+    /// In this case this is an `async` or `gen` return, the `NodeId` for the generated `impl Trait`
+    /// item.
+    pub fn return_id(self) -> (NodeId, Span) {
         match self {
             CoroutineKind::Async { return_impl_trait_id, span, .. }
-            | CoroutineKind::Gen { return_impl_trait_id, span, .. } => {
-                Some((return_impl_trait_id, span))
-            }
-            CoroutineKind::None => None,
+            | CoroutineKind::Gen { return_impl_trait_id, span, .. } => (return_impl_trait_id, span),
         }
     }
 }
@@ -2842,7 +2838,7 @@ pub struct FnHeader {
     /// The `unsafe` keyword, if any
     pub unsafety: Unsafe,
     /// Whether this is `async`, `gen`, or nothing.
-    pub coro_kind: CoroutineKind,
+    pub coro_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
     pub constness: Const,
     /// The `extern` keyword and corresponding ABI string, if any
@@ -2854,7 +2850,7 @@ impl FnHeader {
     pub fn has_qualifiers(&self) -> bool {
         let Self { unsafety, coro_kind, constness, ext } = self;
         matches!(unsafety, Unsafe::Yes(_))
-            || !matches!(coro_kind, CoroutineKind::None)
+            || coro_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
@@ -2862,12 +2858,7 @@ impl FnHeader {
 
 impl Default for FnHeader {
     fn default() -> FnHeader {
-        FnHeader {
-            unsafety: Unsafe::No,
-            coro_kind: CoroutineKind::None,
-            constness: Const::No,
-            ext: Extern::None,
-        }
+        FnHeader { unsafety: Unsafe::No, coro_kind: None, constness: Const::No, ext: Extern::None }
     }
 }
 

@@ -287,7 +287,7 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     ext: ast::Extern,
-    coro_kind: Cow<'a, ast::CoroutineKind>,
+    coro_kind: Cow<'a, Option<ast::CoroutineKind>>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
     unsafety: ast::Unsafe,
@@ -343,7 +343,8 @@ impl<'a> FnSig<'a> {
         result.push_str(&*format_visibility(context, self.visibility));
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
-        result.push_str(format_coro(&self.coro_kind));
+        self.coro_kind
+            .map(|coro_kind| result.push_str(format_coro(&coro_kind)));
         result.push_str(format_unsafety(self.unsafety));
         result.push_str(&format_extern(
             self.ext,

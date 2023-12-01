@@ -1125,30 +1125,30 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self, case: Case) -> CoroutineKind {
+    fn parse_asyncness(&mut self, case: Case) -> Option<CoroutineKind> {
         if self.eat_keyword_case(kw::Async, case) {
             let span = self.prev_token.uninterpolated_span();
-            CoroutineKind::Async {
+            Some(CoroutineKind::Async {
                 span,
                 closure_id: DUMMY_NODE_ID,
                 return_impl_trait_id: DUMMY_NODE_ID,
-            }
+            })
         } else {
-            CoroutineKind::None
+            None
         }
     }
 
     /// Parses genness: `gen` or nothing.
-    fn parse_genness(&mut self, case: Case) -> CoroutineKind {
+    fn parse_genness(&mut self, case: Case) -> Option<CoroutineKind> {
         if self.token.span.at_least_rust_2024() && self.eat_keyword_case(kw::Gen, case) {
             let span = self.prev_token.uninterpolated_span();
-            CoroutineKind::Gen {
+            Some(CoroutineKind::Gen {
                 span,
                 closure_id: DUMMY_NODE_ID,
                 return_impl_trait_id: DUMMY_NODE_ID,
-            }
+            })
         } else {
-            CoroutineKind::None
+            None
         }
     }
 

@@ -609,7 +609,7 @@ impl<'a> Parser<'a> {
             // cover it.
             self.sess.emit_err(FnPointerCannotBeConst { span: whole_span, qualifier: span });
         }
-        if let ast::CoroutineKind::Async { span, .. } = coro_kind {
+        if let Some(ast::CoroutineKind::Async { span, .. }) = coro_kind {
             self.sess.emit_err(FnPointerCannotBeAsync { span: whole_span, qualifier: span });
         }
         // FIXME(eholk): emit a similar error for `gen fn()`

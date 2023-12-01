@@ -29,7 +29,7 @@ pub(crate) fn rewrite_closure(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    coro_kind: &ast::CoroutineKind,
+    coro_kind: &Option<ast::CoroutineKind>,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -233,7 +233,7 @@ fn rewrite_closure_fn_decl(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    coro_kind: &ast::CoroutineKind,
+    coro_kind: &Option<ast::CoroutineKind>,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -263,8 +263,13 @@ fn rewrite_closure_fn_decl(
     } else {
         ""
     };
-    let is_async = if coro_kind.is_async() { "async " } else { "" };
-    let is_gen = if coro_kind.is_gen() { "gen " } else { "" };
+    let (is_async, is_gen) = if let Some(coro_kind) = coro_kind {
+        let is_async = if coro_kind.is_async() { "async " } else { "" };
+        let is_gen = if coro_kind.is_gen() { "gen " } else { "" };
+        (is_async, is_gen)
+    } else {
+        ("", "")
+    };
     let mover = if matches!(capture, ast::CaptureBy::Value { .. }) {
         "move "
     } else {

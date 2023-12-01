@@ -916,7 +916,9 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             &sig.decl.output,
                         );
 
-                        if let Some((async_node_id, _)) = sig.header.coro_kind.opt_return_id() {
+                        if let Some((async_node_id, _)) =
+                            sig.header.coro_kind.map(|coro_kind| coro_kind.return_id())
+                        {
                             this.record_lifetime_params_for_impl_trait(async_node_id);
                         }
                     },
@@ -940,7 +942,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         this.visit_generics(generics);
 
                         let declaration = &sig.decl;
-                        let async_node_id = sig.header.coro_kind.opt_return_id();
+                        let async_node_id =
+                            sig.header.coro_kind.map(|coro_kind| coro_kind.return_id());
 
                         this.with_lifetime_rib(
                             LifetimeRibKind::AnonymousCreateParameter {
@@ -4289,7 +4292,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
             ExprKind::Closure(box ast::Closure {
-                coro_kind: CoroutineKind::Async { .. },
+                coro_kind: Some(CoroutineKind::Async { .. }),
                 ref fn_decl,
                 ref body,
                 ..

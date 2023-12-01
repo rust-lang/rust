@@ -2401,7 +2401,7 @@ impl<'a> Parser<'a> {
         let ext_start_sp = self.token.span;
         let ext = self.parse_extern(case);
 
-        if let CoroutineKind::Async { span, .. } = asyncness {
+        if let Some(CoroutineKind::Async { span, .. }) = asyncness {
             if span.is_rust_2015() {
                 self.sess.emit_err(errors::AsyncFnIn2015 {
                     span,
@@ -2410,13 +2410,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if let CoroutineKind::Gen { span, .. } = genness {
+        if let Some(CoroutineKind::Gen { span, .. }) = genness {
             self.sess.gated_spans.gate(sym::gen_blocks, span);
         }
 
         if let (
-            CoroutineKind::Async { span: async_span, .. },
-            CoroutineKind::Gen { span: gen_span, .. },
+            Some(CoroutineKind::Async { span: async_span, .. }),
+            Some(CoroutineKind::Gen { span: gen_span, .. }),
         ) = (asyncness, genness)
         {
             self.sess.emit_err(errors::AsyncGenFn { span: async_span.to(gen_span) });
@@ -2452,16 +2452,18 @@ impl<'a> Parser<'a> {
                         }
                     } else if self.check_keyword(kw::Async) {
                         match asyncness {
-                            CoroutineKind::Async { span, .. } => Some(WrongKw::Duplicated(span)),
-                            CoroutineKind::Gen { .. } => {
+                            Some(CoroutineKind::Async { span, .. }) => {
+                                Some(WrongKw::Duplicated(span))
+                            }
+                            Some(CoroutineKind::Gen { .. }) => {
                                 panic!("not sure how to recover here")
                             }
-                            CoroutineKind::None => {
-                                recover_asyncness = CoroutineKind::Async {
+                            None => {
+                                recover_asyncness = Some(CoroutineKind::Async {
                                     span: self.token.span,
                                     closure_id: DUMMY_NODE_ID,
                                     return_impl_trait_id: DUMMY_NODE_ID,
-                                };
+                                });
                                 Some(WrongKw::Misplaced(unsafe_start_sp))
                             }
                         }
@@ -2566,9 +2568,9 @@ impl<'a> Parser<'a> {
         }
 
         let coro_kind = match asyncness {
-            CoroutineKind::Async { .. } => asyncness,
-            CoroutineKind::Gen { .. } => unreachable!("asycness cannot be Gen"),
-            CoroutineKind::None => genness,
+            Some(CoroutineKind::Async { .. }) => asyncness,
+            Some(CoroutineKind::Gen { .. }) => unreachable!("asycness cannot be Gen"),
+            None => genness,
         };
 
         Ok(FnHeader { constness, unsafety, coro_kind, ext })

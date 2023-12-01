@@ -202,8 +202,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     fn_decl_span,
                     fn_arg_span,
                 }) => match coro_kind {
-                    CoroutineKind::Async { closure_id, .. }
-                    | CoroutineKind::Gen { closure_id, .. } => self.lower_expr_async_closure(
+                    Some(
+                        CoroutineKind::Async { closure_id, .. }
+                        | CoroutineKind::Gen { closure_id, .. },
+                    ) => self.lower_expr_async_closure(
                         binder,
                         *capture_clause,
                         e.id,
@@ -214,7 +216,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         *fn_decl_span,
                         *fn_arg_span,
                     ),
-                    CoroutineKind::None => self.lower_expr_closure(
+                    None => self.lower_expr_closure(
                         binder,
                         *capture_clause,
                         e.id,
@@ -933,13 +935,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(
-            decl,
-            closure_id,
-            fn_decl_span,
-            FnDeclKind::Closure,
-            CoroutineKind::None,
-        );
+        let fn_decl = self.lower_fn_decl(decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
             def_id: self.local_def_id(closure_id),
@@ -1054,13 +1050,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
-        let fn_decl = self.lower_fn_decl(
-            &outer_decl,
-            closure_id,
-            fn_decl_span,
-            FnDeclKind::Closure,
-            CoroutineKind::None,
-        );
+        let fn_decl =
+            self.lower_fn_decl(&outer_decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
             def_id: self.local_def_id(closure_id),
