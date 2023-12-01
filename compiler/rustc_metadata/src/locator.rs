@@ -212,7 +212,7 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use crate::creader::Library;
+use crate::creader::{Library, MetadataLoader};
 use crate::errors;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
@@ -223,7 +223,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config;
-use rustc_session::cstore::{CrateSource, MetadataLoader};
+use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;

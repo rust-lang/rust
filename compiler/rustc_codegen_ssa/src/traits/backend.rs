@@ -9,6 +9,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::ErrorGuaranteed;
+use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
@@ -16,7 +17,6 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::{
     config::{self, OutputFilenames, PrintRequest},
-    cstore::MetadataLoaderDyn,
     Session,
 };
 use rustc_span::symbol::Symbol;

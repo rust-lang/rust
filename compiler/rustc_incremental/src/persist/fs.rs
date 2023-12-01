@@ -262,7 +262,7 @@ pub(crate) fn prepare_session_directory(
                     directory."
             );
 
-            sess.init_incr_comp_session(session_dir, directory_lock, false);
+            sess.init_incr_comp_session(session_dir, directory_lock);
             return Ok(());
         };
 
@@ -276,7 +276,7 @@ pub(crate) fn prepare_session_directory(
                 sess.emit_warning(errors::HardLinkFailed { path: &session_dir });
             }
 
-            sess.init_incr_comp_session(session_dir, directory_lock, true);
+            sess.init_incr_comp_session(session_dir, directory_lock);
             return Ok(());
         } else {
             debug!("copying failed - trying next directory");

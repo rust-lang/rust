@@ -1,6 +1,4 @@
-#![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(lazy_cell)]
 #![feature(option_get_or_insert_default)]
