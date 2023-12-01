@@ -122,7 +122,7 @@ fn get_impl_span(cx: &LateContext<'_>, id: LocalDefId) -> Option<Span> {
         kind: ItemKind::Impl(impl_item),
         span,
         ..
-    }) = cx.tcx.hir().get(id)
+    }) = cx.tcx.hir_node(id)
     {
         (!span.from_expansion()
             && impl_item.generics.params.is_empty()

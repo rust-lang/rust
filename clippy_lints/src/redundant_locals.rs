@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             && last_segment.ident == ident
             // resolve the path to its defining binding pattern
             && let Res::Local(binding_id) = cx.qpath_res(&qpath, expr.hir_id)
-            && let Node::Pat(binding_pat) = cx.tcx.hir().get(binding_id)
+            && let Node::Pat(binding_pat) = cx.tcx.hir_node(binding_id)
             // the previous binding has the same mutability
             && find_binding(binding_pat, ident).is_some_and(|bind| bind.1 == mutability)
             // the local does not change the effect of assignments to the binding. see #11290

@@ -94,7 +94,6 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         {
             let mut non_send_fields = Vec::new();
 
-            let hir_map = cx.tcx.hir();
             for variant in adt_def.variants() {
                 for field in &variant.fields {
                     if let Some(field_hir_id) = field
@@ -104,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                         && !is_lint_allowed(cx, NON_SEND_FIELDS_IN_SEND_TY, field_hir_id)
                         && let field_ty = field.ty(cx.tcx, impl_trait_args)
                         && !ty_allowed_in_send(cx, field_ty, send_trait)
-                        && let Node::Field(field_def) = hir_map.get(field_hir_id)
+                        && let Node::Field(field_def) = cx.tcx.hir_node(field_hir_id)
                     {
                         non_send_fields.push(NonSendField {
                             def: field_def,
