@@ -1786,7 +1786,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `NodeId`.
     ///
     /// `transform_return_type`: if `Some`, applies some conversion to the return type, such as is
-    /// needed for `async fn` and `gen fn`. See [`FnReturnTransformation`] for more details.
+    /// needed for `async fn` and `gen fn`. See [`CoroutineKind`] for more details.
     #[instrument(level = "debug", skip(self))]
     fn lower_fn_decl(
         &mut self,
