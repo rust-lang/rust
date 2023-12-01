@@ -354,8 +354,6 @@ declare_features! (
     (unstable, async_fn_track_caller, "1.73.0", Some(110011), None),
     /// Allows builtin # foo() syntax
     (unstable, builtin_syntax, "1.71.0", Some(110680), None),
-    /// Allows `c"foo"` literals.
-    (unstable, c_str_literals, "1.71.0", Some(105723), None),
     /// Treat `extern "C"` function as nounwind.
     (unstable, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
