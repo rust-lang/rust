@@ -200,7 +200,7 @@ resolve_param_in_non_trivial_anon_const =
     .label = cannot perform const operation using `{$name}`
 
 resolve_param_in_non_trivial_anon_const_help =
-    use `#![feature(generic_const_exprs)]` to allow generic const expressions
+    add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 resolve_param_in_ty_of_const_param =
     the type of const parameters must not depend on other generic parameters

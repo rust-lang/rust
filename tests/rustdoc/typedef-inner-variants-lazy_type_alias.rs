@@ -13,14 +13,14 @@ pub struct Pair<A, B> {
 // @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
-// @count - '//span[@class="where fmt-newline"]' 0
+// @count - '//div[@class="where"]' 0
 pub type ReversedTypesPair<Q, R> = Pair<R, Q>;
 
 // @has 'inner_types_lazy/type.ReadWrite.html'
 // @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
-// @count - '//span[@class="where fmt-newline"]' 2
+// @count - '//div[@class="where"]' 2
 pub type ReadWrite<R, W> = Pair<R, W>
 where
     R: std::io::Read,
@@ -30,5 +30,5 @@ where
 // @count - '//*[@id="aliased-type"]' 1
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
-// @count - '//span[@class="where fmt-newline"]' 0
+// @count - '//div[@class="where"]' 0
 pub type VecPair<U, V> = Pair<Vec<U>, Vec<V>>;

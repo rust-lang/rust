@@ -703,11 +703,8 @@ pre, .rustdoc.src .example-wrap {
 	background: var(--table-alt-row-background-color);
 }
 
-/* Shift "where ..." part of method or fn definition down a line */
-.method .where,
-.fn .where,
-.where.fmt-newline {
-	display: block;
+/* "where ..." clauses with block display are also smaller */
+div.where {
 	white-space: pre-wrap;
 	font-size: 0.875rem;
 }

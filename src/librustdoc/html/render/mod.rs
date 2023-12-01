@@ -1441,15 +1441,10 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                     );
                 }
 
-                //use the "where" class here to make it small
-                write!(
-                    &mut out,
-                    "<span class=\"where fmt-newline\">{}</span>",
-                    impl_.print(false, cx)
-                );
+                write!(&mut out, "<div class=\"where\">{}</div>", impl_.print(false, cx));
                 for it in &impl_.items {
                     if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
-                        out.push_str("<span class=\"where fmt-newline\">    ");
+                        out.push_str("<div class=\"where\">    ");
                         let empty_set = FxHashSet::default();
                         let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
                         assoc_type(
@@ -1462,7 +1457,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                             0,
                             cx,
                         );
-                        out.push_str(";</span>");
+                        out.push_str(";</div>");
                     }
                 }
             }
@@ -1948,7 +1943,7 @@ pub(crate) fn render_impl_summary(
         if show_def_docs {
             for it in &inner_impl.items {
                 if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
-                    w.write_str("<span class=\"where fmt-newline\">  ");
+                    w.write_str("<div class=\"where\">  ");
                     assoc_type(
                         w,
                         it,
@@ -1959,7 +1954,7 @@ pub(crate) fn render_impl_summary(
                         0,
                         cx,
                     );
-                    w.write_str(";</span>");
+                    w.write_str(";</div>");
                 }
             }
         }
