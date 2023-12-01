@@ -7,5 +7,5 @@ LL |     x.as_ref().take();
    = note: `-D clippy::needless-option-take` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_option_take)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

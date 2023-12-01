@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
             // `#[must_use]` should be put on the trait definition directly.
             && cx.tcx.trait_id_of_impl(impl_def).is_none()
         {
-            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def);
+            let hir_id = cx.tcx.local_def_id_to_hir_id(fn_def);
             check_method(cx, decl, fn_def, span, hir_id.expect_owner());
         }
     }

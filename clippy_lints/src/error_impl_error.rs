@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                 if let Some(trait_def_id) = imp.of_trait.and_then(|t| t.trait_def_id())
                     && error_def_id == trait_def_id
                     && let Some(def_id) = path_res(cx, imp.self_ty).opt_def_id().and_then(DefId::as_local)
-                    && let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id)
+                    && let hir_id = cx.tcx.local_def_id_to_hir_id(def_id)
                     && let Some(ident) = cx.tcx.opt_item_ident(def_id.to_def_id())
                     && ident.name == sym::Error
                     && is_visible_outside_module(cx, def_id) =>

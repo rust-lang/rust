@@ -9,5 +9,5 @@ LL | const UNINIT: core::mem::MaybeUninit<core::cell::Cell<&'static ()>> = core:
    = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

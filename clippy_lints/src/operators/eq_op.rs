@@ -36,7 +36,7 @@ pub(crate) fn check<'tcx>(
     left: &'tcx Expr<'_>,
     right: &'tcx Expr<'_>,
 ) {
-    if is_useless_with_eq_exprs(op.into()) && eq_expr_value(cx, left, right) && !is_in_test_function(cx.tcx, e.hir_id) {
+    if is_useless_with_eq_exprs(op) && eq_expr_value(cx, left, right) && !is_in_test_function(cx.tcx, e.hir_id) {
         span_lint_and_then(
             cx,
             EQ_OP,

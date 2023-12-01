@@ -12,5 +12,5 @@ LL - fn gen() -> impl PartialOrd + PartialEq + Debug {}
 LL + fn gen() -> impl PartialOrd + Debug {}
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

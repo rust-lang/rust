@@ -424,8 +424,9 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     improvements.push(suggestion);
                 }
             }
-            let nonminimal_bool_lint = |suggestions: Vec<_>| {
+            let nonminimal_bool_lint = |mut suggestions: Vec<_>| {
                 if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).0 != Level::Allow {
+                    suggestions.sort();
                     span_lint_hir_and_then(
                         self.cx,
                         NONMINIMAL_BOOL,

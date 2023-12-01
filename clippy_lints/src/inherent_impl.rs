@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
             && !is_lint_allowed(
                 cx,
                 MULTIPLE_INHERENT_IMPL,
-                cx.tcx.hir().local_def_id_to_hir_id(id),
+                cx.tcx.local_def_id_to_hir_id(id),
             )
         }) {
             for impl_id in impl_ids.iter().map(|id| id.expect_local()) {
@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
 
 /// Gets the span for the given impl block unless it's not being considered by the lint.
 fn get_impl_span(cx: &LateContext<'_>, id: LocalDefId) -> Option<Span> {
-    let id = cx.tcx.hir().local_def_id_to_hir_id(id);
+    let id = cx.tcx.local_def_id_to_hir_id(id);
     if let Node::Item(&Item {
         kind: ItemKind::Impl(impl_item),
         span,

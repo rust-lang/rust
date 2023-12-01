@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             return;
         }
 
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
+        let hir_id = cx.tcx.local_def_id_to_hir_id(fn_def_id);
 
         match kind {
             FnKind::ItemFn(.., header) => {

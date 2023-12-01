@@ -709,7 +709,7 @@ pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
 /// ```
 pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> Option<&'tcx TraitRef<'tcx>> {
     // Get the implemented trait for the current function
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if parent_impl != hir::CRATE_OWNER_ID
         && let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl.def_id)
@@ -1667,13 +1667,13 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 /// Convenience function to get the return type of a function.
 pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_def_id: hir::OwnerId) -> Ty<'tcx> {
     let ret_ty = cx.tcx.fn_sig(fn_def_id).instantiate_identity().output();
-    cx.tcx.erase_late_bound_regions(ret_ty)
+    cx.tcx.instantiate_bound_regions_with_erased(ret_ty)
 }
 
 /// Convenience function to get the nth argument type of a function.
 pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_def_id: hir::OwnerId, nth: usize) -> Ty<'tcx> {
     let arg = cx.tcx.fn_sig(fn_def_id).instantiate_identity().input(nth);
-    cx.tcx.erase_late_bound_regions(arg)
+    cx.tcx.instantiate_bound_regions_with_erased(arg)
 }
 
 /// Checks if an expression is constructing a tuple-like enum variant or struct
@@ -1706,7 +1706,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     }
 
     match pat.kind {
-        PatKind::Wild => false,
+        PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) | PatKind::Range(..) => true,
@@ -2567,7 +2567,7 @@ pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
     tcx.has_attr(def_id, sym::cfg)
         || hir
-            .parent_iter(hir.local_def_id_to_hir_id(def_id))
+            .parent_iter(tcx.local_def_id_to_hir_id(def_id))
             .flat_map(|(parent_id, _)| hir.attrs(parent_id))
             .any(|attr| attr.has_name(sym::cfg))
 }
@@ -2687,7 +2687,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                     .and(Binder::dummy(cx.tcx.type_of(id).instantiate_identity())),
             )),
             Self::Return(id) => {
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(id.def_id);
+                let hir_id = cx.tcx.local_def_id_to_hir_id(id.def_id);
                 if let Some(Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
                     ..

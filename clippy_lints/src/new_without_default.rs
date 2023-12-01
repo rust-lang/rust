@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                     let ty = cx.tcx.type_of(d).instantiate_identity();
                                     if let Some(ty_def) = ty.ty_adt_def() {
                                         if let Some(local_def_id) = ty_def.did().as_local() {
-                                            impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
+                                            impls.insert(cx.tcx.local_def_id_to_hir_id(local_def_id));
                                         }
                                     }
                                 });
@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 && let self_def = cx.tcx.type_of(self_def_id).instantiate_identity()
                                 && let Some(self_def) = self_def.ty_adt_def()
                                 && let Some(self_local_did) = self_def.did().as_local()
-                                && let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did)
+                                && let self_id = cx.tcx.local_def_id_to_hir_id(self_local_did)
                                 && impling_types.contains(&self_id)
                             {
                                 return;

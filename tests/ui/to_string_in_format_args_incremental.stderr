@@ -7,5 +7,5 @@ LL |     println!("{}", s.to_string());
    = note: `-D clippy::to-string-in-format-args` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::to_string_in_format_args)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

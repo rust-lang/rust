@@ -255,7 +255,7 @@ fn check_hash_peq<'tcx>(
                     "you are deriving `Hash` but have implemented `PartialEq` explicitly",
                     |diag| {
                         if let Some(local_def_id) = impl_id.as_local() {
-                            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                            let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
                             diag.span_note(cx.tcx.hir().span(hir_id), "`PartialEq` implemented here");
                         }
                     },
@@ -299,7 +299,7 @@ fn check_ord_partial_ord<'tcx>(
 
                 span_lint_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, span, mess, |diag| {
                     if let Some(local_def_id) = impl_id.as_local() {
-                        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                        let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
                         diag.span_note(cx.tcx.hir().span(hir_id), "`PartialOrd` implemented here");
                     }
                 });
@@ -381,7 +381,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
         && match_def_path(cx, trait_def_id, &paths::SERDE_DESERIALIZE)
         && let ty::Adt(def, _) = ty.kind()
         && let Some(local_def_id) = def.did().as_local()
-        && let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id)
+        && let adt_hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id)
         && !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id)
         && cx
             .tcx

@@ -14,5 +14,5 @@ LL | |         .next();
    = note: `-D clippy::filter-map-next` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::filter_map_next)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

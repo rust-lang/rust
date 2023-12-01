@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 .trait_item_def_id
                 .expect("impl method matches a trait method");
             let trait_method_sig = cx.tcx.fn_sig(trait_method).instantiate_identity();
-            let trait_method_sig = cx.tcx.erase_late_bound_regions(trait_method_sig);
+            let trait_method_sig = cx.tcx.instantiate_bound_regions_with_erased(trait_method_sig);
 
             // `impl_inputs_outputs` is an iterator over the types (`hir::Ty`) declared in the
             // implementation of the trait.

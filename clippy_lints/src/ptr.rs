@@ -714,23 +714,25 @@ fn matches_preds<'tcx>(
     preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
     let infcx = cx.tcx.infer_ctxt().build();
-    preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
-        ExistentialPredicate::Trait(p) => infcx
-            .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.args.iter()), cx.param_env)
-            .must_apply_modulo_regions(),
-        ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
-            cx.tcx,
-            ObligationCause::dummy(),
-            cx.param_env,
-            cx.tcx
-                .mk_predicate(Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(
-                    p.with_self_ty(cx.tcx, ty),
-                )))),
-        )),
-        ExistentialPredicate::AutoTrait(p) => infcx
-            .type_implements_trait(p, [ty], cx.param_env)
-            .must_apply_modulo_regions(),
-    })
+    preds
+        .iter()
+        .all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {
+            ExistentialPredicate::Trait(p) => infcx
+                .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.args.iter()), cx.param_env)
+                .must_apply_modulo_regions(),
+            ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+                cx.tcx,
+                ObligationCause::dummy(),
+                cx.param_env,
+                cx.tcx
+                    .mk_predicate(Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(
+                        p.with_self_ty(cx.tcx, ty),
+                    )))),
+            )),
+            ExistentialPredicate::AutoTrait(p) => infcx
+                .type_implements_trait(p, [ty], cx.param_env)
+                .must_apply_modulo_regions(),
+        })
 }
 
 fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {

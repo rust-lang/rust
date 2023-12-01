@@ -349,7 +349,7 @@ fn block_parents_have_safety_comment(
                     span,
                     owner_id,
                     ..
-                })) => (*span, cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)),
+                })) => (*span, cx.tcx.local_def_id_to_hir_id(owner_id.def_id)),
                 _ => {
                     if is_branchy(expr) {
                         return false;
@@ -370,7 +370,7 @@ fn block_parents_have_safety_comment(
                 span,
                 owner_id,
                 ..
-            }) => (*span, cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)),
+            }) => (*span, cx.tcx.local_def_id_to_hir_id(owner_id.def_id)),
             _ => return false,
         };
         // if unsafe block is part of a let/const/static statement,

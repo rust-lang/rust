@@ -18,5 +18,5 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::default_deprecation_reason)]` implied by `#[deny(clippy::internal)]`
    = note: this error originates in the macro `declare_deprecated_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

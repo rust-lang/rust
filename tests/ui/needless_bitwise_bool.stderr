@@ -7,5 +7,5 @@ LL |     if y & !x {
    = note: `-D clippy::needless-bitwise-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_bitwise_bool)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

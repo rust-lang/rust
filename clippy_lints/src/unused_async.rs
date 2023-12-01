@@ -148,7 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         // statements, so don't lint at all if there are any such paths.
         if let Some(def_id) = path.res.opt_def_id()
             && let Some(local_def_id) = def_id.as_local()
-            && let Some(DefKind::Fn) = cx.tcx.opt_def_kind(def_id)
+            && cx.tcx.def_kind(def_id) == DefKind::Fn
             && cx.tcx.asyncness(def_id).is_async()
             && !is_node_func_call(cx.tcx.hir().get_parent(hir_id), path.span)
         {

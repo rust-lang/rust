@@ -4,7 +4,6 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, path_to_local};
 use rustc_errors::Applicability;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -208,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                     && let Some(did) = cx.qpath_res(qpath, recv.hir_id).opt_def_id()
                                     // make sure that the path indeed points to a fn-like item, so that
                                     // `fn_sig` does not ICE. (see #11065)
-                                    && cx.tcx.opt_def_kind(did).is_some_and(DefKind::is_fn_like) =>
+                                    && cx.tcx.def_kind(did).is_fn_like() =>
                             {
                                 Some((
                                     did,

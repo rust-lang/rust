@@ -7,5 +7,5 @@ LL |     let _ = x.map_or(Err("a"), Ok);
    = note: `-D clippy::option-map-or-err-ok` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_map_or_err_ok)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

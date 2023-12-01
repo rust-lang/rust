@@ -177,7 +177,7 @@ impl<'tcx> PassByRefOrValue {
                         _ => (),
                     }
 
-                    let ty = cx.tcx.erase_late_bound_regions(fn_sig.rebind(ty));
+                    let ty = cx.tcx.instantiate_bound_regions_with_erased(fn_sig.rebind(ty));
                     if is_copy(cx, ty)
                         && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
                         && size <= self.ref_min_size
@@ -225,7 +225,7 @@ impl<'tcx> PassByRefOrValue {
                             _ => continue,
                         }
                     }
-                    let ty = cx.tcx.erase_late_bound_regions(ty);
+                    let ty = cx.tcx.instantiate_bound_regions_with_erased(ty);
 
                     if is_copy(cx, ty)
                         && !is_self_ty(input)
@@ -279,7 +279,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
             return;
         }
 
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         match kind {
             FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {

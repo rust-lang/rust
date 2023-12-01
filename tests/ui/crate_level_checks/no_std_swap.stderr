@@ -11,5 +11,5 @@ LL | |     b = a;
    = note: `-D clippy::almost-swapped` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::almost_swapped)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

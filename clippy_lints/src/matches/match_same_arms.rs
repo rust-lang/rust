@@ -152,6 +152,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
 #[derive(Clone, Copy)]
 enum NormalizedPat<'a> {
     Wild,
+    Never,
     Struct(Option<DefId>, &'a [(Symbol, Self)]),
     Tuple(Option<DefId>, &'a [Self]),
     Or(&'a [Self]),
@@ -223,7 +224,7 @@ fn iter_matching_struct_fields<'a>(
     Iter(left.iter(), right.iter())
 }
 
-#[expect(clippy::similar_names)]
+#[expect(clippy::similar_names, clippy::too_many_lines)]
 impl<'a> NormalizedPat<'a> {
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
@@ -231,6 +232,7 @@ impl<'a> NormalizedPat<'a> {
             PatKind::Binding(.., Some(pat)) | PatKind::Box(pat) | PatKind::Ref(pat, _) => {
                 Self::from_pat(cx, arena, pat)
             },
+            PatKind::Never => Self::Never,
             PatKind::Struct(ref path, fields, _) => {
                 let fields =
                     arena.alloc_from_iter(fields.iter().map(|f| (f.ident.name, Self::from_pat(cx, arena, f.pat))));
@@ -334,7 +336,7 @@ impl<'a> NormalizedPat<'a> {
     /// type.
     fn has_overlapping_values(&self, other: &Self) -> bool {
         match (*self, *other) {
-            (Self::Wild, _) | (_, Self::Wild) => true,
+            (Self::Wild, _) | (_, Self::Wild) | (Self::Never, Self::Never) => true,
             (Self::Or(pats), ref other) | (ref other, Self::Or(pats)) => {
                 pats.iter().any(|pat| pat.has_overlapping_values(other))
             },

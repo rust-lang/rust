@@ -142,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             && let TyKind::Path(ty_path) = &imp.self_ty.kind
             && let Some(ty_id) = cx.qpath_res(ty_path, imp.self_ty.hir_id).opt_def_id()
             && let Some(local_id) = ty_id.as_local()
-            && let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id)
+            && let ty_hir_id = cx.tcx.local_def_id_to_hir_id(local_id)
             && !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id)
             && let Some(output) =
                 parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder())
