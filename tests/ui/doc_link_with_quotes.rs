@@ -11,6 +11,12 @@ pub fn foo() {
     bar()
 }
 
+/// Calls ["bar"] uselessly
+//~^ ERROR: possible intra-doc link using quotes instead of backticks
+pub fn foo2() {
+    bar()
+}
+
 /// # Examples
 /// This demonstrates issue \#8961
 /// ```

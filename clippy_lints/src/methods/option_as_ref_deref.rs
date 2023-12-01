@@ -99,10 +99,7 @@ pub(super) fn check(
         let hint = format!("{}.{method_hint}()", snippet(cx, as_ref_recv.span, ".."));
         let suggestion = format!("try using {method_hint} instead");
 
-        let msg = format!(
-            "called `{current_method}` on an Option value. This can be done more directly \
-            by calling `{hint}` instead"
-        );
+        let msg = format!("called `{current_method}` on an `Option` value");
         span_lint_and_sugg(
             cx,
             OPTION_AS_REF_DEREF,

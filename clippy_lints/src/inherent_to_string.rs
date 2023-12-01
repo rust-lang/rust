@@ -3,7 +3,7 @@ use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use clippy_utils::{return_ty, trait_ref_of_method};
 use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 use rustc_target::spec::abi::Abi;
 

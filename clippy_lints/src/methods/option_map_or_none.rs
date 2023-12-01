@@ -66,8 +66,7 @@ pub(super) fn check<'tcx>(
             && Some(id) == cx.tcx.lang_items().option_some_variant()
         {
             let func_snippet = snippet(cx, arg_char.span, "..");
-            let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
-               `map(..)` instead";
+            let msg = "called `map_or(None, ..)` on an `Option` value";
             return span_lint_and_sugg(
                 cx,
                 OPTION_MAP_OR_NONE,
@@ -80,8 +79,7 @@ pub(super) fn check<'tcx>(
         }
 
         let func_snippet = snippet(cx, map_arg.span, "..");
-        let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
-                       `and_then(..)` instead";
+        let msg = "called `map_or(None, ..)` on an `Option` value";
         span_lint_and_sugg(
             cx,
             OPTION_MAP_OR_NONE,
@@ -92,8 +90,7 @@ pub(super) fn check<'tcx>(
             Applicability::MachineApplicable,
         );
     } else if f_arg_is_some {
-        let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
-                       `ok()` instead";
+        let msg = "called `map_or(None, Some)` on a `Result` value";
         let self_snippet = snippet(cx, recv.span, "..");
         span_lint_and_sugg(
             cx,

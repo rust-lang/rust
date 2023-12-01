@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{self as hir, Expr, ExprKind, QPath};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{sym, Span};
 
@@ -118,7 +118,6 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
             if let Some(Ok(field)) = iter.next()
                 && iter.next().is_none()
                 && field.ty.kind.is_unit()
-                && field.ident.map_or(true, |name| name.as_str().starts_with('_'))
             {
                 span_lint_and_then(
                     cx,
@@ -158,7 +157,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
         {
             let mut iter = def.variants.iter().filter_map(|v| {
                 (matches!(v.data, hir::VariantData::Unit(_, _))
-                    && v.ident.as_str().starts_with('_')
                     && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id))
                     && !attr::contains_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive))
                 .then_some((v.def_id, v.span))
@@ -173,9 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Path(QPath::Resolved(None, p)) = &e.kind
-            && let [.., name] = p.segments
             && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), id) = p.res
-            && name.ident.as_str().starts_with('_')
         {
             let variant_id = cx.tcx.parent(id);
             let enum_id = cx.tcx.parent(variant_id);

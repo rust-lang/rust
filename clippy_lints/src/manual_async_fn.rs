@@ -7,7 +7,7 @@ use rustc_hir::{
     ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 
@@ -187,14 +187,11 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
 }
 
 fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str, String)> {
-    match output.kind {
-        TyKind::Tup(tys) if tys.is_empty() => {
-            let sugg = "remove the return type";
-            Some((sugg, String::new()))
-        },
-        _ => {
-            let sugg = "return the output of the future directly";
-            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {snip}")))
-        },
+    if let TyKind::Tup([]) = output.kind {
+        let sugg = "remove the return type";
+        Some((sugg, String::new()))
+    } else {
+        let sugg = "return the output of the future directly";
+        snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {snip}")))
     }
 }

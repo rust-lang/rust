@@ -15,23 +15,19 @@ fn main() {
         dbg!(item);
     }
 
-    {
-        let item = &(0..5);
+    for item in 0..5 {
         dbg!(item);
     }
 
-    {
-        let item = &mut (0..5);
+    for item in 0..5 {
         dbg!(item);
     }
 
-    {
-        let item = 0..5;
+    for item in 0..5 {
         dbg!(item);
     }
 
-    {
-        let item = 0..5;
+    for item in 0..5 {
         dbg!(item);
     }
 
