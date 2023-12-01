@@ -1,5 +1,7 @@
 use crate::spec::base::apple::{opts, Arch};
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions};
+use crate::spec::{
+    Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let llvm_target = "arm64-apple-ios14.0-macabi";
@@ -17,6 +19,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a12".into(),
             max_atomic_width: Some(128),
+            stack_probes: StackProbeType::Inline,
             frame_pointer: FramePointer::NonLeaf,
             ..base
         },

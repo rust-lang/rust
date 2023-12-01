@@ -1,11 +1,12 @@
 use crate::spec::base::apple::{macos_llvm_target, opts, Arch};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
+use crate::spec::{FramePointer, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64;
     let mut base = opts("macos", arch);
     base.cpu = "apple-m1".into();
     base.max_atomic_width = Some(128);
+    base.stack_probes = StackProbeType::Inline;
 
     // FIXME: The leak sanitizer currently fails the tests, see #88132.
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;
