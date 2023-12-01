@@ -468,7 +468,13 @@ impl Ipv4Addr {
     #[unstable(feature = "ip_bits", issue = "113744")]
     pub const BITS: u32 = 32;
 
-    /// Converts an IPv4 address into host byte order `u32`.
+    /// Converts an IPv4 address into a `u32` representation using native byte order.
+    ///
+    /// Although IPv4 addresses are big-endian, the `u32` value will use the target platform's
+    /// native byte order. That is, the `u32` value is an integer representation of the IPv4
+    /// address and not an integer interpretation of the IPv4 address's big-endian bitstring. This
+    /// means that the `u32` value masked with `0xffffff00` will set the last octet in the address
+    /// to 0, regardless of the target platform's endianness.
     ///
     /// # Examples
     ///
@@ -479,6 +485,16 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
     /// assert_eq!(0x12345678, addr.to_bits());
     /// ```
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
+    /// let addr_bits = addr.to_bits() & 0xffffff00;
+    /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x00), Ipv4Addr::from_bits(addr_bits));
+    ///
+    /// ```
     #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
     #[unstable(feature = "ip_bits", issue = "113744")]
     #[must_use]
@@ -487,7 +503,9 @@ impl Ipv4Addr {
         u32::from_be_bytes(self.octets)
     }
 
-    /// Converts a host byte order `u32` into an IPv4 address.
+    /// Converts a native byte order `u32` into an IPv4 address.
+    ///
+    /// See [`Ipv4Addr::to_bits`] for an explanation on endianness.
     ///
     /// # Examples
     ///
@@ -1224,7 +1242,13 @@ impl Ipv6Addr {
     #[unstable(feature = "ip_bits", issue = "113744")]
     pub const BITS: u32 = 128;
 
-    /// Converts an IPv6 address into host byte order `u128`.
+    /// Converts an IPv6 address into a `u128` representation using native byte order.
+    ///
+    /// Although IPv6 addresses are big-endian, the `u128` value will use the target platform's
+    /// native byte order. That is, the `u128` value is an integer representation of the IPv6
+    /// address and not an integer interpretation of the IPv6 address's big-endian bitstring. This
+    /// means that the `u128` value masked with `0xffffffffffffffffffffffffffff0000_u128` will set
+    /// the last segment in the address to 0, regardless of the target platform's endianness.
     ///
     /// # Examples
     ///
@@ -1238,6 +1262,24 @@ impl Ipv6Addr {
     /// );
     /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
     /// ```
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::new(
+    ///     0x1020, 0x3040, 0x5060, 0x7080,
+    ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+    /// );
+    /// let addr_bits = addr.to_bits() & 0xffffffffffffffffffffffffffff0000_u128;
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x1020, 0x3040, 0x5060, 0x7080,
+    ///         0x90A0, 0xB0C0, 0xD0E0, 0x0000,
+    ///     ),
+    ///     Ipv6Addr::from_bits(addr_bits));
+    ///
+    /// ```
     #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
     #[unstable(feature = "ip_bits", issue = "113744")]
     #[must_use]
@@ -1246,7 +1288,9 @@ impl Ipv6Addr {
         u128::from_be_bytes(self.octets)
     }
 
-    /// Converts a host byte order `u128` into an IPv6 address.
+    /// Converts a native byte order `u128` into an IPv6 address.
+    ///
+    /// See [`Ipv6Addr::to_bits`] for an explanation on endianness.
     ///
     /// # Examples
     ///
