@@ -18,9 +18,10 @@ use ide_db::{
     RootDatabase, SnippetCap, SymbolKind,
 };
 use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
+use text_edit::TextEdit;
 
 use crate::{
-    context::{DotAccess, PathCompletionCtx, PathKind, PatternContext},
+    context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{
         function::render_fn,
@@ -147,7 +148,42 @@ pub(crate) fn render_field(
         .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
-    item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
+
+    let is_field_access = matches!(dot_access.kind, DotAccessKind::Field { .. });
+    if !is_field_access || ty.is_fn() || ty.is_closure() {
+        let mut builder = TextEdit::builder();
+        // Using TextEdit, insert '(' before the struct name and ')' before the
+        // dot access, then comes the field name and optionally insert function
+        // call parens.
+
+        builder.replace(
+            ctx.source_range(),
+            field_with_receiver(db, receiver.as_ref(), &escaped_name).into(),
+        );
+
+        let expected_fn_type =
+            ctx.completion.expected_type.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
+
+        if !expected_fn_type {
+            if let Some(receiver) = &dot_access.receiver {
+                if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
+                    builder.insert(receiver.syntax().text_range().start(), "(".to_string());
+                    builder.insert(ctx.source_range().end(), ")".to_string());
+                }
+            }
+
+            let is_parens_needed =
+                !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+
+            if is_parens_needed {
+                builder.insert(ctx.source_range().end(), "()".to_string());
+            }
+        }
+
+        item.text_edit(builder.finish());
+    } else {
+        item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
+    }
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
             if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
@@ -1600,7 +1636,7 @@ fn main() {
     fn struct_field_method_ref() {
         check_kinds(
             r#"
-struct Foo { bar: u32 }
+struct Foo { bar: u32, qux: fn() }
 impl Foo { fn baz(&self) -> u32 { 0 } }
 
 fn foo(f: Foo) { let _: &u32 = f.b$0 }
@@ -1610,28 +1646,90 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                 [
                     CompletionItem {
                         label: "baz()",
-                        source_range: 98..99,
-                        delete: 98..99,
+                        source_range: 109..110,
+                        delete: 109..110,
                         insert: "baz()$0",
                         kind: Method,
                         lookup: "baz",
                         detail: "fn(&self) -> u32",
-                        ref_match: "&@96",
+                        ref_match: "&@107",
                     },
                     CompletionItem {
                         label: "bar",
-                        source_range: 98..99,
-                        delete: 98..99,
+                        source_range: 109..110,
+                        delete: 109..110,
                         insert: "bar",
                         kind: SymbolKind(
                             Field,
                         ),
                         detail: "u32",
-                        ref_match: "&@96",
+                        ref_match: "&@107",
+                    },
+                    CompletionItem {
+                        label: "qux",
+                        source_range: 109..110,
+                        text_edit: TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "(",
+                                    delete: 107..107,
+                                },
+                                Indel {
+                                    insert: "qux)()",
+                                    delete: 109..110,
+                                },
+                            ],
+                        },
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "fn()",
                     },
                 ]
             "#]],
         );
+    }
+
+    #[test]
+    fn expected_fn_type_ref() {
+        check_kinds(
+            r#"
+struct S { field: fn() }
+
+fn foo() {
+    let foo: fn() = S { fields: || {}}.fi$0;
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Field)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "field",
+                        source_range: 76..78,
+                        delete: 76..78,
+                        insert: "field",
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "fn()",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: Some(
+                                Exact,
+                            ),
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                        },
+                    },
+                ]
+            "#]],
+        )
     }
 
     #[test]
