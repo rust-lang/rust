@@ -38,9 +38,10 @@ impl ProcMacroExpander {
         mixed_site: SpanData,
     ) -> ExpandResult<tt::Subtree> {
         match self.proc_macro_id {
-            ProcMacroId(DUMMY_ID) => {
-                ExpandResult::new(tt::Subtree::empty(), ExpandError::UnresolvedProcMacro(def_crate))
-            }
+            ProcMacroId(DUMMY_ID) => ExpandResult::new(
+                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                ExpandError::UnresolvedProcMacro(def_crate),
+            ),
             ProcMacroId(id) => {
                 let proc_macros = db.proc_macros();
                 let proc_macros = match proc_macros.get(&def_crate) {
@@ -48,7 +49,7 @@ impl ProcMacroExpander {
                     Some(Err(_)) | None => {
                         never!("Non-dummy expander even though there are no proc macros");
                         return ExpandResult::new(
-                            tt::Subtree::empty(),
+                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                             ExpandError::other("Internal error"),
                         );
                     }
@@ -62,7 +63,7 @@ impl ProcMacroExpander {
                             id
                         );
                         return ExpandResult::new(
-                            tt::Subtree::empty(),
+                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                             ExpandError::other("Internal error"),
                         );
                     }
@@ -82,9 +83,10 @@ impl ProcMacroExpander {
                             ExpandResult { value: tt.clone(), err: Some(ExpandError::other(text)) }
                         }
                         ProcMacroExpansionError::System(text)
-                        | ProcMacroExpansionError::Panic(text) => {
-                            ExpandResult::new(tt::Subtree::empty(), ExpandError::other(text))
-                        }
+                        | ProcMacroExpansionError::Panic(text) => ExpandResult::new(
+                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                            ExpandError::other(text),
+                        ),
                     },
                 }
             }

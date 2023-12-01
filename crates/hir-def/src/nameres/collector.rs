@@ -5,7 +5,6 @@
 
 use std::{cmp::Ordering, iter, mem};
 
-use ::tt::Span;
 use base_db::{span::SyntaxContextId, CrateId, Dependency, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -85,7 +84,17 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                     .enumerate()
                     .map(|(idx, it)| {
                         // FIXME: a hacky way to create a Name from string.
-                        let name = tt::Ident { text: it.name.clone(), span: tt::SpanData::DUMMY };
+                        let name = tt::Ident {
+                            text: it.name.clone(),
+                            span: tt::SpanData {
+                                range: syntax::TextRange::empty(syntax::TextSize::new(0)),
+                                anchor: base_db::span::SpanAnchor {
+                                    file_id: FileId::BOGUS,
+                                    ast_id: base_db::span::ROOT_ERASED_FILE_AST_ID,
+                                },
+                                ctx: SyntaxContextId::ROOT,
+                            },
+                        };
                         (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
                     })
                     .collect())
@@ -476,7 +485,7 @@ impl DefCollector<'_> {
                         directive.module_id,
                         MacroCallKind::Attr {
                             ast_id: ast_id.ast_id,
-                            attr_args: Arc::new(tt::Subtree::empty()),
+                            attr_args: None,
                             invoc_attr_index: attr.id,
                         },
                         attr.path().clone(),
@@ -2079,7 +2088,18 @@ impl ModCollector<'_, '_> {
             let name = match attrs.by_key("rustc_builtin_macro").string_value() {
                 Some(it) => {
                     // FIXME: a hacky way to create a Name from string.
-                    name = tt::Ident { text: it.clone(), span: tt::SpanData::DUMMY }.as_name();
+                    name = tt::Ident {
+                        text: it.clone(),
+                        span: tt::SpanData {
+                            range: syntax::TextRange::empty(syntax::TextSize::new(0)),
+                            anchor: base_db::span::SpanAnchor {
+                                file_id: FileId::BOGUS,
+                                ast_id: base_db::span::ROOT_ERASED_FILE_AST_ID,
+                            },
+                            ctx: SyntaxContextId::ROOT,
+                        },
+                    }
+                    .as_name();
                     &name
                 }
                 None => {

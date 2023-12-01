@@ -76,7 +76,8 @@ impl<S: Span> Bindings<S> {
     fn push_optional(&mut self, name: &SmolStr) {
         // FIXME: Do we have a better way to represent an empty token ?
         // Insert an empty subtree for empty token
-        let tt = tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: vec![] }.into();
+        let tt =
+            tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] }.into();
         self.inner.insert(name.clone(), Binding::Fragment(Fragment::Tokens(tt)));
     }
 
@@ -816,7 +817,7 @@ fn match_meta_var<S: Span>(
                             match neg {
                                 None => lit.into(),
                                 Some(neg) => tt::TokenTree::Subtree(tt::Subtree {
-                                    delimiter: tt::Delimiter::unspecified(),
+                                    delimiter: tt::Delimiter::dummy_invisible(),
                                     token_trees: vec![neg, lit.into()],
                                 }),
                             }
@@ -849,7 +850,7 @@ impl<S: Span> MetaTemplate<S> {
         OpDelimitedIter {
             inner: &self.0,
             idx: 0,
-            delimited: delimited.unwrap_or(tt::Delimiter::UNSPECIFIED),
+            delimited: delimited.unwrap_or(tt::Delimiter::DUMMY_INVISIBLE),
         }
     }
 }
@@ -947,7 +948,7 @@ impl<S: Span> TtIter<'_, S> {
                 let puncts = self.expect_glued_punct()?;
                 let token_trees = puncts.into_iter().map(|p| tt::Leaf::Punct(p).into()).collect();
                 Ok(tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: tt::Delimiter::unspecified(),
+                    delimiter: tt::Delimiter::dummy_invisible(),
                     token_trees,
                 }))
             }
@@ -964,7 +965,7 @@ impl<S: Span> TtIter<'_, S> {
         let ident = self.expect_ident_or_underscore()?;
 
         Ok(tt::Subtree {
-            delimiter: tt::Delimiter::unspecified(),
+            delimiter: tt::Delimiter::dummy_invisible(),
             token_trees: vec![
                 tt::Leaf::Punct(*punct).into(),
                 tt::Leaf::Ident(ident.clone()).into(),

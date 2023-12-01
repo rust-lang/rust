@@ -62,12 +62,14 @@ pub struct ExpandMacro {
     pub current_dir: Option<String>,
     /// marker for serde skip stuff
     #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
+    #[serde(default)]
     pub has_global_spans: ExpnGlobals,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct ExpnGlobals {
     #[serde(skip_serializing)]
+    #[serde(default)]
     pub serialize: bool,
     pub def_site: usize,
     pub call_site: usize,

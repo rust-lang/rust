@@ -16,6 +16,7 @@ use ide_db::{
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
+use tt::DelimSpan;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -417,11 +418,11 @@ impl ProcMacroExpander for EmptyExpander {
         _: &tt::Subtree<SpanData>,
         _: Option<&tt::Subtree<SpanData>>,
         _: &Env,
-        _: SpanData,
+        call_site: SpanData,
         _: SpanData,
         _: SpanData,
     ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
-        Ok(tt::Subtree::empty())
+        Ok(tt::Subtree::empty(DelimSpan { open: call_site, close: call_site }))
     }
 }
 

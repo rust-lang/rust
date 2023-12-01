@@ -175,7 +175,7 @@ impl<'a, S: Span> TtIter<'a, S> {
         let res = match res.len() {
             0 | 1 => res.pop(),
             _ => Some(tt::TokenTree::Subtree(tt::Subtree {
-                delimiter: tt::Delimiter::unspecified(),
+                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
                 token_trees: res,
             })),
         };

@@ -88,7 +88,7 @@ impl<S: Span> Bindings<S> {
                     // FIXME: Meta and Item should get proper defaults
                     MetaVarKind::Meta | MetaVarKind::Item | MetaVarKind::Tt | MetaVarKind::Vis => {
                         Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
-                            delimiter: tt::Delimiter::UNSPECIFIED,
+                            delimiter: tt::Delimiter::DUMMY_INVISIBLE,
                             token_trees: vec![],
                         }))
                     }
@@ -292,7 +292,7 @@ fn expand_subtree<S: Span>(
     let tts = arena.drain(start_elements..).collect();
     ExpandResult {
         value: tt::Subtree {
-            delimiter: delimiter.unwrap_or_else(tt::Delimiter::unspecified),
+            delimiter: delimiter.unwrap_or_else(tt::Delimiter::dummy_invisible),
             token_trees: tts,
         },
         err,
@@ -325,7 +325,7 @@ fn expand_var<S: Span>(
             // ```
             // We just treat it a normal tokens
             let tt = tt::Subtree {
-                delimiter: tt::Delimiter::UNSPECIFIED,
+                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
                 token_trees: vec![
                     tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, span: id })
                         .into(),
@@ -336,7 +336,10 @@ fn expand_var<S: Span>(
             ExpandResult::ok(Fragment::Tokens(tt))
         }
         Err(e) => ExpandResult {
-            value: Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree::empty())),
+            value: Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree::empty(tt::DelimSpan {
+                open: S::DUMMY,
+                close: S::DUMMY,
+            }))),
             err: Some(e),
         },
     }
@@ -378,8 +381,11 @@ fn expand_repeat<S: Span>(
             );
             return ExpandResult {
                 value: Fragment::Tokens(
-                    tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] }
-                        .into(),
+                    tt::Subtree {
+                        delimiter: tt::Delimiter::dummy_invisible(),
+                        token_trees: vec![],
+                    }
+                    .into(),
                 ),
                 err: Some(ExpandError::LimitExceeded),
             };
@@ -390,7 +396,7 @@ fn expand_repeat<S: Span>(
             continue;
         }
 
-        t.delimiter = tt::Delimiter::UNSPECIFIED;
+        t.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
         push_subtree(&mut buf, t);
 
         if let Some(sep) = separator {
@@ -424,7 +430,7 @@ fn expand_repeat<S: Span>(
 
     // Check if it is a single token subtree without any delimiter
     // e.g {Delimiter:None> ['>'] /Delimiter:None>}
-    let tt = tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: buf }.into();
+    let tt = tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: buf }.into();
 
     if RepeatKind::OneOrMore == kind && counter == 0 {
         return ExpandResult {

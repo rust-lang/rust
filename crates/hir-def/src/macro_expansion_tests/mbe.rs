@@ -138,7 +138,7 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    builtin#FileId(0):0@0..0\0# ##FileId(0):0@0..0\0#format_args#FileId(0):0@0..0\0# (#FileId(0):3@56..57\0#"{} {} {}"#FileId(0):3@57..67\0#,#FileId(0):3@67..68\0# format_args#FileId(0):3@69..80\0#!#FileId(0):3@80..81\0#(#FileId(0):3@81..82\0#"{}"#FileId(0):3@82..86\0#,#FileId(0):3@86..87\0# 0#FileId(0):3@88..89\0#)#FileId(0):3@89..90\0#,#FileId(0):3@90..91\0# foo#FileId(0):3@92..95\0#,#FileId(0):3@95..96\0# identity#FileId(0):3@97..105\0#!#FileId(0):3@105..106\0#(#FileId(0):3@106..107\0#10#FileId(0):3@107..109\0#)#FileId(0):3@109..110\0#,#FileId(0):3@110..111\0# "bar"#FileId(0):3@112..117\0#)#FileId(0):3@117..118\0#
+    builtin#FileId(0):3@23..118\3# ##FileId(0):3@23..118\3#format_args#FileId(0):3@23..118\3# (#FileId(0):3@56..57\0#"{} {} {}"#FileId(0):3@57..67\0#,#FileId(0):3@67..68\0# format_args#FileId(0):3@69..80\0#!#FileId(0):3@80..81\0#(#FileId(0):3@81..82\0#"{}"#FileId(0):3@82..86\0#,#FileId(0):3@86..87\0# 0#FileId(0):3@88..89\0#)#FileId(0):3@89..90\0#,#FileId(0):3@90..91\0# foo#FileId(0):3@92..95\0#,#FileId(0):3@95..96\0# identity#FileId(0):3@97..105\0#!#FileId(0):3@105..106\0#(#FileId(0):3@106..107\0#10#FileId(0):3@107..109\0#)#FileId(0):3@109..110\0#,#FileId(0):3@110..111\0# "bar"#FileId(0):3@112..117\0#)#FileId(0):3@117..118\0#
 }
 
 "##]],

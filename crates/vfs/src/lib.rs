@@ -62,6 +62,11 @@ pub use paths::{AbsPath, AbsPathBuf};
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct FileId(pub u32);
 
+impl FileId {
+    /// Think twice about using this. If this ends up in a wrong place it will cause panics!
+    pub const BOGUS: FileId = FileId(u32::MAX);
+}
+
 /// safe because `FileId` is a newtype of `u32`
 impl nohash_hasher::IsEnabled for FileId {}
 

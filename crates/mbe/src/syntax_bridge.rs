@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
-    AstToken, NodeOrToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
+    AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
@@ -142,30 +142,10 @@ where
     tree_sink.finish()
 }
 
-pub fn map_from_syntax_node<Anchor, Ctx>(
-    node: &SyntaxNode,
-    anchor: Anchor,
-    anchor_offset: TextSize,
-) -> TokenMap<SpanData<Anchor, Ctx>>
-where
-    Anchor: Copy,
-    SpanData<Anchor, Ctx>: Span,
-    Ctx: SyntaxContext,
-{
-    let mut map = TokenMap::empty();
-    node.descendants_with_tokens().filter_map(NodeOrToken::into_token).for_each(|t| {
-        map.push(
-            t.text_range().start(),
-            SpanData { range: t.text_range() - anchor_offset, anchor, ctx: Ctx::DUMMY },
-        );
-    });
-    map.finish();
-    map
-}
-
 /// Convert a string to a `TokenTree`
 pub fn parse_to_token_tree<Anchor, Ctx>(
     anchor: Anchor,
+    ctx: Ctx,
     text: &str,
 ) -> Option<tt::Subtree<SpanData<Anchor, Ctx>>>
 where
@@ -177,7 +157,7 @@ where
     if lexed.errors().next().is_some() {
         return None;
     }
-    let mut conv = RawConverter { lexed, pos: 0, anchor };
+    let mut conv = RawConverter { lexed, pos: 0, anchor, ctx };
     Some(convert_tokens(&mut conv))
 }
 
@@ -220,7 +200,7 @@ pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::
 
     if iter.peek_n(0).is_some() {
         res.push(tt::Subtree {
-            delimiter: tt::Delimiter::unspecified(),
+            delimiter: tt::Delimiter::DUMMY_INVISIBLE,
             token_trees: iter.cloned().collect(),
         });
     }
@@ -233,7 +213,7 @@ where
     C: TokenConverter<S>,
     S: Span,
 {
-    let entry = tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: vec![] };
+    let entry = tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] };
     let mut stack = NonEmptyVec::new(entry);
 
     while let Some((token, abs_range)) = conv.bump() {
@@ -463,10 +443,11 @@ fn convert_doc_comment<S: Copy>(
 }
 
 /// A raw token (straight from lexer) converter
-struct RawConverter<'a, Anchor> {
+struct RawConverter<'a, Anchor, Ctx> {
     lexed: parser::LexedStr<'a>,
     pos: usize,
     anchor: Anchor,
+    ctx: Ctx,
 }
 /// A raw token (straight from lexer) converter that gives every token the same span.
 struct StaticRawConverter<'a, S> {
@@ -499,16 +480,16 @@ trait TokenConverter<S>: Sized {
     fn span_for(&self, range: TextRange) -> S;
 }
 
-impl<Anchor, S> SrcToken<RawConverter<'_, Anchor>, S> for usize {
-    fn kind(&self, ctx: &RawConverter<'_, Anchor>) -> SyntaxKind {
+impl<Anchor, S, Ctx> SrcToken<RawConverter<'_, Anchor, Ctx>, S> for usize {
+    fn kind(&self, ctx: &RawConverter<'_, Anchor, Ctx>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
 
-    fn to_char(&self, ctx: &RawConverter<'_, Anchor>) -> Option<char> {
+    fn to_char(&self, ctx: &RawConverter<'_, Anchor, Ctx>) -> Option<char> {
         ctx.lexed.text(*self).chars().next()
     }
 
-    fn to_text(&self, ctx: &RawConverter<'_, Anchor>) -> SmolStr {
+    fn to_text(&self, ctx: &RawConverter<'_, Anchor, Ctx>) -> SmolStr {
         ctx.lexed.text(*self).into()
     }
 }
@@ -528,7 +509,7 @@ impl<S: Span> SrcToken<StaticRawConverter<'_, S>, S> for usize {
 }
 
 impl<Anchor: Copy, Ctx: SyntaxContext> TokenConverter<SpanData<Anchor, Ctx>>
-    for RawConverter<'_, Anchor>
+    for RawConverter<'_, Anchor, Ctx>
 where
     SpanData<Anchor, Ctx>: Span,
 {
@@ -563,7 +544,7 @@ where
     }
 
     fn span_for(&self, range: TextRange) -> SpanData<Anchor, Ctx> {
-        SpanData { range, anchor: self.anchor, ctx: Ctx::DUMMY }
+        SpanData { range, anchor: self.anchor, ctx: self.ctx }
     }
 }
 

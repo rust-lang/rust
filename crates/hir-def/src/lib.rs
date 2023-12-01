@@ -1351,11 +1351,11 @@ fn attr_macro_as_call_id(
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt)) => {
             let mut tt = tt.as_ref().clone();
-            tt.delimiter = tt::Delimiter::UNSPECIFIED;
-            tt
+            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+            Some(tt)
         }
 
-        _ => tt::Subtree::empty(),
+        _ => None,
     };
 
     def.as_lazy_macro(
@@ -1363,7 +1363,7 @@ fn attr_macro_as_call_id(
         krate,
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
-            attr_args: Arc::new(arg),
+            attr_args: arg.map(Arc::new),
             invoc_attr_index: macro_attr.id,
         },
         macro_attr.ctxt,

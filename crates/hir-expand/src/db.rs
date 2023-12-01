@@ -1,11 +1,6 @@
 //! Defines database & queries for macro expansion.
 
-use ::tt::{SpanAnchor as _, SyntaxContext};
-use base_db::{
-    salsa,
-    span::{SpanAnchor, SyntaxContextId},
-    CrateId, Edition, FileId, SourceDatabase,
-};
+use base_db::{salsa, span::SyntaxContextId, CrateId, Edition, FileId, SourceDatabase};
 use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
@@ -53,7 +48,7 @@ impl DeclarativeMacroExpander {
     ) -> ExpandResult<tt::Subtree> {
         match self.mac.err() {
             Some(e) => ExpandResult::new(
-                tt::Subtree::empty(),
+                tt::Subtree::empty(tt::DelimSpan::DUMMY),
                 ExpandError::other(format!("invalid macro definition: {e}")),
             ),
             None => self
@@ -66,7 +61,7 @@ impl DeclarativeMacroExpander {
     pub fn expand_unhygienic(&self, tt: tt::Subtree) -> ExpandResult<tt::Subtree> {
         match self.mac.err() {
             Some(e) => ExpandResult::new(
-                tt::Subtree::empty(),
+                tt::Subtree::empty(tt::DelimSpan::DUMMY),
                 ExpandError::other(format!("invalid macro definition: {e}")),
             ),
             None => self.mac.expand(&tt, |_| ()).map_err(Into::into),
@@ -191,7 +186,7 @@ pub fn expand_speculative(
 ) -> Option<(SyntaxNode, SyntaxToken)> {
     let loc = db.lookup_intern_macro_call(actual_macro_call);
 
-    let span_map = RealSpanMap::absolute(SpanAnchor::DUMMY.file_id);
+    let span_map = RealSpanMap::absolute(FileId::BOGUS);
     let span_map = SpanMapRef::RealSpanMap(&span_map);
 
     // Build the subtree and token mapping for the speculative args
@@ -235,7 +230,7 @@ pub fn expand_speculative(
             match attr.token_tree() {
                 Some(token_tree) => {
                     let mut tree = syntax_node_to_token_tree(token_tree.syntax(), span_map);
-                    tree.delimiter = tt::Delimiter::UNSPECIFIED;
+                    tree.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
 
                     Some(tree)
                 }
@@ -249,7 +244,7 @@ pub fn expand_speculative(
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => {
-            tt.delimiter = tt::Delimiter::UNSPECIFIED;
+            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
             let call_site = loc.span(db);
             expander.expand(
                 db,
@@ -263,7 +258,7 @@ pub fn expand_speculative(
             )
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
-            pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?)
+            pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?, loc.call_site)
         }
         MacroDefKind::BuiltInDerive(expander, ..) => {
             // this cast is a bit sus, can we avoid losing the typedness here?
@@ -286,11 +281,7 @@ pub fn expand_speculative(
 
     let syntax_node = node.syntax_node();
     let token = rev_tmap
-        .ranges_with_span(tt::SpanData {
-            range: token_to_map.text_range(),
-            anchor: SpanAnchor::DUMMY,
-            ctx: SyntaxContextId::DUMMY,
-        })
+        .ranges_with_span(span_map.span_for_range(token_to_map.text_range()))
         .filter_map(|range| syntax_node.covering_element(range).into_token())
         .min_by_key(|t| {
             // prefer tokens of the same kind and text
@@ -453,7 +444,7 @@ fn macro_arg(
 
         if loc.def.is_proc_macro() {
             // proc macros expect their inputs without parentheses, MBEs expect it with them included
-            tt.delimiter = tt::Delimiter::UNSPECIFIED;
+            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
         }
 
         if matches!(loc.def.kind, MacroDefKind::BuiltInEager(..)) {
@@ -611,7 +602,7 @@ fn macro_expand(
             let Some((macro_arg, undo_info)) = value else {
                 return ExpandResult {
                     value: Arc::new(tt::Subtree {
-                        delimiter: tt::Delimiter::UNSPECIFIED,
+                        delimiter: tt::Delimiter::DUMMY_INVISIBLE,
                         token_trees: Vec::new(),
                     }),
                     // FIXME: We should make sure to enforce an invariant that invalid macro
@@ -683,7 +674,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
     let Some((macro_arg, undo_info)) = db.macro_arg(id).value else {
         return ExpandResult {
             value: Arc::new(tt::Subtree {
-                delimiter: tt::Delimiter::UNSPECIFIED,
+                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
                 token_trees: Vec::new(),
             }),
             // FIXME: We should make sure to enforce an invariant that invalid macro
@@ -698,7 +689,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
     };
 
     let attr_arg = match &loc.kind {
-        MacroCallKind::Attr { attr_args, .. } => Some(&**attr_args),
+        MacroCallKind::Attr { attr_args: Some(attr_args), .. } => Some(&**attr_args),
         _ => None,
     };
 
@@ -749,7 +740,7 @@ fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<Arc<tt::Subtree>>
     if TOKEN_LIMIT.check(count).is_err() {
         Err(ExpandResult {
             value: Arc::new(tt::Subtree {
-                delimiter: tt::Delimiter::UNSPECIFIED,
+                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
                 token_trees: vec![],
             }),
             err: Some(ExpandError::other(format!(

@@ -23,18 +23,11 @@ pub struct SpanData<Anchor, Ctx> {
 }
 
 impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
-    type Anchor = Anchor;
     const DUMMY: Self = SpanData {
         range: TextRange::empty(TextSize::new(0)),
         anchor: Anchor::DUMMY,
         ctx: Ctx::DUMMY,
     };
-    fn anchor(self) -> Self::Anchor {
-        self.anchor
-    }
-    fn mk(anchor: Self::Anchor, range: TextRange) -> Self {
-        SpanData { anchor, range, ctx: Ctx::DUMMY }
-    }
 }
 
 pub trait SpanAnchor:
@@ -46,9 +39,6 @@ pub trait SpanAnchor:
 // FIXME: Get rid of this trait?
 pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
     const DUMMY: Self;
-    type Anchor: Copy + fmt::Debug + Eq + std::hash::Hash;
-    fn anchor(self) -> Self::Anchor;
-    fn mk(anchor: Self::Anchor, range: TextRange) -> Self;
 }
 
 pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
@@ -62,15 +52,27 @@ pub enum TokenTree<S> {
 }
 impl_from!(Leaf<S>, Subtree<S> for TokenTree);
 impl<S: Span> TokenTree<S> {
-    pub const fn empty() -> Self {
-        Self::Subtree(Subtree { delimiter: Delimiter::UNSPECIFIED, token_trees: vec![] })
+    pub const fn empty(span: S) -> Self {
+        Self::Subtree(Subtree {
+            delimiter: Delimiter::invisible_spanned(span),
+            token_trees: vec![],
+        })
     }
 
     pub fn subtree_or_wrap(self) -> Subtree<S> {
         match self {
             TokenTree::Leaf(_) => {
-                Subtree { delimiter: Delimiter::UNSPECIFIED, token_trees: vec![self] }
+                Subtree { delimiter: Delimiter::DUMMY_INVISIBLE, token_trees: vec![self] }
             }
+            TokenTree::Subtree(s) => s,
+        }
+    }
+    pub fn subtree_or_wrap2(self, span: DelimSpan<S>) -> Subtree<S> {
+        match self {
+            TokenTree::Leaf(_) => Subtree {
+                delimiter: Delimiter::invisible_delim_spanned(span),
+                token_trees: vec![self],
+            },
             TokenTree::Subtree(s) => s,
         }
     }
@@ -101,8 +103,8 @@ pub struct Subtree<S> {
 }
 
 impl<S: Span> Subtree<S> {
-    pub const fn empty() -> Self {
-        Subtree { delimiter: Delimiter::unspecified(), token_trees: vec![] }
+    pub const fn empty(span: DelimSpan<S>) -> Self {
+        Subtree { delimiter: Delimiter::invisible_delim_spanned(span), token_trees: vec![] }
     }
 
     pub fn visit_ids(&mut self, f: &mut impl FnMut(S) -> S) {
@@ -119,6 +121,16 @@ impl<S: Span> Subtree<S> {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct DelimSpan<S> {
+    pub open: S,
+    pub close: S,
+}
+
+impl<S: Span> DelimSpan<S> {
+    pub const DUMMY: Self = Self { open: S::DUMMY, close: S::DUMMY };
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Delimiter<S> {
     pub open: S,
@@ -127,10 +139,23 @@ pub struct Delimiter<S> {
 }
 
 impl<S: Span> Delimiter<S> {
-    pub const UNSPECIFIED: Self =
+    pub const DUMMY_INVISIBLE: Self =
         Self { open: S::DUMMY, close: S::DUMMY, kind: DelimiterKind::Invisible };
-    pub const fn unspecified() -> Self {
-        Self::UNSPECIFIED
+
+    pub const fn dummy_invisible() -> Self {
+        Self::DUMMY_INVISIBLE
+    }
+
+    pub const fn invisible_spanned(span: S) -> Self {
+        Delimiter { open: span, close: span, kind: DelimiterKind::Invisible }
+    }
+
+    pub const fn invisible_delim_spanned(span: DelimSpan<S>) -> Self {
+        Delimiter { open: span.open, close: span.close, kind: DelimiterKind::Invisible }
+    }
+
+    pub fn delim_span(&self) -> DelimSpan<S> {
+        DelimSpan { open: self.open, close: self.close }
     }
 }
 

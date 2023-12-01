@@ -663,7 +663,7 @@ impl<'a> AssocItemCollector<'a> {
                             self.module_id.local_id,
                             MacroCallKind::Attr {
                                 ast_id,
-                                attr_args: Arc::new(tt::Subtree::empty()),
+                                attr_args: None,
                                 invoc_attr_index: attr.id,
                             },
                             attr.path().clone(),

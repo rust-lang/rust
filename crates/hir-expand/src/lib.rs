@@ -61,6 +61,7 @@ pub mod tt {
     pub use tt::{DelimiterKind, Spacing, Span, SpanAnchor};
 
     pub type Delimiter = ::tt::Delimiter<SpanData>;
+    pub type DelimSpan = ::tt::DelimSpan<SpanData>;
     pub type Subtree = ::tt::Subtree<SpanData>;
     pub type Leaf = ::tt::Leaf<SpanData>;
     pub type Literal = ::tt::Literal<SpanData>;
@@ -160,7 +161,7 @@ pub enum MacroCallKind {
     },
     Attr {
         ast_id: AstId<ast::Item>,
-        attr_args: Arc<tt::Subtree>,
+        attr_args: Option<Arc<tt::Subtree>>,
         /// Syntactical index of the invoking `#[attribute]`.
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
@@ -699,7 +700,7 @@ impl ExpansionInfo {
         let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
             (
                 Arc::new(tt::Subtree {
-                    delimiter: tt::Delimiter::UNSPECIFIED,
+                    delimiter: tt::Delimiter::DUMMY_INVISIBLE,
                     token_trees: Vec::new(),
                 }),
                 SyntaxFixupUndoInfo::NONE,

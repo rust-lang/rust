@@ -130,7 +130,7 @@ impl RawAttrs {
                     let attrs = parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(
                         |(idx, attr)| {
                             let tree = Subtree {
-                                delimiter: tt::Delimiter::unspecified(),
+                                delimiter: tt::Delimiter::dummy_invisible(),
                                 token_trees: attr.to_vec(),
                             };
                             Attr::from_tt(db, &tree, index.with_cfg_attr(idx))
@@ -296,7 +296,7 @@ impl Attr {
                 // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation
                 // here or maybe just parse a mod path from a token tree directly
                 let subtree = tt::Subtree {
-                    delimiter: tt::Delimiter::unspecified(),
+                    delimiter: tt::Delimiter::dummy_invisible(),
                     token_trees: tts.to_vec(),
                 };
                 let (parse, span_map) =

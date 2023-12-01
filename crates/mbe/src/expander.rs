@@ -49,7 +49,7 @@ pub(crate) fn expand_rules<S: Span>(
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
-            tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: vec![] },
+            tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] },
             ExpandError::NoMatchingRule,
         )
     }

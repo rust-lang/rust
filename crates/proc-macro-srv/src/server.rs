@@ -426,8 +426,6 @@ impl LiteralFormatter {
 
 #[cfg(test)]
 mod tests {
-    use ::tt::Span;
-
     use super::*;
 
     #[test]
@@ -436,16 +434,16 @@ mod tests {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "struct".into(),
-                    span: tt::TokenId::DUMMY,
+                    span: tt::TokenId(0),
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "T".into(),
-                    span: tt::TokenId::DUMMY,
+                    span: tt::TokenId(0),
                 })),
                 tt::TokenTree::Subtree(tt::Subtree {
                     delimiter: tt::Delimiter {
-                        open: tt::TokenId::DUMMY,
-                        close: tt::TokenId::DUMMY,
+                        open: tt::TokenId(0),
+                        close: tt::TokenId(0),
                         kind: tt::DelimiterKind::Brace,
                     },
                     token_trees: vec![],
@@ -460,30 +458,30 @@ mod tests {
     fn test_ra_server_from_str() {
         let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
             delimiter: tt::Delimiter {
-                open: tt::TokenId::DUMMY,
-                close: tt::TokenId::DUMMY,
+                open: tt::TokenId(0),
+                close: tt::TokenId(0),
                 kind: tt::DelimiterKind::Parenthesis,
             },
             token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "a".into(),
-                span: tt::TokenId::DUMMY,
+                span: tt::TokenId(0),
             }))],
         });
 
-        let t1 = TokenStream::from_str("(a)", tt::TokenId::DUMMY).unwrap();
+        let t1 = TokenStream::from_str("(a)", tt::TokenId(0)).unwrap();
         assert_eq!(t1.token_trees.len(), 1);
         assert_eq!(t1.token_trees[0], subtree_paren_a);
 
-        let t2 = TokenStream::from_str("(a);", tt::TokenId::DUMMY).unwrap();
+        let t2 = TokenStream::from_str("(a);", tt::TokenId(0)).unwrap();
         assert_eq!(t2.token_trees.len(), 2);
         assert_eq!(t2.token_trees[0], subtree_paren_a);
 
-        let underscore = TokenStream::from_str("_", tt::TokenId::DUMMY).unwrap();
+        let underscore = TokenStream::from_str("_", tt::TokenId(0)).unwrap();
         assert_eq!(
             underscore.token_trees[0],
             tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "_".into(),
-                span: tt::TokenId::DUMMY,
+                span: tt::TokenId(0),
             }))
         );
     }

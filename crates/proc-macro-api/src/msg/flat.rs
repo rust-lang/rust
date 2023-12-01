@@ -56,16 +56,6 @@ impl std::fmt::Debug for TokenId {
 
 impl tt::Span for TokenId {
     const DUMMY: Self = TokenId(!0);
-
-    type Anchor = ();
-
-    fn anchor(self) -> Self::Anchor {
-        ()
-    }
-
-    fn mk(_: Self::Anchor, _: text_size::TextRange) -> Self {
-        Self::DUMMY
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

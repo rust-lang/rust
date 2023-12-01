@@ -18,10 +18,7 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use base_db::{
-    span::{SpanAnchor, SyntaxContextId},
-    CrateId,
-};
+use base_db::{span::SyntaxContextId, CrateId, FileId};
 use rustc_hash::FxHashMap;
 use syntax::{ted, Parse, SyntaxNode, TextRange, TextSize, WalkEvent};
 use triomphe::Arc;
@@ -79,12 +76,10 @@ pub fn expand_eager_macro_input(
     };
 
     // FIXME: Spans!
-    let mut subtree = mbe::syntax_node_to_token_tree(
-        &expanded_eager_input,
-        RealSpanMap::absolute(<SpanAnchor as tt::SpanAnchor>::DUMMY.file_id),
-    );
+    let mut subtree =
+        mbe::syntax_node_to_token_tree(&expanded_eager_input, RealSpanMap::absolute(FileId::BOGUS));
 
-    subtree.delimiter = crate::tt::Delimiter::UNSPECIFIED;
+    subtree.delimiter = crate::tt::Delimiter::DUMMY_INVISIBLE;
 
     let loc = MacroCallLoc {
         def,

@@ -2,7 +2,6 @@
 
 use expect_test::Expect;
 use proc_macro_api::msg::TokenId;
-use tt::Span;
 
 use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
 
@@ -25,7 +24,9 @@ pub fn assert_expand_attr(macro_name: &str, ra_fixture: &str, attr_args: &str, e
 }
 
 fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect: Expect) {
-    let call_site = TokenId::DUMMY;
+    let def_site = TokenId(0);
+    let call_site = TokenId(1);
+    let mixed_site = TokenId(2);
     let path = proc_macro_test_dylib_path();
     let expander = dylib::Expander::new(&path).unwrap();
     let fixture = parse_string(input, call_site).unwrap();
@@ -36,9 +37,9 @@ fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect:
             macro_name,
             &fixture.into_subtree(call_site),
             attr.as_ref(),
-            TokenId::DUMMY,
-            TokenId::DUMMY,
-            TokenId::DUMMY,
+            def_site,
+            call_site,
+            mixed_site,
         )
         .unwrap();
     expect.assert_eq(&format!("{res:?}"));
