@@ -46,4 +46,26 @@ fn index_struct_different_fields(f: &Foo<'_>) {
     let _ = f.v[0] + f.v2[1];
 }
 
+fn shadowing() {
+    let x: &[i32] = &[1];
+    assert!(x.len() > 1);
+
+    let x: &[i32] = &[1];
+    let _ = x[0] + x[1];
+    //~^ ERROR: indexing into a slice multiple times without an `assert`
+}
+
+pub fn issue11856(values: &[i32]) -> usize {
+    let mut ascending = Vec::new();
+    for w in values.windows(2) {
+        assert!(w.len() > 1);
+        if w[0] < w[1] {
+            ascending.push((w[0], w[1]));
+        } else {
+            ascending.push((w[1], w[0]));
+        }
+    }
+    ascending.len()
+}
+
 fn main() {}

@@ -4,13 +4,13 @@ use clippy_utils::get_parent_expr;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
+use rustc_hir::{intravisit as hir_visit, CoroutineKind, CoroutineSource, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -60,11 +60,14 @@ impl<'tcx> Visitor<'tcx> for ReturnVisitor {
     }
 }
 
-/// Checks if the body is owned by an async closure
-fn is_async_closure(body: &hir::Body<'_>) -> bool {
-    if let hir::ExprKind::Closure(closure) = body.value.kind
-        && let [resume_ty] = closure.fn_decl.inputs
-        && let hir::TyKind::Path(hir::QPath::LangItem(hir::LangItem::ResumeTy, ..)) = resume_ty.kind
+/// Checks if the body is owned by an async closure.
+/// Returns true for `async || whatever_expression`, but false for `|| async { whatever_expression
+/// }`.
+fn is_async_closure(cx: &LateContext<'_>, body: &hir::Body<'_>) -> bool {
+    if let hir::ExprKind::Closure(innermost_closure_generated_by_desugar) = body.value.kind
+        && let desugared_inner_closure_body = cx.tcx.hir().body(innermost_closure_generated_by_desugar.body)
+        // checks whether it is `async || whatever_expression`
+        && let Some(CoroutineKind::Async(CoroutineSource::Closure)) = desugared_inner_closure_body.coroutine_kind
     {
         true
     } else {
@@ -100,7 +103,7 @@ fn find_innermost_closure<'tcx>(
         data = Some((
             body.value,
             closure.fn_decl,
-            if is_async_closure(body) {
+            if is_async_closure(cx, body) {
                 ty::Asyncness::Yes
             } else {
                 ty::Asyncness::No
@@ -173,12 +176,18 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             hint = hint.asyncify();
                         }
 
-                        diag.span_suggestion(
-                            full_expr.span,
-                            "try doing something like",
-                            hint.maybe_par(),
-                            applicability,
-                        );
+                        let is_in_fn_call_arg =
+                            clippy_utils::get_parent_node(cx.tcx, expr.hir_id).is_some_and(|x| match x {
+                                Node::Expr(expr) => matches!(expr.kind, hir::ExprKind::Call(_, _)),
+                                _ => false,
+                            });
+
+                        // avoid clippy::double_parens
+                        if !is_in_fn_call_arg {
+                            hint = hint.maybe_par();
+                        };
+
+                        diag.span_suggestion(full_expr.span, "try doing something like", hint, applicability);
                     }
                 },
             );

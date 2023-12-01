@@ -158,8 +158,10 @@ error: use Option::map_or_else instead of an if let/else
    |
 LL | /     if let Ok(binding) = variable {
 LL | |         println!("Ok {binding}");
+LL | |         true
 LL | |     } else {
 LL | |         println!("Err");
+LL | |         false
 LL | |     }
    | |_____^
    |
@@ -167,19 +169,21 @@ help: try
    |
 LL ~     variable.map_or_else(|_| {
 LL +         println!("Err");
+LL +         false
 LL +     }, |binding| {
 LL +         println!("Ok {binding}");
+LL +         true
 LL +     })
    |
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:141:13
+  --> $DIR/option_if_let_else.rs:143:13
    |
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:151:13
+  --> $DIR/option_if_let_else.rs:153:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
@@ -201,13 +205,13 @@ LL ~         });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:179:13
+  --> $DIR/option_if_let_else.rs:181:13
    |
 LL |     let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or(s.len(), |x| s.len() + x)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:183:13
+  --> $DIR/option_if_let_else.rs:185:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
@@ -227,7 +231,7 @@ LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:222:13
+  --> $DIR/option_if_let_else.rs:224:13
    |
 LL |       let _ = match s {
    |  _____________^
@@ -237,7 +241,7 @@ LL | |     };
    | |_____^ help: try: `s.map_or(1, |string| string.len())`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:226:13
+  --> $DIR/option_if_let_else.rs:228:13
    |
 LL |       let _ = match Some(10) {
    |  _____________^
@@ -247,7 +251,7 @@ LL | |     };
    | |_____^ help: try: `Some(10).map_or(5, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:232:13
+  --> $DIR/option_if_let_else.rs:234:13
    |
 LL |       let _ = match res {
    |  _____________^
@@ -257,7 +261,7 @@ LL | |     };
    | |_____^ help: try: `res.map_or(1, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:236:13
+  --> $DIR/option_if_let_else.rs:238:13
    |
 LL |       let _ = match res {
    |  _____________^
@@ -267,31 +271,33 @@ LL | |     };
    | |_____^ help: try: `res.map_or(1, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:240:13
+  --> $DIR/option_if_let_else.rs:242:13
    |
 LL |     let _ = if let Ok(a) = res { a + 1 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or(5, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:257:9
+  --> $DIR/option_if_let_else.rs:259:17
    |
-LL | /         match initial {
+LL |           let _ = match initial {
+   |  _________________^
 LL | |             Some(value) => do_something(value),
-LL | |             None => {},
-LL | |         }
-   | |_________^ help: try: `initial.as_ref().map_or({}, |value| do_something(value))`
+LL | |             None => 42,
+LL | |         };
+   | |_________^ help: try: `initial.as_ref().map_or(42, |value| do_something(value))`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:264:9
+  --> $DIR/option_if_let_else.rs:266:17
    |
-LL | /         match initial {
+LL |           let _ = match initial {
+   |  _________________^
 LL | |             Some(value) => do_something2(value),
-LL | |             None => {},
-LL | |         }
-   | |_________^ help: try: `initial.as_mut().map_or({}, |value| do_something2(value))`
+LL | |             None => 42,
+LL | |         };
+   | |_________^ help: try: `initial.as_mut().map_or(42, |value| do_something2(value))`
 
 error: use Option::map_or_else instead of an if let/else
-  --> $DIR/option_if_let_else.rs:283:24
+  --> $DIR/option_if_let_else.rs:289:24
    |
 LL |       let mut _hashmap = if let Some(hm) = &opt {
    |  ________________________^
@@ -302,7 +308,7 @@ LL | |     };
    | |_____^ help: try: `opt.as_ref().map_or_else(HashMap::new, |hm| hm.clone())`
 
 error: use Option::map_or_else instead of an if let/else
-  --> $DIR/option_if_let_else.rs:289:19
+  --> $DIR/option_if_let_else.rs:295:19
    |
 LL |     let mut _hm = if let Some(hm) = &opt { hm.clone() } else { new_map!() };
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `opt.as_ref().map_or_else(|| new_map!(), |hm| hm.clone())`

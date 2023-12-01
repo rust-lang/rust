@@ -59,4 +59,12 @@ enum YAML {
     Str(String),
 }
 
+// test for issue #7708
+enum AllowOnField {
+    DISALLOW,
+    //~^ ERROR: name `DISALLOW` contains a capitalized acronym
+    #[allow(clippy::upper_case_acronyms)]
+    ALLOW,
+}
+
 fn main() {}

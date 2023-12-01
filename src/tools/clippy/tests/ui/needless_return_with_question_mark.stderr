@@ -1,5 +1,5 @@
 error: unneeded `return` statement with `?` operator
-  --> $DIR/needless_return_with_question_mark.rs:28:5
+  --> $DIR/needless_return_with_question_mark.rs:29:5
    |
 LL |     return Err(())?;
    |     ^^^^^^^ help: remove it
@@ -7,5 +7,11 @@ LL |     return Err(())?;
    = note: `-D clippy::needless-return-with-question-mark` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_return_with_question_mark)]`
 
-error: aborting due to 1 previous error
+error: unneeded `return` statement with `?` operator
+  --> $DIR/needless_return_with_question_mark.rs:69:9
+   |
+LL |         return Err(())?;
+   |         ^^^^^^^ help: remove it
+
+error: aborting due to 2 previous errors
 

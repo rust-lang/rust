@@ -20,9 +20,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, intravisit, Closure, ExprKind, Item, ItemKind, Mutability, QPath};
-use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
+use rustc_lint::{unerased_lint_store, CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::nested_filter;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::ser::SerializeStruct;
@@ -714,7 +714,7 @@ fn get_lint_group_and_level_or_lint(
     lint_name: &str,
     item: &Item<'_>,
 ) -> Option<(String, &'static str)> {
-    let result = cx.lint_store.check_lint_name(
+    let result = unerased_lint_store(cx.tcx.sess).check_lint_name(
         lint_name,
         Some(sym::clippy),
         &std::iter::once(Ident::with_dummy_span(sym::clippy)).collect(),
@@ -746,7 +746,7 @@ fn get_lint_group_and_level_or_lint(
 }
 
 fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
-    for (group_name, lints, _) in cx.lint_store.get_lint_groups() {
+    for (group_name, lints, _) in unerased_lint_store(cx.tcx.sess).get_lint_groups() {
         if IGNORED_LINT_GROUPS.contains(&group_name) {
             continue;
         }
