@@ -6,7 +6,7 @@
 //! Use the `render_with_highlighting` to highlight some rust code.
 
 use crate::clean::PrimitiveType;
-use crate::html::escape::Escape;
+use crate::html::escape::EscapeBodyText;
 use crate::html::render::{Context, LinkFromSrc};
 
 use std::collections::VecDeque;
@@ -189,7 +189,7 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
             && can_merge(current_class, Some(*parent_class), "")
         {
             for (text, class) in self.pending_elems.iter() {
-                string(self.out, Escape(text), *class, &self.href_context, false);
+                string(self.out, EscapeBodyText(text), *class, &self.href_context, false);
             }
         } else {
             // We only want to "open" the tag ourselves if we have more than one pending and if the
@@ -202,7 +202,13 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
                 None
             };
             for (text, class) in self.pending_elems.iter() {
-                string(self.out, Escape(text), *class, &self.href_context, close_tag.is_none());
+                string(
+                    self.out,
+                    EscapeBodyText(text),
+                    *class,
+                    &self.href_context,
+                    close_tag.is_none(),
+                );
             }
             if let Some(close_tag) = close_tag {
                 exit_span(self.out, close_tag);
