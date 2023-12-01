@@ -167,9 +167,8 @@ pub(crate) fn render_field(
         if !expected_fn_type {
             if let Some(receiver) = &dot_access.receiver {
                 if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
-                    let range = receiver.syntax().text_range();
-                    builder.insert(range.start(), "(".to_string());
-                    builder.insert(range.end(), ")".to_string());
+                    builder.insert(receiver.syntax().text_range().start(), "(".to_string());
+                    builder.insert(ctx.source_range().end(), ")".to_string());
                 }
             }
 
@@ -1676,11 +1675,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                     delete: 107..107,
                                 },
                                 Indel {
-                                    insert: ")",
-                                    delete: 108..108,
-                                },
-                                Indel {
-                                    insert: "qux()",
+                                    insert: "qux)()",
                                     delete: 109..110,
                                 },
                             ],

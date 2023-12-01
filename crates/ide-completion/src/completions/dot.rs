@@ -37,9 +37,6 @@ pub(crate) fn complete_dot(
         is_field_access,
     );
 
-    if let DotAccessKind::Method { .. } = dot_access.kind {
-        cov_mark::hit!(test_no_struct_field_completion_for_method_call);
-    }
     complete_methods(ctx, receiver_ty, |func| acc.add_method(ctx, dot_access, func, None, None));
 }
 
@@ -259,7 +256,6 @@ impl A {
 
     #[test]
     fn test_no_struct_field_completion_for_method_call() {
-        cov_mark::check!(test_no_struct_field_completion_for_method_call);
         check(
             r#"
 struct A { the_field: u32 }
@@ -1202,7 +1198,7 @@ fn foo() { S { va_field: 0, fn_field: || {} }.fi$0() }
 "#,
             r#"
 struct S { va_field: u32, fn_field: fn() }
-fn foo() { (S { va_field: 0, fn_field: || {} }).fn_field() }
+fn foo() { (S { va_field: 0, fn_field: || {} }.fn_field)() }
 "#,
         );
     }
@@ -1235,7 +1231,7 @@ fn foo() {
 struct B(u32, fn())
 fn foo() {
    let b = B(0, || {});
-   (b).1()
+   (b.1)()
 }
 "#,
         )
