@@ -3,7 +3,7 @@
 //! This trait is currently the main interface between the Rust compiler,
 //! and the `stable_mir` crate.
 
-use crate::rustc_smir::stable_mir::opaque;
+use rustc_middle::ty;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
     GenericPredicates, Instance, ParamEnv, ScalarInt, TypeVisitableExt, ValTree,
@@ -18,8 +18,9 @@ use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
-use stable_mir::Opaque;
-use stable_mir::{self, Crate, CrateItem, Error, Filename, ItemKind, Symbol};
+use stable_mir::{
+    self, opaque, Crate, CrateItem, DefId, Error, Filename, ItemKind, Opaque, Symbol,
+};
 use std::cell::RefCell;
 
 use crate::rustc_internal::{internal, RustcInternal};

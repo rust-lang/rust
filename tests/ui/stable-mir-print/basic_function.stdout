@@ -2,219 +2,28 @@
 // If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.
 fn foo(_0: i32) -> i32 {
     let mut _0: (i32, bool);
-}
+
     bb0: {
-        _2 = 1 Add const 1_i32
-        assert(!move _2 bool),"attempt to compute `{} + {}`, which would overflow", 1, const 1_i32) -> [success: bb1, unwind continue]
+        _2 = CheckedAdd(_1, const 1_i32)
+        assert(!move _2 bool),"attempt to compute `{} + {}`, which would overflow", _1, const 1_i32) -> [success: bb1, unwind continue]
     }
     bb1: {
         _0 = move _2
         return
     }
-fn bar(_0: &mut Ty {
-    id: 10,
-    kind: RigidTy(
-        Adt(
-            AdtDef(
-                DefId {
-                    id: 3,
-                    name: "std::vec::Vec",
-                },
-            ),
-            GenericArgs(
-                [
-                    Type(
-                        Ty {
-                            id: 11,
-                            kind: Param(
-                                ParamTy {
-                                    index: 0,
-                                    name: "T",
-                                },
-                            ),
-                        },
-                    ),
-                    Type(
-                        Ty {
-                            id: 12,
-                            kind: Param(
-                                ParamTy {
-                                    index: 1,
-                                    name: "A",
-                                },
-                            ),
-                        },
-                    ),
-                ],
-            ),
-        ),
-    ),
-}) -> Ty {
-    id: 10,
-    kind: RigidTy(
-        Adt(
-            AdtDef(
-                DefId {
-                    id: 3,
-                    name: "std::vec::Vec",
-                },
-            ),
-            GenericArgs(
-                [
-                    Type(
-                        Ty {
-                            id: 11,
-                            kind: Param(
-                                ParamTy {
-                                    index: 0,
-                                    name: "T",
-                                },
-                            ),
-                        },
-                    ),
-                    Type(
-                        Ty {
-                            id: 12,
-                            kind: Param(
-                                ParamTy {
-                                    index: 1,
-                                    name: "A",
-                                },
-                            ),
-                        },
-                    ),
-                ],
-            ),
-        ),
-    ),
-} {
-    let mut _0: Ty {
-    id: 10,
-    kind: RigidTy(
-        Adt(
-            AdtDef(
-                DefId {
-                    id: 3,
-                    name: "std::vec::Vec",
-                },
-            ),
-            GenericArgs(
-                [
-                    Type(
-                        Ty {
-                            id: 11,
-                            kind: Param(
-                                ParamTy {
-                                    index: 0,
-                                    name: "T",
-                                },
-                            ),
-                        },
-                    ),
-                    Type(
-                        Ty {
-                            id: 12,
-                            kind: Param(
-                                ParamTy {
-                                    index: 1,
-                                    name: "A",
-                                },
-                            ),
-                        },
-                    ),
-                ],
-            ),
-        ),
-    ),
-};
-    let mut _1: &Ty {
-    id: 10,
-    kind: RigidTy(
-        Adt(
-            AdtDef(
-                DefId {
-                    id: 3,
-                    name: "std::vec::Vec",
-                },
-            ),
-            GenericArgs(
-                [
-                    Type(
-                        Ty {
-                            id: 11,
-                            kind: Param(
-                                ParamTy {
-                                    index: 0,
-                                    name: "T",
-                                },
-                            ),
-                        },
-                    ),
-                    Type(
-                        Ty {
-                            id: 12,
-                            kind: Param(
-                                ParamTy {
-                                    index: 1,
-                                    name: "A",
-                                },
-                            ),
-                        },
-                    ),
-                ],
-            ),
-        ),
-    ),
-};
-    let _2: ();
-    let mut _3: &mut Ty {
-    id: 10,
-    kind: RigidTy(
-        Adt(
-            AdtDef(
-                DefId {
-                    id: 3,
-                    name: "std::vec::Vec",
-                },
-            ),
-            GenericArgs(
-                [
-                    Type(
-                        Ty {
-                            id: 11,
-                            kind: Param(
-                                ParamTy {
-                                    index: 0,
-                                    name: "T",
-                                },
-                            ),
-                        },
-                    ),
-                    Type(
-                        Ty {
-                            id: 12,
-                            kind: Param(
-                                ParamTy {
-                                    index: 1,
-                                    name: "A",
-                                },
-                            ),
-                        },
-                    ),
-                ],
-            ),
-        ),
-    ),
-};
 }
+fn bar(_0: &mut std::vec::Vec) -> std::vec::Vec {
+    let mut _0: std::vec::Vec;
+    let mut _1: &std::vec::Vec;
+    let _2: ();
+    let mut _3: &mut std::vec::Vec;
+
     bb0: {
-        _3 = refShared1
+        _3 = &1
         _2 = const <Vec<i32> as Clone>::clone(move _3) -> [return: bb1, unwind continue]
     }
     bb1: {
-        _5 = refMut {
-    kind: TwoPhaseBorrow,
-}2
+        _5 = &mut 2
         _4 = const Vec::<i32>::push(move _5, const 1_i32) -> [return: bb2, unwind: bb3]
     }
     bb2: {
@@ -227,8 +36,35 @@ fn bar(_0: &mut Ty {
     bb4: {
         resume
     }
-fn main() -> () {
 }
+fn demux(_0: u8) -> u8 {
+
+    bb0: {
+        switchInt(__1) -> [0: bb2, 1: bb3, 2: bb4, otherwise: bb1]
+    }
+    bb1: {
+        _0 = const 0_u8
+        goto -> bb5
+    }
+    bb2: {
+        _0 = const 10_u8
+        goto -> bb5
+    }
+    bb3: {
+        _0 = const 6_u8
+        goto -> bb5
+    }
+    bb4: {
+        _0 = const 8_u8
+        goto -> bb5
+    }
+    bb5: {
+        return
+    }
+}
+fn main() -> () {
+
     bb0: {
         return
     }
+}

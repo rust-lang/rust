@@ -12,24 +12,20 @@ use super::BorrowKind;
 pub fn function_name(item: CrateItem) -> String {
     let mut pretty_name = String::new();
     let body = item.body();
-    pretty_name.push_str("fn ");
-    pretty_name.push_str(item.name().as_str());
+    pretty_name.push_str(format!("fn {}", item.name()).as_str());
     if body.arg_locals().is_empty() {
         pretty_name.push_str("()");
     } else {
         pretty_name.push_str("(");
     }
     body.arg_locals().iter().enumerate().for_each(|(index, local)| {
-        pretty_name.push_str(format!("_{}: ", index).as_str());
-        pretty_name.push_str(&pretty_ty(local.ty.kind()));
+        pretty_name.push_str(format!("_{}: {}", index, pretty_ty(local.ty.kind())).as_str());
     });
     if !body.arg_locals().is_empty() {
         pretty_name.push_str(")");
     }
     let return_local = body.ret_local();
-    pretty_name.push_str(" -> ");
-    pretty_name.push_str(&pretty_ty(return_local.ty.kind()));
-    pretty_name.push_str(" {");
+    pretty_name.push_str(format!(" -> {} {{", pretty_ty(return_local.ty.kind())).as_str());
     pretty_name
 }
 
@@ -37,10 +33,15 @@ pub fn function_body(body: &Body) -> String {
     let mut pretty_body = String::new();
     body.inner_locals().iter().enumerate().for_each(|(index, local)| {
         pretty_body.push_str("    ");
-        pretty_body.push_str(format!("let {}", ret_mutability(&local.mutability)).as_str());
-        pretty_body.push_str(format!("_{}: ", index).as_str());
-        pretty_body.push_str(format!("{}", pretty_ty(local.ty.kind())).as_str());
-        pretty_body.push_str(";\n");
+        pretty_body.push_str(
+            format!(
+                "let {}_{}: {};\n",
+                ret_mutability(&local.mutability),
+                index,
+                pretty_ty(local.ty.kind())
+            )
+            .as_str(),
+        );
     });
     pretty_body
 }
@@ -56,8 +57,7 @@ pub fn pretty_statement(statement: &StatementKind) -> String {
     let mut pretty = String::new();
     match statement {
         StatementKind::Assign(place, rval) => {
-            pretty.push_str(format!("        _{} = ", place.local).as_str());
-            pretty.push_str(format!("{}", &pretty_rvalue(rval)).as_str());
+            pretty.push_str(format!("        _{} = {}", place.local, pretty_rvalue(rval)).as_str());
         }
         // FIXME: Add rest of the statements
         StatementKind::FakeRead(_, _) => {
@@ -117,7 +117,7 @@ pub fn pretty_terminator<W: io::Write>(terminator: &TerminatorKind, w: &mut W) -
             Ok(())
         }
         (1, false) => {
-            write!(w, " -> {:?}", successors[0])?;
+            write!(w, " -> bb{:?}", successors[0])?;
             Ok(())
         }
         _ => {
@@ -154,9 +154,7 @@ pub fn pretty_terminator_head(terminator: &TerminatorKind) -> String {
         Drop { place, .. } => format!("        drop(_{:?})", place.local),
         Call { func, args, destination, .. } => {
             pretty.push_str("        ");
-            pretty.push_str(format!("_{} = ", destination.local).as_str());
-            pretty.push_str(&pretty_operand(func));
-            pretty.push_str("(");
+            pretty.push_str(format!("_{} = {}(", destination.local, pretty_operand(func)).as_str());
             args.iter().enumerate().for_each(|(i, arg)| {
                 if i > 0 {
                     pretty.push_str(", ");
@@ -171,9 +169,9 @@ pub fn pretty_terminator_head(terminator: &TerminatorKind) -> String {
             if !expected {
                 pretty.push_str("!");
             }
-            pretty.push_str(format!("{} bool),", &pretty_operand(cond)).as_str());
-            pretty.push_str(&pretty_assert_message(msg));
-            pretty.push_str(")");
+            pretty.push_str(
+                format!("{} bool),{})", &pretty_operand(cond), pretty_assert_message(msg)).as_str(),
+            );
             pretty
         }
         InlineAsm { .. } => todo!(),
@@ -297,16 +295,14 @@ pub fn pretty_operand(operand: &Operand) -> String {
     let mut pretty = String::new();
     match operand {
         Operand::Copy(copy) => {
-            pretty.push_str("");
-            pretty.push_str(format!("{}", copy.local).as_str());
+            pretty.push_str(format!("_{}", copy.local).as_str());
         }
         Operand::Move(mv) => {
-            pretty.push_str("move ");
-            pretty.push_str(format!("_{}", mv.local).as_str());
+            pretty.push_str(format!("move _{}", mv.local).as_str());
         }
         Operand::Constant(cnst) => {
-            pretty.push_str("const ");
-            pretty.push_str(with(|cx| cx.const_literal(&cnst.literal)).as_str());
+            pretty
+                .push_str(format!("const {}", with(|cx| cx.const_literal(&cnst.literal))).as_str());
         }
     }
     pretty
@@ -316,14 +312,11 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
     let mut pretty = String::new();
     match rval {
         Rvalue::AddressOf(muta, addr) => {
-            pretty.push_str("&raw ");
-            pretty.push_str(&ret_mutability(muta));
-            pretty.push_str(format!("(*_{})", addr.local).as_str());
+            pretty.push_str(format!("&raw {}(*_{})", &ret_mutability(muta), addr.local).as_str());
         }
         Rvalue::Aggregate(aggregatekind, operands) => {
             // FIXME: Add pretty_aggregate function that returns a pretty string
-            pretty.push_str(format!("{:#?}", aggregatekind).as_str());
-            pretty.push_str("(");
+            pretty.push_str(format!("{:#?} (", aggregatekind).as_str());
             operands.iter().enumerate().for_each(|(i, op)| {
                 pretty.push_str(&pretty_operand(op));
                 if i != operands.len() - 1 {
@@ -333,37 +326,27 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
             pretty.push_str(")");
         }
         Rvalue::BinaryOp(bin, op1, op2) => {
-            pretty.push_str(format!("{:#?}", bin).as_str());
-            pretty.push_str("(");
-            pretty.push_str(format!("_{}", &pretty_operand(op1)).as_str());
-            pretty.push_str(", ");
-            pretty.push_str(format!("{}", &pretty_operand(op2)).as_str());
-            pretty.push_str(")");
+            pretty.push_str(
+                format!("{:#?}({}, {})", bin, &pretty_operand(op1), pretty_operand(op2)).as_str(),
+            );
         }
         Rvalue::Cast(_, op, ty) => {
-            pretty.push_str(&pretty_operand(op));
-            pretty.push_str(" as ");
-            pretty.push_str(&pretty_ty(ty.kind()));
+            pretty.push_str(format!("{} as {}", pretty_operand(op), pretty_ty(ty.kind())).as_str());
         }
         Rvalue::CheckedBinaryOp(bin, op1, op2) => {
-            pretty.push_str(format!("Checked{:#?}", bin).as_str());
-            pretty.push_str("(");
-            pretty.push_str(format!("_{}", &pretty_operand(op1)).as_str());
-            pretty.push_str(", ");
-            pretty.push_str(format!("{}", &pretty_operand(op2)).as_str());
-            pretty.push_str(")");
+            pretty.push_str(
+                format!("Checked{:#?}({}, {})", bin, &pretty_operand(op1), pretty_operand(op2))
+                    .as_str(),
+            );
         }
         Rvalue::CopyForDeref(deref) => {
-            pretty.push_str("CopyForDeref");
-            pretty.push_str(format!("{}", deref.local).as_str());
+            pretty.push_str(format!("CopyForDeref{}", deref.local).as_str());
         }
         Rvalue::Discriminant(place) => {
-            pretty.push_str("discriminant");
-            pretty.push_str(format!("{}", place.local).as_str());
+            pretty.push_str(format!("discriminant{}", place.local).as_str());
         }
         Rvalue::Len(len) => {
-            pretty.push_str("len");
-            pretty.push_str(format!("{}", len.local).as_str());
+            pretty.push_str(format!("len{}", len.local).as_str());
         }
         Rvalue::Ref(_, borrowkind, place) => {
             match borrowkind {
@@ -374,24 +357,19 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
             pretty.push_str(format!("{}", place.local).as_str());
         }
         Rvalue::Repeat(op, cnst) => {
-            pretty.push_str(&pretty_operand(op));
-            pretty.push_str(" ");
-            pretty.push_str(&pretty_ty(cnst.ty().kind()));
+            pretty.push_str(
+                &format!("{} \" \" {}", &pretty_operand(op), pretty_ty(cnst.ty().kind())).as_str(),
+            );
         }
         Rvalue::ShallowInitBox(_, _) => (),
         Rvalue::ThreadLocalRef(item) => {
-            pretty.push_str("thread_local_ref");
-            pretty.push_str(format!("{:#?}", item).as_str());
+            pretty.push_str(format!("thread_local_ref{:#?}", item).as_str());
         }
         Rvalue::NullaryOp(nul, ty) => {
-            pretty.push_str(format!("{:#?}", nul).as_str());
-            pretty.push_str(&pretty_ty(ty.kind()));
-            pretty.push_str(" ");
+            pretty.push_str(format!("{:#?} {} \" \"", nul, pretty_ty(ty.kind())).as_str());
         }
         Rvalue::UnaryOp(un, op) => {
-            pretty.push_str(&pretty_operand(op));
-            pretty.push_str(" ");
-            pretty.push_str(format!("{:#?}", un).as_str());
+            pretty.push_str(format!("{} \" \" {:#?}", pretty_operand(op), un).as_str());
         }
         Rvalue::Use(op) => pretty.push_str(&pretty_operand(op)),
     }
@@ -458,8 +436,7 @@ pub fn pretty_ty(ty: TyKind) -> String {
                     DynKind::Dyn => pretty.push_str("dyn "),
                     DynKind::DynStar => pretty.push_str("dyn* "),
                 }
-                pretty.push_str(format!("{:#?}", data).as_str());
-                pretty.push_str(format!(" +  {:#?} )", region).as_str());
+                pretty.push_str(format!("{:#?} + {:#?}", data, region).as_str());
                 pretty
             }
             RigidTy::Never => "!".to_string(),
