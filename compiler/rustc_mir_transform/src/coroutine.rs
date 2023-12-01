@@ -1153,18 +1153,9 @@ fn create_coroutine_drop_shim<'tcx>(
     simplify::remove_dead_blocks(&mut body);
 
     // Update the body's def to become the drop glue.
-    // This needs to be updated before the AbortUnwindingCalls pass.
     let coroutine_instance = body.source.instance;
     let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
     let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(coroutine_ty));
-    body.source.instance = drop_instance;
-
-    pm::run_passes_no_validate(
-        tcx,
-        &mut body,
-        &[&abort_unwinding_calls::AbortUnwindingCalls],
-        None,
-    );
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
