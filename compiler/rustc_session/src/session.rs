@@ -677,7 +677,7 @@ impl Session {
     }
 
     #[inline]
-    pub fn diagnostic(&self) -> &rustc_errors::Handler {
+    pub fn diagnostic(&self) -> &Handler {
         &self.parse_sess.span_diagnostic
     }
 
@@ -1407,7 +1407,7 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let mut span_diagnostic = rustc_errors::Handler::with_emitter(emitter)
+    let mut span_diagnostic = Handler::with_emitter(emitter)
         .with_flags(sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
         span_diagnostic = span_diagnostic.with_ice_file(ice_file);
@@ -1720,7 +1720,7 @@ pub struct EarlyErrorHandler {
 impl EarlyErrorHandler {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: rustc_errors::Handler::with_emitter(emitter) }
+        Self { handler: Handler::with_emitter(emitter) }
     }
 
     pub fn abort_if_errors(&self) {
