@@ -32,7 +32,7 @@ impl Emitter for DiffEmitter {
             } else {
                 print_diff(
                     mismatch,
-                    |line_num| format!("Diff in {} at line {}:", filename, line_num),
+                    |line_num| format!("Diff in {}:{}:", filename, line_num),
                     &self.config,
                 );
             }
