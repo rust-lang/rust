@@ -74,7 +74,7 @@ macro_rules! error_contains {
 // tests most of the time, but at least we do if the user has the right
 // permissions.
 pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
-    if cfg!(unix) {
+    if cfg!(not(windows)) || env::var_os("CI").is_some() {
         return true;
     }
     let link = tmpdir.join("some_hopefully_unique_link_name");
