@@ -39,6 +39,7 @@ clap = { version = "4.4.7", default-features = false, features = ["std", "usage"
 clap_complete = "4.4.3"
 cmake = "0.1.38"
 filetime = "0.2"
+fs2 = "0.4.3"
 hex = "0.4"
 home = "0.5.4"
 ignore = "0.4.10"
@@ -61,10 +62,6 @@ xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.26.0", optional = true }
-
-# Solaris doesn't support flock() and thus fd-lock is not option now
-[target.'cfg(not(target_os = "solaris"))'.dependencies]
-fd-lock = "3.0.13"
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"

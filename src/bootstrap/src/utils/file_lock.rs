@@ -1,8 +1,7 @@
 //! This module provides a `FileLock` type, serving as a cross-platform file-locking wrapper
 //! for `std::fs::File`, built on top of the `fs2` crate.
 //!
-//! Locks are automatically released by the `Drop` trait implementation when the `FileLock`
-//! instance goes out of scope.
+//! Locks are automatically released with the `Drop` trait implementation.
 
 use std::{fs::File, io};
 
@@ -15,14 +14,12 @@ pub struct FileLock(File);
 impl FileLock {
     pub fn lock(&mut self) -> io::Result<&File> {
         self.0.lock_exclusive()?;
-
-        Ok(&mut self.0)
+        Ok(&self.0)
     }
 
     pub fn try_lock(&mut self) -> io::Result<&File> {
         self.0.try_lock_exclusive()?;
-
-        Ok(&mut self.0)
+        Ok(&self.0)
     }
 }
 
