@@ -342,70 +342,75 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     // Flag to output the error only once per operand
                     let mut skip = false;
-                    reg.overlapping_regs(|r| {
-                        let mut check = |used_regs: &mut FxHashMap<asm::InlineAsmReg, usize>,
-                                         input| {
-                            match used_regs.entry(r) {
-                                Entry::Occupied(o) => {
-                                    if skip {
-                                        return;
-                                    }
-                                    skip = true;
 
-                                    let idx2 = *o.get();
-                                    let (ref op2, op_sp2) = operands[idx2];
-
-                                    let in_out = match (op, op2) {
-                                        (
-                                            hir::InlineAsmOperand::In { .. },
-                                            hir::InlineAsmOperand::Out { late, .. },
-                                        )
-                                        | (
-                                            hir::InlineAsmOperand::Out { late, .. },
-                                            hir::InlineAsmOperand::In { .. },
-                                        ) => {
-                                            assert!(!*late);
-                                            let out_op_sp = if input { op_sp2 } else { op_sp };
-                                            Some(out_op_sp)
-                                        }
-                                        _ => None,
-                                    };
-
-                                    let reg_str = |idx| -> &str {
-                                        // HIR asm doesn't preserve the original alias string of the explicit register,
-                                        // so we have to retrieve it from AST
-                                        let (op, _): &(InlineAsmOperand, Span) = &asm.operands[idx];
-                                        if let Some(ast::InlineAsmRegOrRegClass::Reg(reg_sym)) =
-                                            op.reg()
-                                        {
-                                            reg_sym.as_str()
-                                        } else {
-                                            unreachable!();
-                                        }
-                                    };
-
-                                    sess.emit_err(RegisterConflict {
-                                        op_span1: op_sp,
-                                        op_span2: op_sp2,
-                                        reg1_name: reg_str(idx),
-                                        reg2_name: reg_str(idx2),
-                                        in_out,
-                                    });
+                    let mut check = |used_regs: &mut FxHashMap<asm::InlineAsmReg, usize>,
+                                     input,
+                                     r: asm::InlineAsmReg| {
+                        match used_regs.entry(r) {
+                            Entry::Occupied(o) => {
+                                if skip {
+                                    return;
                                 }
-                                Entry::Vacant(v) => {
-                                    if r == reg {
-                                        v.insert(idx);
+                                skip = true;
+
+                                let idx2 = *o.get();
+                                let (ref op2, op_sp2) = operands[idx2];
+
+                                let in_out = match (op, op2) {
+                                    (
+                                        hir::InlineAsmOperand::In { .. },
+                                        hir::InlineAsmOperand::Out { late, .. },
+                                    )
+                                    | (
+                                        hir::InlineAsmOperand::Out { late, .. },
+                                        hir::InlineAsmOperand::In { .. },
+                                    ) => {
+                                        assert!(!*late);
+                                        let out_op_sp = if input { op_sp2 } else { op_sp };
+                                        Some(out_op_sp)
                                     }
+                                    _ => None,
+                                };
+                                let reg_str = |idx| -> &str {
+                                    // HIR asm doesn't preserve the original alias string of the explicit register,
+                                    // so we have to retrieve it from AST
+                                    let (op, _): &(InlineAsmOperand, Span) = &asm.operands[idx];
+                                    if let Some(ast::InlineAsmRegOrRegClass::Reg(reg_sym)) =
+                                        op.reg()
+                                    {
+                                        reg_sym.as_str()
+                                    } else {
+                                        unreachable!();
+                                    }
+                                };
+
+                                sess.emit_err(RegisterConflict {
+                                    op_span1: op_sp,
+                                    op_span2: op_sp2,
+                                    reg1_name: reg_str(idx),
+                                    reg2_name: reg_str(idx2),
+                                    in_out,
+                                });
+                            }
+                            Entry::Vacant(v) => {
+                                if r == reg {
+                                    v.insert(idx);
                                 }
                             }
-                        };
+                        }
+                    };
+                    let mut overlapping_with = vec![];
+                    reg.overlapping_regs(|r| {
+                        overlapping_with.push(r);
+                    });
+                    for r in overlapping_with {
                         if input {
-                            check(&mut used_input_regs, true);
+                            check(&mut used_input_regs, true, r);
                         }
                         if output {
-                            check(&mut used_output_regs, false);
+                            check(&mut used_output_regs, false, r);
                         }
-                    });
+                    }
                 }
             }
         }
@@ -420,12 +425,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     continue;
                 }
 
-                let mut output_used = false;
+                let mut overlapping_with = vec![];
                 clobber.overlapping_regs(|reg| {
-                    if used_output_regs.contains_key(&reg) {
-                        output_used = true;
-                    }
+                    overlapping_with.push(reg);
                 });
+                let output_used =
+                    overlapping_with.iter().any(|reg| used_output_regs.contains_key(&reg));
 
                 if !output_used {
                     operands.push((
