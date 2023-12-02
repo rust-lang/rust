@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use unicode_script::{Script, UnicodeScript};
 
 declare_clippy_lint! {

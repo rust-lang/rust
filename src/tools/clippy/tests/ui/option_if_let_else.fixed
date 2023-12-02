@@ -92,11 +92,13 @@ fn pattern_to_vec(pattern: &str) -> Vec<String> {
 }
 
 // #10335
-fn test_result_impure_else(variable: Result<u32, &str>) {
+fn test_result_impure_else(variable: Result<u32, &str>) -> bool {
     variable.map_or_else(|_| {
         println!("Err");
+        false
     }, |binding| {
         println!("Ok {binding}");
+        true
     })
 }
 
@@ -213,15 +215,19 @@ mod issue10729 {
 
     pub fn reproduce(initial: &Option<String>) {
         // 👇 needs `.as_ref()` because initial is an `&Option<_>`
-        initial.as_ref().map_or({}, |value| do_something(value))
+        let _ = initial.as_ref().map_or(42, |value| do_something(value));
     }
 
     pub fn reproduce2(initial: &mut Option<String>) {
-        initial.as_mut().map_or({}, |value| do_something2(value))
+        let _ = initial.as_mut().map_or(42, |value| do_something2(value));
     }
 
-    fn do_something(_value: &str) {}
-    fn do_something2(_value: &mut str) {}
+    fn do_something(_value: &str) -> u32 {
+        todo!()
+    }
+    fn do_something2(_value: &mut str) -> u32 {
+        todo!()
+    }
 }
 
 fn issue11429() {
@@ -236,4 +242,14 @@ fn issue11429() {
     let mut _hashmap = opt.as_ref().map_or_else(HashMap::new, |hm| hm.clone());
 
     let mut _hm = opt.as_ref().map_or_else(|| new_map!(), |hm| hm.clone());
+}
+
+fn issue11893() {
+    use std::io::Write;
+    let mut output = std::io::stdout().lock();
+    if let Some(name) = Some("stuff") {
+        writeln!(output, "{name:?}").unwrap();
+    } else {
+        panic!("Haven't thought about this condition.");
+    }
 }

@@ -20,13 +20,15 @@ use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
+
+use crate::vec::is_allowed_vec_method;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -660,7 +662,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             },
                             // If the types match check for methods which exist on both types. e.g. `Vec::len` and
                             // `slice::len`
-                            ty::Adt(def, _) if def.did() == args.ty_did => {
+                            ty::Adt(def, _) if def.did() == args.ty_did && !is_allowed_vec_method(self.cx, e) => {
                                 set_skip_flag();
                             },
                             _ => (),
@@ -712,23 +714,25 @@ fn matches_preds<'tcx>(
     preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
     let infcx = cx.tcx.infer_ctxt().build();
-    preds.iter().all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {
-        ExistentialPredicate::Trait(p) => infcx
-            .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.args.iter()), cx.param_env)
-            .must_apply_modulo_regions(),
-        ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
-            cx.tcx,
-            ObligationCause::dummy(),
-            cx.param_env,
-            cx.tcx
-                .mk_predicate(Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(
-                    p.with_self_ty(cx.tcx, ty),
-                )))),
-        )),
-        ExistentialPredicate::AutoTrait(p) => infcx
-            .type_implements_trait(p, [ty], cx.param_env)
-            .must_apply_modulo_regions(),
-    })
+    preds
+        .iter()
+        .all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {
+            ExistentialPredicate::Trait(p) => infcx
+                .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.args.iter()), cx.param_env)
+                .must_apply_modulo_regions(),
+            ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+                cx.tcx,
+                ObligationCause::dummy(),
+                cx.param_env,
+                cx.tcx
+                    .mk_predicate(Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(
+                        p.with_self_ty(cx.tcx, ty),
+                    )))),
+            )),
+            ExistentialPredicate::AutoTrait(p) => infcx
+                .type_implements_trait(p, [ty], cx.param_env)
+                .must_apply_modulo_regions(),
+        })
 }
 
 fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {

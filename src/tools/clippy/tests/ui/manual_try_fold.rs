@@ -96,3 +96,33 @@ fn msrv_juust_right() {
         .fold(Some(0i32), |sum, i| sum?.checked_add(*i))
         .unwrap();
 }
+
+mod issue11876 {
+    struct Foo;
+
+    impl Bar for Foo {
+        type Output = u32;
+    }
+
+    trait Bar: Sized {
+        type Output;
+        fn fold<A, F>(self, init: A, func: F) -> Fold<Self, A, F>
+        where
+            A: Clone,
+            F: Fn(A, Self::Output) -> A,
+        {
+            Fold { this: self, init, func }
+        }
+    }
+
+    #[allow(dead_code)]
+    struct Fold<S, A, F> {
+        this: S,
+        init: A,
+        func: F,
+    }
+
+    fn main() {
+        Foo.fold(Some(0), |acc, entry| Some(acc? + entry));
+    }
+}

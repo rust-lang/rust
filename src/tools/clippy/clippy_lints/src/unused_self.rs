@@ -3,7 +3,7 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::visitors::is_local_used;
 use rustc_hir::{Body, Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {

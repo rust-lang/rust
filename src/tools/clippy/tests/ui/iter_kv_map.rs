@@ -93,3 +93,46 @@ fn main() {
     // Don't let a mut interfere.
     let _ = map.clone().into_iter().map(|(_, mut val)| val).count();
 }
+
+#[clippy::msrv = "1.53"]
+fn msrv_1_53() {
+    let map: HashMap<u32, u32> = HashMap::new();
+
+    // Don't lint because into_iter is not supported
+    let _ = map.clone().into_iter().map(|(key, _)| key).collect::<Vec<_>>();
+    let _ = map.clone().into_iter().map(|(key, _)| key + 2).collect::<Vec<_>>();
+
+    let _ = map.clone().into_iter().map(|(_, val)| val).collect::<Vec<_>>();
+    let _ = map.clone().into_iter().map(|(_, val)| val + 2).collect::<Vec<_>>();
+
+    // Lint
+    let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's keys
+    let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's values
+    let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's values
+}
+
+#[clippy::msrv = "1.54"]
+fn msrv_1_54() {
+    // Lint all
+    let map: HashMap<u32, u32> = HashMap::new();
+
+    let _ = map.clone().into_iter().map(|(key, _)| key).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's keys
+    let _ = map.clone().into_iter().map(|(key, _)| key + 2).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's keys
+
+    let _ = map.clone().into_iter().map(|(_, val)| val).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's values
+    let _ = map.clone().into_iter().map(|(_, val)| val + 2).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's values
+
+    let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's keys
+    let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's values
+    let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
+    //~^ ERROR: iterating on a map's values
+}
