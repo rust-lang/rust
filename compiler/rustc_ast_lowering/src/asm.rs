@@ -354,10 +354,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                     let idx2 = *o.get();
                                     let (ref op2, op_sp2) = operands[idx2];
-                                    let Some(asm::InlineAsmRegOrRegClass::Reg(reg2)) = op2.reg()
-                                    else {
-                                        unreachable!();
-                                    };
 
                                     let in_out = match (op, op2) {
                                         (
@@ -375,11 +371,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                         _ => None,
                                     };
 
+                                    let reg_str = |idx| -> &str {
+                                        // HIR asm doesn't preserve the original alias string of the explicit register,
+                                        // so we have to retrieve it from AST
+                                        let (op, _): &(InlineAsmOperand, Span) = &asm.operands[idx];
+                                        if let Some(ast::InlineAsmRegOrRegClass::Reg(reg_sym)) =
+                                            op.reg()
+                                        {
+                                            reg_sym.as_str()
+                                        } else {
+                                            unreachable!();
+                                        }
+                                    };
+
                                     sess.emit_err(RegisterConflict {
                                         op_span1: op_sp,
                                         op_span2: op_sp2,
-                                        reg1_name: reg.name(),
-                                        reg2_name: reg2.name(),
+                                        reg1_name: reg_str(idx),
+                                        reg2_name: reg_str(idx2),
                                         in_out,
                                     });
                                 }
