@@ -10,8 +10,8 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs,
-    GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, RigidTy, Span, TraitDecl, TraitDef,
-    Ty, TyKind,
+    GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl,
+    TraitDef, Ty, TyKind,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
@@ -24,7 +24,11 @@ pub trait Context {
     fn entry_fn(&self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
     fn all_local_items(&self) -> CrateItems;
+    /// Retrieve the body of a function.
+    /// This function will panic if the body is not available.
     fn mir_body(&self, item: DefId) -> mir::Body;
+    /// Check whether the body of a function is available.
+    fn has_body(&self, item: DefId) -> bool;
     fn all_trait_decls(&self) -> TraitDecls;
     fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
     fn all_trait_impls(&self) -> ImplTraitDecls;
@@ -64,6 +68,9 @@ pub trait Context {
     /// Returns if the ADT is a box.
     fn adt_is_box(&self, def: AdtDef) -> bool;
 
+    /// Retrieve the function signature for the given generic arguments.
+    fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
+
     /// Evaluate constant as a target usize.
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
 
@@ -85,8 +92,7 @@ pub trait Context {
     /// Obtain the representation of a type.
     fn ty_kind(&self, ty: Ty) -> TyKind;
 
-    /// Get the body of an Instance.
-    /// FIXME: Monomorphize the body.
+    /// Get the body of an Instance which is already monomorphized.
     fn instance_body(&self, instance: InstanceDef) -> Option<Body>;
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.
@@ -97,6 +103,9 @@ pub trait Context {
 
     /// Get the instance mangled name.
     fn instance_mangled_name(&self, instance: InstanceDef) -> Symbol;
+
+    /// Check if this is an empty DropGlue shim.
+    fn is_empty_drop_shim(&self, def: InstanceDef) -> bool;
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
