@@ -648,10 +648,12 @@ change-id = 117813
 #lld = false
 
 # Indicates whether LLD will be used to link Rust crates during bootstrap on
-# supported platforms. The LLD from the bootstrap distribution will be used
-# and not the LLD compiled during the bootstrap.
+# supported platforms.
+# If set to `true` or `"external"`, a global `lld` binary that has to be in $PATH
+# will be used.
+# If set to `"self-contained"`, rust-lld from the snapshot compiler will be used.
 #
-# LLD will not be used if we're cross linking.
+# On MSVC, LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
 #use-lld = false
