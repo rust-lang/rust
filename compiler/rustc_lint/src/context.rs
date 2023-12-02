@@ -926,6 +926,10 @@ pub trait LintContext {
                         if elided { "'static " } else { "'static" },
                         Applicability::MachineApplicable
                     );
+                },
+                BuiltinLintDiagnostics::RedundantImportVisibility { max_vis, span } => {
+                    db.span_note(span, format!("the most public imported item is `{max_vis}`"));
+                    db.help("reduce the glob import's visibility or increase visibility of imported items");
                 }
             }
             // Rewrap `db`, and pass control to the user.

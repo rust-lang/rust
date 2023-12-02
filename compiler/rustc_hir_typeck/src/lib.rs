@@ -420,20 +420,16 @@ fn fatally_break_rust(tcx: TyCtxt<'_>) {
         MultiSpan::new(),
         "It looks like you're trying to break rust; would you like some ICE?",
     );
-    handler.note_without_error("the compiler expectedly panicked. this is a feature.");
-    handler.note_without_error(
+    handler.note("the compiler expectedly panicked. this is a feature.");
+    handler.note(
         "we would appreciate a joke overview: \
          https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
-    handler.note_without_error(format!(
-        "rustc {} running on {}",
-        tcx.sess.cfg_version,
-        config::host_triple(),
-    ));
+    handler.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_triple(),));
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
-        handler.note_without_error(format!("compiler flags: {}", flags.join(" ")));
+        handler.note(format!("compiler flags: {}", flags.join(" ")));
         if excluded_cargo_defaults {
-            handler.note_without_error("some of the compiler flags provided by cargo are hidden");
+            handler.note("some of the compiler flags provided by cargo are hidden");
         }
     }
 }

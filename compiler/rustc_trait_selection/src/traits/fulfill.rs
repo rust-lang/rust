@@ -1,4 +1,5 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::traits::error_reporting::TypeErrCtxtExt;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
@@ -410,6 +411,29 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
 
+                ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
+                ty::PredicateKind::AliasRelate(..) => {
+                    bug!("AliasRelate is only used for new solver")
+                }
+
+                // General case overflow check. Allow `process_trait_obligation`
+                // and `process_projection_obligation` to handle checking for
+                // the recursion limit themselves. Also don't check some
+                // predicate kinds that don't give further obligations.
+                _ if !self
+                    .selcx
+                    .tcx()
+                    .recursion_limit()
+                    .value_within_limit(obligation.recursion_depth) =>
+                {
+                    self.selcx.infcx.err_ctxt().report_overflow_error(
+                        &obligation.predicate,
+                        obligation.cause.span,
+                        false,
+                        |_| {},
+                    );
+                }
+
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                     match wf::obligations(
                         self.selcx.infcx,
@@ -440,7 +464,12 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Ok(mut ok)) => {
+                            for subobligation in &mut ok.obligations {
+                                subobligation.set_depth_from_parent(obligation.recursion_depth);
+                            }
+                            ProcessResult::Changed(mk_pending(ok.obligations))
+                        }
                         Ok(Err(err)) => {
                             let expected_found =
                                 ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
@@ -610,10 +639,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             }
                         }
                     }
-                }
-                ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(

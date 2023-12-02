@@ -48,6 +48,10 @@ note: required by a bound in `foo`
    |
 LL | fn foo<F: Fn(usize)>(_: F) {}
    |           ^^^^^^^^^ required by this bound in `foo`
+help: consider wrapping the function in a closure
+   |
+LL |     foo(|arg0: usize| f(/* u64 */));
+   |         +++++++++++++  +++++++++++
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/E0631.rs:10:9
@@ -67,6 +71,10 @@ note: required by a bound in `bar`
    |
 LL | fn bar<F: Fn<(usize,)>>(_: F) {}
    |           ^^^^^^^^^^^^ required by this bound in `bar`
+help: consider wrapping the function in a closure
+   |
+LL |     bar(|arg0: usize| f(/* u64 */));
+   |         +++++++++++++  +++++++++++
 
 error: aborting due to 4 previous errors
 

@@ -148,7 +148,7 @@ where
             let mut err = tcx.sess.create_err(err);
 
             let msg = error.diagnostic_message();
-            error.add_args(&tcx.sess.parse_sess.span_diagnostic, &mut err);
+            error.add_args(tcx.sess.diagnostic(), &mut err);
 
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);

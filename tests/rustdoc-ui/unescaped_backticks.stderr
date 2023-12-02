@@ -64,19 +64,19 @@ LL |         /// `cfg=... and not `#[cfg_attr]\`
    |                                          +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:193:91
+  --> $DIR/unescaped_backticks.rs:193:93
    |
-LL |     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
-   |                                                                                           ^
+LL |     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given `msg to
+   |                                                                                             ^
    |
 help: the closing backtick of an inline code may be missing
    |
-LL |     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
-   |                                                                                               +
+LL |     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given `msg` to
+   |                                                                                                 +
 help: if you meant to use a literal backtick, escape it
    |
-LL |     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given \`msg to
-   |                                                                                           +
+LL |     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given \`msg to
+   |                                                                                             +
 
 error: unescaped backtick
   --> $DIR/unescaped_backticks.rs:202:34

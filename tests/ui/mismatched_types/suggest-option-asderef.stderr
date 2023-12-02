@@ -13,13 +13,17 @@ LL |     let _: Option<()> = produces_string().and_then(takes_str);
               found function signature `for<'a> fn(&'a str) -> _`
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider wrapping the function in a closure
+   |
+LL |     let _: Option<()> = produces_string().and_then(|arg0: String| takes_str(/* &str */));
+   |                                                    ++++++++++++++          ++++++++++++
 help: call `Option::as_deref()` first
    |
 LL |     let _: Option<()> = produces_string().as_deref().and_then(takes_str);
    |                                          +++++++++++
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/suggest-option-asderef.rs:28:55
+  --> $DIR/suggest-option-asderef.rs:29:55
    |
 LL | fn takes_str(_: &str) -> Option<()> {
    | ----------------------------------- found signature defined here
@@ -33,13 +37,17 @@ LL |     let _: Option<Option<()>> = produces_string().map(takes_str);
               found function signature `for<'a> fn(&'a str) -> _`
 note: required by a bound in `Option::<T>::map`
   --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider wrapping the function in a closure
+   |
+LL |     let _: Option<Option<()>> = produces_string().map(|arg0: String| takes_str(/* &str */));
+   |                                                       ++++++++++++++          ++++++++++++
 help: call `Option::as_deref()` first
    |
 LL |     let _: Option<Option<()>> = produces_string().as_deref().map(takes_str);
    |                                                  +++++++++++
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/suggest-option-asderef.rs:31:55
+  --> $DIR/suggest-option-asderef.rs:33:55
    |
 LL | fn takes_str_mut(_: &mut str) -> Option<()> {
    | ------------------------------------------- found signature defined here
@@ -53,13 +61,17 @@ LL |     let _: Option<Option<()>> = produces_string().map(takes_str_mut);
               found function signature `for<'a> fn(&'a mut str) -> _`
 note: required by a bound in `Option::<T>::map`
   --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider wrapping the function in a closure
+   |
+LL |     let _: Option<Option<()>> = produces_string().map(|arg0: String| takes_str_mut(/* &mut str */));
+   |                                                       ++++++++++++++              ++++++++++++++++
 help: call `Option::as_deref_mut()` first
    |
 LL |     let _: Option<Option<()>> = produces_string().as_deref_mut().map(takes_str_mut);
    |                                                  +++++++++++++++
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/suggest-option-asderef.rs:36:40
+  --> $DIR/suggest-option-asderef.rs:39:40
    |
 LL | fn generic_ref<T>(_: &T) -> Option<()> {
    | -------------------------------------- found signature defined here
@@ -73,6 +85,10 @@ LL |     let _ = produces_string().and_then(generic_ref);
               found function signature `for<'a> fn(&'a _) -> _`
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider wrapping the function in a closure
+   |
+LL |     let _ = produces_string().and_then(|arg0: String| generic_ref(&arg0));
+   |                                        ++++++++++++++            +++++++
 help: consider adjusting the signature so it does not borrow its argument
    |
 LL - fn generic_ref<T>(_: &T) -> Option<()> {

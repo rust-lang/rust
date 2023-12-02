@@ -180,7 +180,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // ignore this, we presume it will yield an error
                 // later, since if a type variable is not resolved by
                 // this point it never will be
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.span_delayed_bug(
                     rustc_span::DUMMY_SP,
                     format!("unresolved inference variable in outlives: {v:?}"),
                 );

@@ -82,7 +82,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
                 // Reported in AST validation
-                tcx.sess.delay_span_bug(item.span, "unsafe negative impl");
+                tcx.sess.span_delayed_bug(item.span, "unsafe negative impl");
             }
             (_, _, Unsafety::Normal, hir::ImplPolarity::Negative(_))
             | (Unsafety::Unsafe, _, Unsafety::Unsafe, hir::ImplPolarity::Positive)

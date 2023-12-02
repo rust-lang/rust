@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
                 if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
-                    self.tcx.sess.delay_span_bug(
+                    self.tcx.sess.span_delayed_bug(
                         call_expr.span,
                         "input to overloaded call fn is not a self receiver",
                     );
@@ -259,9 +259,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
                         // The `fn`/`fn_mut` lang item is ill-formed, which should have
                         // caused an error elsewhere.
-                        self.tcx
-                            .sess
-                            .delay_span_bug(call_expr.span, "input to call/call_mut is not a ref");
+                        self.tcx.sess.span_delayed_bug(
+                            call_expr.span,
+                            "input to call/call_mut is not a ref",
+                        );
                         return None;
                     };
 

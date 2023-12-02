@@ -605,7 +605,7 @@ pub(crate) fn report_cycle<'a>(
         note_span: (),
     };
 
-    cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
+    cycle_diag.into_diagnostic(sess.diagnostic())
 }
 
 pub fn print_query_stack<Qcx: QueryContext>(

@@ -4,9 +4,10 @@
 ///
 /// If you have a span available, you should use [`span_bug`] instead.
 ///
-/// If the bug should only be emitted when compilation didn't fail, [`Session::delay_span_bug`] may be useful.
+/// If the bug should only be emitted when compilation didn't fail, [`Session::span_delayed_bug`]
+/// may be useful.
 ///
-/// [`Session::delay_span_bug`]: rustc_session::Session::delay_span_bug
+/// [`Session::span_delayed_bug`]: rustc_session::Session::span_delayed_bug
 /// [`span_bug`]: crate::span_bug
 #[macro_export]
 macro_rules! bug {
@@ -23,9 +24,10 @@ macro_rules! bug {
 /// at the code the compiler was compiling when it ICEd. This is the preferred way to trigger
 /// ICEs.
 ///
-/// If the bug should only be emitted when compilation didn't fail, [`Session::delay_span_bug`] may be useful.
+/// If the bug should only be emitted when compilation didn't fail, [`Session::span_delayed_bug`]
+/// may be useful.
 ///
-/// [`Session::delay_span_bug`]: rustc_session::Session::delay_span_bug
+/// [`Session::span_delayed_bug`]: rustc_session::Session::span_delayed_bug
 #[macro_export]
 macro_rules! span_bug {
     ($span:expr, $msg:expr) => ({ $crate::util::bug::span_bug_fmt($span, ::std::format_args!($msg)) });

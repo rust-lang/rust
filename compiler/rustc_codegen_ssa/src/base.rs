@@ -858,7 +858,6 @@ impl CrateInfo {
             local_crate_name,
             compiler_builtins,
             profiler_runtime: None,
-            is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
             crate_name: Default::default(),
@@ -885,9 +884,6 @@ impl CrateInfo {
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }
-            if tcx.is_no_builtins(cnum) {
-                info.is_no_builtins.insert(cnum);
-            }
         }
 
         // Handle circular dependencies in the standard library.
@@ -895,9 +891,7 @@ impl CrateInfo {
         // If global LTO is enabled then almost everything (*) is glued into a single object file,
         // so this logic is not necessary and can cause issues on some targets (due to weak lang
         // item symbols being "privatized" to that object file), so we disable it.
-        // (*) Native libs, and `#[compiler_builtins]` and `#[no_builtins]` crates are not glued,
-        // and we assume that they cannot define weak lang items. This is not currently enforced
-        // by the compiler, but that's ok because all this stuff is unstable anyway.
+        // (*) Native libs are not glued, and we assume that they cannot define weak lang items.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
             let missing_weak_lang_items: FxHashSet<Symbol> = info

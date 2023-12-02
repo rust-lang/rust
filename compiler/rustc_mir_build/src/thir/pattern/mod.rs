@@ -108,7 +108,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     let msg = format!(
                         "found bad range pattern endpoint `{expr:?}` outside of error recovery"
                     );
-                    return Err(self.tcx.sess.delay_span_bug(expr.span, msg));
+                    return Err(self.tcx.sess.span_delayed_bug(expr.span, msg));
                 };
                 Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
             }
@@ -178,7 +178,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> Result<PatKind<'tcx>, ErrorGuaranteed> {
         if lo_expr.is_none() && hi_expr.is_none() {
             let msg = format!("found twice-open range pattern (`..`) outside of error recovery");
-            return Err(self.tcx.sess.delay_span_bug(span, msg));
+            return Err(self.tcx.sess.span_delayed_bug(span, msg));
         }
 
         let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;

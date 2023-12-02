@@ -888,21 +888,6 @@ pub struct TestReachabilityVisitor<'tcx, 'a> {
     effective_visibilities: &'a EffectiveVisibilities,
 }
 
-fn vis_to_string<'tcx>(def_id: LocalDefId, vis: ty::Visibility, tcx: TyCtxt<'tcx>) -> String {
-    match vis {
-        ty::Visibility::Restricted(restricted_id) => {
-            if restricted_id.is_top_level_module() {
-                "pub(crate)".to_string()
-            } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
-                "pub(self)".to_string()
-            } else {
-                format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
-            }
-        }
-        ty::Visibility::Public => "pub".to_string(),
-    }
-}
-
 impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
     fn effective_visibility_diagnostic(&mut self, def_id: LocalDefId) {
         if self.tcx.has_attr(def_id, sym::rustc_effective_visibility) {
@@ -910,7 +895,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
             let span = self.tcx.def_span(def_id.to_def_id());
             if let Some(effective_vis) = self.effective_visibilities.effective_vis(def_id) {
                 for level in Level::all_levels() {
-                    let vis_str = vis_to_string(def_id, *effective_vis.at_level(level), self.tcx);
+                    let vis_str = effective_vis.at_level(level).to_string(def_id, self.tcx);
                     if level != Level::Direct {
                         error_msg.push_str(", ");
                     }
@@ -1268,7 +1253,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 } else {
                     self.tcx
                         .sess
-                        .delay_span_bug(expr.span, "no type-dependent def for method call");
+                        .span_delayed_bug(expr.span, "no type-dependent def for method call");
                 }
             }
             _ => {}
@@ -1506,11 +1491,11 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         tcx: self.tcx,
                     })
                         .into(),
-                    item_vis_descr: &vis_to_string(self.item_def_id, reachable_at_vis, self.tcx),
+                    item_vis_descr: &reachable_at_vis.to_string(self.item_def_id, self.tcx),
                     ty_span: vis_span,
                     ty_kind: kind,
                     ty_descr: descr.into(),
-                    ty_vis_descr: &vis_to_string(local_def_id, vis, self.tcx),
+                    ty_vis_descr: &vis.to_string(local_def_id, self.tcx),
                 },
             );
         }
@@ -1589,8 +1574,8 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
                     span,
                     kind: self.tcx.def_descr(def_id.to_def_id()),
                     descr: (&LazyDefPathStr { def_id: def_id.to_def_id(), tcx: self.tcx }).into(),
-                    reachable_vis: &vis_to_string(def_id, *reachable_at_vis, self.tcx),
-                    reexported_vis: &vis_to_string(def_id, *reexported_at_vis, self.tcx),
+                    reachable_vis: &reachable_at_vis.to_string(def_id, self.tcx),
+                    reexported_vis: &reexported_at_vis.to_string(def_id, self.tcx),
                 },
             );
         }
@@ -1843,7 +1828,7 @@ fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
                             ..
                         }) => tr.path.res.opt_def_id().map_or_else(
                             || {
-                                tcx.sess.delay_span_bug(tr.path.span, "trait without a def-id");
+                                tcx.sess.span_delayed_bug(tr.path.span, "trait without a def-id");
                                 ty::Visibility::Public
                             },
                             |def_id| tcx.visibility(def_id).expect_local(),

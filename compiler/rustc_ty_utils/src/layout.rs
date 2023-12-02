@@ -93,7 +93,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.sess.delay_span_bug(DUMMY_SP, "struct cannot be packed and aligned");
+        cx.tcx.sess.span_delayed_bug(DUMMY_SP, "struct cannot be packed and aligned");
         return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
     }
 
@@ -346,7 +346,7 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, args) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.sess.delay_span_bug(
+                tcx.sess.span_delayed_bug(
                     DUMMY_SP,
                     "#[repr(simd)] was applied to an ADT that is not a struct",
                 );
@@ -376,7 +376,7 @@ fn layout_of_uncached<'tcx>(
             // (should be caught by typeck)
             for fi in fields {
                 if fi.ty(tcx, args) != f0_ty {
-                    tcx.sess.delay_span_bug(
+                    tcx.sess.span_delayed_bug(
                         DUMMY_SP,
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
@@ -473,7 +473,7 @@ fn layout_of_uncached<'tcx>(
 
             if def.is_union() {
                 if def.repr().pack.is_some() && def.repr().align.is_some() {
-                    cx.tcx.sess.delay_span_bug(
+                    cx.tcx.sess.span_delayed_bug(
                         tcx.def_span(def.did()),
                         "union cannot be packed and aligned",
                     );

@@ -13,6 +13,10 @@ LL |     let _has_inference_vars: Option<i32> = Some(0).map(deref_int);
               found function signature `for<'a> fn(&'a i32) -> _`
 note: required by a bound in `Option::<T>::map`
   --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider wrapping the function in a closure
+   |
+LL |     let _has_inference_vars: Option<i32> = Some(0).map(|a| deref_int(&a));
+   |                                                        +++          ++++
 help: consider adjusting the signature so it does not borrow its argument
    |
 LL - fn deref_int(a: &i32) -> i32 {

@@ -12,9 +12,9 @@ use object::{
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
+use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
-use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_span::sym;
 use rustc_target::abi::Endian;

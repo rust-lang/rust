@@ -144,7 +144,7 @@ impl<'tcx> Const<'tcx> {
         span: S,
         msg: &'static str,
     ) -> Const<'tcx> {
-        let reported = tcx.sess.delay_span_bug(span, msg);
+        let reported = tcx.sess.span_delayed_bug(span, msg);
         Const::new_error(tcx, reported, ty)
     }
 
@@ -208,7 +208,7 @@ impl<'tcx> Const<'tcx> {
             match tcx.at(expr.span).lit_to_const(lit_input) {
                 Ok(c) => return Some(c),
                 Err(e) => {
-                    tcx.sess.delay_span_bug(
+                    tcx.sess.span_delayed_bug(
                         expr.span,
                         format!("Const::from_anon_const: couldn't lit_to_const {e:?}"),
                     );

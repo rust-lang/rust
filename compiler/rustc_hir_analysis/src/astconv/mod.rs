@@ -720,9 +720,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // since we should have emitten an error for them earlier, and they will
             // not be well-formed!
             if polarity == ty::ImplPolarity::Negative {
-                self.tcx()
-                    .sess
-                    .delay_span_bug(binding.span, "negative trait bounds should not have bindings");
+                self.tcx().sess.span_delayed_bug(
+                    binding.span,
+                    "negative trait bounds should not have bindings",
+                );
                 continue;
             }
 
@@ -1419,7 +1420,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
-                    let guar = tcx.sess.delay_span_bug(span, "expected cycle error");
+                    let guar = tcx.sess.span_delayed_bug(span, "expected cycle error");
                     return Err(guar);
                 };
 
@@ -2376,7 +2377,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let e = self
                     .tcx()
                     .sess
-                    .delay_span_bug(path.span, "path with `Res::Err` but no error emitted");
+                    .span_delayed_bug(path.span, "path with `Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 Ty::new_error(self.tcx(), e)
             }

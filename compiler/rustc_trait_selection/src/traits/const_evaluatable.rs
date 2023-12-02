@@ -65,7 +65,7 @@ pub fn is_const_evaluatable<'tcx>(
                 // FIXME(generic_const_exprs): we have a `ConstKind::Expr` which is fully concrete, but
                 // currently it is not possible to evaluate `ConstKind::Expr` so we are unable to tell if it
                 // is evaluatable or not. For now we just ICE until this is implemented.
-                Err(NotConstEvaluatable::Error(tcx.sess.delay_span_bug(
+                Err(NotConstEvaluatable::Error(tcx.sess.span_delayed_bug(
                     span,
                     "evaluating `ConstKind::Expr` is not currently supported",
                 )))
@@ -74,7 +74,7 @@ pub fn is_const_evaluatable<'tcx>(
                 let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
                 match concrete {
                     Err(ErrorHandled::TooGeneric(_)) => {
-                        Err(NotConstEvaluatable::Error(infcx.tcx.sess.delay_span_bug(
+                        Err(NotConstEvaluatable::Error(infcx.tcx.sess.span_delayed_bug(
                             span,
                             "Missing value for constant, but no error reported?",
                         )))
@@ -138,10 +138,10 @@ pub fn is_const_evaluatable<'tcx>(
                 } else if uv.has_non_region_param() {
                     NotConstEvaluatable::MentionsParam
                 } else {
-                    let guar = infcx
-                        .tcx
-                        .sess
-                        .delay_span_bug(span, "Missing value for constant, but no error reported?");
+                    let guar = infcx.tcx.sess.span_delayed_bug(
+                        span,
+                        "Missing value for constant, but no error reported?",
+                    );
                     NotConstEvaluatable::Error(guar)
                 };
 

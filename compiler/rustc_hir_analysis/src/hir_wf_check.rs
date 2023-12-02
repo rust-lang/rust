@@ -29,7 +29,7 @@ fn diagnostic_hir_wf_check<'tcx>(
 
     // HIR wfcheck should only ever happen as part of improving an existing error
     tcx.sess
-        .delay_span_bug(tcx.def_span(def_id), "Performed HIR wfcheck without an existing error!");
+        .span_delayed_bug(tcx.def_span(def_id), "Performed HIR wfcheck without an existing error!");
 
     let icx = ItemCtxt::new(tcx, def_id);
 

@@ -1,6 +1,5 @@
 // check-pass
 // edition: 2021
-#![feature(c_str_literals)]
 
 // aux-build: print-tokens.rs
 extern crate print_tokens;

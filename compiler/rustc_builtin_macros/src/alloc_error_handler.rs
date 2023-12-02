@@ -31,10 +31,7 @@ pub fn expand(
     {
         (item, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
     } else {
-        ecx.sess
-            .parse_sess
-            .span_diagnostic
-            .emit_err(errors::AllocErrorMustBeFn { span: item.span() });
+        ecx.sess.diagnostic().emit_err(errors::AllocErrorMustBeFn { span: item.span() });
         return vec![orig_item];
     };
 

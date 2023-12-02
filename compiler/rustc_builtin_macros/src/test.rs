@@ -389,7 +389,7 @@ pub fn expand_test_or_bench(
 }
 
 fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>) {
-    let diag = &cx.sess.parse_sess.span_diagnostic;
+    let diag = cx.sess.diagnostic();
     let msg = "the `#[test]` attribute may only be used on a non-associated function";
     let mut err = match item.map(|i| &i.kind) {
         // These were a warning before #92959 and need to continue being that to avoid breaking
@@ -466,7 +466,7 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
-            let sd = &cx.sess.parse_sess.span_diagnostic;
+            let sd = cx.sess.diagnostic();
 
             match attr.meta_item_list() {
                 // Handle #[should_panic(expected = "foo")]
@@ -535,7 +535,7 @@ fn check_test_signature(
     f: &ast::Fn,
 ) -> Result<(), ErrorGuaranteed> {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
-    let sd = &cx.sess.parse_sess.span_diagnostic;
+    let sd = cx.sess.diagnostic();
 
     if let ast::Unsafe::Yes(span) = f.sig.header.unsafety {
         return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
@@ -579,7 +579,7 @@ fn check_bench_signature(
     // N.B., inadequate check, but we're running
     // well before resolve, can't get too deep.
     if f.sig.decl.inputs.len() != 1 {
-        return Err(cx.sess.parse_sess.span_diagnostic.emit_err(errors::BenchSig { span: i.span }));
+        return Err(cx.sess.diagnostic().emit_err(errors::BenchSig { span: i.span }));
     }
     Ok(())
 }

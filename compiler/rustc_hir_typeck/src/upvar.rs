@@ -725,7 +725,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.span_delayed_bug(
                     closure_span,
                     format!(
                         "two identical projections: ({:?}, {:?})",
