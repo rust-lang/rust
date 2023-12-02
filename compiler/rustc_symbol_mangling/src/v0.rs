@@ -69,6 +69,12 @@ pub(super) fn mangle<'tcx>(
 }
 
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
+    if item_name == "__rust_no_alloc_shim_is_unstable" {
+        // Temporary back compat hack to give people the chance to migrate to
+        // include #[rustc_std_internal_symbol].
+        return "__rust_no_alloc_shim_is_unstable".to_owned();
+    }
+
     let prefix = "_R";
     let mut cx: SymbolMangler<'_> = SymbolMangler {
         tcx,
