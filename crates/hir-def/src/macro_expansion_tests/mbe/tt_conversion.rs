@@ -192,9 +192,9 @@ macro_rules! constant {
     ($e:expr ;) => {$e};
 }
 
-const _: () = (0.0);
-const _: () = (0.);
-const _: () = (0e0);
+const _: () = 0.0;
+const _: () = 0.;
+const _: () = 0e0;
 "#]],
     );
 }

@@ -14,8 +14,25 @@ pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
 
 pub type SpanData = tt::SpanData<SpanAnchor, SyntaxContextId>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContextId(InternId);
+
+impl fmt::Debug for SyntaxContextId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if *self == Self::SELF_REF {
+            f.debug_tuple("SyntaxContextId")
+                .field(&{
+                    #[derive(Debug)]
+                    #[allow(non_camel_case_types)]
+                    struct SELF_REF;
+                    SELF_REF
+                })
+                .finish()
+        } else {
+            f.debug_tuple("SyntaxContextId").field(&self.0).finish()
+        }
+    }
+}
 crate::impl_intern_key!(SyntaxContextId);
 
 impl fmt::Display for SyntaxContextId {
@@ -30,7 +47,7 @@ impl SyntaxContext for SyntaxContextId {
 // inherent trait impls please tyvm
 impl SyntaxContextId {
     pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
-    // veykril(HACK): salsa doesn't allow us fetching the id of the current input to be allocated so
+    // veykril(HACK): FIXME salsa doesn't allow us fetching the id of the current input to be allocated so
     // we need a special value that behaves as the current context.
     pub const SELF_REF: Self =
         SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 1) });
@@ -107,7 +124,7 @@ pub struct MacroFileId {
 
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacroCallId(salsa::InternId);
 crate::impl_intern_key!(MacroCallId);
 

@@ -792,9 +792,21 @@ fn match_meta_var<S: Span>(
                 }
                 _ => {}
             };
-            return input
-                .expect_fragment(parser::PrefixEntryPoint::Expr)
-                .map(|tt| tt.map(tt::TokenTree::subtree_or_wrap).map(Fragment::Expr));
+            return input.expect_fragment(parser::PrefixEntryPoint::Expr).map(|tt| {
+                tt.map(|tt| match tt {
+                    tt::TokenTree::Leaf(leaf) => tt::Subtree {
+                        delimiter: tt::Delimiter::dummy_invisible(),
+                        token_trees: vec![leaf.into()],
+                    },
+                    tt::TokenTree::Subtree(mut s) => {
+                        if s.delimiter.kind == tt::DelimiterKind::Invisible {
+                            s.delimiter.kind = tt::DelimiterKind::Parenthesis;
+                        }
+                        s
+                    }
+                })
+                .map(Fragment::Expr)
+            });
         }
         MetaVarKind::Ident | MetaVarKind::Tt | MetaVarKind::Lifetime | MetaVarKind::Literal => {
             let tt_result = match kind {

@@ -997,9 +997,9 @@ macro_rules! vec {
 fn f() {
      {
         let mut v = Vec::new();
-        v.push((1));
-        v.push((2));
-        v.push((3));
+        v.push(1);
+        v.push(2);
+        v.push(3);
         v
     };
 }
@@ -1468,8 +1468,8 @@ macro_rules! matches {
     };
 }
 fn main() {
-    match (0) {
-        0|1 if (true )=>true , _=>false
+    match 0 {
+        0|1 if true =>true , _=>false
     };
 }
  "#]],

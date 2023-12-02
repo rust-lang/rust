@@ -2,6 +2,7 @@ mod block;
 
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::{expect, Expect};
+use hir_expand::db::ExpandDatabase;
 
 use crate::{test_db::TestDB, ModuleDefId};
 
@@ -143,7 +144,6 @@ mod m {
 
 #[test]
 fn desugar_builtin_format_args() {
-    // Regression test for a path resolution bug introduced with inner item handling.
     let (db, body, def) = lower(
         r#"
 //- minicore: fmt
@@ -217,6 +217,73 @@ fn main() {
                 unsafe {
                     builtin#lang(UnsafeArg::new)()
                 },
+            );
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def))
+}
+
+#[test]
+fn test_macro_hygiene() {
+    let (db, body, def) = lower(
+        r##"
+//- minicore: fmt, from
+//- /main.rs
+mod error;
+
+use crate::error::error;
+
+fn main() {
+    // _ = forces body expansion instead of block def map expansion
+    _ = error!("Failed to resolve path `{}`", node.text());
+}
+//- /error.rs
+macro_rules! _error {
+    ($fmt:expr, $($arg:tt)+) => {$crate::error::intermediate!(format_args!($fmt, $($arg)+))}
+}
+pub(crate) use _error as error;
+macro_rules! _intermediate {
+    ($arg:expr) => {$crate::error::SsrError::new($arg)}
+}
+pub(crate) use _intermediate as intermediate;
+
+pub struct SsrError(pub(crate) core::fmt::Arguments);
+
+impl SsrError {
+    pub(crate) fn new(message: impl Into<core::fmt::Arguments>) -> SsrError {
+        SsrError(message.into())
+    }
+}
+"##,
+    );
+    println!("{}", db.dump_syntax_contexts());
+
+    assert_eq!(db.body_with_source_map(def.into()).1.diagnostics(), &[]);
+    expect![[r#"
+        fn main() {
+            _ = $crate::error::SsrError::new(
+                builtin#lang(Arguments::new_v1_formatted)(
+                    &[
+                        "\"Failed to resolve path `", "`\"",
+                    ],
+                    &[
+                        builtin#lang(Argument::new_display)(
+                            &node.text(),
+                        ),
+                    ],
+                    &[
+                        builtin#lang(Placeholder::new)(
+                            0usize,
+                            ' ',
+                            builtin#lang(Alignment::Unknown),
+                            0u32,
+                            builtin#lang(Count::Implied),
+                            builtin#lang(Count::Implied),
+                        ),
+                    ],
+                    unsafe {
+                        builtin#lang(UnsafeArg::new)()
+                    },
+                ),
             );
         }"#]]
     .assert_eq(&body.pretty_print(&db, def))

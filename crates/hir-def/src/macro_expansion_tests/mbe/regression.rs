@@ -39,8 +39,8 @@ fn main() {
     };
      {
         let mut v = Vec::new();
-        v.push((1u32));
-        v.push((2));
+        v.push(1u32);
+        v.push(2);
         v
     };
 }

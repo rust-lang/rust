@@ -1,6 +1,10 @@
 //! Defines database & queries for macro expansion.
 
-use base_db::{salsa, span::SyntaxContextId, CrateId, Edition, FileId, SourceDatabase};
+use base_db::{
+    salsa::{self, debug::DebugQueryTable},
+    span::SyntaxContextId,
+    CrateId, Edition, FileId, SourceDatabase,
+};
 use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
@@ -17,7 +21,7 @@ use crate::{
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
     fixup::{self, SyntaxFixupUndoInfo},
-    hygiene::{self, SyntaxContextData, Transparency},
+    hygiene::{apply_mark, SyntaxContextData, Transparency},
     span::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
     ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, HirFileId, HirFileIdRepr, MacroCallId,
@@ -53,7 +57,7 @@ impl DeclarativeMacroExpander {
             ),
             None => self
                 .mac
-                .expand(&tt, |s| s.ctx = db.apply_mark(s.ctx, call_id, self.transparency))
+                .expand(&tt, |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency))
                 .map_err(Into::into),
         }
     }
@@ -115,16 +119,11 @@ pub trait ExpandDatabase: SourceDatabase {
     fn intern_macro_call(&self, macro_call: MacroCallLoc) -> MacroCallId;
     #[salsa::interned]
     fn intern_syntax_context(&self, ctx: SyntaxContextData) -> SyntaxContextId;
+
     #[salsa::transparent]
     fn setup_syntax_context_root(&self) -> ();
     #[salsa::transparent]
-    #[salsa::invoke(hygiene::apply_mark)]
-    fn apply_mark(
-        &self,
-        ctxt: SyntaxContextId,
-        call_id: MacroCallId,
-        transparency: hygiene::Transparency,
-    ) -> SyntaxContextId;
+    fn dump_syntax_contexts(&self) -> String;
 
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
     /// query, only typing in the macro call itself changes the returned
@@ -269,7 +268,8 @@ pub fn expand_speculative(
         MacroDefKind::BuiltInAttr(it, _) => it.expand(db, actual_macro_call, &tt),
     };
 
-    let expand_to = macro_expand_to(db, actual_macro_call);
+    let expand_to = loc.expand_to();
+
     fixup::reverse_fixups(&mut speculative_expansion.value, &undo_info);
     let (node, rev_tmap) = token_tree_to_syntax_node(&speculative_expansion.value, expand_to);
 
@@ -318,12 +318,9 @@ fn parse_macro_expansion(
     macro_file: MacroFileId,
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
     let _p = profile::span("parse_macro_expansion");
-    let mbe::ValueResult { value: tt, err } = macro_expand(db, macro_file.macro_call_id);
-
-    let expand_to = macro_expand_to(db, macro_file.macro_call_id);
-
-    tracing::debug!("expanded = {}", tt.as_debug_string());
-    tracing::debug!("kind = {:?}", expand_to);
+    let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+    let expand_to = loc.expand_to();
+    let mbe::ValueResult { value: tt, err } = macro_expand(db, macro_file.macro_call_id, loc);
 
     let (parse, rev_token_map) = token_tree_to_syntax_node(&tt, expand_to);
 
@@ -575,9 +572,9 @@ fn macro_expander(db: &dyn ExpandDatabase, id: MacroDefId) -> TokenExpander {
 fn macro_expand(
     db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
+    loc: MacroCallLoc,
 ) -> ExpandResult<Arc<tt::Subtree>> {
     let _p = profile::span("macro_expand");
-    let loc = db.lookup_intern_macro_call(macro_call_id);
 
     let ExpandResult { value: tt, mut err } = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id),
@@ -711,10 +708,6 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
     ExpandResult { value: Arc::new(tt), err }
 }
 
-fn macro_expand_to(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandTo {
-    db.lookup_intern_macro_call(id).expand_to()
-}
-
 fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
     expand_to: ExpandTo,
@@ -750,4 +743,41 @@ fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<Arc<tt::Subtree>>
 
 fn setup_syntax_context_root(db: &dyn ExpandDatabase) {
     db.intern_syntax_context(SyntaxContextData::root());
+}
+
+fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
+    let mut s = String::from("Expansions:");
+    let mut entries = InternMacroCallLookupQuery.in_db(db).entries::<Vec<_>>();
+    entries.sort_by_key(|e| e.key);
+    for e in entries {
+        let id = e.key;
+        let expn_data = e.value.as_ref().unwrap();
+        s.push_str(&format!(
+            "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",
+            id,
+            expn_data.kind.file_id(),
+            expn_data.call_site,
+            SyntaxContextId::ROOT, // FIXME expn_data.def_site,
+            expn_data.kind.descr(),
+        ));
+    }
+
+    s.push_str("\n\nSyntaxContexts:\n");
+    let mut entries = InternSyntaxContextLookupQuery.in_db(db).entries::<Vec<_>>();
+    entries.sort_by_key(|e| e.key);
+    for e in entries {
+        struct SyntaxContextDebug<'a>(
+            &'a dyn ExpandDatabase,
+            SyntaxContextId,
+            &'a SyntaxContextData,
+        );
+
+        impl<'a> std::fmt::Debug for SyntaxContextDebug<'a> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.2.fancy_debug(self.1, self.0, f)
+            }
+        }
+        stdx::format_to!(s, "{:?}\n", SyntaxContextDebug(db, e.key, &e.value.unwrap()));
+    }
+    s
 }

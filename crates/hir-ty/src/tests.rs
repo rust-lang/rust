@@ -128,7 +128,6 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             None => continue,
         };
         let def_map = module.def_map(&db);
-        dbg!(def_map.dump(&db));
         visit_module(&db, &def_map, module.local_id, &mut |it| defs.push(it));
     }
     defs.sort_by_key(|def| match def {

@@ -62,10 +62,10 @@ macro_rules !implement_methods {
 struct Foo;
 impl Foo {
     fn alpha() -> &'static[u32] {
-        &[(1), (2), (3)]
+        &[1, 2, 3]
     }
     fn beta() -> &'static[u32] {
-        &[(1), (2), (3)]
+        &[1, 2, 3]
     }
 }
 "#]],

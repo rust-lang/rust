@@ -444,15 +444,8 @@ fn expand_repeat<S: Span>(
 fn push_fragment<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, fragment: Fragment<S>) {
     match fragment {
         Fragment::Tokens(tt::TokenTree::Subtree(tt)) => push_subtree(buf, tt),
-        Fragment::Expr(mut tt) => {
-            if tt.delimiter.kind == tt::DelimiterKind::Invisible {
-                tt.delimiter = tt::Delimiter {
-                    open: S::DUMMY,
-                    close: S::DUMMY,
-                    kind: tt::DelimiterKind::Parenthesis,
-                };
-            }
-            buf.push(tt.into())
+        Fragment::Expr(sub) => {
+            push_subtree(buf, sub);
         }
         Fragment::Path(tt) => fix_up_and_push_path_tt(buf, tt),
         Fragment::Tokens(tt) => buf.push(tt),

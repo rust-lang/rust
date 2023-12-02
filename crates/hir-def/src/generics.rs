@@ -439,7 +439,7 @@ impl GenericParams {
                     let ctx = expander.ctx(db);
                     let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
                     self.fill_implicit_impl_trait_args(db, &mut *exp, &type_ref);
-                    exp.1.exit(db, mark);
+                    exp.1.exit(mark);
                 }
             }
         });

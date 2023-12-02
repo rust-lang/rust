@@ -1025,7 +1025,7 @@ impl ExprCollector<'_> {
 
                 let id = collector(self, Some(expansion.tree()));
                 self.ast_id_map = prev_ast_id_map;
-                self.expander.exit(self.db, mark);
+                self.expander.exit(mark);
                 id
             }
             None => collector(self, None),

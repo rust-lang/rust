@@ -94,8 +94,8 @@ impl Expander {
         ExpandResult { value: Some(InFile::new(macro_file.into(), value.0)), err: error.or(err) }
     }
 
-    pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
-        self.span_map = db.span_map(mark.file_id);
+    pub fn exit(&mut self, mut mark: Mark) {
+        self.span_map = mark.span_map;
         self.current_file_id = mark.file_id;
         if self.recursion_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
@@ -174,10 +174,11 @@ impl Expander {
                     let parse = value.cast::<T>()?;
 
                     self.recursion_depth += 1;
-                    self.span_map = db.span_map(file_id);
+                    let old_span_map = std::mem::replace(&mut self.span_map, db.span_map(file_id));
                     let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
                     let mark = Mark {
                         file_id: old_file_id,
+                        span_map: old_span_map,
                         bomb: DropBomb::new("expansion mark dropped"),
                     };
                     Some((mark, parse))
@@ -190,5 +191,6 @@ impl Expander {
 #[derive(Debug)]
 pub struct Mark {
     file_id: HirFileId,
+    span_map: SpanMap,
     bomb: DropBomb,
 }

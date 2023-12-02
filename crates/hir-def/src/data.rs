@@ -794,7 +794,7 @@ impl<'a> AssocItemCollector<'a> {
 
         self.collect(&item_tree, tree_id, &iter);
 
-        self.expander.exit(self.db, mark);
+        self.expander.exit(mark);
     }
 }
 

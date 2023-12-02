@@ -407,11 +407,7 @@ impl<'a> TyLoweringContext<'a> {
                             drop(expander);
                             let ty = self.lower_ty(&type_ref);
 
-                            self.expander
-                                .borrow_mut()
-                                .as_mut()
-                                .unwrap()
-                                .exit(self.db.upcast(), mark);
+                            self.expander.borrow_mut().as_mut().unwrap().exit(mark);
                             Some(ty)
                         }
                         _ => {

@@ -8,7 +8,7 @@ use base_db::span::{MacroCallId, SpanData, SyntaxContextId};
 
 use crate::db::ExpandDatabase;
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct SyntaxContextData {
     pub outer_expn: Option<MacroCallId>,
     pub outer_transparency: Transparency,
@@ -17,6 +17,18 @@ pub struct SyntaxContextData {
     pub opaque: SyntaxContextId,
     /// This context, but with all transparent expansions filtered away.
     pub opaque_and_semitransparent: SyntaxContextId,
+}
+
+impl std::fmt::Debug for SyntaxContextData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SyntaxContextData")
+            .field("outer_expn", &self.outer_expn)
+            .field("outer_transparency", &self.outer_transparency)
+            .field("parent", &self.parent)
+            .field("opaque", &self.opaque)
+            .field("opaque_and_semitransparent", &self.opaque_and_semitransparent)
+            .finish()
+    }
 }
 
 impl SyntaxContextData {
@@ -28,6 +40,22 @@ impl SyntaxContextData {
             opaque: SyntaxContextId::ROOT,
             opaque_and_semitransparent: SyntaxContextId::ROOT,
         }
+    }
+
+    pub fn fancy_debug(
+        self,
+        self_id: SyntaxContextId,
+        db: &dyn ExpandDatabase,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(f, "#{self_id} parent: #{}, outer_mark: (", self.parent)?;
+        match self.outer_expn {
+            Some(id) => {
+                write!(f, "{:?}::{{{{expn{:?}}}}}", db.lookup_intern_macro_call(id).krate, id)?
+            }
+            None => write!(f, "root")?,
+        }
+        write!(f, ", {:?})", self.outer_transparency)
     }
 }
 
@@ -80,7 +108,7 @@ fn span_with_ctxt_from_mark(
     expn_id: MacroCallId,
     transparency: Transparency,
 ) -> SpanData {
-    SpanData { ctx: db.apply_mark(SyntaxContextId::ROOT, expn_id, transparency), ..span }
+    SpanData { ctx: apply_mark(db, SyntaxContextId::ROOT, expn_id, transparency), ..span }
 }
 
 pub(super) fn apply_mark(

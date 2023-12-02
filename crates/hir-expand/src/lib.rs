@@ -122,6 +122,7 @@ pub struct MacroDefId {
     pub kind: MacroDefKind,
     pub local_inner: bool,
     pub allow_internal_unsafe: bool,
+    // pub def_site: SyntaxContextId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -463,6 +464,14 @@ impl MacroCallLoc {
 }
 
 impl MacroCallKind {
+    fn descr(&self) -> &'static str {
+        match self {
+            MacroCallKind::FnLike { .. } => "macro call",
+            MacroCallKind::Derive { .. } => "derive macro",
+            MacroCallKind::Attr { .. } => "attribute macro",
+        }
+    }
+
     /// Returns the file containing the macro invocation.
     fn file_id(&self) -> HirFileId {
         match *self {
