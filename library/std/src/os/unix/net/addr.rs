@@ -112,9 +112,9 @@ impl SocketAddr {
             // linux returns zero bytes of address
             len = sun_path_offset(&addr) as libc::socklen_t; // i.e., zero-length address
         } else if cfg!(target_os = "openbsd") {
-            // OpenBSD has a bug where the socket name's length
-            // is more than what the buffer actually contains.
-            // Figure out the length for ourselves.
+            // OpenBSD implements getsockname in a way where the 
+            // socket name's length is more than what the buffer
+            // actually contains. Figure out the length for ourselves.
             // https://marc.info/?l=openbsd-bugs&m=170105481926736&w=2
             let sun_path: &[u8] = unsafe { crate::mem::transmute::<&[i8], &[u8]>(&addr.sun_path) };
             len = crate::sys::memchr::memchr(0, sun_path)
