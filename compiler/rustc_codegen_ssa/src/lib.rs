@@ -51,10 +51,10 @@ pub mod codegen_attrs;
 pub mod common;
 pub mod debuginfo;
 pub mod errors;
-pub mod glue;
 pub mod meth;
 pub mod mir;
 pub mod mono_item;
+pub mod size_of_val;
 pub mod target_features;
 pub mod traits;
 
