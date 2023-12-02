@@ -3,6 +3,7 @@
 //! This trait is currently the main interface between the Rust compiler,
 //! and the `stable_mir` crate.
 
+use rustc_middle::ty;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{GenericPredicates, Instance, ParamEnv, ScalarInt, ValTree};
 use rustc_span::def_id::LOCAL_CRATE;
@@ -12,9 +13,9 @@ use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::Body;
 use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs, LineInfo,
-    RigidTy, Span, TyKind,
+    PolyFnSig, RigidTy, Span, TyKind,
 };
-use stable_mir::{self, Crate, CrateItem, Error, Filename, ItemKind, Symbol};
+use stable_mir::{self, Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
 
 use crate::rustc_internal::{internal, RustcInternal};
@@ -37,6 +38,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[item];
         tables.tcx.instance_mir(rustc_middle::ty::InstanceDef::Item(def_id)).stable(&mut tables)
+    }
+
+    fn has_body(&self, def: DefId) -> bool {
+        let tables = self.0.borrow();
+        let def_id = tables[def];
+        tables.tcx.is_mir_available(def_id)
     }
 
     fn all_trait_decls(&self) -> stable_mir::TraitDecls {
@@ -195,6 +202,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         def.internal(&mut *tables).is_box()
     }
 
+    fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
+        let mut tables = self.0.borrow_mut();
+        let def_id = def.0.internal(&mut *tables);
+        let sig = tables.tcx.fn_sig(def_id).instantiate(tables.tcx, args.internal(&mut *tables));
+        sig.stable(&mut *tables)
+    }
+
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error> {
         let mut tables = self.0.borrow_mut();
         let mir_const = cnst.internal(&mut *tables);
@@ -264,6 +278,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tables = self.0.borrow_mut();
         let instance = tables.instances[instance];
         tables.tcx.symbol_name(instance).name.to_string()
+    }
+
+    fn is_empty_drop_shim(&self, def: InstanceDef) -> bool {
+        let tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        matches!(instance.def, ty::InstanceDef::DropGlue(_, None))
     }
 
     fn mono_instance(&self, item: stable_mir::CrateItem) -> stable_mir::mir::mono::Instance {

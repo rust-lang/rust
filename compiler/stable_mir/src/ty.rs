@@ -168,7 +168,11 @@ impl TyKind {
     }
 
     pub fn is_unit(&self) -> bool {
-        matches!(self, TyKind::RigidTy(RigidTy::Tuple(data)) if data.len() == 0)
+        matches!(self, TyKind::RigidTy(RigidTy::Tuple(data)) if data.is_empty())
+    }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Bool))
     }
 
     pub fn is_trait(&self) -> bool {
@@ -185,6 +189,14 @@ impl TyKind {
 
     pub fn is_union(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Union)
+    }
+
+    pub fn is_fn(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::FnDef(..)))
+    }
+
+    pub fn is_fn_ptr(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::FnPtr(..)))
     }
 
     pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
@@ -224,6 +236,15 @@ impl TyKind {
             RigidTy::RawPtr(ty, mutability) if explicit => {
                 Some(TypeAndMut { ty: *ty, mutability: *mutability })
             }
+            _ => None,
+        }
+    }
+
+    /// Get the function signature for function like types (Fn, FnPtr, Closure, Coroutine)
+    pub fn fn_sig(&self) -> Option<PolyFnSig> {
+        match self {
+            TyKind::RigidTy(RigidTy::FnDef(def, args)) => Some(with(|cx| cx.fn_sig(*def, args))),
+            TyKind::RigidTy(RigidTy::FnPtr(sig)) => Some(sig.clone()),
             _ => None,
         }
     }
@@ -307,8 +328,9 @@ crate_def! {
 }
 
 impl FnDef {
-    pub fn body(&self) -> Body {
-        with(|ctx| ctx.mir_body(self.0))
+    // Get the function body if available.
+    pub fn body(&self) -> Option<Body> {
+        with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
     }
 }
 
@@ -486,6 +508,16 @@ pub struct FnSig {
     pub c_variadic: bool,
     pub unsafety: Safety,
     pub abi: Abi,
+}
+
+impl FnSig {
+    pub fn output(&self) -> Ty {
+        self.inputs_and_output[self.inputs_and_output.len() - 1]
+    }
+
+    pub fn inputs(&self) -> &[Ty] {
+        &self.inputs_and_output[..self.inputs_and_output.len() - 1]
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

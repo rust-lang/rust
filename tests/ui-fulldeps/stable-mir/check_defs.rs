@@ -18,10 +18,11 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
+use std::assert_matches::assert_matches;
 use mir::{mono::Instance, TerminatorKind::*};
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
-use stable_mir::ty::{RigidTy, TyKind};
+use stable_mir::ty::{RigidTy, TyKind, Ty, UintTy};
 use stable_mir::*;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -39,6 +40,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     assert_eq!(instances.len(), 2);
     test_fn(instances[0], "from_u32", "std::char::from_u32", "core");
     test_fn(instances[1], "Vec::<u8>::new", "std::vec::Vec::<u8>::new", "alloc");
+    test_vec_new(instances[1]);
     ControlFlow::Continue(())
 }
 
@@ -54,6 +56,30 @@ fn test_fn(instance: Instance, expected_trimmed: &str, expected_qualified: &str,
     assert_eq!(trimmed, expected_trimmed.replace("u8", "T"));
     assert_eq!(qualified, expected_qualified.replace("u8", "T"));
     assert_eq!(&item.krate().name, krate);
+}
+
+fn extract_elem_ty(ty: Ty) -> Ty {
+    match ty.kind() {
+        TyKind::RigidTy(RigidTy::Adt(_, args)) => {
+            *args.0[0].expect_ty()
+        }
+        _ => unreachable!("Expected Vec ADT, but found: {ty:?}")
+    }
+}
+
+/// Check signature and type of `Vec::<u8>::new` and its generic version.
+fn test_vec_new(instance: mir::mono::Instance) {
+    let sig = instance.fn_sig();
+    assert_matches!(sig.inputs(), &[]);
+    let elem_ty = extract_elem_ty(sig.output());
+    assert_matches!(elem_ty.kind(), TyKind::RigidTy(RigidTy::Uint(UintTy::U8)));
+
+    // Get the signature for Vec::<T>::new.
+    let item = CrateItem::try_from(instance).unwrap();
+    let ty = item.ty();
+    let gen_sig = ty.kind().fn_sig().unwrap().skip_binder();
+    let gen_ty = extract_elem_ty(gen_sig.output());
+    assert_matches!(gen_ty.kind(), TyKind::Param(_));
 }
 
 /// Inspect the instance body
