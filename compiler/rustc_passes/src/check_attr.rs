@@ -2171,7 +2171,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_rustc_std_internal_symbol(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
-            Target::Fn | Target::Static => {}
+            Target::Fn | Target::Static | Target::ForeignFn | Target::ForeignStatic => {}
             _ => {
                 self.tcx
                     .dcx()
