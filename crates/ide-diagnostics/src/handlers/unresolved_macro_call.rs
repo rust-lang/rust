@@ -70,20 +70,4 @@ self::m!(); self::m2!();
 "#,
         );
     }
-
-    #[test]
-    #[should_panic] // FIXME: https://github.com/rust-lang/rust-analyzer/issues/14968
-    fn include_does_not_break_diagnostics() {
-        check_diagnostics(
-            r#"
-//- minicore: include
-//- /lib.rs crate:lib
-include!("include-me.rs");
-//- /include-me.rs
-/// long doc that pushes the diagnostic range beyond the first file's text length
-#[err]
-mod prim_never {}
-"#,
-        );
-    }
 }

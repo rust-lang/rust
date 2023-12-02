@@ -136,7 +136,7 @@ pub enum MacroDefKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct EagerCallInfo {
+pub struct EagerCallInfo {
     /// The expanded argument of the eager macro.
     arg: Arc<tt::Subtree>,
     /// Call id of the eager macro's input file (this is the macro file for its fully expanded input).
@@ -176,6 +176,8 @@ pub trait HirFileIdExt {
     /// expansion originated from.
     fn original_file(self, db: &dyn db::ExpandDatabase) -> FileId;
 
+    fn original_file_respecting_includes(self, db: &dyn db::ExpandDatabase) -> FileId;
+
     /// If this is a macro call, returns the syntax node of the call.
     fn call_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<SyntaxNode>>;
 
@@ -210,6 +212,29 @@ impl HirFileIdExt for HirFileId {
                 HirFileIdRepr::FileId(id) => break id,
                 HirFileIdRepr::MacroFile(MacroFileId { macro_call_id }) => {
                     file_id = db.lookup_intern_macro_call(macro_call_id).kind.file_id();
+                }
+            }
+        }
+    }
+
+    fn original_file_respecting_includes(mut self, db: &dyn db::ExpandDatabase) -> FileId {
+        loop {
+            match self.repr() {
+                base_db::span::HirFileIdRepr::FileId(id) => break id,
+                base_db::span::HirFileIdRepr::MacroFile(file) => {
+                    let loc = db.lookup_intern_macro_call(file.macro_call_id);
+                    if loc.def.is_include() {
+                        if let Some(eager) = &loc.eager {
+                            if let Ok(it) = builtin_fn_macro::include_input_to_file_id(
+                                db,
+                                file.macro_call_id,
+                                &eager.arg,
+                            ) {
+                                break it;
+                            }
+                        }
+                    }
+                    self = loc.kind.file_id();
                 }
             }
         }
@@ -473,7 +498,7 @@ impl MacroCallKind {
     }
 
     /// Returns the file containing the macro invocation.
-    fn file_id(&self) -> HirFileId {
+    pub fn file_id(&self) -> HirFileId {
         match *self {
             MacroCallKind::FnLike { ast_id: InFile { file_id, .. }, .. }
             | MacroCallKind::Derive { ast_id: InFile { file_id, .. }, .. }

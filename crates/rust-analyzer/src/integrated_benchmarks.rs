@@ -30,7 +30,7 @@ fn integrated_highlighting_benchmark() {
 
     // Load rust-analyzer itself.
     let workspace_to_load = project_root();
-    let file = "./crates/ide-db/src/apply_change.rs";
+    let file = "./crates/rust-analyzer/src/config.rs";
 
     let cargo_config = CargoConfig::default();
     let load_cargo_config = LoadCargoConfig {

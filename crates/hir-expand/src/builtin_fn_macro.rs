@@ -578,16 +578,10 @@ fn include_expand(
     tt: &tt::Subtree,
     span: SpanData,
 ) -> ExpandResult<tt::Subtree> {
-    let path = match parse_string(tt) {
+    let file_id = match include_input_to_file_id(db, arg_id, tt) {
         Ok(it) => it,
         Err(e) => {
             return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e)
-        }
-    };
-    let file_id = match relative_file(db, arg_id, &path, false) {
-        Ok(file_id) => file_id,
-        Err(e) => {
-            return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e);
         }
     };
     match parse_to_token_tree(
@@ -603,19 +597,20 @@ fn include_expand(
     }
 }
 
+pub fn include_input_to_file_id(
+    db: &dyn ExpandDatabase,
+    arg_id: MacroCallId,
+    arg: &tt::Subtree,
+) -> Result<FileId, ExpandError> {
+    relative_file(db, arg_id, &parse_string(arg)?, false)
+}
+
 fn include_bytes_expand(
     _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
-    tt: &tt::Subtree,
+    _tt: &tt::Subtree,
     span: SpanData,
 ) -> ExpandResult<tt::Subtree> {
-    let _path = match parse_string(tt) {
-        Ok(it) => it,
-        Err(e) => {
-            return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e)
-        }
-    };
-
     // FIXME: actually read the file here if the user asked for macro expansion
     let res = tt::Subtree {
         delimiter: tt::Delimiter::dummy_invisible(),

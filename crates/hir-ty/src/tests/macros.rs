@@ -787,7 +787,6 @@ fn main() {
 }
 
 #[test]
-#[should_panic] // FIXME
 fn infer_builtin_macros_include_child_mod() {
     check_types(
         r#"
