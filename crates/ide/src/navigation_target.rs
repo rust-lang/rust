@@ -169,8 +169,13 @@ impl TryToNav for FileSymbol {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let full_range = self.loc.original_range(db);
         let focus_range = self.loc.original_name_range(db);
-        let focus_range =
-            if focus_range.file_id == full_range.file_id { Some(focus_range.range) } else { None };
+        let focus_range = if focus_range.file_id == full_range.file_id
+            && full_range.range.contains_range(focus_range.range)
+        {
+            Some(focus_range.range)
+        } else {
+            None
+        };
 
         Some(NavigationTarget {
             file_id: full_range.file_id,

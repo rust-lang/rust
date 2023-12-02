@@ -8,8 +8,8 @@ use std::mem;
 
 use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
-    AsAssocItem, DefWithBody, HasAttrs, HasSource, HirFileIdExt, InFile, ModuleSource, Semantics,
-    Visibility,
+    AsAssocItem, DefWithBody, HasAttrs, HasSource, HirFileIdExt, InFile, InRealFile, ModuleSource,
+    Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use nohash_hasher::IntMap;
@@ -133,7 +133,8 @@ impl SearchScope {
 
         let (file_id, range) = {
             let InFile { file_id, value } = module.definition_source(db);
-            if let Some((file_id, call_source)) = file_id.original_call_node(db) {
+            if let Some(InRealFile { file_id, value: call_source }) = file_id.original_call_node(db)
+            {
                 (file_id, Some(call_source.text_range()))
             } else {
                 (

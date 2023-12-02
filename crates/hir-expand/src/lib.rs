@@ -172,17 +172,18 @@ pub enum MacroCallKind {
 }
 
 pub trait HirFileIdExt {
-    /// For macro-expansion files, returns the file original source file the
-    /// expansion originated from.
+    /// Returns the original file of this macro call hierarchy.
     fn original_file(self, db: &dyn db::ExpandDatabase) -> FileId;
 
+    /// Returns the original file of this macro call hierarchy while going into the included file if
+    /// one of the calls comes from an `include!``.
     fn original_file_respecting_includes(self, db: &dyn db::ExpandDatabase) -> FileId;
 
     /// If this is a macro call, returns the syntax node of the call.
     fn call_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<SyntaxNode>>;
 
     /// If this is a macro call, returns the syntax node of the very first macro call this file resides in.
-    fn original_call_node(self, db: &dyn db::ExpandDatabase) -> Option<(FileId, SyntaxNode)>;
+    fn original_call_node(self, db: &dyn db::ExpandDatabase) -> Option<InRealFile<SyntaxNode>>;
 
     /// Return expansion information if it is a macro-expansion file
     fn expansion_info(self, db: &dyn db::ExpandDatabase) -> Option<ExpansionInfo>;
@@ -246,11 +247,13 @@ impl HirFileIdExt for HirFileId {
         Some(loc.to_node(db))
     }
 
-    fn original_call_node(self, db: &dyn db::ExpandDatabase) -> Option<(FileId, SyntaxNode)> {
+    fn original_call_node(self, db: &dyn db::ExpandDatabase) -> Option<InRealFile<SyntaxNode>> {
         let mut call = db.lookup_intern_macro_call(self.macro_file()?.macro_call_id).to_node(db);
         loop {
             match call.file_id.repr() {
-                HirFileIdRepr::FileId(file_id) => break Some((file_id, call.value)),
+                HirFileIdRepr::FileId(file_id) => {
+                    break Some(InRealFile { file_id, value: call.value })
+                }
                 HirFileIdRepr::MacroFile(MacroFileId { macro_call_id }) => {
                     call = db.lookup_intern_macro_call(macro_call_id).to_node(db);
                 }
