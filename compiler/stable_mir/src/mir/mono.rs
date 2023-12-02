@@ -1,6 +1,6 @@
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
-use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
+use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, FnSig, GenericArgs, IndexedVal, Ty};
 use crate::{with, CrateItem, DefId, Error, ItemKind, Opaque, Symbol};
 use std::fmt::{Debug, Formatter};
 
@@ -27,7 +27,8 @@ pub enum InstanceKind {
     /// A compiler intrinsic function.
     Intrinsic,
     /// A virtual function definition stored in a VTable.
-    Virtual,
+    /// The `idx` field indicates the position in the VTable for this instance.
+    Virtual { idx: usize },
     /// A compiler generated shim.
     Shim,
 }
@@ -106,6 +107,24 @@ impl Instance {
             })
         })
     }
+
+    /// Get this function signature with all types already instantiated.
+    pub fn fn_sig(&self) -> FnSig {
+        self.ty().kind().fn_sig().unwrap().skip_binder()
+    }
+
+    /// Check whether this instance is an empty shim.
+    ///
+    /// Allow users to check if this shim can be ignored when called directly.
+    ///
+    /// We have decided not to export different types of Shims to StableMIR users, however, this
+    /// is a query that can be very helpful for users when processing DropGlue.
+    ///
+    /// When generating code for a Drop terminator, users can ignore an empty drop glue.
+    /// These shims are only needed to generate a valid Drop call done via VTable.
+    pub fn is_empty_shim(&self) -> bool {
+        self.kind == InstanceKind::Shim && with(|cx| cx.is_empty_drop_shim(self.def))
+    }
 }
 
 impl Debug for Instance {
@@ -124,8 +143,6 @@ impl TryFrom<CrateItem> for Instance {
 
     fn try_from(item: CrateItem) -> Result<Self, Self::Error> {
         with(|context| {
-            // FIXME(celinval):
-            // - Return `Err` if instance does not have a body.
             if !context.requires_monomorphization(item.0) {
                 Ok(context.mono_instance(item))
             } else {
@@ -141,11 +158,13 @@ impl TryFrom<Instance> for CrateItem {
     type Error = crate::Error;
 
     fn try_from(value: Instance) -> Result<Self, Self::Error> {
-        if value.kind == InstanceKind::Item {
-            Ok(CrateItem(with(|context| context.instance_def_id(value.def))))
-        } else {
-            Err(Error::new(format!("Item kind `{:?}` cannot be converted", value.kind)))
-        }
+        with(|context| {
+            if value.kind == InstanceKind::Item && context.has_body(value.def.def_id()) {
+                Ok(CrateItem(context.instance_def_id(value.def)))
+            } else {
+                Err(Error::new(format!("Item kind `{:?}` cannot be converted", value.kind)))
+            }
+        })
     }
 }
 
@@ -169,6 +188,12 @@ impl From<StaticDef> for CrateItem {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InstanceDef(usize);
+
+impl CrateDef for InstanceDef {
+    fn def_id(&self) -> DefId {
+        with(|context| context.instance_def_id(*self))
+    }
+}
 
 crate_def! {
     /// Holds information about a static variable definition.

@@ -11,11 +11,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
+use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
-use crate::OnceCell;
 
 pub use crate::utils::dylib::{dylib_path, dylib_path_var};
 
@@ -444,7 +444,7 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
 }
 
 pub fn lld_flag_no_threads(is_windows: bool) -> &'static str {
-    static LLD_NO_THREADS: OnceCell<(&'static str, &'static str)> = OnceCell::new();
+    static LLD_NO_THREADS: OnceLock<(&'static str, &'static str)> = OnceLock::new();
     let (windows, other) = LLD_NO_THREADS.get_or_init(|| {
         let out = output(Command::new("lld").arg("-flavor").arg("ld").arg("--version"));
         let newer = match (out.find(char::is_numeric), out.find('.')) {
