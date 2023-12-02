@@ -15,7 +15,7 @@ use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::core::builder::Builder;
-use crate::core::config::{Config, TargetSelection};
+use crate::core::config::{Config, LldMode, TargetSelection};
 
 pub use crate::utils::dylib::{dylib_path, dylib_path_var};
 
@@ -500,7 +500,16 @@ pub fn linker_flags(
 ) -> Vec<String> {
     let mut args = vec![];
     if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
-        args.push(String::from("-Clink-arg=-fuse-ld=lld"));
+        match builder.config.lld_mode {
+            LldMode::External => {
+                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+            }
+            LldMode::SelfContained => {
+                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                args.push("-Clink-self-contained=+linker".to_string());
+            }
+            LldMode::Unused => {}
+        }
 
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!("-Clink-arg=-Wl,{}", lld_flag_no_threads(target.is_msvc())));
