@@ -38,6 +38,7 @@ use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Symbol, DUMMY_SP};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::abi::FIRST_VARIANT;
 
 use std::cmp;
@@ -926,7 +927,12 @@ impl CrateInfo {
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
                         .iter()
-                        .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text))
+                        .map(|item| {
+                            (
+                                format!("{prefix}{}", mangle_internal_symbol(tcx, item.as_str())),
+                                SymbolExportKind::Text,
+                            )
+                        })
                         .collect::<Vec<_>>();
                     symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
                     linked_symbols.extend(symbols);
@@ -939,7 +945,13 @@ impl CrateInfo {
                         // errors.
                         linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
                             (
-                                format!("{prefix}{}", global_fn_name(method.name).as_str()),
+                                format!(
+                                    "{prefix}{}",
+                                    mangle_internal_symbol(
+                                        tcx,
+                                        global_fn_name(method.name).as_str()
+                                    )
+                                ),
                                 SymbolExportKind::Text,
                             )
                         }));
