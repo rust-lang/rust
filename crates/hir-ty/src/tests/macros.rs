@@ -63,10 +63,10 @@ fn infer_macros_expanded() {
         }
         "#,
         expect![[r#"
-            !0..21 '{Foo(v...2),])}': Foo
+            !0..17 '{Foo(v...,2,])}': Foo
             !1..4 'Foo': Foo({unknown}) -> Foo
-            !1..20 'Foo(ve...(2),])': Foo
-            !5..19 'vec![(1),(2),]': {unknown}
+            !1..16 'Foo(vec![1,2,])': Foo
+            !5..15 'vec![1,2,]': {unknown}
             155..181 '{     ...,2); }': ()
             165..166 'x': Foo
         "#]],
@@ -96,10 +96,10 @@ fn infer_legacy_textual_scoped_macros_expanded() {
         }
         "#,
         expect![[r#"
-            !0..21 '{Foo(v...2),])}': Foo
+            !0..17 '{Foo(v...,2,])}': Foo
             !1..4 'Foo': Foo({unknown}) -> Foo
-            !1..20 'Foo(ve...(2),])': Foo
-            !5..19 'vec![(1),(2),]': {unknown}
+            !1..16 'Foo(vec![1,2,])': Foo
+            !5..15 'vec![1,2,]': {unknown}
             194..250 '{     ...,2); }': ()
             204..205 'x': Foo
             227..228 'y': {unknown}

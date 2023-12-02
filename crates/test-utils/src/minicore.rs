@@ -15,6 +15,7 @@
 //!     cell: copy, drop
 //!     clone: sized
 //!     coerce_unsized: unsize
+//!     concat:
 //!     copy: clone
 //!     default: sized
 //!     deref_mut: deref
@@ -1353,7 +1354,7 @@ mod panicking {
 mod macros {
     // region:panic
     #[macro_export]
-    #[rustc_builtin_macro(std_panic)]
+    #[rustc_builtin_macro(core_panic)]
     macro_rules! panic {
         ($($arg:tt)*) => {
             /* compiler built-in */
@@ -1406,6 +1407,12 @@ mod macros {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
     // endregion:include
+
+    // region:concat
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! concat {}
+    // endregion:concat
 }
 
 // region:non_zero

@@ -2,7 +2,6 @@ mod block;
 
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::{expect, Expect};
-use hir_expand::db::ExpandDatabase;
 
 use crate::{test_db::TestDB, ModuleDefId};
 
@@ -255,7 +254,6 @@ impl SsrError {
 }
 "##,
     );
-    println!("{}", db.dump_syntax_contexts());
 
     assert_eq!(db.body_with_source_map(def.into()).1.diagnostics(), &[]);
     expect![[r#"
@@ -280,6 +278,52 @@ impl SsrError {
                             builtin#lang(Count::Implied),
                         ),
                     ],
+                    unsafe {
+                        builtin#lang(UnsafeArg::new)()
+                    },
+                ),
+            );
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def))
+}
+
+#[test]
+fn regression_10300() {
+    let (db, body, def) = lower(
+        r#"
+//- minicore: concat, panic
+mod private {
+    pub use core::concat;
+}
+
+macro_rules! m {
+    () => {
+        panic!(concat!($crate::private::concat!("cc")));
+    };
+}
+
+fn f() {
+    m!();
+}
+"#,
+    );
+
+    let (_, source_map) = db.body_with_source_map(def.into());
+    assert_eq!(source_map.diagnostics(), &[]);
+
+    for (_, def_map) in body.blocks(&db) {
+        assert_eq!(def_map.diagnostics(), &[]);
+    }
+
+    expect![[r#"
+        fn f() {
+            $crate::panicking::panic_fmt(
+                builtin#lang(Arguments::new_v1_formatted)(
+                    &[
+                        "\"cc\"",
+                    ],
+                    &[],
+                    &[],
                     unsafe {
                         builtin#lang(UnsafeArg::new)()
                     },

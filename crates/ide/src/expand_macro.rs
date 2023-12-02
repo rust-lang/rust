@@ -340,8 +340,8 @@ fn main() {
             expect![[r#"
                 match_ast!
                 {
-                  if let Some(it) = ast::TraitDef::cast((container).clone()){}
-                  else if let Some(it) = ast::ImplDef::cast((container).clone()){}
+                  if let Some(it) = ast::TraitDef::cast(container.clone()){}
+                  else if let Some(it) = ast::ImplDef::cast(container.clone()){}
                   else {
                     {
                       continue

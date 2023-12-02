@@ -4,7 +4,6 @@
 
 mod input;
 mod change;
-// FIXME: Is this purely a test util mod? Consider #[cfg(test)] gating it.
 pub mod fixture;
 pub mod span;
 

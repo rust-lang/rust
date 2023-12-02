@@ -628,14 +628,13 @@ impl ExpansionInfo {
         span: SpanData,
         // FIXME: use this for range mapping, so that we can resolve inline format args
         _relative_token_offset: Option<TextSize>,
-        // FIXME: ret ty should be wrapped in InMacroFile
-    ) -> Option<impl Iterator<Item = InFile<SyntaxToken>> + 'a> {
+    ) -> Option<impl Iterator<Item = InMacroFile<SyntaxToken>> + 'a> {
         let tokens = self
             .exp_map
             .ranges_with_span(span)
             .flat_map(move |range| self.expanded.value.covering_element(range).into_token());
 
-        Some(tokens.map(move |token| InFile::new(self.expanded.file_id.into(), token)))
+        Some(tokens.map(move |token| InMacroFile::new(self.expanded.file_id, token)))
     }
 
     /// Maps up the text range out of the expansion hierarchy back into the original file its from.

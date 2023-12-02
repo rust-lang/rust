@@ -557,11 +557,6 @@ impl<'db> SemanticsImpl<'db> {
                 .span_at(token.text_range().start()),
         };
 
-        // fetch span information of token in real file, then use that look through expansions of
-        // calls the token is in and afterwards recursively with the same span.
-        // what about things where spans change? Due to being joined etc, that is we don't find the
-        // exact span anymore?
-
         let def_map = sa.resolver.def_map();
         let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
 
@@ -580,7 +575,7 @@ impl<'db> SemanticsImpl<'db> {
                 let len = stack.len();
 
                 // requeue the tokens we got from mapping our current token down
-                stack.extend(mapped_tokens);
+                stack.extend(mapped_tokens.map(Into::into));
                 // if the length changed we have found a mapping for the token
                 (stack.len() != len).then_some(())
             };
