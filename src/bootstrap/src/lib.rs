@@ -51,6 +51,7 @@ pub use core::builder::PathSet;
 pub use core::config::flags::Subcommand;
 pub use core::config::Config;
 pub use utils::change_tracker::{find_recent_config_change_ids, CONFIG_CHANGE_HISTORY};
+pub use utils::file_lock::FileLock;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report

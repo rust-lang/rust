@@ -8,6 +8,7 @@ pub(crate) mod change_tracker;
 pub(crate) mod channel;
 pub(crate) mod dylib;
 pub(crate) mod exec;
+pub(crate) mod file_lock;
 pub(crate) mod helpers;
 pub(crate) mod job;
 #[cfg(feature = "build-metrics")]
