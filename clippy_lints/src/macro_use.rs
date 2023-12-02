@@ -2,13 +2,14 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
 use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, Span};
+use std::collections::BTreeMap;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -136,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         }
     }
     fn check_crate_post(&mut self, cx: &LateContext<'_>) {
-        let mut used = FxHashMap::default();
+        let mut used = BTreeMap::new();
         let mut check_dup = vec![];
         for (import, span, hir_id) in &self.imports {
             let found_idx = self.mac_refs.iter().position(|mac| import.ends_with(&mac.name));
@@ -185,20 +186,16 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             }
         }
 
-        let mut suggestions = vec![];
-        for ((root, span, hir_id), path) in used {
-            if path.len() == 1 {
-                suggestions.push((span, format!("{root}::{}", path[0]), hir_id));
-            } else {
-                suggestions.push((span, format!("{root}::{{{}}}", path.join(", ")), hir_id));
-            }
-        }
-
         // If mac_refs is not empty we have encountered an import we could not handle
         // such as `std::prelude::v1::foo` or some other macro that expands to an import.
         if self.mac_refs.is_empty() {
-            for (span, import, hir_id) in suggestions {
-                let help = format!("use {import};");
+            for ((root, span, hir_id), path) in used {
+                let import = if let [single] = &path[..] {
+                    format!("{root}::{single}")
+                } else {
+                    format!("{root}::{{{}}}", path.join(", "))
+                };
+
                 span_lint_hir_and_then(
                     cx,
                     MACRO_USE_IMPORTS,
@@ -209,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                         diag.span_suggestion(
                             *span,
                             "remove the attribute and import the macro directly, try",
-                            help,
+                            format!("use {import};"),
                             Applicability::MaybeIncorrect,
                         );
                     },

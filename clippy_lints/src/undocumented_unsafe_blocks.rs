@@ -11,7 +11,7 @@ use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
 
 declare_clippy_lint! {

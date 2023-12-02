@@ -144,6 +144,7 @@ mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
 mod ignored_unit_patterns;
+mod impl_hash_with_borrow_str_and_bytes;
 mod implicit_hasher;
 mod implicit_return;
 mod implicit_saturating_add;
@@ -562,6 +563,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         vec_box_size_threshold,
         verbose_bit_mask_threshold,
         warn_on_all_wildcard_imports,
+        check_private_items,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -745,7 +747,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             avoid_breaking_exported_api,
         ))
     });
-    store.register_late_pass(move |_| Box::new(doc::DocMarkdown::new(doc_valid_idents)));
+    store.register_late_pass(move |_| Box::new(doc::Documentation::new(doc_valid_idents, check_private_items)));
     store.register_late_pass(|_| Box::new(neg_multiply::NegMultiply));
     store.register_late_pass(|_| Box::new(let_if_seq::LetIfSeq));
     store.register_late_pass(|_| Box::new(mixed_read_write_in_expression::EvalOrderDependence));
@@ -1066,6 +1068,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_hash_one::ManualHashOne::new(msrv())));
     store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
     store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
+    store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

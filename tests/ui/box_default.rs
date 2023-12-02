@@ -90,3 +90,17 @@ fn issue_10381() {
 
     assert!(maybe_get_bar(2).is_some());
 }
+
+#[allow(unused)]
+fn issue_11868() {
+    fn foo(_: &mut Vec<usize>) {}
+
+    macro_rules! bar {
+        ($baz:expr) => {
+            Box::leak(Box::new($baz))
+        };
+    }
+
+    foo(bar!(vec![]));
+    foo(bar!(vec![1]));
+}

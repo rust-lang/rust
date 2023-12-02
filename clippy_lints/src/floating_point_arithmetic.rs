@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 
 use rustc_ast::ast;
@@ -496,9 +496,13 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if let BinOpKind::Sub = op { -sugg } else { sugg }
         };
 
-        let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs) {
+        let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs)
+            && cx.typeck_results().expr_ty(rhs).is_floating_point()
+        {
             (inner_lhs, Sugg::hir(cx, inner_rhs, ".."), maybe_neg_sugg(rhs))
-        } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs) {
+        } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs)
+            && cx.typeck_results().expr_ty(lhs).is_floating_point()
+        {
             (inner_lhs, maybe_neg_sugg(inner_rhs), Sugg::hir(cx, lhs, ".."))
         } else {
             return;

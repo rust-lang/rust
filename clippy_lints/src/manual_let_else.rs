@@ -11,7 +11,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::declare_tool_lint;
+
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::slice;

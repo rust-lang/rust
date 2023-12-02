@@ -4,24 +4,27 @@ use clippy_utils::ty::get_type_diagnostic_name;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Suggest removing the use of a may (or map_err) method when an Option or Result is being constructed.
+    /// Suggests removing the use of a `map()` (or `map_err()`) method when an `Option` or `Result`
+    /// is being constructed.
     ///
     /// ### Why is this bad?
-    /// It introduces unnecessary complexity. In this case the function can be used directly and
-    /// construct the Option or Result from the output.
+    /// It introduces unnecessary complexity. Instead, the function can be called before
+    /// constructing the `Option` or `Result` from its return value.
     ///
     /// ### Example
     /// ```no_run
-    /// Some(4).map(i32::swap_bytes);
+    /// Some(4).map(i32::swap_bytes)
+    /// # ;
     /// ```
     /// Use instead:
     /// ```no_run
-    /// Some(i32::swap_bytes(4));
+    /// Some(i32::swap_bytes(4))
+    /// # ;
     /// ```
     #[clippy::version = "1.74.0"]
     pub UNNECESSARY_MAP_ON_CONSTRUCTOR,

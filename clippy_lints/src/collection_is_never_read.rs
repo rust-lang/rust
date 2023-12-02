@@ -5,7 +5,7 @@ use clippy_utils::{get_enclosing_block, get_parent_node, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_hir::{Block, ExprKind, HirId, LangItem, Local, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 

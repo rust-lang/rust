@@ -4,7 +4,7 @@ use clippy_utils::{is_diag_item_method, is_trait_method, match_def_path, path_to
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -53,18 +53,45 @@ declare_clippy_lint! {
     #[clippy::version = "1.70.0"]
     pub LINES_FILTER_MAP_OK,
     suspicious,
-    "filtering `std::io::Lines` with `filter_map()` or `flat_map()` might cause an infinite loop"
+    "filtering `std::io::Lines` with `filter_map()`, `flat_map()`, or `flatten()` might cause an infinite loop"
 }
 declare_lint_pass!(LinesFilterMapOk => [LINES_FILTER_MAP_OK]);
 
 impl LateLintPass<'_> for LinesFilterMapOk {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if let ExprKind::MethodCall(fm_method, fm_receiver, [fm_arg], fm_span) = expr.kind
+        if let ExprKind::MethodCall(fm_method, fm_receiver, fm_args, fm_span) = expr.kind
             && is_trait_method(cx, expr, sym::Iterator)
-            && (fm_method.ident.as_str() == "filter_map" || fm_method.ident.as_str() == "flat_map")
+            && let fm_method_str = fm_method.ident.as_str()
+            && matches!(fm_method_str, "filter_map" | "flat_map" | "flatten")
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(fm_receiver), sym::IoLines)
+            && should_lint(cx, fm_args, fm_method_str)
         {
-            let lint = match &fm_arg.kind {
+            span_lint_and_then(
+                cx,
+                LINES_FILTER_MAP_OK,
+                fm_span,
+                &format!("`{fm_method_str}()` will run forever if the iterator repeatedly produces an `Err`",),
+                |diag| {
+                    diag.span_note(
+                        fm_receiver.span,
+                        "this expression returning a `std::io::Lines` may produce an infinite number of `Err` in case of a read error");
+                    diag.span_suggestion(
+                        fm_span,
+                        "replace with",
+                        "map_while(Result::ok)",
+                        Applicability::MaybeIncorrect,
+                    );
+                },
+            );
+        }
+    }
+}
+
+fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_str: &str) -> bool {
+    match args {
+        [] => method_str == "flatten",
+        [fm_arg] => {
+            match &fm_arg.kind {
                 // Detect `Result::ok`
                 ExprKind::Path(qpath) => cx
                     .qpath_res(qpath, fm_arg.hir_id)
@@ -86,29 +113,8 @@ impl LateLintPass<'_> for LinesFilterMapOk {
                     }
                 },
                 _ => false,
-            };
-            if lint {
-                span_lint_and_then(
-                    cx,
-                    LINES_FILTER_MAP_OK,
-                    fm_span,
-                    &format!(
-                        "`{}()` will run forever if the iterator repeatedly produces an `Err`",
-                        fm_method.ident
-                    ),
-                    |diag| {
-                        diag.span_note(
-                            fm_receiver.span,
-                            "this expression returning a `std::io::Lines` may produce an infinite number of `Err` in case of a read error");
-                        diag.span_suggestion(
-                            fm_span,
-                            "replace with",
-                            "map_while(Result::ok)",
-                            Applicability::MaybeIncorrect,
-                        );
-                    },
-                );
             }
-        }
+        },
+        _ => false,
     }
 }

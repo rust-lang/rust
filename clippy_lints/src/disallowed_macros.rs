@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, Pat, Path, Stmt, TraitItem, Ty};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{ExpnId, Span};
 
 declare_clippy_lint! {
