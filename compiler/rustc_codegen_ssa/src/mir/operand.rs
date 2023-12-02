@@ -2,7 +2,7 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
-use crate::glue;
+use crate::size_of_val;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -466,13 +466,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             .ty;
 
         let OperandValue::Ref(llptr, Some(llextra), _) = self else {
-            bug!("store_unsized called with a sized value")
+            bug!("store_unsized called with a sized value (or with an extern type)")
         };
 
         // Allocate an appropriate region on the stack, and copy the value into it. Since alloca
         // doesn't support dynamic alignment, we allocate an extra align - 1 bytes, and align the
         // pointer manually.
-        let (size, align) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
+        let (size, align) = size_of_val::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
         let one = bx.const_usize(1);
         let align_minus_1 = bx.sub(align, one);
         let size_extra = bx.add(size, align_minus_1);
