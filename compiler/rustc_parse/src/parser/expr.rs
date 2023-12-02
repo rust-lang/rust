@@ -137,6 +137,20 @@ impl<'a> Parser<'a> {
                     self.bump();
                     Ok(self.mk_expr(self.prev_token.span, ExprKind::Err))
                 }
+                None if self.may_recover()
+                    && self.prev_token.is_ident()
+                    && self.token.kind == token::Colon =>
+                {
+                    err.span_suggestion_verbose(
+                        self.prev_token.span.until(self.look_ahead(1, |t| t.span)),
+                        "if this is a parameter, remove the name for the parameter",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                    self.bump();
+                    err.emit();
+                    Ok(self.mk_expr(self.token.span, ExprKind::Err))
+                }
                 _ => Err(err),
             },
         }
