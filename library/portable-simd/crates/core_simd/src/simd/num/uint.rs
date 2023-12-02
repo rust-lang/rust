@@ -16,6 +16,12 @@ pub trait SimdUint: Copy + Sealed {
     #[must_use]
     fn cast<T: SimdCast>(self) -> Self::Cast<T>;
 
+    /// Wrapping negation.
+    ///
+    /// Like [`u32::wrapping_neg`], all applications of this function will wrap, with the exception
+    /// of `-0`.
+    fn wrapping_neg(self) -> Self;
+
     /// Lanewise saturating add.
     ///
     /// # Examples
@@ -23,7 +29,7 @@ pub trait SimdUint: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdUint};
+    /// # use simd::prelude::*;
     /// use core::u32::MAX;
     /// let x = Simd::from_array([2, 1, 0, MAX]);
     /// let max = Simd::splat(MAX);
@@ -41,7 +47,7 @@ pub trait SimdUint: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdUint};
+    /// # use simd::prelude::*;
     /// use core::u32::MAX;
     /// let x = Simd::from_array([2, 1, 0, MAX]);
     /// let max = Simd::splat(MAX);
@@ -51,48 +57,73 @@ pub trait SimdUint: Copy + Sealed {
     /// assert_eq!(sat, Simd::splat(0));
     fn saturating_sub(self, second: Self) -> Self;
 
-    /// Returns the sum of the lanes of the vector, with wrapping addition.
+    /// Returns the sum of the elements of the vector, with wrapping addition.
     fn reduce_sum(self) -> Self::Scalar;
 
-    /// Returns the product of the lanes of the vector, with wrapping multiplication.
+    /// Returns the product of the elements of the vector, with wrapping multiplication.
     fn reduce_product(self) -> Self::Scalar;
 
-    /// Returns the maximum lane in the vector.
+    /// Returns the maximum element in the vector.
     fn reduce_max(self) -> Self::Scalar;
 
-    /// Returns the minimum lane in the vector.
+    /// Returns the minimum element in the vector.
     fn reduce_min(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "and" across the lanes of the vector.
+    /// Returns the cumulative bitwise "and" across the elements of the vector.
     fn reduce_and(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "or" across the lanes of the vector.
+    /// Returns the cumulative bitwise "or" across the elements of the vector.
     fn reduce_or(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "xor" across the lanes of the vector.
+    /// Returns the cumulative bitwise "xor" across the elements of the vector.
     fn reduce_xor(self) -> Self::Scalar;
+
+    /// Reverses the byte order of each element.
+    fn swap_bytes(self) -> Self;
+
+    /// Reverses the order of bits in each elemnent.
+    /// The least significant bit becomes the most significant bit, second least-significant bit becomes second most-significant bit, etc.
+    fn reverse_bits(self) -> Self;
+
+    /// Returns the number of leading zeros in the binary representation of each element.
+    fn leading_zeros(self) -> Self;
+
+    /// Returns the number of trailing zeros in the binary representation of each element.
+    fn trailing_zeros(self) -> Self;
+
+    /// Returns the number of leading ones in the binary representation of each element.
+    fn leading_ones(self) -> Self;
+
+    /// Returns the number of trailing ones in the binary representation of each element.
+    fn trailing_ones(self) -> Self;
 }
 
 macro_rules! impl_trait {
-    { $($ty:ty),* } => {
+    { $($ty:ident ($signed:ident)),* } => {
         $(
-        impl<const LANES: usize> Sealed for Simd<$ty, LANES>
+        impl<const N: usize> Sealed for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
         }
 
-        impl<const LANES: usize> SimdUint for Simd<$ty, LANES>
+        impl<const N: usize> SimdUint for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             type Scalar = $ty;
-            type Cast<T: SimdElement> = Simd<T, LANES>;
+            type Cast<T: SimdElement> = Simd<T, N>;
 
             #[inline]
             fn cast<T: SimdCast>(self) -> Self::Cast<T> {
                 // Safety: supported types are guaranteed by SimdCast
                 unsafe { intrinsics::simd_as(self) }
+            }
+
+            #[inline]
+            fn wrapping_neg(self) -> Self {
+                use crate::simd::num::SimdInt;
+                (-self.cast::<$signed>()).cast()
             }
 
             #[inline]
@@ -148,9 +179,43 @@ macro_rules! impl_trait {
                 // Safety: `self` is an integer vector
                 unsafe { intrinsics::simd_reduce_xor(self) }
             }
+
+            #[inline]
+            fn swap_bytes(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_bswap(self) }
+            }
+
+            #[inline]
+            fn reverse_bits(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_bitreverse(self) }
+            }
+
+            #[inline]
+            fn leading_zeros(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_ctlz(self) }
+            }
+
+            #[inline]
+            fn trailing_zeros(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_cttz(self) }
+            }
+
+            #[inline]
+            fn leading_ones(self) -> Self {
+                (!self).leading_zeros()
+            }
+
+            #[inline]
+            fn trailing_ones(self) -> Self {
+                (!self).trailing_zeros()
+            }
         }
         )*
     }
 }
 
-impl_trait! { u8, u16, u32, u64, usize }
+impl_trait! { u8 (i8), u16 (i16), u32 (i32), u64 (i64), usize (isize) }

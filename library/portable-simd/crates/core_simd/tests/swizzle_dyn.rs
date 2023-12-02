@@ -1,6 +1,5 @@
 #![feature(portable_simd)]
 use core::{fmt, ops::RangeInclusive};
-use proptest;
 use test_helpers::{self, biteq, make_runner, prop_assert_biteq};
 
 fn swizzle_dyn_scalar_ver<const N: usize>(values: [u8; N], idxs: [u8; N]) -> [u8; N] {
