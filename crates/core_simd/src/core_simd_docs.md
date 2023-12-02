@@ -30,7 +30,7 @@ Instead, they map to a reasonable implementation of the operation for the target
 
 Consistency between targets is not compromised to use faster or fewer instructions.
 In some cases, `std::arch` will provide a faster function that has slightly different behavior than the `std::simd` equivalent.
-For example, [`_mm_min_ps`](`core::arch::x86_64::_mm_min_ps`)[^1] can be slightly faster than [`SimdFloat::simd_min`](`num::SimdFloat::simd_min`), but does not conform to the IEEE standard also used by [`f32::min`].
+For example, `_mm_min_ps`[^1] can be slightly faster than [`SimdFloat::simd_min`](`num::SimdFloat::simd_min`), but does not conform to the IEEE standard also used by [`f32::min`].
 When necessary, [`Simd<T, N>`] can be converted to the types provided by `std::arch` to make use of target-specific functions.
 
 Many targets simply don't have SIMD, or don't support SIMD for a particular element type.
