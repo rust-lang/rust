@@ -59,13 +59,13 @@ Then you can run commands like this:
 
 ```bash
 $ ./y.sh prepare # download and patch sysroot src and install hyperfine for benchmarking
-$ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) ./y.sh build --release
+$ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) ./y.sh build --release --features master
 ```
 
 To run the tests:
 
 ```bash
-$ ./test.sh --release
+$ ./test.sh --release --features master
 ```
 
 ## Usage
