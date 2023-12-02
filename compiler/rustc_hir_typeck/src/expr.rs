@@ -40,7 +40,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{ObligationCause, TraitEngineExt as _};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{
     ExpectedFound,
@@ -59,8 +59,9 @@ use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::{self, ObligationCauseCode};
+use rustc_trait_selection::traits::{
+    self, ObligationCauseCode, ObligationCtxt, TraitEngine, TraitEngineExt,
+};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_has_type_or_error(
@@ -3171,18 +3172,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // cause code.
             if let hir::ExprKind::AddrOf(_, _, idx) = idx.kind {
                 let idx_t = self.typeck_results.borrow().expr_ty(idx);
-                if let Some((index_ty, _element_ty)) =
-                    self.lookup_indexing(expr, base, base_t, idx, idx_t)
-                {
-                    let (_ty, err) =
-                        self.demand_coerce_diag(idx, idx_t, index_ty, None, AllowTwoPhase::No);
-                    if let Some(err) = err {
-                        err.cancel();
-                    } else if self
-                        .fulfillment_cx
-                        .borrow_mut()
-                        .select_where_possible(self)
-                        .is_empty()
+                let mut autoderef = self.autoderef(base.span, base_t);
+                let mut result = None;
+                while result.is_none() && autoderef.next().is_some() {
+                    result = self.try_index_step(expr, base, &autoderef, idx_t, idx);
+                }
+                let obligations = autoderef.into_obligations();
+                let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&self.infcx);
+                fulfillment_cx.register_predicate_obligations(&self.infcx, obligations);
+                if let Some((index_ty, _element_ty)) = result {
+                    if self.can_coerce(idx_t, index_ty)
+                        && fulfillment_cx.select_where_possible(self).is_empty()
                     {
                         if let Some(pred) = error.obligation.predicate.to_opt_poly_trait_pred() {
                             error.obligation.cause =

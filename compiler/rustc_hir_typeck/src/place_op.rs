@@ -98,7 +98,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// supports builtin indexing or overloaded indexing.
     /// This loop implements one step in that search; the autoderef loop
     /// is implemented by `lookup_indexing`.
-    fn try_index_step(
+    pub(super) fn try_index_step(
         &self,
         expr: &hir::Expr<'_>,
         base_expr: &hir::Expr<'_>,
