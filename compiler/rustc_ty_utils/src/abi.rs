@@ -424,11 +424,23 @@ fn fn_abi_sanity_check<'tcx>(
             }
             PassMode::Indirect { meta_attrs: None, .. } => {
                 // No metadata, must be sized.
+                // Conceptually, unsized arguments must be copied around, which requires dynamically
+                // determining their size, which we cannot do without metadata. Consult
+                // t-opsem before removing this check.
                 assert!(arg.layout.is_sized());
             }
             PassMode::Indirect { meta_attrs: Some(_), on_stack, .. } => {
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
+                // Also, must not be `extern` type.
+                let tail = cx.tcx.struct_tail_with_normalize(arg.layout.ty, |ty| ty, || {});
+                if matches!(tail.kind(), ty::Foreign(..)) {
+                    // These types do not have metadata, so having `meta_attrs` is bogus.
+                    // Conceptually, unsized arguments must be copied around, which requires dynamically
+                    // determining their size. Therefore, we cannot allow `extern` types here. Consult
+                    // t-opsem before removing this check.
+                    panic!("unsized arguments must not be `extern` types");
+                }
             }
         }
     }

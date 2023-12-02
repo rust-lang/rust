@@ -489,6 +489,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
+        if place.layout.is_unsized() {
+            let tail = self.tcx.struct_tail_with_normalize(place.layout.ty, |ty| ty, || {});
+            if matches!(tail.kind(), ty::Foreign(..)) {
+                // Unsized locals and, at least conceptually, even unsized arguments must be copied
+                // around, which requires dynamically determining their size. Therefore, we cannot
+                // allow `extern` types here. Consult t-opsem before removing this check.
+                panic!("unsized locals must not be `extern` types");
+            }
+        }
         assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
