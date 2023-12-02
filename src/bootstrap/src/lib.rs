@@ -1271,21 +1271,6 @@ impl Build {
         self.config.use_lld && !target.is_msvc()
     }
 
-    fn lld_flags(&self, target: TargetSelection) -> impl Iterator<Item = String> {
-        let mut options = [None, None];
-
-        if self.config.use_lld {
-            if self.is_fuse_ld_lld(target) {
-                options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
-            }
-
-            let no_threads = helpers::lld_flag_no_threads(target.contains("windows"));
-            options[1] = Some(format!("-Clink-arg=-Wl,{no_threads}"));
-        }
-
-        IntoIterator::into_iter(options).flatten()
-    }
-
     /// Returns if this target should statically link the C runtime, if specified
     fn crt_static(&self, target: TargetSelection) -> Option<bool> {
         if target.contains("pc-windows-msvc") {

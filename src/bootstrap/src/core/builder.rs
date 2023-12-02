@@ -19,7 +19,9 @@ use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, s
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::cache::{Cache, Interned, INTERNER};
-use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, add_rustdoc_lld_flags, exe};
+use crate::utils::helpers::{
+    self, add_dylib_path, add_link_lib_path, exe, linker_args, linker_flags,
+};
 use crate::utils::helpers::{libdir, output, t, LldThreads};
 use crate::Crate;
 use crate::EXTRA_CHECK_CFGS;
@@ -1174,7 +1176,7 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MAKEFLAGS");
         cmd.env_remove("MFLAGS");
 
-        add_rustdoc_lld_flags(&mut cmd, self, compiler.host, LldThreads::Yes);
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
         cmd
     }
 
@@ -1673,21 +1675,20 @@ impl<'a> Builder<'a> {
             rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
         }
 
-        if let Some(host_linker) = self.linker(compiler.host) {
-            hostflags.arg(format!("-Clinker={}", host_linker.display()));
-        }
-        if self.is_fuse_ld_lld(compiler.host) {
-            hostflags.arg("-Clink-args=-fuse-ld=lld");
-        }
+        linker_args(self, compiler.host, LldThreads::Yes).into_iter().for_each(|flag| {
+            hostflags.arg(flag);
+        });
 
         if let Some(target_linker) = self.linker(target) {
             let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
-        if self.is_fuse_ld_lld(target) {
-            rustflags.arg("-Clink-args=-fuse-ld=lld");
-        }
-        self.lld_flags(target).for_each(|flag| {
+        // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
+        // `linker_args` here.
+        linker_flags(self, target, LldThreads::Yes).into_iter().for_each(|flag| {
+            rustflags.arg(&flag);
+        });
+        linker_args(self, target, LldThreads::Yes).into_iter().for_each(|flag| {
             rustdocflags.arg(&flag);
         });
 

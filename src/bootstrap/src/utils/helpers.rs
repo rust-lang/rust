@@ -5,7 +5,7 @@
 
 use build_helper::util::fail;
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -476,22 +476,46 @@ pub enum LldThreads {
     No,
 }
 
-pub fn add_rustdoc_lld_flags(
-    cmd: &mut Command,
+/// Returns the linker arguments for rustc/rustdoc for the given builder and target.
+pub fn linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
-) {
-    cmd.args(build_rustdoc_lld_flags(builder, target, lld_threads));
+) -> Vec<String> {
+    let mut args = linker_flags(builder, target, lld_threads);
+
+    if let Some(linker) = builder.linker(target) {
+        args.push(format!("-Clinker={}", linker.display()));
+    }
+
+    args
 }
 
-pub fn add_rustdoc_cargo_lld_flags(
+/// Returns the linker arguments for rustc/rustdoc for the given builder and target, without the
+/// -Clinker flag.
+pub fn linker_flags(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    lld_threads: LldThreads,
+) -> Vec<String> {
+    let mut args = vec![];
+    if builder.is_fuse_ld_lld(target) {
+        args.push(String::from("-Clink-arg=-fuse-ld=lld"));
+
+        if matches!(lld_threads, LldThreads::No) {
+            args.push(format!("-Clink-arg=-Wl,{}", lld_flag_no_threads(target.is_msvc())));
+        }
+    }
+    args
+}
+
+pub fn add_rustdoc_cargo_linker_args(
     cmd: &mut Command,
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
 ) {
-    let args = build_rustdoc_lld_flags(builder, target, lld_threads);
+    let args = linker_args(builder, target, lld_threads);
     let mut flags = cmd
         .get_envs()
         .find_map(|(k, v)| if k == OsStr::new("RUSTDOCFLAGS") { v } else { None })
@@ -506,28 +530,4 @@ pub fn add_rustdoc_cargo_lld_flags(
     if !flags.is_empty() {
         cmd.env("RUSTDOCFLAGS", flags);
     }
-}
-
-fn build_rustdoc_lld_flags(
-    builder: &Builder<'_>,
-    target: TargetSelection,
-    lld_threads: LldThreads,
-) -> Vec<OsString> {
-    let mut args = vec![];
-
-    if let Some(linker) = builder.linker(target) {
-        let mut flag = std::ffi::OsString::from("-Clinker=");
-        flag.push(linker);
-        args.push(flag);
-    }
-    if builder.is_fuse_ld_lld(target) {
-        args.push(OsString::from("-Clink-arg=-fuse-ld=lld"));
-        if matches!(lld_threads, LldThreads::No) {
-            args.push(OsString::from(format!(
-                "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(target.contains("windows"))
-            )));
-        }
-    }
-    args
 }
