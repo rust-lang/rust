@@ -325,7 +325,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         false
                     });
                     if references_self {
-                        let guar = tcx.sess.delay_span_bug(
+                        let guar = tcx.sess.span_delayed_bug(
                             span,
                             "trait object projection bounds reference `Self`",
                         );

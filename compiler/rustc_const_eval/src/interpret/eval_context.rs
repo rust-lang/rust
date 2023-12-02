@@ -287,9 +287,9 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             {
                 write!(f, "inside closure")
             } else {
-                // Note: this triggers a `good_path_bug` state, which means that if we ever get here
-                // we must emit a diagnostic. We should never display a `FrameInfo` unless we
-                // actually want to emit a warning or error to the user.
+                // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever
+                // get here we must emit a diagnostic. We should never display a `FrameInfo` unless
+                // we actually want to emit a warning or error to the user.
                 write!(f, "inside `{}`", self.instance)
             }
         })
@@ -303,8 +303,8 @@ impl<'tcx> FrameInfo<'tcx> {
             errors::FrameNote { where_: "closure", span, instance: String::new(), times: 0 }
         } else {
             let instance = format!("{}", self.instance);
-            // Note: this triggers a `good_path_bug` state, which means that if we ever get here
-            // we must emit a diagnostic. We should never display a `FrameInfo` unless we
+            // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever get
+            // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
             errors::FrameNote { where_: "instance", span, instance, times: 0 }
         }
@@ -473,7 +473,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         backtrace.print_backtrace();
         // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
         // label and arguments from the InterpError.
-        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+        let handler = self.tcx.sess.diagnostic();
         #[allow(rustc::untranslatable_diagnostic)]
         let mut diag = self.tcx.sess.struct_allow("");
         let msg = e.diagnostic_message();

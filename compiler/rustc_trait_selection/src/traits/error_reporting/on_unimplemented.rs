@@ -677,8 +677,9 @@ impl<'tcx> OnUnimplementedDirective {
 
             Ok(None)
         } else {
-            let reported =
-                tcx.sess.delay_span_bug(DUMMY_SP, "of_item: neither meta_item_list nor value_str");
+            let reported = tcx
+                .sess
+                .span_delayed_bug(DUMMY_SP, "of_item: neither meta_item_list nor value_str");
             return Err(reported);
         };
         debug!("of_item({:?}) = {:?}", item_def_id, result);

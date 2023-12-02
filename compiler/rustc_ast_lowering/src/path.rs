@@ -139,7 +139,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // We should've returned in the for loop above.
 
-        self.diagnostic().span_bug(
+        self.tcx.sess.diagnostic().span_bug(
             p.span,
             format!(
                 "lower_qpath: no final extension segment in {}..{}",

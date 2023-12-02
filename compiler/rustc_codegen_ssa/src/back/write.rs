@@ -1856,7 +1856,7 @@ impl SharedEmitterMain {
                     let mut err = match level {
                         Level::Error { lint: false } => sess.struct_err(msg).forget_guarantee(),
                         Level::Warning(_) => sess.struct_warn(msg),
-                        Level::Note => sess.struct_note_without_error(msg),
+                        Level::Note => sess.struct_note(msg),
                         _ => bug!("Invalid inline asm diagnostic level"),
                     };
 

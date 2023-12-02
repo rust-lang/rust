@@ -327,7 +327,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err(
-                    self.tcx.sess.delay_span_bug(e.span, "lowered ExprKind::Err"),
+                    self.tcx.sess.span_delayed_bug(e.span, "lowered ExprKind::Err"),
                 ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
@@ -799,7 +799,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.expr_ident_mut(span, task_context_ident, task_context_hid)
             } else {
                 // Use of `await` outside of an async context, we cannot use `task_context` here.
-                self.expr_err(span, self.tcx.sess.delay_span_bug(span, "no task_context hir id"))
+                self.expr_err(span, self.tcx.sess.span_delayed_bug(span, "no task_context hir id"))
             };
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,

@@ -131,13 +131,13 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 
 impl Drop for TypeErrCtxt<'_, '_> {
     fn drop(&mut self) {
-        if let Some(_) = self.infcx.tcx.sess.has_errors_or_delayed_span_bugs() {
+        if let Some(_) = self.infcx.tcx.sess.has_errors_or_span_delayed_bugs() {
             // ok, emitted an error.
         } else {
             self.infcx
                 .tcx
                 .sess
-                .delay_good_path_bug("used a `TypeErrCtxt` without raising an error or lint");
+                .good_path_delayed_bug("used a `TypeErrCtxt` without raising an error or lint");
         }
     }
 }
@@ -517,7 +517,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         self.tcx
             .sess
-            .delay_span_bug(self.tcx.def_span(generic_param_scope), "expected region errors")
+            .span_delayed_bug(self.tcx.def_span(generic_param_scope), "expected region errors")
     }
 
     // This method goes through all the errors and try to group certain types

@@ -187,7 +187,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors(infcx.tcx.sess.delay_span_bug(
+        infcx.set_tainted_by_errors(infcx.tcx.sess.span_delayed_bug(
             body.span,
             "`compute_regions` tainted `infcx` with errors but did not emit any errors",
         ));
@@ -280,7 +280,7 @@ pub(super) fn dump_annotation<'tcx>(
 
     let def_span = tcx.def_span(body.source.def_id());
     let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.sess.diagnostic().span_note_diag(def_span, "external requirements");
+        let mut err = tcx.sess.diagnostic().struct_span_note(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -299,7 +299,7 @@ pub(super) fn dump_annotation<'tcx>(
 
         err
     } else {
-        let mut err = tcx.sess.diagnostic().span_note_diag(def_span, "no external requirements");
+        let mut err = tcx.sess.diagnostic().struct_span_note(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err

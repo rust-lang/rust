@@ -1433,7 +1433,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     let guar = self
                         .tcx
                         .sess
-                        .delay_span_bug(DUMMY_SP, format!("`{value:?}` is not fully resolved"));
+                        .span_delayed_bug(DUMMY_SP, format!("`{value:?}` is not fully resolved"));
                     Ok(self.tcx.fold_regions(value, |re, _| {
                         if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }
                     }))

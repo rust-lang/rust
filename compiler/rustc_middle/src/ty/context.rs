@@ -714,8 +714,10 @@ impl<'tcx> TyCtxt<'tcx> {
             {
                 Bound::Included(a)
             } else {
-                self.sess
-                    .delay_span_bug(attr.span, "invalid rustc_layout_scalar_valid_range attribute");
+                self.sess.span_delayed_bug(
+                    attr.span,
+                    "invalid rustc_layout_scalar_valid_range attribute",
+                );
                 Bound::Unbounded
             }
         };

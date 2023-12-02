@@ -592,7 +592,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match self.successors[ln] {
             Some(successor) => self.assigned_on_entry(successor, var),
             None => {
-                self.ir.tcx.sess.delay_span_bug(DUMMY_SP, "no successor");
+                self.ir.tcx.sess.span_delayed_bug(DUMMY_SP, "no successor");
                 true
             }
         }

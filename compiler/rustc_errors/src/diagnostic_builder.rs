@@ -351,18 +351,10 @@ impl<'a> DiagnosticBuilder<'a, !> {
     /// `struct_*` methods on [`Handler`].
     #[track_caller]
     pub(crate) fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
-        let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
-        Self::new_diagnostic_fatal(handler, diagnostic)
-    }
-
-    /// Creates a new `DiagnosticBuilder` with an already constructed
-    /// diagnostic.
-    pub(crate) fn new_diagnostic_fatal(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
-        debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(diagnostic),
+                diagnostic: Box::new(Diagnostic::new_with_code(Level::Fatal, None, message)),
             },
             _marker: PhantomData,
         }

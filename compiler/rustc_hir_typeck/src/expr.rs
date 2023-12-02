@@ -75,7 +75,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // coercions from ! to `expected`.
         if ty.is_never() {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                let reported = self.tcx().sess.delay_span_bug(
+                let reported = self.tcx().sess.span_delayed_bug(
                     expr.span,
                     "expression with never type wound up being adjusted",
                 );
@@ -514,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Err => {
                 self.suggest_assoc_method_call(segs);
                 let e =
-                    self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
+                    self.tcx.sess.span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 Ty::new_error(tcx, e)
             }
@@ -623,7 +623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Set expectation to error in that case and set tainted
                 // by error (#114529)
                 let coerce_to = opt_coerce_to.unwrap_or_else(|| {
-                    let guar = tcx.sess.delay_span_bug(
+                    let guar = tcx.sess.span_delayed_bug(
                         expr.span,
                         "illegal break with value found but no error reported",
                     );
@@ -1292,7 +1292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // permit break with a value [1].
         if ctxt.coerce.is_none() && !ctxt.may_break {
             // [1]
-            self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
+            self.tcx.sess.span_delayed_bug(body.span, "no coercion, but loop may not break");
         }
         ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| Ty::new_unit(self.tcx))
     }
@@ -2187,7 +2187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let guar = self
                 .tcx
                 .sess
-                .delay_span_bug(expr.span, "parser recovered but no error was emitted");
+                .span_delayed_bug(expr.span, "parser recovered but no error was emitted");
             self.set_tainted_by_errors(guar);
             return guar;
         }
@@ -2403,7 +2403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let guar = if field.name == kw::Empty {
-            self.tcx.sess.delay_span_bug(field.span, "field name with no name")
+            self.tcx.sess.span_delayed_bug(field.span, "field name with no name")
         } else if self.method_exists(field, base_ty, expr.hir_id, expected.only_has_type(self)) {
             self.ban_take_value_of_method(expr, base_ty, field)
         } else if !base_ty.is_primitive_ty() {

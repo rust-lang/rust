@@ -551,12 +551,15 @@ impl Default for ErrorOutputType {
 /// Parameter to control path trimming.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TrimmedDefPaths {
-    /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive query
+    /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive
+    /// query.
     #[default]
     Never,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call `delay_good_path_bug`
+    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call
+    /// `good_path_delayed_bug`.
     Always,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_good_path_bug`
+    /// `try_print_trimmed_def_path` calls the expensive query, the query calls
+    /// `good_path_delayed_bug`.
     GoodPath,
 }
 

@@ -509,7 +509,7 @@ fn virtual_call_violations_for_method<'tcx>(
                     Ok(layout) => Some(layout.abi),
                     Err(err) => {
                         // #78372
-                        tcx.sess.delay_span_bug(
+                        tcx.sess.span_delayed_bug(
                             tcx.def_span(method.def_id),
                             format!("error: {err}\n while computing layout for type {ty:?}"),
                         );
@@ -525,7 +525,7 @@ fn virtual_call_violations_for_method<'tcx>(
             match abi_of_ty(unit_receiver_ty) {
                 Some(Abi::Scalar(..)) => (),
                 abi => {
-                    tcx.sess.delay_span_bug(
+                    tcx.sess.span_delayed_bug(
                         tcx.def_span(method.def_id),
                         format!(
                             "receiver when `Self = ()` should have a Scalar ABI; found {abi:?}"
@@ -543,7 +543,7 @@ fn virtual_call_violations_for_method<'tcx>(
             match abi_of_ty(trait_object_receiver) {
                 Some(Abi::ScalarPair(..)) => (),
                 abi => {
-                    tcx.sess.delay_span_bug(
+                    tcx.sess.span_delayed_bug(
                         tcx.def_span(method.def_id),
                         format!(
                             "receiver when `Self = {trait_object_ty}` should have a ScalarPair ABI; found {abi:?}"
@@ -597,7 +597,7 @@ fn virtual_call_violations_for_method<'tcx>(
             if pred_trait_ref.args.len() != 1 {
                 tcx.sess
                     .diagnostic()
-                    .delay_span_bug(span, "auto traits cannot have generic parameters");
+                    .span_delayed_bug(span, "auto traits cannot have generic parameters");
             }
             return false;
         }

@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style != ast::AttrStyle::Outer {
                     let span = self.token.span;
-                    let mut err = self.sess.span_diagnostic.struct_span_err_with_code(
+                    let mut err = self.diagnostic().struct_span_err_with_code(
                         span,
                         fluent::parse_inner_doc_comment_not_permitted,
                         error_code!(E0753),
@@ -418,7 +418,7 @@ impl<'a> Parser<'a> {
         }
 
         Err(InvalidMetaItem { span: self.token.span, token: self.token.clone() }
-            .into_diagnostic(&self.sess.span_diagnostic))
+            .into_diagnostic(self.diagnostic()))
     }
 }
 

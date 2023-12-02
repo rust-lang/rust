@@ -194,16 +194,16 @@ impl<'tcx> Queries<'tcx> {
         let Some((def_id, _)) = tcx.entry_fn(()) else { return };
         for attr in tcx.get_attrs(def_id, sym::rustc_error) {
             match attr.meta_item_list() {
-                // Check if there is a `#[rustc_error(delay_span_bug_from_inside_query)]`.
+                // Check if there is a `#[rustc_error(span_delayed_bug_from_inside_query)]`.
                 Some(list)
                     if list.iter().any(|list_item| {
                         matches!(
                             list_item.ident().map(|i| i.name),
-                            Some(sym::delay_span_bug_from_inside_query)
+                            Some(sym::span_delayed_bug_from_inside_query)
                         )
                     }) =>
                 {
-                    tcx.ensure().trigger_delay_span_bug(def_id);
+                    tcx.ensure().trigger_span_delayed_bug(def_id);
                 }
 
                 // Bare `#[rustc_error]`.
