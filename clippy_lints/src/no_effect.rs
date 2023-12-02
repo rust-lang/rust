@@ -87,6 +87,10 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 
 fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     if let StmtKind::Semi(expr) = stmt.kind {
+        // assume nontrivial oprand of `Binary` Expr can skip `check_unnecessary_operation`
+        if has_nontrivial_oprand(expr) {
+            return true;
+        }
         if has_no_effect(cx, expr) {
             span_lint_hir_and_then(
                 cx,
@@ -151,6 +155,61 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
         }
     }
     false
+}
+
+fn has_nontrivial_oprand(expr: &Expr<'_>) -> bool {
+    if expr.span.from_expansion() {
+        return false;
+    }
+    return match peel_blocks(expr).kind {
+        ExprKind::Binary(_, lhs, rhs) => !check_nontrivial_operand(lhs, rhs),
+        _ => false,
+    };
+}
+
+fn check_nontrivial_operand(lhs: &Expr<'_>, rhs: &Expr<'_>) -> bool {
+    // It's seem that impossable to check whether operator is overrided through context of this lint,
+    // so, this function assume user-defined binary operator is overrided with an side-effect.
+    // The definition of user-defined structure here is `tuple`, `array`, `struct`,
+    // it looks like a little bit simple, but useful.
+    // Althrough this will weaken the ability of this lint,
+    // less miss lint-fix happen.
+
+    // a closure to check whether expr belongs to user-defined structure
+    let closure = |expr: &Expr<'_>| -> bool {
+        match &expr.kind {
+            // check whether expr is a user-defined sturcture
+            ExprKind::Tup(..) | ExprKind::Array(..) | ExprKind::Struct(..) => true,
+            // resolve expr's path
+            ExprKind::Path(rustc_hir::QPath::Resolved(
+                _,
+                rustc_hir::Path {
+                    span: _,
+                    res,
+                    segments: _,
+                },
+            )) => {
+                match res {
+                    Res::Def(defkind, _) => match defkind {
+                        // user-defined
+                        DefKind::Struct | DefKind::Ctor(_, _) => true,
+                        _ => false,
+                    },
+                    _ => false,
+                };
+                false
+            },
+            _ => false,
+        }
+    };
+
+    let lhs_ud = closure(lhs);
+    let rhs_ud = closure(rhs);
+    // one of lhs or rhs is user-defined structure
+    if lhs_ud || rhs_ud {
+        return false;
+    }
+    true
 }
 
 fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
