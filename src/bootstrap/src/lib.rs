@@ -25,12 +25,12 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::str;
+use std::sync::OnceLock;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
 use build_helper::util::fail;
 use filetime::FileTime;
-use once_cell::sync::OnceCell;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::channel::GitInfo;
@@ -906,7 +906,7 @@ impl Build {
 
     /// Returns the sysroot of the snapshot compiler.
     fn rustc_snapshot_sysroot(&self) -> &Path {
-        static SYSROOT_CACHE: OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+        static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
         SYSROOT_CACHE.get_or_init(|| {
             let mut rustc = Command::new(&self.initial_rustc);
             rustc.args(&["--print", "sysroot"]);

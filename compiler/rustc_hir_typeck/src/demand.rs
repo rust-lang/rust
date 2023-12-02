@@ -256,7 +256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.adjust_expr_for_assert_eq_macro(&mut expr, &mut expected_ty_expr);
 
-        self.set_tainted_by_errors(self.tcx.sess.delay_span_bug(
+        self.set_tainted_by_errors(self.tcx.sess.span_delayed_bug(
             expr.span,
             "`TypeError` when attempting coercion but no error emitted",
         ));

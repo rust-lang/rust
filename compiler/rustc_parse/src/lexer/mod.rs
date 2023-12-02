@@ -223,9 +223,6 @@ impl<'a> StringReader<'a> {
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
                     let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
-                    if let token::LitKind::CStr | token::LitKind::CStrRaw(_) = kind {
-                        self.sess.gated_spans.gate(sym::c_str_literals, self.mk_sp(start, self.pos));
-                    }
                     let suffix = if suffix_start < self.pos {
                         let string = self.str_from(suffix_start);
                         if string == "_" {

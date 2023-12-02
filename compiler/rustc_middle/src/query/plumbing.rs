@@ -551,7 +551,7 @@ macro_rules! define_feedable {
                                 // We have an inconsistency. This can happen if one of the two
                                 // results is tainted by errors. In this case, delay a bug to
                                 // ensure compilation is doomed, and keep the `old` value.
-                                tcx.sess.delay_span_bug(DUMMY_SP, format!(
+                                tcx.sess.span_delayed_bug(DUMMY_SP, format!(
                                     "Trying to feed an already recorded value for query {} key={key:?}:\n\
                                     old value: {old:?}\nnew value: {value:?}",
                                     stringify!($name),

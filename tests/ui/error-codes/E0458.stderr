@@ -1,4 +1,4 @@
-error[E0458]: unknown link kind `wonderful_unicorn`, expected one of: static, dylib, framework, raw-dylib
+error[E0458]: unknown link kind `wonderful_unicorn`, expected one of: static, dylib, framework, raw-dylib, link-arg
   --> $DIR/E0458.rs:1:15
    |
 LL | #[link(kind = "wonderful_unicorn")] extern "C" {}

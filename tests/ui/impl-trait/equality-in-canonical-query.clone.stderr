@@ -1,4 +1,4 @@
-error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+error: internal compiler error: no errors encountered even though `span_delayed_bug` issued
 
 error: internal compiler error: {OpaqueTypeKey { def_id: DefId(rpit::{opaque#0}), args: [] }: OpaqueTypeDecl { hidden_type: OpaqueHiddenType { span: no-location (#0), ty: Alias(Opaque, AliasTy { args: [], def_id: DefId(foo::{opaque#0}) }) } }}
    |

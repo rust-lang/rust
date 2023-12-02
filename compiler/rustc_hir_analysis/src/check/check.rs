@@ -130,7 +130,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         for field in &def.non_enum_variant().fields {
             let Ok(field_ty) = tcx.try_normalize_erasing_regions(param_env, field.ty(tcx, args))
             else {
-                tcx.sess.delay_span_bug(span, "could not normalize field type");
+                tcx.sess.span_delayed_bug(span, "could not normalize field type");
                 continue;
             };
 
@@ -151,7 +151,8 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 return false;
             } else if field_ty.needs_drop(tcx, param_env) {
                 // This should never happen. But we can get here e.g. in case of name resolution errors.
-                tcx.sess.delay_span_bug(span, "we should never accept maybe-dropping union fields");
+                tcx.sess
+                    .span_delayed_bug(span, "we should never accept maybe-dropping union fields");
             }
         }
     } else {
@@ -181,7 +182,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         // Generic statics are rejected, but we still reach this case.
         Err(e) => {
-            tcx.sess.delay_span_bug(span, format!("{e:?}"));
+            tcx.sess.span_delayed_bug(span, format!("{e:?}"));
             return;
         }
     };
@@ -204,7 +205,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     let item = tcx.hir().item(id);
     let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
-        tcx.sess.delay_span_bug(item.span, "expected opaque item");
+        tcx.sess.span_delayed_bug(item.span, "expected opaque item");
         return;
     };
 
@@ -313,7 +314,7 @@ fn check_opaque_meets_bounds<'tcx>(
         Ok(()) => {}
         Err(ty_err) => {
             let ty_err = ty_err.to_string(tcx);
-            return Err(tcx.sess.delay_span_bug(
+            return Err(tcx.sess.span_delayed_bug(
                 span,
                 format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
             ));
@@ -655,7 +656,7 @@ pub(super) fn check_specialization_validity<'tcx>(
         if !tcx.is_impl_trait_in_trait(impl_item) {
             report_forbidden_specialization(tcx, impl_item, parent_impl);
         } else {
-            tcx.sess.delay_span_bug(
+            tcx.sess.span_delayed_bug(
                 DUMMY_SP,
                 format!("parent item: {parent_impl:?} not marked as default"),
             );
@@ -703,7 +704,7 @@ fn check_impl_items_against_trait<'tcx>(
             tcx.associated_item(trait_item_id)
         } else {
             // Checked in `associated_item`.
-            tcx.sess.delay_span_bug(tcx.def_span(impl_item), "missing associated item in trait");
+            tcx.sess.span_delayed_bug(tcx.def_span(impl_item), "missing associated item in trait");
             continue;
         };
         match ty_impl_item.kind {

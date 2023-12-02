@@ -202,7 +202,7 @@ fn fulfill_implication<'tcx>(
         {
             Ok(source_trait_ref) => source_trait_ref,
             Err(_errors) => {
-                infcx.tcx.sess.delay_span_bug(
+                infcx.tcx.sess.span_delayed_bug(
                     infcx.tcx.def_span(source_impl),
                     format!("failed to fully normalize {source_trait_ref}"),
                 );
@@ -431,7 +431,10 @@ fn report_conflicting_impls<'tcx>(
                 decorate(tcx, &overlap, impl_span, &mut err);
                 Some(err.emit())
             } else {
-                Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
+                Some(
+                    tcx.sess
+                        .span_delayed_bug(impl_span, "impl should have failed the orphan check"),
+                )
             };
             sg.has_errored = reported;
         }

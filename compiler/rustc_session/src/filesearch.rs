@@ -9,12 +9,6 @@ use std::path::{Path, PathBuf};
 use crate::search_paths::{PathKind, SearchPath};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 
-#[derive(Copy, Clone)]
-pub enum FileMatch {
-    FileMatches,
-    FileDoesntMatch,
-}
-
 #[derive(Clone)]
 pub struct FileSearch<'a> {
     sysroot: &'a Path,

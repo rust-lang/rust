@@ -190,7 +190,7 @@ pub fn complicated_markdown() {}
 pub mod mir {}
 
 pub mod rustc {
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
+    /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given `msg to
     //~^ ERROR unescaped backtick
     /// ensure it gets used.
     pub fn ty_error_with_message() {}

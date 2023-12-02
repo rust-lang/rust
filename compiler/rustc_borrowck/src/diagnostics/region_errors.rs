@@ -84,7 +84,7 @@ impl<'tcx> RegionErrors<'tcx> {
     #[track_caller]
     pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        self.1.sess.delay_span_bug(DUMMY_SP, format!("{val:?}"));
+        self.1.sess.span_delayed_bug(DUMMY_SP, format!("{val:?}"));
         self.0.push(val);
     }
     pub fn is_empty(&self) -> bool {

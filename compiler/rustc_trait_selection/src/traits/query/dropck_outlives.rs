@@ -237,7 +237,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
 
-                tcx.sess.delay_span_bug(
+                tcx.sess.span_delayed_bug(
                     span,
                     format!("upvar_tys for closure not found. Expected capture information for closure {ty}",),
                 );
@@ -286,7 +286,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             if !args.is_valid() {
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
-                tcx.sess.delay_span_bug(
+                tcx.sess.span_delayed_bug(
                     span,
                     format!("upvar_tys for coroutine not found. Expected capture information for coroutine {ty}",),
                 );

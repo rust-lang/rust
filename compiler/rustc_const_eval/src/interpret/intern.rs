@@ -94,9 +94,9 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         // If the pointer is dangling (neither in local nor global memory), we leave it
         // to validation to error -- it has the much better error messages, pointing out where
         // in the value the dangling reference lies.
-        // The `delay_span_bug` ensures that we don't forget such a check in validation.
+        // The `span_delayed_bug` ensures that we don't forget such a check in validation.
         if tcx.try_get_global_alloc(alloc_id).is_none() {
-            tcx.sess.delay_span_bug(ecx.tcx.span, "tried to intern dangling pointer");
+            tcx.sess.span_delayed_bug(ecx.tcx.span, "tried to intern dangling pointer");
         }
         // treat dangling pointers like other statics
         // just to stop trying to recurse into them
@@ -186,7 +186,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                     // Validation will error (with a better message) on an invalid vtable pointer.
                     // Let validation show the error message, but make sure it *does* error.
                     tcx.sess
-                        .delay_span_bug(tcx.span, "vtables pointers cannot be integer pointers");
+                        .span_delayed_bug(tcx.span, "vtables pointers cannot be integer pointers");
                 }
             }
             // Check if we have encountered this pointer+layout combination before.
@@ -375,7 +375,7 @@ pub fn intern_const_alloc_recursive<
         match res {
             Ok(()) => {}
             Err(error) => {
-                ecx.tcx.sess.delay_span_bug(
+                ecx.tcx.sess.span_delayed_bug(
                     ecx.tcx.span,
                     format!(
                         "error during interning should later cause validation failure: {}",

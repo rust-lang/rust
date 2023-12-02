@@ -296,6 +296,23 @@ pub enum Visibility<Id = LocalDefId> {
     Restricted(Id),
 }
 
+impl Visibility {
+    pub fn to_string(self, def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
+        match self {
+            ty::Visibility::Restricted(restricted_id) => {
+                if restricted_id.is_top_level_module() {
+                    "pub(crate)".to_string()
+                } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
+                    "pub(self)".to_string()
+                } else {
+                    format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
+                }
+            }
+            ty::Visibility::Public => "pub".to_string(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum BoundConstness {
     /// `T: Trait`

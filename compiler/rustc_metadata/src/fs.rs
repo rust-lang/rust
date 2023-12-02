@@ -91,10 +91,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             }
         };
         if tcx.sess.opts.json_artifact_notifications {
-            tcx.sess
-                .parse_sess
-                .span_diagnostic
-                .emit_artifact_notification(out_filename.as_path(), "metadata");
+            tcx.sess.diagnostic().emit_artifact_notification(out_filename.as_path(), "metadata");
         }
         (filename, None)
     } else {

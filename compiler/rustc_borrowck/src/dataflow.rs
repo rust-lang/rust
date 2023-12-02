@@ -432,7 +432,8 @@ impl<'mir, 'tcx> Borrows<'mir, 'tcx> {
 
             assert_eq!(
                 borrows_out_of_scope_at_location, polonius_prec.loans_out_of_scope_at_location,
-                "the loans out of scope must be the same as the borrows out of scope"
+                "polonius loan scopes differ from NLL borrow scopes, for body {:?}",
+                body.span,
             );
 
             borrows_out_of_scope_at_location = polonius_prec.loans_out_of_scope_at_location;

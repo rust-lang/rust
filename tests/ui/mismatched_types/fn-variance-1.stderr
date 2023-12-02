@@ -16,6 +16,10 @@ note: required by a bound in `apply`
    |
 LL | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
    |                                     ^^^^^^^^^ required by this bound in `apply`
+help: consider wrapping the function in a closure
+   |
+LL |     apply(&3, |x| takes_mut(&mut *x));
+   |               +++          +++++++++
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/fn-variance-1.rs:15:19
@@ -35,6 +39,10 @@ note: required by a bound in `apply`
    |
 LL | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
    |                                     ^^^^^^^^^ required by this bound in `apply`
+help: consider wrapping the function in a closure
+   |
+LL |     apply(&mut 3, |x| takes_imm(&*x));
+   |                   +++          +++++
 
 error: aborting due to 2 previous errors
 

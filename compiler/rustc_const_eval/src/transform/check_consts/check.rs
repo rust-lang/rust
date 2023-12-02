@@ -248,7 +248,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
         if self.ccx.is_async() || body.coroutine.is_some() {
-            tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
+            tcx.sess.span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
 
@@ -357,7 +357,9 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
         if self.tcx.is_thread_local_static(def_id) {
-            self.tcx.sess.delay_span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
+            self.tcx
+                .sess
+                .span_delayed_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         self.check_op_spanned(ops::StaticAccess, span)
     }

@@ -238,7 +238,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                     .instantiate(self.tcx, impl_args)
                                     .visit_with(self);
                             } else {
-                                self.tcx.sess.delay_span_bug(
+                                self.tcx.sess.span_delayed_bug(
                                     self.tcx.def_span(assoc.def_id),
                                     "item had incorrect args",
                                 );

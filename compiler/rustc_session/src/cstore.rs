@@ -6,7 +6,6 @@ use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
 use crate::Session;
 use rustc_ast as ast;
-use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
@@ -14,10 +13,9 @@ use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use rustc_target::spec::Target;
 
 use std::any::Any;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // lonely orphan structs and enums looking for a better home
 
@@ -196,21 +194,6 @@ pub enum ExternCrateSource {
     /// Crate is implicitly loaded by a path resolving through extern prelude.
     Path,
 }
-
-/// The backend's way to give the crate store access to the metadata in a library.
-/// Note that it returns the raw metadata bytes stored in the library file, whether
-/// it is compressed, uncompressed, some weird mix, etc.
-/// rmeta files are backend independent and not handled here.
-///
-/// At the time of this writing, there is only one backend and one way to store
-/// metadata in library -- this trait just serves to decouple rustc_metadata from
-/// the archive reader, which depends on LLVM.
-pub trait MetadataLoader: std::fmt::Debug {
-    fn get_rlib_metadata(&self, target: &Target, filename: &Path) -> Result<OwnedSlice, String>;
-    fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<OwnedSlice, String>;
-}
-
-pub type MetadataLoaderDyn = dyn MetadataLoader + Send + Sync + sync::DynSend + sync::DynSync;
 
 /// A store of Rust crates, through which their metadata can be accessed.
 ///

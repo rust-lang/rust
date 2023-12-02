@@ -945,7 +945,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
     assert!(attr.has_name(sym::repr), "expected `#[repr(..)]`, found: {attr:?}");
     use ReprAttr::*;
     let mut acc = Vec::new();
-    let diagnostic = &sess.parse_sess.span_diagnostic;
+    let diagnostic = sess.diagnostic();
 
     if let Some(items) = attr.meta_item_list() {
         for item in items {
@@ -1060,9 +1060,9 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 // Not a word we recognize. This will be caught and reported by
                 // the `check_mod_attrs` pass, but this pass doesn't always run
                 // (e.g. if we only pretty-print the source), so we have to gate
-                // the `delay_span_bug` call as follows:
+                // the `span_delayed_bug` call as follows:
                 if sess.opts.pretty.map_or(true, |pp| pp.needs_analysis()) {
-                    diagnostic.delay_span_bug(item.span(), "unrecognized representation hint");
+                    diagnostic.span_delayed_bug(item.span(), "unrecognized representation hint");
                 }
             }
         }

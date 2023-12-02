@@ -16,6 +16,10 @@ note: required by a bound in `Trader::<'a>::set_closure`
    |
 LL |     pub fn set_closure(&mut self, function: impl Fn(&mut Trader) + 'a) {
    |                                                  ^^^^^^^^^^^^^^^ required by this bound in `Trader::<'a>::set_closure`
+help: consider wrapping the function in a closure
+   |
+LL |     trader.set_closure(|arg0: &mut Trader<'_>| closure(*arg0));
+   |                        +++++++++++++++++++++++        +++++++
 help: consider adjusting the signature so it borrows its argument
    |
 LL |     let closure = |trader : &mut Trader| {

@@ -5,7 +5,7 @@ LL |     let _: [u8; size_of::<*mut T>()]; // error on stable, error with gce
    |                                ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/dependence_lint.rs:21:37
@@ -14,7 +14,7 @@ LL |     let _: [u8; if true { size_of::<T>() } else { 3 }]; // error on stable,
    |                                     ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 warning: cannot use constants which depend on generic parameters in types
   --> $DIR/dependence_lint.rs:10:9

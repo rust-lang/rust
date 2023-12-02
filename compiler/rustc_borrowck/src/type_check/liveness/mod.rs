@@ -1,7 +1,9 @@
 use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::mir::{Body, Local};
-use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_middle::mir::visit::{TyContext, Visitor};
+use rustc_middle::mir::{Body, Local, Location, SourceInfo};
+use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
@@ -11,7 +13,7 @@ use crate::{
     constraints::OutlivesConstraintSet,
     facts::{AllFacts, AllFactsExt},
     location::LocationTable,
-    region_infer::values::RegionValueElements,
+    region_infer::values::{LivenessValues, RegionValueElements},
     universal_regions::UniversalRegions,
 };
 
@@ -64,6 +66,14 @@ pub(super) fn generate<'mir, 'tcx>(
         relevant_live_locals,
         boring_locals,
         polonius_drop_used,
+    );
+
+    // Mark regions that should be live where they appear within rvalues or within a call: like
+    // args, regions, and types.
+    record_regular_live_regions(
+        typeck.tcx(),
+        &mut typeck.borrowck_context.constraints.liveness_constraints,
+        body,
     );
 }
 
@@ -131,4 +141,72 @@ fn regions_that_outlive_free_regions<'tcx>(
 
     // Return the final set of things we visited.
     outlives_free_region
+}
+
+/// Some variables are "regular live" at `location` -- i.e., they may be used later. This means that
+/// all regions appearing in their type must be live at `location`.
+fn record_regular_live_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    liveness_constraints: &mut LivenessValues,
+    body: &Body<'tcx>,
+) {
+    let mut visitor = LiveVariablesVisitor { tcx, liveness_constraints };
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
+        visitor.visit_basic_block_data(bb, data);
+    }
+}
+
+/// Visitor looking for regions that should be live within rvalues or calls.
+struct LiveVariablesVisitor<'cx, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    liveness_constraints: &'cx mut LivenessValues,
+}
+
+impl<'cx, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'cx, 'tcx> {
+    /// We sometimes have `args` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_args(&mut self, args: &GenericArgsRef<'tcx>, location: Location) {
+        self.record_regions_live_at(*args, location);
+        self.super_args(args);
+    }
+
+    /// We sometimes have `region`s within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_region(&mut self, region: Region<'tcx>, location: Location) {
+        self.record_regions_live_at(region, location);
+        self.super_region(region);
+    }
+
+    /// We sometimes have `ty`s within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_ty(&mut self, ty: Ty<'tcx>, ty_context: TyContext) {
+        match ty_context {
+            TyContext::ReturnTy(SourceInfo { span, .. })
+            | TyContext::YieldTy(SourceInfo { span, .. })
+            | TyContext::UserTy(span)
+            | TyContext::LocalDecl { source_info: SourceInfo { span, .. }, .. } => {
+                span_bug!(span, "should not be visiting outside of the CFG: {:?}", ty_context);
+            }
+            TyContext::Location(location) => {
+                self.record_regions_live_at(ty, location);
+            }
+        }
+
+        self.super_ty(ty);
+    }
+}
+
+impl<'cx, 'tcx> LiveVariablesVisitor<'cx, 'tcx> {
+    /// Some variable is "regular live" at `location` -- i.e., it may be used later. This means that
+    /// all regions appearing in the type of `value` must be live at `location`.
+    fn record_regions_live_at<T>(&mut self, value: T, location: Location)
+    where
+        T: TypeVisitable<TyCtxt<'tcx>>,
+    {
+        debug!("record_regions_live_at(value={:?}, location={:?})", value, location);
+        self.tcx.for_each_free_region(&value, |live_region| {
+            let live_region_vid = live_region.as_var();
+            self.liveness_constraints.add_location(live_region_vid, location);
+        });
+    }
 }
