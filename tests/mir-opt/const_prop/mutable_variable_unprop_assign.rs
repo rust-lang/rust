@@ -1,14 +1,24 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // unit-test: ConstProp
 
 // EMIT_MIR mutable_variable_unprop_assign.main.ConstProp.diff
 fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug x => [[x:_.*]];
+    // CHECK: debug y => [[y:_.*]];
+    // CHECK: debug z => [[z:_.*]];
+    // CHECK: [[a]] = foo()
+    // CHECK: [[x]] = const (1_i32, 2_i32);
+    // CHECK: [[tmp:_.*]] = [[a]];
+    // CHECK: ([[x]].1: i32) = move [[tmp]];
+    // CHECK: [[y]] = ([[x]].1: i32);
+    // CHECK: [[z]] = const 1_i32;
     let a = foo();
     let mut x: (i32, i32) = (1, 2);
     x.1 = a;
     let y = x.1;
-    let z = x.0; // this could theoretically be allowed, but we can't handle it right now
+    let z = x.0;
 }
 
 #[inline(never)]
