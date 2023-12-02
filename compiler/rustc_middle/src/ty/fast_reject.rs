@@ -153,7 +153,7 @@ pub fn simplify_type<'tcx>(
             TreatParams::ForLookup | TreatParams::AsCandidateKey => None,
         },
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id)),
-        ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
+        ty::Bound(..) | ty::FieldInfo(..) | ty::Infer(_) | ty::Error(_) => None,
     }
 }
 
@@ -231,7 +231,8 @@ impl DeepRejectCtxt {
             | ty::Never
             | ty::Tuple(..)
             | ty::FnPtr(..)
-            | ty::Foreign(..) => debug_assert!(impl_ty.is_known_rigid()),
+            | ty::Foreign(..)
+            | ty::FieldInfo(..) => debug_assert!(impl_ty.is_known_rigid()),
             ty::FnDef(..)
             | ty::Closure(..)
             | ty::Coroutine(..)
@@ -271,6 +272,12 @@ impl DeepRejectCtxt {
                 &ty::Array(impl_ty, impl_len) => {
                     self.types_may_unify(obl_ty, impl_ty)
                         && self.consts_may_unify(obl_len, impl_len)
+                }
+                _ => false,
+            },
+            ty::FieldInfo(obl_def, obl_args) => match k {
+                &ty::FieldInfo(impl_def, impl_args) => {
+                    obl_def == impl_def && self.args_may_unify(obl_args, impl_args)
                 }
                 _ => false,
             },

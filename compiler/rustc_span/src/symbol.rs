@@ -760,6 +760,7 @@ symbols! {
         ffi_returns_twice,
         field,
         field_init_shorthand,
+        field_of,
         file,
         float,
         float_to_int_unchecked,

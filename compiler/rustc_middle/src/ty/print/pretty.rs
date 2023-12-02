@@ -704,6 +704,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     false => p!(write("{s}")),
                 },
             },
+            ty::FieldInfo(def, args) => p!(print_def_path(def.did(), args)),
             ty::Adt(def, args) => {
                 p!(print_def_path(def.did(), args));
             }

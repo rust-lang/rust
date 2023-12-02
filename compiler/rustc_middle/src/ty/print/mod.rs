@@ -274,6 +274,7 @@ fn characteristic_def_id_of_type_cached<'a>(
         | ty::Param(_)
         | ty::Infer(_)
         | ty::Bound(..)
+        | ty::FieldInfo(..)
         | ty::Error(_)
         | ty::Never
         | ty::Float(_) => None,

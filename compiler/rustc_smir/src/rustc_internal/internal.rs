@@ -11,8 +11,8 @@ use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::ty::{
     AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
-    ExistentialTraitRef, FloatTy, GenericArgKind, GenericArgs, IntTy, Region, RigidTy, Span,
-    TraitRef, Ty, UintTy,
+    ExistentialTraitRef, FieldInfoDef, FloatTy, GenericArgKind, GenericArgs, IntTy, Region,
+    RigidTy, Span, TraitRef, Ty, UintTy,
 };
 use stable_mir::{CrateItem, DefId};
 
@@ -93,7 +93,8 @@ impl<'tcx> RustcInternal<'tcx> for RigidTy {
             | RigidTy::Coroutine(..)
             | RigidTy::CoroutineWitness(..)
             | RigidTy::Dynamic(..)
-            | RigidTy::Tuple(..) => {
+            | RigidTy::Tuple(..)
+            | RigidTy::FieldInfo(..) => {
                 todo!()
             }
         }
@@ -276,6 +277,13 @@ impl<'tcx> RustcInternal<'tcx> for AdtDef {
     type T = rustc_ty::AdtDef<'tcx>;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables.tcx.adt_def(self.0.internal(&mut *tables))
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for FieldInfoDef {
+    type T = rustc_ty::FieldInfoDef<'tcx>;
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.tcx.field_info_def(self.0.internal(&mut *tables))
     }
 }
 

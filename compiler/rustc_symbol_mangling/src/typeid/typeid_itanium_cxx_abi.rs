@@ -721,6 +721,7 @@ fn encode_ty<'tcx>(
         | ty::Error(..)
         | ty::CoroutineWitness(..)
         | ty::Infer(..)
+        | ty::FieldInfo(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
@@ -972,7 +973,12 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             );
         }
 
-        ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
+        ty::Bound(..)
+        | ty::Error(..)
+        | ty::Infer(..)
+        | ty::Param(..)
+        | ty::Placeholder(..)
+        | ty::FieldInfo(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }

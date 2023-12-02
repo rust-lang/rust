@@ -2093,6 +2093,8 @@ pub enum TyKind {
     /// generate `NodeId`s on the fly, which would complicate
     /// the generation of opaque `type Foo = impl Trait` items significantly.
     ImplTrait(NodeId, GenericBounds),
+    /// `field_of!($ty, $field)` type.
+    FieldInfo(P<Ty>, Ident),
     /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(P<Ty>),
     /// Unused for now.

@@ -165,7 +165,8 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Impl { .. } => {
+        | DefKind::Impl { .. }
+        | DefKind::FieldInfo => {
             for param in &generics.params {
                 debug!(?param, "(other)");
                 if let ty::GenericParamDefKind::Lifetime = param.kind {

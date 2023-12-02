@@ -44,6 +44,19 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::FieldInfoDef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ty::tls::with(|tcx| {
+            with_no_trimmed_paths!({
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
+                    cx.print_def_path(self.did(), &[])
+                })?;
+                f.write_str(&s)
+            })
+        })
+    }
+}
+
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = ty::tls::with(|tcx| tcx.hir().name(self.var_path.hir_id));
@@ -580,6 +593,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             }
             ty::Closure(did, args) => ty::Closure(did, args.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
+            ty::FieldInfo(def, args) => ty::FieldInfo(def, args.try_fold_with(folder)?),
 
             ty::Bool
             | ty::Char
@@ -628,6 +642,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::CoroutineWitness(_did, ref args) => args.visit_with(visitor),
             ty::Closure(_did, ref args) => args.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
+            ty::FieldInfo(_, args) => args.visit_with(visitor),
 
             ty::Bool
             | ty::Char

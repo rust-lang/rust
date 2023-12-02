@@ -856,7 +856,8 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::Impl { .. }
-        | DefKind::Closure => true,
+        | DefKind::Closure
+        | DefKind::FieldInfo => true,
         DefKind::ForeignMod | DefKind::GlobalAsm => false,
     }
 }
@@ -896,7 +897,8 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::LifetimeParam
-        | DefKind::GlobalAsm => false,
+        | DefKind::GlobalAsm
+        | DefKind::FieldInfo => false,
     }
 }
 
@@ -931,7 +933,8 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Closure => false,
+        | DefKind::Closure
+        | DefKind::FieldInfo => false,
     }
 }
 
@@ -954,7 +957,8 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(..)
-        | DefKind::Field => true,
+        | DefKind::Field
+        | DefKind::FieldInfo => true,
         DefKind::Use
         | DefKind::ForeignMod
         | DefKind::TyParam
@@ -1001,7 +1005,8 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::FieldInfo => false,
     }
 }
 
@@ -1072,7 +1077,8 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::OpaqueTy
         | DefKind::Fn
         | DefKind::Ctor(..)
-        | DefKind::AssocFn => true,
+        | DefKind::AssocFn
+        | DefKind::FieldInfo => true,
         DefKind::Mod
         | DefKind::Field
         | DefKind::AssocTy
@@ -1121,7 +1127,8 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Field
         | DefKind::TyParam
-        | DefKind::Closure => true,
+        | DefKind::Closure
+        | DefKind::FieldInfo => true,
         DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::ConstParam
@@ -1152,7 +1159,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Closure
         | DefKind::ConstParam
         | DefKind::AnonConst
-        | DefKind::InlineConst => true,
+        | DefKind::InlineConst
+        | DefKind::FieldInfo => true,
 
         DefKind::OpaqueTy => {
             let origin = tcx.opaque_type_origin(def_id);
@@ -1223,7 +1231,8 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::FieldInfo => false,
     }
 }
 
@@ -1260,7 +1269,8 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::FieldInfo => false,
     }
 }
 
@@ -1293,7 +1303,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::FieldInfo => false,
     }
 }
 
@@ -1530,6 +1541,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 assert!(f.did.is_local());
                 f.did.index
             }));
+            for f in variant.fields.iter() {
+                record!(self.tables.field_info_def_ids[f.did] <- f.field_repr.index)
+            }
 
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
                 let fn_sig = tcx.fn_sig(ctor_def_id);

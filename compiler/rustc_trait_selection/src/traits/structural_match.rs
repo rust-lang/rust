@@ -101,6 +101,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
                 return ControlFlow::Continue(());
             }
 
+            ty::FieldInfo(..) => {
+                return ControlFlow::Break(ty);
+            }
+
             ty::FnPtr(..) => {
                 return ControlFlow::Continue(());
             }

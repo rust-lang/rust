@@ -94,7 +94,9 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         | DefKind::ConstParam
         | DefKind::Ctor(_, _)
         | DefKind::Field
-        | DefKind::LifetimeParam => {
+        | DefKind::LifetimeParam
+        // TODO(y86-dev): is this correct?
+        | DefKind::FieldInfo => {
             span_bug!(
                 tcx.def_span(item),
                 "{kind:?} has not seen any uses of `walk_types` yet, ping oli-obk if you'd like any help"

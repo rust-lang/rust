@@ -172,6 +172,14 @@ fn do_orphan_check_impl<'tcx>(
                     NonlocalImpl::DisallowBecauseNonlocal
                 },
             ),
+            ty::FieldInfo(def, ..) => (
+                LocalImpl::Allow,
+                if def.container().is_local() {
+                    NonlocalImpl::Allow
+                } else {
+                    NonlocalImpl::DisallowBecauseNonlocal
+                },
+            ),
 
             // extern { type OpaqueType; }
             // impl AutoTrait for OpaqueType {}

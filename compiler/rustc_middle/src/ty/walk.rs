@@ -191,7 +191,8 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::Closure(_, args)
             | ty::Coroutine(_, args, _)
             | ty::CoroutineWitness(_, args)
-            | ty::FnDef(_, args) => {
+            | ty::FnDef(_, args)
+            | ty::FieldInfo(_, args) => {
                 stack.extend(args.iter().rev());
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(GenericArg::from)),

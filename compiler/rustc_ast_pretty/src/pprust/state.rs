@@ -1003,6 +1003,14 @@ impl<'a> State<'a> {
                 self.word_nbsp("impl");
                 self.print_type_bounds(bounds);
             }
+            ast::TyKind::FieldInfo(container, field) => {
+                self.word("builtin # field_of!");
+                self.popen();
+                self.print_type(container);
+                self.word(",");
+                self.print_ident(*field);
+                self.pclose();
+            }
             ast::TyKind::Array(ty, length) => {
                 self.word("[");
                 self.print_type(ty);

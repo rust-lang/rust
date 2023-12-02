@@ -25,10 +25,10 @@ use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
-    ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    TypeAndMut, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, FieldInfoDef,
+    FieldInfoDefData, GenericParamDefKind, ImplPolarity, List, ParamConst, ParamTy,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind, ReprOptions,
+    TraitObjectVisitor, Ty, TyKind, TyVid, TypeAndMut, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -81,6 +81,7 @@ use std::ops::{Bound, Deref};
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
     type AdtDef = ty::AdtDef<'tcx>;
+    type FieldInfoDef = ty::FieldInfoDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
@@ -156,6 +157,7 @@ pub struct CtxtInterners<'tcx> {
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<FieldIdx, VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
+    field_info_def: InternedSet<'tcx, FieldInfoDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
@@ -183,6 +185,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
             adt_def: Default::default(),
+            field_info_def: Default::default(),
             external_constraints: Default::default(),
             predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
@@ -684,6 +687,10 @@ impl<'tcx> TyCtxt<'tcx> {
         repr: ReprOptions,
     ) -> ty::AdtDef<'tcx> {
         self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
+    }
+
+    pub fn mk_field_info_def(self, did: DefId, container: DefId) -> ty::FieldInfoDef<'tcx> {
+        self.mk_field_info_def_from_data(ty::FieldInfoDefData::new(did, container))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
@@ -1450,6 +1457,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Closure,
                     Tuple,
                     Bound,
+                    FieldInfo,
                     Param,
                     Infer,
                     Alias,
@@ -1584,6 +1592,7 @@ direct_interners! {
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS<FieldIdx, VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
+    field_info_def: pub mk_field_info_def_from_data(FieldInfoDefData): FieldInfoDef -> FieldInfoDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<'tcx>):

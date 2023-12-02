@@ -395,7 +395,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
                 | ty::Never
-                | ty::Foreign(..) => tcx.types.unit,
+                | ty::Foreign(..)
+                | ty::FieldInfo(..) => tcx.types.unit,
 
                 ty::Error(e) => Ty::new_error(tcx, *e),
 
@@ -601,7 +602,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             | ty::Slice(_)
             | ty::Dynamic(_, _, _)
             | ty::Tuple(_)
-            | ty::Error(_) => self_ty.discriminant_ty(ecx.tcx()),
+            | ty::Error(_)
+            | ty::FieldInfo(..) => self_ty.discriminant_ty(ecx.tcx()),
 
             // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
             // types, which return `<self_ty as DiscriminantKind>::Discriminant`

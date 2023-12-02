@@ -2542,6 +2542,8 @@ pub enum TyKind<'hir> {
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
+    /// `field_of!($ty, $field)`.
+    FieldInfo(&'hir Ty<'hir>, Ident),
     /// Unused for now.
     Typeof(AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been

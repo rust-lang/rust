@@ -156,6 +156,7 @@ impl Visitable for RigidTy {
             }
             RigidTy::Tuple(fields) => fields.visit(visitor),
             RigidTy::Adt(_, args) => args.visit(visitor),
+            RigidTy::FieldInfo(_, args) => args.visit(visitor),
         }
     }
 }

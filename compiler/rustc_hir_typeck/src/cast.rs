@@ -138,7 +138,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Adt(..)
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
-            | ty::Error(_) => {
+            | ty::Error(_)
+            | ty::FieldInfo(..) => {
                 let reported = self
                     .tcx
                     .sess

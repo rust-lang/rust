@@ -609,6 +609,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // WfScalar, WfParameter, etc
                 }
 
+                ty::FieldInfo(..) => {}
+
                 // Can only infer to `ty::Int(_) | ty::Uint(_)`.
                 ty::Infer(ty::IntVar(_)) => {}
 

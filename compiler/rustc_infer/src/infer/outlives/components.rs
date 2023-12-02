@@ -173,6 +173,7 @@ fn compute_components<'tcx>(
             ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
+            ty::FieldInfo(..) |   // OutlivesNominalType
             ty::Foreign(..) |     // OutlivesNominalType
             ty::Str |             // OutlivesScalar (ish)
             ty::Slice(..) |       // ...

@@ -310,6 +310,13 @@ impl<'a> State<'a> {
                 self.print_array_length(length);
                 self.word("]");
             }
+            hir::TyKind::FieldInfo(container, field) => {
+                self.word("field_of!");
+                self.popen();
+                self.print_type(container);
+                self.print_ident(field);
+                self.pclose();
+            }
             hir::TyKind::Typeof(ref e) => {
                 self.word("typeof(");
                 self.print_anon_const(e);

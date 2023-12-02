@@ -424,7 +424,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Closure(_, _)
             | ty::Coroutine(_, _, _)
             | ty::Never
-            | ty::Tuple(_) => {
+            | ty::Tuple(_)
+            | ty::FieldInfo(..) => {
                 let simp =
                     fast_reject::simplify_type(tcx, self_ty, TreatParams::ForLookup).unwrap();
                 consider_impls_for_simplified_type(simp);
@@ -646,7 +647,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Alias(ty::Weak, _)
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
+            | ty::Bound(..)
+            | ty::FieldInfo(..) => bug!("unexpected self type for `{goal:?}`"),
             // Excluding IATs and type aliases here as they don't have meaningful item bounds.
             ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
         };
@@ -800,7 +802,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
+            | ty::Bound(..)
+            | ty::FieldInfo(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
         };
 

@@ -424,6 +424,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
+            | ty::FieldInfo(
+                ty::FieldInfoDef(Interned(&ty::FieldInfoDefData { did: def_id, .. }, _)),
+                args,
+            )
             | ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)

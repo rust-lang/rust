@@ -61,6 +61,14 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
         }
+        DefKind::FieldInfo => {
+            // These are inferred.
+            let crate_map = tcx.crate_variances(());
+            let parent_field = tcx.parent(item_def_id.to_def_id());
+            let field_hir = tcx.local_def_id_to_hir_id(parent_field.as_local().unwrap());
+            let parent_struct = tcx.hir().get_parent_item(field_hir);
+            return crate_map.variances.get(&parent_struct.to_def_id()).copied().unwrap_or(&[]);
+        }
         DefKind::OpaqueTy => {
             return variance_of_opaque(tcx, item_def_id);
         }

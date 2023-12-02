@@ -278,6 +278,8 @@ impl<'a> Parser<'a> {
             // Reference
             self.expect_and()?;
             self.parse_borrowed_pointee()?
+        } else if self.is_builtin() {
+            self.parse_ty_builtin()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
             self.parse_typeof_ty()?
         } else if self.eat_keyword(kw::Underscore) {
@@ -440,6 +442,23 @@ impl<'a> Parser<'a> {
         } else {
             Ok(TyKind::Tup(ts))
         }
+    }
+
+    fn parse_ty_builtin(&mut self) -> PResult<'a, TyKind> {
+        self.parse_builtin(|this, _lo, ident| {
+            if ident.name == sym::field_of {
+                return Ok(Some(this.parse_ty_field_of()?));
+            }
+
+            Ok(None)
+        })
+    }
+
+    fn parse_ty_field_of(&mut self) -> PResult<'a, TyKind> {
+        let container = self.parse_ty()?;
+        self.expect(&TokenKind::Comma)?;
+        let field = self.parse_ident()?;
+        Ok(TyKind::FieldInfo(container, field))
     }
 
     fn parse_bare_trait_object(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {

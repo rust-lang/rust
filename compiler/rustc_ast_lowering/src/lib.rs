@@ -1373,6 +1373,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Path(qself, path) => {
                 return self.lower_path_ty(t, qself, path, ParamMode::Explicit, itctx);
             }
+            TyKind::FieldInfo(container, field) => {
+                hir::TyKind::FieldInfo(self.lower_ty(container, itctx), self.lower_ident(*field))
+            }
             TyKind::ImplicitSelf => {
                 let hir_id = self.next_id();
                 let res = self.expect_full_res(t.id);

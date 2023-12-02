@@ -116,6 +116,8 @@ pub enum DefKind {
         of_trait: bool,
     },
     Closure,
+    /// Field Representing type from `field_of!`.
+    FieldInfo,
 }
 
 impl DefKind {
@@ -160,6 +162,7 @@ impl DefKind {
             DefKind::Closure => "closure",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
+            DefKind::FieldInfo => "field info type",
         }
     }
 
@@ -197,7 +200,8 @@ impl DefKind {
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
-            | DefKind::TyParam => Some(Namespace::TypeNS),
+            | DefKind::TyParam
+            | DefKind::FieldInfo => Some(Namespace::TypeNS),
 
             DefKind::Fn
             | DefKind::Const
@@ -236,7 +240,8 @@ impl DefKind {
             | DefKind::TraitAlias
             | DefKind::AssocTy
             | DefKind::TyParam
-            | DefKind::ExternCrate => DefPathData::TypeNs(name),
+            | DefKind::ExternCrate
+            | DefKind::FieldInfo => DefPathData::TypeNs(name),
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam
@@ -295,7 +300,8 @@ impl DefKind {
             | DefKind::AnonConst
             | DefKind::InlineConst
             | DefKind::GlobalAsm
-            | DefKind::ExternCrate => false,
+            | DefKind::ExternCrate
+            | DefKind::FieldInfo => false,
         }
     }
 }

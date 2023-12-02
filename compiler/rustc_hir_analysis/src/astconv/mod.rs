@@ -2538,6 +2538,31 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
                 tcx.at(span).type_of(def_id).instantiate(tcx, args)
             }
+            hir::TyKind::FieldInfo(container, field) => {
+                let span = container.span;
+                let container = self.ast_ty_to_ty(container);
+                match container.kind() {
+                    ty::Adt(adt_def, args) if adt_def.is_struct() => {
+                        if let Some(field_def) = adt_def
+                            .non_enum_variant()
+                            .fields
+                            .iter()
+                            .find(|f| f.ident(tcx) == *field)
+                        {
+                            tcx.type_of(field_def.field_repr).instantiate(tcx, args)
+                        } else {
+                            Ty::new_error(
+                                tcx,
+                                tcx.sess.err(format!("field `{field:?}` not found.")),
+                            )
+                        }
+                    }
+                    _ => Ty::new_error(
+                        tcx,
+                        tcx.sess.span_err(span, format!("`field_of!` only supports structs.")),
+                    ),
+                }
+            }
             hir::TyKind::Array(ty, length) => {
                 let length = match length {
                     &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),

@@ -58,6 +58,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::AdtDef(self.create_def_id(did))
     }
 
+    pub fn field_info_def(&mut self, did: DefId) -> stable_mir::ty::FieldInfoDef {
+        stable_mir::ty::FieldInfoDef(self.create_def_id(did))
+    }
+
     pub fn foreign_def(&mut self, did: DefId) -> stable_mir::ty::ForeignDef {
         stable_mir::ty::ForeignDef(self.create_def_id(did))
     }

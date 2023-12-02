@@ -220,7 +220,8 @@ where
                     | ty::Bound(..)
                     | ty::Never
                     | ty::Infer(_)
-                    | ty::Error(_) => {
+                    | ty::Error(_)
+                    | ty::FieldInfo(..) => {
                         bug!("unexpected type returned by `needs_drop_components`: {component}")
                     }
                 }

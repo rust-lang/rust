@@ -29,7 +29,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::FnPtr(_)
         | ty::Error(_)
         | ty::Never
-        | ty::Char => Ok(vec![]),
+        | ty::Char
+        | ty::FieldInfo(..) => Ok(vec![]),
 
         // Treat `str` like it's defined as `struct str([u8]);`
         ty::Str => Ok(vec![Ty::new_slice(tcx, tcx.types.u8)]),
@@ -130,7 +131,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Closure(..)
         | ty::Never
         | ty::Dynamic(_, _, ty::DynStar)
-        | ty::Error(_) => Ok(vec![]),
+        | ty::Error(_)
+        | ty::FieldInfo(..) => Ok(vec![]),
 
         ty::Str
         | ty::Slice(_)
@@ -183,7 +185,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Adt(_, _)
         | ty::Alias(_, _)
         | ty::Param(_)
-        | ty::Placeholder(..) => Err(NoSolution),
+        | ty::Placeholder(..)
+        | ty::FieldInfo(..) => Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -286,7 +289,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-        | ty::Error(_) => Err(NoSolution),
+        | ty::Error(_)
+        | ty::FieldInfo(..) => Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

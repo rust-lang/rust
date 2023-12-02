@@ -860,6 +860,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
             }
             visitor.visit_lifetime(lifetime);
         }
+        TyKind::FieldInfo(container, field) => {
+            visitor.visit_ty(container);
+            visitor.visit_ident(field);
+        }
         TyKind::Typeof(ref expression) => visitor.visit_anon_const(expression),
         TyKind::Infer | TyKind::Err(_) => {}
     }

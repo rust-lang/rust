@@ -1013,7 +1013,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 | ty::Array(..)
                 | ty::Closure(..)
                 | ty::Never
-                | ty::Error(_) => true,
+                | ty::Error(_)
+                | ty::FieldInfo(..) => true,
 
                 ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 

@@ -89,7 +89,8 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
+            | ty::Error(_)
+            | ty::FieldInfo(..) => ConstValue::from_target_usize(0u64, &tcx),
         },
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })

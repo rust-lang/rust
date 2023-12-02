@@ -350,6 +350,18 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
         }
     }
 
+    if let crate::DefKind::FieldInfo = tcx.def_kind(def_id.to_def_id()) {
+        let parent_field = tcx.parent(def_id.to_def_id());
+        let field = tcx.local_def_id_to_hir_id(parent_field.as_local().unwrap());
+        let parent_struct = tcx.hir().get_parent_item(field).to_def_id();
+        let args = ty::GenericArgs::identity_for_item(tcx, parent_struct);
+        return ty::EarlyBinder::bind(Ty::new_field_of(
+            tcx,
+            tcx.field_info_def(def_id.to_def_id()),
+            args,
+        ));
+    }
+
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let icx = ItemCtxt::new(tcx, def_id);

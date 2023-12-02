@@ -145,6 +145,7 @@ pub fn relate_args_invariantly<'tcx, R: TypeRelation<'tcx>>(
     }))
 }
 
+#[instrument(level = "debug", skip(relation))]
 pub fn relate_args_with_variances<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     ty_def_id: DefId,
@@ -555,6 +556,11 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let alias_ty = relation.relate(a_data, b_data)?;
             assert_eq!(a_kind, b_kind);
             Ok(Ty::new_alias(tcx, a_kind, alias_ty))
+        }
+
+        (&ty::FieldInfo(a_def, a_args), &ty::FieldInfo(b_def, b_args)) if a_def == b_def => {
+            let args = relation.relate_item_args(a_def.did(), a_args, b_args)?;
+            Ok(Ty::new_field_of(tcx, a_def, args))
         }
 
         _ => Err(TypeError::Sorts(expected_found(relation, a, b))),

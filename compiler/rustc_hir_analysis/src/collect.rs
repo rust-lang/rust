@@ -75,6 +75,7 @@ pub fn provide(providers: &mut Providers) {
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
         adt_def,
+        field_info_def,
         fn_sig,
         impl_trait_ref,
         impl_polarity,
@@ -781,6 +782,26 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 }
 
+fn convert_field_repr(
+    tcx: TyCtxt<'_>,
+    f: &hir::FieldDef<'_>,
+    parent_did: LocalDefId,
+    ident: Ident,
+) -> DefId {
+    let field_repr = tcx.at(f.span).create_def(
+        f.def_id,
+        Symbol::intern(&format!("{ident:?}->{:?}", f.ident)),
+        DefKind::FieldInfo,
+    );
+    field_repr.opt_local_def_id_to_hir_id(None);
+    field_repr.def_ident_span(Some(f.span));
+    field_repr.visibility(tcx.visibility(f.def_id));
+    field_repr.generics_of(tcx.generics_of(parent_did).clone());
+    field_repr.inferred_outlives_of(&[]);
+    //field_repr.type_of();
+    field_repr.def_id().to_def_id()
+}
+
 fn convert_variant(
     tcx: TyCtxt<'_>,
     variant_did: Option<LocalDefId>,
@@ -805,8 +826,9 @@ fn convert_variant(
             } else {
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
-
+            let field_repr = convert_field_repr(tcx, f, parent_did, ident);
             ty::FieldDef {
+                field_repr,
                 did: f.def_id.to_def_id(),
                 name: f.ident.name,
                 vis: tcx.visibility(f.def_id),
@@ -891,6 +913,13 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
         _ => bug!(),
     };
     tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
+}
+
+fn field_info_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::FieldInfoDef<'_> {
+    let parent_field = tcx.parent(def_id.to_def_id());
+    let field_hir = tcx.local_def_id_to_hir_id(parent_field.as_local().unwrap());
+    let item_id = tcx.hir().get_parent_item(field_hir);
+    tcx.mk_field_info_def(def_id.to_def_id(), item_id.def_id.to_def_id())
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {

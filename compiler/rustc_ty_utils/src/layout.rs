@@ -155,7 +155,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // The never type.
-        ty::Never => tcx.mk_layout(cx.layout_of_never_type()),
+        ty::Never | ty::FieldInfo(..) => tcx.mk_layout(cx.layout_of_never_type()),
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {

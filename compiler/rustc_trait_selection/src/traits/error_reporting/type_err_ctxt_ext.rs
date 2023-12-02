@@ -1635,6 +1635,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Coroutine(..) => Some(18),
                 ty::Foreign(..) => Some(19),
                 ty::CoroutineWitness(..) => Some(20),
+                ty::FieldInfo(..) => Some(21),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }

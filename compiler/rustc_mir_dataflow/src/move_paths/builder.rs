@@ -164,6 +164,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                     | ty::Bound(_, _)
                     | ty::Infer(_)
                     | ty::Error(_)
+                    | ty::FieldInfo(..)
                     | ty::Placeholder(_) => {
                         bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
                     }
@@ -199,6 +200,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                     | ty::Bound(_, _)
                     | ty::Infer(_)
                     | ty::Error(_)
+                    | ty::FieldInfo(..)
                     | ty::Placeholder(_) => bug!(
                         "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
                     ),

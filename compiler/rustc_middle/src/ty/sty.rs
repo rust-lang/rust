@@ -2261,6 +2261,15 @@ impl<'tcx> Ty<'tcx> {
         let context_ty = Ty::new_adt(tcx, context_adt_ref, context_args);
         Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, context_ty)
     }
+
+    #[inline]
+    pub fn new_field_of(
+        tcx: TyCtxt<'tcx>,
+        def: ty::FieldInfoDef<'tcx>,
+        args: &'tcx GenericArgs<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, FieldInfo(def, args))
+    }
 }
 
 /// Type utilities
@@ -2724,7 +2733,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
-            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
+            | ty::Infer(IntVar(_) | FloatVar(_))
+            | ty::FieldInfo(..) => tcx.types.u8,
 
             ty::Bound(..)
             | ty::Placeholder(_)
@@ -2759,6 +2769,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
+                | ty::FieldInfo(..)
             | ty::Error(_)
             // Extern types have metadata = ().
             | ty::Foreign(..)
@@ -2847,7 +2858,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
-            | ty::Error(_) => true,
+            | ty::Error(_)
+            | ty::FieldInfo(..) => true,
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 
@@ -2876,6 +2888,8 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_trivially_pure_clone_copy(self) -> bool {
         match self.kind() {
             ty::Bool | ty::Char | ty::Never => true,
+
+            ty::FieldInfo(..) => true,
 
             // These aren't even `Clone`
             ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
@@ -2984,6 +2998,7 @@ impl<'tcx> Ty<'tcx> {
             | Coroutine(_, _, _)
             | CoroutineWitness(..)
             | Never
+            | FieldInfo(..)
             | Tuple(_) => true,
             Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
         }

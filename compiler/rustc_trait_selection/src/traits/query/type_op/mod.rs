@@ -141,6 +141,7 @@ where
     type Output = Q::QueryResponse;
     type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
 
+    #[instrument(level = "debug", skip(infcx))]
     fn fully_perform(
         self,
         infcx: &InferCtxt<'tcx>,

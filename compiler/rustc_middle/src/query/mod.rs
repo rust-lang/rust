@@ -705,6 +705,11 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
+    query field_info_def(key: DefId) -> ty::FieldInfoDef<'tcx> {
+        desc { |tcx| "computing FieldInfo definition for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
     query adt_destructor(key: DefId) -> Option<ty::Destructor> {
         desc { |tcx| "computing `Drop` impl for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }

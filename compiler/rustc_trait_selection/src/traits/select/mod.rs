@@ -2105,6 +2105,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::FieldInfo(..)
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
@@ -2222,7 +2223,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {
+            ty::Adt(..)
+            | ty::Alias(..)
+            | ty::Param(..)
+            | ty::Placeholder(..)
+            | ty::FieldInfo(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -2280,7 +2285,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Foreign(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
             | ty::Bound(..)
-            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::FieldInfo(..) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
             }
 

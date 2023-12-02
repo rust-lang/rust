@@ -286,6 +286,9 @@ pub enum TyKind<I: Interner> {
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     Error(I::ErrorGuaranteed),
+
+    /// `field_of!` type.
+    FieldInfo(I::FieldInfoDef, I::GenericArgs),
 }
 
 impl<I: Interner> TyKind<I> {
@@ -326,6 +329,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Placeholder(_) => 23,
         Infer(_) => 24,
         Error(_) => 25,
+        FieldInfo(_, _) => 26,
     }
 }
 
@@ -461,6 +465,21 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", this.wrap(t)),
             TyKind::Error(_) => write!(f, "{{type error}}"),
+            FieldInfo(d, s) => {
+                write!(f, "{d:?}")?;
+                let mut s = s.clone().into_iter();
+                let first = s.next();
+                match first {
+                    Some(first) => write!(f, "<{:?}", first)?,
+                    None => return Ok(()),
+                };
+
+                for arg in s {
+                    write!(f, ", {:?}", arg)?;
+                }
+
+                write!(f, ">")
+            }
         }
     }
 }

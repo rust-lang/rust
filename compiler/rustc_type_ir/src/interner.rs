@@ -7,6 +7,7 @@ use crate::{BoundVar, DebugWithInfcx, Mutability, UniverseIndex};
 pub trait Interner: Sized {
     type DefId: Clone + Debug + Hash + Ord;
     type AdtDef: Clone + Debug + Hash + Ord;
+    type FieldInfoDef: Clone + Debug + Hash + Ord;
 
     type GenericArgs: Clone
         + DebugWithInfcx<Self>

@@ -14,7 +14,7 @@ use crate::mir::{
 };
 use crate::traits;
 use crate::ty::GenericArgsRef;
-use crate::ty::{self, AdtDef, Ty};
+use crate::ty::{self, AdtDef, FieldInfoDef, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
@@ -153,6 +153,12 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for AdtDef<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e)
+    }
+}
+
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for FieldInfoDef<'tcx> {
     fn encode(&self, e: &mut E) {
         self.0.0.encode(e)
     }
@@ -364,6 +370,12 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ConstAllocation<'tcx
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AdtDef<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         decoder.interner().mk_adt_def_from_data(Decodable::decode(decoder))
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for FieldInfoDef<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().mk_field_info_def_from_data(Decodable::decode(decoder))
     }
 }
 

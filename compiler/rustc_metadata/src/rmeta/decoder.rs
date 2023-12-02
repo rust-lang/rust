@@ -1093,6 +1093,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 self.get_associated_item_or_field_def_ids(index)
                     .map(|did| ty::FieldDef {
                         did,
+                        field_repr: self.local_def_id(
+                            self.root
+                                .tables
+                                .field_info_def_ids
+                                .get(self, did.index)
+                                .unwrap()
+                                .decode(self),
+                        ),
                         name: self.item_name(did.index),
                         vis: self.get_visibility(did.index),
                     })

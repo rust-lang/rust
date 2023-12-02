@@ -70,7 +70,8 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Bound(..)
-        | ty::Coroutine(..) => false,
+        | ty::Coroutine(..)
+        | ty::FieldInfo(..) => false,
     }
 }
 
@@ -325,7 +326,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         }
 
         // Types that can't be resolved. Pass them forward.
-        ty::Alias(..) | ty::Param(..) => {
+        ty::Alias(..) | ty::Param(..) | ty::FieldInfo(..) => {
             constraints.dtorck_types.push(ty);
         }
 

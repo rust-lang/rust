@@ -944,7 +944,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 | DefKind::ForeignTy
                 | DefKind::OpaqueTy
                 | DefKind::TraitAlias
-                | DefKind::AssocTy,
+                | DefKind::AssocTy
+                | DefKind::FieldInfo,
                 _,
             )
             | Res::PrimTy(..)

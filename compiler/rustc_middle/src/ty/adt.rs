@@ -85,7 +85,7 @@ bitflags! {
 ///
 /// where `x` here represents the `DefId` of `S.x`. Then, the `DefId`
 /// can be used with [`TyCtxt::type_of()`] to get the type of the field.
-#[derive(TyEncodable, TyDecodable)]
+#[derive(TyEncodable, TyDecodable, Debug)]
 pub struct AdtDefData {
     /// The `DefId` of the struct, enum or union item.
     pub did: DefId,
@@ -574,4 +574,120 @@ impl<'tcx> AdtDef<'tcx> {
 pub enum Representability {
     Representable,
     Infinite,
+}
+
+/// The definition of a field representation type of an Adt.
+///
+/// These are all interned (by `mk_field_info_def`) into the global arena.
+#[derive(TyEncodable, TyDecodable)]
+pub struct FieldInfoDefData {
+    /// The `DefId` of the field representation type.
+    pub did: DefId,
+    /// The `DefId` of the container type, i.e. the type where the field is defined on.
+    container: DefId,
+    // The index of the represented field.
+    //idx: ty::FieldIdx,
+    // The `DefId` of the type of the field.
+    //field_ty: DefId,
+}
+
+impl FieldInfoDefData {
+    pub(super) fn new(
+        did: DefId,
+        container: DefId, /*idx: ty::FieldIdx, field_ty: DefId*/
+    ) -> Self {
+        Self { did, container /*, idx, field_ty*/ }
+    }
+}
+
+impl PartialOrd for FieldInfoDefData {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// There should be only one FieldInfoDef for each `did`, therefore
+/// it is fine to implement `Ord` only based on `did`.
+impl Ord for FieldInfoDefData {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.did.cmp(&other.did)
+    }
+}
+
+impl PartialEq for FieldInfoDefData {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `FieldInfoDefData` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `FieldInfoDefData` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self { did: self_def_id, .. } = self;
+        let Self { did: other_def_id, .. } = other;
+
+        let res = self_def_id == other_def_id;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.container == other.container
+                /*&& self.idx == other.idx
+                && self.field_ty == other.field_ty*/;
+            assert!(deep, "FieldInfoDefData for the same def-id has differing data");
+        }
+
+        res
+    }
+}
+
+impl Eq for FieldInfoDefData {}
+
+/// There should be only one FieldInfoDef for each `did`, therefore
+/// it is fine to implement `Hash` only based on `did`.
+impl Hash for FieldInfoDefData {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.did.hash(s)
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for FieldInfoDefData {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        thread_local! {
+            static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
+        }
+
+        let hash: Fingerprint = CACHE.with(|cache| {
+            let addr = self as *const FieldInfoDefData as usize;
+            let hashing_controls = hcx.hashing_controls();
+            *cache.borrow_mut().entry((addr, hashing_controls)).or_insert_with(|| {
+                let ty::FieldInfoDefData { did, container /*, idx, field_ty*/ } = *self;
+
+                let mut hasher = StableHasher::new();
+                did.hash_stable(hcx, &mut hasher);
+                container.hash_stable(hcx, &mut hasher);
+                /*idx.hash_stable(hcx, &mut hasher);
+                field_ty.hash_stable(hcx, &mut hasher);*/
+
+                hasher.finish()
+            })
+        });
+
+        hash.hash_stable(hcx, hasher);
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
+#[rustc_pass_by_value]
+pub struct FieldInfoDef<'tcx>(pub Interned<'tcx, FieldInfoDefData>);
+
+impl<'tcx> FieldInfoDef<'tcx> {
+    pub fn did(self) -> DefId {
+        self.0.0.did
+    }
+
+    pub fn container(self) -> DefId {
+        self.0.0.container
+    }
 }

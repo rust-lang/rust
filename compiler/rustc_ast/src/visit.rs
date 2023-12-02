@@ -437,6 +437,10 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::ImplTrait(_, bounds) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
         }
+        TyKind::FieldInfo(container, field) => {
+            visitor.visit_ty(container);
+            visitor.visit_ident(*field);
+        }
         TyKind::Typeof(expression) => visitor.visit_anon_const(expression),
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::MacCall(mac) => visitor.visit_mac_call(mac),

@@ -1401,3 +1401,10 @@ pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {
     // The `{}` is for better error messages
     crate::hint::must_use({builtin # offset_of($Container, $($fields).+)})
 }
+
+/// Gets the field type.
+#[unstable(feature = "field_project", issue = "106655")]
+#[allow_internal_unstable(builtin_syntax, hint_must_use)]
+pub macro field_of($Container:ty, $($fields:tt).+ $(,)?) {
+    builtin # field_of($Container, $($fields).+)
+}

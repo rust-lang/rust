@@ -343,7 +343,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             | ty::Tuple(_)
             | ty::Alias(_, _)
             | ty::Bound(_, _)
-            | ty::Error(_) => return t.super_fold_with(self),
+            | ty::Error(_)
+            | ty::FieldInfo(_, _) => return t.super_fold_with(self),
         };
 
         let var = ty::BoundVar::from(
