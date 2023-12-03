@@ -169,41 +169,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new(Level::Error { lint: false }, msg)),
-            },
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<'a> DiagnosticBuilder<'a, ()> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
-    #[track_caller]
-    pub(crate) fn new<M: Into<DiagnosticMessage>>(
-        handler: &'a Handler,
-        level: Level,
-        message: M,
-    ) -> Self {
-        let diagnostic = Diagnostic::new(level, message);
-        Self::new_diagnostic(handler, diagnostic)
-    }
-
-    /// Creates a new `DiagnosticBuilder` with an already constructed
-    /// diagnostic.
-    #[track_caller]
-    pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
-        debug!("Created new diagnostic");
-        Self {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(diagnostic),
-            },
-            _marker: PhantomData,
-        }
+        DiagnosticBuilder::new(handler, Level::Error { lint: false }, msg)
     }
 }
 
@@ -254,13 +220,7 @@ impl EmissionGuarantee for Noted {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new(Level::Note, msg)),
-            },
-            _marker: PhantomData,
-        }
+        DiagnosticBuilder::new(handler, Level::Note, msg)
     }
 }
 
@@ -289,13 +249,7 @@ impl EmissionGuarantee for Bug {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new(Level::Bug, msg)),
-            },
-            _marker: PhantomData,
-        }
+        DiagnosticBuilder::new(handler, Level::Bug, msg)
     }
 }
 
@@ -319,13 +273,7 @@ impl EmissionGuarantee for ! {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new(Level::Fatal, msg)),
-            },
-            _marker: PhantomData,
-        }
+        DiagnosticBuilder::new(handler, Level::Fatal, msg)
     }
 }
 
@@ -349,13 +297,7 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new(Level::Fatal, msg)),
-            },
-            _marker: PhantomData,
-        }
+        DiagnosticBuilder::new(handler, Level::Fatal, msg)
     }
 }
 
@@ -397,6 +339,32 @@ impl<G: EmissionGuarantee> DerefMut for DiagnosticBuilder<'_, G> {
 }
 
 impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
+    /// Convenience function for internal use, clients should use one of the
+    /// `struct_*` methods on [`Handler`].
+    #[track_caller]
+    pub(crate) fn new<M: Into<DiagnosticMessage>>(
+        handler: &'a Handler,
+        level: Level,
+        message: M,
+    ) -> Self {
+        let diagnostic = Diagnostic::new(level, message);
+        Self::new_diagnostic(handler, diagnostic)
+    }
+
+    /// Creates a new `DiagnosticBuilder` with an already constructed
+    /// diagnostic.
+    #[track_caller]
+    pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+        debug!("Created new diagnostic");
+        Self {
+            inner: DiagnosticBuilderInner {
+                state: DiagnosticBuilderState::Emittable(handler),
+                diagnostic: Box::new(diagnostic),
+            },
+            _marker: PhantomData,
+        }
+    }
+
     /// Emit the diagnostic.
     #[track_caller]
     pub fn emit(&mut self) -> G {
