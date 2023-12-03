@@ -18,18 +18,18 @@ use std::thread::panicking;
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
 #[rustc_diagnostic_item = "IntoDiagnostic"]
-pub trait IntoDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
+pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `Handler`.
     #[must_use]
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G>;
 }
 
-impl<'a, T, E> IntoDiagnostic<'a, E> for Spanned<T>
+impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
 where
-    T: IntoDiagnostic<'a, E>,
-    E: EmissionGuarantee,
+    T: IntoDiagnostic<'a, G>,
+    G: EmissionGuarantee,
 {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, E> {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
         let mut diag = self.node.into_diagnostic(handler);
         diag.set_span(self.span);
         diag

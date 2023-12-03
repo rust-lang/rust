@@ -13,12 +13,12 @@ pub struct FeatureGateError {
     pub explain: DiagnosticMessage,
 }
 
-impl<'a, T: EmissionGuarantee> IntoDiagnostic<'a, T> for FeatureGateError {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for FeatureGateError {
     #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, T> {
+    ) -> rustc_errors::DiagnosticBuilder<'a, G> {
         let mut diag = handler.struct_diagnostic(self.explain);
         diag.set_span(self.span);
         diag.code(error_code!(E0658));

@@ -101,9 +101,9 @@ pub(crate) struct DynamicLinkingWithLTO;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
-impl<EM: EmissionGuarantee> IntoDiagnostic<'_, EM> for ParseTargetMachineConfig<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, EM> {
-        let diag: DiagnosticBuilder<'_, EM> = self.0.into_diagnostic(handler);
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ParseTargetMachineConfig<'_> {
+    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, G> {
+        let diag: DiagnosticBuilder<'_, G> = self.0.into_diagnostic(handler);
         let (message, _) = diag.styled_message().first().expect("`LlvmError` with no message");
         let message = handler.eagerly_translate_to_string(message.clone(), diag.args());
 
@@ -183,8 +183,8 @@ pub enum LlvmError<'a> {
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
 
-impl<EM: EmissionGuarantee> IntoDiagnostic<'_, EM> for WithLlvmError<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, EM> {
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
+    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, G> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
             WriteOutput { .. } => fluent::codegen_llvm_write_output_with_llvm_err,
