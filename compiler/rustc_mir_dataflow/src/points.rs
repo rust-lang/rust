@@ -30,8 +30,6 @@ impl DenseLocationMap {
                 v
             })
             .collect();
-        debug!("DenseLocationMap: statements_before_block={:#?}", statements_before_block);
-        debug!("DenseLocationMap: num_points={:#?}", num_points);
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
         for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
@@ -55,7 +53,7 @@ impl DenseLocationMap {
         PointIndex::new(start_index + statement_index)
     }
 
-    /// Converts a `Location` into a `PointIndex`. O(1).
+    /// Returns the `PointIndex` for the first statement in the given `BasicBlock`. O(1).
     #[inline]
     pub fn entry_point(&self, block: BasicBlock) -> PointIndex {
         let start_index = self.statements_before_block[block];
