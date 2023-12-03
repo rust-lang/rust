@@ -1,3 +1,4 @@
+//@compile-flags: -Zmiri-disable-validation
 //@error-in-other-file: memory is uninitialized at [0x4..0x10]
 
 #![allow(dropping_copy_types)]
