@@ -188,7 +188,7 @@ impl<'a> DiagnosticBuilder<'a, ()> {
         level: Level,
         message: M,
     ) -> Self {
-        let diagnostic = Diagnostic::new_with_code(level, None, message);
+        let diagnostic = Diagnostic::new(level, message);
         Self::new_diagnostic(handler, diagnostic)
     }
 
@@ -257,7 +257,7 @@ impl EmissionGuarantee for Noted {
         DiagnosticBuilder {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(Level::Note, None, msg)),
+                diagnostic: Box::new(Diagnostic::new(Level::Note, msg)),
             },
             _marker: PhantomData,
         }
@@ -292,7 +292,7 @@ impl EmissionGuarantee for Bug {
         DiagnosticBuilder {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(Level::Bug, None, msg)),
+                diagnostic: Box::new(Diagnostic::new(Level::Bug, msg)),
             },
             _marker: PhantomData,
         }
@@ -322,7 +322,7 @@ impl EmissionGuarantee for ! {
         DiagnosticBuilder {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(Level::Fatal, None, msg)),
+                diagnostic: Box::new(Diagnostic::new(Level::Fatal, msg)),
             },
             _marker: PhantomData,
         }
@@ -352,7 +352,7 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
         DiagnosticBuilder {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(Level::Fatal, None, msg)),
+                diagnostic: Box::new(Diagnostic::new(Level::Fatal, msg)),
             },
             _marker: PhantomData,
         }
