@@ -5,97 +5,13 @@ use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::IntervalSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::Idx;
-use rustc_index::IndexVec;
-use rustc_middle::mir::{BasicBlock, Body, Location};
+use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use crate::dataflow::BorrowIndex;
-
-/// Maps between a `Location` and a `PointIndex` (and vice versa).
-pub(crate) struct RegionValueElements {
-    /// For each basic block, how many points are contained within?
-    statements_before_block: IndexVec<BasicBlock, usize>,
-
-    /// Map backward from each point to the basic block that it
-    /// belongs to.
-    basic_blocks: IndexVec<PointIndex, BasicBlock>,
-
-    num_points: usize,
-}
-
-impl RegionValueElements {
-    pub(crate) fn new(body: &Body<'_>) -> Self {
-        let mut num_points = 0;
-        let statements_before_block: IndexVec<BasicBlock, usize> = body
-            .basic_blocks
-            .iter()
-            .map(|block_data| {
-                let v = num_points;
-                num_points += block_data.statements.len() + 1;
-                v
-            })
-            .collect();
-        debug!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
-        debug!("RegionValueElements: num_points={:#?}", num_points);
-
-        let mut basic_blocks = IndexVec::with_capacity(num_points);
-        for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
-            basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
-        }
-
-        Self { statements_before_block, basic_blocks, num_points }
-    }
-
-    /// Total number of point indices
-    pub(crate) fn num_points(&self) -> usize {
-        self.num_points
-    }
-
-    /// Converts a `Location` into a `PointIndex`. O(1).
-    pub(crate) fn point_from_location(&self, location: Location) -> PointIndex {
-        let Location { block, statement_index } = location;
-        let start_index = self.statements_before_block[block];
-        PointIndex::new(start_index + statement_index)
-    }
-
-    /// Converts a `Location` into a `PointIndex`. O(1).
-    pub(crate) fn entry_point(&self, block: BasicBlock) -> PointIndex {
-        let start_index = self.statements_before_block[block];
-        PointIndex::new(start_index)
-    }
-
-    /// Return the PointIndex for the block start of this index.
-    pub(crate) fn to_block_start(&self, index: PointIndex) -> PointIndex {
-        PointIndex::new(self.statements_before_block[self.basic_blocks[index]])
-    }
-
-    /// Converts a `PointIndex` back to a location. O(1).
-    pub(crate) fn to_location(&self, index: PointIndex) -> Location {
-        assert!(index.index() < self.num_points);
-        let block = self.basic_blocks[index];
-        let start_index = self.statements_before_block[block];
-        let statement_index = index.index() - start_index;
-        Location { block, statement_index }
-    }
-
-    /// Sometimes we get point-indices back from bitsets that may be
-    /// out of range (because they round up to the nearest 2^N number
-    /// of bits). Use this function to filter such points out if you
-    /// like.
-    pub(crate) fn point_in_range(&self, index: PointIndex) -> bool {
-        index.index() < self.num_points
-    }
-}
-
-rustc_index::newtype_index! {
-    /// A single integer representing a `Location` in the MIR control-flow
-    /// graph. Constructed efficiently from `RegionValueElements`.
-    #[orderable]
-    #[debug_format = "PointIndex({})"]
-    pub struct PointIndex {}
-}
+use crate::BorrowIndex;
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
@@ -123,7 +39,7 @@ pub(crate) enum RegionElement {
 /// an interval matrix storing liveness ranges for each region-vid.
 pub(crate) struct LivenessValues {
     /// The map from locations to points.
-    elements: Rc<RegionValueElements>,
+    elements: Rc<DenseLocationMap>,
 
     /// For each region: the points where it is live.
     points: SparseIntervalMatrix<RegionVid, PointIndex>,
@@ -155,9 +71,9 @@ impl LiveLoans {
 
 impl LivenessValues {
     /// Create an empty map of regions to locations where they're live.
-    pub(crate) fn new(elements: Rc<RegionValueElements>) -> Self {
+    pub(crate) fn new(elements: Rc<DenseLocationMap>) -> Self {
         LivenessValues {
-            points: SparseIntervalMatrix::new(elements.num_points),
+            points: SparseIntervalMatrix::new(elements.num_points()),
             elements,
             loans: None,
         }
@@ -298,7 +214,7 @@ impl PlaceholderIndices {
 /// it would also contain various points from within the function.
 #[derive(Clone)]
 pub(crate) struct RegionValues<N: Idx> {
-    elements: Rc<RegionValueElements>,
+    elements: Rc<DenseLocationMap>,
     placeholder_indices: Rc<PlaceholderIndices>,
     points: SparseIntervalMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
@@ -313,14 +229,14 @@ impl<N: Idx> RegionValues<N> {
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
     pub(crate) fn new(
-        elements: &Rc<RegionValueElements>,
+        elements: &Rc<DenseLocationMap>,
         num_universal_regions: usize,
         placeholder_indices: &Rc<PlaceholderIndices>,
     ) -> Self {
         let num_placeholders = placeholder_indices.len();
         Self {
             elements: elements.clone(),
-            points: SparseIntervalMatrix::new(elements.num_points),
+            points: SparseIntervalMatrix::new(elements.num_points()),
             placeholder_indices: placeholder_indices.clone(),
             free_regions: SparseBitMatrix::new(num_universal_regions),
             placeholders: SparseBitMatrix::new(num_placeholders),
@@ -486,7 +402,7 @@ impl ToElementIndex for ty::PlaceholderRegion {
 
 /// For debugging purposes, returns a pretty-printed string of the given points.
 pub(crate) fn pretty_print_points(
-    elements: &RegionValueElements,
+    elements: &DenseLocationMap,
     points: impl IntoIterator<Item = PointIndex>,
 ) -> String {
     pretty_print_region_elements(
