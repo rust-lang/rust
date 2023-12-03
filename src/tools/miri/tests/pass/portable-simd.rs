@@ -197,6 +197,11 @@ fn simd_ops_i32() {
     assert_eq!(b.reduce_or(), -1);
     assert_eq!(a.reduce_xor(), 0);
     assert_eq!(b.reduce_xor(), -4);
+
+    assert_eq!(b.leading_zeros(), u32x4::from_array([31, 30, 30, 0]));
+    assert_eq!(b.trailing_zeros(), u32x4::from_array([0, 1, 0, 2]));
+    assert_eq!(b.leading_ones(), u32x4::from_array([0, 0, 0, 30]));
+    assert_eq!(b.trailing_ones(), u32x4::from_array([1, 0, 2, 0]));
 }
 
 fn simd_mask() {

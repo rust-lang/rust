@@ -1,6 +1,7 @@
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
+use rustc_span::{sym, Symbol};
 use rustc_target::abi::{Endian, HasDataLayout};
 
 use crate::*;
@@ -25,7 +26,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "floor"
             | "round"
             | "trunc"
-            | "fsqrt" => {
+            | "fsqrt"
+            | "ctlz"
+            | "cttz"
+            => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
@@ -38,6 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Abs,
                     Sqrt,
                     Round(rustc_apfloat::Round),
+                    Numeric(Symbol),
                 }
                 let which = match intrinsic_name {
                     "neg" => Op::MirOp(mir::UnOp::Neg),
@@ -47,6 +52,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "floor" => Op::Round(rustc_apfloat::Round::TowardNegative),
                     "round" => Op::Round(rustc_apfloat::Round::NearestTiesToAway),
                     "trunc" => Op::Round(rustc_apfloat::Round::TowardZero),
+                    "ctlz" => Op::Numeric(sym::ctlz),
+                    "cttz" => Op::Numeric(sym::cttz),
                     _ => unreachable!(),
                 };
 
@@ -101,6 +108,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 }
                             }
                         }
+                        Op::Numeric(name) => {
+                            assert!(op.layout.ty.is_integral());
+                            let size = op.layout.size;
+                            let bits = op.to_scalar().to_bits(size).unwrap();
+                            let extra = 128u128.checked_sub(u128::from(size.bits())).unwrap();
+                            let bits_out = match name {
+                                sym::ctlz => u128::from(bits.leading_zeros()).checked_sub(extra).unwrap(),
+                                sym::cttz => u128::from((bits << extra).trailing_zeros()).checked_sub(extra).unwrap(),
+                                _ => unreachable!(),
+                            };
+                            Scalar::from_uint(bits_out, size)
+                        }
                     };
                     this.write_scalar(val, &dest)?;
                 }
@@ -126,7 +145,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "fmin"
             | "saturating_add"
             | "saturating_sub"
-            | "arith_offset" => {
+            | "arith_offset"
+            => {
                 use mir::BinOp;
 
                 let [left, right] = check_arg_count(args)?;
