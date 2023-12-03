@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::fluent_generated as fluent;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{
-    DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed, Handler, IntoDiagnostic,
+    DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed, FatalError, Handler, IntoDiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -101,9 +101,9 @@ pub(crate) struct DynamicLinkingWithLTO;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
-impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ParseTargetMachineConfig<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, G> {
-        let diag: DiagnosticBuilder<'_, G> = self.0.into_diagnostic(handler);
+impl IntoDiagnostic<'_, FatalError> for ParseTargetMachineConfig<'_> {
+    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, FatalError> {
+        let diag: DiagnosticBuilder<'_, FatalError> = self.0.into_diagnostic(handler);
         let (message, _) = diag.styled_message().first().expect("`LlvmError` with no message");
         let message = handler.eagerly_translate_to_string(message.clone(), diag.args());
 
