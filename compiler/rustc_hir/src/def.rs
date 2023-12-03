@@ -1,3 +1,4 @@
+use crate::definitions::DefPathData;
 use crate::hir;
 
 use rustc_ast as ast;
@@ -45,6 +46,7 @@ pub enum NonMacroAttrKind {
 }
 
 /// What kind of definition something is; e.g., `mod` vs `struct`.
+/// `enum DefPathData` may need to be updated if a new variant is added here.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum DefKind {
     // Type namespace
@@ -218,6 +220,41 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
             | DefKind::Impl { .. } => None,
+        }
+    }
+
+    pub fn def_path_data(self, name: Symbol) -> DefPathData {
+        match self {
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::ExternCrate => DefPathData::TypeNs(name),
+            DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static(..)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::Field => DefPathData::ValueNs(name),
+            DefKind::Macro(..) => DefPathData::MacroNs(name),
+            DefKind::LifetimeParam => DefPathData::LifetimeNs(name),
+            DefKind::Ctor(..) => DefPathData::Ctor,
+            DefKind::Use => DefPathData::Use,
+            DefKind::ForeignMod => DefPathData::ForeignMod,
+            DefKind::AnonConst => DefPathData::AnonConst,
+            DefKind::InlineConst => DefPathData::AnonConst,
+            DefKind::OpaqueTy => DefPathData::OpaqueTy,
+            DefKind::GlobalAsm => DefPathData::GlobalAsm,
+            DefKind::Impl { .. } => DefPathData::Impl,
+            DefKind::Closure => DefPathData::Closure,
         }
     }
 
