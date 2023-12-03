@@ -4,9 +4,9 @@ error[E0308]: mismatched types
 LL |   fn foo(n: i32) -> i32 {
    |                     --- expected `i32` because of return type
 LL | /     for i in 0..0 {
-LL | |
 LL | |        if n < 0 {
 LL | |         return i;
+LL | |         } else if n < 10 {
 ...  |
 LL | |
 LL | |     }
@@ -17,7 +17,7 @@ note: the function expects a value to always be returned, but loops might run ze
    |
 LL |     for i in 0..0 {
    |     ^^^^^^^^^^^^^ this might have zero elements to iterate on
-...
+LL |        if n < 0 {
 LL |         return i;
    |         -------- if the loop doesn't execute, this value would never get returned
 LL |         } else if n < 10 {
@@ -27,7 +27,32 @@ LL |         } else if n < 20 {
 LL |           return 2;
    |           -------- if the loop doesn't execute, this value would never get returned
    = note: if the loop doesn't execute, 3 other values would never get returned
-   = help: return a value for the case when the loop has zero elements to iterate on, or consider changing the return type to account for that possibility
+help: return a value for the case when the loop has zero elements to iterate on
+   |
+LL ~     }
+LL ~     /* `i32` value */
+   |
+help: otherwise consider changing the return type to account for that possibility
+   |
+LL ~ fn foo(n: i32) -> Option<i32> {
+LL |     for i in 0..0 {
+LL |        if n < 0 {
+LL ~         return Some(i);
+LL |         } else if n < 10 {
+LL ~           return Some(1);
+LL |         } else if n < 20 {
+LL ~           return Some(2);
+LL |         } else if n < 30 {
+LL ~           return Some(3);
+LL |         } else if n < 40 {
+LL ~           return Some(4);
+LL |         } else {
+LL ~           return Some(5);
+LL |         }
+LL | 
+LL ~     }
+LL ~     None
+   |
 
 error: aborting due to 1 previous error
 
