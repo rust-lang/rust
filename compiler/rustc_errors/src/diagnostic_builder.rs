@@ -116,26 +116,6 @@ pub trait EmissionGuarantee: Sized {
 }
 
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
-    #[track_caller]
-    pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>>(
-        handler: &'a Handler,
-        message: M,
-    ) -> Self {
-        Self {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(
-                    Level::Error { lint: false },
-                    None,
-                    message,
-                )),
-            },
-            _marker: PhantomData,
-        }
-    }
-
     /// Discard the guarantee `.emit()` would return, in favor of having the
     /// type `DiagnosticBuilder<'a, ()>`. This may be necessary whenever there
     /// is a common codepath handling both errors and warnings.
@@ -189,7 +169,13 @@ impl EmissionGuarantee for ErrorGuaranteed {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new_guaranteeing_error(handler, msg)
+        DiagnosticBuilder {
+            inner: DiagnosticBuilderInner {
+                state: DiagnosticBuilderState::Emittable(handler),
+                diagnostic: Box::new(Diagnostic::new(Level::Error { lint: false }, msg)),
+            },
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -249,21 +235,6 @@ impl EmissionGuarantee for () {
 #[derive(Copy, Clone)]
 pub struct Noted;
 
-impl<'a> DiagnosticBuilder<'a, Noted> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
-    pub(crate) fn new_note(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
-        let diagnostic = Diagnostic::new_with_code(Level::Note, None, message);
-        Self {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(diagnostic),
-            },
-            _marker: PhantomData,
-        }
-    }
-}
-
 impl EmissionGuarantee for Noted {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
@@ -283,7 +254,13 @@ impl EmissionGuarantee for Noted {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new_note(handler, msg)
+        DiagnosticBuilder {
+            inner: DiagnosticBuilderInner {
+                state: DiagnosticBuilderState::Emittable(handler),
+                diagnostic: Box::new(Diagnostic::new_with_code(Level::Note, None, msg)),
+            },
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -291,22 +268,6 @@ impl EmissionGuarantee for Noted {
 /// bug struct diagnostics.
 #[derive(Copy, Clone)]
 pub struct Bug;
-
-impl<'a> DiagnosticBuilder<'a, Bug> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
-    #[track_caller]
-    pub(crate) fn new_bug(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
-        let diagnostic = Diagnostic::new_with_code(Level::Bug, None, message);
-        Self {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(diagnostic),
-            },
-            _marker: PhantomData,
-        }
-    }
-}
 
 impl EmissionGuarantee for Bug {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
@@ -328,19 +289,10 @@ impl EmissionGuarantee for Bug {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new_bug(handler, msg)
-    }
-}
-
-impl<'a> DiagnosticBuilder<'a, !> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
-    #[track_caller]
-    pub(crate) fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
-        Self {
+        DiagnosticBuilder {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(Level::Fatal, None, message)),
+                diagnostic: Box::new(Diagnostic::new_with_code(Level::Bug, None, msg)),
             },
             _marker: PhantomData,
         }
@@ -367,23 +319,10 @@ impl EmissionGuarantee for ! {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new_fatal(handler, msg)
-    }
-}
-
-impl<'a> DiagnosticBuilder<'a, rustc_span::fatal_error::FatalError> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
-    #[track_caller]
-    pub(crate) fn new_almost_fatal(
-        handler: &'a Handler,
-        message: impl Into<DiagnosticMessage>,
-    ) -> Self {
-        let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
-        Self {
+        DiagnosticBuilder {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(diagnostic),
+                diagnostic: Box::new(Diagnostic::new_with_code(Level::Fatal, None, msg)),
             },
             _marker: PhantomData,
         }
@@ -410,7 +349,13 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new_almost_fatal(handler, msg)
+        DiagnosticBuilder {
+            inner: DiagnosticBuilderInner {
+                state: DiagnosticBuilderState::Emittable(handler),
+                diagnostic: Box::new(Diagnostic::new_with_code(Level::Fatal, None, msg)),
+            },
+            _marker: PhantomData,
+        }
     }
 }
 

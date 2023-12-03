@@ -776,7 +776,7 @@ impl Handler {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Warning(None), msg)
+        <()>::make_diagnostic_builder(self, msg)
     }
 
     /// Construct a builder at the `Warning` level with the `msg`. The `id` is used for
@@ -847,7 +847,7 @@ impl Handler {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        DiagnosticBuilder::new_guaranteeing_error(self, msg)
+        ErrorGuaranteed::make_diagnostic_builder(self, msg)
     }
 
     /// This should only be used by `rustc_middle::lint::struct_lint_level`. Do not use it for hard errors.
@@ -914,7 +914,7 @@ impl Handler {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
-        DiagnosticBuilder::new_fatal(self, msg)
+        <!>::make_diagnostic_builder(self, msg)
     }
 
     /// Construct a builder at the `Help` level with the `msg`.
