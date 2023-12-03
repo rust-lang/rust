@@ -386,7 +386,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (dest, dest_len) = this.place_to_simd(dest)?;
                 let bitmask_len = dest_len.max(8);
 
-                assert!(mask.layout.ty.is_integral());
                 assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, mask.layout.size.bits());
                 assert_eq!(dest_len, yes_len);
@@ -394,8 +393,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let dest_len = u32::try_from(dest_len).unwrap();
                 let bitmask_len = u32::try_from(bitmask_len).unwrap();
 
-                let mask: u64 =
-                    this.read_scalar(mask)?.to_bits(mask.layout.size)?.try_into().unwrap();
+                // The mask can be a single integer or an array.
+                let mask: u64 = match mask.layout.ty.kind() {
+                    ty::Int(..) | ty::Uint(..) =>
+                        this.read_scalar(mask)?.to_bits(mask.layout.size)?.try_into().unwrap(),
+                    ty::Array(elem, _) if matches!(elem.kind(), ty::Uint(ty::UintTy::U8)) => {
+                        let mask_ty = this.machine.layouts.uint(mask.layout.size).unwrap();
+                        let mask = mask.transmute(mask_ty, this)?;
+                        this.read_scalar(&mask)?.to_bits(mask_ty.size)?.try_into().unwrap()
+                    }
+                    _ => bug!("simd_select_bitmask: invalid mask type {}", mask.layout.ty),
+                };
+
                 for i in 0..dest_len {
                     let mask = mask
                         & 1u64

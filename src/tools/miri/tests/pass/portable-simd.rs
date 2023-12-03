@@ -247,6 +247,22 @@ fn simd_mask() {
             assert_eq!(bitmask2, [0b0001]);
         }
     }
+
+    // This used to cause an ICE.
+    let bitmask = u8x8::from_array([0b01000101, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(
+        mask32x8::from_bitmask_vector(bitmask),
+        mask32x8::from_array([true, false, true, false, false, false, true, false]),
+    );
+    let bitmask =
+        u8x16::from_array([0b01000101, 0b11110000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(
+        mask32x16::from_bitmask_vector(bitmask),
+        mask32x16::from_array([
+            true, false, true, false, false, false, true, false, false, false, false, false, true,
+            true, true, true,
+        ]),
+    );
 }
 
 fn simd_cast() {
