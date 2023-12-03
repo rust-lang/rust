@@ -78,7 +78,7 @@ cfg_if::cfg_if! {
         pub use self::android::log2f16;
         pub use self::android::log2f32;
         pub use self::android::log2f64;
-        // FIXME:f128_math: unused until we have usable f128 intrinsics
+        // FIXME(f128_math): unused until we have usable f128 intrinsics
         // #[cfg(not(bootstrap))]
         // pub use self::android::log2f128;
     } else {
@@ -98,7 +98,7 @@ cfg_if::cfg_if! {
             unsafe { crate::intrinsics::log2f64(n) }
         }
 
-        // FIXME:f128_math: unused until we have usable f128 intrinsics
+        // FIXME(f128_math): unused until we have usable f128 intrinsics
         // #[inline]
         // #[cfg(not(bootstrap))]
         // pub fn log2f128(n: f128) -> f128 {
@@ -106,14 +106,6 @@ cfg_if::cfg_if! {
         // }
     }
 }
-
-// FIXME: unused until we have usable f128 intrinsics
-// #[inline]
-// #[cfg(not(test))]
-// #[cfg(not(bootstrap))]
-// pub fn log2f128(n: f128) -> f128 {
-//     unsafe { crate::intrinsics::log2f128(n) }
-// }
 
 // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
 // because of their non-standard behavior (e.g., log(-n) returns -Inf instead

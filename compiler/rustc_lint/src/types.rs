@@ -565,11 +565,11 @@ fn lint_literal<'tcx>(
         ty::Float(t) => {
             let is_infinite = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
-                    // FIXME:f16_f128: v.as_str().parse().map(f16::is_infinite)
+                    // FIXME(f16_f128): v.as_str().parse().map(f16::is_infinite) when we have FromStr
                     ty::FloatTy::F16 => Ok(false),
                     ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
                     ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                    // FIXME:f16_f128: v.as_str().parse().map(f128::is_infinite),
+                    // FIXME(f16_f128): v.as_str().parse().map(f128::is_infinite) when we have FromStr,
                     ty::FloatTy::F128 => Ok(false),
                 },
                 _ => bug!(),

@@ -202,8 +202,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             },
             Bool(..)
             | IntRange(..)
+            | F16Range(..)
             | F32Range(..)
             | F64Range(..)
+            | F128Range(..)
             | Str(..)
             | Opaque(..)
             | NonExhaustive
@@ -238,8 +240,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             Slice(slice) => slice.arity(),
             Bool(..)
             | IntRange(..)
+            | F16Range(..)
             | F32Range(..)
             | F64Range(..)
+            | F128Range(..)
             | Str(..)
             | Opaque(..)
             | NonExhaustive
@@ -571,6 +575,12 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         let lo = lo.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
                         let hi = hi.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
                         match fty {
+                            ty::FloatTy::F16 => {
+                                use rustc_apfloat::ieee::Half;
+                                let lo = lo.map(Half::from_bits).unwrap_or(-Half::INFINITY);
+                                let hi = hi.map(Half::from_bits).unwrap_or(Half::INFINITY);
+                                F16Range(lo, hi, *end)
+                            }
                             ty::FloatTy::F32 => {
                                 use rustc_apfloat::ieee::Single;
                                 let lo = lo.map(Single::from_bits).unwrap_or(-Single::INFINITY);
@@ -582,6 +592,12 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                                 let lo = lo.map(Double::from_bits).unwrap_or(-Double::INFINITY);
                                 let hi = hi.map(Double::from_bits).unwrap_or(Double::INFINITY);
                                 F64Range(lo, hi, end)
+                            }
+                            ty::FloatTy::F128 => {
+                                use rustc_apfloat::ieee::Quad;
+                                let lo = lo.map(Quad::from_bits).unwrap_or(-Quad::INFINITY);
+                                let hi = hi.map(Quad::from_bits).unwrap_or(Quad::INFINITY);
+                                F128Range(lo, hi, *end)
                             }
                         }
                     }
@@ -783,7 +799,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
             ),
-            F32Range(..) | F64Range(..) | Opaque(..) | Or => {
+            F16Range(..) | F32Range(..) | F64Range(..) | F128Range(..) | Opaque(..) | Or => {
                 bug!("can't convert to pattern: {:?}", pat)
             }
         };
@@ -874,8 +890,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             Bool(b) => write!(f, "{b}"),
             // Best-effort, will render signed ranges incorrectly
             IntRange(range) => write!(f, "{range:?}"),
+            F16Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
+            F128Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             Str(value) => write!(f, "{value}"),
             Opaque(..) => write!(f, "<constant pattern>"),
             Or => {

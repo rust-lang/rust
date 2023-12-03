@@ -154,6 +154,45 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Can be implemented in soft-floats.
                 this.write_scalar(Scalar::from_f64(f.abs()), dest)?;
             }
+
+            #[rustfmt::skip]
+            #[cfg(not(bootstrap))]
+            | "sinf16"
+            | "cosf16"
+            | "sqrtf16"
+            | "expf16"
+            | "exp2f16"
+            | "logf16"
+            | "log10f16"
+            | "log2f16"
+            | "floorf16"
+            | "ceilf16"
+            | "truncf16"
+            | "roundf16"
+            | "rintf16"
+            => {
+                let [f] = check_arg_count(args)?;
+                // FIXME: Using host floats.
+                let f = f16::from_bits(this.read_scalar(f)?.to_u32()?);
+                let f = match intrinsic_name {
+                    "sinf16" => f.sin(),
+                    "cosf16" => f.cos(),
+                    "sqrtf16" => f.sqrt(),
+                    "expf16" => f.exp(),
+                    "exp2f16" => f.exp2(),
+                    "logf16" => f.ln(),
+                    "log10f16" => f.log10(),
+                    "log2f16" => f.log2(),
+                    "floorf16" => f.floor(),
+                    "ceilf16" => f.ceil(),
+                    "truncf16" => f.trunc(),
+                    "roundf16" => f.round(),
+                    "rintf16" => f.round_ties_even(),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
+            }
+
             #[rustfmt::skip]
             | "sinf32"
             | "cosf32"
@@ -223,6 +262,44 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "truncf64" => f.trunc(),
                     "roundf64" => f.round(),
                     "rintf64" => f.round_ties_even(),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
+            }
+
+            #[rustfmt::skip]
+            #[cfg(not(bootstrap))]
+            | "sinf128"
+            | "cosf128"
+            | "sqrtf128"
+            | "expf128"
+            | "exp2f128"
+            | "logf128"
+            | "log10f128"
+            | "log2f128"
+            | "floorf128"
+            | "ceilf128"
+            | "truncf128"
+            | "roundf128"
+            | "rintf128"
+            => {
+                let [f] = check_arg_count(args)?;
+                // FIXME: Using host floats.
+                let f = f128::from_bits(this.read_scalar(f)?.to_u64()?);
+                let f = match intrinsic_name {
+                    "sinf128" => f.sin(),
+                    "cosf128" => f.cos(),
+                    "sqrtf128" => f.sqrt(),
+                    "expf128" => f.exp(),
+                    "exp2f128" => f.exp2(),
+                    "logf128" => f.ln(),
+                    "log10f128" => f.log10(),
+                    "log2f128" => f.log2(),
+                    "floorf128" => f.floor(),
+                    "ceilf128" => f.ceil(),
+                    "truncf128" => f.trunc(),
+                    "roundf128" => f.round(),
+                    "rintf128" => f.round_ties_even(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;

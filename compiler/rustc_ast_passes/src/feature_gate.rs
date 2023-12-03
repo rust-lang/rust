@@ -334,6 +334,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
+        use rustc_span::Symbol;
+
         match &ty.kind {
             ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
@@ -342,6 +344,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::TyKind::Never => {
                 gate!(&self, never_type, ty.span, "the `!` type is experimental");
+            }
+            ast::TyKind::Path(_, x) if x == &Symbol::intern("f16") => {
+                gate!(&self, f16, ty.span, "the f16 primitive type is experimental");
+            }
+            ast::TyKind::Path(_, x) if x == &Symbol::intern("f128") => {
+                gate!(&self, f128, ty.span, "the f128 primitive type is experimental");
             }
             _ => {}
         }

@@ -251,7 +251,7 @@ floating! { f16 }
 impl Debug for f128 {
     #[inline]
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-        // FIXME:f16_f128: print without casting
+        // FIXME(f16_f128): print without casting
         let f = *self as f64;
         float_to_general_debug(fmt, &f)
     }
@@ -262,7 +262,7 @@ impl Debug for f128 {
 // impl Display for f128 {
 //     #[inline]
 //     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-//         // FIXME:f16_f128: print without casting
+//         // FIXME(f16_f128): print without casting
 //         let f = *self as f64;
 //         float_to_decimal_display(fmt, &f)
 //     }
@@ -273,7 +273,7 @@ impl Debug for f128 {
 // impl LowerExp for f128 {
 //     #[inline]
 //     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-//         // FIXME:f16_f128: print without casting
+//         // FIXME(f16_f128): print without casting
 //         let f = *self as f64;
 //         float_to_exponential_common(fmt, &f, false)
 //     }
@@ -284,7 +284,7 @@ impl Debug for f128 {
 // impl UpperExp for f128 {
 //     #[inline]
 //     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-//         // FIXME:f16_f128: print without casting
+//         // FIXME(f16_f128): print without casting
 //         let f = *self as f64;
 //         float_to_exponential_common(fmt, &f, true)
 //     }

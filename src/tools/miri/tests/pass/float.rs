@@ -1,6 +1,10 @@
 #![feature(stmt_expr_attributes)]
 #![feature(round_ties_even)]
 #![allow(arithmetic_overflow)]
+#![cfg_attr(not(bootstrap), feature(f16))]
+#![cfg_attr(not(bootstrap), feature(f16_math))]
+#![cfg_attr(not(bootstrap), feature(f128))]
+
 use std::fmt::Debug;
 use std::hint::black_box;
 
@@ -27,6 +31,46 @@ trait FloatToInt<Int>: Copy {
     unsafe fn cast_unchecked(self) -> Int;
 }
 
+impl FloatToInt<i8> for f16 {
+    fn cast(self) -> i8 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i8 {
+        self.to_int_unchecked()
+    }
+}
+impl FloatToInt<i32> for f16 {
+    fn cast(self) -> i32 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i32 {
+        self.to_int_unchecked()
+    }
+}
+impl FloatToInt<u32> for f16 {
+    fn cast(self) -> u32 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> u32 {
+        self.to_int_unchecked()
+    }
+}
+impl FloatToInt<i64> for f16 {
+    fn cast(self) -> i64 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i64 {
+        self.to_int_unchecked()
+    }
+}
+impl FloatToInt<u64> for f16 {
+    fn cast(self) -> u64 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> u64 {
+        self.to_int_unchecked()
+    }
+}
 impl FloatToInt<i8> for f32 {
     fn cast(self) -> i8 {
         self as _
@@ -139,20 +183,54 @@ where
 
 fn basic() {
     // basic arithmetic
+    #[cfg(not(bootstrap))]
+    assert_eq(6.0_f16 * 6.0_f16, 36.0_f16);
     assert_eq(6.0_f32 * 6.0_f32, 36.0_f32);
     assert_eq(6.0_f64 * 6.0_f64, 36.0_f64);
+    #[cfg(not(bootstrap))]
+    assert_eq(6.0_f128 * 6.0_f128, 36.0_f128);
+    #[cfg(not(bootstrap))]
+    assert_eq(-{ 5.0_f16 }, -5.0_f16);
     assert_eq(-{ 5.0_f32 }, -5.0_f32);
     assert_eq(-{ 5.0_f64 }, -5.0_f64);
+    #[cfg(not(bootstrap))]
+    assert_eq(-{ 5.0_f128 }, -5.0_f128);
+
     // infinities, NaN
+    #[cfg(not(bootstrap))]
+    assert!((5.0_f16 / 0.0).is_infinite());
+    #[cfg(not(bootstrap))]
+    assert_ne!({ 5.0_f16 / 0.0 }, { -5.0_f16 / 0.0 });
     assert!((5.0_f32 / 0.0).is_infinite());
     assert_ne!({ 5.0_f32 / 0.0 }, { -5.0_f32 / 0.0 });
     assert!((5.0_f64 / 0.0).is_infinite());
     assert_ne!({ 5.0_f64 / 0.0 }, { 5.0_f64 / -0.0 });
+    #[cfg(not(bootstrap))]
+    assert!((5.0_f128 / 0.0).is_infinite());
+    #[cfg(not(bootstrap))]
+    assert_ne!({ 5.0_f128 / 0.0 }, { 5.0_f128 / -0.0 });
+    #[cfg(not(bootstrap))]
+    assert!((-5.0_f16).sqrt().is_nan());
     assert!((-5.0_f32).sqrt().is_nan());
     assert!((-5.0_f64).sqrt().is_nan());
+    // FIXME(f128_math): enable sqrt test
+    // assert!((-5.0_f128).sqrt().is_nan());
+    #[cfg(not(bootstrap))]
+    assert_ne!(f16::NAN, f16::NAN);
     assert_ne!(f32::NAN, f32::NAN);
     assert_ne!(f64::NAN, f64::NAN);
+    #[cfg(not(bootstrap))]
+    assert_ne!(f128::NAN, f128::NAN);
+
     // negative zero
+    #[cfg(not(bootstrap))]
+    let posz = 0.0f16;
+    #[cfg(not(bootstrap))]
+    let negz = -0.0f16;
+    #[cfg(not(bootstrap))]
+    assert_eq(posz, negz);
+    #[cfg(not(bootstrap))]
+    assert_ne!(posz.to_bits(), negz.to_bits());
     let posz = 0.0f32;
     let negz = -0.0f32;
     assert_eq(posz, negz);
@@ -161,15 +239,44 @@ fn basic() {
     let negz = -0.0f64;
     assert_eq(posz, negz);
     assert_ne!(posz.to_bits(), negz.to_bits());
+    #[cfg(not(bootstrap))]
+    let posz = 0.0f128;
+    #[cfg(not(bootstrap))]
+    let negz = -0.0f128;
+    #[cfg(not(bootstrap))]
+    assert_eq(posz, negz);
+    #[cfg(not(bootstrap))]
+    assert_ne!(posz.to_bits(), negz.to_bits());
+
     // byte-level transmute
-    let x: u64 = unsafe { std::mem::transmute(42.0_f64) };
-    let y: f64 = unsafe { std::mem::transmute(x) };
-    assert_eq(y, 42.0_f64);
+    #[cfg(not(bootstrap))]
+    let x: u16 = unsafe { std::mem::transmute(42.0_f16) };
+    #[cfg(not(bootstrap))]
+    let y: f16 = unsafe { std::mem::transmute(x) };
+    #[cfg(not(bootstrap))]
+    assert_eq(y, 42.0_f16);
     let x: u32 = unsafe { std::mem::transmute(42.0_f32) };
     let y: f32 = unsafe { std::mem::transmute(x) };
     assert_eq(y, 42.0_f32);
+    let x: u64 = unsafe { std::mem::transmute(42.0_f64) };
+    let y: f64 = unsafe { std::mem::transmute(x) };
+    assert_eq(y, 42.0_f64);
+    #[cfg(not(bootstrap))]
+    let x: u128 = unsafe { std::mem::transmute(42.0_f128) };
+    #[cfg(not(bootstrap))]
+    let y: f128 = unsafe { std::mem::transmute(x) };
+    #[cfg(not(bootstrap))]
+    assert_eq(y, 42.0_f128);
 
     // `%` sign behavior, some of this used to be buggy
+    #[cfg(not(bootstrap))]
+    assert!((black_box(1.0f16) % 1.0).is_sign_positive());
+    #[cfg(not(bootstrap))]
+    assert!((black_box(1.0f16) % -1.0).is_sign_positive());
+    #[cfg(not(bootstrap))]
+    assert!((black_box(-1.0f16) % 1.0).is_sign_negative());
+    #[cfg(not(bootstrap))]
+    assert!((black_box(-1.0f16) % -1.0).is_sign_negative());
     assert!((black_box(1.0f32) % 1.0).is_sign_positive());
     assert!((black_box(1.0f32) % -1.0).is_sign_positive());
     assert!((black_box(-1.0f32) % 1.0).is_sign_negative());
@@ -178,11 +285,25 @@ fn basic() {
     assert!((black_box(1.0f64) % -1.0).is_sign_positive());
     assert!((black_box(-1.0f64) % 1.0).is_sign_negative());
     assert!((black_box(-1.0f64) % -1.0).is_sign_negative());
+    #[cfg(not(bootstrap))]
+    assert!((black_box(1.0f128) % 1.0).is_sign_positive());
+    #[cfg(not(bootstrap))]
+    assert!((black_box(1.0f128) % -1.0).is_sign_positive());
+    #[cfg(not(bootstrap))]
+    assert!((black_box(-1.0f128) % 1.0).is_sign_negative());
+    #[cfg(not(bootstrap))]
+    assert!((black_box(-1.0f128) % -1.0).is_sign_negative());
 }
 
 /// Many of these test values are taken from
 /// https://github.com/WebAssembly/testsuite/blob/master/conversions.wast.
 fn casts() {
+    // f16 -> i8
+    #[cfg(not(bootstrap))]
+    test_both_cast::<f16, i8>(127.99, 127);
+    #[cfg(not(bootstrap))]
+    test_both_cast::<f16, i8>(-128.99, -128);
+
     // f32 -> i8
     test_both_cast::<f32, i8>(127.99, 127);
     test_both_cast::<f32, i8>(-128.99, -128);
@@ -415,6 +536,20 @@ fn casts() {
 }
 
 fn ops() {
+    // f16 min/max
+    #[cfg(not(bootstrap))]
+    assert_eq((1.0 as f16).max(-1.0), 1.0);
+    #[cfg(not(bootstrap))]
+    assert_eq((1.0 as f16).min(-1.0), -1.0);
+    #[cfg(not(bootstrap))]
+    assert_eq(f16::NAN.min(9.0), 9.0);
+    #[cfg(not(bootstrap))]
+    assert_eq(f16::NAN.max(-9.0), -9.0);
+    #[cfg(not(bootstrap))]
+    assert_eq((9.0 as f16).min(f16::NAN), 9.0);
+    #[cfg(not(bootstrap))]
+    assert_eq((-9.0 as f16).max(f16::NAN), -9.0);
+
     // f32 min/max
     assert_eq((1.0 as f32).max(-1.0), 1.0);
     assert_eq((1.0 as f32).min(-1.0), -1.0);
@@ -431,6 +566,20 @@ fn ops() {
     assert_eq((9.0 as f64).min(f64::NAN), 9.0);
     assert_eq((-9.0 as f64).max(f64::NAN), -9.0);
 
+    // f128 min/max
+    #[cfg(not(bootstrap))]
+    assert_eq((1.0 as f128).max(-1.0), 1.0);
+    #[cfg(not(bootstrap))]
+    assert_eq((1.0 as f128).min(-1.0), -1.0);
+    #[cfg(not(bootstrap))]
+    assert_eq(f128::NAN.min(9.0), 9.0);
+    #[cfg(not(bootstrap))]
+    assert_eq(f128::NAN.max(-9.0), -9.0);
+    #[cfg(not(bootstrap))]
+    assert_eq((9.0 as f128).min(f128::NAN), 9.0);
+    #[cfg(not(bootstrap))]
+    assert_eq((-9.0 as f128).max(f128::NAN), -9.0);
+
     // f32 copysign
     assert_eq(3.5_f32.copysign(0.42), 3.5_f32);
     assert_eq(3.5_f32.copysign(-0.42), -3.5_f32);
@@ -444,6 +593,8 @@ fn ops() {
     assert_eq((-3.5_f64).copysign(0.42), 3.5_f64);
     assert_eq((-3.5_f64).copysign(-0.42), -3.5_f64);
     assert!(f64::NAN.copysign(1.0).is_nan());
+
+    // FIXME(f16_f128): copysign tests once math is added
 }
 
 /// Tests taken from rustc test suite.
@@ -464,8 +615,12 @@ macro_rules! test {
     );
 
     ($fval:expr, f* -> $ity:ident, $ival:expr) => (
+        #[cfg(not(bootstrap))]
+        test!($fval, f16 -> $ity, $ival);
         test!($fval, f32 -> $ity, $ival);
         test!($fval, f64 -> $ity, $ival);
+        #[cfg(not(bootstrap))]
+        test!($fval, f128 -> $ity, $ival);
     )
 }
 
@@ -487,8 +642,12 @@ macro_rules! common_fptoi_tests {
     )+ });
 
     (f* -> $($ity:ident)+) => ({
+        #[cfg(not(bootstrap))]
+        common_fptoi_tests!(f16 -> $($ity)+);
         common_fptoi_tests!(f32 -> $($ity)+);
         common_fptoi_tests!(f64 -> $($ity)+);
+        #[cfg(not(bootstrap))]
+        common_fptoi_tests!(f128 -> $($ity)+);
     })
 }
 
@@ -504,8 +663,10 @@ macro_rules! fptoui_tests {
     )+ });
 
     (f* -> $($ity:ident)+) => ({
+        fptoui_tests!(f16 -> $($ity)+);
         fptoui_tests!(f32 -> $($ity)+);
         fptoui_tests!(f64 -> $($ity)+);
+        fptoui_tests!(f128 -> $($ity)+);
     })
 }
 

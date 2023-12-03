@@ -90,26 +90,22 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     let value = sym_str.parse::<f16>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                }
+                },
                 FloatTy::F32 => {
                     let value = sym_str.parse::<f32>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                }
+                },
                 FloatTy::F64 => {
                     let value = sym_str.parse::<f64>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                }
+                },
                 #[cfg(not(bootstrap))]
                 FloatTy::F128 => {
-                    // TODO:f128_math: re-enable check once we have `f128::fract`
-                    todo!("re-enable check once we have f128::fract");
-
-                    // let value = sym_str.parse::<f128>().unwrap();
-
-                    // (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                }
+                    // FIXME(f128_math): re-enable check once we have `f128::fract`
+                    return;
+                },
             };
 
             if is_inf {

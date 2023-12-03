@@ -561,10 +561,10 @@ pub mod f32;
 pub mod f64;
 
 #[cfg(not(bootstrap))]
-#[unstable(feature = "f128", issue = "none")]
+#[unstable(feature = "f128", issue = "116909")]
 pub mod f128;
 #[cfg(not(bootstrap))]
-#[unstable(feature = "f16", issue = "none")]
+#[unstable(feature = "f16", issue = "116909")]
 pub mod f16;
 
 #[macro_use]

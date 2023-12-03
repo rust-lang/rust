@@ -1,4 +1,6 @@
-#![allow(unused)] // FIXME:f128_math: remove once we re-enable f128 tests
+// FIXME(f128_math): LLVM intrinsics are currently broken for f128 math. These
+// tests should be reenabled once these issues are resolved.
+#![allow(unused)]
 
 use crate::f128::consts;
 use crate::num::FpCategory as Fp;
@@ -41,7 +43,8 @@ macro_rules! assert_f128_biteq {
 fn test_roundtrip_f128(input: f128, bits: u128, disp: &str) {
     let inbits = input.to_bits();
     assert_eq!(inbits, bits, "bits mismatch {inbits:#0130x} != {bits:#0130x}");
-    assert_eq!(input.to_string(), disp);
+    // FIXME:(f128_display): check display roundtrip
+    // assert_eq!(input.to_string(), disp);
 }
 
 #[test]
@@ -93,6 +96,7 @@ fn test_maximum() {
 #[test]
 fn test_nan() {
     let nan: f128 = f128::NAN;
+
     assert!(nan.is_nan());
     assert!(!nan.is_infinite());
     assert!(!nan.is_finite());
@@ -105,6 +109,7 @@ fn test_nan() {
 #[test]
 fn test_infinity() {
     let inf: f128 = f128::INFINITY;
+
     assert!(inf.is_infinite());
     assert!(!inf.is_finite());
     assert!(inf.is_sign_positive());
@@ -117,6 +122,7 @@ fn test_infinity() {
 #[test]
 fn test_neg_infinity() {
     let neg_inf: f128 = f128::NEG_INFINITY;
+
     assert!(neg_inf.is_infinite());
     assert!(!neg_inf.is_finite());
     assert!(!neg_inf.is_sign_positive());
@@ -129,6 +135,7 @@ fn test_neg_infinity() {
 #[test]
 fn test_zero() {
     let zero: f128 = 0.0f128;
+
     assert_f128_eq!(0.0, zero);
     assert!(!zero.is_infinite());
     assert!(zero.is_finite());
@@ -142,6 +149,7 @@ fn test_zero() {
 #[test]
 fn test_neg_zero() {
     let neg_zero: f128 = -0.0;
+
     assert_f128_eq!(0.0, neg_zero);
     assert!(!neg_zero.is_infinite());
     assert!(neg_zero.is_finite());
@@ -155,6 +163,7 @@ fn test_neg_zero() {
 #[test]
 fn test_one() {
     let one: f128 = 1.0f128;
+
     assert_f128_eq!(1.0, one);
     assert!(!one.is_infinite());
     assert!(one.is_finite());
@@ -170,6 +179,7 @@ fn test_is_nan() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
     let neg_inf: f128 = f128::NEG_INFINITY;
+
     assert!(nan.is_nan());
     assert!(!0.0f128.is_nan());
     assert!(!5.3f128.is_nan());
@@ -183,6 +193,7 @@ fn test_is_infinite() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
     let neg_inf: f128 = f128::NEG_INFINITY;
+
     assert!(!nan.is_infinite());
     assert!(inf.is_infinite());
     assert!(neg_inf.is_infinite());
@@ -196,6 +207,7 @@ fn test_is_finite() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
     let neg_inf: f128 = f128::NEG_INFINITY;
+
     assert!(!nan.is_finite());
     assert!(!inf.is_finite());
     assert!(!neg_inf.is_finite());
@@ -211,6 +223,7 @@ fn test_is_normal() {
     let neg_inf: f128 = f128::NEG_INFINITY;
     let zero: f128 = 0.0f128;
     let neg_zero: f128 = -0.0;
+
     assert!(!nan.is_normal());
     assert!(!inf.is_normal());
     assert!(!neg_inf.is_normal());
@@ -228,6 +241,7 @@ fn test_classify() {
     let neg_inf: f128 = f128::NEG_INFINITY;
     let zero: f128 = 0.0f128;
     let neg_zero: f128 = -0.0;
+
     assert_eq!(nan.classify(), Fp::Nan);
     assert_eq!(inf.classify(), Fp::Infinite);
     assert_eq!(neg_inf.classify(), Fp::Infinite);
@@ -403,6 +417,7 @@ fn test_abs() {
 //     let nan0 = f128::NAN;
 //     let nan1 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK1);
 //     let nan2 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK2);
+
 //     assert_f128_biteq!(nan0.next_up(), nan0);
 //     assert_f128_biteq!(nan1.next_up(), nan1);
 //     assert_f128_biteq!(nan2.next_up(), nan2);
@@ -438,6 +453,7 @@ fn test_abs() {
 //     let nan0 = f128::NAN;
 //     let nan1 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK1);
 //     let nan2 = f128::from_bits(f128::NAN.to_bits() ^ NAN_MASK2);
+
 //     assert_f128_biteq!(nan0.next_down(), nan0);
 //     assert_f128_biteq!(nan1.next_down(), nan1);
 //     assert_f128_biteq!(nan2.next_down(), nan2);
@@ -448,6 +464,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_approx_eq!(12.3f128.mul_add(4.5, 6.7), 62.05);
 //     assert_approx_eq!((-12.3f128).mul_add(-4.5, -6.7), 48.65);
 //     assert_approx_eq!(0.0f128.mul_add(8.9, 1.2), 1.2);
@@ -464,6 +481,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_f128_eq!(1.0f128.recip(), 1.0);
 //     assert_f128_eq!(2.0f128.recip(), 0.5);
 //     assert_f128_eq!((-0.4f128).recip(), -2.5);
@@ -478,6 +496,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_f128_eq!(1.0f128.powi(1), 1.0);
 //     assert_approx_eq!((-3.1f128).powi(2), 9.61);
 //     assert_approx_eq!(5.9f128.powi(-2), 0.028727);
@@ -492,6 +511,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_f128_eq!(1.0f128.powf(1.0), 1.0);
 //     assert_approx_eq!(3.4f128.powf(4.5), 246.408218);
 //     assert_approx_eq!(2.7f128.powf(-3.2), 0.041652);
@@ -525,6 +545,7 @@ fn test_abs() {
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
 //     let nan: f128 = f128::NAN;
+//
 //     assert_f128_eq!(inf, inf.exp());
 //     assert_f128_eq!(0.0, neg_inf.exp());
 //     assert!(nan.exp().is_nan());
@@ -537,6 +558,7 @@ fn test_abs() {
 
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     let nan: f128 = f128::NAN;
 //     assert_f128_eq!(inf, inf.exp2());
 //     assert_f128_eq!(0.0, neg_inf.exp2());
@@ -548,6 +570,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_approx_eq!(1.0f128.exp().ln(), 1.0);
 //     assert!(nan.ln().is_nan());
 //     assert_f128_eq!(inf.ln(), inf);
@@ -564,6 +587,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_f128_eq!(10.0f128.log(10.0), 1.0);
 //     assert_approx_eq!(2.3f128.log(3.5), 0.664858);
 //     assert_f128_eq!(1.0f128.exp().log(1.0f128.exp()), 1.0);
@@ -582,6 +606,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_approx_eq!(10.0f128.log2(), 3.321928);
 //     assert_approx_eq!(2.3f128.log2(), 1.201634);
 //     assert_approx_eq!(1.0f128.exp().log2(), 1.442695);
@@ -598,6 +623,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_f128_eq!(10.0f128.log10(), 1.0);
 //     assert_approx_eq!(2.3f128.log10(), 0.361728);
 //     assert_approx_eq!(1.0f128.exp().log10(), 0.434294);
@@ -616,6 +642,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_f128_eq!(0.0f128.to_degrees(), 0.0);
 //     assert_approx_eq!((-5.8f128).to_degrees(), -332.315521);
 //     assert_f128_eq!(pi.to_degrees(), 180.0);
@@ -631,6 +658,7 @@ fn test_abs() {
 //     let nan: f128 = f128::NAN;
 //     let inf: f128 = f128::INFINITY;
 //     let neg_inf: f128 = f128::NEG_INFINITY;
+//
 //     assert_f128_eq!(0.0f128.to_radians(), 0.0);
 //     assert_approx_eq!(154.6f128.to_radians(), 2.698279);
 //     assert_approx_eq!((-332.31f128).to_radians(), -5.799903);
@@ -671,7 +699,7 @@ fn test_real_consts() {
     assert_approx_eq!(frac_pi_8, pi / 8f128);
     assert_approx_eq!(frac_1_pi, 1f128 / pi);
     assert_approx_eq!(frac_2_pi, 2f128 / pi);
-    // FIXME:f128_math: enable once math is available
+    // FIXME(f128_math): enable once math is available
     // assert_approx_eq!(frac_2_sqrtpi, 2f128 / pi.sqrt());
     // assert_approx_eq!(sqrt2, 2f128.sqrt());
     // assert_approx_eq!(frac_1_sqrt2, 1f128 / 2f128.sqrt());
@@ -704,8 +732,10 @@ fn test_float_bits_conv() {
         f128::NAN.to_bits(),
         f128::NAN.to_bits() ^ 0x0002AAAAAAAAAAAAAAAAAAAAAAAAAAAA
     );
+
     let masked_nan1 = f128::NAN.to_bits() ^ NAN_MASK1;
     let masked_nan2 = f128::NAN.to_bits() ^ NAN_MASK2;
+
     assert!(f128::from_bits(masked_nan1).is_nan());
     assert!(f128::from_bits(masked_nan2).is_nan());
 
@@ -739,7 +769,7 @@ fn test_total_cmp() {
         1 << (f128::MANTISSA_DIGITS - 2)
     }
 
-    // FIXME:f128_math: enable once powf works
+    // FIXME(f128_math): enable once powf works
     // fn min_subnorm() -> f128 {
     //     f128::MIN_POSITIVE / f128::powf(2.0, f128::MANTISSA_DIGITS as f128 - 1.0)
     // }
@@ -756,7 +786,7 @@ fn test_total_cmp() {
         f128::from_bits((f128::NAN.to_bits() & !quiet_bit_mask()) + 42)
     }
 
-    // FIXME:f128_math: the below lines that rely on min_subnorm or max_subnorm are disabled.
+    // FIXME(f128_math): the below lines that rely on min_subnorm or max_subnorm are disabled.
     // enable once f128_math is available.
     assert_eq!(Ordering::Equal, (-q_nan()).total_cmp(&-q_nan()));
     assert_eq!(Ordering::Equal, (-s_nan()).total_cmp(&-s_nan()));

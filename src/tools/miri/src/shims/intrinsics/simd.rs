@@ -75,9 +75,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             };
                             let op = op.to_scalar();
                             match float_ty {
+                                #[cfg(bootstrap)]
+                                FloatTy::F16 | FloatTy::F128 => unimplemented!(),
+                                #[cfg(not(bootstrap))]
                                 FloatTy::F16 => Scalar::from_f16(op.to_f16()?.abs()),
                                 FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
+                                #[cfg(not(bootstrap))]
                                 FloatTy::F128 => Scalar::from_f128(op.to_f128()?.abs()),
                             }
                         }
@@ -92,13 +96,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 #[cfg(not(bootstrap))]
                                 FloatTy::F16 => {
                                     let f = f16::from_bits(op.to_scalar().to_u16()?);
-                                    let res = match host_op {
-                                        HostFloatOp::Ceil => f.ceil(),
-                                        HostFloatOp::Floor => f.floor(),
-                                        HostFloatOp::Round => f.round(),
-                                        HostFloatOp::Trunc => f.trunc(),
-                                        HostFloatOp::Sqrt => f.sqrt(),
-                                    };
+                                    let res = f.sqrt();
                                     Scalar::from_u16(res.to_bits())
                                 }
                                 FloatTy::F32 => {
@@ -113,17 +111,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 }
                                 #[cfg(not(bootstrap))]
                                 FloatTy::F128 => {
-                                    // FIXME:f128_math: re-enable once f128_math is supported
-                                    unimplemented!("miri f128 support is blocked by f128_math");
-                                    // let f = f128::from_bits(op.to_scalar().to_u128()?);
-                                    // let res = match host_op {
-                                    //     HostFloatOp::Ceil => f.ceil(),
-                                    //     HostFloatOp::Floor => f.floor(),
-                                    //     HostFloatOp::Round => f.round(),
-                                    //     HostFloatOp::Trunc => f.trunc(),
-                                    //     HostFloatOp::Sqrt => f.sqrt(),
-                                    // };
-                                    // Scalar::from_u128(res.to_bits())
+                                    // FIXME(f128_math): re-enable once f128_math is supported
+                                    throw_unsup_format!("`f128` is not yet fully supported in Miri")
                                 }
                             }
                         }
@@ -132,6 +121,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                             };
                             match float_ty {
+                                #[cfg(bootstrap)]
+                                FloatTy::F16 | FloatTy::F128 => unimplemented!(),
+                                #[cfg(not(bootstrap))]
+                                FloatTy::F16 => {
+                                    let f = f16::from_bits(op.to_scalar().to_u16()?);
+                                    let res = f.sqrt();
+                                    Scalar::from_u16(res.to_bits())
+                                }
                                 FloatTy::F32 => {
                                     let f = op.to_scalar().to_f32()?;
                                     let res = f.round_to_integral(rounding).value;
@@ -141,6 +138,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                     let f = op.to_scalar().to_f64()?;
                                     let res = f.round_to_integral(rounding).value;
                                     Scalar::from_f64(res)
+                                }
+                                #[cfg(not(bootstrap))]
+                                FloatTy::F128 => {
+                                    // FIXME(f128_math): re-enable once f128_math is supported
+                                    throw_unsup_format!("`f128` is not yet fully supported in Miri")
                                 }
                             }
                         }
@@ -314,13 +316,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         }
                         #[cfg(not(bootstrap))]
                         FloatTy::F128 => {
-                            // FIXME:f128_math: re-enable once f128_math is supported
-                            unimplemented!("miri f128 support is blocked by f128_math");
-                            // let a = f128::from_bits(a.to_u128()?);
-                            // let b = f128::from_bits(b.to_u128()?);
-                            // let c = f128::from_bits(c.to_u128()?);
-                            // let res = a.mul_add(b, c);
-                            // Scalar::from_u128(res.to_bits())
+                            // FIXME(f128_math): re-enable once f128_math is supported
+                            throw_unsup_format!("`f128` is not yet fully supported in Miri")
                         }
                     };
                     this.write_scalar(val, &dest)?;

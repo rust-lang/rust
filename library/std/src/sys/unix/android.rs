@@ -60,7 +60,7 @@ pub fn log2f64(f: f64) -> f64 {
     f.ln() * crate::f64::consts::LOG2_E
 }
 
-// FIXME:f128_math: unused until we have f128 intrinsics
+// FIXME(f128_math): unused until we have f128 intrinsics
 // #[cfg(all(not(test), not(bootstrap)))]
 // pub fn log2f128(f: f128) -> f128 {
 //     f.ln() * crate::f128::consts::LOG2_E

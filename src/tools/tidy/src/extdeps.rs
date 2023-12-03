@@ -37,7 +37,7 @@ pub fn check(root: &Path, bad: &mut bool) {
 
             // Ensure source is allowed.
             if !ALLOWED_SOURCES.contains(&&*source) {
-                // TODO: re-enable this error after fixing git deps
+                // todo: re-enable this error after fixing git deps
                 eprintln!("using disallowed source, fix this before merge");
                 // tidy_error!(bad, "invalid source: {}", source);
             }

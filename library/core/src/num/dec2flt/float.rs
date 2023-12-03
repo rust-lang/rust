@@ -329,7 +329,7 @@ impl RawFloat for f64 {
 //         };
 //         // Exponent bias + mantissa shift
 //         exponent -= Self::MINIMUM_EXPONENT as i16 + Self::MANTISSA_EXPLICIT_BITS as i16;
-//         // FIXME:f16_f128 don't panic, not sure what needs to change so we can do that
+//         // FIXME(f16_f128): don't panic, not sure what needs to change so we can do that
 //         (mantissa.try_into().unwrap(), exponent, sign)
 //     }
 

@@ -9,7 +9,7 @@
 //! new code should instead use the associated constants
 //! defined directly on the `f128` type.
 
-#![unstable(feature = "f128", issue = "none")]
+#![unstable(feature = "f128", issue = "116909")]
 
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
@@ -18,103 +18,103 @@ use crate::mem;
 use crate::num::FpCategory;
 
 /// Basic mathematical constants.
-#[unstable(feature = "f128", issue = "none")]
+#[unstable(feature = "f128", issue = "116909")]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
     /// Archimedes' constant (π)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const PI: f128 = 3.14159265358979323846264338327950288419716939937510582097494_f128;
 
     /// The full circle constant (τ)
     ///
     /// Equal to 2π.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const TAU: f128 = 6.28318530717958647692528676655900576839433879875021164194989_f128;
 
     /// π/2
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_PI_2: f128 = 1.57079632679489661923132169163975144209858469968755291048747_f128;
 
     /// π/3
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_PI_3: f128 = 1.04719755119659774615421446109316762806572313312503527365831_f128;
 
     /// π/4
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_PI_4: f128 = 0.785398163397448309615660845819875721049292349843776455243736_f128;
 
     /// π/6
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_PI_6: f128 = 0.523598775598298873077107230546583814032861566562517636829157_f128;
 
     /// π/8
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_PI_8: f128 = 0.392699081698724154807830422909937860524646174921888227621868_f128;
 
     /// 1/π
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_1_PI: f128 = 0.318309886183790671537767526745028724068919291480912897495335_f128;
 
     /// 2/π
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_2_PI: f128 = 0.636619772367581343075535053490057448137838582961825794990669_f128;
 
     /// 2/sqrt(π)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_2_SQRT_PI: f128 =
         1.12837916709551257389615890312154517168810125865799771368817_f128;
 
     /// sqrt(2)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const SQRT_2: f128 = 1.41421356237309504880168872420969807856967187537694807317668_f128;
 
     /// 1/sqrt(2)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const FRAC_1_SQRT_2: f128 =
         0.70710678118654752440084436210484903928483593768847403658834_f128;
 
     /// Euler's number (e)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const E: f128 = 2.71828182845904523536028747135266249775724709369995957496697_f128;
 
     /// log<sub>2</sub>(10)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const LOG2_10: f128 = 3.32192809488736234787031942948939017586483139302458061205476_f128;
 
     /// log<sub>2</sub>(e)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const LOG2_E: f128 = 1.44269504088896340735992468100189213742664595415298593413545_f128;
 
     /// log<sub>10</sub>(2)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const LOG10_2: f128 = 0.301029995663981195213738894724493026768189881462108541310427_f128;
 
     /// log<sub>10</sub>(e)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const LOG10_E: f128 = 0.434294481903251827651128918916605082294397005803666566114454_f128;
 
     /// ln(2)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const LN_2: f128 = 0.69314718055994530941723212145817656807550013436025525412068_f128;
 
     /// ln(10)
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const LN_10: f128 = 2.30258509299404568401799145468436420760110148862877297603333_f128;
 }
 
 #[cfg(not(test))]
 impl f128 {
     /// The radix or base of the internal representation of `f128`.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const RADIX: u32 = 128;
 
     /// Number of significant digits in base 2.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MANTISSA_DIGITS: u32 = 112;
 
     /// Approximate number of significant digits in base 10.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const DIGITS: u32 = 33;
 
     /// [Machine epsilon] value for `f128`.
@@ -122,34 +122,34 @@ impl f128 {
     /// This is the difference between `1.0` and the next larger representable number.
     ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const EPSILON: f128 = 1.92592994438723585305597794258492732e-34_f128;
 
     /// Smallest finite `f128` value.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MIN: f128 = 1.1897314953572317650857593266280070162e+4932_f128;
 
     /// Smallest positive normal `f128` value.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MIN_POSITIVE: f128 = 3.3621031431120935062626778173217526E-4932_f128;
 
     /// Largest finite `f128` value.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MAX: f128 = 1.1897314953572317650857593266280070162e+4932_f128;
 
     /// One greater than the minimum possible normal power of 2 exponent.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MIN_EXP: i32 = -16381;
 
     /// Maximum possible power of 2 exponent.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MAX_EXP: i32 = 16384;
 
     /// Minimum possible normal power of 10 exponent.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MIN_10_EXP: i32 = -4931;
     /// Maximum possible power of 10 exponent.
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const MAX_10_EXP: i32 = 4932;
 
     /// Not a Number (NaN).
@@ -163,13 +163,13 @@ impl f128 {
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
     #[rustc_diagnostic_item = "f128_nan"]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const NAN: f128 = 0.0_f128 / 0.0_f128;
     /// Infinity (∞).
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const INFINITY: f128 = 1.0_f128 / 0.0_f128;
     /// Negative infinity (−∞).
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const NEG_INFINITY: f128 = -1.0_f128 / 0.0_f128;
 
     pub(crate) const EXP_MASK: u128 = 0x7fff0000000000000000000000000000;
@@ -193,7 +193,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_nan(self) -> bool {
         self != self
@@ -230,7 +230,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_infinite(self) -> bool {
         // Getting clever with transmutation can result in incorrect answers on some FPUs
@@ -257,7 +257,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
@@ -287,7 +287,7 @@ impl f128 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
@@ -316,7 +316,7 @@ impl f128 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
@@ -338,7 +338,7 @@ impl f128 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
         // A previous implementation tried to only use bitmask-based checks,
@@ -420,7 +420,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
@@ -429,7 +429,7 @@ impl f128 {
     #[inline]
     #[must_use]
     #[doc(hidden)]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[deprecated(since = "1.0.0", note = "renamed to is_sign_positive")]
     pub fn is_positive(self) -> bool {
         self.is_sign_positive()
@@ -453,7 +453,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
@@ -465,7 +465,7 @@ impl f128 {
     #[inline]
     #[must_use]
     #[doc(hidden)]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[deprecated(since = "1.0.0", note = "renamed to is_sign_negative")]
     pub fn is_negative(self) -> bool {
         self.is_sign_negative()
@@ -578,6 +578,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
+    /// #![feature(f128_math)]
     ///
     /// let x = 2.0_f128;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
@@ -585,7 +586,7 @@ impl f128 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn recip(self) -> f128 {
         1.0 / self
@@ -595,6 +596,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
+    /// #![feature(f128_math)]
     ///
     /// let angle = std::f128::consts::PI;
     ///
@@ -603,7 +605,7 @@ impl f128 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_degrees(self) -> f128 {
         // The division here is correctly rounded with respect to the true
@@ -616,6 +618,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
+    /// #![feature(f128_math)]
     ///
     /// let angle = 180.0_f128;
     ///
@@ -624,7 +627,7 @@ impl f128 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_radians(self) -> f128 {
         let value: f128 = consts::PI;
@@ -647,7 +650,7 @@ impl f128 {
     /// assert_eq!(x.max(y), y);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub fn max(self, other: f128) -> f128 {
         intrinsics::maxnumf128(self, other)
@@ -669,7 +672,7 @@ impl f128 {
     /// assert_eq!(x.min(y), x);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub fn min(self, other: f128) -> f128 {
         intrinsics::minnumf128(self, other)
@@ -811,7 +814,7 @@ impl f128 {
     /// * Not be infinite
     /// * Be representable in the return type `Int`, after truncating off its fractional part
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub unsafe fn to_int_unchecked<Int>(self) -> Int
     where
@@ -841,7 +844,7 @@ impl f128 {
     /// assert_eq!((12.5f128).to_bits(), 0x40029000000000000000000000000000);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_bits(self) -> u128 {
@@ -917,7 +920,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_bits(v: u128) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
@@ -995,7 +998,7 @@ impl f128 {
     /// ]);
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_be_bytes(self) -> [u8; 16] {
@@ -1021,7 +1024,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_le_bytes(self) -> [u8; 16] {
         self.to_bits().to_le_bytes()
@@ -1058,7 +1061,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_ne_bytes(self) -> [u8; 16] {
         self.to_bits().to_ne_bytes()
@@ -1082,7 +1085,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_be_bytes(bytes: [u8; 16]) -> Self {
         Self::from_bits(u128::from_be_bytes(bytes))
@@ -1106,7 +1109,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_le_bytes(bytes: [u8; 16]) -> Self {
         Self::from_bits(u128::from_le_bytes(bytes))
@@ -1140,7 +1143,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_ne_bytes(bytes: [u8; 16]) -> Self {
         Self::from_bits(u128::from_ne_bytes(bytes))
@@ -1201,7 +1204,7 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i128;
         let mut right = other.to_bits() as i128;
@@ -1257,7 +1260,7 @@ impl f128 {
     /// assert!((f128::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[inline]
-    #[unstable(feature = "f128", issue = "none")]
+    #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn clamp(mut self, min: f128, max: f128) -> f128 {
         assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");

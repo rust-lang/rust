@@ -381,7 +381,7 @@ macro_rules! assert_approx_eq {
         let (a, b) = (&$a, &$b);
         assert!(
             (*a - *b).abs() < $lim,
-            "{} is not approximately equal to {} (threshold {})",
+            "{:?} is not approximately equal to {:?} (threshold {:?})",
             *a,
             *b,
             $lim

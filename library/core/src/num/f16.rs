@@ -9,7 +9,7 @@
 //! new code should instead use the associated constants
 //! defined directly on the `f16` type.
 
-#![unstable(feature = "f16", issue = "none")]
+#![unstable(feature = "f16", issue = "116909")]
 
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
@@ -18,101 +18,101 @@ use crate::mem;
 use crate::num::FpCategory;
 
 /// Basic mathematical constants.
-#[unstable(feature = "f16", issue = "none")]
+#[unstable(feature = "f16", issue = "116909")]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
     /// Archimedes' constant (π)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const PI: f16 = 3.14159265358979323846264338327950288_f16;
 
     /// The full circle constant (τ)
     ///
     /// Equal to 2π.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const TAU: f16 = 6.28318530717958647692528676655900577_f16;
 
     /// π/2
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_PI_2: f16 = 1.57079632679489661923132169163975144_f16;
 
     /// π/3
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_PI_3: f16 = 1.04719755119659774615421446109316763_f16;
 
     /// π/4
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_PI_4: f16 = 0.785398163397448309615660845819875721_f16;
 
     /// π/6
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_PI_6: f16 = 0.52359877559829887307710723054658381_f16;
 
     /// π/8
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_PI_8: f16 = 0.39269908169872415480783042290993786_f16;
 
     /// 1/π
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_1_PI: f16 = 0.318309886183790671537767526745028724_f16;
 
     /// 2/π
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_2_PI: f16 = 0.636619772367581343075535053490057448_f16;
 
     /// 2/sqrt(π)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_2_SQRT_PI: f16 = 1.12837916709551257389615890312154517_f16;
 
     /// sqrt(2)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const SQRT_2: f16 = 1.41421356237309504880168872420969808_f16;
 
     /// 1/sqrt(2)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_1_SQRT_2: f16 = 0.707106781186547524400844362104849039_f16;
 
     /// Euler's number (e)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const E: f16 = 2.71828182845904523536028747135266250_f16;
 
     /// log<sub>2</sub>(10)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const LOG2_10: f16 = 3.32192809488736234787031942948939018_f16;
 
     /// log<sub>2</sub>(e)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const LOG2_E: f16 = 1.44269504088896340735992468100189214_f16;
 
     /// log<sub>10</sub>(2)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const LOG10_2: f16 = 0.301029995663981195213738894724493027_f16;
 
     /// log<sub>10</sub>(e)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const LOG10_E: f16 = 0.434294481903251827651128918916605082_f16;
 
     /// ln(2)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const LN_2: f16 = 0.693147180559945309417232121458176568_f16;
 
     /// ln(10)
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const LN_10: f16 = 2.30258509299404568401799145468436421_f16;
 }
 
 #[cfg(not(test))]
 impl f16 {
     /// The radix or base of the internal representation of `f16`.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const RADIX: u32 = 2;
 
     /// Number of significant digits in base 2.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MANTISSA_DIGITS: u32 = 11;
 
     /// Approximate number of significant digits in base 10.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const DIGITS: u32 = 3;
 
     /// [Machine epsilon] value for `f16`.
@@ -120,34 +120,34 @@ impl f16 {
     /// This is the difference between `1.0` and the next larger representable number.
     ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const EPSILON: f16 = 0.0009765625_f16;
 
     /// Smallest finite `f16` value.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MIN: f16 = -65504.0_f16;
 
     /// Smallest positive normal `f16` value.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MIN_POSITIVE: f16 = 6.1035156e-5_f16;
 
     /// Largest finite `f16` value.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MAX: f16 = 65504.0;
 
     /// One greater than the minimum possible normal power of 2 exponent.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MIN_EXP: i32 = -13;
 
     /// Maximum possible power of 2 exponent.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MAX_EXP: i32 = 16;
 
     /// Minimum possible normal power of 10 exponent.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MIN_10_EXP: i32 = -4;
     /// Maximum possible power of 10 exponent.
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const MAX_10_EXP: i32 = 4;
 
     /// Not a Number (NaN).
@@ -161,13 +161,15 @@ impl f16 {
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
     #[rustc_diagnostic_item = "f16_nan"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const NAN: f16 = 0.0_f16 / 0.0_f16;
+
     /// Infinity (∞).
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const INFINITY: f16 = 1.0_f16 / 0.0_f16;
+
     /// Negative infinity (−∞).
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub const NEG_INFINITY: f16 = -1.0_f16 / 0.0_f16;
 
     pub(crate) const EXP_MASK: u16 = 0x7c00;
@@ -190,7 +192,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_nan(self) -> bool {
         self != self
@@ -227,7 +229,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_infinite(self) -> bool {
         // Getting clever with transmutation can result in incorrect answers on some FPUs
@@ -254,7 +256,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
@@ -284,7 +286,7 @@ impl f16 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
@@ -313,7 +315,7 @@ impl f16 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
@@ -335,7 +337,7 @@ impl f16 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[inline]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
         // A previous implementation tried to only use bitmask-based checks,
@@ -417,7 +419,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
@@ -426,7 +428,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[doc(hidden)]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[deprecated(since = "1.0.0", note = "renamed to is_sign_positive")]
     pub fn is_positive(self) -> bool {
         self.is_sign_positive()
@@ -450,7 +452,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
@@ -462,7 +464,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[doc(hidden)]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[deprecated(since = "1.0.0", note = "renamed to is_sign_negative")]
     pub fn is_negative(self) -> bool {
         self.is_sign_negative()
@@ -572,6 +574,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
+    /// #![feature(f16_math)]
     ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
@@ -579,7 +582,7 @@ impl f16 {
     /// assert!(abs_difference < 1e-6);
     /// ```
     #[inline]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn recip(self) -> f16 {
         1.0 / self
@@ -589,6 +592,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
+    /// #![feature(f16_math)]
     ///
     /// let angle = std::f16::consts::PI;
     ///
@@ -598,7 +602,7 @@ impl f16 {
     /// assert!(abs_difference < 1e-6);
     /// ```
     #[inline]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_degrees(self) -> f16 {
         // The division here is correctly rounded with respect to the true
@@ -611,6 +615,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
+    /// #![feature(f16_math)]
     ///
     /// let angle = 180.0_f16;
     ///
@@ -620,7 +625,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub fn to_radians(self) -> f16 {
         let value: f16 = consts::PI;
         self * (value / 180.0)
@@ -643,7 +648,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub fn max(self, other: f16) -> f16 {
         intrinsics::maxnumf16(self, other)
     }
@@ -665,7 +670,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub fn min(self, other: f16) -> f16 {
         intrinsics::minnumf16(self, other)
     }
@@ -807,7 +812,7 @@ impl f16 {
     /// * Be representable in the return type `Int`, after truncating off its fractional part
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub unsafe fn to_int_unchecked<Int>(self) -> Int
     where
         Self: FloatToInt<Int>,
@@ -838,7 +843,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_bits(self) -> u16 {
         // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
@@ -913,7 +918,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_bits(v: u16) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
@@ -989,7 +994,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_be_bytes(self) -> [u8; 2] {
         self.to_bits().to_be_bytes()
@@ -1011,7 +1016,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_le_bytes(self) -> [u8; 2] {
         self.to_bits().to_le_bytes()
@@ -1046,7 +1051,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn to_ne_bytes(self) -> [u8; 2] {
         self.to_bits().to_ne_bytes()
@@ -1067,7 +1072,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_be_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_be_bytes(bytes))
@@ -1088,7 +1093,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_le_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_le_bytes(bytes))
@@ -1120,7 +1125,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     pub const fn from_ne_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_ne_bytes(bytes))
@@ -1181,7 +1186,7 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i16;
         let mut right = other.to_bits() as i16;
@@ -1237,7 +1242,7 @@ impl f16 {
     /// assert!((f16::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[inline]
-    #[unstable(feature = "f16", issue = "none")]
+    #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn clamp(mut self, min: f16, max: f16) -> f16 {
         assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");

@@ -1,5 +1,7 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
+#![cfg_attr(not(bootstrap), feature(f16))]
+#![cfg_attr(not(bootstrap), feature(f128))]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]

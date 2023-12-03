@@ -10,10 +10,11 @@ mod tests;
 
 #[cfg(not(test))]
 use crate::intrinsics;
+// extended math currently disabled
 // #[cfg(not(test))]
 // use crate::sys::cmath;
 
-#[unstable(feature = "f16", issue = "none")]
+#[unstable(feature = "f16", issue = "116909")]
 pub use core::f16::consts;
 
 #[cfg(not(test))]
@@ -34,7 +35,7 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     pub fn floor(self) -> f16 {
         unsafe { intrinsics::floorf16(self) }
     }
@@ -52,7 +53,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ceil(self) -> f16 {
         unsafe { intrinsics::ceilf16(self) }
@@ -78,7 +79,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn round(self) -> f16 {
         unsafe { intrinsics::roundf16(self) }
@@ -126,7 +127,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn trunc(self) -> f16 {
         unsafe { intrinsics::truncf16(self) }
@@ -147,7 +148,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn fract(self) -> f16 {
         self - self.trunc()
@@ -171,7 +172,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn abs(self) -> f16 {
         unsafe { intrinsics::fabsf16(self) }
@@ -195,7 +196,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn signum(self) -> f16 {
         if self.is_nan() { Self::NAN } else { 1.0_f16.copysign(self) }
@@ -224,7 +225,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn copysign(self, sign: f16) -> f16 {
         unsafe { intrinsics::copysignf16(self, sign) }
@@ -252,7 +253,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(self, a: f16, b: f16) -> f16 {
         unsafe { intrinsics::fmaf16(self, a, b) }
@@ -277,7 +278,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(self, rhs: f16) -> f16 {
         let q = (self / rhs).trunc();
@@ -312,7 +313,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn rem_euclid(self, rhs: f16) -> f16 {
         let r = self % rhs;
@@ -335,7 +336,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f16 {
         unsafe { intrinsics::powif16(self, n) }
@@ -353,7 +354,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powf(self, n: f16) -> f16 {
         unsafe { intrinsics::powf16(self, n) }
@@ -378,7 +379,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f16 {
         unsafe { intrinsics::sqrtf16(self) }
@@ -400,7 +401,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp(self) -> f16 {
         unsafe { intrinsics::expf16(self) }
@@ -420,7 +421,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp2(self) -> f16 {
         unsafe { intrinsics::exp2f16(self) }
@@ -442,7 +443,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln(self) -> f16 {
         unsafe { intrinsics::logf16(self) }
@@ -466,7 +467,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log(self, base: f16) -> f16 {
         self.ln() / base.ln()
@@ -486,7 +487,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log2(self) -> f16 {
         crate::sys::log2f16(self)
@@ -506,7 +507,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log10(self) -> f16 {
         unsafe { intrinsics::log10f16(self) }
@@ -526,7 +527,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn cbrt(self) -> f16 {
     //     unsafe { cmath::cbrtf(self) }
@@ -550,7 +551,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn hypot(self, other: f16) -> f16 {
     //     unsafe { cmath::hypotf(self, other) }
@@ -569,7 +570,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sin(self) -> f16 {
         unsafe { intrinsics::sinf16(self) }
@@ -588,7 +589,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cos(self) -> f16 {
         unsafe { intrinsics::cosf16(self) }
@@ -606,7 +607,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn tan(self) -> f16 {
     //     unsafe { cmath::tanf(self) }
@@ -628,7 +629,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn asin(self) -> f16 {
     //     unsafe { cmath::asinf(self) }
@@ -650,7 +651,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn acos(self) -> f16 {
     //     unsafe { cmath::acosf(self) }
@@ -671,7 +672,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn atan(self) -> f16 {
     //     unsafe { cmath::atanf(self) }
@@ -705,7 +706,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn atan2(self, other: f16) -> f16 {
     //     unsafe { cmath::atan2f(self, other) }
@@ -728,7 +729,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16_math", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     pub fn sin_cos(self) -> (f16, f16) {
         (self.sin(), self.cos())
     }
@@ -750,7 +751,7 @@ impl f16 {
     // #[inline]
     // #[rustc_allow_incoherent_impl]
     // #[must_use = "method returns a new number and does not mutate the original value"]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // pub fn exp_m1(self) -> f16 {
     //     unsafe { cmath::expm1f(self) }
     // }
@@ -772,7 +773,7 @@ impl f16 {
     // #[inline]
     // #[rustc_allow_incoherent_impl]
     // #[must_use = "method returns a new number and does not mutate the original value"]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // pub fn ln_1p(self) -> f16 {
     //     unsafe { cmath::log1pf(self) }
     // }
@@ -795,7 +796,7 @@ impl f16 {
     // #[inline]
     // #[rustc_allow_incoherent_impl]
     // #[must_use = "method returns a new number and does not mutate the original value"]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // pub fn sinh(self) -> f16 {
     //     unsafe { cmath::sinhf(self) }
     // }
@@ -818,7 +819,7 @@ impl f16 {
     // #[inline]
     // #[rustc_allow_incoherent_impl]
     // #[must_use = "method returns a new number and does not mutate the original value"]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // pub fn cosh(self) -> f16 {
     //     unsafe { cmath::coshf(self) }
     // }
@@ -841,7 +842,7 @@ impl f16 {
     // #[inline]
     // #[rustc_allow_incoherent_impl]
     // #[must_use = "method returns a new number and does not mutate the original value"]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // pub fn tanh(self) -> f16 {
     //     unsafe { cmath::tanhf(self) }
     // }
@@ -860,7 +861,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn asinh(self) -> f16 {
     //     let ax = self.abs();
@@ -882,7 +883,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn acosh(self) -> f16 {
     //     if self < 1.0 {
@@ -906,7 +907,7 @@ impl f16 {
     // /// ```
     // #[inline]
     // #[rustc_allow_incoherent_impl]
-    // #[unstable(feature = "f16_math", issue = "none")]
+    // #[unstable(feature = "f16_math", issue = "116909")]
     // #[must_use = "method returns a new number and does not mutate the original value"]
     // pub fn atanh(self) -> f16 {
     //     0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()

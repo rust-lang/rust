@@ -154,7 +154,9 @@ use std::iter::once;
 
 use smallvec::SmallVec;
 
-use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::RangeEnd;
 use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
 
@@ -660,8 +662,10 @@ pub enum Constructor<Cx: TypeCx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
+    F16Range(IeeeFloat<HalfS>, IeeeFloat<HalfS>, RangeEnd),
     F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
     F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
+    F128Range(IeeeFloat<QuadS>, IeeeFloat<QuadS>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(Cx::StrLit),
     /// Constants that must not be matched structurally. They are treated as black boxes for the

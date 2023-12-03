@@ -177,7 +177,7 @@ impl<'tcx> Hash for Constant<'tcx> {
             },
             #[cfg(not(bootstrap))]
             Self::F128(f) => {
-                // FIXME:f16_f128: this is lossy, can it be improved?
+                // FIXME(f16_f128): this is lossy, can it be improved?
                 (f as f64).to_bits().hash(state);
             },
             Self::Bool(b) => {
@@ -302,8 +302,14 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
             ast::FloatTy::F128 => Constant::F128(is.as_str().parse().unwrap()),
         },
         LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
+            #[cfg(bootstrap)]
+            ty::Float(FloatTy::F16 | FloatTy::F128) => unimplemented!(),
+            #[cfg(not(bootstrap))]
+            ty::Float(FloatTy::F16) => Constant::F16(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
+            #[cfg(not(bootstrap))]
+            ty::Float(FloatTy::F128) => Constant::F128(is.as_str().parse().unwrap()),
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
@@ -799,8 +805,14 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
                 let range = alloc_range(offset + size * idx, size);
                 let val = alloc.read_scalar(&lcx.tcx, range, /* read_provenance */ false).ok()?;
                 res.push(match flt {
+                    #[cfg(bootstrap)]
+                    FloatTy::F16 | FloatTy::F128 => unimplemented!(),
+                    #[cfg(not(bootstrap))]
+                    FloatTy::F16 => Constant::F16(f16::from_bits(val.to_u16().ok()?)),
                     FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().ok()?)),
                     FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().ok()?)),
+                    #[cfg(not(bootstrap))]
+                    FloatTy::F128 => Constant::F128(f128::from_bits(val.to_u128().ok()?)),
                 });
             }
             Some(Constant::Vec(res))

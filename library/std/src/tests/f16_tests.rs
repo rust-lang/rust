@@ -106,6 +106,7 @@ fn test_maximum() {
 #[test]
 fn test_nan() {
     let nan: f16 = f16::NAN;
+
     assert!(nan.is_nan());
     assert!(!nan.is_infinite());
     assert!(!nan.is_finite());
@@ -118,6 +119,7 @@ fn test_nan() {
 #[test]
 fn test_infinity() {
     let inf: f16 = f16::INFINITY;
+
     assert!(inf.is_infinite());
     assert!(!inf.is_finite());
     assert!(inf.is_sign_positive());
@@ -130,6 +132,7 @@ fn test_infinity() {
 #[test]
 fn test_neg_infinity() {
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert!(neg_inf.is_infinite());
     assert!(!neg_inf.is_finite());
     assert!(!neg_inf.is_sign_positive());
@@ -142,6 +145,7 @@ fn test_neg_infinity() {
 #[test]
 fn test_zero() {
     let zero: f16 = 0.0f16;
+
     assert_f16_eq!(0.0, zero);
     assert!(!zero.is_infinite());
     assert!(zero.is_finite());
@@ -155,6 +159,7 @@ fn test_zero() {
 #[test]
 fn test_neg_zero() {
     let neg_zero: f16 = -0.0;
+
     assert_f16_eq!(0.0, neg_zero);
     assert!(!neg_zero.is_infinite());
     assert!(neg_zero.is_finite());
@@ -168,6 +173,7 @@ fn test_neg_zero() {
 #[test]
 fn test_one() {
     let one: f16 = 1.0f16;
+
     assert_f16_eq!(1.0, one);
     assert!(!one.is_infinite());
     assert!(one.is_finite());
@@ -183,6 +189,7 @@ fn test_is_nan() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert!(nan.is_nan());
     assert!(!0.0f16.is_nan());
     assert!(!5.3f16.is_nan());
@@ -196,6 +203,7 @@ fn test_is_infinite() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert!(!nan.is_infinite());
     assert!(inf.is_infinite());
     assert!(neg_inf.is_infinite());
@@ -209,6 +217,7 @@ fn test_is_finite() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert!(!nan.is_finite());
     assert!(!inf.is_finite());
     assert!(!neg_inf.is_finite());
@@ -224,6 +233,7 @@ fn test_is_normal() {
     let neg_inf: f16 = f16::NEG_INFINITY;
     let zero: f16 = 0.0f16;
     let neg_zero: f16 = -0.0;
+
     assert!(!nan.is_normal());
     assert!(!inf.is_normal());
     assert!(!neg_inf.is_normal());
@@ -241,6 +251,7 @@ fn test_classify() {
     let neg_inf: f16 = f16::NEG_INFINITY;
     let zero: f16 = 0.0f16;
     let neg_zero: f16 = -0.0;
+
     assert_eq!(nan.classify(), Fp::Nan);
     assert_eq!(inf.classify(), Fp::Infinite);
     assert_eq!(neg_inf.classify(), Fp::Infinite);
@@ -397,9 +408,7 @@ fn test_next_up() {
     let max_down = f16::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f16::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f16::from_bits(SMALLEST_NORMAL_BITS);
-    // let max_down = f16::from_bits(0x7f7f_fffe);
-    // let largest_subnormal = f16::from_bits(0x007f_ffff);
-    // let smallest_normal = f16::from_bits(0x0080_0000);
+
     assert_f16_biteq!(f16::NEG_INFINITY.next_up(), f16::MIN);
     assert_f16_biteq!(f16::MIN.next_up(), -max_down);
     assert_f16_biteq!((-1.0 - f16::EPSILON).next_up(), -1.0);
@@ -418,6 +427,7 @@ fn test_next_up() {
     let nan0 = f16::NAN;
     let nan1 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK1);
     let nan2 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK2);
+
     assert_f16_biteq!(nan0.next_up(), nan0);
     assert_f16_biteq!(nan1.next_up(), nan1);
     assert_f16_biteq!(nan2.next_up(), nan2);
@@ -433,6 +443,7 @@ fn test_next_down() {
     let max_down = f16::from_bits(MAX_DOWN_BITS);
     let largest_subnormal = f16::from_bits(LARGEST_SUBNORMAL_BITS);
     let smallest_normal = f16::from_bits(SMALLEST_NORMAL_BITS);
+
     assert_f16_biteq!(f16::NEG_INFINITY.next_down(), f16::NEG_INFINITY);
     assert_f16_biteq!(f16::MIN.next_down(), f16::NEG_INFINITY);
     assert_f16_biteq!((-max_down).next_down(), f16::MIN);
@@ -452,6 +463,7 @@ fn test_next_down() {
     let nan0 = f16::NAN;
     let nan1 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK1);
     let nan2 = f16::from_bits(f16::NAN.to_bits() ^ NAN_MASK2);
+
     assert_f16_biteq!(nan0.next_down(), nan0);
     assert_f16_biteq!(nan1.next_down(), nan1);
     assert_f16_biteq!(nan2.next_down(), nan2);
@@ -462,6 +474,7 @@ fn test_mul_add() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_approx_eq!(12.3f16.mul_add(4.5, 6.7), 62.05, F16_APPROX_L3);
     assert_approx_eq!((-12.3f16).mul_add(-4.5, -6.7), 48.65, F16_APPROX_L4);
     assert_approx_eq!(0.0f16.mul_add(8.9, 1.2), 1.2, F16_APPROX_L2);
@@ -478,6 +491,7 @@ fn test_recip() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_f16_eq!(1.0f16.recip(), 1.0);
     assert_f16_eq!(2.0f16.recip(), 0.5);
     assert_f16_eq!((-0.4f16).recip(), -2.5);
@@ -493,6 +507,7 @@ fn test_powi() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_f16_eq!(1.0f16.powi(1), 1.0);
     assert_approx_eq!((-3.1f16).powi(2), 9.61, F16_APPROX_L2);
     assert_approx_eq!(5.9f16.powi(-2), 0.028727, F16_APPROX_L2);
@@ -507,6 +522,7 @@ fn test_powf() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_f16_eq!(1.0f16.powf(1.0), 1.0);
     assert_approx_eq!(3.4f16.powf(4.5), 246.408218, F16_APPROX_L4);
     assert_approx_eq!(2.7f16.powf(-3.2), 0.041652, F16_APPROX_L1);
@@ -538,6 +554,7 @@ fn test_exp() {
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
     let nan: f16 = f16::NAN;
+
     assert_f16_eq!(inf, inf.exp());
     assert_f16_eq!(0.0, neg_inf.exp());
     assert!(nan.exp().is_nan());
@@ -551,6 +568,7 @@ fn test_exp2() {
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
     let nan: f16 = f16::NAN;
+
     assert_f16_eq!(inf, inf.exp2());
     assert_f16_eq!(0.0, neg_inf.exp2());
     assert!(nan.exp2().is_nan());
@@ -561,6 +579,7 @@ fn test_ln() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_approx_eq!(1.0f16.exp().ln(), 1.0);
     assert!(nan.ln().is_nan());
     assert_f16_eq!(inf.ln(), inf);
@@ -576,6 +595,7 @@ fn test_log() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_f16_eq!(10.0f16.log(10.0), 1.0);
     assert_approx_eq!(2.3f16.log(3.5), 0.664858);
     assert_f16_eq!(1.0f16.exp().log(1.0f16.exp()), 1.0);
@@ -594,6 +614,7 @@ fn test_log2() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_approx_eq!(10.0f16.log2(), 3.321928, F16_APPROX_L1);
     assert_approx_eq!(2.3f16.log2(), 1.201634, F16_APPROX_L1);
     assert_approx_eq!(1.0f16.exp().log2(), 1.442695, F16_APPROX_L1);
@@ -610,6 +631,7 @@ fn test_log10() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_f16_eq!(10.0f16.log10(), 1.0);
     assert_approx_eq!(2.3f16.log10(), 0.361728);
     assert_approx_eq!(1.0f16.exp().log10(), 0.434294);
@@ -628,6 +650,7 @@ fn test_to_degrees() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_f16_eq!(0.0f16.to_degrees(), 0.0);
     assert_approx_eq!((-5.8f16).to_degrees(), -332.315521, F16_APPROX_L4);
     assert_f16_eq!(pi.to_degrees(), 180.0);
@@ -643,6 +666,7 @@ fn test_to_radians() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
     let neg_inf: f16 = f16::NEG_INFINITY;
+
     assert_f16_eq!(0.0f16.to_radians(), 0.0);
     assert_approx_eq!(154.6f16.to_radians(), 2.698279, F16_APPROX_L3);
     assert_approx_eq!((-332.31f16).to_radians(), -5.799903, F16_APPROX_L3);
@@ -706,6 +730,7 @@ fn test_float_bits_conv() {
     // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
     let masked_nan1 = f16::NAN.to_bits() ^ NAN_MASK1;
     let masked_nan2 = f16::NAN.to_bits() ^ NAN_MASK2;
+
     assert!(f16::from_bits(masked_nan1).is_nan());
     assert!(f16::from_bits(masked_nan2).is_nan());
 
