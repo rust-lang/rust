@@ -547,12 +547,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         found_extra: &dyn fmt::Display,
     ) -> &mut Self);
 
-    forward!(pub fn note_unsuccessful_coercion(
-        &mut self,
-        expected: DiagnosticStyledString,
-        found: DiagnosticStyledString,
-    ) -> &mut Self);
-
     forward!(pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
     forward!(pub fn note_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_note(
@@ -581,7 +575,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
 
     forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
-    forward!(pub fn clear_suggestions(&mut self,) -> &mut Self);
 
     forward!(pub fn multipart_suggestion(
         &mut self,

@@ -1145,11 +1145,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.sess.diagnostic().span_err(sp, msg);
     }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.sess.diagnostic().span_warn(sp, msg);
-    }
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<String>) -> ! {
         self.sess.diagnostic().span_bug(sp, msg);
     }
