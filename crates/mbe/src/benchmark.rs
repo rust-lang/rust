@@ -6,11 +6,10 @@ use syntax::{
     AstNode, SmolStr,
 };
 use test_utils::{bench, bench_fixture, skip_slow_tests};
-use tt::Span;
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro, DummyTestSpanData, DummyTestSpanMap,
+    syntax_node_to_token_tree, DeclarativeMacro, DummyTestSpanData, DummyTestSpanMap, DUMMY,
 };
 
 #[test]
@@ -97,8 +96,8 @@ fn invocation_fixtures(
                 loop {
                     let mut subtree = tt::Subtree {
                         delimiter: tt::Delimiter {
-                            open: DummyTestSpanData::DUMMY,
-                            close: DummyTestSpanData::DUMMY,
+                            open: DUMMY,
+                            close: DUMMY,
                             kind: tt::DelimiterKind::Invisible,
                         },
                         token_trees: vec![],
@@ -211,34 +210,20 @@ fn invocation_fixtures(
             *seed
         }
         fn make_ident(ident: &str) -> tt::TokenTree<DummyTestSpanData> {
-            tt::Leaf::Ident(tt::Ident { span: DummyTestSpanData::DUMMY, text: SmolStr::new(ident) })
-                .into()
+            tt::Leaf::Ident(tt::Ident { span: DUMMY, text: SmolStr::new(ident) }).into()
         }
         fn make_punct(char: char) -> tt::TokenTree<DummyTestSpanData> {
-            tt::Leaf::Punct(tt::Punct {
-                span: DummyTestSpanData::DUMMY,
-                char,
-                spacing: tt::Spacing::Alone,
-            })
-            .into()
+            tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone }).into()
         }
         fn make_literal(lit: &str) -> tt::TokenTree<DummyTestSpanData> {
-            tt::Leaf::Literal(tt::Literal {
-                span: DummyTestSpanData::DUMMY,
-                text: SmolStr::new(lit),
-            })
-            .into()
+            tt::Leaf::Literal(tt::Literal { span: DUMMY, text: SmolStr::new(lit) }).into()
         }
         fn make_subtree(
             kind: tt::DelimiterKind,
             token_trees: Option<Vec<tt::TokenTree<DummyTestSpanData>>>,
         ) -> tt::TokenTree<DummyTestSpanData> {
             tt::Subtree {
-                delimiter: tt::Delimiter {
-                    open: DummyTestSpanData::DUMMY,
-                    close: DummyTestSpanData::DUMMY,
-                    kind,
-                },
+                delimiter: tt::Delimiter { open: DUMMY, close: DUMMY, kind },
                 token_trees: token_trees.unwrap_or_default(),
             }
             .into()

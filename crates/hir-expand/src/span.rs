@@ -4,13 +4,12 @@ use base_db::{
     span::{ErasedFileAstId, SpanAnchor, SpanData, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
     FileId,
 };
-use mbe::TokenMap;
 use syntax::{ast::HasModuleItem, AstNode, TextRange, TextSize};
 use triomphe::Arc;
 
 use crate::db::ExpandDatabase;
 
-pub type ExpansionSpanMap = TokenMap<SpanData>;
+pub type ExpansionSpanMap = mbe::SpanMap<SpanData>;
 
 /// Spanmap for a macro file or a real file
 #[derive(Clone, Debug, PartialEq, Eq)]

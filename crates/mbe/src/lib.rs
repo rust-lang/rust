@@ -38,7 +38,7 @@ pub use crate::{
         syntax_node_to_token_tree, syntax_node_to_token_tree_modified, token_tree_to_syntax_node,
         SpanMapper,
     },
-    token_map::TokenMap,
+    token_map::SpanMap,
 };
 
 pub use crate::syntax_bridge::dummy_test_span_utils::*;

@@ -63,7 +63,7 @@ pub use paths::{AbsPath, AbsPathBuf};
 pub struct FileId(pub u32);
 
 impl FileId {
-    /// Think twice about using this. If this ends up in a wrong place it will cause panics!
+    /// Think twice about using this outside of tests. If this ends up in a wrong place it will cause panics!
     pub const BOGUS: FileId = FileId(u32::MAX);
 }
 

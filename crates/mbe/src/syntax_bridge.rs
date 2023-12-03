@@ -13,7 +13,7 @@ use tt::{
     Span, SpanData, SyntaxContext,
 };
 
-use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, TokenMap};
+use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, SpanMap};
 
 #[cfg(test)]
 mod tests;
@@ -22,7 +22,7 @@ pub trait SpanMapper<S: Span> {
     fn span_for(&self, range: TextRange) -> S;
 }
 
-impl<S: Span> SpanMapper<S> for TokenMap<S> {
+impl<S: Span> SpanMapper<S> for SpanMap<S> {
     fn span_for(&self, range: TextRange) -> S {
         self.span_at(range.start())
     }
@@ -34,10 +34,12 @@ impl<S: Span, SM: SpanMapper<S>> SpanMapper<S> for &SM {
     }
 }
 
+/// Dummy things for testing where spans don't matter.
 pub(crate) mod dummy_test_span_utils {
     use super::*;
 
     pub type DummyTestSpanData = tt::SpanData<DummyTestSpanAnchor, DummyTestSyntaxContext>;
+    pub const DUMMY: DummyTestSpanData = DummyTestSpanData::DUMMY;
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
     pub struct DummyTestSpanAnchor;
@@ -62,9 +64,8 @@ pub(crate) mod dummy_test_span_utils {
     }
 }
 
-/// Convert the syntax node to a `TokenTree` (what macro
-/// will consume).
-/// FIXME: Flesh out the doc comment more thoroughly
+/// Converts a syntax tree to a [`tt::Subtree`] using the provided span map to populate the
+/// subtree's spans.
 pub fn syntax_node_to_token_tree<Anchor, Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
@@ -79,6 +80,9 @@ where
     convert_tokens(&mut c)
 }
 
+/// Converts a syntax tree to a [`tt::Subtree`] using the provided span map to populate the
+/// subtree's spans. Additionally using the append and remove parameters, the additional tokens can
+/// be injected or hidden from the output.
 pub fn syntax_node_to_token_tree_modified<Anchor, Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
@@ -107,10 +111,12 @@ where
 // * AssocItems(SmallVec<[ast::AssocItem; 1]>)
 // * ForeignItems(SmallVec<[ast::ForeignItem; 1]>
 
+/// Converts a [`tt::Subtree`] back to a [`SyntaxNode`].
+/// The produced `SpanMap` contains a mapping from the syntax nodes offsets to the subtree's spans.
 pub fn token_tree_to_syntax_node<Anchor, Ctx>(
     tt: &tt::Subtree<SpanData<Anchor, Ctx>>,
     entry_point: parser::TopEntryPoint,
-) -> (Parse<SyntaxNode>, TokenMap<SpanData<Anchor, Ctx>>)
+) -> (Parse<SyntaxNode>, SpanMap<SpanData<Anchor, Ctx>>)
 where
     SpanData<Anchor, Ctx>: Span,
     Anchor: Copy,
@@ -142,7 +148,8 @@ where
     tree_sink.finish()
 }
 
-/// Convert a string to a `TokenTree`
+/// Convert a string to a `TokenTree`. The spans of the subtree will be anchored to the provided
+/// anchor with the given context.
 pub fn parse_to_token_tree<Anchor, Ctx>(
     anchor: Anchor,
     ctx: Ctx,
@@ -161,7 +168,7 @@ where
     Some(convert_tokens(&mut conv))
 }
 
-/// Convert a string to a `TokenTree`
+/// Convert a string to a `TokenTree`. The passed span will be used for all spans of the produced subtree.
 pub fn parse_to_token_tree_static_span<S>(span: S, text: &str) -> Option<tt::Subtree<S>>
 where
     S: Span,
@@ -798,7 +805,7 @@ where
     cursor: Cursor<'a, SpanData<Anchor, Ctx>>,
     text_pos: TextSize,
     inner: SyntaxTreeBuilder,
-    token_map: TokenMap<SpanData<Anchor, Ctx>>,
+    token_map: SpanMap<SpanData<Anchor, Ctx>>,
 }
 
 impl<'a, Anchor, Ctx> TtTreeSink<'a, Anchor, Ctx>
@@ -811,11 +818,11 @@ where
             cursor,
             text_pos: 0.into(),
             inner: SyntaxTreeBuilder::default(),
-            token_map: TokenMap::empty(),
+            token_map: SpanMap::empty(),
         }
     }
 
-    fn finish(mut self) -> (Parse<SyntaxNode>, TokenMap<SpanData<Anchor, Ctx>>) {
+    fn finish(mut self) -> (Parse<SyntaxNode>, SpanMap<SpanData<Anchor, Ctx>>) {
         self.token_map.finish();
         (self.inner.finish(), self.token_map)
     }

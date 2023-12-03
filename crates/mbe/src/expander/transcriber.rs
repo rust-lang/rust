@@ -79,8 +79,8 @@ impl<S: Span> Bindings<S> {
                     }
                     MetaVarKind::Block => Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
                         delimiter: tt::Delimiter {
-                            open: S::DUMMY,
-                            close: S::DUMMY,
+                            open: span,
+                            close: span,
                             kind: tt::DelimiterKind::Brace,
                         },
                         token_trees: vec![],
@@ -225,6 +225,7 @@ fn expand_subtree<S: Span>(
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
                         text: index.to_string().into(),
+                        // FIXME
                         span: S::DUMMY,
                     })
                     .into(),
@@ -282,8 +283,12 @@ fn expand_subtree<S: Span>(
                     }
                 };
                 arena.push(
-                    tt::Leaf::Literal(tt::Literal { text: c.to_string().into(), span: S::DUMMY })
-                        .into(),
+                    tt::Leaf::Literal(tt::Literal {
+                        text: c.to_string().into(),
+                        // FIXME
+                        span: S::DUMMY,
+                    })
+                    .into(),
                 );
             }
         }
@@ -337,7 +342,9 @@ fn expand_var<S: Span>(
         }
         Err(e) => ExpandResult {
             value: Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree::empty(tt::DelimSpan {
+                // FIXME
                 open: S::DUMMY,
+                // FIXME
                 close: S::DUMMY,
             }))),
             err: Some(e),
@@ -479,6 +486,7 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
                     tt::Leaf::Punct(tt::Punct {
                         char: ':',
                         spacing: tt::Spacing::Joint,
+                        // FIXME
                         span: S::DUMMY,
                     })
                     .into(),
@@ -487,6 +495,7 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
                     tt::Leaf::Punct(tt::Punct {
                         char: ':',
                         spacing: tt::Spacing::Alone,
+                        // FIXME
                         span: S::DUMMY,
                     })
                     .into(),

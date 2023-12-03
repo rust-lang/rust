@@ -23,6 +23,7 @@ pub struct SpanData<Anchor, Ctx> {
 }
 
 impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
+    #[allow(deprecated)]
     const DUMMY: Self = SpanData {
         range: TextRange::empty(TextSize::new(0)),
         anchor: Anchor::DUMMY,
@@ -30,18 +31,24 @@ impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
     };
 }
 
+pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
+    // FIXME: Should not exist. Dummy spans will always be wrong if they leak somewhere. Instead,
+    // the call site or def site spans should be used in relevant places, its just that we don't
+    // expose those everywhere in the yet.
+    const DUMMY: Self;
+}
+
+// FIXME: Should not exist
 pub trait SpanAnchor:
     std::fmt::Debug + Copy + Sized + Eq + Copy + fmt::Debug + std::hash::Hash
 {
+    #[deprecated(note = "this should not exist")]
     const DUMMY: Self;
 }
 
-// FIXME: Get rid of this trait?
-pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
-    const DUMMY: Self;
-}
-
+// FIXME: Should not exist
 pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
+    #[deprecated(note = "this should not exist")]
     const DUMMY: Self;
 }
 
@@ -128,6 +135,7 @@ pub struct DelimSpan<S> {
 }
 
 impl<S: Span> DelimSpan<S> {
+    // FIXME should not exist
     pub const DUMMY: Self = Self { open: S::DUMMY, close: S::DUMMY };
 }
 
@@ -139,9 +147,11 @@ pub struct Delimiter<S> {
 }
 
 impl<S: Span> Delimiter<S> {
+    // FIXME should not exist
     pub const DUMMY_INVISIBLE: Self =
         Self { open: S::DUMMY, close: S::DUMMY, kind: DelimiterKind::Invisible };
 
+    // FIXME should not exist
     pub const fn dummy_invisible() -> Self {
         Self::DUMMY_INVISIBLE
     }

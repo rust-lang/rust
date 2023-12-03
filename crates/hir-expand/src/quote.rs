@@ -215,10 +215,18 @@ impl_to_to_tokentrees! {
 #[cfg(test)]
 mod tests {
     use crate::tt;
-    use ::tt::Span;
+    use base_db::{
+        span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
+        FileId,
+    };
     use expect_test::expect;
+    use syntax::{TextRange, TextSize};
 
-    const DUMMY: tt::SpanData = tt::SpanData::DUMMY;
+    const DUMMY: tt::SpanData = tt::SpanData {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: SpanAnchor { file_id: FileId::BOGUS, ast_id: ROOT_ERASED_FILE_AST_ID },
+        ctx: SyntaxContextId::ROOT,
+    };
 
     #[test]
     fn test_quote_delimiters() {
@@ -242,10 +250,7 @@ mod tests {
     }
 
     fn mk_ident(name: &str) -> crate::tt::Ident {
-        crate::tt::Ident {
-            text: name.into(),
-            span: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
-        }
+        crate::tt::Ident { text: name.into(), span: DUMMY }
     }
 
     #[test]
@@ -256,8 +261,8 @@ mod tests {
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{quoted:?}");
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..0, anchor: SpanAnchor(FileId(0), 0), ctx: SyntaxContextId(0) } SpanData { range: 0..0, anchor: SpanAnchor(FileId(0), 0), ctx: SyntaxContextId(0) }
-              IDENT   hello SpanData { range: 0..0, anchor: SpanAnchor(FileId(0), 0), ctx: SyntaxContextId(0) }"#]].assert_eq(&t);
+            SUBTREE $$ SpanData { range: 0..0, anchor: SpanAnchor(FileId(4294967295), 0), ctx: SyntaxContextId(0) } SpanData { range: 0..0, anchor: SpanAnchor(FileId(4294967295), 0), ctx: SyntaxContextId(0) }
+              IDENT   hello SpanData { range: 0..0, anchor: SpanAnchor(FileId(4294967295), 0), ctx: SyntaxContextId(0) }"#]].assert_eq(&t);
     }
 
     #[test]
@@ -290,8 +295,8 @@ mod tests {
         let list = crate::tt::Subtree {
             delimiter: crate::tt::Delimiter {
                 kind: crate::tt::DelimiterKind::Brace,
-                open: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
-                close: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
+                open: DUMMY,
+                close: DUMMY,
             },
             token_trees: fields.collect(),
         };

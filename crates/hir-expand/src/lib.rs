@@ -663,7 +663,7 @@ impl ExpansionInfo {
         range: TextRange,
     ) -> Option<(FileRange, SyntaxContextId)> {
         debug_assert!(self.expanded.value.text_range().contains_range(range));
-        let mut spans = self.exp_map.spans_for_node_range(range);
+        let mut spans = self.exp_map.spans_for_range(range);
         let SpanData { range, anchor, ctx } = spans.next()?;
         let mut start = range.start();
         let mut end = range.end();
