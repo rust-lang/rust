@@ -6,7 +6,7 @@ mod tests;
 use std::iter;
 
 use either::Either;
-use hir::{db::DefDatabase, HasSource, LangItem, Semantics};
+use hir::{db::DefDatabase, DescendPreference, HasSource, LangItem, Semantics};
 use ide_db::{
     base_db::FileRange,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
@@ -161,11 +161,11 @@ fn hover_simple(
 
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
-    let descended = if in_attr {
-        [sema.descend_into_macros_with_kind_preference(original_token.clone(), offset)].into()
-    } else {
-        sema.descend_into_macros_with_same_text(original_token.clone(), offset)
-    };
+    let descended = sema.descend_into_macros(
+        if in_attr { DescendPreference::SameKind } else { DescendPreference::SameText },
+        original_token.clone(),
+        offset,
+    );
     let descended = || descended.iter();
 
     let result = descended()

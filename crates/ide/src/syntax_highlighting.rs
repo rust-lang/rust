@@ -13,7 +13,7 @@ mod html;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics};
+use hir::{DescendPreference, Name, Semantics};
 use ide_db::{FxHashMap, RootDatabase, SymbolKind};
 use syntax::{
     ast::{self, IsString},
@@ -393,14 +393,14 @@ fn traverse(
             // Attempt to descend tokens into macro-calls.
             let res = match element {
                 NodeOrToken::Token(token) if token.kind() != COMMENT => {
-                    let token = match attr_or_derive_item {
-                        Some(AttrOrDerive::Attr(_)) => {
-                            sema.descend_into_macros_with_kind_preference(token, 0.into())
-                        }
-                        Some(AttrOrDerive::Derive(_)) | None => {
-                            sema.descend_into_macros_single(token, 0.into())
-                        }
-                    };
+                    let token = sema.descend_into_macros_single(
+                        match attr_or_derive_item {
+                            Some(AttrOrDerive::Attr(_)) => DescendPreference::SameKind,
+                            Some(AttrOrDerive::Derive(_)) | None => DescendPreference::None,
+                        },
+                        token,
+                        0.into(),
+                    );
                     match token.parent().and_then(ast::NameLike::cast) {
                         // Remap the token into the wrapping single token nodes
                         Some(parent) => match (token.kind(), parent.syntax().kind()) {

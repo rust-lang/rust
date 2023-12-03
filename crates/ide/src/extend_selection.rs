@@ -1,6 +1,6 @@
 use std::iter::successors;
 
-use hir::Semantics;
+use hir::{DescendPreference, Semantics};
 use ide_db::RootDatabase;
 use syntax::{
     algo::{self, skip_trivia_token},
@@ -140,10 +140,16 @@ fn extend_tokens_from_range(
 
     // compute original mapped token range
     let extended = {
-        let fst_expanded =
-            sema.descend_into_macros_single(first_token.clone(), original_range.start());
-        let lst_expanded =
-            sema.descend_into_macros_single(last_token.clone(), original_range.end());
+        let fst_expanded = sema.descend_into_macros_single(
+            DescendPreference::None,
+            first_token.clone(),
+            original_range.start(),
+        );
+        let lst_expanded = sema.descend_into_macros_single(
+            DescendPreference::None,
+            last_token.clone(),
+            original_range.end(),
+        );
         let mut lca =
             algo::least_common_ancestor(&fst_expanded.parent()?, &lst_expanded.parent()?)?;
         lca = shallowest_node(&lca);
@@ -157,7 +163,8 @@ fn extend_tokens_from_range(
     let validate = |offset: TextSize| {
         let extended = &extended;
         move |token: &SyntaxToken| -> bool {
-            let expanded = sema.descend_into_macros_single(token.clone(), offset);
+            let expanded =
+                sema.descend_into_macros_single(DescendPreference::None, token.clone(), offset);
             let parent = match expanded.parent() {
                 Some(it) => it,
                 None => return false,

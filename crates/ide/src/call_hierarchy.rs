@@ -1,6 +1,6 @@
 //! Entry point for call-hierarchy
 
-use hir::Semantics;
+use hir::{DescendPreference, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
@@ -87,7 +87,7 @@ pub(crate) fn outgoing_calls(
     })?;
     let mut calls = CallLocations::default();
 
-    sema.descend_into_macros(token, offset)
+    sema.descend_into_macros(DescendPreference::None, token, offset)
         .into_iter()
         .filter_map(|it| it.parent_ancestors().nth(1).and_then(ast::Item::cast))
         .filter_map(|item| match item {

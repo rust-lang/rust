@@ -629,8 +629,6 @@ impl ExpansionInfo {
     pub fn map_range_down<'a>(
         &'a self,
         span: SpanData,
-        // FIXME: use this for range mapping, so that we can resolve inline format args
-        _relative_token_offset: Option<TextSize>,
     ) -> Option<impl Iterator<Item = InMacroFile<SyntaxToken>> + 'a> {
         let tokens = self
             .exp_map

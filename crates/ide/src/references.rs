@@ -9,7 +9,7 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-use hir::{PathResolution, Semantics};
+use hir::{DescendPreference, PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
@@ -126,7 +126,7 @@ pub(crate) fn find_defs<'a>(
         )
     });
     token.map(|token| {
-        sema.descend_into_macros_with_same_text(token, offset)
+        sema.descend_into_macros(DescendPreference::SameText, token, offset)
             .into_iter()
             .filter_map(|it| ast::NameLike::cast(it.parent()?))
             .filter_map(move |name_like| {

@@ -8,8 +8,8 @@ use std::mem;
 
 use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
-    AsAssocItem, DefWithBody, HasAttrs, HasSource, HirFileIdExt, InFile, InRealFile, ModuleSource,
-    Semantics, Visibility,
+    AsAssocItem, DefWithBody, DescendPreference, HasAttrs, HasSource, HirFileIdExt, InFile,
+    InRealFile, ModuleSource, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use nohash_hasher::IntMap;
@@ -467,7 +467,9 @@ impl<'a> FindUsages<'a> {
                     // every textual hit. That function is notoriously
                     // expensive even for things that do not get down mapped
                     // into macros.
-                    sema.descend_into_macros(token, offset).into_iter().filter_map(|it| it.parent())
+                    sema.descend_into_macros(DescendPreference::None, token, offset)
+                        .into_iter()
+                        .filter_map(|it| it.parent())
                 })
         };
 

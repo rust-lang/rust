@@ -1,4 +1,4 @@
-use hir::Semantics;
+use hir::{DescendPreference, Semantics};
 use ide_db::{
     base_db::{FileId, FilePosition, FileRange},
     defs::{Definition, IdentClass},
@@ -461,7 +461,7 @@ fn find_defs(
     token: SyntaxToken,
     offset: TextSize,
 ) -> FxHashSet<Definition> {
-    sema.descend_into_macros(token, offset)
+    sema.descend_into_macros(DescendPreference::None, token, offset)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))
         .map(IdentClass::definitions_no_ops)

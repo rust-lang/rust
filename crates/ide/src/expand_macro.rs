@@ -1,4 +1,4 @@
-use hir::{HirFileIdExt, InFile, Semantics};
+use hir::{DescendPreference, HirFileIdExt, InFile, Semantics};
 use ide_db::{
     base_db::FileId, helpers::pick_best_token,
     syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
@@ -40,8 +40,10 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // struct Bar;
     // ```
 
-    let derive =
-        sema.descend_into_macros(tok.clone(), 0.into()).into_iter().find_map(|descended| {
+    let derive = sema
+        .descend_into_macros(DescendPreference::None, tok.clone(), 0.into())
+        .into_iter()
+        .find_map(|descended| {
             let hir_file = sema.hir_file_for(&descended.parent()?);
             if !hir_file.is_derive_attr_pseudo_expansion(db) {
                 return None;

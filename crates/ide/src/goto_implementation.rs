@@ -1,4 +1,4 @@
-use hir::{AsAssocItem, Impl, Semantics};
+use hir::{AsAssocItem, DescendPreference, Impl, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
@@ -34,7 +34,7 @@ pub(crate) fn goto_implementation(
     })?;
     let range = original_token.text_range();
     let navs =
-        sema.descend_into_macros(original_token, offset)
+        sema.descend_into_macros(DescendPreference::None, original_token, offset)
             .into_iter()
             .filter_map(|token| token.parent().and_then(ast::NameLike::cast))
             .filter_map(|node| match &node {

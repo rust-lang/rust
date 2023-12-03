@@ -4,7 +4,7 @@ use crate::{
     doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
     RangeInfo, TryToNav,
 };
-use hir::{AsAssocItem, AssocItem, Semantics};
+use hir::{AsAssocItem, AssocItem, DescendPreference, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, IdentClass},
@@ -56,7 +56,7 @@ pub(crate) fn goto_definition(
         });
     }
     let navs = sema
-        .descend_into_macros(original_token.clone(), offset)
+        .descend_into_macros(DescendPreference::None, original_token.clone(), offset)
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
