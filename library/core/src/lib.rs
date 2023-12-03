@@ -446,9 +446,10 @@ pub mod arch;
 #[unstable(feature = "portable_simd", issue = "86656")]
 mod core_simd;
 
-#[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 #[unstable(feature = "portable_simd", issue = "86656")]
 pub mod simd {
+    #![doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
+
     #[unstable(feature = "portable_simd", issue = "86656")]
     pub use crate::core_simd::simd::*;
 }

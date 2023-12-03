@@ -98,11 +98,11 @@ error: register class `preg` can only be used as a clobber, not as an input or o
 LL |         asm!("{}", out(preg) _);
    |                    ^^^^^^^^^^^
 
-error: register `x0` conflicts with register `x0`
+error: register `w0` conflicts with register `x0`
   --> $DIR/bad-reg.rs:50:32
    |
 LL |         asm!("", in("x0") foo, in("w0") bar);
-   |                  ------------  ^^^^^^^^^^^^ register `x0`
+   |                  ------------  ^^^^^^^^^^^^ register `w0`
    |                  |
    |                  register `x0`
 
@@ -120,19 +120,19 @@ help: use `lateout` instead of `out` to avoid conflict
 LL |         asm!("", in("x0") foo, out("x0") bar);
    |                  ^^^^^^^^^^^^
 
-error: register `v0` conflicts with register `v0`
+error: register `q0` conflicts with register `v0`
   --> $DIR/bad-reg.rs:55:32
    |
 LL |         asm!("", in("v0") foo, in("q0") bar);
-   |                  ------------  ^^^^^^^^^^^^ register `v0`
+   |                  ------------  ^^^^^^^^^^^^ register `q0`
    |                  |
    |                  register `v0`
 
-error: register `v0` conflicts with register `v0`
+error: register `q0` conflicts with register `v0`
   --> $DIR/bad-reg.rs:57:32
    |
 LL |         asm!("", in("v0") foo, out("q0") bar);
-   |                  ------------  ^^^^^^^^^^^^^ register `v0`
+   |                  ------------  ^^^^^^^^^^^^^ register `q0`
    |                  |
    |                  register `v0`
    |

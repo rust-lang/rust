@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::macros::{find_assert_args, root_macro_call_first_node, PanicExpn};
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {

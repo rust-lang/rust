@@ -86,7 +86,7 @@ where
 #[inline]
 #[allow(clippy::let_and_return)]
 unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
-    use crate::simd::SimdPartialOrd;
+    use crate::simd::cmp::SimdPartialOrd;
     #[cfg(target_arch = "x86")]
     use core::arch::x86;
     #[cfg(target_arch = "x86_64")]
@@ -149,7 +149,7 @@ where
     // On x86, make sure the top bit is set.
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     let idxs = {
-        use crate::simd::SimdPartialOrd;
+        use crate::simd::cmp::SimdPartialOrd;
         idxs.simd_lt(Simd::splat(N as u8))
             .select(idxs, Simd::splat(u8::MAX))
     };

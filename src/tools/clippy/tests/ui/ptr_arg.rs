@@ -22,6 +22,12 @@ fn do_vec_mut(x: &mut Vec<i64>) {
     //Nothing here
 }
 
+fn do_vec_mut2(x: &mut Vec<i64>) {
+    //~^ ERROR: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice w
+    x.len();
+    x.is_empty();
+}
+
 fn do_str(x: &String) {
     //~^ ERROR: writing `&String` instead of `&str` involves a new object where a slice will d
     //Nothing here either

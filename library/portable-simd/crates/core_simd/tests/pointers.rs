@@ -1,6 +1,9 @@
 #![feature(portable_simd, strict_provenance)]
 
-use core_simd::simd::{Simd, SimdConstPtr, SimdMutPtr};
+use core_simd::simd::{
+    ptr::{SimdConstPtr, SimdMutPtr},
+    Simd,
+};
 
 macro_rules! common_tests {
     { $constness:ident } => {

@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use std::iter;
 
 declare_clippy_lint! {

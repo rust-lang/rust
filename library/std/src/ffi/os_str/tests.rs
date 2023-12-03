@@ -177,3 +177,53 @@ fn into_rc() {
     assert_eq!(&*rc2, os_str);
     assert_eq!(&*arc2, os_str);
 }
+
+#[test]
+fn slice_encoded_bytes() {
+    let os_str = OsStr::new("123θგ🦀");
+    // ASCII
+    let digits = os_str.slice_encoded_bytes(..3);
+    assert_eq!(digits, "123");
+    let three = os_str.slice_encoded_bytes(2..3);
+    assert_eq!(three, "3");
+    // 2-byte UTF-8
+    let theta = os_str.slice_encoded_bytes(3..5);
+    assert_eq!(theta, "θ");
+    // 3-byte UTF-8
+    let gani = os_str.slice_encoded_bytes(5..8);
+    assert_eq!(gani, "გ");
+    // 4-byte UTF-8
+    let crab = os_str.slice_encoded_bytes(8..);
+    assert_eq!(crab, "🦀");
+}
+
+#[test]
+#[should_panic(expected = "byte index 2 is not an OsStr boundary")]
+fn slice_mid_char() {
+    let crab = OsStr::new("🦀");
+    let _ = crab.slice_encoded_bytes(..2);
+}
+
+#[cfg(windows)]
+#[test]
+#[should_panic(expected = "byte index 3 is not an OsStr boundary")]
+fn slice_between_surrogates() {
+    use crate::os::windows::ffi::OsStringExt;
+
+    let os_string = OsString::from_wide(&[0xD800, 0xD800]);
+    assert_eq!(os_string.as_encoded_bytes(), &[0xED, 0xA0, 0x80, 0xED, 0xA0, 0x80]);
+    let _ = os_string.slice_encoded_bytes(..3);
+}
+
+#[cfg(windows)]
+#[test]
+fn slice_surrogate_edge() {
+    use crate::os::windows::ffi::OsStringExt;
+
+    let os_string = OsString::from_wide(&[0xD800]);
+    let mut with_crab = os_string.clone();
+    with_crab.push("🦀");
+
+    assert_eq!(with_crab.slice_encoded_bytes(..3), os_string);
+    assert_eq!(with_crab.slice_encoded_bytes(3..), "🦀");
+}

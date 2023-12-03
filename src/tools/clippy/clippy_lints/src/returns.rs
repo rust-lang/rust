@@ -7,12 +7,14 @@ use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Block, Body, Expr, ExprKind, FnDecl, ItemKind, LangItem, MatchSource, OwnerNode, PatKind, QPath, Stmt, StmtKind,
+    Block, Body, Expr, ExprKind, FnDecl, HirId, ItemKind, LangItem, MatchSource, Node, OwnerNode, PatKind, QPath, Stmt,
+    StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Pos, Span};
 use std::borrow::Cow;
@@ -158,6 +160,22 @@ impl<'tcx> ToString for RetReplacement<'tcx> {
 
 declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN, NEEDLESS_RETURN_WITH_QUESTION_MARK]);
 
+/// Checks if a return statement is "needed" in the middle of a block, or if it can be removed. This
+/// is the case when the enclosing block expression is coerced to some other type, which only works
+/// because of the never-ness of `return` expressions
+fn stmt_needs_never_type(cx: &LateContext<'_>, stmt_hir_id: HirId) -> bool {
+    cx.tcx
+        .hir()
+        .parent_iter(stmt_hir_id)
+        .find_map(|(_, node)| if let Node::Expr(expr) = node { Some(expr) } else { None })
+        .is_some_and(|e| {
+            cx.typeck_results()
+                .expr_adjustments(e)
+                .iter()
+                .any(|adjust| adjust.target != cx.tcx.types.unit && matches!(adjust.kind, Adjust::NeverToAny))
+        })
+}
+
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !in_external_macro(cx.sess(), stmt.span)
@@ -173,6 +191,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && let [.., final_stmt] = block.stmts
             && final_stmt.hir_id != stmt.hir_id
             && !is_from_proc_macro(cx, expr)
+            && !stmt_needs_never_type(cx, stmt.hir_id)
         {
             span_lint_and_sugg(
                 cx,

@@ -5,7 +5,7 @@ LL |     let _: &[i8] = data.into();
    |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
    = help: the following other types implement trait `From<T>`:
-             <[bool; LANES] as From<Mask<T, LANES>>>
+             <[bool; N] as From<Mask<T, N>>>
              <[T; N] as From<Simd<T, N>>>
              <[T; 1] as From<(T,)>>
              <[T; 2] as From<(T, T)>>

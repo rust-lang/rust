@@ -1,10 +1,10 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use itertools::Itertools;
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
@@ -77,7 +77,7 @@ fn correct_ident(ident: &str) -> String {
     ident
 }
 
-fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
+fn check_ident(cx: &LateContext<'_>, ident: &Ident, hir_id: HirId, be_aggressive: bool) {
     let span = ident.span;
     let ident = ident.as_str();
     let corrected = correct_ident(ident);
@@ -89,14 +89,20 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
     // upper-case-acronyms-aggressive config option enabled
     || (be_aggressive && ident != corrected)
     {
-        span_lint_and_sugg(
+        span_lint_hir_and_then(
             cx,
             UPPER_CASE_ACRONYMS,
+            hir_id,
             span,
             &format!("name `{ident}` contains a capitalized acronym"),
-            "consider making the acronym lowercase, except the initial letter",
-            corrected,
-            Applicability::MaybeIncorrect,
+            |diag| {
+                diag.span_suggestion(
+                    span,
+                    "consider making the acronym lowercase, except the initial letter",
+                    corrected,
+                    Applicability::MaybeIncorrect,
+                );
+            },
         );
     }
 }
@@ -111,16 +117,15 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
         }
         match it.kind {
             ItemKind::TyAlias(..) | ItemKind::Struct(..) | ItemKind::Trait(..) => {
-                check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
+                check_ident(cx, &it.ident, it.hir_id(), self.upper_case_acronyms_aggressive);
             },
             ItemKind::Enum(ref enumdef, _) => {
-                check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
+                check_ident(cx, &it.ident, it.hir_id(), self.upper_case_acronyms_aggressive);
                 // check enum variants separately because again we only want to lint on private enums and
                 // the fn check_variant does not know about the vis of the enum of its variants
-                enumdef
-                    .variants
-                    .iter()
-                    .for_each(|variant| check_ident(cx, &variant.ident, self.upper_case_acronyms_aggressive));
+                enumdef.variants.iter().for_each(|variant| {
+                    check_ident(cx, &variant.ident, variant.hir_id, self.upper_case_acronyms_aggressive);
+                });
             },
             _ => {},
         }
