@@ -197,6 +197,24 @@ fn simd_ops_i32() {
     assert_eq!(b.reduce_or(), -1);
     assert_eq!(a.reduce_xor(), 0);
     assert_eq!(b.reduce_xor(), -4);
+
+    assert_eq!(b.leading_zeros(), u32x4::from_array([31, 30, 30, 0]));
+    assert_eq!(b.trailing_zeros(), u32x4::from_array([0, 1, 0, 2]));
+    assert_eq!(b.leading_ones(), u32x4::from_array([0, 0, 0, 30]));
+    assert_eq!(b.trailing_ones(), u32x4::from_array([1, 0, 2, 0]));
+    assert_eq!(
+        b.swap_bytes(),
+        i32x4::from_array([0x01000000, 0x02000000, 0x03000000, 0xfcffffffu32 as i32])
+    );
+    assert_eq!(
+        b.reverse_bits(),
+        i32x4::from_array([
+            0x80000000u32 as i32,
+            0x40000000,
+            0xc0000000u32 as i32,
+            0x3fffffffu32 as i32
+        ])
+    );
 }
 
 fn simd_mask() {
@@ -247,6 +265,22 @@ fn simd_mask() {
             assert_eq!(bitmask2, [0b0001]);
         }
     }
+
+    // This used to cause an ICE.
+    let bitmask = u8x8::from_array([0b01000101, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(
+        mask32x8::from_bitmask_vector(bitmask),
+        mask32x8::from_array([true, false, true, false, false, false, true, false]),
+    );
+    let bitmask =
+        u8x16::from_array([0b01000101, 0b11110000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(
+        mask32x16::from_bitmask_vector(bitmask),
+        mask32x16::from_array([
+            true, false, true, false, false, false, true, false, false, false, false, false, true,
+            true, true, true,
+        ]),
+    );
 }
 
 fn simd_cast() {
