@@ -254,13 +254,6 @@ impl<'a> DiagnosticBuilder<'a, Noted> {
     /// `struct_*` methods on [`Handler`].
     pub(crate) fn new_note(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Note, None, message);
-        Self::new_diagnostic_note(handler, diagnostic)
-    }
-
-    /// Creates a new `DiagnosticBuilder` with an already constructed
-    /// diagnostic.
-    pub(crate) fn new_diagnostic_note(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
-        debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
@@ -305,13 +298,6 @@ impl<'a> DiagnosticBuilder<'a, Bug> {
     #[track_caller]
     pub(crate) fn new_bug(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Bug, None, message);
-        Self::new_diagnostic_bug(handler, diagnostic)
-    }
-
-    /// Creates a new `DiagnosticBuilder` with an already constructed
-    /// diagnostic.
-    pub(crate) fn new_diagnostic_bug(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
-        debug!("Created new diagnostic bug");
         Self {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
@@ -394,16 +380,6 @@ impl<'a> DiagnosticBuilder<'a, rustc_span::fatal_error::FatalError> {
         message: impl Into<DiagnosticMessage>,
     ) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
-        Self::new_diagnostic_almost_fatal(handler, diagnostic)
-    }
-
-    /// Creates a new `DiagnosticBuilder` with an already constructed
-    /// diagnostic.
-    pub(crate) fn new_diagnostic_almost_fatal(
-        handler: &'a Handler,
-        diagnostic: Diagnostic,
-    ) -> Self {
-        debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
