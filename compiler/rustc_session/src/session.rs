@@ -24,7 +24,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
     ErrorGuaranteed, FluentBundle, Handler, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
-    TerminalUrl,
+    SubdiagnosticMessage, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -1469,6 +1469,11 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
+    // Check jobserver before getting `jobserver::client`.
+    jobserver::check(|err| {
+        handler.early_warn_with_note(err, "the build environment is likely misconfigured")
+    });
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1775,6 +1780,16 @@ impl EarlyErrorHandler {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.handler.struct_warn(msg).emit()
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_warn_with_note(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+        note: impl Into<SubdiagnosticMessage>,
+    ) {
+        self.handler.struct_warn(msg).note(note).emit()
     }
 }
 
