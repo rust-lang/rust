@@ -1635,10 +1635,19 @@ impl<T: ?Sized> *mut T {
             panic!("align_offset: align is not a power-of-two");
         }
 
-        {
-            // SAFETY: `align` has been checked to be a power of 2 above
-            unsafe { align_offset(self, align) }
+        // SAFETY: `align` has been checked to be a power of 2 above
+        let ret = unsafe { align_offset(self, align) };
+
+        // Inform Miri that we want to consider the resulting pointer to be suitably aligned.
+        #[cfg(miri)]
+        if ret != usize::MAX {
+            intrinsics::miri_promise_symbolic_alignment(
+                self.wrapping_add(ret).cast_const().cast(),
+                align,
+            );
         }
+
+        ret
     }
 
     /// Returns whether the pointer is properly aligned for `T`.
