@@ -202,6 +202,19 @@ fn simd_ops_i32() {
     assert_eq!(b.trailing_zeros(), u32x4::from_array([0, 1, 0, 2]));
     assert_eq!(b.leading_ones(), u32x4::from_array([0, 0, 0, 30]));
     assert_eq!(b.trailing_ones(), u32x4::from_array([1, 0, 2, 0]));
+    assert_eq!(
+        b.swap_bytes(),
+        i32x4::from_array([0x01000000, 0x02000000, 0x03000000, 0xfcffffffu32 as i32])
+    );
+    assert_eq!(
+        b.reverse_bits(),
+        i32x4::from_array([
+            0x80000000u32 as i32,
+            0x40000000,
+            0xc0000000u32 as i32,
+            0x3fffffffu32 as i32
+        ])
+    );
 }
 
 fn simd_mask() {

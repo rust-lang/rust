@@ -29,6 +29,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "fsqrt"
             | "ctlz"
             | "cttz"
+            | "bswap"
+            | "bitreverse"
             => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
@@ -54,6 +56,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "trunc" => Op::Round(rustc_apfloat::Round::TowardZero),
                     "ctlz" => Op::Numeric(sym::ctlz),
                     "cttz" => Op::Numeric(sym::cttz),
+                    "bswap" => Op::Numeric(sym::bswap),
+                    "bitreverse" => Op::Numeric(sym::bitreverse),
                     _ => unreachable!(),
                 };
 
@@ -116,6 +120,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             let bits_out = match name {
                                 sym::ctlz => u128::from(bits.leading_zeros()).checked_sub(extra).unwrap(),
                                 sym::cttz => u128::from((bits << extra).trailing_zeros()).checked_sub(extra).unwrap(),
+                                sym::bswap => (bits << extra).swap_bytes(),
+                                sym::bitreverse => (bits << extra).reverse_bits(),
                                 _ => unreachable!(),
                             };
                             Scalar::from_uint(bits_out, size)
