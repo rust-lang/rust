@@ -157,6 +157,9 @@ where
                 for x in bytes.as_mut() {
                     *x = x.reverse_bits()
                 }
+                if N % 8 > 0 {
+                    bytes.as_mut()[N / 8] >>= 8 - N % 8;
+                }
             }
 
             bitmask.as_mut_array()[..bytes.as_ref().len()].copy_from_slice(bytes.as_ref());
@@ -179,6 +182,9 @@ where
             if cfg!(target_endian = "big") {
                 for x in bytes.as_mut() {
                     *x = x.reverse_bits();
+                }
+                if N % 8 > 0 {
+                    bytes.as_mut()[N / 8] >>= 8 - N % 8;
                 }
             }
 
