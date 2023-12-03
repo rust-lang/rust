@@ -105,12 +105,14 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             }
         })
         .map(|def_id| {
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             // We won't link right if this symbol is stripped during LTO.
             let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
             // We have to preserve the symbols of the built-in functions during LTO.
             let is_builtin_fn = is_compiler_builtins
                 && symbol_export_level(tcx, def_id.to_def_id())
-                    .is_below_threshold(SymbolExportLevel::C);
+                    .is_below_threshold(SymbolExportLevel::C)
+                && codegen_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
             let used = name == "rust_eh_personality";
 
             let export_level = if special_runtime_crate {
@@ -118,7 +120,6 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             } else {
                 symbol_export_level(tcx, def_id.to_def_id())
             };
-            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             debug!(
                 "EXPORTED SYMBOL (local): {} ({:?})",
                 tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
