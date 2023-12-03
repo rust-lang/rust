@@ -18,7 +18,6 @@ use crate::errors::{
     UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
     UseEqInstead, WrapType,
 };
-
 use crate::fluent_generated as fluent;
 use crate::parser;
 use crate::parser::attr::InnerAttrPolicy;
@@ -772,8 +771,10 @@ impl<'a> Parser<'a> {
                 && let ast::AttrKind::Normal(attr_kind) = &attr.kind
                 && let [segment] = &attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
+                && let Some(args_span) = attr_kind.item.args.span()
                 && let Ok(next_attr) = snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
+                && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
                 && let [next_segment] = &next_attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
                 && let Ok(next_expr) = snapshot.parse_expr()
@@ -787,23 +788,14 @@ impl<'a> Parser<'a> {
                 let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
                 let sugg = vec![
                     (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
-                    (
-                        attr_kind.item.args.span().unwrap().shrink_to_hi().with_hi(attr.span.hi()),
-                        " {".to_string(),
-                    ),
+                    (args_span.shrink_to_hi().with_hi(attr.span.hi()), " {".to_string()),
                     (expr.span.shrink_to_lo(), "    ".to_string()),
                     (
                         next_attr.span.with_hi(next_segment.span().hi()),
                         "} else if cfg!".to_string(),
                     ),
                     (
-                        next_attr_kind
-                            .item
-                            .args
-                            .span()
-                            .unwrap()
-                            .shrink_to_hi()
-                            .with_hi(next_attr.span.hi()),
+                        next_attr_args_span.shrink_to_hi().with_hi(next_attr.span.hi()),
                         " {".to_string(),
                     ),
                     (next_expr.span.shrink_to_lo(), "    ".to_string()),

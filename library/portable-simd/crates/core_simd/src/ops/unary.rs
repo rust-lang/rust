@@ -3,11 +3,11 @@ use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 use core::ops::{Neg, Not}; // unary ops
 
 macro_rules! neg {
-    ($(impl<const LANES: usize> Neg for Simd<$scalar:ty, LANES>)*) => {
-        $(impl<const LANES: usize> Neg for Simd<$scalar, LANES>
+    ($(impl<const N: usize> Neg for Simd<$scalar:ty, N>)*) => {
+        $(impl<const N: usize> Neg for Simd<$scalar, N>
         where
             $scalar: SimdElement,
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Self;
 
@@ -22,27 +22,27 @@ macro_rules! neg {
 }
 
 neg! {
-    impl<const LANES: usize> Neg for Simd<f32, LANES>
+    impl<const N: usize> Neg for Simd<f32, N>
 
-    impl<const LANES: usize> Neg for Simd<f64, LANES>
+    impl<const N: usize> Neg for Simd<f64, N>
 
-    impl<const LANES: usize> Neg for Simd<i8, LANES>
+    impl<const N: usize> Neg for Simd<i8, N>
 
-    impl<const LANES: usize> Neg for Simd<i16, LANES>
+    impl<const N: usize> Neg for Simd<i16, N>
 
-    impl<const LANES: usize> Neg for Simd<i32, LANES>
+    impl<const N: usize> Neg for Simd<i32, N>
 
-    impl<const LANES: usize> Neg for Simd<i64, LANES>
+    impl<const N: usize> Neg for Simd<i64, N>
 
-    impl<const LANES: usize> Neg for Simd<isize, LANES>
+    impl<const N: usize> Neg for Simd<isize, N>
 }
 
 macro_rules! not {
-    ($(impl<const LANES: usize> Not for Simd<$scalar:ty, LANES>)*) => {
-        $(impl<const LANES: usize> Not for Simd<$scalar, LANES>
+    ($(impl<const N: usize> Not for Simd<$scalar:ty, N>)*) => {
+        $(impl<const N: usize> Not for Simd<$scalar, N>
         where
             $scalar: SimdElement,
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Self;
 
@@ -56,23 +56,23 @@ macro_rules! not {
 }
 
 not! {
-    impl<const LANES: usize> Not for Simd<i8, LANES>
+    impl<const N: usize> Not for Simd<i8, N>
 
-    impl<const LANES: usize> Not for Simd<i16, LANES>
+    impl<const N: usize> Not for Simd<i16, N>
 
-    impl<const LANES: usize> Not for Simd<i32, LANES>
+    impl<const N: usize> Not for Simd<i32, N>
 
-    impl<const LANES: usize> Not for Simd<i64, LANES>
+    impl<const N: usize> Not for Simd<i64, N>
 
-    impl<const LANES: usize> Not for Simd<isize, LANES>
+    impl<const N: usize> Not for Simd<isize, N>
 
-    impl<const LANES: usize> Not for Simd<u8, LANES>
+    impl<const N: usize> Not for Simd<u8, N>
 
-    impl<const LANES: usize> Not for Simd<u16, LANES>
+    impl<const N: usize> Not for Simd<u16, N>
 
-    impl<const LANES: usize> Not for Simd<u32, LANES>
+    impl<const N: usize> Not for Simd<u32, N>
 
-    impl<const LANES: usize> Not for Simd<u64, LANES>
+    impl<const N: usize> Not for Simd<u64, N>
 
-    impl<const LANES: usize> Not for Simd<usize, LANES>
+    impl<const N: usize> Not for Simd<usize, N>
 }

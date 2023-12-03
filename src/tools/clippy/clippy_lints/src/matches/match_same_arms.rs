@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_lint_allowed, path_to_local, search_same, SpanlessEq, SpanlessHash};
 use core::cmp::Ordering;
@@ -104,9 +104,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
             if !cx.tcx.features().non_exhaustive_omitted_patterns_lint
                 || is_lint_allowed(cx, NON_EXHAUSTIVE_OMITTED_PATTERNS, arm2.hir_id)
             {
-                span_lint_and_then(
+                span_lint_hir_and_then(
                     cx,
                     MATCH_SAME_ARMS,
+                    arm1.hir_id,
                     arm1.span,
                     "this match arm has an identical body to the `_` wildcard arm",
                     |diag| {
@@ -124,9 +125,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                 (arm2, arm1)
             };
 
-            span_lint_and_then(
+            span_lint_hir_and_then(
                 cx,
                 MATCH_SAME_ARMS,
+                keep_arm.hir_id,
                 keep_arm.span,
                 "this match arm has an identical body to another arm",
                 |diag| {
@@ -222,7 +224,7 @@ fn iter_matching_struct_fields<'a>(
     Iter(left.iter(), right.iter())
 }
 
-#[expect(clippy::similar_names)]
+#[expect(clippy::similar_names, clippy::too_many_lines)]
 impl<'a> NormalizedPat<'a> {
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
@@ -334,8 +336,7 @@ impl<'a> NormalizedPat<'a> {
     /// type.
     fn has_overlapping_values(&self, other: &Self) -> bool {
         match (*self, *other) {
-            (Self::Wild, _) | (_, Self::Wild) => true,
-            (Self::Never, Self::Never) => true,
+            (Self::Wild, _) | (_, Self::Wild) | (Self::Never, Self::Never) => true,
             (Self::Or(pats), ref other) | (ref other, Self::Or(pats)) => {
                 pats.iter().any(|pat| pat.has_overlapping_values(other))
             },

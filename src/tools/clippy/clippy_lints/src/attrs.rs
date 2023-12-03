@@ -17,7 +17,7 @@ use rustc_hir::{
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
+use rustc_session::{declare_lint_pass, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span, DUMMY_SP};
 use semver::Version;
@@ -120,7 +120,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `#[deprecated]` annotations with a `since`
-    /// field that is not a valid semantic version.
+    /// field that is not a valid semantic version. Also allows "TBD" to signal
+    /// future deprecation.
     ///
     /// ### Why is this bad?
     /// For checking the version of the deprecation, it must be
@@ -405,20 +406,26 @@ declare_clippy_lint! {
     /// Checks for `#[cfg(features = "...")]` and suggests to replace it with
     /// `#[cfg(feature = "...")]`.
     ///
+    /// It also checks if `cfg(test)` was misspelled.
+    ///
     /// ### Why is this bad?
-    /// Misspelling `feature` as `features` can be sometimes hard to spot. It
+    /// Misspelling `feature` as `features` or `test` as `tests` can be sometimes hard to spot. It
     /// may cause conditional compilation not work quietly.
     ///
     /// ### Example
     /// ```no_run
     /// #[cfg(features = "some-feature")]
     /// fn conditional() { }
+    /// #[cfg(tests)]
+    /// mod tests { }
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// #[cfg(feature = "some-feature")]
     /// fn conditional() { }
+    /// #[cfg(test)]
+    /// mod tests { }
     /// ```
     #[clippy::version = "1.69.0"]
     pub MAYBE_MISUSED_CFG,
@@ -473,7 +480,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         && let MetaItemKind::NameValue(lit) = &mi.kind
                         && mi.has_name(sym::since)
                     {
-                        check_semver(cx, item.span(), lit);
+                        check_deprecated_since(cx, item.span(), lit);
                     }
                 }
             }
@@ -754,9 +761,9 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
     }
 }
 
-fn check_semver(cx: &LateContext<'_>, span: Span, lit: &MetaItemLit) {
+fn check_deprecated_since(cx: &LateContext<'_>, span: Span, lit: &MetaItemLit) {
     if let LitKind::Str(is, _) = lit.kind {
-        if Version::parse(is.as_str()).is_ok() {
+        if is.as_str() == "TBD" || Version::parse(is.as_str()).is_ok() {
             return;
         }
     }
@@ -923,21 +930,35 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
 fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
     for item in items {
         if let NestedMetaItem::MetaItem(meta) = item {
-            if meta.has_name(sym!(features))
+            if let Some(ident) = meta.ident()
+                && ident.name.as_str() == "features"
                 && let Some(val) = meta.value_str()
             {
                 span_lint_and_sugg(
                     cx,
                     MAYBE_MISUSED_CFG,
                     meta.span,
-                    "feature may misspelled as features",
-                    "use",
+                    "'feature' may be misspelled as 'features'",
+                    "did you mean",
                     format!("feature = \"{val}\""),
                     Applicability::MaybeIncorrect,
                 );
             }
             if let MetaItemKind::List(list) = &meta.kind {
                 check_nested_misused_cfg(cx, list);
+            // If this is not a list, then we check for `cfg(test)`.
+            } else if let Some(ident) = meta.ident()
+                && matches!(ident.name.as_str(), "tests" | "Test")
+            {
+                span_lint_and_sugg(
+                    cx,
+                    MAYBE_MISUSED_CFG,
+                    meta.span,
+                    &format!("'test' may be misspelled as '{}'", ident.name.as_str()),
+                    "did you mean",
+                    "test".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }

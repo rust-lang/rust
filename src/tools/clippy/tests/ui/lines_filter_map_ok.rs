@@ -10,11 +10,17 @@ fn main() -> io::Result<()> {
     // Lint
     let f = std::fs::File::open("/")?;
     BufReader::new(f).lines().flat_map(Result::ok).for_each(|_| ());
+    // Lint
+    let f = std::fs::File::open("/")?;
+    BufReader::new(f).lines().flatten().for_each(|_| ());
+
     let s = "foo\nbar\nbaz\n";
     // Lint
     io::stdin().lines().filter_map(Result::ok).for_each(|_| ());
     // Lint
     io::stdin().lines().filter_map(|x| x.ok()).for_each(|_| ());
+    // Lint
+    io::stdin().lines().flatten().for_each(|_| ());
     // Do not lint (not a `Lines` iterator)
     io::stdin()
         .lines()

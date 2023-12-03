@@ -4,7 +4,7 @@ use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::{sym, BytePos, Span};
 
 declare_clippy_lint! {
@@ -44,7 +44,9 @@ fn get_trait_predicates_for_trait_id<'tcx>(
     let mut preds = Vec::new();
     for (pred, _) in generics.predicates {
         if let ClauseKind::Trait(poly_trait_pred) = pred.kind().skip_binder()
-            && let trait_pred = cx.tcx.instantiate_bound_regions_with_erased(pred.kind().rebind(poly_trait_pred))
+            && let trait_pred = cx
+                .tcx
+                .instantiate_bound_regions_with_erased(pred.kind().rebind(poly_trait_pred))
             && let Some(trait_def_id) = trait_id
             && trait_def_id == trait_pred.trait_ref.def_id
         {
@@ -61,7 +63,9 @@ fn get_projection_pred<'tcx>(
 ) -> Option<ProjectionPredicate<'tcx>> {
     generics.predicates.iter().find_map(|(proj_pred, _)| {
         if let ClauseKind::Projection(pred) = proj_pred.kind().skip_binder() {
-            let projection_pred = cx.tcx.instantiate_bound_regions_with_erased(proj_pred.kind().rebind(pred));
+            let projection_pred = cx
+                .tcx
+                .instantiate_bound_regions_with_erased(proj_pred.kind().rebind(pred));
             if projection_pred.projection_ty.args == trait_pred.trait_ref.args {
                 return Some(projection_pred);
             }

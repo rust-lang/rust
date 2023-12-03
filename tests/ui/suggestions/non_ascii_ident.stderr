@@ -4,6 +4,12 @@ error[E0425]: cannot find value `读文` in this scope
 LL |     let _ = 读文;
    |             ^^^^ not found in this scope
 
-error: aborting due to 1 previous error
+error[E0425]: cannot find function `读文` in this scope
+  --> $DIR/non_ascii_ident.rs:6:5
+   |
+LL |     读文(f);
+   |     ^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

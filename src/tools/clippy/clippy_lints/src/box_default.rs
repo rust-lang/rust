@@ -10,7 +10,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::IsSuggestable;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -45,7 +45,7 @@ impl LateLintPass<'_> for BoxDefault {
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = box_new.kind
             && let ExprKind::Call(arg_path, ..) = arg.kind
             && !in_external_macro(cx.sess(), expr.span)
-            && (expr.span.eq_ctxt(arg.span) || is_vec_expn(cx, arg))
+            && (expr.span.eq_ctxt(arg.span) || is_local_vec_expn(cx, arg, expr))
             && seg.ident.name == sym::new
             && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
             && is_default_equivalent(cx, arg)
@@ -81,10 +81,10 @@ fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
     }
 }
 
-fn is_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    macro_backtrace(expr.span)
-        .next()
-        .map_or(false, |call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id))
+fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>) -> bool {
+    macro_backtrace(expr.span).next().map_or(false, |call| {
+        cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.eq_ctxt(ref_expr.span)
+    })
 }
 
 #[derive(Default)]

@@ -67,5 +67,11 @@ error: name `YAML` contains a capitalized acronym
 LL | enum YAML {
    |      ^^^^ help: consider making the acronym lowercase, except the initial letter: `Yaml`
 
-error: aborting due to 11 previous errors
+error: name `DISALLOW` contains a capitalized acronym
+  --> $DIR/upper_case_acronyms.rs:64:5
+   |
+LL |     DISALLOW,
+   |     ^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `Disallow`
+
+error: aborting due to 12 previous errors
 

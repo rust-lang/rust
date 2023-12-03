@@ -777,7 +777,9 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
         let kind = match self.def {
             ty::InstanceDef::Item(..) => stable_mir::mir::mono::InstanceKind::Item,
             ty::InstanceDef::Intrinsic(..) => stable_mir::mir::mono::InstanceKind::Intrinsic,
-            ty::InstanceDef::Virtual(..) => stable_mir::mir::mono::InstanceKind::Virtual,
+            ty::InstanceDef::Virtual(_def_id, idx) => {
+                stable_mir::mir::mono::InstanceKind::Virtual { idx }
+            }
             ty::InstanceDef::VTableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::FnPtrAddrShim(..)

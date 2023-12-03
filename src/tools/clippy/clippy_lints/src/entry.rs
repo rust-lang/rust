@@ -10,7 +10,7 @@ use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, Guard, HirId, Let, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::{Span, SyntaxContext, DUMMY_SP};
 
 declare_clippy_lint! {

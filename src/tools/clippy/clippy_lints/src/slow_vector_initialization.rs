@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {

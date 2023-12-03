@@ -170,19 +170,18 @@ fn qpath_certainty(cx: &LateContext<'_>, qpath: &QPath<'_>, resolves_to_type: bo
             path_segment_certainty(cx, type_certainty(cx, ty), path_segment, resolves_to_type)
         },
 
-        QPath::LangItem(lang_item, ..) => {
-            cx.tcx
-                .lang_items()
-                .get(*lang_item)
-                .map_or(Certainty::Uncertain, |def_id| {
-                    let generics = cx.tcx.generics_of(def_id);
-                    if generics.parent_count == 0 && generics.params.is_empty() {
-                        Certainty::Certain(if resolves_to_type { Some(def_id) } else { None })
-                    } else {
-                        Certainty::Uncertain
-                    }
-                })
-        },
+        QPath::LangItem(lang_item, ..) => cx
+            .tcx
+            .lang_items()
+            .get(*lang_item)
+            .map_or(Certainty::Uncertain, |def_id| {
+                let generics = cx.tcx.generics_of(def_id);
+                if generics.parent_count == 0 && generics.params.is_empty() {
+                    Certainty::Certain(if resolves_to_type { Some(def_id) } else { None })
+                } else {
+                    Certainty::Uncertain
+                }
+            }),
     };
     debug_assert!(resolves_to_type || certainty.to_def_id().is_none());
     certainty

@@ -304,8 +304,16 @@ impl<'tcx> Const<'tcx> {
                 let (param_env, unevaluated) = unevaluated.prepare_for_eval(tcx, param_env);
                 // try to resolve e.g. associated constants to their definition on an impl, and then
                 // evaluate the const.
-                let c = tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)?;
-                Ok(c.expect("`ty::Const::eval` called on a non-valtree-compatible type"))
+                let Some(c) = tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)?
+                else {
+                    // This can happen when we run on ill-typed code.
+                    let e = tcx.sess.span_delayed_bug(
+                        span.unwrap_or(DUMMY_SP),
+                        "`ty::Const::eval` called on a non-valtree-compatible type",
+                    );
+                    return Err(e.into());
+                };
+                Ok(c)
             }
             ConstKind::Value(val) => Ok(val),
             ConstKind::Error(g) => Err(g.into()),

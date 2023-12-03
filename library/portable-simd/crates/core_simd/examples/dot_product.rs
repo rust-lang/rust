@@ -6,7 +6,7 @@
 #![feature(slice_as_chunks)]
 // Add these imports to use the stdsimd library
 #![feature(portable_simd)]
-use core_simd::simd::*;
+use core_simd::simd::prelude::*;
 
 // This is your barebones dot product implementation:
 // Take 2 vectors, multiply them element wise and *then*

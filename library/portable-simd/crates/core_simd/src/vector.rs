@@ -1,6 +1,8 @@
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdConstPtr, SimdMutPtr, SimdPartialOrd,
-    SupportedLaneCount, Swizzle,
+    cmp::SimdPartialOrd,
+    intrinsics,
+    ptr::{SimdConstPtr, SimdMutPtr},
+    LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
 };
 use core::convert::{TryFrom, TryInto};
 
@@ -110,7 +112,7 @@ where
     T: SimdElement,
 {
     /// Number of elements in this vector.
-    pub const LANES: usize = N;
+    pub const LEN: usize = N;
 
     /// Returns the number of elements in this SIMD vector.
     ///
@@ -118,13 +120,16 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::u32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::u32x4;
     /// let v = u32x4::splat(0);
-    /// assert_eq!(v.lanes(), 4);
+    /// assert_eq!(v.len(), 4);
     /// ```
     #[inline]
-    pub const fn lanes(&self) -> usize {
-        Self::LANES
+    #[allow(clippy::len_without_is_empty)]
+    pub const fn len(&self) -> usize {
+        Self::LEN
     }
 
     /// Constructs a new SIMD vector with all elements set to the given value.
@@ -133,7 +138,9 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::u32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::u32x4;
     /// let v = u32x4::splat(8);
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
@@ -142,10 +149,10 @@ where
         // This is preferred over `[value; N]`, since it's explicitly a splat:
         // https://github.com/rust-lang/rust/issues/97804
         struct Splat;
-        impl<const N: usize> Swizzle<1, N> for Splat {
+        impl<const N: usize> Swizzle<N> for Splat {
             const INDEX: [usize; N] = [0; N];
         }
-        Splat::swizzle(Simd::<T, 1>::from([value]))
+        Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
     }
 
     /// Returns an array reference containing the entire SIMD vector.
@@ -271,7 +278,7 @@ where
     #[track_caller]
     pub const fn from_slice(slice: &[T]) -> Self {
         assert!(
-            slice.len() >= Self::LANES,
+            slice.len() >= Self::LEN,
             "slice length must be at least the number of elements"
         );
         // SAFETY: We just checked that the slice contains
@@ -301,7 +308,7 @@ where
     #[track_caller]
     pub fn copy_to_slice(self, slice: &mut [T]) {
         assert!(
-            slice.len() >= Self::LANES,
+            slice.len() >= Self::LEN,
             "slice length must be at least the number of elements"
         );
         // SAFETY: We just checked that the slice contains
@@ -394,7 +401,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdPartialOrd, Mask};
+    /// # use simd::{Simd, cmp::SimdPartialOrd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]); // Includes an out-of-bounds index
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -434,7 +441,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdConstPtr};
+    /// # use simd::prelude::*;
     /// let values = [6, 2, 4, 9];
     /// let offsets = Simd::from_array([1, 0, 0, 3]);
     /// let source = Simd::splat(values.as_ptr()).wrapping_add(offsets);
@@ -467,7 +474,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Mask, Simd, SimdConstPtr};
+    /// # use simd::prelude::*;
     /// let values = [6, 2, 4, 9];
     /// let enable = Mask::from_array([true, true, false, true]);
     /// let offsets = Simd::from_array([1, 0, 0, 3]);
@@ -550,7 +557,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdPartialOrd, Mask};
+    /// # use simd::{Simd, cmp::SimdPartialOrd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -604,7 +611,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdMutPtr};
+    /// # use simd::{Simd, ptr::SimdMutPtr};
     /// let mut values = [0; 4];
     /// let offset = Simd::from_array([3, 2, 1, 0]);
     /// let ptrs = Simd::splat(values.as_mut_ptr()).wrapping_add(offset);
@@ -631,7 +638,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Mask, Simd, SimdMutPtr};
+    /// # use simd::{Mask, Simd, ptr::SimdMutPtr};
     /// let mut values = [0; 4];
     /// let offset = Simd::from_array([3, 2, 1, 0]);
     /// let ptrs = Simd::splat(values.as_mut_ptr()).wrapping_add(offset);

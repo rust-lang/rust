@@ -45,16 +45,16 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) {
                                     debug ptr => _9;
-                                    scope 16 (inlined ptr::mut_ptr::<impl *mut T>::is_null) {
+                                    scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
                                         debug self => _9;
                                         let mut _24: *mut u8;
                                         scope 17 {
-                                            scope 18 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
+                                            scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
                                                 debug ptr => _24;
-                                                scope 19 (inlined ptr::mut_ptr::<impl *mut u8>::addr) {
+                                                scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
                                                     debug self => _24;
                                                     scope 20 {
-                                                        scope 21 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
+                                                        scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
                                                             debug self => _24;
                                                         }
                                                     }
@@ -71,7 +71,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                         scope 10 {
                         }
                     }
-                    scope 11 (inlined ptr::const_ptr::<impl *const T>::add) {
+                    scope 11 (inlined std::ptr::const_ptr::<impl *const T>::add) {
                         debug self => _4;
                         debug count => _6;
                         scope 12 {

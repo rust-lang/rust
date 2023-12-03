@@ -1,6 +1,6 @@
 use super::SINGLE_ELEMENT_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{indent_of, snippet_with_applicability};
+use clippy_utils::source::{indent_of, snippet, snippet_with_applicability};
 use clippy_utils::visitors::contains_break_or_continue;
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_ast::Mutability;
@@ -87,14 +87,29 @@ pub(super) fn check<'tcx>(
             arg_snip = format!("({arg_snip})").into();
         }
 
-        span_lint_and_sugg(
-            cx,
-            SINGLE_ELEMENT_LOOP,
-            expr.span,
-            "for loop over a single element",
-            "try",
-            format!("{{\n{indent}let {pat_snip} = {prefix}{arg_snip};{block_str}}}"),
-            applicability,
-        );
+        if clippy_utils::higher::Range::hir(arg_expression).is_some() {
+            let range_expr = snippet(cx, arg_expression.span, "?").to_string();
+
+            let sugg = snippet(cx, arg_expression.span, "..");
+            span_lint_and_sugg(
+                cx,
+                SINGLE_ELEMENT_LOOP,
+                arg.span,
+                format!("this loops only once with `{pat_snip}` being `{range_expr}`").as_str(),
+                "did you mean to iterate over the range instead?",
+                sugg.to_string(),
+                Applicability::Unspecified,
+            );
+        } else {
+            span_lint_and_sugg(
+                cx,
+                SINGLE_ELEMENT_LOOP,
+                expr.span,
+                "for loop over a single element",
+                "try",
+                format!("{{\n{indent}let {pat_snip} = {prefix}{arg_snip};{block_str}}}"),
+                applicability,
+            );
+        }
     }
 }

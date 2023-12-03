@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
