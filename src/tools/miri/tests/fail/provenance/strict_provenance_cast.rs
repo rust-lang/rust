@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(strict_provenance)]
+#![feature(exposed_provenance)]
 
 fn main() {
     let addr = &0 as *const i32 as usize;
