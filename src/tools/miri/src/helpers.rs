@@ -1188,3 +1188,11 @@ pub(crate) fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<
         _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
     })
 }
+
+// This looks like something that would be nice to have in the standard library...
+pub(crate) fn round_to_next_multiple_of(x: u64, divisor: u64) -> u64 {
+    assert_ne!(divisor, 0);
+    // divisor is nonzero; multiplication cannot overflow since we just divided
+    #[allow(clippy::arithmetic_side_effects)]
+    return (x.checked_add(divisor - 1).unwrap() / divisor) * divisor;
+}

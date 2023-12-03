@@ -768,11 +768,6 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         drop(self.profiler.take());
     }
 
-    pub(crate) fn round_up_to_multiple_of_page_size(&self, length: u64) -> Option<u64> {
-        #[allow(clippy::arithmetic_side_effects)] // page size is nonzero
-        (length.checked_add(self.page_size - 1)? / self.page_size).checked_mul(self.page_size)
-    }
-
     pub(crate) fn page_align(&self) -> Align {
         Align::from_bytes(self.page_size).unwrap()
     }

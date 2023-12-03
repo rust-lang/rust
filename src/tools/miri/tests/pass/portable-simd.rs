@@ -253,8 +253,6 @@ fn simd_mask() {
     let bitmask = mask.to_bitmask();
     assert_eq!(bitmask, 0b1000);
     assert_eq!(Mask::<i64, 4>::from_bitmask(bitmask), mask);
-
-    // Also directly call intrinsic, to test both kinds of return types.
     unsafe {
         let bitmask1: u8 = simd_bitmask(mask.to_int());
         let bitmask2: [u8; 1] = simd_bitmask(mask.to_int());
