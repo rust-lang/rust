@@ -210,7 +210,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-epoch",
     "crossbeam-utils",
     "crypto-common",
-    "cstr",
     "darling",
     "darling_core",
     "darling_macro",

@@ -8,7 +8,6 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use cstr::cstr;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -214,13 +213,13 @@ pub unsafe fn create_module<'ll>(
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
-        let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
+        let avoid_plt = c"RtLibUseGOT".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
     }
 
     // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
     if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
-        let canonical_jump_tables = "CFI Canonical Jump Tables\0".as_ptr().cast();
+        let canonical_jump_tables = c"CFI Canonical Jump Tables".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -231,7 +230,7 @@ pub unsafe fn create_module<'ll>(
 
     // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
-        let enable_split_lto_unit = "EnableSplitLTOUnit\0".as_ptr().cast();
+        let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -242,7 +241,7 @@ pub unsafe fn create_module<'ll>(
 
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
-        let kcfi = "kcfi\0".as_ptr().cast();
+        let kcfi = c"kcfi".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
     }
 
@@ -255,7 +254,7 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMRustAddModuleFlag(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    "cfguard\0".as_ptr() as *const _,
+                    c"cfguard".as_ptr() as *const _,
                     1,
                 )
             }
@@ -264,7 +263,7 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMRustAddModuleFlag(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    "cfguard\0".as_ptr() as *const _,
+                    c"cfguard".as_ptr() as *const _,
                     2,
                 )
             }
@@ -282,26 +281,26 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "branch-target-enforcement\0".as_ptr().cast(),
+                c"branch-target-enforcement".as_ptr().cast(),
                 bti.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address\0".as_ptr().cast(),
+                c"sign-return-address".as_ptr().cast(),
                 pac_ret.is_some().into(),
             );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address-all\0".as_ptr().cast(),
+                c"sign-return-address-all".as_ptr().cast(),
                 pac_opts.leaf.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address-with-bkey\0".as_ptr().cast(),
+                c"sign-return-address-with-bkey".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
             );
         } else {
@@ -317,7 +316,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
-            "cf-protection-branch\0".as_ptr().cast(),
+            c"cf-protection-branch".as_ptr().cast(),
             1,
         )
     }
@@ -325,7 +324,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
-            "cf-protection-return\0".as_ptr().cast(),
+            c"cf-protection-return".as_ptr().cast(),
             1,
         )
     }
@@ -334,7 +333,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Error,
-            "Virtual Function Elim\0".as_ptr().cast(),
+            c"Virtual Function Elim".as_ptr().cast(),
             1,
         );
     }
@@ -344,7 +343,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Warning,
-            "ehcontguard\0".as_ptr() as *const _,
+            c"ehcontguard".as_ptr() as *const _,
             1,
         )
     }
@@ -362,7 +361,7 @@ pub unsafe fn create_module<'ll>(
     );
     llvm::LLVMAddNamedMetadataOperand(
         llmod,
-        cstr!("llvm.ident").as_ptr(),
+        c"llvm.ident".as_ptr(),
         llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
     );
 
@@ -510,14 +509,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
-        let section = cstr!("llvm.metadata");
         let array = self.const_array(self.type_ptr(), values);
 
         unsafe {
             let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
             llvm::LLVMSetInitializer(g, array);
             llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::LLVMSetSection(g, section.as_ptr());
+            llvm::LLVMSetSection(g, c"llvm.metadata".as_ptr());
         }
     }
 }
