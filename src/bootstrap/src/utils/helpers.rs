@@ -443,17 +443,29 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
     clang_rt_dir.to_path_buf()
 }
 
-pub fn lld_flag_no_threads(is_windows: bool) -> &'static str {
+/// Returns a flag that configures LLD to use only a single thread.
+/// If we use an external LLD, we need to find out which version is it to know which flag should we
+/// pass to it (LLD older than version 10 had a different flag).
+fn lld_flag_no_threads(lld_mode: LldMode, is_windows: bool) -> &'static str {
     static LLD_NO_THREADS: OnceLock<(&'static str, &'static str)> = OnceLock::new();
-    let (windows, other) = LLD_NO_THREADS.get_or_init(|| {
-        let out = output(Command::new("lld").arg("-flavor").arg("ld").arg("--version"));
-        let newer = match (out.find(char::is_numeric), out.find('.')) {
-            (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
+
+    let new_flags = ("/threads:1", "--threads=1");
+    let old_flags = ("/no-threads", "--no-threads");
+
+    let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
+        let newer_version = match lld_mode {
+            LldMode::External => {
+                let out = output(Command::new("lld").arg("-flavor").arg("ld").arg("--version"));
+                match (out.find(char::is_numeric), out.find('.')) {
+                    (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
+                    _ => true,
+                }
+            }
             _ => true,
         };
-        if newer { ("/threads:1", "--threads=1") } else { ("/no-threads", "--no-threads") }
+        if newer_version { new_flags } else { old_flags }
     });
-    if is_windows { windows } else { other }
+    if is_windows { windows_flag } else { other_flag }
 }
 
 pub fn dir_is_empty(dir: &Path) -> bool {
@@ -512,7 +524,10 @@ pub fn linker_flags(
         }
 
         if matches!(lld_threads, LldThreads::No) {
-            args.push(format!("-Clink-arg=-Wl,{}", lld_flag_no_threads(target.is_msvc())));
+            args.push(format!(
+                "-Clink-arg=-Wl,{}",
+                lld_flag_no_threads(builder.config.lld_mode.clone(), target.is_msvc())
+            ));
         }
     }
     args
