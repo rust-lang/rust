@@ -23,6 +23,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::TraitSolver;
 
@@ -153,6 +154,20 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.infcx
             .at(cause, param_env)
             .sub(DefineOpaqueTypes::Yes, expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
+    pub fn relate<T: ToTrace<'tcx>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        variance: Variance,
+        expected: T,
+        actual: T,
+    ) -> Result<(), TypeError<'tcx>> {
+        self.infcx
+            .at(cause, param_env)
+            .relate(DefineOpaqueTypes::Yes, expected, variance, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 

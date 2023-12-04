@@ -1,3 +1,10 @@
+Version 1.74.1 (2023-12-07)
+===========================
+
+- [Resolved spurious STATUS_ACCESS_VIOLATIONs in LLVM](https://github.com/rust-lang/rust/pull/118464)
+- [Clarify guarantees for std::mem::discriminant](https://github.com/rust-lang/rust/pull/118006)
+- [Fix some subtyping-related regressions](https://github.com/rust-lang/rust/pull/116415)
+
 Version 1.74.0 (2023-11-16)
 ==========================
 

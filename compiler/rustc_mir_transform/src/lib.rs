@@ -54,6 +54,7 @@ mod check_packed_ref;
 pub mod check_unsafety;
 mod remove_place_mention;
 // This pass is public to allow external drivers to perform MIR cleanup
+mod add_subtyping_projections;
 pub mod cleanup_post_borrowck;
 mod const_debuginfo;
 mod const_goto;
@@ -481,6 +482,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &reveal_all::RevealAll, // has to be done before drop elaboration, since we need to drop opaque types, too.
+        &add_subtyping_projections::Subtyper, // calling this after reveal_all ensures that we don't deal with opaque types
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
         // necessary as well as well as forcing any call in a non-unwinding

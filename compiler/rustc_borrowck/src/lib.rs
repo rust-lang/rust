@@ -1803,6 +1803,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
+                ProjectionElem::Subtype(_) |
                 ProjectionElem::OpaqueCast(_) |
                 ProjectionElem::ConstantIndex { .. } |
                 // assigning to P[i] requires P to be valid.
@@ -2191,6 +2192,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ProjectionElem::Index(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::Subtype(..)
                     | ProjectionElem::OpaqueCast { .. }
                     | ProjectionElem::Downcast(..) => {
                         let upvar_field_projection = self.is_upvar_field_projection(place);

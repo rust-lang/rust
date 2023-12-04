@@ -89,6 +89,9 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                             cursor = cursor_base;
                             continue 'cursor;
                         }
+                        ProjectionElem::Subtype(..) => {
+                            panic!("Subtype projection is not allowed before borrow check")
+                        }
                         ProjectionElem::Deref => {
                             // (handled below)
                         }
