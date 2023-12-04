@@ -263,12 +263,10 @@ fn rewrite_closure_fn_decl(
     } else {
         ""
     };
-    let (is_async, is_gen) = if let Some(coro_kind) = coro_kind {
-        let is_async = if coro_kind.is_async() { "async " } else { "" };
-        let is_gen = if coro_kind.is_gen() { "gen " } else { "" };
-        (is_async, is_gen)
-    } else {
-        ("", "")
+    let coro = match coro_kind {
+        Some(ast::CoroutineKind::Async { .. }) => "async ",
+        Some(ast::CoroutineKind::Gen { .. }) => "gen ",
+        None => "",
     };
     let mover = if matches!(capture, ast::CaptureBy::Value { .. }) {
         "move "
@@ -278,14 +276,7 @@ fn rewrite_closure_fn_decl(
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
     let nested_shape = shape
-        .shrink_left(
-            binder.len()
-                + const_.len()
-                + immovable.len()
-                + is_async.len()
-                + is_gen.len()
-                + mover.len(),
-        )?
+        .shrink_left(binder.len() + const_.len() + immovable.len() + coro.len() + mover.len())?
         .sub_width(4)?;
 
     // 1 = |
@@ -323,7 +314,7 @@ fn rewrite_closure_fn_decl(
         .tactic(tactic)
         .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
-    let mut prefix = format!("{binder}{const_}{immovable}{is_async}{is_gen}{mover}|{list_str}|");
+    let mut prefix = format!("{binder}{const_}{immovable}{coro}{mover}|{list_str}|");
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
