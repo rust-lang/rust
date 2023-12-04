@@ -1619,6 +1619,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             } else {
+                if let Some(errors) =
+                    self.could_impl_trait(clone_trait_did, expected_ty, self.param_env)
+                {
+                    match &errors[..] {
+                        [] => {}
+                        [error] => {
+                            diag.help(format!(
+                                "`Clone` is not implemented because the trait bound `{}` is \
+                                 not satisfied",
+                                error.obligation.predicate,
+                            ));
+                        }
+                        [errors @ .., last] => {
+                            diag.help(format!(
+                                "`Clone` is not implemented because the following trait bounds \
+                                 could not be satisfied: {} and `{}`",
+                                errors
+                                    .iter()
+                                    .map(|e| format!("`{}`", e.obligation.predicate))
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
+                                last.obligation.predicate,
+                            ));
+                        }
+                    }
+                    for error in errors {
+                        if let traits::FulfillmentErrorCode::CodeSelectionError(
+                            traits::SelectionError::Unimplemented,
+                        ) = error.code
+                            && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+                                error.obligation.predicate.kind().skip_binder()
+                        {
+                            self.infcx.err_ctxt().suggest_derive(
+                                &error.obligation,
+                                diag,
+                                error.obligation.predicate.kind().rebind(pred),
+                            );
+                        }
+                    }
+                }
                 self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
             }
         }
