@@ -72,6 +72,11 @@ impl server::FreeFunctions for TokenIdServer {
     }
 
     fn emit_diagnostic(&mut self, _: bridge::Diagnostic<Self::Span>) {}
+
+    fn is_derive_const(&mut self) -> bool {
+        // FIXME: pass the correct information
+        false
+    }
 }
 
 impl server::TokenStream for TokenIdServer {

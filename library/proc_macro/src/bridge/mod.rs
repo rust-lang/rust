@@ -60,6 +60,7 @@ macro_rules! with_api {
                 fn track_path(path: &str);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
                 fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
+                fn is_derive_const() -> bool;
             },
             TokenStream {
                 fn drop($self: $S::TokenStream);

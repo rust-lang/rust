@@ -25,7 +25,9 @@
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
+#![feature(const_trait_impl)]
 #![feature(decl_macro)]
+#![feature(effects)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]
@@ -84,6 +86,32 @@ pub struct TokenStream(Option<bridge::client::TokenStream>);
 impl !Send for TokenStream {}
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Sync for TokenStream {}
+
+/// Derive expansion options.
+#[rustc_diagnostic_item = "DeriveExpansionOptions"]
+#[unstable(feature = "derive_const", issue = "none")]
+#[derive(Default, Clone)]
+#[non_exhaustive]
+pub struct DeriveExpansionOptions;
+
+impl DeriveExpansionOptions {
+    /// Returns the default options.
+    #[unstable(feature = "derive_const", issue = "none")]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Whether this is a `#[derive_const]` or a `#[derive]`.
+    #[unstable(feature = "derive_const", issue = "none")]
+    pub fn is_const(&self) -> bool {
+        bridge::client::FreeFunctions::is_derive_const()
+    }
+}
+
+#[unstable(feature = "derive_const", issue = "none")]
+impl !Send for DeriveExpansionOptions {}
+#[unstable(feature = "derive_const", issue = "none")]
+impl !Sync for DeriveExpansionOptions {}
 
 /// Error returned from `TokenStream::from_str`.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]

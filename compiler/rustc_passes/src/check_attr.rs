@@ -2293,10 +2293,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         let tcx = self.tcx;
-        let Some(token_stream_def_id) = tcx.get_diagnostic_item(sym::TokenStream) else {
+
+        let Some(token_stream) = tcx
+            .get_diagnostic_item(sym::TokenStream)
+            .and_then(|did| tcx.type_of(did).no_bound_vars())
+        else {
             return;
         };
-        let Some(token_stream) = tcx.type_of(token_stream_def_id).no_bound_vars() else {
+        let Some(derive_expansion_options) = tcx
+            .get_diagnostic_item(sym::DeriveExpansionOptions)
+            .and_then(|did| tcx.type_of(did).no_bound_vars())
+        else {
             return;
         };
 
@@ -2332,8 +2339,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Unsafety::Normal,
             Abi::Rust,
         );
+        let expected_options_sig = tcx.mk_fn_sig(
+            [token_stream, derive_expansion_options],
+            token_stream,
+            false,
+            Unsafety::Normal,
+            Abi::Rust,
+        );
 
-        if let Err(terr) = ocx.eq(&cause, param_env, expected_sig, sig) {
+        let mut result = infcx.probe(|_| ocx.eq(&cause, param_env, expected_sig, sig));
+        if result.is_err()
+            && let ProcMacroKind::Derive = kind
+        {
+            if infcx.probe(|_| ocx.eq(&cause, param_env, expected_options_sig, sig)).is_ok() {
+                result = Ok(());
+            }
+        }
+
+        if let Err(terr) = result {
             let mut diag = tcx.dcx().create_err(errors::ProcMacroBadSig { span, kind });
 
             let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id);
@@ -2368,18 +2391,33 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            infcx.err_ctxt().note_type_err(
-                &mut diag,
-                &cause,
-                None,
-                Some(ValuePairs::PolySigs(ExpectedFound {
-                    expected: ty::Binder::dummy(expected_sig),
-                    found: ty::Binder::dummy(sig),
-                })),
-                terr,
-                false,
-                false,
-            );
+            let mut note_expected_found = |expected_sig| {
+                infcx.err_ctxt().note_type_err(
+                    &mut diag,
+                    &cause,
+                    None,
+                    Some(ValuePairs::PolySigs(ExpectedFound {
+                        expected: ty::Binder::dummy(expected_sig),
+                        found: ty::Binder::dummy(sig),
+                    })),
+                    terr,
+                    false,
+                    false,
+                )
+            };
+
+            note_expected_found(expected_sig);
+
+            if let ProcMacroKind::Derive = kind
+                && tcx
+                    .features()
+                    .declared_lib_features
+                    .iter()
+                    .any(|&(feature, _)| feature == sym::derive_const)
+            {
+                note_expected_found(expected_options_sig);
+            }
+
             diag.emit();
             self.abort.set(true);
         }

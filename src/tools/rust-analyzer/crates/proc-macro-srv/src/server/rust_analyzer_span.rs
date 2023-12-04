@@ -82,6 +82,11 @@ impl server::FreeFunctions for RaSpanServer {
     fn emit_diagnostic(&mut self, _: bridge::Diagnostic<Self::Span>) {
         // FIXME handle diagnostic
     }
+
+    fn is_derive_const(&mut self) -> bool {
+        // FIXME: pass the correct information
+        false
+    }
 }
 
 impl server::TokenStream for RaSpanServer {

@@ -484,12 +484,16 @@ impl ProcMacro {
         }
     }
 
-    pub const fn custom_derive(
+    pub const fn custom_derive<Discriminant>(
         trait_name: &'static str,
         attributes: &'static [&'static str],
-        expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
+        expand: impl ~const ExpandCustomDerive<Discriminant>,
     ) -> Self {
-        ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
+        ProcMacro::CustomDerive {
+            trait_name,
+            attributes,
+            client: Client::expand1(expand.into_fn()),
+        }
     }
 
     pub const fn attr(
@@ -504,5 +508,28 @@ impl ProcMacro {
         expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         ProcMacro::Bang { name, client: Client::expand1(expand) }
+    }
+}
+
+#[const_trait]
+pub trait ExpandCustomDerive<Discriminant> {
+    fn into_fn(self) -> impl Fn(crate::TokenStream) -> crate::TokenStream + Copy;
+}
+
+impl<F> const ExpandCustomDerive<()> for F
+where
+    F: Fn(crate::TokenStream) -> crate::TokenStream + Copy,
+{
+    fn into_fn(self) -> impl Fn(crate::TokenStream) -> crate::TokenStream + Copy {
+        self
+    }
+}
+
+impl<F> const ExpandCustomDerive<crate::DeriveExpansionOptions> for F
+where
+    F: Fn(crate::TokenStream, crate::DeriveExpansionOptions) -> crate::TokenStream + Copy,
+{
+    fn into_fn(self) -> impl Fn(crate::TokenStream) -> crate::TokenStream + Copy {
+        move |input| self(input, Default::default())
     }
 }

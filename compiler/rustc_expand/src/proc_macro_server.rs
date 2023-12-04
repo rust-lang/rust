@@ -397,10 +397,11 @@ pub(crate) struct Rustc<'a, 'b> {
     mixed_site: Span,
     krate: CrateNum,
     rebased_spans: FxHashMap<usize, Span>,
+    options: ExpansionOptions,
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
-    pub fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
+    pub fn new(ecx: &'a mut ExtCtxt<'b>, options: ExpansionOptions) -> Self {
         let expn_data = ecx.current_expansion.id.expn_data();
         Rustc {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),
@@ -408,6 +409,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
             mixed_site: ecx.with_mixed_site_ctxt(expn_data.call_site),
             krate: expn_data.macro_def_id.unwrap().krate,
             rebased_spans: FxHashMap::default(),
+            options,
             ecx,
         }
     }
@@ -415,6 +417,11 @@ impl<'a, 'b> Rustc<'a, 'b> {
     fn sess(&self) -> &ParseSess {
         self.ecx.parse_sess()
     }
+}
+
+#[derive(Default)]
+pub(crate) struct ExpansionOptions {
+    pub(crate) is_derive_const: bool,
 }
 
 impl server::Types for Rustc<'_, '_> {
@@ -502,6 +509,10 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));
         }
         self.sess().dcx.emit_diagnostic(diag);
+    }
+
+    fn is_derive_const(&mut self) -> bool {
+        self.options.is_derive_const
     }
 }
 

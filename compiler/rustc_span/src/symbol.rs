@@ -182,6 +182,7 @@ symbols! {
         DecorateLint,
         Default,
         Deref,
+        DeriveExpansionOptions,
         DiagnosticMessage,
         DirBuilder,
         Display,
