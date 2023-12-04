@@ -140,7 +140,7 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
             let status = Command::new("git")
                 .arg("fetch")
                 .arg(test.repo)
-                .arg("master")
+                .arg(test.sha)
                 .arg(&format!("--depth={}", depth))
                 .current_dir(&out_dir)
                 .status()
