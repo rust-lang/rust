@@ -1091,7 +1091,7 @@ impl Handler {
 
     #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.inner.borrow_mut().fatal_no_raise(msg).raise()
+        DiagnosticBuilder::<FatalError>::new(self, Fatal, msg).emit().raise()
     }
 
     #[rustc_lint_diagnostics]
@@ -1181,10 +1181,10 @@ impl Handler {
                 DiagnosticMessage::Str(warnings),
             )),
             (_, 0) => {
-                let _ = inner.fatal_no_raise(errors);
+                inner.emit_diagnostic(&mut Diagnostic::new(Fatal, errors));
             }
             (_, _) => {
-                let _ = inner.fatal_no_raise(format!("{errors}; {warnings}"));
+                inner.emit_diagnostic(&mut Diagnostic::new(Fatal, format!("{errors}; {warnings}")));
             }
         }
 
@@ -1590,13 +1590,6 @@ impl HandlerInner {
 
     fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
         self.emit_diagnostic(&mut Diagnostic::new(FailureNote, msg));
-    }
-
-    // Note: unlike `Handler::fatal`, this doesn't return `!`, because that is
-    // inappropriate for some of its call sites.
-    fn fatal_no_raise(&mut self, msg: impl Into<DiagnosticMessage>) -> FatalError {
-        self.emit_diagnostic(&mut Diagnostic::new(Fatal, msg));
-        FatalError
     }
 
     fn flush_delayed(
