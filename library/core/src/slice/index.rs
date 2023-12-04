@@ -233,7 +233,10 @@ unsafe impl<T> SliceIndex<[T]> for usize {
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
-        unsafe { slice.as_ptr().add(self) }
+        unsafe {
+            crate::intrinsics::assume(self < slice.len());
+            slice.as_ptr().add(self)
+        }
     }
 
     #[inline]
