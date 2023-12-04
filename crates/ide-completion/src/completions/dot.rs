@@ -26,17 +26,17 @@ pub(crate) fn complete_dot(
         item.add_to(acc, ctx.db);
     }
 
-    if let DotAccessKind::Method { .. } = dot_access.kind {
-        cov_mark::hit!(test_no_struct_field_completion_for_method_call);
-    } else {
-        complete_fields(
-            acc,
-            ctx,
-            receiver_ty,
-            |acc, field, ty| acc.add_field(ctx, dot_access, None, field, &ty),
-            |acc, field, ty| acc.add_tuple_field(ctx, None, field, &ty),
-        );
-    }
+    let is_field_access = matches!(dot_access.kind, DotAccessKind::Field { .. });
+
+    complete_fields(
+        acc,
+        ctx,
+        receiver_ty,
+        |acc, field, ty| acc.add_field(ctx, dot_access, None, field, &ty),
+        |acc, field, ty| acc.add_tuple_field(ctx, None, field, &ty),
+        is_field_access,
+    );
+
     complete_methods(ctx, receiver_ty, |func| acc.add_method(ctx, dot_access, func, None, None));
 }
 
@@ -82,6 +82,7 @@ pub(crate) fn complete_undotted_self(
             )
         },
         |acc, field, ty| acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
+        true,
     );
     complete_methods(ctx, &ty, |func| {
         acc.add_method(
@@ -104,18 +105,23 @@ fn complete_fields(
     receiver: &hir::Type,
     mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
     mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
+    is_field_access: bool,
 ) {
     let mut seen_names = FxHashSet::default();
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            if seen_names.insert(field.name(ctx.db)) {
+            if seen_names.insert(field.name(ctx.db))
+                && (is_field_access || ty.is_fn() || ty.is_closure())
+            {
                 named_field(acc, field, ty);
             }
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
             // Tuples are always the last type in a deref chain, so just check if the name is
             // already seen without inserting into the hashset.
-            if !seen_names.contains(&hir::Name::new_tuple_field(i)) {
+            if !seen_names.contains(&hir::Name::new_tuple_field(i))
+                && (is_field_access || ty.is_fn() || ty.is_closure())
+            {
                 // Tuple fields are always public (tuple struct fields are handled above).
                 tuple_index(acc, i, ty);
             }
@@ -250,7 +256,6 @@ impl A {
 
     #[test]
     fn test_no_struct_field_completion_for_method_call() {
-        cov_mark::check!(test_no_struct_field_completion_for_method_call);
         check(
             r#"
 struct A { the_field: u32 }
@@ -1171,5 +1176,64 @@ impl<B: Bar, F: core::ops::Deref<Target = B>> Foo<F> {
             fd foo &u8
         "#]],
         );
+    }
+
+    #[test]
+    fn test_struct_function_field_completion() {
+        check(
+            r#"
+struct S { va_field: u32, fn_field: fn() }
+fn foo() { S { va_field: 0, fn_field: || {} }.fi$0() }
+"#,
+            expect![[r#"
+                fd fn_field fn()
+            "#]],
+        );
+
+        check_edit(
+            "fn_field",
+            r#"
+struct S { va_field: u32, fn_field: fn() }
+fn foo() { S { va_field: 0, fn_field: || {} }.fi$0() }
+"#,
+            r#"
+struct S { va_field: u32, fn_field: fn() }
+fn foo() { (S { va_field: 0, fn_field: || {} }.fn_field)() }
+"#,
+        );
+    }
+
+    #[test]
+    fn test_tuple_function_field_completion() {
+        check(
+            r#"
+struct B(u32, fn())
+fn foo() {
+   let b = B(0, || {});
+   b.$0()
+}
+"#,
+            expect![[r#"
+                fd 1 fn()
+            "#]],
+        );
+
+        check_edit(
+            "1",
+            r#"
+struct B(u32, fn())
+fn foo() {
+   let b = B(0, || {});
+   b.$0()
+}
+"#,
+            r#"
+struct B(u32, fn())
+fn foo() {
+   let b = B(0, || {});
+   (b.1)()
+}
+"#,
+        )
     }
 }
