@@ -31,6 +31,7 @@ mod discriminant;
 mod fn_lifetime_fn;
 mod implicit_static;
 mod param_name;
+mod implicit_drop;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -45,6 +46,7 @@ pub struct InlayHintsConfig {
     pub closure_return_type_hints: ClosureReturnTypeHints,
     pub closure_capture_hints: bool,
     pub binding_mode_hints: bool,
+    pub implicit_drop_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
@@ -124,6 +126,7 @@ pub enum InlayKind {
     Lifetime,
     Parameter,
     Type,
+    Drop,
 }
 
 #[derive(Debug)]
@@ -503,7 +506,10 @@ fn hints(
             ast::Item(it) => match it {
                 // FIXME: record impl lifetimes so they aren't being reused in assoc item lifetime inlay hints
                 ast::Item::Impl(_) => None,
-                ast::Item::Fn(it) => fn_lifetime_fn::hints(hints, config, it),
+                ast::Item::Fn(it) => {
+                    implicit_drop::hints(hints, sema, config, &it);
+                    fn_lifetime_fn::hints(hints, config, it)
+                },
                 // static type elisions
                 ast::Item::Static(it) => implicit_static::hints(hints, config, Either::Left(it)),
                 ast::Item::Const(it) => implicit_static::hints(hints, config, Either::Right(it)),
@@ -591,6 +597,7 @@ mod tests {
         max_length: None,
         closing_brace_hints_min_lines: None,
         fields_to_resolve: InlayFieldsToResolve::empty(),
+        implicit_drop_hints: false,
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,
