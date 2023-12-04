@@ -430,4 +430,29 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn callable_field_struct_init() {
+        check_edit(
+            "field",
+            r#"
+struct S {
+    field: fn(),
+}
+
+fn main() {
+    S {fi$0
+}
+"#,
+            r#"
+struct S {
+    field: fn(),
+}
+
+fn main() {
+    S {field
+}
+"#,
+        );
+    }
 }
