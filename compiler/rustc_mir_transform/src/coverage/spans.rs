@@ -129,16 +129,14 @@ impl CoverageSpan {
     /// If the span is part of a macro, and the macro is visible (expands directly to the given
     /// body_span), returns the macro name symbol.
     pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
-        if let Some(current_macro) = self.current_macro()
-            && self
-                .expn_span
-                .parent_callsite()
-                .unwrap_or_else(|| bug!("macro must have a parent"))
-                .eq_ctxt(body_span)
-        {
-            return Some(current_macro);
-        }
-        None
+        let current_macro = self.current_macro()?;
+        let parent_callsite = self.expn_span.parent_callsite()?;
+
+        // In addition to matching the context of the body span, the parent callsite
+        // must also be the source callsite, i.e. the parent must have no parent.
+        let is_visible_macro =
+            parent_callsite.parent_callsite().is_none() && parent_callsite.eq_ctxt(body_span);
+        is_visible_macro.then_some(current_macro)
     }
 
     pub fn is_macro_expansion(&self) -> bool {
@@ -384,10 +382,10 @@ impl<'a> CoverageSpansGenerator<'a> {
         let split_point_after_macro_bang = self.curr_original_span.lo()
             + BytePos(visible_macro.as_str().len() as u32)
             + BytePos(1); // add 1 for the `!`
+        debug_assert!(split_point_after_macro_bang <= curr.span.hi());
         if split_point_after_macro_bang > curr.span.hi() {
             // Something is wrong with the macro name span;
-            // return now to avoid emitting malformed mappings.
-            // FIXME(#117788): Track down why this happens.
+            // return now to avoid emitting malformed mappings (e.g. #117788).
             return;
         }
 
