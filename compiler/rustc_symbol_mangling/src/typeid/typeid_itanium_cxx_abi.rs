@@ -379,14 +379,13 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             hir::definitions::DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
             hir::definitions::DefPathData::TypeNs(..) => "t",
             hir::definitions::DefPathData::ValueNs(..) => "v",
-            hir::definitions::DefPathData::ClosureExpr => "C",
+            hir::definitions::DefPathData::Closure => "C",
             hir::definitions::DefPathData::Ctor => "c",
             hir::definitions::DefPathData::AnonConst => "k",
-            hir::definitions::DefPathData::ImplTrait => "i",
+            hir::definitions::DefPathData::OpaqueTy => "i",
             hir::definitions::DefPathData::CrateRoot
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
-            | hir::definitions::DefPathData::ImplTraitAssocTy
             | hir::definitions::DefPathData::MacroNs(..)
             | hir::definitions::DefPathData::LifetimeNs(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);

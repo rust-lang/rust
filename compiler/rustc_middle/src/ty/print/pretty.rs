@@ -1804,13 +1804,13 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
 // (but also some things just print a `DefId` generally so maybe we need this?)
 fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
     match tcx.def_key(def_id).disambiguated_data.data {
-        DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::ImplTrait => {
+        DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::OpaqueTy => {
             Namespace::TypeNS
         }
 
         DefPathData::ValueNs(..)
         | DefPathData::AnonConst
-        | DefPathData::ClosureExpr
+        | DefPathData::Closure
         | DefPathData::Ctor => Namespace::ValueNS,
 
         DefPathData::MacroNs(..) => Namespace::MacroNS,

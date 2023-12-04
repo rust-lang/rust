@@ -163,7 +163,17 @@ where
             // With custom DSTS, this *will* execute user-defined code, but the same
             // happens at run-time so that's okay.
             match self.size_and_align_of(&base_meta, &field_layout)? {
-                Some((_, align)) => (base_meta, offset.align_to(align)),
+                Some((_, align)) => {
+                    // For packed types, we need to cap alignment.
+                    let align = if let ty::Adt(def, _) = base.layout().ty.kind()
+                        && let Some(packed) = def.repr().pack
+                    {
+                        align.min(packed)
+                    } else {
+                        align
+                    };
+                    (base_meta, offset.align_to(align))
+                }
                 None => {
                     // For unsized types with an extern type tail we perform no adjustments.
                     // NOTE: keep this in sync with `PlaceRef::project_field` in the codegen backend.
