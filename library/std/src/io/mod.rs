@@ -1856,13 +1856,13 @@ pub trait Write {
 /// }
 /// ```
 #[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
-pub struct FmtWriteAdapter<'a, W: Write + ?Sized> {
+pub struct FmtWriteAdapter<'a, W: ?Sized> {
     inner: &'a mut W,
     error: Option<Error>,
 }
 
 #[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
-impl<W: Write + ?Sized> FmtWriteAdapter<'_, W> {
+impl<W> FmtWriteAdapter<'_, W> {
     /// Returns a reference to the last error that occurred in this adapter.
     pub fn err(&self) -> &Option<Error> {
         &self.error
@@ -1875,7 +1875,7 @@ impl<W: Write + ?Sized> FmtWriteAdapter<'_, W> {
 }
 
 #[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
-impl<W: Write + ?Sized> fmt::Write for FmtWriteAdapter<'_, W> {
+impl<W: Write> fmt::Write for FmtWriteAdapter<'_, W> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         match self.inner.write_all(s.as_bytes()) {
             Ok(()) => {
@@ -1891,7 +1891,7 @@ impl<W: Write + ?Sized> fmt::Write for FmtWriteAdapter<'_, W> {
 }
 
 #[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
-impl<W: Write + ?Sized> Debug for FmtWriteAdapter<'_, W> {
+impl<W> Debug for FmtWriteAdapter<'_, W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = f.debug_struct("FmtWriteAdapter");
         builder.field("error", &self.error);
