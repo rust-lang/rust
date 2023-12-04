@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use hir::{db::HirDatabase, Crate, Module};
+use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
 use ide_db::helpers::get_definition;
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
@@ -243,6 +243,7 @@ mod tests {
         }
     }
 
+    #[track_caller]
     fn check_definitions(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis);

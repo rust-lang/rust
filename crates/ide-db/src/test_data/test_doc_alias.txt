@@ -21,9 +21,7 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -50,9 +48,7 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -79,9 +75,7 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -108,9 +102,7 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -137,9 +129,7 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -166,9 +156,7 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -195,9 +183,7 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,

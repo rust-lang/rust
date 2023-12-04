@@ -24,7 +24,7 @@ use hir_def::{
 };
 use hir_expand::{
     name::{AsName, Name},
-    HirFileId,
+    HirFileId, HirFileIdExt,
 };
 use stdx::{always, never};
 use syntax::{

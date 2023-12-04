@@ -124,7 +124,7 @@ pub use {
     hir_expand::{
         attrs::{Attr, AttrId},
         name::{known, Name},
-        ExpandResult, HirFileId, InFile, MacroFile, Origin,
+        tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
     },
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
@@ -140,7 +140,10 @@ pub use {
 #[allow(unused)]
 use {
     hir_def::path::Path,
-    hir_expand::{hygiene::Hygiene, name::AsName},
+    hir_expand::{
+        name::AsName,
+        span::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
+    },
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -3490,9 +3493,34 @@ impl Impl {
         self.id.lookup(db.upcast()).container.into()
     }
 
-    pub fn as_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
+    pub fn as_builtin_derive_path(self, db: &dyn HirDatabase) -> Option<InMacroFile<ast::Path>> {
         let src = self.source(db)?;
-        src.file_id.as_builtin_derive_attr_node(db.upcast())
+
+        let macro_file = src.file_id.macro_file()?;
+        let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let (derive_attr, derive_index) = match loc.kind {
+            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
+                let module_id = self.id.lookup(db.upcast()).container;
+                (
+                    db.crate_def_map(module_id.krate())[module_id.local_id]
+                        .scope
+                        .derive_macro_invoc(ast_id, derive_attr_index)?,
+                    derive_index,
+                )
+            }
+            _ => return None,
+        };
+        let file_id = MacroFileId { macro_call_id: derive_attr };
+        let path = db
+            .parse_macro_expansion(file_id)
+            .value
+            .0
+            .syntax_node()
+            .children()
+            .nth(derive_index as usize)
+            .and_then(<ast::Attr as AstNode>::cast)
+            .and_then(|it| it.path())?;
+        Some(InMacroFile { file_id, value: path })
     }
 
     pub fn check_orphan_rules(self, db: &dyn HirDatabase) -> bool {

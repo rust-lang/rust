@@ -2,7 +2,7 @@ use std::fmt;
 
 use ast::HasName;
 use cfg::CfgExpr;
-use hir::{db::HirDatabase, AsAssocItem, HasAttrs, HasSource, Semantics};
+use hir::{db::HirDatabase, AsAssocItem, HasAttrs, HasSource, HirFileIdExt, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},

@@ -15,6 +15,7 @@ pub mod thread;
 pub mod anymap;
 
 pub use always_assert::{always, never};
+pub use itertools;
 
 #[inline(always)]
 pub fn is_ci() -> bool {
@@ -38,6 +39,24 @@ pub fn print_backtrace() {
 Uncomment `default = [ "backtrace" ]` in `crates/stdx/Cargo.toml`.
 "#
     );
+}
+
+pub trait TupleExt {
+    type Head;
+    type Tail;
+    fn head(self) -> Self::Head;
+    fn tail(self) -> Self::Tail;
+}
+
+impl<T, U> TupleExt for (T, U) {
+    type Head = T;
+    type Tail = U;
+    fn head(self) -> Self::Head {
+        self.0
+    }
+    fn tail(self) -> Self::Tail {
+        self.1
+    }
 }
 
 pub fn to_lower_snake_case(s: &str) -> String {

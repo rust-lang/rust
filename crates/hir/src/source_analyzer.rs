@@ -26,11 +26,10 @@ use hir_def::{
 };
 use hir_expand::{
     builtin_fn_macro::BuiltinFnLikeExpander,
-    hygiene::Hygiene,
     mod_path::path,
     name,
     name::{AsName, Name},
-    HirFileId, InFile,
+    HirFileId, HirFileIdExt, InFile, MacroFileId, MacroFileIdExt,
 };
 use hir_ty::{
     diagnostics::{
@@ -484,7 +483,7 @@ impl SourceAnalyzer {
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Macro> {
         let ctx = LowerCtx::with_file_id(db.upcast(), macro_call.file_id);
-        let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &ctx))?;
+        let path = macro_call.value.path().and_then(|ast| Path::from_src(&ctx, ast))?;
         self.resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path()?, Some(MacroSubNs::Bang))
             .map(|(it, _)| it.into())
@@ -596,9 +595,8 @@ impl SourceAnalyzer {
         }
 
         // This must be a normal source file rather than macro file.
-        let hygiene = Hygiene::new(db.upcast(), self.file_id);
-        let ctx = LowerCtx::with_hygiene(db.upcast(), &hygiene);
-        let hir_path = Path::from_src(path.clone(), &ctx)?;
+        let ctx = LowerCtx::with_span_map(db.upcast(), db.span_map(self.file_id));
+        let hir_path = Path::from_src(&ctx, path.clone())?;
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.
@@ -755,14 +753,15 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<HirFileId> {
+    ) -> Option<MacroFileId> {
         let krate = self.resolver.krate();
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
             self.resolver
                 .resolve_path_as_macro(db.upcast(), &path, Some(MacroSubNs::Bang))
                 .map(|(it, _)| macro_id_to_def_id(db.upcast(), it))
         })?;
-        Some(macro_call_id.as_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
+        // why the 64?
+        Some(macro_call_id.as_macro_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
     }
 
     pub(crate) fn resolve_variant(

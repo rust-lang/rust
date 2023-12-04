@@ -8,11 +8,12 @@ use test_utils::{
     ESCAPED_CURSOR_MARKER,
 };
 use triomphe::Arc;
-use tt::token_id::{Leaf, Subtree, TokenTree};
+use tt::{Leaf, Subtree, TokenTree};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
     input::{CrateName, CrateOrigin, LangCrateOrigin},
+    span::SpanData,
     Change, CrateDisplayName, CrateGraph, CrateId, Dependency, DependencyKind, Edition, Env,
     FileId, FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
     ProcMacros, ReleaseChannel, SourceDatabaseExt, SourceRoot, SourceRootId,
@@ -539,10 +540,13 @@ struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
-        subtree: &Subtree,
-        _: Option<&Subtree>,
+        subtree: &Subtree<SpanData>,
+        _: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -553,10 +557,13 @@ struct AttributeInputReplaceProcMacroExpander;
 impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
     fn expand(
         &self,
-        _: &Subtree,
-        attrs: Option<&Subtree>,
+        _: &Subtree<SpanData>,
+        attrs: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
@@ -568,11 +575,14 @@ struct MirrorProcMacroExpander;
 impl ProcMacroExpander for MirrorProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree,
-        _: Option<&Subtree>,
+        input: &Subtree<SpanData>,
+        _: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
-        fn traverse(input: &Subtree) -> Subtree {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
+        fn traverse(input: &Subtree<SpanData>) -> Subtree<SpanData> {
             let mut token_trees = vec![];
             for tt in input.token_trees.iter().rev() {
                 let tt = match tt {
@@ -595,13 +605,16 @@ struct ShortenProcMacroExpander;
 impl ProcMacroExpander for ShortenProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree,
-        _: Option<&Subtree>,
+        input: &Subtree<SpanData>,
+        _: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
         return Ok(traverse(input));
 
-        fn traverse(input: &Subtree) -> Subtree {
+        fn traverse(input: &Subtree<SpanData>) -> Subtree<SpanData> {
             let token_trees = input
                 .token_trees
                 .iter()
@@ -613,7 +626,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
             Subtree { delimiter: input.delimiter, token_trees }
         }
 
-        fn modify_leaf(leaf: &Leaf) -> Leaf {
+        fn modify_leaf(leaf: &Leaf<SpanData>) -> Leaf<SpanData> {
             let mut leaf = leaf.clone();
             match &mut leaf {
                 Leaf::Literal(it) => {

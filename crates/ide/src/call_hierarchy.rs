@@ -149,7 +149,7 @@ mod tests {
 
     fn check_hierarchy(
         ra_fixture: &str,
-        expected: Expect,
+        expected_nav: Expect,
         expected_incoming: Expect,
         expected_outgoing: Expect,
     ) {
@@ -158,7 +158,7 @@ mod tests {
         let mut navs = analysis.call_hierarchy(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
         let nav = navs.pop().unwrap();
-        expected.assert_eq(&nav.debug_render());
+        expected_nav.assert_eq(&nav.debug_render());
 
         let item_pos =
             FilePosition { file_id: nav.file_id, offset: nav.focus_or_full_range().start() };

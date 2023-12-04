@@ -1,7 +1,7 @@
 //! This module resolves `mod foo;` declaration to file.
 use arrayvec::ArrayVec;
 use base_db::{AnchoredPath, FileId};
-use hir_expand::name::Name;
+use hir_expand::{name::Name, HirFileIdExt};
 use limit::Limit;
 use syntax::SmolStr;
 
@@ -66,7 +66,7 @@ impl ModDir {
         attr_path: Option<&SmolStr>,
     ) -> Result<(FileId, bool, ModDir), Box<[String]>> {
         let name = name.unescaped();
-        let orig_file_id = file_id.original_file(db.upcast());
+        let orig_file_id = file_id.original_file_respecting_includes(db.upcast());
 
         let mut candidate_files = ArrayVec::<_, 2>::new();
         match attr_path {

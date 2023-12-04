@@ -23,7 +23,7 @@ use hir_def::{
     EnumVariantId, HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
     TraitId,
 };
-use hir_expand::{hygiene::Hygiene, name::Name};
+use hir_expand::name::Name;
 use intern::{Internable, Interned};
 use itertools::Itertools;
 use la_arena::ArenaMap;
@@ -1732,13 +1732,13 @@ impl HirDisplay for TypeRef {
                 f.write_joined(bounds, " + ")?;
             }
             TypeRef::Macro(macro_call) => {
-                let macro_call = macro_call.to_node(f.db.upcast());
-                let ctx = hir_def::lower::LowerCtx::with_hygiene(
+                let ctx = hir_def::lower::LowerCtx::with_span_map(
                     f.db.upcast(),
-                    &Hygiene::new_unhygienic(),
+                    f.db.span_map(macro_call.file_id),
                 );
+                let macro_call = macro_call.to_node(f.db.upcast());
                 match macro_call.path() {
-                    Some(path) => match Path::from_src(path, &ctx) {
+                    Some(path) => match Path::from_src(&ctx, path) {
                         Some(path) => path.hir_fmt(f)?,
                         None => write!(f, "{{macro}}")?,
                     },

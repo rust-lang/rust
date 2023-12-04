@@ -1,4 +1,4 @@
-use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, InFile, Type};
+use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
     ast::{self, BlockExpr, ExprStmt},

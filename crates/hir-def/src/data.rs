@@ -663,7 +663,7 @@ impl<'a> AssocItemCollector<'a> {
                             self.module_id.local_id,
                             MacroCallKind::Attr {
                                 ast_id,
-                                attr_args: Arc::new((tt::Subtree::empty(), Default::default())),
+                                attr_args: None,
                                 invoc_attr_index: attr.id,
                             },
                             attr.path().clone(),
@@ -706,7 +706,7 @@ impl<'a> AssocItemCollector<'a> {
             }
             AssocItem::MacroCall(call) => {
                 let file_id = self.expander.current_file_id();
-                let MacroCall { ast_id, expand_to, ref path } = item_tree[call];
+                let MacroCall { ast_id, expand_to, call_site, ref path } = item_tree[call];
                 let module = self.expander.module.local_id;
 
                 let resolver = |path| {
@@ -725,6 +725,7 @@ impl<'a> AssocItemCollector<'a> {
                 match macro_call_as_call_id(
                     self.db.upcast(),
                     &AstIdWithPath::new(file_id, ast_id, Clone::clone(path)),
+                    call_site,
                     expand_to,
                     self.expander.module.krate(),
                     resolver,
@@ -793,7 +794,7 @@ impl<'a> AssocItemCollector<'a> {
 
         self.collect(&item_tree, tree_id, &iter);
 
-        self.expander.exit(self.db, mark);
+        self.expander.exit(mark);
     }
 }
 

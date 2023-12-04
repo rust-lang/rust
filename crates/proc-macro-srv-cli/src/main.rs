@@ -18,12 +18,12 @@ fn main() -> std::io::Result<()> {
     run()
 }
 
-#[cfg(not(feature = "sysroot-abi"))]
+#[cfg(not(any(feature = "sysroot-abi", rust_analyzer)))]
 fn run() -> io::Result<()> {
     panic!("proc-macro-srv-cli requires the `sysroot-abi` feature to be enabled");
 }
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(any(feature = "sysroot-abi", rust_analyzer))]
 fn run() -> io::Result<()> {
     use proc_macro_api::msg::{self, Message};
 

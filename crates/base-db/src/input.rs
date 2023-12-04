@@ -13,8 +13,9 @@ use la_arena::{Arena, Idx};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
 use triomphe::Arc;
-use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
+
+use crate::span::SpanData;
 
 // Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
 // then the crate for the proc-macro hasn't been build yet as the build data is missing.
@@ -242,6 +243,9 @@ impl CrateDisplayName {
     }
 }
 
+// FIXME: These should not be defined in here? Why does base db know about proc-macros
+// ProcMacroKind is used in [`fixture`], but that module probably shouldn't be in this crate either.
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProcMacroId(pub u32);
 
@@ -255,10 +259,13 @@ pub enum ProcMacroKind {
 pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
     fn expand(
         &self,
-        subtree: &Subtree,
-        attrs: Option<&Subtree>,
+        subtree: &tt::Subtree<SpanData>,
+        attrs: Option<&tt::Subtree<SpanData>>,
         env: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError>;
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError>;
 }
 
 #[derive(Debug)]
@@ -323,7 +330,9 @@ pub struct CrateData {
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
-    // FIXME: These things should not be per crate! These are more per workspace crate graph level things
+    // FIXME: These things should not be per crate! These are more per workspace crate graph level
+    // things. This info does need to be somewhat present though as to prevent deduplication from
+    // happening across different workspaces with different layouts.
     pub target_layout: TargetLayoutLoadResult,
     pub channel: Option<ReleaseChannel>,
 }

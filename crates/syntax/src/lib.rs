@@ -75,7 +75,7 @@ pub use smol_str::SmolStr;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parse<T> {
     green: GreenNode,
-    errors: Arc<[SyntaxError]>,
+    errors: Option<Arc<[SyntaxError]>>,
     _ty: PhantomData<fn() -> T>,
 }
 
@@ -87,14 +87,18 @@ impl<T> Clone for Parse<T> {
 
 impl<T> Parse<T> {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> Parse<T> {
-        Parse { green, errors: errors.into(), _ty: PhantomData }
+        Parse {
+            green,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        }
     }
 
     pub fn syntax_node(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green.clone())
     }
     pub fn errors(&self) -> &[SyntaxError] {
-        &self.errors
+        self.errors.as_deref().unwrap_or_default()
     }
 }
 
@@ -108,10 +112,9 @@ impl<T: AstNode> Parse<T> {
     }
 
     pub fn ok(self) -> Result<T, Arc<[SyntaxError]>> {
-        if self.errors.is_empty() {
-            Ok(self.tree())
-        } else {
-            Err(self.errors)
+        match self.errors {
+            Some(e) => Err(e),
+            None => Ok(self.tree()),
         }
     }
 }
@@ -129,7 +132,7 @@ impl Parse<SyntaxNode> {
 impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
         let mut buf = format!("{:#?}", self.tree().syntax());
-        for err in self.errors.iter() {
+        for err in self.errors.as_deref().into_iter().flat_map(<[_]>::iter) {
             format_to!(buf, "error {:?}: {}\n", err.range(), err);
         }
         buf
@@ -141,13 +144,16 @@ impl Parse<SourceFile> {
 
     fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
-        parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
-            |(green_node, errors, _reparsed_range)| Parse {
-                green: green_node,
-                errors: errors.into(),
-                _ty: PhantomData,
-            },
+        parsing::incremental_reparse(
+            self.tree().syntax(),
+            indel,
+            self.errors.as_deref().unwrap_or_default().iter().cloned(),
         )
+        .map(|(green_node, errors, _reparsed_range)| Parse {
+            green: green_node,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        })
     }
 
     fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
@@ -168,7 +174,11 @@ impl SourceFile {
         errors.extend(validation::validate(&root));
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        Parse { green, errors: errors.into(), _ty: PhantomData }
+        Parse {
+            green,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        }
     }
 }
 
@@ -275,7 +285,11 @@ impl ast::TokenTree {
 
         let (green, errors) = builder.finish_raw();
 
-        Parse { green, errors: errors.into(), _ty: PhantomData }
+        Parse {
+            green,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        }
     }
 }
 

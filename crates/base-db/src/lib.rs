@@ -5,6 +5,7 @@
 mod input;
 mod change;
 pub mod fixture;
+pub mod span;
 
 use std::panic;
 
@@ -12,14 +13,13 @@ use rustc_hash::FxHashSet;
 use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 use triomphe::Arc;
 
-pub use crate::input::DependencyKind;
 pub use crate::{
     change::Change,
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
-        Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths, ProcMacros,
-        ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
+        DependencyKind, Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander,
+        ProcMacroExpansionError, ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths,
+        ProcMacros, ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
     },
 };
 pub use salsa::{self, Cancelled};
@@ -68,8 +68,7 @@ pub trait FileLoader {
 /// model. Everything else in rust-analyzer is derived from these queries.
 #[salsa::query_group(SourceDatabaseStorage)]
 pub trait SourceDatabase: FileLoader + std::fmt::Debug {
-    // Parses the file into the syntax tree.
-    #[salsa::invoke(parse_query)]
+    /// Parses the file into the syntax tree.
     fn parse(&self, file_id: FileId) -> Parse<ast::SourceFile>;
 
     /// The crate graph.
@@ -81,7 +80,7 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     fn proc_macros(&self) -> Arc<ProcMacros>;
 }
 
-fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
+fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
     let _p = profile::span("parse_query").detail(|| format!("{file_id:?}"));
     let text = db.file_text(file_id);
     SourceFile::parse(&text)

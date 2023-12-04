@@ -4,8 +4,8 @@ use std::fmt;
 
 use either::Either;
 use hir::{
-    symbols::FileSymbol, AssocItem, FieldSource, HasContainer, HasSource, HirDisplay, HirFileId,
-    InFile, LocalSource, ModuleSource,
+    db::ExpandDatabase, symbols::FileSymbol, AssocItem, FieldSource, HasContainer, HasSource,
+    HirDisplay, HirFileId, InFile, LocalSource, ModuleSource,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -40,6 +40,8 @@ pub struct NavigationTarget {
     /// comments, and `focus_range` is the range of the identifier.
     ///
     /// Clients should place the cursor on this range when navigating to this target.
+    ///
+    /// This range must be contained within [`Self::full_range`].
     pub focus_range: Option<TextRange>,
     pub name: SmolStr,
     pub kind: Option<SymbolKind>,
@@ -166,13 +168,14 @@ impl NavigationTarget {
 impl TryToNav for FileSymbol {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let full_range = self.loc.original_range(db);
-        let focus_range = self.loc.original_name_range(db).and_then(|it| {
-            if it.file_id == full_range.file_id {
-                Some(it.range)
-            } else {
-                None
-            }
-        });
+        let focus_range = self.loc.original_name_range(db);
+        let focus_range = if focus_range.file_id == full_range.file_id
+            && full_range.range.contains_range(focus_range.range)
+        {
+            Some(focus_range.range)
+        } else {
+            None
+        };
 
         Some(NavigationTarget {
             file_id: full_range.file_id,
@@ -363,11 +366,11 @@ impl ToNav for hir::Module {
 impl TryToNav for hir::Impl {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let InFile { file_id, value } = self.source(db)?;
-        let derive_attr = self.as_builtin_derive(db);
+        let derive_path = self.as_builtin_derive_path(db);
 
-        let (focus, syntax) = match &derive_attr {
-            Some(attr) => (None, attr.value.syntax()),
-            None => (value.self_ty(), value.syntax()),
+        let (file_id, focus, syntax) = match &derive_path {
+            Some(attr) => (attr.file_id.into(), None, attr.value.syntax()),
+            None => (file_id, value.self_ty(), value.syntax()),
         };
 
         let (file_id, full_range, focus_range) = orig_range_with_focus(db, file_id, syntax, focus);
@@ -628,19 +631,30 @@ impl TryToNav for hir::ConstParam {
     }
 }
 
+/// Returns the original range of the syntax node, and the range of the name mapped out of macro expansions
+/// Additionally verifies that the name span is in bounds and related to the original range.
 fn orig_range_with_focus(
     db: &RootDatabase,
     hir_file: HirFileId,
     value: &SyntaxNode,
     name: Option<impl AstNode>,
 ) -> (FileId, TextRange, Option<TextRange>) {
-    let FileRange { file_id, range: full_range } =
-        InFile::new(hir_file, value).original_file_range(db);
+    let FileRange { file_id, range } =
+        match InFile::new(hir_file, value).original_file_range_opt(db) {
+            Some((range, ctxt)) if ctxt.is_root() => range,
+            _ => db
+                .lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id)
+                .kind
+                .original_call_range(db),
+        };
     let focus_range = name
         .and_then(|it| InFile::new(hir_file, it.syntax()).original_file_range_opt(db))
-        .and_then(|range| if range.file_id == file_id { Some(range.range) } else { None });
+        .filter(|(frange, ctxt)| {
+            ctxt.is_root() && frange.file_id == file_id && frange.range.contains_range(frange.range)
+        })
+        .map(|(frange, _ctxt)| frange.range);
 
-    (file_id, full_range, focus_range)
+    (file_id, range, focus_range)
 }
 
 #[cfg(test)]

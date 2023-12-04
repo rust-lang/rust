@@ -1,4 +1,4 @@
-use hir::Semantics;
+use hir::{HirFileIdExt, InFile, Semantics};
 use ide_db::{
     base_db::FileId, helpers::pick_best_token,
     syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
@@ -49,7 +49,9 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
             let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
             // up map out of the #[derive] expansion
-            let token = hir::InFile::new(hir_file, descended).upmap(db)?.value;
+            let InFile { file_id, value: tokens } =
+                hir::InFile::new(hir_file, descended).upmap_once(db)?;
+            let token = sema.parse_or_expand(file_id).covering_element(tokens[0]).into_token()?;
             let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
             let expansions = sema.expand_derive_macro(&attr)?;
             let idx = attr

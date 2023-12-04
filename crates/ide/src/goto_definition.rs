@@ -60,13 +60,13 @@ pub(crate) fn goto_definition(
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
-            if let Some(tt) = ast::TokenTree::cast(parent) {
+            if let Some(tt) = ast::TokenTree::cast(parent.clone()) {
                 if let Some(x) = try_lookup_include_path(sema, tt, token.clone(), file_id) {
                     return Some(vec![x]);
                 }
             }
             Some(
-                IdentClass::classify_token(sema, &token)?
+                IdentClass::classify_node(sema, &parent)?
                     .definitions()
                     .into_iter()
                     .flat_map(|def| {
@@ -392,6 +392,8 @@ fn bar() {
         );
     }
 
+    // FIXME: We should emit two targets here, one for the identifier in the declaration, one for
+    // the macro call
     #[test]
     fn goto_def_for_macro_defined_fn_no_arg() {
         check(
@@ -399,11 +401,11 @@ fn bar() {
 //- /lib.rs
 macro_rules! define_fn {
     () => (fn foo() {})
+
 }
 
   define_fn!();
 //^^^^^^^^^^^^^
-
 fn bar() {
    $0foo();
 }

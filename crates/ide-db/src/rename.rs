@@ -22,10 +22,10 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
-use base_db::{AnchoredPathBuf, FileId, FileRange};
+use base_db::{span::SyntaxContextId, AnchoredPathBuf, FileId, FileRange};
 use either::Either;
-use hir::{FieldSource, HasSource, InFile, ModuleSource, Semantics};
-use stdx::never;
+use hir::{FieldSource, HasSource, HirFileIdExt, InFile, ModuleSource, Semantics};
+use stdx::{never, TupleExt};
 use syntax::{
     ast::{self, HasName},
     AstNode, SyntaxKind, TextRange, T,
@@ -103,6 +103,7 @@ impl Definition {
     /// renamed and extern crate names will report its range, though a rename will introduce
     /// an alias instead.
     pub fn range_for_rename(self, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
+        let syn_ctx_is_root = |(range, ctx): (_, SyntaxContextId)| ctx.is_root().then(|| range);
         let res = match self {
             Definition::Macro(mac) => {
                 let src = mac.source(sema.db)?;
@@ -110,14 +111,18 @@ impl Definition {
                     Either::Left(it) => it.name()?,
                     Either::Right(it) => it.name()?,
                 };
-                src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                src.with_value(name.syntax())
+                    .original_file_range_opt(sema.db)
+                    .and_then(syn_ctx_is_root)
             }
             Definition::Field(field) => {
                 let src = field.source(sema.db)?;
                 match &src.value {
                     FieldSource::Named(record_field) => {
                         let name = record_field.name()?;
-                        src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                        src.with_value(name.syntax())
+                            .original_file_range_opt(sema.db)
+                            .and_then(syn_ctx_is_root)
                     }
                     FieldSource::Pos(_) => None,
                 }
@@ -125,25 +130,31 @@ impl Definition {
             Definition::Module(module) => {
                 let src = module.declaration_source(sema.db)?;
                 let name = src.value.name()?;
-                src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                src.with_value(name.syntax())
+                    .original_file_range_opt(sema.db)
+                    .and_then(syn_ctx_is_root)
             }
-            Definition::Function(it) => name_range(it, sema),
+            Definition::Function(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             Definition::Adt(adt) => match adt {
-                hir::Adt::Struct(it) => name_range(it, sema),
-                hir::Adt::Union(it) => name_range(it, sema),
-                hir::Adt::Enum(it) => name_range(it, sema),
+                hir::Adt::Struct(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+                hir::Adt::Union(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+                hir::Adt::Enum(it) => name_range(it, sema).and_then(syn_ctx_is_root),
             },
-            Definition::Variant(it) => name_range(it, sema),
-            Definition::Const(it) => name_range(it, sema),
-            Definition::Static(it) => name_range(it, sema),
-            Definition::Trait(it) => name_range(it, sema),
-            Definition::TraitAlias(it) => name_range(it, sema),
-            Definition::TypeAlias(it) => name_range(it, sema),
-            Definition::Local(it) => name_range(it.primary_source(sema.db), sema),
+            Definition::Variant(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+            Definition::Const(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+            Definition::Static(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+            Definition::Trait(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+            Definition::TraitAlias(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+            Definition::TypeAlias(it) => name_range(it, sema).and_then(syn_ctx_is_root),
+            Definition::Local(it) => {
+                name_range(it.primary_source(sema.db), sema).and_then(syn_ctx_is_root)
+            }
             Definition::GenericParam(generic_param) => match generic_param {
                 hir::GenericParam::LifetimeParam(lifetime_param) => {
                     let src = lifetime_param.source(sema.db)?;
-                    src.with_value(src.value.lifetime()?.syntax()).original_file_range_opt(sema.db)
+                    src.with_value(src.value.lifetime()?.syntax())
+                        .original_file_range_opt(sema.db)
+                        .and_then(syn_ctx_is_root)
                 }
                 _ => {
                     let x = match generic_param {
@@ -156,22 +167,30 @@ impl Definition {
                         Either::Left(x) => x.name()?,
                         Either::Right(_) => return None,
                     };
-                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                    src.with_value(name.syntax())
+                        .original_file_range_opt(sema.db)
+                        .and_then(syn_ctx_is_root)
                 }
             },
             Definition::Label(label) => {
                 let src = label.source(sema.db);
                 let lifetime = src.value.lifetime()?;
-                src.with_value(lifetime.syntax()).original_file_range_opt(sema.db)
+                src.with_value(lifetime.syntax())
+                    .original_file_range_opt(sema.db)
+                    .and_then(syn_ctx_is_root)
             }
             Definition::ExternCrateDecl(it) => {
                 let src = it.source(sema.db)?;
                 if let Some(rename) = src.value.rename() {
                     let name = rename.name()?;
-                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                    src.with_value(name.syntax())
+                        .original_file_range_opt(sema.db)
+                        .and_then(syn_ctx_is_root)
                 } else {
                     let name = src.value.name_ref()?;
-                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                    src.with_value(name.syntax())
+                        .original_file_range_opt(sema.db)
+                        .and_then(syn_ctx_is_root)
                 }
             }
             Definition::BuiltinType(_) => return None,
@@ -183,7 +202,10 @@ impl Definition {
         };
         return res;
 
-        fn name_range<D>(def: D, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange>
+        fn name_range<D>(
+            def: D,
+            sema: &Semantics<'_, RootDatabase>,
+        ) -> Option<(FileRange, SyntaxContextId)>
         where
             D: HasSource,
             D::Ast: ast::HasName,
@@ -256,8 +278,10 @@ fn rename_mod(
         let file_id = src.file_id.original_file(sema.db);
         match src.value.name() {
             Some(name) => {
-                if let Some(file_range) =
-                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
+                if let Some(file_range) = src
+                    .with_value(name.syntax())
+                    .original_file_range_opt(sema.db)
+                    .map(TupleExt::head)
                 {
                     source_change.insert_source_edit(
                         file_id,
@@ -493,7 +517,12 @@ fn source_edit_from_def(
         for source in local.sources(sema.db) {
             let source = match source.source.clone().original_ast_node(sema.db) {
                 Some(source) => source,
-                None => match source.source.syntax().original_file_range_opt(sema.db) {
+                None => match source
+                    .source
+                    .syntax()
+                    .original_file_range_opt(sema.db)
+                    .map(TupleExt::head)
+                {
                     Some(FileRange { file_id: file_id2, range }) => {
                         file_id = Some(file_id2);
                         edit.replace(range, new_name.to_owned());
@@ -504,7 +533,7 @@ fn source_edit_from_def(
                     }
                 },
             };
-            file_id = source.file_id.file_id();
+            file_id = Some(source.file_id);
             if let Either::Left(pat) = source.value {
                 let name_range = pat.name().unwrap().syntax().text_range();
                 // special cases required for renaming fields/locals in Record patterns
