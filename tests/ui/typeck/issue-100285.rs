@@ -1,6 +1,5 @@
-fn foo(n: i32) -> i32 {
-    for i in 0..0 {
-    //~^ ERROR: mismatched types [E0308]
+fn foo(n: i32) -> i32 { //~ HELP otherwise consider changing the return type to account for that possibility
+    for i in 0..0 { //~ ERROR mismatched types [E0308]
        if n < 0 {
         return i;
         } else if n < 10 {
@@ -15,8 +14,7 @@ fn foo(n: i32) -> i32 {
           return 5;
         }
 
-    }
-    //~| help: return a value for the case when the loop has zero elements to iterate on, or consider changing the return type to account for that possibility
+    } //~ HELP return a value for the case when the loop has zero elements to iterate on
 }
 
 fn main() {}

@@ -74,28 +74,28 @@ Number of file 0 mappings: 6
     = ((c0 + c1) - c1)
 
 Function name: async::executor::block_on::VTABLE::{closure#0}
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 72, 11, 00, 33]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 72, 11, 00, 31]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 114, 17) to (start + 0, 51)
+- Code(Counter(0)) at (prev + 114, 17) to (start + 0, 49)
 
 Function name: async::executor::block_on::VTABLE::{closure#1}
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 73, 11, 00, 33]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 73, 11, 00, 31]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 115, 17) to (start + 0, 51)
+- Code(Counter(0)) at (prev + 115, 17) to (start + 0, 49)
 
 Function name: async::executor::block_on::VTABLE::{closure#2}
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 74, 11, 00, 33]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 74, 11, 00, 31]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 116, 17) to (start + 0, 51)
+- Code(Counter(0)) at (prev + 116, 17) to (start + 0, 49)
 
 Function name: async::executor::block_on::VTABLE::{closure#3}
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 75, 11, 00, 13]

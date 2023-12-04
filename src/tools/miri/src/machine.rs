@@ -2,7 +2,7 @@
 //! `Machine` trait.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::path::Path;
 use std::process;
@@ -309,11 +309,20 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
+    /// An offset inside this allocation that was deemed aligned even for symbolic alignment checks.
+    /// Invariant: the promised alignment will never be less than the native alignment of this allocation.
+    pub symbolic_alignment: Cell<Option<(Size, Align)>>,
 }
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
+        let AllocExtra {
+            borrow_tracker,
+            data_race,
+            weak_memory,
+            backtrace: _,
+            symbolic_alignment: _,
+        } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -902,8 +911,45 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn use_addr_for_alignment_check(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
-        ecx.machine.check_alignment == AlignmentCheck::Int
+    fn alignment_check(
+        ecx: &MiriInterpCx<'mir, 'tcx>,
+        alloc_id: AllocId,
+        alloc_align: Align,
+        alloc_kind: AllocKind,
+        offset: Size,
+        align: Align,
+    ) -> Option<Misalignment> {
+        if ecx.machine.check_alignment != AlignmentCheck::Symbolic {
+            // Just use the built-in check.
+            return None;
+        }
+        if alloc_kind != AllocKind::LiveData {
+            // Can't have any extra info here.
+            return None;
+        }
+        // Let's see which alignment we have been promised for this allocation.
+        let alloc_info = ecx.get_alloc_extra(alloc_id).unwrap(); // cannot fail since the allocation is live
+        let (promised_offset, promised_align) =
+            alloc_info.symbolic_alignment.get().unwrap_or((Size::ZERO, alloc_align));
+        if promised_align < align {
+            // Definitely not enough.
+            Some(Misalignment { has: promised_align, required: align })
+        } else {
+            // What's the offset between us and the promised alignment?
+            let distance = offset.bytes().wrapping_sub(promised_offset.bytes());
+            // That must also be aligned.
+            if distance % align.bytes() == 0 {
+                // All looking good!
+                None
+            } else {
+                // The biggest power of two through which `distance` is divisible.
+                let distance_pow2 = 1 << distance.trailing_zeros();
+                Some(Misalignment {
+                    has: Align::from_bytes(distance_pow2).unwrap(),
+                    required: align,
+                })
+            }
+        }
     }
 
     #[inline(always)]
@@ -1107,6 +1153,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 data_race: race_alloc,
                 weak_memory: buffer_alloc,
                 backtrace,
+                symbolic_alignment: Cell::new(None),
             },
             |ptr| ecx.global_base_pointer(ptr),
         )?;

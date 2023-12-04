@@ -142,4 +142,9 @@ extern "Rust" {
     /// but in tests we want to for sure run it at certain points to check
     /// that it doesn't break anything.
     pub fn miri_run_provenance_gc();
+
+    /// Miri-provided extern function to promise that a given pointer is properly aligned for
+    /// "symbolic" alignment checks. Will fail if the pointer is not actually aligned or `align` is
+    /// not a power of two. Has no effect when alignment checks are concrete (which is the default).
+    pub fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
 }

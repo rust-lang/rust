@@ -63,14 +63,14 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
 
         let statement_spans = data.statements.iter().filter_map(move |statement| {
             let expn_span = filtered_statement_span(statement)?;
-            let span = function_source_span(expn_span, body_span);
+            let span = unexpand_into_body_span(expn_span, body_span)?;
 
             Some(CoverageSpan::new(span, expn_span, bcb, is_closure(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
             let expn_span = filtered_terminator_span(terminator)?;
-            let span = function_source_span(expn_span, body_span);
+            let span = unexpand_into_body_span(expn_span, body_span)?;
 
             Some(CoverageSpan::new(span, expn_span, bcb, false))
         });
@@ -180,14 +180,16 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 /// Returns an extrapolated span (pre-expansion[^1]) corresponding to a range
 /// within the function's body source. This span is guaranteed to be contained
 /// within, or equal to, the `body_span`. If the extrapolated span is not
-/// contained within the `body_span`, the `body_span` is returned.
+/// contained within the `body_span`, `None` is returned.
 ///
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
 #[inline]
-fn function_source_span(span: Span, body_span: Span) -> Span {
+fn unexpand_into_body_span(span: Span, body_span: Span) -> Option<Span> {
     use rustc_span::source_map::original_sp;
 
+    // FIXME(#118525): Consider switching from `original_sp` to `Span::find_ancestor_inside`,
+    // which is similar but gives slightly different results in some edge cases.
     let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
-    if body_span.contains(original_span) { original_span } else { body_span }
+    body_span.contains(original_span).then_some(original_span)
 }

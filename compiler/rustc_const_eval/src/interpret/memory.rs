@@ -58,6 +58,7 @@ impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
 }
 
 /// The return value of `get_alloc_info` indicates the "kind" of the allocation.
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AllocKind {
     /// A regular live data allocation.
     LiveData,
@@ -473,8 +474,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match self.ptr_try_get_alloc_id(ptr) {
             Err(addr) => offset_misalignment(addr, align),
             Ok((alloc_id, offset, _prov)) => {
-                let (_size, alloc_align, _kind) = self.get_alloc_info(alloc_id);
-                if M::use_addr_for_alignment_check(self) {
+                let (_size, alloc_align, kind) = self.get_alloc_info(alloc_id);
+                if let Some(misalign) =
+                    M::alignment_check(self, alloc_id, alloc_align, kind, offset, align)
+                {
+                    Some(misalign)
+                } else if M::Provenance::OFFSET_IS_ADDR {
                     // `use_addr_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
                     offset_misalignment(ptr.addr().bytes(), align)
                 } else {
