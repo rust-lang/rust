@@ -16,6 +16,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "Apache-2.0/MIT",
+    "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
     "ISC",
     "MIT / Apache-2.0",
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
@@ -392,6 +393,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "yansi-term", // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
     "yoke",
     "yoke-derive",
+    "zerocopy",
+    "zerocopy-derive",
     "zerofrom",
     "zerofrom-derive",
     "zerovec",

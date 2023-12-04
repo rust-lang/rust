@@ -51,6 +51,9 @@ impl GatedSpans {
     /// Prepend the given set of `spans` onto the set in `self`.
     pub fn merge(&self, mut spans: FxHashMap<Symbol, Vec<Span>>) {
         let mut inner = self.spans.borrow_mut();
+        // The entries will be moved to another map so the drain order does not
+        // matter.
+        #[allow(rustc::potential_query_instability)]
         for (gate, mut gate_spans) in inner.drain() {
             spans.entry(gate).or_default().append(&mut gate_spans);
         }

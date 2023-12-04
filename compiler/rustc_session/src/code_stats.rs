@@ -132,6 +132,8 @@ impl CodeStats {
 
     pub fn print_type_sizes(&self) {
         let type_sizes = self.type_sizes.borrow();
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut sorted: Vec<_> = type_sizes.iter().collect();
 
         // Primary sort: large-to-small.
@@ -227,6 +229,8 @@ impl CodeStats {
     }
 
     pub fn print_vtable_sizes(&self, crate_name: Symbol) {
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut infos =
             std::mem::take(&mut *self.vtable_sizes.lock()).into_values().collect::<Vec<_>>();
 

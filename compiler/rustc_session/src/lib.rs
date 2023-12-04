@@ -6,7 +6,6 @@
 #![feature(map_many_mut)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]

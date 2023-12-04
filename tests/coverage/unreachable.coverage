@@ -16,12 +16,12 @@
    LL|       |
    LL|      0|fn unreachable_function() {
    LL|      0|    unsafe { unreachable_unchecked() }
-   LL|      0|}
+   LL|       |}
    LL|       |
    LL|       |// Use an intrinsic to more reliably trigger unreachable-propagation.
    LL|      0|fn unreachable_intrinsic() {
    LL|      0|    unsafe { std::intrinsics::unreachable() }
-   LL|      0|}
+   LL|       |}
    LL|       |
    LL|       |#[coverage(off)]
    LL|       |fn main() {

@@ -2112,7 +2112,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && !expected_inputs.is_empty()
             && expected_inputs.len() == found_inputs.len()
             && let Some(typeck) = &self.typeck_results
-            && let Res::Def(_, fn_def_id) = typeck.qpath_res(&path, *arg_hir_id)
+            && let Res::Def(res_kind, fn_def_id) = typeck.qpath_res(&path, *arg_hir_id)
+            && res_kind.is_fn_like()
         {
             let closure: Vec<_> = self
                 .tcx
@@ -2155,7 +2156,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .map(|(name, ty)| {
                 format!(
                     "{name}{}",
-                    if ty.has_infer_types() { String::new() } else { format!(": {ty}") }
+                    if ty.has_infer_types() {
+                        String::new()
+                    } else if ty.references_error() {
+                        ": /* type */".to_string()
+                    } else {
+                        format!(": {ty}")
+                    }
                 )
             })
             .collect();

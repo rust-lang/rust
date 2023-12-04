@@ -1509,7 +1509,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
                 matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
             })
         {
-            return f.write_str("/* private fields */");
+            return f.write_str("<span class=\"comment\">/* private fields */</span>");
         }
 
         for (i, ty) in s.iter().enumerate() {
@@ -1666,7 +1666,7 @@ fn render_enum_fields(
         }
 
         if variants_stripped && !is_non_exhaustive {
-            w.write_str("    // some variants omitted\n");
+            w.write_str("    <span class=\"comment\">// some variants omitted</span>\n");
         }
         if toggle {
             toggle_close(&mut w);
@@ -1811,7 +1811,8 @@ fn item_proc_macro(
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                write!(buffer, "{name}!() {{ /* proc-macro */ }}").unwrap();
+                write!(buffer, "{name}!() {{ <span class=\"comment\">/* proc-macro */</span> }}")
+                    .unwrap();
             }
             MacroKind::Attr => {
                 write!(buffer, "#[{name}]").unwrap();
@@ -1819,7 +1820,12 @@ fn item_proc_macro(
             MacroKind::Derive => {
                 write!(buffer, "#[derive({name})]").unwrap();
                 if !m.helpers.is_empty() {
-                    buffer.write_str("\n{\n    // Attributes available to this derive:\n").unwrap();
+                    buffer
+                        .write_str(
+                            "\n{\n    \
+                        <span class=\"comment\">// Attributes available to this derive:</span>\n",
+                        )
+                        .unwrap();
                     for attr in &m.helpers {
                         writeln!(buffer, "    #[{attr}]").unwrap();
                     }
@@ -2181,7 +2187,7 @@ fn render_union<'a, 'cx: 'a>(
         }
 
         if it.has_stripped_entries().unwrap() {
-            write!(f, "    /* private fields */\n")?;
+            write!(f, "    <span class=\"comment\">/* private fields */</span>\n")?;
         }
         if toggle {
             toggle_close(&mut f);
@@ -2267,11 +2273,11 @@ fn render_struct_fields(
 
             if has_visible_fields {
                 if has_stripped_entries {
-                    write!(w, "\n{tab}    /* private fields */");
+                    write!(w, "\n{tab}    <span class=\"comment\">/* private fields */</span>");
                 }
                 write!(w, "\n{tab}");
             } else if has_stripped_entries {
-                write!(w, " /* private fields */ ");
+                write!(w, " <span class=\"comment\">/* private fields */</span> ");
             }
             if toggle {
                 toggle_close(&mut w);
@@ -2285,7 +2291,7 @@ fn render_struct_fields(
                     matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
                 })
             {
-                write!(w, "/* private fields */");
+                write!(w, "<span class=\"comment\">/* private fields */</span>");
             } else {
                 for (i, field) in fields.iter().enumerate() {
                     if i > 0 {
