@@ -2186,7 +2186,7 @@ impl<'tcx> TyCtxt<'tcx> {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
                 ..
-            }) if generics.params.iter().any(|p| self.has_attr(p.def_id, sym::rustc_host))
+            }) if generics.params.iter().any(|p| matches!(p.kind, hir::GenericParamKind::Const { is_host_effect: true, .. }))
         )
     }
 

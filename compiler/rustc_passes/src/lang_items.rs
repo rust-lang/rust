@@ -21,7 +21,7 @@ use rustc_hir::{LangItem, LanguageItems, Target};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ExternCrate;
 use rustc_span::symbol::kw::Empty;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 use rustc_middle::query::Providers;
 
@@ -162,7 +162,12 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                     generics
                         .params
                         .iter()
-                        .filter(|p| !self.tcx.has_attr(p.def_id, sym::rustc_host))
+                        .filter(|p| {
+                            !matches!(
+                                p.kind,
+                                hir::GenericParamKind::Const { is_host_effect: true, .. }
+                            )
+                        })
                         .count(),
                     generics.span,
                 ),
