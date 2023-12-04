@@ -1922,7 +1922,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span,
             opaque_ty_span,
             |this| {
-                let future_bound = this.lower_coroutine_fn_output_type_to_future_bound(
+                let bound = this.lower_coroutine_fn_output_type_to_bound(
                     output,
                     coro,
                     span,
@@ -1931,7 +1931,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         fn_kind,
                     },
                 );
-                arena_vec![this; future_bound]
+                arena_vec![this; bound]
             },
         );
 
@@ -1940,7 +1940,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Transforms `-> T` into `Future<Output = T>`.
-    fn lower_coroutine_fn_output_type_to_future_bound(
+    fn lower_coroutine_fn_output_type_to_bound(
         &mut self,
         output: &FnRetTy,
         coro: CoroutineKind,
@@ -1958,21 +1958,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
 
-        // "<Output|Item = T>"
-        let (symbol, lang_item) = match coro {
+        // "<$assoc_ty_name = T>"
+        let (assoc_ty_name, trait_lang_item) = match coro {
             CoroutineKind::Async { .. } => (hir::FN_OUTPUT_NAME, hir::LangItem::Future),
             CoroutineKind::Gen { .. } => (hir::ITERATOR_ITEM_NAME, hir::LangItem::Iterator),
         };
 
         let future_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
-            bindings: arena_vec![self; self.assoc_ty_binding(symbol, span, output_ty)],
+            bindings: arena_vec![self; self.assoc_ty_binding(assoc_ty_name, span, output_ty)],
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
 
         hir::GenericBound::LangItemTrait(
-            lang_item,
+            trait_lang_item,
             self.lower_span(span),
             self.next_id(),
             future_args,

@@ -612,7 +612,7 @@ impl<'a> Parser<'a> {
         if let Some(ast::CoroutineKind::Async { span, .. }) = coro_kind {
             self.sess.emit_err(FnPointerCannotBeAsync { span: whole_span, qualifier: span });
         }
-        // FIXME(eholk): emit a similar error for `gen fn()`
+        // FIXME(gen_blocks): emit a similar error for `gen fn()`
         let decl_span = span_start.to(self.token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
     }

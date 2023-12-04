@@ -1279,7 +1279,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ..
         }) = fk.header()
         {
-            // FIXME(eholk): Report a different error for `const gen`
+            // FIXME(gen_blocks): Report a different error for `const gen`
             self.err_handler().emit_err(errors::ConstAndAsync {
                 spans: vec![cspan, aspan],
                 cspan,

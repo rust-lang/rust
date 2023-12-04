@@ -401,14 +401,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    /// An associated type binding `$symbol = $ty`.
+    /// An associated type binding `$assoc_ty_name = $ty`.
     pub(crate) fn assoc_ty_binding(
         &mut self,
-        symbol: rustc_span::Symbol,
+        assoc_ty_name: rustc_span::Symbol,
         span: Span,
         ty: &'hir hir::Ty<'hir>,
     ) -> hir::TypeBinding<'hir> {
-        let ident = Ident::with_dummy_span(symbol);
+        let ident = Ident::with_dummy_span(assoc_ty_name);
         let kind = hir::TypeBindingKind::Equality { term: ty.into() };
         let args = arena_vec![self;];
         let bindings = arena_vec![self;];

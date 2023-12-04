@@ -545,6 +545,10 @@ fn check_test_signature(
         return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" }));
     }
 
+    if let Some(ast::CoroutineKind::Gen { span, .. }) = f.sig.header.coro_kind {
+        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "gen" }));
+    }
+
     // If the termination trait is active, the compiler will check that the output
     // type implements the `Termination` trait as `libtest` enforces that.
     let has_output = match &f.sig.decl.output {

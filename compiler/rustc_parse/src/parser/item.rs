@@ -2544,7 +2544,7 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    // FIXME(eholk): add keyword recovery logic for genness
+                    // FIXME(gen_blocks): add keyword recovery logic for genness
 
                     if wrong_kw.is_some()
                         && self.may_recover()
