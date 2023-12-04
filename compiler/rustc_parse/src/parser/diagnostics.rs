@@ -772,45 +772,64 @@ impl<'a> Parser<'a> {
                 && let [segment] = &attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
                 && let Some(args_span) = attr_kind.item.args.span()
-                && let Ok(next_attr) = snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
-                && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
-                && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
-                && let [next_segment] = &next_attr_kind.item.path.segments[..]
-                && segment.ident.name == sym::cfg
-                && let Ok(next_expr) = snapshot.parse_expr()
             {
-                // We have for sure
-                // #[cfg(..)]
-                // expr
-                // #[cfg(..)]
-                // other_expr
-                // So we suggest using `if cfg!(..) { expr } else if cfg!(..) { other_expr }`.
-                let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
-                let sugg = vec![
-                    (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
-                    (args_span.shrink_to_hi().with_hi(attr.span.hi()), " {".to_string()),
-                    (expr.span.shrink_to_lo(), "    ".to_string()),
-                    (
-                        next_attr.span.with_hi(next_segment.span().hi()),
-                        "} else if cfg!".to_string(),
-                    ),
-                    (
-                        next_attr_args_span.shrink_to_hi().with_hi(next_attr.span.hi()),
-                        " {".to_string(),
-                    ),
-                    (next_expr.span.shrink_to_lo(), "    ".to_string()),
-                    (next_expr.span.shrink_to_hi(), format!("\n{}}}", " ".repeat(margin))),
-                ];
-                err.multipart_suggestion(
-                    "it seems like you are trying to provide different expressions depending on \
-                     `cfg`, consider using `if cfg!(..)`",
-                    sugg,
-                    Applicability::MachineApplicable,
-                );
+                let next_attr = match snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None)) {
+                    Ok(next_attr) => next_attr,
+                    Err(mut perr) => {
+                        // Handle cases like #118575, where the attribute is malformed
+                        err.cancel();
+                        perr.emit();
+                        return;
+                    }
+                };
+                if let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
+                    && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
+                    && let [next_segment] = &next_attr_kind.item.path.segments[..]
+                    && segment.ident.name == sym::cfg
+                {
+                    let next_expr = match snapshot.parse_expr() {
+                        Ok(next_expr) => next_expr,
+                        Err(mut perr) => {
+                            // Handle cases like #118575, where the expression is malformed
+                            err.cancel();
+                            perr.emit();
+                            return;
+                        }
+                    };
+                    // We have for sure
+                    // #[cfg(..)]
+                    // expr
+                    // #[cfg(..)]
+                    // other_expr
+                    // So we suggest using `if cfg!(..) { expr } else if cfg!(..) { other_expr }`.
+                    let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
+                    let sugg = vec![
+                        (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
+                        (args_span.shrink_to_hi().with_hi(attr.span.hi()), " {".to_string()),
+                        (expr.span.shrink_to_lo(), "    ".to_string()),
+                        (
+                            next_attr.span.with_hi(next_segment.span().hi()),
+                            "} else if cfg!".to_string(),
+                        ),
+                        (
+                            next_attr_args_span.shrink_to_hi().with_hi(next_attr.span.hi()),
+                            " {".to_string(),
+                        ),
+                        (next_expr.span.shrink_to_lo(), "    ".to_string()),
+                        (next_expr.span.shrink_to_hi(), format!("\n{}}}", " ".repeat(margin))),
+                    ];
+                    err.multipart_suggestion(
+                        "it seems like you are trying to provide different expressions depending on \
+                        `cfg`, consider using `if cfg!(..)`",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
         err.emit();
     }
+
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
         let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {

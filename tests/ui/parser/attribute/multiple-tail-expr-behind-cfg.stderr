@@ -44,11 +44,37 @@ help: alternatively, consider surrounding the expression with a block
 LL |     { [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() }
    |     +                                                             +
 
+error: expected identifier, found `]`
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:21:7
+   |
+LL |     #[]
+   |       ^ expected identifier
+
+error: expected identifier, found `]`
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:21:7
+   |
+LL |     #[]
+   |       ^ expected identifier
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: expected expression, found `}`
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:32:1
+   |
+LL | }
+   | ^ expected expression
+
+error: expected statement after outer attribute
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:31:5
+   |
+LL |     #[cfg(not(feature = "validation"))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: cannot find attribute `attr` in this scope
   --> $DIR/multiple-tail-expr-behind-cfg.rs:13:7
    |
 LL |     #[attr]
    |       ^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 7 previous errors
 

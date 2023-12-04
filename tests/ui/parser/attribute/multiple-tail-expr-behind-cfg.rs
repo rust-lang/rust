@@ -14,6 +14,23 @@ fn bar() -> String {
     String::new()
 }
 
+fn baz() -> String {
+    // Issue #118575: Don't ICE when encountering malformed attributes
+    #[cfg(feature = "validation")]
+    "foo".into()
+    #[]
+    //~^ ERROR expected identifier, found `]`
+    //~| ERROR expected identifier, found `]`
+    "bar".into()
+}
+
+fn qux() -> String {
+    // Issue #118575: Don't ICE when encountering malformed tail expressions
+    #[cfg(feature = "validation")]
+    "foo".into()
+    #[cfg(not(feature = "validation"))] //~ ERROR expected statement after outer attribute
+} //~ ERROR expected expression, found `}`
+
 fn main() {
     println!("{}", foo());
 }
