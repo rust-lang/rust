@@ -1,4 +1,4 @@
-#![feature(portable_simd, strict_provenance)]
+#![feature(portable_simd, strict_provenance, exposed_provenance)]
 
 use core_simd::simd::{
     ptr::{SimdConstPtr, SimdMutPtr},
