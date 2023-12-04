@@ -1096,7 +1096,10 @@ impl Handler {
 
     #[rustc_lint_diagnostics]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.inner.borrow_mut().emit(Error { lint: false }, msg)
+        self.inner
+            .borrow_mut()
+            .emit_diagnostic(&mut Diagnostic::new(Error { lint: false }, msg))
+            .unwrap()
     }
 
     #[rustc_lint_diagnostics]
@@ -1126,7 +1129,7 @@ impl Handler {
     }
 
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        let inner = self.inner.borrow(); 
+        let inner = self.inner.borrow();
         let has_errors_or_lint_errors = inner.has_errors() || inner.lint_err_count > 0;
         has_errors_or_lint_errors.then(|| {
             #[allow(deprecated)]
@@ -1135,7 +1138,7 @@ impl Handler {
     }
 
     pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        let inner = self.inner.borrow(); 
+        let inner = self.inner.borrow();
         let has_errors_or_span_delayed_bugs =
             inner.has_errors() || !inner.span_delayed_bugs.is_empty();
         has_errors_or_span_delayed_bugs.then(|| {
@@ -1443,6 +1446,11 @@ impl HandlerInner {
 
     // FIXME(eddyb) this should ideally take `diagnostic` by value.
     fn emit_diagnostic(&mut self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
+        if matches!(diagnostic.level, Level::Error { .. } | Level::Fatal) && self.treat_err_as_bug()
+        {
+            diagnostic.level = Level::Bug;
+        }
+
         // The `LintExpectationId` can be stable or unstable depending on when it was created.
         // Diagnostics created before the definition of `HirId`s are unstable and can not yet
         // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
@@ -1589,16 +1597,8 @@ impl HandlerInner {
     // Note: unlike `Handler::fatal`, this doesn't return `!`, because that is
     // inappropriate for some of its call sites.
     fn fatal_no_raise(&mut self, msg: impl Into<DiagnosticMessage>) -> FatalError {
-        self.emit(Fatal, msg);
+        self.emit_diagnostic(&mut Diagnostic::new(Fatal, msg));
         FatalError
-    }
-
-    /// Emit an error; level should be `Error` or `Fatal`.
-    fn emit(&mut self, level: Level, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        if self.treat_err_as_bug() {
-            self.bug(msg);
-        }
-        self.emit_diagnostic(&mut Diagnostic::new(level, msg)).unwrap()
     }
 
     fn bug(&mut self, msg: impl Into<DiagnosticMessage>) -> ! {
