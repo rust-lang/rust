@@ -22,5 +22,11 @@ LL - fn test2(_: for<'a> impl Trait) {}
 LL + fn test2(_: impl for<'a> Trait) {}
    |
 
-error: aborting due to 2 previous errors
+error: expected identifier, found `>`
+  --> $DIR/recover-hrtb-before-dyn-impl-kw.rs:10:24
+   |
+LL | type A2 = dyn<for<> dyn>;
+   |                        ^ expected identifier
+
+error: aborting due to 3 previous errors
 
