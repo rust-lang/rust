@@ -1096,10 +1096,7 @@ impl Handler {
 
     #[rustc_lint_diagnostics]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.inner
-            .borrow_mut()
-            .emit_diagnostic(&mut Diagnostic::new(Error { lint: false }, msg))
-            .unwrap()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, Error { lint: false }, msg).emit()
     }
 
     #[rustc_lint_diagnostics]
@@ -1113,7 +1110,8 @@ impl Handler {
     }
 
     pub fn bug(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.inner.borrow_mut().bug(msg)
+        DiagnosticBuilder::<diagnostic_builder::Bug>::new(self, Bug, msg).emit();
+        panic::panic_any(ExplicitBug);
     }
 
     #[inline]
@@ -1599,11 +1597,6 @@ impl HandlerInner {
     fn fatal_no_raise(&mut self, msg: impl Into<DiagnosticMessage>) -> FatalError {
         self.emit_diagnostic(&mut Diagnostic::new(Fatal, msg));
         FatalError
-    }
-
-    fn bug(&mut self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.emit_diagnostic(&mut Diagnostic::new(Bug, msg));
-        panic::panic_any(ExplicitBug);
     }
 
     fn flush_delayed(
