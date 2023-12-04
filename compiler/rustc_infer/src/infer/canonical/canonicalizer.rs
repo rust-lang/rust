@@ -35,13 +35,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
         &self,
-        value: V,
+        value: ty::ParamEnvAnd<'tcx, V>,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonical<'tcx, V>
+    ) -> Canonical<'tcx, ty::ParamEnvAnd<'tcx, V>>
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        Canonicalizer::canonicalize(value, self, self.tcx, &CanonicalizeAllFreeRegions, query_state)
+        self.canonicalize_query_with_mode(value, query_state, &CanonicalizeAllFreeRegions)
     }
 
     /// Like [Self::canonicalize_query], but preserves distinct universes. For
@@ -126,19 +126,52 @@ impl<'tcx> InferCtxt<'tcx> {
     /// handling of `'static` regions (e.g. trait evaluation).
     pub fn canonicalize_query_keep_static<V>(
         &self,
-        value: V,
+        value: ty::ParamEnvAnd<'tcx, V>,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonical<'tcx, V>
+    ) -> Canonical<'tcx, ty::ParamEnvAnd<'tcx, V>>
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        Canonicalizer::canonicalize(
+        self.canonicalize_query_with_mode(
+            value,
+            query_state,
+            &CanonicalizeFreeRegionsOtherThanStatic,
+        )
+    }
+
+    fn canonicalize_query_with_mode<V>(
+        &self,
+        value: ty::ParamEnvAnd<'tcx, V>,
+        query_state: &mut OriginalQueryValues<'tcx>,
+        canonicalize_region_mode: &dyn CanonicalizeMode,
+    ) -> Canonical<'tcx, ty::ParamEnvAnd<'tcx, V>>
+    where
+        V: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let (param_env, value) = value.into_parts();
+        let base = self.tcx.canonical_param_env_cache.get_or_insert(
+            param_env,
+            query_state,
+            |query_state| {
+                Canonicalizer::canonicalize(
+                    param_env,
+                    self,
+                    self.tcx,
+                    &CanonicalizeFreeRegionsOtherThanStatic,
+                    query_state,
+                )
+            },
+        );
+
+        Canonicalizer::canonicalize_with_base(
+            base,
             value,
             self,
             self.tcx,
-            &CanonicalizeFreeRegionsOtherThanStatic,
+            canonicalize_region_mode,
             query_state,
         )
+        .unchecked_map(|(param_env, value)| param_env.and(value))
     }
 }
 
@@ -570,6 +603,33 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
+        let base = Canonical {
+            max_universe: ty::UniverseIndex::ROOT,
+            variables: List::empty(),
+            value: (),
+        };
+        Canonicalizer::canonicalize_with_base(
+            base,
+            value,
+            infcx,
+            tcx,
+            canonicalize_region_mode,
+            query_state,
+        )
+        .unchecked_map(|((), val)| val)
+    }
+
+    fn canonicalize_with_base<U, V>(
+        base: Canonical<'tcx, U>,
+        value: V,
+        infcx: &InferCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        canonicalize_region_mode: &dyn CanonicalizeMode,
+        query_state: &mut OriginalQueryValues<'tcx>,
+    ) -> Canonical<'tcx, (U, V)>
+    where
+        V: TypeFoldable<TyCtxt<'tcx>>,
+    {
         let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::HAS_INFER | TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_FREE_REGIONS
         } else {
@@ -578,12 +638,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
 
         // Fast path: nothing that needs to be canonicalized.
         if !value.has_type_flags(needs_canonical_flags) {
-            let canon_value = Canonical {
-                max_universe: ty::UniverseIndex::ROOT,
-                variables: List::empty(),
-                value,
-            };
-            return canon_value;
+            return base.unchecked_map(|b| (b, value));
         }
 
         let mut canonicalizer = Canonicalizer {
@@ -591,11 +646,20 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             tcx,
             canonicalize_mode: canonicalize_region_mode,
             needs_canonical_flags,
-            variables: SmallVec::new(),
+            variables: SmallVec::from_slice(base.variables),
             query_state,
             indices: FxHashMap::default(),
             binder_index: ty::INNERMOST,
         };
+        if canonicalizer.query_state.var_values.spilled() {
+            canonicalizer.indices = canonicalizer
+                .query_state
+                .var_values
+                .iter()
+                .enumerate()
+                .map(|(i, &kind)| (kind, BoundVar::new(i)))
+                .collect();
+        }
         let out_value = value.fold_with(&mut canonicalizer);
 
         // Once we have canonicalized `out_value`, it should not
@@ -612,7 +676,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .max()
             .unwrap_or(ty::UniverseIndex::ROOT);
 
-        Canonical { max_universe, variables: canonical_variables, value: out_value }
+        Canonical { max_universe, variables: canonical_variables, value: (base.value, out_value) }
     }
 
     /// Creates a canonical variable replacing `kind` from the input,

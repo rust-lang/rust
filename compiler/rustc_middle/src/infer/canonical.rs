@@ -21,11 +21,14 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable;
 use rustc_type_ir::Canonical as IrCanonical;
 use rustc_type_ir::CanonicalVarInfo as IrCanonicalVarInfo;
 pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};
 use smallvec::SmallVec;
+use std::collections::hash_map::Entry;
 use std::ops::Index;
 
 use crate::infer::MemberConstraint;
@@ -289,5 +292,39 @@ impl<'tcx> Index<BoundVar> for CanonicalVarValues<'tcx> {
 
     fn index(&self, value: BoundVar) -> &GenericArg<'tcx> {
         &self.var_values[value.as_usize()]
+    }
+}
+
+#[derive(Default)]
+pub struct CanonicalParamEnvCache<'tcx> {
+    map: Lock<
+        FxHashMap<
+            ty::ParamEnv<'tcx>,
+            (Canonical<'tcx, ty::ParamEnv<'tcx>>, OriginalQueryValues<'tcx>),
+        >,
+    >,
+}
+
+impl<'tcx> CanonicalParamEnvCache<'tcx> {
+    pub fn get_or_insert(
+        &self,
+        key: ty::ParamEnv<'tcx>,
+        state: &mut OriginalQueryValues<'tcx>,
+        canonicalize_op: impl FnOnce(
+            &mut OriginalQueryValues<'tcx>,
+        ) -> Canonical<'tcx, ty::ParamEnv<'tcx>>,
+    ) -> Canonical<'tcx, ty::ParamEnv<'tcx>> {
+        match self.map.borrow().entry(key) {
+            Entry::Occupied(e) => {
+                let (canonical, state_cached) = e.get();
+                state.clone_from(state_cached);
+                canonical.clone()
+            }
+            Entry::Vacant(e) => {
+                let canonical = canonicalize_op(state);
+                e.insert((canonical.clone(), state.clone()));
+                canonical
+            }
+        }
     }
 }

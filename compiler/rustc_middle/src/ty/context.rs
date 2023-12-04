@@ -6,7 +6,7 @@ pub mod tls;
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::struct_lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -653,6 +653,8 @@ pub struct GlobalCtxt<'tcx> {
     pub new_solver_evaluation_cache: solve::EvaluationCache<'tcx>,
     pub new_solver_coherence_evaluation_cache: solve::EvaluationCache<'tcx>,
 
+    pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
+
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
@@ -817,6 +819,7 @@ impl<'tcx> TyCtxt<'tcx> {
             evaluation_cache: Default::default(),
             new_solver_evaluation_cache: Default::default(),
             new_solver_coherence_evaluation_cache: Default::default(),
+            canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
         }

@@ -9,7 +9,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
-use rustc_middle::ty::{self, AdtDef, GenericArg, List, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, GenericArg, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 
 use super::outlives_bounds::InferCtxtExt;
@@ -209,10 +209,10 @@ pub fn all_fields_implement_trait<'tcx>(
 
 pub fn check_tys_might_be_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonical: Canonical<'tcx, (ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>,
+    canonical: Canonical<'tcx, ty::ParamEnvAnd<'tcx, (Ty<'tcx>, Ty<'tcx>)>>,
 ) -> Result<(), NoSolution> {
-    let (infcx, (param_env, ty_a, ty_b), _) =
-        tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical);
+    let (infcx, key, _) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical);
+    let (param_env, (ty_a, ty_b)) = key.into_parts();
     let ocx = ObligationCtxt::new(&infcx);
 
     let result = ocx.eq(&ObligationCause::dummy(), param_env, ty_a, ty_b);
