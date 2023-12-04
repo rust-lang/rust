@@ -10,6 +10,7 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use std::ops::Deref;
 
@@ -87,8 +88,13 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 
 fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     if let StmtKind::Semi(expr) = stmt.kind {
+        // move `expr.span.from_expansion()` ahead
+        if expr.span.from_expansion() {
+            return false;
+        }
+        let expr = peel_blocks(expr);
         // assume nontrivial oprand of `Binary` Expr can skip `check_unnecessary_operation`
-        if has_nontrivial_oprand(expr) {
+        if has_nontrivial_oprand(cx, expr) {
             return true;
         }
         if has_no_effect(cx, expr) {
@@ -157,66 +163,38 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     false
 }
 
-fn has_nontrivial_oprand(expr: &Expr<'_>) -> bool {
-    if expr.span.from_expansion() {
-        return false;
-    }
-    return match peel_blocks(expr).kind {
-        ExprKind::Binary(_, lhs, rhs) => !check_nontrivial_operand(lhs, rhs),
+fn has_nontrivial_oprand(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    // It's very hard or impossable to check whether overrided operator have side-effect this lint.
+    // So, this function assume user-defined binary operator is overrided with an side-effect.
+    // The definition of user-defined structure here is `struct`, `enum`, `uniom`,
+    // Althrough this will weaken the ability of this lint, less error lint-fix happen.
+    match expr.kind {
+        ExprKind::Binary(_, lhs, rhs) => {
+            // get type of lhs and rhs
+            let tyck_result = cx.typeck_results();
+            let ty_lhs = tyck_result.expr_ty(lhs).kind();
+            let ty_rhs = tyck_result.expr_ty(rhs).kind();
+            // check whether lhs is a user-defined structure
+            // only need to check lhs in fact
+            let ud_lhs = match ty_lhs {
+                ty::Adt(adt_def, _) => adt_def.is_struct() || adt_def.is_enum() || adt_def.is_union(),
+                _ => false,
+            };
+            let ud_rhs = match ty_rhs {
+                ty::Adt(adt_def, _) => adt_def.is_struct() || adt_def.is_enum() || adt_def.is_union(),
+                _ => false,
+            };
+
+            // reference: rust/compiler/rustc_middle/src/ty/typeck_results.rs: `is_method_call`.
+            // use this function to check whether operator is overrided in `ExprKind::Binary`.
+            (ud_lhs || ud_rhs) && tyck_result.is_method_call(expr)
+        },
         _ => false,
-    };
-}
-
-fn check_nontrivial_operand(lhs: &Expr<'_>, rhs: &Expr<'_>) -> bool {
-    // It's seem that impossable to check whether operator is overrided through context of this lint,
-    // so, this function assume user-defined binary operator is overrided with an side-effect.
-    // The definition of user-defined structure here is `tuple`, `array`, `struct`,
-    // it looks like a little bit simple, but useful.
-    // Althrough this will weaken the ability of this lint,
-    // less miss lint-fix happen.
-
-    // a closure to check whether expr belongs to user-defined structure
-    let closure = |expr: &Expr<'_>| -> bool {
-        match &expr.kind {
-            // check whether expr is a user-defined sturcture
-            ExprKind::Tup(..) | ExprKind::Array(..) | ExprKind::Struct(..) => true,
-            // resolve expr's path
-            ExprKind::Path(rustc_hir::QPath::Resolved(
-                _,
-                rustc_hir::Path {
-                    span: _,
-                    res,
-                    segments: _,
-                },
-            )) => {
-                match res {
-                    Res::Def(defkind, _) => match defkind {
-                        // user-defined
-                        DefKind::Struct | DefKind::Ctor(_, _) => true,
-                        _ => false,
-                    },
-                    _ => false,
-                };
-                false
-            },
-            _ => false,
-        }
-    };
-
-    let lhs_ud = closure(lhs);
-    let rhs_ud = closure(rhs);
-    // one of lhs or rhs is user-defined structure
-    if lhs_ud || rhs_ud {
-        return false;
     }
-    true
 }
 
 fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if expr.span.from_expansion() {
-        return false;
-    }
-    match peel_blocks(expr).kind {
+    match expr.kind {
         ExprKind::Lit(..) | ExprKind::Closure { .. } => true,
         ExprKind::Path(..) => !has_drop(cx, cx.typeck_results().expr_ty(expr)),
         ExprKind::Index(a, b, _) | ExprKind::Binary(_, a, b) => has_no_effect(cx, a) && has_no_effect(cx, b),
