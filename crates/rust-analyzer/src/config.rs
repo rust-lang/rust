@@ -105,6 +105,9 @@ config_data! {
         /// ```
         /// .
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = "null",
+        /// rerun proc-macros building/build-scripts running when proc-macro
+        /// or build-script sources change and are saved.
+        cargo_buildScripts_rebuildOnSave: bool = "false",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
@@ -1366,6 +1369,10 @@ impl Config {
 
     pub fn check_on_save(&self) -> bool {
         self.data.checkOnSave
+    }
+
+    pub fn script_rebuild_on_save(&self) -> bool {
+        self.data.cargo_buildScripts_rebuildOnSave
     }
 
     pub fn runnables(&self) -> RunnablesConfig {
