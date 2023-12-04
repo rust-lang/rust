@@ -6,7 +6,6 @@ LL |     match 0 {
    |
    = note: the matched value is of type `usize`
    = note: `usize` does not have a fixed maximum value, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         1..=usize::MAX => (),
@@ -21,7 +20,6 @@ LL |     match (0usize, 0usize) {
    |
    = note: the matched value is of type `(usize, usize)`
    = note: `usize` does not have a fixed maximum value, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         (1..=usize::MAX, 1..=usize::MAX) => (),
@@ -36,7 +34,6 @@ LL |     match (0isize, 0usize) {
    |
    = note: the matched value is of type `(isize, usize)`
    = note: `isize` does not have fixed minimum and maximum values, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         (isize::MIN..=isize::MAX, 1..=usize::MAX) => (),
@@ -74,7 +71,6 @@ note: `Option<usize>` defined here
    = note: not covered
    = note: the matched value is of type `Option<usize>`
    = note: `usize` does not have a fixed maximum value, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => (),
@@ -98,7 +94,6 @@ note: `Option<Option<Option<usize>>>` defined here
    = note: not covered
    = note: the matched value is of type `Option<Option<Option<usize>>>`
    = note: `usize` does not have a fixed maximum value, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => (),
@@ -118,7 +113,6 @@ LL | struct A<T> {
    |        ^
    = note: the matched value is of type `A<usize>`
    = note: `usize` does not have a fixed maximum value, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         A { a: 1..=usize::MAX } => (),
@@ -138,7 +132,6 @@ LL | struct B<T, U>(T, U);
    |        ^
    = note: the matched value is of type `B<isize, usize>`
    = note: `isize` does not have fixed minimum and maximum values, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         B(isize::MIN..=isize::MAX, 1..=usize::MAX) => (),
@@ -158,7 +151,6 @@ LL | struct B<T, U>(T, U);
    |        ^
    = note: the matched value is of type `B<isize, usize>`
    = note: `usize` does not have a fixed maximum value, so half-open ranges are necessary to match exhaustively
-   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         B(_, 1..=usize::MAX) => (),
