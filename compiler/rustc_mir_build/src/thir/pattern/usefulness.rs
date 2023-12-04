@@ -599,9 +599,9 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     // an or-pattern. Panics if `self` is empty.
     fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
         self.head().flatten_or_pat().into_iter().map(move |pat| {
-            let mut new_pats = smallvec![pat];
-            new_pats.extend_from_slice(&self.pats[1..]);
-            PatStack { pats: new_pats }
+            let mut new = self.clone();
+            new.pats[0] = pat;
+            new
         })
     }
 
@@ -732,18 +732,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new<'a>(
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        iter: impl Iterator<Item = &'a MatchArm<'p, 'tcx>>,
-        scrut_ty: Ty<'tcx>,
-    ) -> Self
-    where
-        'p: 'a,
-    {
+    fn new(cx: &MatchCheckCtxt<'p, 'tcx>, arms: &[MatchArm<'p, 'tcx>], scrut_ty: Ty<'tcx>) -> Self {
         let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
         let wildcard_row = PatStack::from_pattern(wild_pattern);
-        let mut matrix = Matrix { rows: vec![], wildcard_row };
-        for (row_id, arm) in iter.enumerate() {
+        let mut matrix = Matrix { rows: Vec::with_capacity(arms.len()), wildcard_row };
+        for (row_id, arm) in arms.iter().enumerate() {
             let v = MatrixRow {
                 pats: PatStack::from_pattern(arm.pat),
                 parent_row: row_id, // dummy, we won't read it
@@ -806,7 +799,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
         let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
-        let mut matrix = Matrix { rows: vec![], wildcard_row };
+        let mut matrix = Matrix { rows: Vec::new(), wildcard_row };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
                 let new_row = row.pop_head_constructor(pcx, ctor, i);
@@ -1386,7 +1379,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::new(cx, arms.iter(), scrut_ty);
+    let mut matrix = Matrix::new(cx, arms, scrut_ty);
     let non_exhaustiveness_witnesses =
         compute_exhaustiveness_and_reachability(cx, &mut matrix, true);
 
