@@ -98,7 +98,7 @@ fn parse_structure<'a, Ty, C>(
     cx: &C,
     layout: TyAndLayout<'a, Ty>,
     mut data: Sdata,
-    mut offset: Size,
+    offset: Size,
 ) -> Sdata
 where
     Ty: TyAbiInterface<'a, C> + Copy,
@@ -115,9 +115,15 @@ where
         abi::Abi::Aggregate { .. } => {
             for i in 0..layout.fields.count() {
                 if offset < layout.fields.offset(i) {
-                    offset = layout.fields.offset(i);
+                    data = parse_structure(
+                        cx,
+                        layout.field(cx, i),
+                        data.clone(),
+                        layout.fields.offset(i),
+                    );
+                } else {
+                    data = parse_structure(cx, layout.field(cx, i), data.clone(), offset);
                 }
-                data = parse_structure(cx, layout.field(cx, i), data.clone(), offset);
             }
         }
         _ => {
