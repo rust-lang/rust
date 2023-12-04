@@ -26,7 +26,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
-    "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
+    "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry",
     "WebGL", "WebGL2", "WebGPU",
     "TensorFlow",
     "TrueType",
