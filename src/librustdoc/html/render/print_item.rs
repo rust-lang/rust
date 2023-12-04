@@ -1737,7 +1737,14 @@ fn item_variants(
         w.write_str("</h3></section>");
 
         let heading_and_fields = match &variant_data.kind {
-            clean::VariantKind::Struct(s) => Some(("Fields", &s.fields)),
+            clean::VariantKind::Struct(s) => {
+                // If there is no field to display, no need to add the heading.
+                if s.fields.iter().any(|f| !f.is_doc_hidden()) {
+                    Some(("Fields", &s.fields))
+                } else {
+                    None
+                }
+            }
             clean::VariantKind::Tuple(fields) => {
                 // Documentation on tuple variant fields is rare, so to reduce noise we only emit
                 // the section if at least one field is documented.
