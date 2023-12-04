@@ -567,7 +567,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     );
                 };
                 let (_, addr) = ptr.into_parts(); // we know the offset is absolute
-                if addr.bytes() % align.bytes() != 0 {
+                // Cannot panic since `align` is a power of 2 and hence non-zero.
+                if addr.bytes().checked_rem(align.bytes()).unwrap() != 0 {
                     throw_unsup_format!(
                         "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
                     );
