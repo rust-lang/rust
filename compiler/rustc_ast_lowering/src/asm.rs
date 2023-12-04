@@ -14,8 +14,8 @@ use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::DefPathData;
 use rustc_session::parse::feature_err;
+use rustc_span::symbol::kw;
 use rustc_span::{sym, Span};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
@@ -227,7 +227,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.create_def(
                                 parent_def_id.def_id,
                                 node_id,
-                                DefPathData::AnonConst,
+                                kw::Empty,
                                 DefKind::AnonConst,
                                 *op_sp,
                             );

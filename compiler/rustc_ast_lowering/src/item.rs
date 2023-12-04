@@ -3,7 +3,6 @@ use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
 
-use hir::definitions::DefPathData;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
@@ -1367,7 +1366,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let def_id = self.create_def(
                     self.local_def_id(parent_node_id),
                     param_node_id,
-                    DefPathData::TypeNs(sym::host),
+                    sym::host,
                     DefKind::ConstParam,
                     span,
                 );
@@ -1427,13 +1426,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let Some((span, hir_id, def_id)) = host_param_parts {
             let const_node_id = self.next_node_id();
-            let anon_const = self.create_def(
-                def_id,
-                const_node_id,
-                DefPathData::AnonConst,
-                DefKind::AnonConst,
-                span,
-            );
+            let anon_const =
+                self.create_def(def_id, const_node_id, kw::Empty, DefKind::AnonConst, span);
 
             let const_id = self.next_id();
             let const_expr_id = self.next_id();
