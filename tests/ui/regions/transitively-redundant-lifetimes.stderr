@@ -27,6 +27,14 @@ LL | fn c<'a>(_: Foo<&'a ()>) {}
    |
    = note: you can use the `'static` lifetime directly, in place of `'a`
 
+error: unnecessary lifetime parameter `'a`
+  --> $DIR/transitively-redundant-lifetimes.rs:19:6
+   |
+LL | impl<'a: 'static> Tr<'a> for () {}
+   |      ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+
 error: unnecessary lifetime parameter `'b`
   --> $DIR/transitively-redundant-lifetimes.rs:13:10
    |
@@ -35,5 +43,5 @@ LL |     fn d<'b: 'a>(&'b self) {}
    |
    = note: you can use the `'a` lifetime directly, in place of `'b`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

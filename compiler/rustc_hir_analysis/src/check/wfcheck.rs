@@ -2028,19 +2028,20 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::TraitAlias
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Impl { of_trait: false } => {
+        | DefKind::Impl { of_trait: _ } => {
             // Proceed
         }
         DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
             let parent_def_id = tcx.local_parent(owner_id);
             if matches!(tcx.def_kind(parent_def_id), DefKind::Impl { of_trait: true }) {
-                // Don't check for redundant lifetimes for trait implementations,
-                // since the signature is required to be compatible with the trait.
+                // Don't check for redundant lifetimes for associated items of trait
+                // implementations, since the signature is required to be compatible
+                // with the trait, even if the implementation implies some lifetimes
+                // are redundant.
                 return;
             }
         }
-        DefKind::Impl { of_trait: true }
-        | DefKind::Mod
+        DefKind::Mod
         | DefKind::Variant
         | DefKind::TyAlias
         | DefKind::ForeignTy

@@ -15,4 +15,7 @@ impl<'a> Bar<'a> {
 
 fn ok(x: &'static &()) {}
 
+trait Tr<'a> {}
+impl<'a: 'static> Tr<'a> for () {} //~ ERROR unnecessary lifetime parameter `'a`
+
 fn main() {}
