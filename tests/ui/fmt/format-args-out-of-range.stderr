@@ -1,0 +1,11 @@
+error: literal out of range for `u8`
+  --> $DIR/format-args-out-of-range.rs:2:20
+   |
+LL |     println!("{}", 12345u8);
+   |                    ^^^^^^^
+   |
+   = note: the literal `12345u8` does not fit into the type `u8` whose range is `0..=255`
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: aborting due to 1 previous error
+
