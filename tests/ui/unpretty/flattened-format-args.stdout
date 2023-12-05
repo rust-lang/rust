@@ -11,6 +11,9 @@ fn main() {
         {
                 ::std::io::_print(<#[lang = "format_arguments"]>::new_v1(&["a 123 b ",
                                     " xyz\n"],
-                        &[<#[lang = "format_argument"]>::new_display(&x)]));
+                        &match (&123, &x, &"xyz") {
+                                    args =>
+                                        [<#[lang = "format_argument"]>::new_display(args.1)],
+                                }));
             };
     }
