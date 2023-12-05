@@ -13,15 +13,12 @@ use std::borrow::Cow;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
-        // Never call the const constructor of `fmt::Arguments` if the
-        // format_args!() had any arguments _before_ flattening/inlining.
-        let allow_const = fmt.arguments.all_args().is_empty();
         let mut fmt = Cow::Borrowed(fmt);
         if self.tcx.sess.opts.unstable_opts.flatten_format_args {
             fmt = flatten_format_args(fmt);
             fmt = inline_literals(fmt);
         }
-        expand_format_args(self, sp, &fmt, allow_const)
+        expand_format_args(self, sp, &fmt)
     }
 }
 
@@ -111,10 +108,10 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
 /// into
 ///
 /// `format_args!("Hello, World! 123 {}", x)`.
-fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
-    let mut was_inlined = vec![false; fmt.arguments.all_args().len()];
-    let mut inlined_anything = false;
-
+///
+/// Except it doesn't actually remove the inlined arguments,
+/// to make sure they are still checked later on (e.g. for out-of-range values).
+fn inline_literals<'a>(mut fmt: Cow<'a, FormatArgs>) -> Cow<'a, FormatArgs> {
     for i in 0..fmt.template.len() {
         let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
         let Ok(arg_index) = placeholder.argument.index else { continue };
@@ -143,38 +140,8 @@ fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
             let fmt = fmt.to_mut();
             // Replace the placeholder with the literal.
             fmt.template[i] = FormatArgsPiece::Literal(literal);
-            was_inlined[arg_index] = true;
-            inlined_anything = true;
         }
     }
-
-    // Remove the arguments that were inlined.
-    if inlined_anything {
-        let fmt = fmt.to_mut();
-
-        let mut remove = was_inlined;
-
-        // Don't remove anything that's still used.
-        for_all_argument_indexes(&mut fmt.template, |index| remove[*index] = false);
-
-        // Drop all the arguments that are marked for removal.
-        let mut remove_it = remove.iter();
-        fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&true));
-
-        // Calculate the mapping of old to new indexes for the remaining arguments.
-        let index_map: Vec<usize> = remove
-            .into_iter()
-            .scan(0, |i, remove| {
-                let mapped = *i;
-                *i += !remove as usize;
-                Some(mapped)
-            })
-            .collect();
-
-        // Correct the indexes that refer to arguments that have shifted position.
-        for_all_argument_indexes(&mut fmt.template, |index| *index = index_map[*index]);
-    }
-
     fmt
 }
 
@@ -353,7 +320,6 @@ fn expand_format_args<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     macsp: Span,
     fmt: &FormatArgs,
-    allow_const: bool,
 ) -> hir::ExprKind<'hir> {
     let mut incomplete_lit = String::new();
     let lit_pieces =
@@ -422,7 +388,7 @@ fn expand_format_args<'hir>(
 
     let arguments = fmt.arguments.all_args();
 
-    if allow_const && arguments.is_empty() && argmap.is_empty() {
+    if arguments.is_empty() && argmap.is_empty() {
         // Generate:
         //     <core::fmt::Arguments>::new_const(lit_pieces)
         let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
@@ -445,30 +411,7 @@ fn expand_format_args<'hir>(
         && argmap.iter().enumerate().all(|(i, (&(j, _), _))| i == j)
         && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
 
-    let args = if arguments.is_empty() {
-        // Generate:
-        //    &<core::fmt::Argument>::none()
-        //
-        // Note:
-        //     `none()` just returns `[]`. We use `none()` rather than `[]` to limit the lifetime.
-        //
-        //     This makes sure that this still fails to compile, even when the argument is inlined:
-        //
-        //     ```
-        //     let f = format_args!("{}", "a");
-        //     println!("{f}"); // error E0716
-        //     ```
-        //
-        //     Cases where keeping the object around is allowed, such as `format_args!("a")`,
-        //     are handled above by the `allow_const` case.
-        let none_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
-            macsp,
-            hir::LangItem::FormatArgument,
-            sym::none,
-        ));
-        let none = ctx.expr_call(macsp, none_fn, &[]);
-        ctx.expr(macsp, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, none))
-    } else if use_simple_array {
+    let args = if use_simple_array {
         // Generate:
         //     &[
         //         <core::fmt::Argument>::new_display(&arg0),
@@ -505,26 +448,47 @@ fn expand_format_args<'hir>(
         //     }
         let args_ident = Ident::new(sym::args, macsp);
         let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
-        let args = ctx.arena.alloc_from_iter(argmap.iter().map(
-            |(&(arg_index, ty), &placeholder_span)| {
-                let arg = &arguments[arg_index];
-                let placeholder_span =
-                    placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
-                let arg_span = match arg.kind {
-                    FormatArgumentKind::Captured(_) => placeholder_span,
-                    _ => arg.expr.span.with_ctxt(macsp.ctxt()),
-                };
-                let args_ident_expr = ctx.expr_ident(macsp, args_ident, args_hir_id);
-                let arg = ctx.arena.alloc(ctx.expr(
-                    arg_span,
-                    hir::ExprKind::Field(
-                        args_ident_expr,
-                        Ident::new(sym::integer(arg_index), macsp),
-                    ),
-                ));
-                make_argument(ctx, placeholder_span, arg, ty)
-            },
-        ));
+        let args = if argmap.is_empty() {
+            // Generate `<core::fmt::Argument>::none()` instead of `[]`
+            //
+            // `none()` just returns `[]`. We use `none()` rather than `[]` to limit the lifetime.
+            //
+            // This makes sure that this still fails to compile, even when the argument is inlined:
+            //
+            // ```
+            // let f = format_args!("{}", "a");
+            // println!("{f}"); // error E0716
+            // ```
+            let none_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+                macsp,
+                hir::LangItem::FormatArgument,
+                sym::none,
+            ));
+            ctx.expr_call(macsp, none_fn, &[])
+        } else {
+            let elements = ctx.arena.alloc_from_iter(argmap.iter().map(
+                |(&(arg_index, ty), &placeholder_span)| {
+                    let arg = &arguments[arg_index];
+                    let placeholder_span =
+                        placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
+                    let arg_span = match arg.kind {
+                        FormatArgumentKind::Captured(_) => placeholder_span,
+                        _ => arg.expr.span.with_ctxt(macsp.ctxt()),
+                    };
+                    let args_ident_expr = ctx.expr_ident(macsp, args_ident, args_hir_id);
+                    let arg = ctx.arena.alloc(ctx.expr(
+                        arg_span,
+                        hir::ExprKind::Field(
+                            args_ident_expr,
+                            Ident::new(sym::integer(arg_index), macsp),
+                        ),
+                    ));
+                    make_argument(ctx, placeholder_span, arg, ty)
+                },
+            ));
+            let array = ctx.expr(macsp, hir::ExprKind::Array(elements));
+            ctx.arena.alloc(array)
+        };
         let elements = ctx.arena.alloc_from_iter(arguments.iter().map(|arg| {
             let arg_expr = ctx.lower_expr(&arg.expr);
             ctx.expr(
@@ -533,8 +497,7 @@ fn expand_format_args<'hir>(
             )
         }));
         let args_tuple = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Tup(elements)));
-        let array = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Array(args)));
-        let match_arms = ctx.arena.alloc_from_iter([ctx.arm(args_pat, array)]);
+        let match_arms = ctx.arena.alloc_from_iter([ctx.arm(args_pat, args)]);
         let match_expr = ctx.arena.alloc(ctx.expr_match(
             macsp,
             args_tuple,
