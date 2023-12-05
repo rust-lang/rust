@@ -487,6 +487,7 @@ pub enum GenericParamKind<'hir> {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
         default: Option<AnonConst>,
+        is_host_effect: bool,
     },
 }
 

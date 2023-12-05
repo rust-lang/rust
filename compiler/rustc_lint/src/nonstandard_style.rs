@@ -534,9 +534,9 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     }
 
     fn check_generic_param(&mut self, cx: &LateContext<'_>, param: &hir::GenericParam<'_>) {
-        if let GenericParamKind::Const { .. } = param.kind {
-            // `rustc_host` params are explicitly allowed to be lowercase.
-            if cx.tcx.has_attr(param.def_id, sym::rustc_host) {
+        if let GenericParamKind::Const { is_host_effect, .. } = param.kind {
+            // `host` params are explicitly allowed to be lowercase.
+            if is_host_effect {
                 return;
             }
             NonUpperCaseGlobals::check_upper_case(cx, "const parameter", &param.name.ident());
