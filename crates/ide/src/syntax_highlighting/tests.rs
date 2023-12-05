@@ -430,6 +430,10 @@ macro_rules! toho {
     ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", format_args!($($arg)+)));
 }
 
+macro_rules! reuse_twice {
+    ($literal:literal) => {{stringify!($literal); format_args!($literal)}};
+}
+
 fn main() {
     let a = '\n';
     let a = '\t';
@@ -524,6 +528,7 @@ fn main() {
     let mut m = ();
     format_args!(concat!("{}"), "{}");
     format_args!("{} {} {} {} {} {} {backslash} {CONSTANT} {m}", backslash, format_args!("{}", 0), foo, "bar", toho!(), backslash);
+    reuse_twice!("{backslash}");
 }"#,
         expect_file!["./test_data/highlight_strings.html"],
         false,

@@ -606,8 +606,8 @@ impl<'db> SemanticsImpl<'db> {
                 }
                 Dp::None => true,
             };
+            res = value;
             if is_a_match {
-                res = value;
                 ControlFlow::Break(())
             } else {
                 ControlFlow::Continue(())
