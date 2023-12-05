@@ -47,12 +47,11 @@ guide :)
 
 ### Experts
 
-Not all `t-compiler` members are experts on all parts of `rustc`; it's a pretty
-large project. To find out who has expertise on different parts of the
-compiler, [consult this "experts map"][map].
-
-The experts map incomplete and not actively maintained, so please also feel free to ask questions
-even if you can't figure out who to ping.
+Not all `t-compiler` members are experts on all parts of `rustc`; it's a
+pretty large project. To find out who could have some expertise on
+different parts of the compiler, [consult traigebot assign groups][map].
+The sections that start with `[assign*` in `triagebot.toml` file. 
+But also, feel free to ask questions even if you can't figure out who to ping.
 
 Another way to find experts for a given part of the compiler is to see who has made recent commits.
 For example, to find people who have recently worked on name resolution since the 1.68.2 release,
@@ -60,7 +59,7 @@ you could run `git shortlog -n 1.68.2.. compiler/rustc_resolve/`. Ignore any com
 "Rollup merge" or commits by `@bors` (see [CI contribution procedures](./contributing.md#ci) for
 more information about these commits).
 
-[map]: https://github.com/rust-lang/compiler-team/blob/master/content/experts/map.toml
+[map]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
 
 ### Etiquette
 

@@ -17,15 +17,15 @@ Currently the compiler team chats in Zulip:
   with rustc development, or [`t-compiler/meetings`][zulip-meetings],
   where the team holds their weekly triage and steering meetings.
 
-## Expert map
+## Reviewers
 
 If you're interested in figuring out who can answer questions about a
 particular part of the compiler, or you'd just like to know who works on what,
-check out our [experts directory][experts].
+check out [triagebot.toml's assign section][map].
 It contains a listing of the various parts of the compiler and a list of people
-who are experts on each one.
+who are reviewers of each part.
 
-[experts]: https://github.com/rust-lang/compiler-team/blob/master/content/experts/map.toml
+[map]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
 
 ## Rust compiler meeting
 
