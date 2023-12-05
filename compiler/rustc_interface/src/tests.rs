@@ -26,10 +26,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
-    let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut early_handler = EarlyErrorHandler::new(ErrorOutputType::default());
     let registry = registry::Registry::new(&[]);
-    let sessopts = build_session_options(&mut handler, &matches);
-    let cfg = parse_cfg(&handler, matches.opt_strs("cfg"));
+    let sessopts = build_session_options(&mut early_handler, &matches);
     let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
     let io = CompilerIO {
         input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -38,7 +37,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         temps_dir,
     };
     let sess = build_session(
-        &handler,
+        early_handler,
         sessopts,
         io,
         None,
@@ -52,6 +51,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         Arc::default(),
         Default::default(),
     );
+    let cfg = parse_cfg(&sess.diagnostic(), matches.opt_strs("cfg"));
     (sess, cfg)
 }
 

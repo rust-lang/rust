@@ -2,3 +2,5 @@ warning: failed to connect to jobserver from environment variable `MAKEFLAGS="--
   |
   = note: the build environment is likely misconfigured
 
+warning: 1 warning emitted
+
