@@ -929,6 +929,7 @@ symbols! {
         lib,
         libc,
         lifetime,
+        lifetime_capture_rules_2024,
         lifetimes,
         likely,
         line,
