@@ -183,7 +183,7 @@ pub fn main() {
         // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
         // accept a generic closure.
         let version_info = rustc_tools_util::get_version_info!();
-        handler.note_without_error(format!("Clippy version: {version_info}"));
+        handler.note(format!("Clippy version: {version_info}"));
     });
 
     exit(rustc_driver::catch_with_exit_code(move || {
