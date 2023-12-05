@@ -1441,7 +1441,7 @@ fn collect_used_items<'tcx>(
     // and abort compilation if any of them errors.
     MirUsedCollector {
         tcx,
-        body: body,
+        body,
         output,
         instance,
         move_size_spans: vec![],

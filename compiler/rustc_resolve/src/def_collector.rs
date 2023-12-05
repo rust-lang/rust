@@ -4,6 +4,7 @@ use rustc_ast::*;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::hir::map::{named_span, until_within};
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -31,18 +32,20 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
         node_id: NodeId,
         name: Symbol,
         def_kind: DefKind,
+        def_span: Span,
         span: Span,
     ) -> LocalDefId {
         let parent_def = self.parent_def;
         debug!(
-            "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
-            node_id, def_kind, parent_def
+            "create_def(node_id={:?}, def_kind={:?}, parent_def={:?}, def_span={:?})",
+            node_id, def_kind, parent_def, def_span
         );
         self.resolver.create_def(
             parent_def,
             node_id,
             name,
             def_kind,
+            def_span,
             self.expansion.to_expn_id(),
             span.with_parent(None),
         )
@@ -78,7 +81,7 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
             self.visit_macro_invoc(field.id);
         } else {
             let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
-            let def = self.create_def(field.id, name, DefKind::Field, field.span);
+            let def = self.create_def(field.id, name, DefKind::Field, field.span, field.span);
             self.with_parent(def, |this| visit::walk_field_def(this, field));
         }
     }
@@ -88,6 +91,33 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
         let old_parent =
             self.resolver.invocation_parents.insert(id, (self.parent_def, self.impl_trait_context));
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
+    }
+}
+
+fn def_span_for_item(i: &Item) -> Span {
+    match &i.kind {
+        ItemKind::ForeignMod(_) => i.span,
+        ItemKind::GlobalAsm(_) => i.span,
+        ItemKind::Fn(f) => f.sig.span.find_ancestor_in_same_ctxt(i.span).unwrap_or(i.span),
+        ItemKind::Static(s) => until_within(i.span, s.ty.span),
+        ItemKind::Const(c) => until_within(i.span, c.ty.span),
+        ItemKind::Impl(im) => until_within(i.span, im.generics.where_clause.span),
+        ItemKind::MacroDef(_) => named_span(i.span, i.ident, i.kind.generics().map(|g| g.span)),
+        ItemKind::Mod(_, _) => named_span(i.span, i.ident, i.kind.generics().map(|g| g.span)),
+        ItemKind::TyAlias(_) => named_span(i.span, i.ident, i.kind.generics().map(|g| g.span)),
+        ItemKind::TraitAlias(_, _) => {
+            named_span(i.span, i.ident, i.kind.generics().map(|g| g.span))
+        }
+        ItemKind::ExternCrate(_) => named_span(i.span, i.ident, i.kind.generics().map(|g| g.span)),
+        ItemKind::Union(_, _) => named_span(i.span, i.ident, i.kind.generics().map(|g| g.span)),
+        ItemKind::Enum(..) => named_span(i.span, i.ident, i.kind.generics().map(|g| g.span)),
+        ItemKind::Struct(..) => named_span(i.span, i.ident, i.kind.generics().map(|g| g.span)),
+        ItemKind::Trait(t) => {
+            let end = if let Some(b) = t.bounds.last() { b.span() } else { t.generics.span };
+            until_within(i.span, end)
+        }
+        ItemKind::Use(_) => unreachable!(),
+        ItemKind::MacCall(_) => unreachable!(),
     }
 }
 
@@ -127,7 +157,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 return visit::walk_item(self, i);
             }
         };
-        let def_id = self.create_def(i.id, i.ident.name, def_kind, i.span);
+        let def_id = self.create_def(i.id, i.ident.name, def_kind, def_span_for_item(i), i.span);
 
         if let Some(macro_data) = opt_macro_data {
             self.resolver.macro_map.insert(def_id.to_def_id(), macro_data);
@@ -143,6 +173,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                                 ctor_node_id,
                                 kw::Empty,
                                 DefKind::Ctor(CtorOf::Struct, ctor_kind),
+                                this.resolver.tcx.def_span(this.parent_def),
                                 i.span,
                             );
                         }
@@ -176,6 +207,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                             coroutine_kind.closure_id(),
                             kw::Empty,
                             DefKind::Closure,
+                            body.span.find_ancestor_in_same_ctxt(span).unwrap_or(span),
                             span,
                         );
                         self.with_parent(closure_def, |this| this.visit_block(body));
@@ -190,19 +222,27 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
-        self.create_def(id, kw::Empty, DefKind::Use, use_tree.span);
+        let def_span =
+            use_tree.prefix.span.find_ancestor_in_same_ctxt(use_tree.span).unwrap_or(use_tree.span);
+        self.create_def(id, kw::Empty, DefKind::Use, def_span, use_tree.span);
         visit::walk_use_tree(self, use_tree, id);
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
-        let def_kind = match fi.kind {
-            ForeignItemKind::Static(_, mt, _) => DefKind::Static(mt),
-            ForeignItemKind::Fn(_) => DefKind::Fn,
-            ForeignItemKind::TyAlias(_) => DefKind::ForeignTy,
+        let (def_kind, def_span) = match &fi.kind {
+            ForeignItemKind::Static(ty, mt, _) => {
+                (DefKind::Static(*mt), until_within(fi.span, ty.span))
+            }
+            ForeignItemKind::Fn(f) => {
+                (DefKind::Fn, until_within(fi.span, f.sig.decl.output.span()))
+            }
+            ForeignItemKind::TyAlias(_) => {
+                (DefKind::ForeignTy, named_span(fi.span, fi.ident, None))
+            }
             ForeignItemKind::MacCall(_) => return self.visit_macro_invoc(fi.id),
         };
 
-        let def = self.create_def(fi.id, fi.ident.name, def_kind, fi.span);
+        let def = self.create_def(fi.id, fi.ident.name, def_kind, def_span, fi.span);
 
         self.with_parent(def, |this| visit::walk_foreign_item(this, fi));
     }
@@ -211,13 +251,20 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         if v.is_placeholder {
             return self.visit_macro_invoc(v.id);
         }
-        let def = self.create_def(v.id, v.ident.name, DefKind::Variant, v.span);
+        let def = self.create_def(
+            v.id,
+            v.ident.name,
+            DefKind::Variant,
+            named_span(v.span, v.ident, None),
+            v.span,
+        );
         self.with_parent(def, |this| {
             if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&v.data) {
                 this.create_def(
                     ctor_node_id,
                     kw::Empty,
                     DefKind::Ctor(CtorOf::Variant, ctor_kind),
+                    this.resolver.tcx.def_span(this.parent_def),
                     v.span,
                 );
             }
@@ -244,7 +291,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             GenericParamKind::Type { .. } => DefKind::TyParam,
             GenericParamKind::Const { .. } => DefKind::ConstParam,
         };
-        self.create_def(param.id, param.ident.name, def_kind, param.ident.span);
+        self.create_def(param.id, param.ident.name, def_kind, param.span(), param.ident.span);
 
         // impl-Trait can happen inside generic parameters, like
         // ```
@@ -258,14 +305,19 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
-        let def_kind = match &i.kind {
-            AssocItemKind::Fn(..) => DefKind::AssocFn,
-            AssocItemKind::Const(..) => DefKind::AssocConst,
-            AssocItemKind::Type(..) => DefKind::AssocTy,
+        let (def_kind, def_span) = match &i.kind {
+            AssocItemKind::Fn(f) => {
+                (DefKind::AssocFn, f.sig.span.find_ancestor_in_same_ctxt(i.span).unwrap_or(i.span))
+            }
+            AssocItemKind::Const(c) => (DefKind::AssocConst, until_within(i.span, c.ty.span)),
+            AssocItemKind::Type(ty) => (DefKind::AssocTy, {
+                let end = if let Some(b) = ty.bounds.last() { b.span() } else { ty.generics.span };
+                until_within(i.span, end)
+            }),
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };
 
-        let def = self.create_def(i.id, i.ident.name, def_kind, i.span);
+        let def = self.create_def(i.id, i.ident.name, def_kind, def_span, i.span);
         self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
     }
 
@@ -277,7 +329,13 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
-        let def = self.create_def(constant.id, kw::Empty, DefKind::AnonConst, constant.value.span);
+        let def = self.create_def(
+            constant.id,
+            kw::Empty,
+            DefKind::AnonConst,
+            constant.value.span,
+            constant.value.span,
+        );
         self.with_parent(def, |this| visit::walk_anon_const(this, constant));
     }
 
@@ -287,25 +345,34 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             ExprKind::Closure(ref closure) => {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
-                let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
+                let def_span =
+                    closure.fn_decl_span.find_ancestor_inside(expr.span).unwrap_or(expr.span);
+                let closure_def =
+                    self.create_def(expr.id, kw::Empty, DefKind::Closure, def_span, expr.span);
                 match closure.coroutine_kind {
                     Some(coroutine_kind) => self.create_def(
                         coroutine_kind.closure_id(),
                         kw::Empty,
                         DefKind::Closure,
+                        closure
+                            .body
+                            .span
+                            .find_ancestor_in_same_ctxt(expr.span)
+                            .unwrap_or(expr.span),
                         expr.span,
                     ),
                     None => closure_def,
                 }
             }
             ExprKind::Gen(_, _, _) => {
-                self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
+                self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span, expr.span)
             }
             ExprKind::ConstBlock(ref constant) => {
                 let def = self.create_def(
                     constant.id,
                     kw::Empty,
                     DefKind::InlineConst,
+                    constant.value.span,
                     constant.value.span,
                 );
                 self.with_parent(def, |this| visit::walk_anon_const(this, constant));

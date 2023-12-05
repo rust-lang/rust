@@ -19,6 +19,25 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::spec::abi::Abi;
 
+pub fn until_within(outer: Span, end: Span) -> Span {
+    if let Some(end) = end.find_ancestor_inside(outer) { outer.with_hi(end.hi()) } else { outer }
+}
+
+pub fn named_span(item_span: Span, ident: Ident, generics_span: Option<Span>) -> Span {
+    if ident.name != kw::Empty {
+        let mut span = until_within(item_span, ident.span);
+        if let Some(g) = generics_span
+            && !g.is_dummy()
+            && let Some(g_span) = g.find_ancestor_inside(item_span)
+        {
+            span = span.to(g_span);
+        }
+        span
+    } else {
+        item_span
+    }
+}
+
 #[inline]
 pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
     match node {
@@ -847,110 +866,14 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn opt_span(self, hir_id: HirId) -> Option<Span> {
-        fn until_within(outer: Span, end: Span) -> Span {
-            if let Some(end) = end.find_ancestor_inside(outer) {
-                outer.with_hi(end.hi())
-            } else {
-                outer
-            }
-        }
-
-        fn named_span(item_span: Span, ident: Ident, generics: Option<&Generics<'_>>) -> Span {
-            if ident.name != kw::Empty {
-                let mut span = until_within(item_span, ident.span);
-                if let Some(g) = generics
-                    && !g.span.is_dummy()
-                    && let Some(g_span) = g.span.find_ancestor_inside(item_span)
-                {
-                    span = span.to(g_span);
-                }
-                span
-            } else {
-                item_span
-            }
+        if let Some(owner) = hir_id.as_owner() {
+            let span = self.tcx.def_span(owner.def_id);
+            return Some(span);
         }
 
         let span = match self.tcx.opt_hir_node(hir_id)? {
-            // Function-like.
-            Node::Item(Item { kind: ItemKind::Fn(sig, ..), span: outer_span, .. })
-            | Node::TraitItem(TraitItem {
-                kind: TraitItemKind::Fn(sig, ..),
-                span: outer_span,
-                ..
-            })
-            | Node::ImplItem(ImplItem {
-                kind: ImplItemKind::Fn(sig, ..), span: outer_span, ..
-            }) => {
-                // Ensure that the returned span has the item's SyntaxContext, and not the
-                // SyntaxContext of the visibility.
-                sig.span.find_ancestor_in_same_ctxt(*outer_span).unwrap_or(*outer_span)
-            }
-            // Impls, including their where clauses.
-            Node::Item(Item {
-                kind: ItemKind::Impl(Impl { generics, .. }),
-                span: outer_span,
-                ..
-            }) => until_within(*outer_span, generics.where_clause_span),
-            // Constants and Statics.
-            Node::Item(Item {
-                kind: ItemKind::Const(ty, ..) | ItemKind::Static(ty, ..),
-                span: outer_span,
-                ..
-            })
-            | Node::TraitItem(TraitItem {
-                kind: TraitItemKind::Const(ty, ..),
-                span: outer_span,
-                ..
-            })
-            | Node::ImplItem(ImplItem {
-                kind: ImplItemKind::Const(ty, ..),
-                span: outer_span,
-                ..
-            })
-            | Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Static(ty, ..),
-                span: outer_span,
-                ..
-            }) => until_within(*outer_span, ty.span),
-            // With generics and bounds.
-            Node::Item(Item {
-                kind: ItemKind::Trait(_, _, generics, bounds, _),
-                span: outer_span,
-                ..
-            })
-            | Node::TraitItem(TraitItem {
-                kind: TraitItemKind::Type(bounds, _),
-                generics,
-                span: outer_span,
-                ..
-            }) => {
-                let end = if let Some(b) = bounds.last() { b.span() } else { generics.span };
-                until_within(*outer_span, end)
-            }
-            // Other cases.
-            Node::Item(item) => match &item.kind {
-                ItemKind::Use(path, _) => {
-                    // Ensure that the returned span has the item's SyntaxContext, and not the
-                    // SyntaxContext of the path.
-                    path.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
-                }
-                _ => named_span(item.span, item.ident, item.kind.generics()),
-            },
             Node::Variant(variant) => named_span(variant.span, variant.ident, None),
-            Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
-            Node::ForeignItem(item) => match item.kind {
-                ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
-                _ => named_span(item.span, item.ident, None),
-            },
             Node::Ctor(_) => return self.opt_span(self.parent_id(hir_id)),
-            Node::Expr(Expr {
-                kind: ExprKind::Closure(Closure { fn_decl_span, .. }),
-                span,
-                ..
-            }) => {
-                // Ensure that the returned span has the item's SyntaxContext.
-                fn_decl_span.find_ancestor_inside(*span).unwrap_or(*span)
-            }
             _ => self.span_with_body(hir_id),
         };
         debug_assert_eq!(span.ctxt(), self.span_with_body(hir_id).ctxt());

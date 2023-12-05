@@ -170,11 +170,14 @@ impl<'tcx> Queries<'tcx> {
                     &pre_configured_attrs,
                     crate_name,
                 )));
+                let span = krate.spans.inner_span;
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
                 feed.output_filenames(Arc::new(outputs));
 
-                let feed = tcx.feed_local_def_id(CRATE_DEF_ID);
+                let def_id = CRATE_DEF_ID;
+                let feed = tcx.feed_local_def_id(def_id);
                 feed.def_kind(DefKind::Mod);
+                feed.def_span(rustc_middle::util::lower_span(tcx, span, def_id));
             });
             Ok(qcx)
         })
