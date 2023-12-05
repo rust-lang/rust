@@ -22,8 +22,8 @@ use super::{
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
     render_impl, render_rightside, render_stability_since_raw,
-    render_stability_since_raw_with_extra, AssocItemLink, AssocItemRender, Context,
-    ImplRenderingParameters, RenderMode,
+    render_stability_since_raw_with_extra, write_section_heading, AssocItemLink, AssocItemRender,
+    Context, ImplRenderingParameters, RenderMode,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
@@ -428,13 +428,12 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 w.write_str(ITEM_TABLE_CLOSE);
             }
             last_section = Some(my_section);
-            write!(
+            write_section_heading(
                 w,
-                "<h2 id=\"{id}\" class=\"section-header\">\
-                    {name}<a href=\"#{id}\" class=\"anchor\">§</a>\
-                 </h2>{ITEM_TABLE_OPEN}",
-                id = cx.derive_id(my_section.id()),
-                name = my_section.name(),
+                my_section.name(),
+                &cx.derive_id(my_section.id()),
+                None,
+                ITEM_TABLE_OPEN,
             );
         }
 
@@ -824,16 +823,6 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // Trait documentation
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
-    fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
-        write!(
-            w,
-            "<h2 id=\"{0}\" class=\"section-header\">\
-                {1}<a href=\"#{0}\" class=\"anchor\">§</a>\
-             </h2>{2}",
-            id, title, extra_content
-        )
-    }
-
     fn trait_item(w: &mut Buffer, cx: &mut Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.unwrap();
         info!("Documenting {name} on {ty_name:?}", ty_name = t.name);
@@ -867,10 +856,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     }
 
     if !required_types.is_empty() {
-        write_small_section_header(
+        write_section_heading(
             w,
-            "required-associated-types",
             "Required Associated Types",
+            "required-associated-types",
+            None,
             "<div class=\"methods\">",
         );
         for t in required_types {
@@ -879,10 +869,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         w.write_str("</div>");
     }
     if !provided_types.is_empty() {
-        write_small_section_header(
+        write_section_heading(
             w,
-            "provided-associated-types",
             "Provided Associated Types",
+            "provided-associated-types",
+            None,
             "<div class=\"methods\">",
         );
         for t in provided_types {
@@ -892,10 +883,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     }
 
     if !required_consts.is_empty() {
-        write_small_section_header(
+        write_section_heading(
             w,
-            "required-associated-consts",
             "Required Associated Constants",
+            "required-associated-consts",
+            None,
             "<div class=\"methods\">",
         );
         for t in required_consts {
@@ -904,10 +896,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         w.write_str("</div>");
     }
     if !provided_consts.is_empty() {
-        write_small_section_header(
+        write_section_heading(
             w,
-            "provided-associated-consts",
             "Provided Associated Constants",
+            "provided-associated-consts",
+            None,
             "<div class=\"methods\">",
         );
         for t in provided_consts {
@@ -918,10 +911,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     // Output the documentation for each function individually
     if !required_methods.is_empty() || must_implement_one_of_functions.is_some() {
-        write_small_section_header(
+        write_section_heading(
             w,
-            "required-methods",
             "Required Methods",
+            "required-methods",
+            None,
             "<div class=\"methods\">",
         );
 
@@ -939,10 +933,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         w.write_str("</div>");
     }
     if !provided_methods.is_empty() {
-        write_small_section_header(
+        write_section_heading(
             w,
-            "provided-methods",
             "Provided Methods",
+            "provided-methods",
+            None,
             "<div class=\"methods\">",
         );
         for m in provided_methods {
@@ -959,10 +954,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     let mut extern_crates = FxHashSet::default();
 
     if !t.is_object_safe(cx.tcx()) {
-        write_small_section_header(
+        write_section_heading(
             w,
-            "object-safety",
             "Object Safety",
+            "object-safety",
+            None,
             &format!(
                 "<div class=\"object-safety-info\">This trait is <b>not</b> \
                 <a href=\"{base}/reference/items/traits.html#object-safety\">\
@@ -1006,7 +1002,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         foreign.sort_by_cached_key(|i| ImplString::new(i, cx));
 
         if !foreign.is_empty() {
-            write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
+            write_section_heading(w, "Implementations on Foreign Types", "foreign-impls", None, "");
 
             for implementor in foreign {
                 let provided_methods = implementor.inner_impl().provided_trait_methods(tcx);
@@ -1031,10 +1027,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
         }
 
-        write_small_section_header(
+        write_section_heading(
             w,
-            "implementors",
             "Implementors",
+            "implementors",
+            None,
             "<div id=\"implementors-list\">",
         );
         for implementor in concrete {
@@ -1043,10 +1040,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         w.write_str("</div>");
 
         if t.is_auto(tcx) {
-            write_small_section_header(
+            write_section_heading(
                 w,
-                "synthetic-implementors",
                 "Auto implementors",
+                "synthetic-implementors",
+                None,
                 "<div id=\"synthetic-implementors-list\">",
             );
             for implementor in synthetic {
@@ -1064,18 +1062,20 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     } else {
         // even without any implementations to write in, we still want the heading and list, so the
         // implementors javascript file pulled in below has somewhere to write the impls into
-        write_small_section_header(
+        write_section_heading(
             w,
-            "implementors",
             "Implementors",
+            "implementors",
+            None,
             "<div id=\"implementors-list\"></div>",
         );
 
         if t.is_auto(tcx) {
-            write_small_section_header(
+            write_section_heading(
                 w,
-                "synthetic-implementors",
                 "Auto implementors",
+                "synthetic-implementors",
+                None,
                 "<div id=\"synthetic-implementors-list\"></div>",
             );
         }
@@ -1258,11 +1258,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     if let Some(inner_type) = &t.inner_type {
-        write!(
-            w,
-            "<h2 id=\"aliased-type\" class=\"section-header\">\
-                Aliased Type<a href=\"#aliased-type\" class=\"anchor\">§</a></h2>"
-        );
+        write_section_heading(w, "Aliased Type", "aliased-type", None, "");
 
         match inner_type {
             clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
@@ -1683,16 +1679,14 @@ fn item_variants(
     enum_def_id: DefId,
 ) {
     let tcx = cx.tcx();
-    write!(
+    write_section_heading(
         w,
-        "<h2 id=\"variants\" class=\"variants section-header\">\
-            Variants{}<a href=\"#variants\" class=\"anchor\">§</a>\
-        </h2>\
-        {}\
-        <div class=\"variants\">",
-        document_non_exhaustive_header(it),
-        document_non_exhaustive(it)
+        &format!("Variants{}", document_non_exhaustive_header(it)),
+        "variants",
+        Some("variants"),
+        format!("{}<div class=\"variants\">", document_non_exhaustive(it)),
     );
+
     let should_show_enum_discriminant = should_show_enum_discriminant(cx, enum_def_id, variants);
     for (index, variant) in variants.iter_enumerated() {
         if variant.is_stripped() {
@@ -1933,16 +1927,12 @@ fn item_fields(
         .peekable();
     if let None | Some(CtorKind::Fn) = ctor_kind {
         if fields.peek().is_some() {
-            write!(
-                w,
-                "<h2 id=\"fields\" class=\"fields section-header\">\
-                     {}{}<a href=\"#fields\" class=\"anchor\">§</a>\
-                 </h2>\
-                 {}",
+            let title = format!(
+                "{}{}",
                 if ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it),
-                document_non_exhaustive(it)
             );
+            write_section_heading(w, &title, "fields", Some("fields"), document_non_exhaustive(it));
             for (index, (field, ty)) in fields.enumerate() {
                 let field_name =
                     field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());

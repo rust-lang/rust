@@ -1142,15 +1142,29 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
-fn write_impl_section_heading(mut w: impl fmt::Write, title: &str, id: &str) {
+pub fn write_section_heading(
+    w: &mut impl fmt::Write,
+    title: &str,
+    id: &str,
+    extra_class: Option<&str>,
+    extra: impl fmt::Display,
+) {
+    let (extra_class, whitespace) = match extra_class {
+        Some(extra) => (extra, " "),
+        None => ("", ""),
+    };
     write!(
         w,
-        "<h2 id=\"{id}\" class=\"section-header\">\
+        "<h2 id=\"{id}\" class=\"{extra_class}{whitespace}section-header\">\
             {title}\
             <a href=\"#{id}\" class=\"anchor\">§</a>\
-         </h2>"
+         </h2>{extra}",
     )
     .unwrap();
+}
+
+fn write_impl_section_heading(w: &mut impl fmt::Write, title: &str, id: &str) {
+    write_section_heading(w, title, id, None, "")
 }
 
 pub(crate) fn render_all_impls(
