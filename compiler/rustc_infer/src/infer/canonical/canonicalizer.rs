@@ -202,8 +202,21 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
     fn canonicalize_free_region<'tcx>(
         &self,
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
-        r: ty::Region<'tcx>,
+        mut r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
+        if let ty::ReVar(vid) = *r {
+            r = canonicalizer
+                .infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(canonicalizer.tcx, vid);
+            debug!(
+                "canonical: region var found with vid {vid:?}, \
+                     opportunistically resolved to {r:?}",
+            );
+        };
+
         match *r {
             ty::ReLateParam(_) | ty::ReErased | ty::ReStatic | ty::ReEarlyParam(..) => r,
 
@@ -381,25 +394,12 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 }
             }
 
-            ty::ReVar(vid) => {
-                let resolved = self
-                    .infcx
-                    .inner
-                    .borrow_mut()
-                    .unwrap_region_constraints()
-                    .opportunistic_resolve_var(self.tcx, vid);
-                debug!(
-                    "canonical: region var found with vid {vid:?}, \
-                     opportunistically resolved to {resolved:?}",
-                );
-                self.canonicalize_mode.canonicalize_free_region(self, resolved)
-            }
-
             ty::ReStatic
             | ty::ReEarlyParam(..)
             | ty::ReError(_)
             | ty::ReLateParam(_)
             | ty::RePlaceholder(..)
+            | ty::ReVar(_)
             | ty::ReErased => self.canonicalize_mode.canonicalize_free_region(self, r),
         }
     }
