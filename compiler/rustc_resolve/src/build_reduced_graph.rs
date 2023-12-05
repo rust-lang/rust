@@ -236,7 +236,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     // (i.e. variants, fields, and trait items) inherits from the visibility
                     // of the enum or trait.
                     ModuleKind::Def(DefKind::Enum | DefKind::Trait, def_id, _) => {
-                        self.r.visibilities[&def_id.expect_local()]
+                        self.r.tcx.visibility(def_id).expect_local()
                     }
                     // Otherwise, the visibility is restricted to the nearest parent `mod` item.
                     _ => ty::Visibility::Restricted(
@@ -404,6 +404,10 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             parent_prefix, use_tree, nested
         );
 
+        if nested {
+            self.r.feed_visibility(self.r.local_def_id(id), vis);
+        }
+
         let mut prefix_iter = parent_prefix
             .iter()
             .cloned()
@@ -441,8 +445,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 let mut module_path = prefix;
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
-
-                self.r.visibilities.insert(self.r.local_def_id(id), vis);
 
                 if nested {
                     // Correctly handle `self`
@@ -557,7 +559,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     max_vis: Cell::new(None),
                     id,
                 };
-                self.r.visibilities.insert(self.r.local_def_id(id), vis);
+
                 self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Nested(ref items) => {
@@ -636,7 +638,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let def_kind = self.r.tcx.def_kind(def_id);
         let res = Res::Def(def_kind, def_id);
 
-        self.r.visibilities.insert(local_def_id, vis);
+        self.r.feed_visibility(local_def_id, vis);
 
         match item.kind {
             ItemKind::Use(ref use_tree) => {
@@ -753,7 +755,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     let ctor_def_id = self.r.local_def_id(ctor_node_id);
                     let ctor_res = self.res(ctor_def_id);
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
-                    self.r.visibilities.insert(ctor_def_id, ctor_vis);
+                    self.r.feed_visibility(ctor_def_id, ctor_vis);
                     // We need the field visibility spans also for the constructor for E0603.
                     self.insert_field_visibilities_local(ctor_def_id.to_def_id(), vdata);
 
@@ -897,7 +899,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let expansion = self.parent_scope.expansion;
         let vis = self.resolve_visibility(&item.vis);
         self.r.define(parent, item.ident, ns, (self.res(def_id), vis, item.span, expansion));
-        self.r.visibilities.insert(local_def_id, vis);
+        self.r.feed_visibility(local_def_id, vis);
     }
 
     fn build_reduced_graph_for_block(&mut self, block: &Block) {
@@ -1228,7 +1230,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.r.check_reserved_macro_name(ident, res);
                 self.insert_unused_macro(ident, def_id, item.id);
             }
-            self.r.visibilities.insert(def_id, vis);
+            self.r.feed_visibility(def_id, vis);
             let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
                 self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
                     parent_macro_rules_scope: parent_scope.macro_rules,
@@ -1252,7 +1254,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
-            self.r.visibilities.insert(def_id, vis);
+            self.r.feed_visibility(def_id, vis);
             self.parent_scope.macro_rules
         }
     }
@@ -1354,7 +1356,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             // Trait impl item visibility is inherited from its trait when not specified
             // explicitly. In that case we cannot determine it here in early resolve,
             // so we leave a hole in the visibility table to be filled later.
-            self.r.visibilities.insert(local_def_id, vis);
+            self.r.feed_visibility(local_def_id, vis);
         }
 
         if ctxt == AssocCtxt::Trait {
@@ -1432,7 +1434,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             self.visit_invoc(sf.id);
         } else {
             let vis = self.resolve_visibility(&sf.vis);
-            self.r.visibilities.insert(self.r.local_def_id(sf.id), vis);
+            self.r.feed_visibility(self.r.local_def_id(sf.id), vis);
             visit::walk_field_def(self, sf);
         }
     }
@@ -1453,7 +1455,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let def_id = self.r.local_def_id(variant.id);
         let vis = self.resolve_visibility(&variant.vis);
         self.r.define(parent, ident, TypeNS, (self.res(def_id), vis, variant.span, expn_id));
-        self.r.visibilities.insert(def_id, vis);
+        self.r.feed_visibility(def_id, vis);
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
         let ctor_vis =
@@ -1468,7 +1470,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             let ctor_def_id = self.r.local_def_id(ctor_node_id);
             let ctor_res = self.res(ctor_def_id);
             self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
-            self.r.visibilities.insert(ctor_def_id, ctor_vis);
+            self.r.feed_visibility(ctor_def_id, ctor_vis);
         }
 
         // Record field names for error reporting.
