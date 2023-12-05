@@ -2219,8 +2219,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
             infer::PolyTraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
-                    expected: exp_found.expected.print_only_trait_path(),
-                    found: exp_found.found.print_only_trait_path(),
+                    expected: exp_found.expected.print_trait_sugared(),
+                    found: exp_found.found.print_trait_sugared(),
                 };
                 match self.expected_found_str(pretty_exp_found) {
                     Some((expected, found, _, _)) if expected == found => {
