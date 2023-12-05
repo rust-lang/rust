@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::{Interner, Placeholder, UniverseIndex};
+use crate::{Interner, PlaceholderLike, UniverseIndex};
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
@@ -157,12 +157,12 @@ where
 }
 
 impl<I: Interner> CanonicalVarInfo<I> {
-    pub fn universe(&self) -> UniverseIndex {
+    pub fn universe(self) -> UniverseIndex {
         self.kind.universe()
     }
 
     #[must_use]
-    pub fn with_updated_universe(&self, ui: UniverseIndex) -> CanonicalVarInfo<I> {
+    pub fn with_updated_universe(self, ui: UniverseIndex) -> CanonicalVarInfo<I> {
         CanonicalVarInfo { kind: self.kind.with_updated_universe(ui) }
     }
 
@@ -305,11 +305,11 @@ where
 }
 
 impl<I: Interner> CanonicalVarKind<I> {
-    pub fn universe(&self) -> UniverseIndex {
+    pub fn universe(self) -> UniverseIndex {
         match self {
-            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)) => *ui,
-            CanonicalVarKind::Region(ui) => *ui,
-            CanonicalVarKind::Const(ui, _) => *ui,
+            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)) => ui,
+            CanonicalVarKind::Region(ui) => ui,
+            CanonicalVarKind::Const(ui, _) => ui,
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe(),
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe(),
             CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.universe(),
@@ -324,13 +324,13 @@ impl<I: Interner> CanonicalVarKind<I> {
     ///
     /// In case this is a float or int variable, this causes an ICE if
     /// the updated universe is not the root.
-    pub fn with_updated_universe(&self, ui: UniverseIndex) -> CanonicalVarKind<I> {
+    pub fn with_updated_universe(self, ui: UniverseIndex) -> CanonicalVarKind<I> {
         match self {
             CanonicalVarKind::Ty(CanonicalTyVarKind::General(_)) => {
                 CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
             }
             CanonicalVarKind::Region(_) => CanonicalVarKind::Region(ui),
-            CanonicalVarKind::Const(_, ty) => CanonicalVarKind::Const(ui, ty.clone()),
+            CanonicalVarKind::Const(_, ty) => CanonicalVarKind::Const(ui, ty),
 
             CanonicalVarKind::PlaceholderTy(placeholder) => {
                 CanonicalVarKind::PlaceholderTy(placeholder.with_updated_universe(ui))
@@ -339,15 +339,12 @@ impl<I: Interner> CanonicalVarKind<I> {
                 CanonicalVarKind::PlaceholderRegion(placeholder.with_updated_universe(ui))
             }
             CanonicalVarKind::PlaceholderConst(placeholder, ty) => {
-                CanonicalVarKind::PlaceholderConst(
-                    placeholder.with_updated_universe(ui),
-                    ty.clone(),
-                )
+                CanonicalVarKind::PlaceholderConst(placeholder.with_updated_universe(ui), ty)
             }
             CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float)
             | CanonicalVarKind::Effect => {
                 assert_eq!(ui, UniverseIndex::ROOT);
-                self.clone()
+                self
             }
         }
     }

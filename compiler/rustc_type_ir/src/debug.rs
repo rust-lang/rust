@@ -16,7 +16,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         None
     }
 
-    fn universe_of_lt(&self, _lt: <I as Interner>::InferRegion) -> Option<UniverseIndex> {
+    fn universe_of_lt(&self, _lt: I::InferRegion) -> Option<UniverseIndex> {
         None
     }
 
@@ -28,21 +28,15 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         vid
     }
 
-    fn probe_ty_var(&self, _vid: TyVid) -> Option<<Self::Interner as Interner>::Ty> {
+    fn probe_ty_var(&self, _vid: TyVid) -> Option<I::Ty> {
         None
     }
 
-    fn root_lt_var(
-        &self,
-        vid: <Self::Interner as Interner>::InferRegion,
-    ) -> <Self::Interner as Interner>::InferRegion {
+    fn root_lt_var(&self, vid: I::InferRegion) -> I::InferRegion {
         vid
     }
 
-    fn probe_lt_var(
-        &self,
-        _vid: <Self::Interner as Interner>::InferRegion,
-    ) -> Option<<Self::Interner as Interner>::Region> {
+    fn probe_lt_var(&self, _vid: I::InferRegion) -> Option<I::Region> {
         None
     }
 
@@ -50,7 +44,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         vid
     }
 
-    fn probe_ct_var(&self, _vid: ConstVid) -> Option<<Self::Interner as Interner>::Const> {
+    fn probe_ct_var(&self, _vid: ConstVid) -> Option<I::Const> {
         None
     }
 }

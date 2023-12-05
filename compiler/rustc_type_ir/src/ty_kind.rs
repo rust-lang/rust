@@ -1,5 +1,3 @@
-#![allow(rustc::usage_of_ty_tykind)]
-
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -394,7 +392,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Float(float) => write!(f, "{float:?}"),
             Adt(d, s) => {
                 write!(f, "{d:?}")?;
-                let mut s = s.clone().into_iter();
+                let mut s = s.into_iter();
                 let first = s.next();
                 match first {
                     Some(first) => write!(f, "<{:?}", first)?,
@@ -412,7 +410,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
             RawPtr(p) => {
-                let (ty, mutbl) = I::ty_and_mut_to_parts(p.clone());
+                let (ty, mutbl) = I::ty_and_mut_to_parts(*p);
                 match mutbl {
                     Mutability::Mut => write!(f, "*mut "),
                     Mutability::Not => write!(f, "*const "),
@@ -442,7 +440,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Tuple(t) => {
                 write!(f, "(")?;
                 let mut count = 0;
-                for ty in t.clone() {
+                for ty in *t {
                     if count > 0 {
                         write!(f, ", ")?;
                     }

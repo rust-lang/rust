@@ -29,14 +29,14 @@ pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstData<'t
 impl<'tcx> IntoKind for Const<'tcx> {
     type Kind = ConstKind<'tcx>;
 
-    fn kind(&self) -> ConstKind<'tcx> {
-        (*self).kind().clone()
+    fn kind(self) -> ConstKind<'tcx> {
+        self.kind().clone()
     }
 }
 
 impl<'tcx> ConstTy<TyCtxt<'tcx>> for Const<'tcx> {
-    fn ty(&self) -> Ty<'tcx> {
-        (*self).ty()
+    fn ty(self) -> Ty<'tcx> {
+        self.ty()
     }
 }
 

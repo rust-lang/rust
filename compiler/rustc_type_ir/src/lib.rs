@@ -4,6 +4,7 @@
 )]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
 #[cfg(feature = "nightly")]
@@ -52,6 +53,11 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
+pub use AliasKind::*;
+pub use DynKind::*;
+pub use InferTy::*;
+pub use RegionKind::*;
+pub use TyKind::*;
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
