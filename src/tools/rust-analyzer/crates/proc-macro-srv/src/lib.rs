@@ -13,7 +13,7 @@
 #![cfg(feature = "sysroot-abi")]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
-#![allow(unreachable_pub)]
+#![allow(unreachable_pub, internal_features)]
 
 extern crate proc_macro;
 
