@@ -116,10 +116,7 @@ impl<'tcx> SymbolMangler<'tcx> {
     /// * `x > 0` is encoded as `x - 1` in base 62, followed by `"_"`,
     ///   e.g. `1` becomes `"0_"`, `62` becomes `"Z_"`, etc.
     fn push_integer_62(&mut self, x: u64) {
-        if let Some(x) = x.checked_sub(1) {
-            base_n::push_str(x as u128, 62, &mut self.out);
-        }
-        self.push("_");
+        push_integer_62(x, &mut self.out)
     }
 
     /// Push a `tag`-prefixed base 62 integer, when larger than `0`, that is:
@@ -138,45 +135,7 @@ impl<'tcx> SymbolMangler<'tcx> {
     }
 
     fn push_ident(&mut self, ident: &str) {
-        let mut use_punycode = false;
-        for b in ident.bytes() {
-            match b {
-                b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' => {}
-                0x80..=0xff => use_punycode = true,
-                _ => bug!("symbol_names: bad byte {} in ident {:?}", b, ident),
-            }
-        }
-
-        let punycode_string;
-        let ident = if use_punycode {
-            self.push("u");
-
-            // FIXME(eddyb) we should probably roll our own punycode implementation.
-            let mut punycode_bytes = match punycode::encode(ident) {
-                Ok(s) => s.into_bytes(),
-                Err(()) => bug!("symbol_names: punycode encoding failed for ident {:?}", ident),
-            };
-
-            // Replace `-` with `_`.
-            if let Some(c) = punycode_bytes.iter_mut().rfind(|&&mut c| c == b'-') {
-                *c = b'_';
-            }
-
-            // FIXME(eddyb) avoid rechecking UTF-8 validity.
-            punycode_string = String::from_utf8(punycode_bytes).unwrap();
-            &punycode_string
-        } else {
-            ident
-        };
-
-        let _ = write!(self.out, "{}", ident.len());
-
-        // Write a separating `_` if necessary (leading digit or `_`).
-        if let Some('_' | '0'..='9') = ident.chars().next() {
-            self.push("_");
-        }
-
-        self.push(ident);
+        push_ident(ident, &mut self.out)
     }
 
     fn path_append_ns(
@@ -835,4 +794,63 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
         Ok(())
     }
+}
+/// Push a `_`-terminated base 62 integer, using the format
+/// specified in the RFC as `<base-62-number>`, that is:
+/// * `x = 0` is encoded as just the `"_"` terminator
+/// * `x > 0` is encoded as `x - 1` in base 62, followed by `"_"`,
+///   e.g. `1` becomes `"0_"`, `62` becomes `"Z_"`, etc.
+pub(crate) fn push_integer_62(x: u64, output: &mut String) {
+    if let Some(x) = x.checked_sub(1) {
+        base_n::push_str(x as u128, 62, output);
+    }
+    output.push('_');
+}
+
+pub(crate) fn encode_integer_62(x: u64) -> String {
+    let mut output = String::new();
+    push_integer_62(x, &mut output);
+    output
+}
+
+pub(crate) fn push_ident(ident: &str, output: &mut String) {
+    let mut use_punycode = false;
+    for b in ident.bytes() {
+        match b {
+            b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' => {}
+            0x80..=0xff => use_punycode = true,
+            _ => bug!("symbol_names: bad byte {} in ident {:?}", b, ident),
+        }
+    }
+
+    let punycode_string;
+    let ident = if use_punycode {
+        output.push('u');
+
+        // FIXME(eddyb) we should probably roll our own punycode implementation.
+        let mut punycode_bytes = match punycode::encode(ident) {
+            Ok(s) => s.into_bytes(),
+            Err(()) => bug!("symbol_names: punycode encoding failed for ident {:?}", ident),
+        };
+
+        // Replace `-` with `_`.
+        if let Some(c) = punycode_bytes.iter_mut().rfind(|&&mut c| c == b'-') {
+            *c = b'_';
+        }
+
+        // FIXME(eddyb) avoid rechecking UTF-8 validity.
+        punycode_string = String::from_utf8(punycode_bytes).unwrap();
+        &punycode_string
+    } else {
+        ident
+    };
+
+    let _ = write!(output, "{}", ident.len());
+
+    // Write a separating `_` if necessary (leading digit or `_`).
+    if let Some('_' | '0'..='9') = ident.chars().next() {
+        output.push('_');
+    }
+
+    output.push_str(ident);
 }
