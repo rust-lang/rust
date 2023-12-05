@@ -74,7 +74,7 @@ mod assertions_on_result_states;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
-mod blocks_in_if_conditions;
+mod blocks_in_conditions;
 mod bool_assert_comparison;
 mod bool_to_int_with_if;
 mod booleans;
@@ -289,6 +289,7 @@ mod ref_option_ref;
 mod ref_patterns;
 mod reference;
 mod regex;
+mod repeat_vec_with_capacity;
 mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
@@ -653,7 +654,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default());
     store.register_late_pass(|_| Box::new(len_zero::LenZero));
     store.register_late_pass(|_| Box::new(attrs::Attributes));
-    store.register_late_pass(|_| Box::new(blocks_in_if_conditions::BlocksInIfConditions));
+    store.register_late_pass(|_| Box::new(blocks_in_conditions::BlocksInConditions));
     store.register_late_pass(|_| Box::new(unicode::Unicode));
     store.register_late_pass(|_| Box::new(uninit_vec::UninitVec));
     store.register_late_pass(|_| Box::new(unit_return_expecting_ord::UnitReturnExpectingOrd));
@@ -1069,6 +1070,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
     store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
     store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
+    store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
