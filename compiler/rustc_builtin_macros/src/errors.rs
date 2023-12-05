@@ -1,5 +1,5 @@
 use rustc_errors::{
-    AddToDiagnostic, DiagnosticBuilder, EmissionGuarantee, Handler, IntoDiagnostic, MultiSpan,
+    AddToDiagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, MultiSpan,
     SingleLabelManySpans,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -446,9 +446,9 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 }
 
 // Hand-written implementation to support custom user messages.
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMessage {
+impl<'a> IntoDiagnostic<'a> for EnvNotDefinedWithUserMessage {
     #[track_caller]
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         #[expect(
             rustc::untranslatable_diagnostic,
             reason = "cannot translate user-provided messages"
@@ -801,8 +801,8 @@ pub(crate) struct AsmClobberNoReg {
     pub(crate) clobbers: Vec<Span>,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
+impl<'a> IntoDiagnostic<'a> for AsmClobberNoReg {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut diag =
             handler.struct_diagnostic(crate::fluent_generated::builtin_macros_asm_clobber_no_reg);
         diag.set_span(self.spans.clone());
