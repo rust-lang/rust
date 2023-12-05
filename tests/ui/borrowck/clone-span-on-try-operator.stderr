@@ -13,8 +13,8 @@ LL |     fn foo(self) {}
    |            ^^^^
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
-LL |     (*foo).clone().foo();
-   |           ++++++++
+LL |     <Foo as Clone>::clone(&(*foo)).foo();
+   |     +++++++++++++++++++++++      +
 
 error: aborting due to 1 previous error
 
