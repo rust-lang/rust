@@ -306,6 +306,8 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
     sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut identifiers: Vec<_> = identifiers.drain().collect();
         identifiers.sort_by_key(|&(key, _)| key);
         for (ident, mut spans) in identifiers.into_iter() {
@@ -431,6 +433,9 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             escape_dep_filename(&file.prefer_local().to_string())
         };
 
+        // The entries will be used to declare dependencies beween files in a
+        // Makefile-like output, so the iteration order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let extra_tracked_files =
             file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str())));
         files.extend(extra_tracked_files);
@@ -486,6 +491,8 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             // Emit special comments with information about accessed environment variables.
             let env_depinfo = sess.parse_sess.env_depinfo.borrow();
             if !env_depinfo.is_empty() {
+                // We will soon sort, so the initial order does not matter.
+                #[allow(rustc::potential_query_instability)]
                 let mut envs: Vec<_> = env_depinfo
                     .iter()
                     .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
