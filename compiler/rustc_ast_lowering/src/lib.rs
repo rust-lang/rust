@@ -1571,8 +1571,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 Vec::new()
             }
             hir::OpaqueTyOrigin::FnReturn(..) => {
-                if let FnDeclKind::Impl | FnDeclKind::Trait =
-                    fn_kind.expect("expected RPITs to be lowered with a FnKind")
+                if matches!(
+                    fn_kind.expect("expected RPITs to be lowered with a FnKind"),
+                    FnDeclKind::Impl | FnDeclKind::Trait
+                ) || self.tcx.features().lifetime_capture_rules_2024
                 {
                     // return-position impl trait in trait was decided to capture all
                     // in-scope lifetimes, which we collect for all opaques during resolution.
