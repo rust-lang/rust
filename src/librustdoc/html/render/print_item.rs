@@ -431,7 +431,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"section-header\">\
-                    <a href=\"#{id}\">{name}</a>\
+                    {name}<a href=\"#{id}\" class=\"anchor\">§</a>\
                  </h2>{ITEM_TABLE_OPEN}",
                 id = cx.derive_id(my_section.id()),
                 name = my_section.name(),
