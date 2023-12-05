@@ -1872,7 +1872,6 @@ impl<'a> Builder<'a> {
             // some code doesn't go through this `rustc` wrapper.
             lint_flags.push("-Wrust_2018_idioms");
             lint_flags.push("-Wunused_lifetimes");
-            lint_flags.push("-Wsemicolon_in_expressions_from_macros");
 
             if self.config.deny_warnings {
                 lint_flags.push("-Dwarnings");
