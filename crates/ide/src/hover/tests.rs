@@ -6673,3 +6673,28 @@ format_args!(r"{$0aaaaa}");
         "#]],
     );
 }
+
+#[test]
+fn format_args_implicit_nested() {
+    check(
+        r#"
+//- minicore: fmt
+macro_rules! foo {
+    ($($tt:tt)*) => {
+        format_args!($($tt)*)
+    }
+}
+fn test() {
+let aaaaa = "foo";
+foo!(r"{$0aaaaa}");
+}
+"#,
+        expect![[r#"
+            *aaaaa*
+
+            ```rust
+            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+            ```
+        "#]],
+    );
+}
