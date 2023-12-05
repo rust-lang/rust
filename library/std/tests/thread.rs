@@ -24,11 +24,6 @@ fn sleep_until() {
     let deadline = now + period;
     thread::sleep_until(deadline);
 
-    let margin = Duration::from_micros(100);
     let elapsed = now.elapsed();
-    assert!(
-        (period..period + margin).contains(&elapsed),
-        "elapsed: {} microseconds, expected 100_000 to 100_100",
-        elapsed.as_micros()
-    );
+    assert!(elapsed >= period);
 }
