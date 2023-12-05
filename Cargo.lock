@@ -1449,13 +1449,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ra-ap-rustc_lexer"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc741c7a78103efab416b562e35bd73c8d4967478575010c86c6062f8d3cbf29"
+dependencies = [
+ "unicode-properties",
+ "unicode-xid",
+]
+
+[[package]]
 name = "ra-ap-rustc_parse_format"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a6b325ee1ec90e4dbd4394913adf4ef32e4fcf2b311ec9563a0fa50cd549af6"
 dependencies = [
  "ra-ap-rustc_index",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.20.0",
 ]
 
 [[package]]
@@ -1607,7 +1617,7 @@ version = "0.0.0"
 dependencies = [
  "ra-ap-rustc_abi",
  "ra-ap-rustc_index",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.21.0",
  "ra-ap-rustc_parse_format",
 ]
 
