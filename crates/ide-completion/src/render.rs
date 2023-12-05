@@ -169,14 +169,14 @@ pub(crate) fn render_field(
                 if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
                     builder.insert(receiver.syntax().text_range().start(), "(".to_string());
                     builder.insert(ctx.source_range().end(), ")".to_string());
+
+                    let is_parens_needed =
+                        !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+
+                    if is_parens_needed {
+                        builder.insert(ctx.source_range().end(), "()".to_string());
+                    }
                 }
-            }
-
-            let is_parens_needed =
-                !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
-
-            if is_parens_needed {
-                builder.insert(ctx.source_range().end(), "()".to_string());
             }
         }
 
