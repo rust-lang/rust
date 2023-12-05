@@ -543,8 +543,6 @@ declare_features! (
     (unstable, offset_of_enum, "1.75.0", Some(106655), None),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882), None),
-    /// Allows exhaustive integer pattern matching on `usize` and `isize`.
-    (unstable, precise_pointer_size_matching, "1.32.0", Some(56354), None),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.

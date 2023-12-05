@@ -10,9 +10,7 @@ error: expected one of `,`, `:`, or `>`, found `=`
   --> $DIR/trait-path-expressions.rs:16:36
    |
 LL |   fn f2<'a>(arg : Box<dyn X< { 1 } = 32 >>) {}
-   |                                  - ^ expected one of `,`, `:`, or `>`
-   |                                  |
-   |                                  maybe try to close unmatched angle bracket
+   |                                    ^ expected one of `,`, `:`, or `>`
    |
 help: you might have meant to end the type parameters here
    |

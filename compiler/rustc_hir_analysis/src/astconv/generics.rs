@@ -243,6 +243,31 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
             match (args_iter.peek(), params.peek()) {
                 (Some(&arg), Some(&param)) => {
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
+                        (
+                            GenericArg::Const(hir::ConstArg {
+                                is_desugared_from_effects: true,
+                                ..
+                            }),
+                            GenericParamDefKind::Const { is_host_effect: false, .. }
+                            | GenericParamDefKind::Type { .. }
+                            | GenericParamDefKind::Lifetime,
+                            _,
+                        ) => {
+                            // SPECIAL CASE FOR DESUGARED EFFECT PARAMS
+                            // This comes from the following example:
+                            //
+                            // ```
+                            // #[const_trait]
+                            // pub trait PartialEq<Rhs: ?Sized = Self> {}
+                            // impl const PartialEq for () {}
+                            // ```
+                            //
+                            // Since this is a const impl, we need to insert `<false>` at the end of
+                            // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
+                            // To work around this, we infer all arguments until we reach the host param.
+                            args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                            params.next();
+                        }
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                         | (
                             GenericArg::Type(_) | GenericArg::Infer(_),

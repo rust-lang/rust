@@ -326,8 +326,7 @@ impl IntRange {
     /// `NegInfinity..PosInfinity`. In other words, as far as `IntRange` is concerned, there are
     /// values before `isize::MIN` and after `usize::MAX`/`isize::MAX`.
     /// This is to avoid e.g. `0..(u32::MAX as usize)` from being exhaustive on one architecture and
-    /// not others. See discussions around the `precise_pointer_size_matching` feature for more
-    /// details.
+    /// not others. This was decided in <https://github.com/rust-lang/rfcs/pull/2591>.
     ///
     /// These infinities affect splitting subtly: it is possible to get `NegInfinity..0` and
     /// `usize::MAX+1..PosInfinity` in the output. Diagnostics must be careful to handle these
@@ -380,7 +379,7 @@ impl IntRange {
     /// Whether the range denotes the fictitious values before `isize::MIN` or after
     /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
     pub(crate) fn is_beyond_boundaries<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-        ty.is_ptr_sized_integral() && !tcx.features().precise_pointer_size_matching && {
+        ty.is_ptr_sized_integral() && {
             // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
             // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `to_diagnostic_pat_range_bdy`
             // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `self.lo`
@@ -941,11 +940,8 @@ impl ConstructorSet {
                 }
             }
             &ty::Int(ity) => {
-                let range = if ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching
-                {
-                    // The min/max values of `isize` are not allowed to be observed unless the
-                    // `precise_pointer_size_matching` feature is enabled.
+                let range = if ty.is_ptr_sized_integral() {
+                    // The min/max values of `isize` are not allowed to be observed.
                     IntRange { lo: NegInfinity, hi: PosInfinity }
                 } else {
                     let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
@@ -956,11 +952,8 @@ impl ConstructorSet {
                 Self::Integers { range_1: range, range_2: None }
             }
             &ty::Uint(uty) => {
-                let range = if ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching
-                {
-                    // The max value of `usize` is not allowed to be observed unless the
-                    // `precise_pointer_size_matching` feature is enabled.
+                let range = if ty.is_ptr_sized_integral() {
+                    // The max value of `usize` is not allowed to be observed.
                     let lo = MaybeInfiniteInt::new_finite(cx.tcx, ty, 0);
                     IntRange { lo, hi: PosInfinity }
                 } else {

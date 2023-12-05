@@ -549,12 +549,13 @@ impl Step for Vscode {
         if config.dry_run() {
             return;
         }
-        t!(create_vscode_settings_maybe(&config));
+        while !t!(create_vscode_settings_maybe(&config)) {}
     }
 }
 
 /// Create a `.vscode/settings.json` file for rustc development, or just print it
-fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
+/// If this method should be re-called, it returns `false`.
+fn create_vscode_settings_maybe(config: &Config) -> io::Result<bool> {
     let (current_hash, historical_hashes) = SETTINGS_HASHES.split_last().unwrap();
     let vscode_settings = config.src.join(".vscode").join("settings.json");
     // If None, no settings.json exists
@@ -567,7 +568,7 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
         hasher.update(&current);
         let hash = hex::encode(hasher.finalize().as_slice());
         if hash == *current_hash {
-            return Ok(());
+            return Ok(true);
         } else if historical_hashes.contains(&hash.as_str()) {
             mismatched_settings = Some(true);
         } else {
@@ -587,13 +588,13 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
         _ => (),
     }
     let should_create = match prompt_user(
-        "Would you like to create/update `settings.json`, or only print suggested settings?: [y/p/N]",
+        "Would you like to create/update settings.json? (Press 'p' to preview values): [y/N]",
     )? {
         Some(PromptResult::Yes) => true,
         Some(PromptResult::Print) => false,
         _ => {
             println!("Ok, skipping settings!");
-            return Ok(());
+            return Ok(true);
         }
     };
     if should_create {
@@ -620,5 +621,5 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
     } else {
         println!("\n{RUST_ANALYZER_SETTINGS}");
     }
-    Ok(())
+    Ok(should_create)
 }
