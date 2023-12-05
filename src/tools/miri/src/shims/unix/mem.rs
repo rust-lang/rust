@@ -7,7 +7,7 @@
 //! equivalent. That is the only part we support: no MAP_FIXED or MAP_SHARED or anything
 //! else that goes beyond a basic allocation API.
 
-use crate::*;
+use crate::{helpers::round_to_next_multiple_of, *};
 use rustc_target::abi::Size;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -89,7 +89,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         let align = this.machine.page_align();
-        let map_length = this.machine.round_up_to_multiple_of_page_size(length).unwrap_or(u64::MAX);
+        let map_length = round_to_next_multiple_of(length, this.machine.page_size);
 
         let ptr =
             this.allocate_ptr(Size::from_bytes(map_length), align, MiriMemoryKind::Mmap.into())?;
@@ -123,7 +123,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(Scalar::from_i32(-1));
         }
 
-        let length = this.machine.round_up_to_multiple_of_page_size(length).unwrap_or(u64::MAX);
+        let length = round_to_next_multiple_of(length, this.machine.page_size);
 
         let ptr = Machine::ptr_from_addr_cast(this, addr)?;
 

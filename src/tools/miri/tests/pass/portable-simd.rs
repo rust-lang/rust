@@ -3,10 +3,6 @@
 #![allow(incomplete_features, internal_features)]
 use std::simd::{prelude::*, StdFloat};
 
-extern "platform-intrinsic" {
-    pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
-}
-
 fn simd_ops_f32() {
     let a = f32x4::splat(10.0);
     let b = f32x4::from_array([1.0, 2.0, 3.0, -4.0]);
@@ -218,6 +214,11 @@ fn simd_ops_i32() {
 }
 
 fn simd_mask() {
+    extern "platform-intrinsic" {
+        pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
+        pub(crate) fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;
+    }
+
     let intmask = Mask::from_int(i32x4::from_array([0, -1, 0, 0]));
     assert_eq!(intmask, Mask::from_array([false, true, false, false]));
     assert_eq!(intmask.to_array(), [false, true, false, false]);
@@ -252,8 +253,6 @@ fn simd_mask() {
     let bitmask = mask.to_bitmask();
     assert_eq!(bitmask, 0b1000);
     assert_eq!(Mask::<i64, 4>::from_bitmask(bitmask), mask);
-
-    // Also directly call intrinsic, to test both kinds of return types.
     unsafe {
         let bitmask1: u8 = simd_bitmask(mask.to_int());
         let bitmask2: [u8; 1] = simd_bitmask(mask.to_int());
@@ -266,7 +265,16 @@ fn simd_mask() {
         }
     }
 
-    // This used to cause an ICE.
+    // This used to cause an ICE. It exercises simd_select_bitmask with an array as input.
+    if cfg!(target_endian = "little") {
+        // FIXME this test currently fails on big-endian:
+        // <https://github.com/rust-lang/portable-simd/issues/379>
+        let bitmask = u8x4::from_array([0b00001101, 0, 0, 0]);
+        assert_eq!(
+            mask32x4::from_bitmask_vector(bitmask),
+            mask32x4::from_array([true, false, true, true]),
+        );
+    }
     let bitmask = u8x8::from_array([0b01000101, 0, 0, 0, 0, 0, 0, 0]);
     assert_eq!(
         mask32x8::from_bitmask_vector(bitmask),
@@ -281,6 +289,40 @@ fn simd_mask() {
             true, true, true,
         ]),
     );
+
+    // Also directly call simd_select_bitmask, to test both kinds of argument types.
+    unsafe {
+        // These masks are exactly the results we got out above in the `simd_bitmask` tests.
+        let selected1 = simd_select_bitmask::<u16, _>(
+            if cfg!(target_endian = "little") { 0b1010001101001001 } else { 0b1001001011000101 },
+            i32x16::splat(1), // yes
+            i32x16::splat(0), // no
+        );
+        let selected2 = simd_select_bitmask::<[u8; 2], _>(
+            if cfg!(target_endian = "little") {
+                [0b01001001, 0b10100011]
+            } else {
+                [0b10010010, 0b11000101]
+            },
+            i32x16::splat(1), // yes
+            i32x16::splat(0), // no
+        );
+        assert_eq!(selected1, i32x16::from_array([1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1]));
+        assert_eq!(selected2, selected1);
+        // Also try masks less than a byte long.
+        let selected1 = simd_select_bitmask::<u8, _>(
+            if cfg!(target_endian = "little") { 0b1000 } else { 0b0001 },
+            i32x4::splat(1), // yes
+            i32x4::splat(0), // no
+        );
+        let selected2 = simd_select_bitmask::<[u8; 1], _>(
+            if cfg!(target_endian = "little") { [0b1000] } else { [0b0001] },
+            i32x4::splat(1), // yes
+            i32x4::splat(0), // no
+        );
+        assert_eq!(selected1, i32x4::from_array([0, 0, 0, 1]));
+        assert_eq!(selected2, selected1);
+    }
 }
 
 fn simd_cast() {
