@@ -1,5 +1,5 @@
 error[E0493]: destructor of `Self` cannot be evaluated at compile-time
-  --> $DIR/minicore.rs:503:9
+  --> $DIR/minicore.rs:501:9
    |
 LL |         *self = source.clone()
    |         ^^^^^
@@ -8,7 +8,7 @@ LL |         *self = source.clone()
    |         value is dropped here
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/minicore.rs:513:35
+  --> $DIR/minicore.rs:511:35
    |
 LL | const fn drop<T: ~const Destruct>(_: T) {}
    |                                   ^      - value is dropped here
