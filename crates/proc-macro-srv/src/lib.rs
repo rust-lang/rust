@@ -12,7 +12,7 @@
 
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unreachable_pub)]
 
 extern crate proc_macro;

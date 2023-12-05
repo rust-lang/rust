@@ -2,7 +2,7 @@
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::fmt;
 

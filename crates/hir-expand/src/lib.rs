@@ -4,7 +4,7 @@
 //! tree originates not from the text of some `FileId`, but from some macro
 //! expansion.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 pub mod db;
 pub mod ast_id_map;
