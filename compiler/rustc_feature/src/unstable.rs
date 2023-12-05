@@ -56,8 +56,10 @@ macro_rules! declare_features {
         #[derive(Clone, Default, Debug)]
         pub struct Features {
             /// `#![feature]` attrs for language features, for error reporting.
+            /// "declared" here means that the feature is actually enabled in the current crate.
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
             /// `#![feature]` attrs for non-language (library) features.
+            /// "declared" here means that the feature is actually enabled in the current crate.
             pub declared_lib_features: Vec<(Symbol, Span)>,
             /// `declared_lang_features` + `declared_lib_features`.
             pub declared_features: FxHashSet<Symbol>,
@@ -133,9 +135,18 @@ macro_rules! declare_features {
                     $(
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
-                    // Accepted/removed features aren't in this file but are never internal
-                    // (a removed feature might have been internal, but that's now irrelevant).
-                    _ if self.declared_features.contains(&feature) => false,
+                    _ if self.declared_features.contains(&feature) => {
+                        // This could be accepted/removed, or a libs feature.
+                        // Accepted/removed features aren't in this file but are never internal
+                        // (a removed feature might have been internal, but that's now irrelevant).
+                        // Libs features are internal if they end in `_internal` or `_internals`.
+                        // As a special exception we also consider `core_intrinsics` internal;
+                        // renaming that age-old feature is just not worth the hassle.
+                        // We just always test the name; it's not a big deal if we accidentally hit
+                        // an accepted/removed lang feature that way.
+                        let name = feature.as_str();
+                        name == "core_intrinsics" || name.ends_with("_internal") || name.ends_with("_internals")
+                    }
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
@@ -215,9 +226,6 @@ declare_features! (
     (internal, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None, None),
-    /// Allows non-`unsafe` —and thus, unsound— access to `Pin` constructions.
-    /// Marked `internal` since perma-unstable and unsound.
-    (internal, unsafe_pin_internals, "1.60.0", None, None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None, None),
