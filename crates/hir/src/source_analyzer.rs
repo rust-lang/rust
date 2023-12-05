@@ -843,6 +843,29 @@ impl SourceAnalyzer {
         })
     }
 
+    pub(crate) fn as_format_args_parts<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        format_args: InFile<&ast::FormatArgsExpr>,
+    ) -> Option<impl Iterator<Item = (TextRange, Option<PathResolution>)> + 'a> {
+        Some(self.body_source_map()?.implicit_format_args(format_args)?.iter().map(
+            move |(range, name)| {
+                (
+                    *range,
+                    resolve_hir_value_path(
+                        db,
+                        &self.resolver,
+                        self.resolver.body_owner(),
+                        &Path::from_known_path_with_no_generic(ModPath::from_segments(
+                            PathKind::Plain,
+                            Some(name.clone()),
+                        )),
+                    ),
+                )
+            },
+        ))
+    }
+
     fn resolve_impl_method_or_trait_def(
         &self,
         db: &dyn HirDatabase,

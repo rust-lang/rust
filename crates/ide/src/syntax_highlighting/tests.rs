@@ -48,6 +48,7 @@ fn macros() {
     check_highlighting(
         r#"
 //- proc_macros: mirror
+//- minicore: fmt, include, concat
 //- /lib.rs crate:lib
 proc_macros::mirror! {
     {
@@ -96,12 +97,6 @@ macro without_args {
     }
 }
 
-#[rustc_builtin_macro]
-macro_rules! concat {}
-#[rustc_builtin_macro]
-macro_rules! include {}
-#[rustc_builtin_macro]
-macro_rules! format_args {}
 
 include!(concat!("foo/", "foo.rs"));
 
@@ -401,47 +396,34 @@ fn test_string_highlighting() {
     // thus, we have to copy the macro definition from `std`
     check_highlighting(
         r#"
-//- minicore: fmt
+//- minicore: fmt, assert, asm, concat, panic
 macro_rules! println {
     ($($arg:tt)*) => ({
         $crate::io::_print(format_args_nl!($($arg)*));
     })
 }
-#[rustc_builtin_macro]
-#[macro_export]
-macro_rules! format_args_nl {}
 
 mod panic {
     pub macro panic_2015 {
         () => (
-            $crate::panicking::panic("explicit panic")
+            panic("explicit panic")
         ),
         ($msg:literal $(,)?) => (
-            $crate::panicking::panic($msg)
+            panic($msg)
         ),
         // Use `panic_str` instead of `panic_display::<&str>` for non_fmt_panic lint.
         ($msg:expr $(,)?) => (
-            $crate::panicking::panic_str($msg)
+            panic_str($msg)
         ),
         // Special-case the single-argument case for const_panic.
         ("{}", $arg:expr $(,)?) => (
-            $crate::panicking::panic_display(&$arg)
+            panic_display(&$arg)
         ),
         ($fmt:expr, $($arg:tt)+) => (
-            $crate::panicking::panic_fmt(const_format_args!($fmt, $($arg)+))
+            panic_fmt(const_format_args!($fmt, $($arg)+))
         ),
     }
 }
-
-#[rustc_builtin_macro(std_panic)]
-#[macro_export]
-macro_rules! panic {}
-#[rustc_builtin_macro]
-macro_rules! assert {}
-#[rustc_builtin_macro]
-macro_rules! asm {}
-#[rustc_builtin_macro]
-macro_rules! concat {}
 
 macro_rules! toho {
     () => ($crate::panic!("not yet implemented"));
@@ -538,8 +520,10 @@ fn main() {
         in(reg) i,
     );
 
+    const CONSTANT: () = ():
+    let mut m = ();
     format_args!(concat!("{}"), "{}");
-    format_args!("{} {} {} {} {} {}", backslash, format_args!("{}", 0), foo, "bar", toho!(), backslash);
+    format_args!("{} {} {} {} {} {} {backslash} {CONSTANT} {m}", backslash, format_args!("{}", 0), foo, "bar", toho!(), backslash);
 }"#,
         expect_file!["./test_data/highlight_strings.html"],
         false,

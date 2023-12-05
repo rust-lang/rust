@@ -440,7 +440,7 @@ fn traverse(
                     {
                         continue;
                     }
-                    highlight_format_string(hl, &string, &expanded_string, range);
+                    highlight_format_string(hl, sema, krate, &string, &expanded_string, range);
 
                     if !string.is_raw() {
                         highlight_escape_string(hl, &string, range.start());

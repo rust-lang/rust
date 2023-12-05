@@ -403,17 +403,29 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    pub fn resolve_offset_in_format_args(
+    pub fn as_format_args_parts(
         &self,
-        string: ast::String,
-        offset: TextSize,
-    ) -> Option<(TextRange, Option<PathResolution>)> {
-        debug_assert!(offset <= string.syntax().text_range().len());
-        let literal = string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
-        let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
-        let source_analyzer = &self.analyze_no_infer(format_args.syntax())?;
-        let format_args = self.wrap_node_infile(format_args);
-        source_analyzer.resolve_offset_in_format_args(self.db, format_args.as_ref(), offset)
+        string: &ast::String,
+    ) -> Option<Vec<(TextRange, Option<PathResolution>)>> {
+        if let Some(quote) = string.open_quote_text_range() {
+            return self
+                .descend_into_macros(DescendPreference::SameText, string.syntax().clone())
+                .into_iter()
+                .find_map(|token| {
+                    let string = ast::String::cast(token)?;
+                    let literal =
+                        string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
+                    let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
+                    let source_analyzer = self.analyze_no_infer(format_args.syntax())?;
+                    let format_args = self.wrap_node_infile(format_args);
+                    let res = source_analyzer
+                        .as_format_args_parts(self.db, format_args.as_ref())?
+                        .map(|(range, res)| (range + quote.end(), res))
+                        .collect();
+                    Some(res)
+                });
+        }
+        None
     }
 
     pub fn check_for_format_args_template(
@@ -436,6 +448,19 @@ impl<'db> SemanticsImpl<'db> {
             }
         }
         None
+    }
+
+    fn resolve_offset_in_format_args(
+        &self,
+        string: ast::String,
+        offset: TextSize,
+    ) -> Option<(TextRange, Option<PathResolution>)> {
+        debug_assert!(offset <= string.syntax().text_range().len());
+        let literal = string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
+        let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
+        let source_analyzer = &self.analyze_no_infer(format_args.syntax())?;
+        let format_args = self.wrap_node_infile(format_args);
+        source_analyzer.resolve_offset_in_format_args(self.db, format_args.as_ref(), offset)
     }
 
     /// Maps a node down by mapping its first and last token down.

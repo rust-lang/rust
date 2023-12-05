@@ -9,6 +9,8 @@
 //!
 //! Available flags:
 //!     add:
+//!     asm:
+//!     assert:
 //!     as_ref: sized
 //!     bool_impl: option, fn
 //!     builtin_impls:
@@ -1366,6 +1368,26 @@ mod macros {
     }
     // endregion:panic
 
+    // region:asm
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! asm {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+    // endregion:asm
+
+    // region:assert
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! assert {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+    // endregion:assert
+
     // region:fmt
     #[macro_export]
     #[rustc_builtin_macro]
@@ -1377,6 +1399,13 @@ mod macros {
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! format_args {
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+    }
+
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! format_args_nl {
         ($fmt:expr) => {{ /* compiler built-in */ }};
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }

@@ -348,7 +348,7 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
     hash((name, shadow_count))
 }
 
-fn highlight_def(
+pub(super) fn highlight_def(
     sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     def: Definition,
