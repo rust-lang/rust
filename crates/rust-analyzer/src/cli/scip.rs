@@ -78,6 +78,7 @@ impl flags::Scip {
 
         let mut symbols_emitted: HashSet<TokenId> = HashSet::default();
         let mut tokens_to_symbol: HashMap<TokenId, String> = HashMap::new();
+        let mut tokens_to_enclosing_symbol: HashMap<TokenId, Option<String>> = HashMap::new();
 
         for StaticIndexedFile { file_id, tokens, .. } in si.files {
             let mut local_count = 0;
@@ -117,6 +118,16 @@ impl flags::Scip {
                         scip::symbol::format_symbol(symbol)
                     })
                     .clone();
+                let enclosing_symbol = tokens_to_enclosing_symbol
+                    .entry(id)
+                    .or_insert_with(|| {
+                        token
+                            .enclosing_moniker
+                            .as_ref()
+                            .map(moniker_to_symbol)
+                            .map(scip::symbol::format_symbol)
+                    })
+                    .clone();
 
                 let mut symbol_roles = Default::default();
 
@@ -140,7 +151,7 @@ impl flags::Scip {
                             kind: Default::default(),
                             display_name: token.display_name.clone().unwrap_or_default(),
                             signature_documentation: Default::default(),
-                            enclosing_symbol: String::new(),
+                            enclosing_symbol: enclosing_symbol.unwrap_or_default(),
                         };
 
                         symbols.push(symbol_info)

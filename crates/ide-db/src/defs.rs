@@ -7,10 +7,10 @@
 
 use arrayvec::ArrayVec;
 use hir::{
-    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper, DocLinkDef,
-    ExternCrateDecl, Field, Function, GenericParam, HasVisibility, Impl, Label, Local, Macro,
-    Module, ModuleDef, Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias,
-    TypeAlias, Variant, Visibility,
+    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DefWithBody, DeriveHelper,
+    DocLinkDef, ExternCrateDecl, Field, Function, GenericParam, HasVisibility, Impl, Label, Local,
+    Macro, Module, ModuleDef, Name, PathResolution, Semantics, Static, ToolModule, Trait,
+    TraitAlias, TypeAlias, Variant, Visibility,
 };
 use stdx::impl_from;
 use syntax::{
@@ -81,6 +81,13 @@ impl Definition {
             }
         };
         Some(module)
+    }
+
+    pub fn enclosing_definition(&self, db: &RootDatabase) -> Option<Definition> {
+        match self {
+            Definition::Local(it) => it.parent(db).try_into().ok(),
+            _ => None,
+        }
     }
 
     pub fn visibility(&self, db: &RootDatabase) -> Option<Visibility> {
@@ -659,6 +666,19 @@ impl From<DocLinkDef> for Definition {
             DocLinkDef::ModuleDef(it) => it.into(),
             DocLinkDef::Field(it) => it.into(),
             DocLinkDef::SelfType(it) => it.into(),
+        }
+    }
+}
+
+impl TryFrom<DefWithBody> for Definition {
+    type Error = ();
+    fn try_from(def: DefWithBody) -> Result<Self, Self::Error> {
+        match def {
+            DefWithBody::Function(it) => Ok(it.into()),
+            DefWithBody::Static(it) => Ok(it.into()),
+            DefWithBody::Const(it) => Ok(it.into()),
+            DefWithBody::Variant(it) => Ok(it.into()),
+            DefWithBody::InTypeConst(_) => Err(()),
         }
     }
 }
