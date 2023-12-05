@@ -3,8 +3,8 @@ use std::iter;
 use ast::make;
 use either::Either;
 use hir::{
-    HasSource, HirDisplay, InFile, Local, LocalSource, ModuleDef, PathResolution, Semantics,
-    TypeInfo, TypeParam,
+    DescendPreference, HasSource, HirDisplay, InFile, Local, LocalSource, ModuleDef,
+    PathResolution, Semantics, TypeInfo, TypeParam,
 };
 use ide_db::{
     defs::{Definition, NameRefClass},
@@ -751,7 +751,7 @@ impl FunctionBody {
                         .descendants_with_tokens()
                         .filter_map(SyntaxElement::into_token)
                         .filter(|it| matches!(it.kind(), SyntaxKind::IDENT | T![self]))
-                        .flat_map(|t| sema.descend_into_macros(t, 0.into()))
+                        .flat_map(|t| sema.descend_into_macros(DescendPreference::None, t))
                         .for_each(|t| add_name_if_local(t.parent().and_then(ast::NameRef::cast)));
                 }
             }

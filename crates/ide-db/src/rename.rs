@@ -34,7 +34,7 @@ use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     defs::Definition,
-    search::FileReference,
+    search::{FileReference, FileReferenceNode},
     source_change::{FileSystemEdit, SourceChange},
     syntax_helpers::node_ext::expr_as_name_ref,
     traits::convert_to_def_in_trait,
@@ -361,7 +361,7 @@ pub fn source_edit_from_references(
     // macros can cause multiple refs to occur for the same text range, so keep track of what we have edited so far
     let mut edited_ranges = Vec::new();
     for &FileReference { range, ref name, .. } in references {
-        let name_range = name.syntax().text_range();
+        let name_range = name.text_range();
         if name_range.len() != range.len() {
             // This usage comes from a different token kind that was downmapped to a NameLike in a macro
             // Renaming this will most likely break things syntax-wise
@@ -371,17 +371,17 @@ pub fn source_edit_from_references(
             // if the ranges differ then the node is inside a macro call, we can't really attempt
             // to make special rewrites like shorthand syntax and such, so just rename the node in
             // the macro input
-            ast::NameLike::NameRef(name_ref) if name_range == range => {
+            FileReferenceNode::NameRef(name_ref) if name_range == range => {
                 source_edit_from_name_ref(&mut edit, name_ref, new_name, def)
             }
-            ast::NameLike::Name(name) if name_range == range => {
+            FileReferenceNode::Name(name) if name_range == range => {
                 source_edit_from_name(&mut edit, name, new_name)
             }
             _ => false,
         };
         if !has_emitted_edit && !edited_ranges.contains(&range.start()) {
             let (range, new_name) = match name {
-                ast::NameLike::Lifetime(_) => (
+                FileReferenceNode::Lifetime(_) => (
                     TextRange::new(range.start() + syntax::TextSize::from(1), range.end()),
                     new_name.strip_prefix('\'').unwrap_or(new_name).to_owned(),
                 ),

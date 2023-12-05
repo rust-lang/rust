@@ -160,7 +160,7 @@ fn main() {
             let count = 10;
             builtin#lang(Arguments::new_v1_formatted)(
                 &[
-                    "\"hello ", " ", " friends, we ", " ", "", "\"",
+                    "hello ", " ", " friends, we ", " ", "",
                 ],
                 &[
                     builtin#lang(Argument::new_display)(
@@ -261,7 +261,7 @@ impl SsrError {
             _ = $crate::error::SsrError::new(
                 builtin#lang(Arguments::new_v1_formatted)(
                     &[
-                        "\"Failed to resolve path `", "`\"",
+                        "Failed to resolve path `", "`",
                     ],
                     &[
                         builtin#lang(Argument::new_display)(
@@ -320,7 +320,7 @@ fn f() {
             $crate::panicking::panic_fmt(
                 builtin#lang(Arguments::new_v1_formatted)(
                     &[
-                        "\"cc\"",
+                        "cc",
                     ],
                     &[],
                     &[],

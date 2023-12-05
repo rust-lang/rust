@@ -4,7 +4,7 @@ use crate::{
     doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
     RangeInfo, TryToNav,
 };
-use hir::{AsAssocItem, AssocItem, Semantics};
+use hir::{AsAssocItem, AssocItem, DescendPreference, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, IdentClass},
@@ -55,8 +55,21 @@ pub(crate) fn goto_definition(
             Some(RangeInfo::new(link_range, vec![nav]))
         });
     }
+
+    if let Some((range, resolution)) =
+        sema.check_for_format_args_template(original_token.clone(), offset)
+    {
+        return Some(RangeInfo::new(
+            range,
+            match resolution {
+                Some(res) => def_to_nav(db, Definition::from(res)),
+                None => vec![],
+            },
+        ));
+    }
+
     let navs = sema
-        .descend_into_macros(original_token.clone(), offset)
+        .descend_into_macros(DescendPreference::None, original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -809,18 +822,13 @@ mod confuse_index { fn foo(); }
     fn goto_through_format() {
         check(
             r#"
+//- minicore: fmt
 #[macro_export]
 macro_rules! format {
     ($($arg:tt)*) => ($crate::fmt::format($crate::__export::format_args!($($arg)*)))
 }
-#[rustc_builtin_macro]
-#[macro_export]
-macro_rules! format_args {
-    ($fmt:expr) => ({ /* compiler built-in */ });
-    ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
-}
 pub mod __export {
-    pub use crate::format_args;
+    pub use core::format_args;
     fn foo() {} // for index confusion
 }
 fn foo() -> i8 {}
@@ -2055,6 +2063,20 @@ impl S1 {
 fn f2() {
     struct S2;
     S1::e$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn implicit_format_args() {
+        check(
+            r#"
+//- minicore: fmt
+fn test() {
+    let a = "world";
+     // ^
+    format_args!("hello {a$0}");
 }
 "#,
         );

@@ -820,6 +820,52 @@ impl SourceAnalyzer {
         false
     }
 
+    pub(crate) fn resolve_offset_in_format_args(
+        &self,
+        db: &dyn HirDatabase,
+        format_args: InFile<&ast::FormatArgsExpr>,
+        offset: TextSize,
+    ) -> Option<(TextRange, Option<PathResolution>)> {
+        let implicits = self.body_source_map()?.implicit_format_args(format_args)?;
+        implicits.iter().find(|(range, _)| range.contains_inclusive(offset)).map(|(range, name)| {
+            (
+                *range,
+                resolve_hir_value_path(
+                    db,
+                    &self.resolver,
+                    self.resolver.body_owner(),
+                    &Path::from_known_path_with_no_generic(ModPath::from_segments(
+                        PathKind::Plain,
+                        Some(name.clone()),
+                    )),
+                ),
+            )
+        })
+    }
+
+    pub(crate) fn as_format_args_parts<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        format_args: InFile<&ast::FormatArgsExpr>,
+    ) -> Option<impl Iterator<Item = (TextRange, Option<PathResolution>)> + 'a> {
+        Some(self.body_source_map()?.implicit_format_args(format_args)?.iter().map(
+            move |(range, name)| {
+                (
+                    *range,
+                    resolve_hir_value_path(
+                        db,
+                        &self.resolver,
+                        self.resolver.body_owner(),
+                        &Path::from_known_path_with_no_generic(ModPath::from_segments(
+                            PathKind::Plain,
+                            Some(name.clone()),
+                        )),
+                    ),
+                )
+            },
+        ))
+    }
+
     fn resolve_impl_method_or_trait_def(
         &self,
         db: &dyn HirDatabase,
@@ -1038,24 +1084,7 @@ fn resolve_hir_path_(
     };
 
     let body_owner = resolver.body_owner();
-    let values = || {
-        resolver.resolve_path_in_value_ns_fully(db.upcast(), path).and_then(|val| {
-            let res = match val {
-                ValueNs::LocalBinding(binding_id) => {
-                    let var = Local { parent: body_owner?, binding_id };
-                    PathResolution::Local(var)
-                }
-                ValueNs::FunctionId(it) => PathResolution::Def(Function::from(it).into()),
-                ValueNs::ConstId(it) => PathResolution::Def(Const::from(it).into()),
-                ValueNs::StaticId(it) => PathResolution::Def(Static::from(it).into()),
-                ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
-                ValueNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
-                ValueNs::ImplSelf(impl_id) => PathResolution::SelfType(impl_id.into()),
-                ValueNs::GenericParam(id) => PathResolution::ConstParam(id.into()),
-            };
-            Some(res)
-        })
-    };
+    let values = || resolve_hir_value_path(db, resolver, body_owner, path);
 
     let items = || {
         resolver
@@ -1073,6 +1102,30 @@ fn resolve_hir_path_(
     if prefer_value_ns { values().or_else(types) } else { types().or_else(values) }
         .or_else(items)
         .or_else(macros)
+}
+
+fn resolve_hir_value_path(
+    db: &dyn HirDatabase,
+    resolver: &Resolver,
+    body_owner: Option<DefWithBodyId>,
+    path: &Path,
+) -> Option<PathResolution> {
+    resolver.resolve_path_in_value_ns_fully(db.upcast(), path).and_then(|val| {
+        let res = match val {
+            ValueNs::LocalBinding(binding_id) => {
+                let var = Local { parent: body_owner?, binding_id };
+                PathResolution::Local(var)
+            }
+            ValueNs::FunctionId(it) => PathResolution::Def(Function::from(it).into()),
+            ValueNs::ConstId(it) => PathResolution::Def(Const::from(it).into()),
+            ValueNs::StaticId(it) => PathResolution::Def(Static::from(it).into()),
+            ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
+            ValueNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
+            ValueNs::ImplSelf(impl_id) => PathResolution::SelfType(impl_id.into()),
+            ValueNs::GenericParam(id) => PathResolution::ConstParam(id.into()),
+        };
+        Some(res)
+    })
 }
 
 /// Resolves a path where we know it is a qualifier of another path.

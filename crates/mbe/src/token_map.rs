@@ -35,6 +35,7 @@ impl<S: Span> SpanMap<S> {
     ///
     /// Note this does a linear search through the entire backing vector.
     pub fn ranges_with_span(&self, span: S) -> impl Iterator<Item = TextRange> + '_ {
+        // FIXME: This should ignore the syntax context!
         self.spans.iter().enumerate().filter_map(move |(idx, &(end, s))| {
             if s != span {
                 return None;

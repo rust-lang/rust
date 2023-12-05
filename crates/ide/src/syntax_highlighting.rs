@@ -13,7 +13,7 @@ mod html;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics};
+use hir::{DescendPreference, Name, Semantics};
 use ide_db::{FxHashMap, RootDatabase, SymbolKind};
 use syntax::{
     ast::{self, IsString},
@@ -393,13 +393,24 @@ fn traverse(
             // Attempt to descend tokens into macro-calls.
             let res = match element {
                 NodeOrToken::Token(token) if token.kind() != COMMENT => {
-                    let token = match attr_or_derive_item {
-                        Some(AttrOrDerive::Attr(_)) => {
-                            sema.descend_into_macros_with_kind_preference(token, 0.into())
-                        }
-                        Some(AttrOrDerive::Derive(_)) | None => {
-                            sema.descend_into_macros_single(token, 0.into())
-                        }
+                    let token = if token.kind() == STRING {
+                        // for strings, try to prefer a string that has not been lost in a token
+                        // tree
+                        // FIXME: This should be done for everything, but check perf first
+                        sema.descend_into_macros(DescendPreference::SameKind, token)
+                            .into_iter()
+                            .max_by_key(|it| {
+                                it.parent().map_or(false, |it| it.kind() != TOKEN_TREE)
+                            })
+                            .unwrap()
+                    } else {
+                        sema.descend_into_macros_single(
+                            match attr_or_derive_item {
+                                Some(AttrOrDerive::Attr(_)) => DescendPreference::SameKind,
+                                Some(AttrOrDerive::Derive(_)) | None => DescendPreference::None,
+                            },
+                            token,
+                        )
                     };
                     match token.parent().and_then(ast::NameLike::cast) {
                         // Remap the token into the wrapping single token nodes
@@ -441,7 +452,7 @@ fn traverse(
                     {
                         continue;
                     }
-                    highlight_format_string(hl, &string, &expanded_string, range);
+                    highlight_format_string(hl, sema, krate, &string, &expanded_string, range);
 
                     if !string.is_raw() {
                         highlight_escape_string(hl, &string, range.start());

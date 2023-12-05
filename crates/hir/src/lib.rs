@@ -92,7 +92,9 @@ pub use crate::{
     attrs::{resolve_doc_path_on, HasAttrs},
     diagnostics::*,
     has_source::HasSource,
-    semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
+    semantics::{
+        DescendPreference, PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits,
+    },
 };
 
 // Be careful with these re-exports.

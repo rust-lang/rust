@@ -9,7 +9,7 @@ use ide_db::{
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
-    search::SearchScope,
+    search::{FileReferenceNode, SearchScope},
     FxHashMap, FxHashSet, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
@@ -240,7 +240,7 @@ fn find_related_tests(
             .flatten();
         for ref_ in defs {
             let name_ref = match ref_.name {
-                ast::NameLike::NameRef(name_ref) => name_ref,
+                FileReferenceNode::NameRef(name_ref) => name_ref,
                 _ => continue,
             };
             if let Some(fn_def) =
