@@ -634,7 +634,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     span.shrink_to_hi(),
                                     format!(
                                         "the trait `{}` is implemented for fn pointer `{}`, try casting using `as`",
-                                        cand.print_only_trait_path(),
+                                        cand.print_trait_sugared(),
                                         cand.self_ty(),
                                     ),
                                     format!(" as {}", cand.self_ty()),
@@ -2014,7 +2014,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
                     });
                 err.highlighted_help(vec![
-                    (format!("the trait `{}` ", cand.print_only_trait_path()), Style::NoStyle),
+                    (format!("the trait `{}` ", cand.print_trait_sugared()), Style::NoStyle),
                     ("is".to_string(), Style::Highlight),
                     (" implemented for `".to_string(), Style::NoStyle),
                     (cand.self_ty().to_string(), Style::Highlight),
@@ -2050,7 +2050,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         _ => (" implemented for `", ""),
                     };
                 err.highlighted_help(vec![
-                    (format!("the trait `{}` ", cand.print_only_trait_path()), Style::NoStyle),
+                    (format!("the trait `{}` ", cand.print_trait_sugared()), Style::NoStyle),
                     ("is".to_string(), Style::Highlight),
                     (desc.to_string(), Style::NoStyle),
                     (cand.self_ty().to_string(), Style::Highlight),
@@ -2083,7 +2083,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
             err.help(format!(
                 "the following {other}types implement trait `{}`:{}{}",
-                trait_ref.print_only_trait_path(),
+                trait_ref.print_trait_sugared(),
                 candidates[..end].join(""),
                 if candidates.len() > 9 {
                     format!("\nand {} others", candidates.len() - 8)
