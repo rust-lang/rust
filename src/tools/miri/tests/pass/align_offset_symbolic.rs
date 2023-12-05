@@ -90,9 +90,21 @@ fn test_cstr() {
     std::ffi::CStr::from_bytes_with_nul(b"this is a test that is longer than 16 bytes\0").unwrap();
 }
 
+fn huge_align() {
+    #[cfg(target_pointer_width = "64")]
+    const SIZE: usize = 1 << 47;
+    #[cfg(target_pointer_width = "32")]
+    const SIZE: usize = 1 << 30;
+    #[cfg(target_pointer_width = "16")]
+    const SIZE: usize = 1 << 13;
+    struct HugeSize([u8; SIZE - 1]);
+    let _ = std::ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE);
+}
+
 fn main() {
     test_align_to();
     test_from_utf8();
     test_u64_array();
     test_cstr();
+    huge_align();
 }

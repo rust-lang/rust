@@ -558,14 +558,23 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             // Promises that a pointer has a given symbolic alignment.
             "miri_promise_symbolic_alignment" => {
+                use rustc_target::abi::AlignFromBytesError;
+
                 let [ptr, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let align = this.read_target_usize(align)?;
-                let Ok(align) = Align::from_bytes(align) else {
+                if !align.is_power_of_two() {
                     throw_unsup_format!(
-                        "`miri_promise_symbolic_alignment`: alignment must be a power of 2"
+                        "`miri_promise_symbolic_alignment`: alignment must be a power of 2, got {align}"
                     );
-                };
+                }
+                let align = Align::from_bytes(align).unwrap_or_else(|err| {
+                    match err {
+                        AlignFromBytesError::NotPowerOfTwo(_) => unreachable!(),
+                        // When the alignment is a power of 2 but too big, clamp it to MAX.
+                        AlignFromBytesError::TooLarge(_) => Align::MAX,
+                    }
+                });
                 let (_, addr) = ptr.into_parts(); // we know the offset is absolute
                 // Cannot panic since `align` is a power of 2 and hence non-zero.
                 if addr.bytes().checked_rem(align.bytes()).unwrap() != 0 {
