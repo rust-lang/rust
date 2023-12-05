@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// replaced with `(e)print!()` / `(e)println!()`
     ///
     /// ### Why is this bad?
-    /// Using `(e)println! is clearer and more concise
+    /// Using `(e)println!` is clearer and more concise
     ///
     /// ### Example
     /// ```no_run
