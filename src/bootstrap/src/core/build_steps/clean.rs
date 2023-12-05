@@ -146,6 +146,7 @@ fn clean_default(build: &Build) {
     rm_rf(&build.out.join("tmp"));
     rm_rf(&build.out.join("dist"));
     rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
+    rm_rf(&build.out.join("bootstrap-shims-dump"));
     rm_rf(&build.out.join("rustfmt.stamp"));
 
     for host in &build.hosts {
