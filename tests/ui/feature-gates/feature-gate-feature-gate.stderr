@@ -1,4 +1,4 @@
-error: unstable feature
+error: use of an unstable feature
   --> $DIR/feature-gate-feature-gate.rs:2:12
    |
 LL | #![feature(intrinsics)]
