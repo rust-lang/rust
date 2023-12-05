@@ -275,6 +275,7 @@ fn rewrite_closure_fn_decl(
     let coro = match coroutine_kind {
         Some(ast::CoroutineKind::Async { .. }) => "async ",
         Some(ast::CoroutineKind::Gen { .. }) => "gen ",
+        Some(ast::CoroutineKind::AsyncGen { .. }) => "async gen ",
         None => "",
     };
     let mover = if matches!(capture, ast::CaptureBy::Value { .. }) {

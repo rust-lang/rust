@@ -79,6 +79,7 @@ pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
     match coroutine_kind {
         ast::CoroutineKind::Async { .. } => "async ",
         ast::CoroutineKind::Gen { .. } => "gen ",
+        ast::CoroutineKind::AsyncGen { .. } => "async gen ",
     }
 }
 
