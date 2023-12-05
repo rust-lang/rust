@@ -1,5 +1,5 @@
 error: unexpected end of macro invocation
-  --> $DIR/offset-of-arg-count.rs:6:34
+  --> $DIR/offset-of-arg-count.rs:4:34
    |
 LL |     offset_of!(NotEnoughArguments);
    |                                  ^ missing tokens in macro arguments
@@ -8,7 +8,7 @@ note: while trying to match `,`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: unexpected end of macro invocation
-  --> $DIR/offset-of-arg-count.rs:7:45
+  --> $DIR/offset-of-arg-count.rs:5:45
    |
 LL |     offset_of!(NotEnoughArgumentsWithAComma, );
    |                                             ^ missing tokens in macro arguments
@@ -17,7 +17,7 @@ note: while trying to match meta-variable `$fields:expr`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: no rules expected the token `too`
-  --> $DIR/offset-of-arg-count.rs:8:34
+  --> $DIR/offset-of-arg-count.rs:6:34
    |
 LL |     offset_of!(Container, field, too many arguments);
    |                                  ^^^ no rules expected this token in macro call
@@ -25,25 +25,25 @@ LL |     offset_of!(Container, field, too many arguments);
    = note: while trying to match sequence end
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-arg-count.rs:11:21
+  --> $DIR/offset-of-arg-count.rs:9:21
    |
 LL |     offset_of!(S, f.);
    |                     ^
 
 error: unexpected token: `,`
-  --> $DIR/offset-of-arg-count.rs:12:21
+  --> $DIR/offset-of-arg-count.rs:10:21
    |
 LL |     offset_of!(S, f.,);
    |                     ^
 
 error: offset_of expects dot-separated field and variant names
-  --> $DIR/offset-of-arg-count.rs:13:19
+  --> $DIR/offset-of-arg-count.rs:11:19
    |
 LL |     offset_of!(S, f..);
    |                   ^^^
 
 error: offset_of expects dot-separated field and variant names
-  --> $DIR/offset-of-arg-count.rs:14:19
+  --> $DIR/offset-of-arg-count.rs:12:19
    |
 LL |     offset_of!(S, f..,);
    |                   ^^^

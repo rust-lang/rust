@@ -111,6 +111,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(offset_of_nested))]
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
@@ -176,7 +177,6 @@
 #![feature(isqrt)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(non_null_convenience)]
-#![feature(offset_of)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
