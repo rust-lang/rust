@@ -279,7 +279,7 @@ impl<'a> Parser<'a> {
         let span_lo = self.token.span;
         let (params, span) = if self.eat_lt() {
             let params = self.parse_generic_params()?;
-            self.expect_gt()?;
+            self.expect_gt_or_maybe_suggest_closing_generics(&params)?;
             (params, span_lo.to(self.prev_token.span))
         } else {
             (ThinVec::new(), self.prev_token.span.shrink_to_hi())
