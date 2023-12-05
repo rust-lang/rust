@@ -1045,11 +1045,11 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let slice = ['r', 'u', 's', 't'];
-    /// let mut iter = slice.windows(2);
-    /// assert_eq!(iter.next().unwrap(), &['r', 'u']);
-    /// assert_eq!(iter.next().unwrap(), &['u', 's']);
-    /// assert_eq!(iter.next().unwrap(), &['s', 't']);
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.windows(3);
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o', 'r']);
+    /// assert_eq!(iter.next().unwrap(), &['o', 'r', 'e']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e', 'm']);
     /// assert!(iter.next().is_none());
     /// ```
     ///

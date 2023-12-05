@@ -20,8 +20,8 @@ use NaNKind::*;
 #[track_caller]
 fn check_all_outcomes<T: Eq + Hash + fmt::Display>(expected: HashSet<T>, generate: impl Fn() -> T) {
     let mut seen = HashSet::new();
-    // Let's give it 8x as many tries as we are expecting values.
-    let tries = expected.len() * 8;
+    // Let's give it sixteen times as many tries as we are expecting values.
+    let tries = expected.len() * 16;
     for _ in 0..tries {
         let val = generate();
         assert!(expected.contains(&val), "got an unexpected value: {val}");

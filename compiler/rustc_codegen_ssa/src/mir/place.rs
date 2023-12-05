@@ -143,7 +143,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // Simple cases, which don't need DST adjustment:
         //   * no metadata available - just log the case
         //   * known alignment - sized types, `[T]`, `str` or a foreign type
-        //   * packed struct - there is no alignment padding
+        // Note that looking at `field.align` is incorrect since that is not necessarily equal
+        // to the dynamic alignment of the type.
         match field.ty.kind() {
             _ if self.llextra.is_none() => {
                 debug!(
@@ -154,14 +155,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             }
             _ if field.is_sized() => return simple(),
             ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(),
-            ty::Adt(def, _) => {
-                if def.repr().packed() {
-                    // FIXME(eddyb) generalize the adjustment when we
-                    // start supporting packing to larger alignments.
-                    assert_eq!(self.layout.align.abi.bytes(), 1);
-                    return simple();
-                }
-            }
             _ => {}
         }
 
@@ -186,7 +179,16 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let unaligned_offset = bx.cx().const_usize(offset.bytes());
 
         // Get the alignment of the field
-        let (_, unsized_align) = glue::size_and_align_of_dst(bx, field.ty, meta);
+        let (_, mut unsized_align) = glue::size_and_align_of_dst(bx, field.ty, meta);
+
+        // For packed types, we need to cap alignment.
+        if let ty::Adt(def, _) = self.layout.ty.kind()
+            && let Some(packed) = def.repr().pack
+        {
+            let packed = bx.const_usize(packed.bytes());
+            let cmp = bx.icmp(IntPredicate::IntULT, unsized_align, packed);
+            unsized_align = bx.select(cmp, unsized_align, packed)
+        }
 
         // Bump the unaligned offset up to the appropriate alignment
         let offset = round_up_const_value_to_alignment(bx, unaligned_offset, unsized_align);

@@ -59,7 +59,8 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     attributes::outer_attrs(p);
 
     if p.at(T![let]) {
-        let_stmt(p, m, semicolon);
+        let_stmt(p, semicolon);
+        m.complete(p, LET_STMT);
         return;
     }
 
@@ -109,54 +110,53 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
             m.complete(p, EXPR_STMT);
         }
     }
+}
 
-    // test let_stmt
-    // fn f() { let x: i32 = 92; }
-    fn let_stmt(p: &mut Parser<'_>, m: Marker, with_semi: Semicolon) {
-        p.bump(T![let]);
-        patterns::pattern(p);
-        if p.at(T![:]) {
-            // test let_stmt_ascription
-            // fn f() { let x: i32; }
-            types::ascription(p);
-        }
+// test let_stmt
+// fn f() { let x: i32 = 92; }
+pub(super) fn let_stmt(p: &mut Parser<'_>, with_semi: Semicolon) {
+    p.bump(T![let]);
+    patterns::pattern(p);
+    if p.at(T![:]) {
+        // test let_stmt_ascription
+        // fn f() { let x: i32; }
+        types::ascription(p);
+    }
 
-        let mut expr_after_eq: Option<CompletedMarker> = None;
-        if p.eat(T![=]) {
-            // test let_stmt_init
-            // fn f() { let x = 92; }
-            expr_after_eq = expressions::expr(p);
-        }
+    let mut expr_after_eq: Option<CompletedMarker> = None;
+    if p.eat(T![=]) {
+        // test let_stmt_init
+        // fn f() { let x = 92; }
+        expr_after_eq = expressions::expr(p);
+    }
 
-        if p.at(T![else]) {
-            // test_err let_else_right_curly_brace
-            // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
-            if let Some(expr) = expr_after_eq {
-                if BlockLike::is_blocklike(expr.kind()) {
-                    p.error(
-                        "right curly brace `}` before `else` in a `let...else` statement not allowed",
-                    )
-                }
-            }
-
-            // test let_else
-            // fn f() { let Some(x) = opt else { return }; }
-            let m = p.start();
-            p.bump(T![else]);
-            block_expr(p);
-            m.complete(p, LET_ELSE);
-        }
-
-        match with_semi {
-            Semicolon::Forbidden => (),
-            Semicolon::Optional => {
-                p.eat(T![;]);
-            }
-            Semicolon::Required => {
-                p.expect(T![;]);
+    if p.at(T![else]) {
+        // test_err let_else_right_curly_brace
+        // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
+        if let Some(expr) = expr_after_eq {
+            if BlockLike::is_blocklike(expr.kind()) {
+                p.error(
+                    "right curly brace `}` before `else` in a `let...else` statement not allowed",
+                )
             }
         }
-        m.complete(p, LET_STMT);
+
+        // test let_else
+        // fn f() { let Some(x) = opt else { return }; }
+        let m = p.start();
+        p.bump(T![else]);
+        block_expr(p);
+        m.complete(p, LET_ELSE);
+    }
+
+    match with_semi {
+        Semicolon::Forbidden => (),
+        Semicolon::Optional => {
+            p.eat(T![;]);
+        }
+        Semicolon::Required => {
+            p.expect(T![;]);
+        }
     }
 }
 
@@ -693,6 +693,17 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if !p.at(T!['}']) {
                     expr(p);
+
+                    if p.at(T![,]) {
+                        // test_err comma_after_functional_update_syntax
+                        // fn foo() {
+                        //     S { ..x, };
+                        //     S { ..x, a: 0 }
+                        // }
+
+                        // Do not bump, so we can support additional fields after this comma.
+                        p.error("cannot use a comma after the base struct");
+                    }
                 }
             }
             T!['{'] => {

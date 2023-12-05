@@ -131,7 +131,7 @@ pub trait Printer<'tcx>: Sized {
 
                     match key.disambiguated_data.data {
                         // Closures' own generics are only captures, don't print them.
-                        DefPathData::ClosureExpr => {}
+                        DefPathData::Closure => {}
                         // This covers both `DefKind::AnonConst` and `DefKind::InlineConst`.
                         // Anon consts doesn't have their own generics, and inline consts' own
                         // generics are their inferred types, so don't print them.

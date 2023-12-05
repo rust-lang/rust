@@ -321,7 +321,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct OnUnimplementedFormatString(Symbol, Span);
+pub struct OnUnimplementedFormatString {
+    symbol: Symbol,
+    span: Span,
+    is_diagnostic_namespace_variant: bool,
+}
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
@@ -401,6 +405,14 @@ impl IgnoredDiagnosticOption {
     }
 }
 
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_unknown_format_parameter_for_on_unimplemented_attr)]
+#[help]
+pub struct UnknownFormatParameterForOnUnimplementedAttr {
+    argument_name: Symbol,
+    trait_name: Symbol,
+}
+
 impl<'tcx> OnUnimplementedDirective {
     fn parse(
         tcx: TyCtxt<'tcx>,
@@ -414,8 +426,14 @@ impl<'tcx> OnUnimplementedDirective {
         let mut item_iter = items.iter();
 
         let parse_value = |value_str, value_span| {
-            OnUnimplementedFormatString::try_parse(tcx, item_def_id, value_str, span, value_span)
-                .map(Some)
+            OnUnimplementedFormatString::try_parse(
+                tcx,
+                item_def_id,
+                value_str,
+                value_span,
+                is_diagnostic_namespace_variant,
+            )
+            .map(Some)
         };
 
         let condition = if is_root {
@@ -552,15 +570,15 @@ impl<'tcx> OnUnimplementedDirective {
                         IgnoredDiagnosticOption::maybe_emit_warning(
                             tcx,
                             item_def_id,
-                            directive.message.as_ref().map(|f| f.1),
-                            aggr.message.as_ref().map(|f| f.1),
+                            directive.message.as_ref().map(|f| f.span),
+                            aggr.message.as_ref().map(|f| f.span),
                             "message",
                         );
                         IgnoredDiagnosticOption::maybe_emit_warning(
                             tcx,
                             item_def_id,
-                            directive.label.as_ref().map(|f| f.1),
-                            aggr.label.as_ref().map(|f| f.1),
+                            directive.label.as_ref().map(|f| f.span),
+                            aggr.label.as_ref().map(|f| f.span),
                             "label",
                         );
                         IgnoredDiagnosticOption::maybe_emit_warning(
@@ -573,8 +591,8 @@ impl<'tcx> OnUnimplementedDirective {
                         IgnoredDiagnosticOption::maybe_emit_warning(
                             tcx,
                             item_def_id,
-                            directive.parent_label.as_ref().map(|f| f.1),
-                            aggr.parent_label.as_ref().map(|f| f.1),
+                            directive.parent_label.as_ref().map(|f| f.span),
+                            aggr.parent_label.as_ref().map(|f| f.span),
                             "parent_label",
                         );
                         IgnoredDiagnosticOption::maybe_emit_warning(
@@ -634,7 +652,7 @@ impl<'tcx> OnUnimplementedDirective {
                         item_def_id,
                         value,
                         attr.span,
-                        attr.span,
+                        is_diagnostic_namespace_variant,
                     )?),
                     notes: Vec::new(),
                     parent_label: None,
@@ -713,7 +731,12 @@ impl<'tcx> OnUnimplementedDirective {
                             // `with_no_visible_paths` is also used when generating the options,
                             // so we need to match it here.
                             ty::print::with_no_visible_paths!(
-                                OnUnimplementedFormatString(v, cfg.span).format(
+                                OnUnimplementedFormatString {
+                                    symbol: v,
+                                    span: cfg.span,
+                                    is_diagnostic_namespace_variant: false
+                                }
+                                .format(
                                     tcx,
                                     trait_ref,
                                     &options_map
@@ -761,20 +784,19 @@ impl<'tcx> OnUnimplementedFormatString {
         tcx: TyCtxt<'tcx>,
         item_def_id: DefId,
         from: Symbol,
-        err_sp: Span,
         value_span: Span,
+        is_diagnostic_namespace_variant: bool,
     ) -> Result<Self, ErrorGuaranteed> {
-        let result = OnUnimplementedFormatString(from, value_span);
-        result.verify(tcx, item_def_id, err_sp)?;
+        let result = OnUnimplementedFormatString {
+            symbol: from,
+            span: value_span,
+            is_diagnostic_namespace_variant,
+        };
+        result.verify(tcx, item_def_id)?;
         Ok(result)
     }
 
-    fn verify(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        item_def_id: DefId,
-        span: Span,
-    ) -> Result<(), ErrorGuaranteed> {
+    fn verify(&self, tcx: TyCtxt<'tcx>, item_def_id: DefId) -> Result<(), ErrorGuaranteed> {
         let trait_def_id = if tcx.is_trait(item_def_id) {
             item_def_id
         } else {
@@ -783,7 +805,7 @@ impl<'tcx> OnUnimplementedFormatString {
         };
         let trait_name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(item_def_id);
-        let s = self.0.as_str();
+        let s = self.symbol.as_str();
         let parser = Parser::new(s, None, None, false, ParseMode::Format);
         let mut result = Ok(());
         for token in parser {
@@ -793,24 +815,40 @@ impl<'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) => {
                         match Symbol::intern(s) {
                             // `{ThisTraitsName}` is allowed
-                            s if s == trait_name => (),
-                            s if ALLOWED_FORMAT_SYMBOLS.contains(&s) => (),
+                            s if s == trait_name && !self.is_diagnostic_namespace_variant => (),
+                            s if ALLOWED_FORMAT_SYMBOLS.contains(&s)
+                                && !self.is_diagnostic_namespace_variant =>
+                            {
+                                ()
+                            }
                             // So is `{A}` if A is a type parameter
                             s if generics.params.iter().any(|param| param.name == s) => (),
                             s => {
-                                result = Err(struct_span_err!(
-                                    tcx.sess,
-                                    span,
-                                    E0230,
-                                    "there is no parameter `{}` on {}",
-                                    s,
-                                    if trait_def_id == item_def_id {
-                                        format!("trait `{trait_name}`")
-                                    } else {
-                                        "impl".to_string()
-                                    }
-                                )
-                                .emit());
+                                if self.is_diagnostic_namespace_variant {
+                                    tcx.emit_spanned_lint(
+                                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                                        tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
+                                        self.span,
+                                        UnknownFormatParameterForOnUnimplementedAttr {
+                                            argument_name: s,
+                                            trait_name,
+                                        },
+                                    );
+                                } else {
+                                    result = Err(struct_span_err!(
+                                        tcx.sess,
+                                        self.span,
+                                        E0230,
+                                        "there is no parameter `{}` on {}",
+                                        s,
+                                        if trait_def_id == item_def_id {
+                                            format!("trait `{trait_name}`")
+                                        } else {
+                                            "impl".to_string()
+                                        }
+                                    )
+                                    .emit());
+                                }
                             }
                         }
                     }
@@ -818,7 +856,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
                         let reported = struct_span_err!(
                             tcx.sess,
-                            span,
+                            self.span,
                             E0231,
                             "only named substitution parameters are allowed"
                         )
@@ -857,37 +895,42 @@ impl<'tcx> OnUnimplementedFormatString {
             .collect::<FxHashMap<Symbol, String>>();
         let empty_string = String::new();
 
-        let s = self.0.as_str();
+        let s = self.symbol.as_str();
         let parser = Parser::new(s, None, None, false, ParseMode::Format);
         let item_context = (options.get(&sym::ItemContext)).unwrap_or(&empty_string);
         parser
             .map(|p| match p {
-                Piece::String(s) => s,
+                Piece::String(s) => s.to_owned(),
                 Piece::NextArgument(a) => match a.position {
-                    Position::ArgumentNamed(s) => {
-                        let s = Symbol::intern(s);
+                    Position::ArgumentNamed(arg) => {
+                        let s = Symbol::intern(arg);
                         match generic_map.get(&s) {
-                            Some(val) => val,
-                            None if s == name => &trait_str,
+                            Some(val) => val.to_string(),
+                            None if self.is_diagnostic_namespace_variant => {
+                                format!("{{{arg}}}")
+                            }
+                            None if s == name => trait_str.clone(),
                             None => {
                                 if let Some(val) = options.get(&s) {
-                                    val
+                                    val.clone()
                                 } else if s == sym::from_desugaring {
                                     // don't break messages using these two arguments incorrectly
-                                    &empty_string
-                                } else if s == sym::ItemContext {
-                                    item_context
+                                    String::new()
+                                } else if s == sym::ItemContext
+                                    && !self.is_diagnostic_namespace_variant
+                                {
+                                    item_context.clone()
                                 } else if s == sym::integral {
-                                    "{integral}"
+                                    String::from("{integral}")
                                 } else if s == sym::integer_ {
-                                    "{integer}"
+                                    String::from("{integer}")
                                 } else if s == sym::float {
-                                    "{float}"
+                                    String::from("{float}")
                                 } else {
                                     bug!(
                                         "broken on_unimplemented {:?} for {:?}: \
                                       no argument matching {:?}",
-                                        self.0,
+                                        self.symbol,
                                         trait_ref,
                                         s
                                     )
@@ -895,7 +938,7 @@ impl<'tcx> OnUnimplementedFormatString {
                             }
                         }
                     }
-                    _ => bug!("broken on_unimplemented {:?} - bad format arg", self.0),
+                    _ => bug!("broken on_unimplemented {:?} - bad format arg", self.symbol),
                 },
             })
             .collect()

@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use std::borrow::Cow;
 
 use super::MaybeBorrowedLocals;
-use crate::{GenKill, ResultsClonedCursor};
+use crate::{GenKill, ResultsCursor};
 
 #[derive(Clone)]
 pub struct MaybeStorageLive<'a> {
@@ -15,12 +15,6 @@ pub struct MaybeStorageLive<'a> {
 impl<'a> MaybeStorageLive<'a> {
     pub fn new(always_live_locals: Cow<'a, BitSet<Local>>) -> Self {
         MaybeStorageLive { always_live_locals }
-    }
-}
-
-impl crate::CloneAnalysis for MaybeStorageLive<'_> {
-    fn clone_analysis(&self) -> Self {
-        self.clone()
     }
 }
 
@@ -158,28 +152,21 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
     }
 }
 
-type BorrowedLocalsResults<'res, 'mir, 'tcx> =
-    ResultsClonedCursor<'res, 'mir, 'tcx, MaybeBorrowedLocals>;
+type BorrowedLocalsResults<'mir, 'tcx> = ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>;
 
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
-pub struct MaybeRequiresStorage<'res, 'mir, 'tcx> {
-    borrowed_locals: BorrowedLocalsResults<'res, 'mir, 'tcx>,
+pub struct MaybeRequiresStorage<'mir, 'tcx> {
+    borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>,
 }
 
-impl<'res, 'mir, 'tcx> MaybeRequiresStorage<'res, 'mir, 'tcx> {
-    pub fn new(borrowed_locals: BorrowedLocalsResults<'res, 'mir, 'tcx>) -> Self {
+impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
+    pub fn new(borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>) -> Self {
         MaybeRequiresStorage { borrowed_locals }
     }
 }
 
-impl crate::CloneAnalysis for MaybeRequiresStorage<'_, '_, '_> {
-    fn clone_analysis(&self) -> Self {
-        Self { borrowed_locals: self.borrowed_locals.new_cursor() }
-    }
-}
-
-impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
+impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "requires_storage";
@@ -198,7 +185,7 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
+impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
     type Idx = Local;
 
     fn domain_size(&self, body: &Body<'tcx>) -> usize {
@@ -355,7 +342,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> MaybeRequiresStorage<'_, '_, 'tcx> {
+impl<'tcx> MaybeRequiresStorage<'_, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&mut self, trans: &mut impl GenKill<Local>, loc: Location) {
         let body = self.borrowed_locals.body();
@@ -364,12 +351,12 @@ impl<'tcx> MaybeRequiresStorage<'_, '_, 'tcx> {
     }
 }
 
-struct MoveVisitor<'a, 'res, 'mir, 'tcx, T> {
-    borrowed_locals: &'a mut BorrowedLocalsResults<'res, 'mir, 'tcx>,
+struct MoveVisitor<'a, 'mir, 'tcx, T> {
+    borrowed_locals: &'a mut BorrowedLocalsResults<'mir, 'tcx>,
     trans: &'a mut T,
 }
 
-impl<'tcx, T> Visitor<'tcx> for MoveVisitor<'_, '_, '_, 'tcx, T>
+impl<'tcx, T> Visitor<'tcx> for MoveVisitor<'_, '_, 'tcx, T>
 where
     T: GenKill<Local>,
 {

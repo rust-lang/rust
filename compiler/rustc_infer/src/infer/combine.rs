@@ -326,7 +326,9 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         let span =
             self.inner.borrow_mut().const_unification_table().probe_value(target_vid).origin.span;
-        let Generalization { value, needs_wf: _ } = generalize::generalize(
+        // FIXME(generic_const_exprs): Occurs check failures for unevaluated
+        // constants and generic expressions are not yet handled correctly.
+        let Generalization { value_may_be_infer: value, needs_wf: _ } = generalize::generalize(
             self,
             &mut CombineDelegate { infcx: self, span, param_env },
             ct,
@@ -445,7 +447,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // `'?2` and `?3` are fresh region/type inference
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
-        let Generalization { value: b_ty, needs_wf } = generalize::generalize(
+        let Generalization { value_may_be_infer: b_ty, needs_wf } = generalize::generalize(
             self.infcx,
             &mut CombineDelegate {
                 infcx: self.infcx,
@@ -457,7 +459,6 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ambient_variance,
         )?;
 
-        debug!(?b_ty);
         self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
 
         if needs_wf {
@@ -477,19 +478,52 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // relations wind up attributed to the same spans. We need
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
-        match ambient_variance {
-            ty::Variance::Invariant => self.equate(a_is_expected).relate(a_ty, b_ty),
-            ty::Variance::Covariant => self.sub(a_is_expected).relate(a_ty, b_ty),
-            ty::Variance::Contravariant => self.sub(a_is_expected).relate_with_variance(
-                ty::Contravariant,
-                ty::VarianceDiagInfo::default(),
-                a_ty,
-                b_ty,
-            ),
-            ty::Variance::Bivariant => {
-                unreachable!("no code should be generalizing bivariantly (currently)")
+        if b_ty.is_ty_var() {
+            // This happens for cases like `<?0 as Trait>::Assoc == ?0`.
+            // We can't instantiate `?0` here as that would result in a
+            // cyclic type. We instead delay the unification in case
+            // the alias can be normalized to something which does not
+            // mention `?0`.
+
+            // FIXME(-Ztrait-solver=next): replace this with `AliasRelate`
+            let &ty::Alias(kind, data) = a_ty.kind() else {
+                bug!("generalization should only result in infer vars for aliases");
+            };
+            if !self.infcx.next_trait_solver() {
+                // The old solver only accepts projection predicates for associated types.
+                match kind {
+                    ty::AliasKind::Projection => {}
+                    ty::AliasKind::Inherent | ty::AliasKind::Weak | ty::AliasKind::Opaque => {
+                        return Err(TypeError::CyclicTy(a_ty));
+                    }
+                }
             }
-        }?;
+
+            // FIXME: This does not handle subtyping correctly, we should switch to
+            // alias-relate in the new solver and could instead create a new inference
+            // variable for `a_ty`, emitting `Projection(a_ty, a_infer)` and
+            // `a_infer <: b_ty`.
+            self.obligations.push(Obligation::new(
+                self.tcx(),
+                self.trace.cause.clone(),
+                self.param_env,
+                ty::ProjectionPredicate { projection_ty: data, term: b_ty.into() },
+            ))
+        } else {
+            match ambient_variance {
+                ty::Variance::Invariant => self.equate(a_is_expected).relate(a_ty, b_ty),
+                ty::Variance::Covariant => self.sub(a_is_expected).relate(a_ty, b_ty),
+                ty::Variance::Contravariant => self.sub(a_is_expected).relate_with_variance(
+                    ty::Contravariant,
+                    ty::VarianceDiagInfo::default(),
+                    a_ty,
+                    b_ty,
+                ),
+                ty::Variance::Bivariant => {
+                    unreachable!("no code should be generalizing bivariantly (currently)")
+                }
+            }?;
+        }
 
         Ok(())
     }
