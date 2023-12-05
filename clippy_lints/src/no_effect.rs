@@ -10,7 +10,6 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use std::ops::Deref;
 
@@ -94,7 +93,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
         }
         let expr = peel_blocks(expr);
         // assume nontrivial oprand of `Binary` Expr can skip `check_unnecessary_operation`
-        if has_nontrivial_oprand(cx, expr) {
+        if is_operator_overrided(cx, expr) {
             return true;
         }
         if has_no_effect(cx, expr) {
@@ -163,31 +162,19 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     false
 }
 
-fn has_nontrivial_oprand(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+fn is_operator_overrided(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     // It's very hard or impossable to check whether overrided operator have side-effect this lint.
     // So, this function assume user-defined binary operator is overrided with an side-effect.
-    // The definition of user-defined structure here is `struct`, `enum`, `uniom`,
+    // The definition of user-defined structure here is ADT-type,
     // Althrough this will weaken the ability of this lint, less error lint-fix happen.
     match expr.kind {
-        ExprKind::Binary(_, lhs, rhs) => {
-            // get type of lhs and rhs
-            let tyck_result = cx.typeck_results();
-            let ty_lhs = tyck_result.expr_ty(lhs).kind();
-            let ty_rhs = tyck_result.expr_ty(rhs).kind();
-            // check whether lhs is a user-defined structure
-            // only need to check lhs in fact
-            let ud_lhs = match ty_lhs {
-                ty::Adt(adt_def, _) => adt_def.is_struct() || adt_def.is_enum() || adt_def.is_union(),
-                _ => false,
-            };
-            let ud_rhs = match ty_rhs {
-                ty::Adt(adt_def, _) => adt_def.is_struct() || adt_def.is_enum() || adt_def.is_union(),
-                _ => false,
-            };
+        ExprKind::Binary(..) => {
+            // No need to check type of `lhs` and `rhs`
+            // because if the operator is overrided, at least one operand is ADT type
 
             // reference: rust/compiler/rustc_middle/src/ty/typeck_results.rs: `is_method_call`.
             // use this function to check whether operator is overrided in `ExprKind::Binary`.
-            (ud_lhs || ud_rhs) && tyck_result.is_method_call(expr)
+            cx.typeck_results().is_method_call(expr)
         },
         _ => false,
     }
