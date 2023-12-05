@@ -566,7 +566,8 @@ pub fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {
 fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool {
     match (l, r) {
         (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-        | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. })) => true,
+        | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
+        | (Some(CoroutineKind::AsyncGen { .. }), Some(CoroutineKind::AsyncGen { .. })) => true,
         (None, None) => true,
         _ => false,
     }

@@ -162,11 +162,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node
         if let ast_visit::FnKind::Fn(_, _, sig, _, _, _) = fk {
-            if let Some(
-                ast::CoroutineKind::Async { closure_id, .. }
-                | ast::CoroutineKind::Gen { closure_id, .. },
-            ) = sig.header.coroutine_kind
-            {
+            if let Some(coro_kind) = sig.header.coroutine_kind {
+                let (ast::CoroutineKind::Async { closure_id, .. }
+                | ast::CoroutineKind::Gen { closure_id, .. }
+                | ast::CoroutineKind::AsyncGen { closure_id, .. }) = coro_kind;
                 self.check_id(closure_id);
             }
         }
@@ -227,13 +226,13 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // it does not have a corresponding AST node
         match e.kind {
             ast::ExprKind::Closure(box ast::Closure {
-                coroutine_kind:
-                    Some(
-                        ast::CoroutineKind::Async { closure_id, .. }
-                        | ast::CoroutineKind::Gen { closure_id, .. },
-                    ),
-                ..
-            }) => self.check_id(closure_id),
+                coroutine_kind: Some(coro_kind), ..
+            }) => {
+                let (ast::CoroutineKind::Async { closure_id, .. }
+                | ast::CoroutineKind::Gen { closure_id, .. }
+                | ast::CoroutineKind::AsyncGen { closure_id, .. }) = coro_kind;
+                self.check_id(closure_id);
+            }
             _ => {}
         }
         lint_callback!(self, check_expr_post, e);
