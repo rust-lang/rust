@@ -7,8 +7,8 @@ use std::{
 };
 
 use ide::{
-    LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
-    TokenStaticData,
+    LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile, TextRange,
+    TokenId,
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
@@ -109,7 +109,11 @@ impl flags::Scip {
                 let symbol = tokens_to_symbol
                     .entry(id)
                     .or_insert_with(|| {
-                        let symbol = token_to_symbol(token).unwrap_or_else(&mut new_local_symbol);
+                        let symbol = token
+                            .moniker
+                            .as_ref()
+                            .map(moniker_to_symbol)
+                            .unwrap_or_else(&mut new_local_symbol);
                         scip::symbol::format_symbol(symbol)
                     })
                     .clone();
@@ -228,14 +232,8 @@ fn new_descriptor(name: &str, suffix: scip_types::descriptor::Suffix) -> scip_ty
     }
 }
 
-/// Loosely based on `def_to_moniker`
-///
-/// Only returns a Symbol when it's a non-local symbol.
-///     So if the visibility isn't outside of a document, then it will return None
-fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
+fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
     use scip_types::descriptor::Suffix::*;
-
-    let moniker = token.moniker.as_ref()?;
 
     let package_name = moniker.package_information.name.clone();
     let version = moniker.package_information.version.clone();
@@ -260,7 +258,7 @@ fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
         })
         .collect();
 
-    Some(scip_types::Symbol {
+    scip_types::Symbol {
         scheme: "rust-analyzer".into(),
         package: Some(scip_types::Package {
             manager: "cargo".to_string(),
@@ -271,7 +269,7 @@ fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
         .into(),
         descriptors,
         special_fields: Default::default(),
-    })
+    }
 }
 
 #[cfg(test)]
@@ -309,7 +307,7 @@ mod test {
             for &(range, id) in &file.tokens {
                 if range.contains(offset - TextSize::from(1)) {
                     let token = si.tokens.get(id).unwrap();
-                    found_symbol = token_to_symbol(token);
+                    found_symbol = token.moniker.as_ref().map(moniker_to_symbol);
                     break;
                 }
             }
