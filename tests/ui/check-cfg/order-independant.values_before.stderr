@@ -1,0 +1,11 @@
+warning: unexpected `cfg` condition value: `unk`
+  --> $DIR/order-independant.rs:13:7
+   |
+LL | #[cfg(a = "unk")]
+   |       ^^^^^^^^^
+   |
+   = note: expected values for `a` are: (none), `b`
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

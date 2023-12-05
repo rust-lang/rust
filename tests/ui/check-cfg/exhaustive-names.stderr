@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `unknown_key`
-  --> $DIR/exhaustive-names.rs:8:7
+  --> $DIR/exhaustive-names.rs:6:7
    |
 LL | #[cfg(unknown_key = "value")]
    |       ^^^^^^^^^^^^^^^^^^^^^
