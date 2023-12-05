@@ -195,13 +195,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     binder,
                     capture_clause,
                     constness,
-                    coro_kind,
+                    coroutine_kind,
                     movability,
                     fn_decl,
                     body,
                     fn_decl_span,
                     fn_arg_span,
-                }) => match coro_kind {
+                }) => match coroutine_kind {
                     Some(
                         CoroutineKind::Async { closure_id, .. }
                         | CoroutineKind::Gen { closure_id, .. },

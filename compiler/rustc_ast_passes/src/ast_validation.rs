@@ -1271,7 +1271,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
             constness: Const::Yes(cspan),
-            coro_kind:
+            coroutine_kind:
                 Some(
                     CoroutineKind::Async { span: aspan, .. }
                     | CoroutineKind::Gen { span: aspan, .. },

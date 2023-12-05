@@ -158,7 +158,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
             if let Some(
                 CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. },
-            ) = sig.header.coro_kind
+            ) = sig.header.coroutine_kind
             {
                 self.visit_generics(generics);
 
@@ -284,7 +284,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
-                match closure.coro_kind {
+                match closure.coroutine_kind {
                     Some(
                         CoroutineKind::Async { closure_id, .. }
                         | CoroutineKind::Gen { closure_id, .. },

@@ -2561,7 +2561,7 @@ impl<'a> Parser<'a> {
                         return Ok(FnHeader {
                             constness: recover_constness,
                             unsafety: recover_unsafety,
-                            coro_kind: recover_asyncness,
+                            coroutine_kind: recover_asyncness,
                             ext,
                         });
                     }
@@ -2571,13 +2571,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let coro_kind = match asyncness {
+        let coroutine_kind = match asyncness {
             Some(CoroutineKind::Async { .. }) => asyncness,
             Some(CoroutineKind::Gen { .. }) => unreachable!("asycness cannot be Gen"),
             None => genness,
         };
 
-        Ok(FnHeader { constness, unsafety, coro_kind, ext })
+        Ok(FnHeader { constness, unsafety, coroutine_kind, ext })
     }
 
     /// Parses the parameter list and result type of a function declaration.

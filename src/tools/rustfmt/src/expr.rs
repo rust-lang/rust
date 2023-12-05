@@ -212,7 +212,7 @@ pub(crate) fn format_expr(
             &cl.binder,
             cl.constness,
             cl.capture_clause,
-            &cl.coro_kind,
+            &cl.coroutine_kind,
             cl.movability,
             &cl.fn_decl,
             &cl.body,

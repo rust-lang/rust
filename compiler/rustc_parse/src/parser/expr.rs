@@ -2285,7 +2285,7 @@ impl<'a> Parser<'a> {
                 binder,
                 capture_clause,
                 constness,
-                coro_kind: asyncness,
+                coroutine_kind: asyncness,
                 movability,
                 fn_decl,
                 body,

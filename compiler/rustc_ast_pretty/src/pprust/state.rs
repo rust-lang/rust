@@ -1490,8 +1490,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_coro_kind(&mut self, coro_kind: ast::CoroutineKind) {
-        match coro_kind {
+    fn print_coroutine_kind(&mut self, coroutine_kind: ast::CoroutineKind) {
+        match coroutine_kind {
             ast::CoroutineKind::Gen { .. } => {
                 self.word_nbsp("gen");
             }
@@ -1690,7 +1690,7 @@ impl<'a> State<'a> {
 
     fn print_fn_header_info(&mut self, header: ast::FnHeader) {
         self.print_constness(header.constness);
-        header.coro_kind.map(|coro_kind| self.print_coro_kind(coro_kind));
+        header.coroutine_kind.map(|coroutine_kind| self.print_coroutine_kind(coroutine_kind));
         self.print_unsafety(header.unsafety);
 
         match header.ext {

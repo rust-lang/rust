@@ -206,19 +206,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let coro_kind = header.coro_kind;
+                    let coroutine_kind = header.coroutine_kind;
                     let body_id = this.lower_maybe_coroutine_body(
                         span,
                         hir_id,
                         decl,
-                        coro_kind,
+                        coroutine_kind,
                         body.as_deref(),
                     );
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
                         this.lower_generics(generics, header.constness, id, &itctx, |this| {
-                            this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coro_kind)
+                            this.lower_fn_decl(
+                                decl,
+                                id,
+                                *fn_sig_span,
+                                FnDeclKind::Fn,
+                                coroutine_kind,
+                            )
                         });
                     let sig = hir::FnSig {
                         decl,
@@ -734,7 +740,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    sig.header.coro_kind,
+                    sig.header.coroutine_kind,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
@@ -743,7 +749,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.span,
                     hir_id,
                     &sig.decl,
-                    sig.header.coro_kind,
+                    sig.header.coroutine_kind,
                     Some(body),
                 );
                 let (generics, sig) = self.lower_method_sig(
@@ -751,7 +757,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    sig.header.coro_kind,
+                    sig.header.coroutine_kind,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
@@ -844,7 +850,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.span,
                     hir_id,
                     &sig.decl,
-                    sig.header.coro_kind,
+                    sig.header.coroutine_kind,
                     body.as_deref(),
                 );
                 let (generics, sig) = self.lower_method_sig(
@@ -852,7 +858,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
-                    sig.header.coro_kind,
+                    sig.header.coroutine_kind,
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -1023,13 +1029,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         fn_id: hir::HirId,
         decl: &FnDecl,
-        coro_kind: Option<CoroutineKind>,
+        coroutine_kind: Option<CoroutineKind>,
         body: Option<&Block>,
     ) -> hir::BodyId {
-        let (Some(coro_kind), Some(body)) = (coro_kind, body) else {
+        let (Some(coroutine_kind), Some(body)) = (coroutine_kind, body) else {
             return self.lower_fn_body_block(span, decl, body);
         };
-        let closure_id = match coro_kind {
+        let closure_id = match coroutine_kind {
             CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. } => {
                 closure_id
             }
@@ -1200,7 +1206,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 this.expr_block(body)
             };
-            let coroutine_expr = match coro_kind {
+            // FIXME(gen_blocks): Consider unifying the `make_*_expr` functions.
+            let coroutine_expr = match coroutine_kind {
                 CoroutineKind::Async { .. } => this.make_async_expr(
                     CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
                     closure_id,
@@ -1233,19 +1240,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig: &FnSig,
         id: NodeId,
         kind: FnDeclKind,
-        coro_kind: Option<CoroutineKind>,
+        coroutine_kind: Option<CoroutineKind>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) =
             self.lower_generics(generics, sig.header.constness, id, &itctx, |this| {
-                this.lower_fn_decl(&sig.decl, id, sig.span, kind, coro_kind)
+                this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
             });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
-        let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coro_kind {
+        let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
             hir::IsAsync::Async(span)
         } else {
             hir::IsAsync::NotAsync

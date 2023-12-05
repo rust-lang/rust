@@ -541,11 +541,11 @@ fn check_test_signature(
         return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
     }
 
-    if let Some(ast::CoroutineKind::Async { span, .. }) = f.sig.header.coro_kind {
+    if let Some(ast::CoroutineKind::Async { span, .. }) = f.sig.header.coroutine_kind {
         return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" }));
     }
 
-    if let Some(ast::CoroutineKind::Gen { span, .. }) = f.sig.header.coro_kind {
+    if let Some(ast::CoroutineKind::Gen { span, .. }) = f.sig.header.coroutine_kind {
         return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "gen" }));
     }
 

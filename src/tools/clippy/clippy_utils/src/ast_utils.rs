@@ -188,7 +188,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: lb,
                 capture_clause: lc,
-                coro_kind: la,
+                coroutine_kind: la,
                 movability: lm,
                 fn_decl: lf,
                 body: le,
@@ -197,7 +197,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: rb,
                 capture_clause: rc,
-                coro_kind: ra,
+                coroutine_kind: ra,
                 movability: rm,
                 fn_decl: rf,
                 body: re,
@@ -563,7 +563,7 @@ pub fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {
     eq_fn_decl(&l.decl, &r.decl) && eq_fn_header(&l.header, &r.header)
 }
 
-fn eq_opt_coro_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool {
+fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool {
     match (l, r) {
         (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
         | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. })) => true,
@@ -574,7 +574,7 @@ fn eq_opt_coro_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool 
 
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
     matches!(l.unsafety, Unsafe::No) == matches!(r.unsafety, Unsafe::No)
-        && eq_opt_coro_kind(l.coro_kind, r.coro_kind)
+        && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
 }

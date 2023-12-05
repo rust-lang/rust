@@ -1311,7 +1311,7 @@ pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub constness: Const,
-    pub coro_kind: Option<CoroutineKind>,
+    pub coroutine_kind: Option<CoroutineKind>,
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,
     pub body: P<Expr>,
@@ -2840,7 +2840,7 @@ pub struct FnHeader {
     /// The `unsafe` keyword, if any
     pub unsafety: Unsafe,
     /// Whether this is `async`, `gen`, or nothing.
-    pub coro_kind: Option<CoroutineKind>,
+    pub coroutine_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
     pub constness: Const,
     /// The `extern` keyword and corresponding ABI string, if any
@@ -2850,9 +2850,9 @@ pub struct FnHeader {
 impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
-        let Self { unsafety, coro_kind, constness, ext } = self;
+        let Self { unsafety, coroutine_kind, constness, ext } = self;
         matches!(unsafety, Unsafe::Yes(_))
-            || coro_kind.is_some()
+            || coroutine_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
@@ -2860,7 +2860,12 @@ impl FnHeader {
 
 impl Default for FnHeader {
     fn default() -> FnHeader {
-        FnHeader { unsafety: Unsafe::No, coro_kind: None, constness: Const::No, ext: Extern::None }
+        FnHeader {
+            unsafety: Unsafe::No,
+            coroutine_kind: None,
+            constness: Const::No,
+            ext: Extern::None,
+        }
     }
 }
 
