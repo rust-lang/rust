@@ -30,7 +30,7 @@ fn main() {
     unsafe {
         let p = PackedSized { f: 0, d: [1, 2, 3, 4] };
         let p = p.unsize() as *const PackedUnsized;
-        // Make sure the size computation correctly adds exact 1 byte of padding
+        // Make sure the size computation correctly adds exactly 1 byte of padding
         // in front of the `d` field.
         assert_eq!(mem::size_of_val_raw(p), 1 + 1 + 4 * 4);
         // And likewise for the offset computation.
