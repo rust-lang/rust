@@ -35,11 +35,10 @@ pub(crate) fn extract_expressions_from_format_string(
     let fmt_string = ctx.find_token_at_offset::<ast::String>()?;
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
 
-    let expanded_t = ast::String::cast(ctx.sema.descend_into_macros_single(
-        DescendPreference::SameKind,
-        fmt_string.syntax().clone(),
-        0.into(),
-    ))?;
+    let expanded_t = ast::String::cast(
+        ctx.sema
+            .descend_into_macros_single(DescendPreference::SameKind, fmt_string.syntax().clone()),
+    )?;
     if !is_format_string(&expanded_t) {
         return None;
     }

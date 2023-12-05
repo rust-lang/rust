@@ -140,16 +140,10 @@ fn extend_tokens_from_range(
 
     // compute original mapped token range
     let extended = {
-        let fst_expanded = sema.descend_into_macros_single(
-            DescendPreference::None,
-            first_token.clone(),
-            original_range.start(),
-        );
-        let lst_expanded = sema.descend_into_macros_single(
-            DescendPreference::None,
-            last_token.clone(),
-            original_range.end(),
-        );
+        let fst_expanded =
+            sema.descend_into_macros_single(DescendPreference::None, first_token.clone());
+        let lst_expanded =
+            sema.descend_into_macros_single(DescendPreference::None, last_token.clone());
         let mut lca =
             algo::least_common_ancestor(&fst_expanded.parent()?, &lst_expanded.parent()?)?;
         lca = shallowest_node(&lca);
@@ -160,11 +154,10 @@ fn extend_tokens_from_range(
     };
 
     // Compute parent node range
-    let validate = |offset: TextSize| {
+    let validate = || {
         let extended = &extended;
         move |token: &SyntaxToken| -> bool {
-            let expanded =
-                sema.descend_into_macros_single(DescendPreference::None, token.clone(), offset);
+            let expanded = sema.descend_into_macros_single(DescendPreference::None, token.clone());
             let parent = match expanded.parent() {
                 Some(it) => it,
                 None => return false,
@@ -178,14 +171,14 @@ fn extend_tokens_from_range(
         let token = token.prev_token()?;
         skip_trivia_token(token, Direction::Prev)
     })
-    .take_while(validate(original_range.start()))
+    .take_while(validate())
     .last()?;
 
     let last = successors(Some(last_token), |token| {
         let token = token.next_token()?;
         skip_trivia_token(token, Direction::Next)
     })
-    .take_while(validate(original_range.end()))
+    .take_while(validate())
     .last()?;
 
     let range = first.text_range().cover(last.text_range());

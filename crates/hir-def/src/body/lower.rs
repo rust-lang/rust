@@ -1597,12 +1597,20 @@ impl ExprCollector<'_> {
         });
         let template = f.template();
         let fmt_snippet = template.as_ref().map(ToString::to_string);
+        let mut mappings = vec![];
         let fmt = match template.and_then(|it| self.expand_macros_to_string(it)) {
-            Some((s, is_direct_literal)) => {
-                format_args::parse(&s, fmt_snippet, args, is_direct_literal, |name| {
-                    self.alloc_expr_desugared(Expr::Path(Path::from(name)))
-                })
-            }
+            Some((s, is_direct_literal)) => format_args::parse(
+                &s,
+                fmt_snippet,
+                args,
+                is_direct_literal,
+                |name| self.alloc_expr_desugared(Expr::Path(Path::from(name))),
+                |name, span| {
+                    if let Some(span) = span {
+                        mappings.push((span, name.clone()))
+                    }
+                },
+            ),
             None => FormatArgs { template: Default::default(), arguments: args.finish() },
         };
 
@@ -1746,14 +1754,16 @@ impl ExprCollector<'_> {
             tail: Some(unsafe_arg_new),
         });
 
-        self.alloc_expr(
+        let idx = self.alloc_expr(
             Expr::Call {
                 callee: new_v1_formatted,
                 args: Box::new([lit_pieces, args, format_options, unsafe_arg_new]),
                 is_assignee_expr: false,
             },
             syntax_ptr,
-        )
+        );
+        self.source_map.format_args_template_map.insert(idx, mappings);
+        idx
     }
 
     /// Generate a hir expression for a format_args placeholder specification.

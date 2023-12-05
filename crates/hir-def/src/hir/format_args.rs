@@ -5,7 +5,7 @@ use hir_expand::name::Name;
 use rustc_dependencies::parse_format as parse;
 use syntax::{
     ast::{self, IsString},
-    AstToken, SmolStr, TextRange,
+    SmolStr, TextRange, TextSize,
 };
 
 use crate::hir::ExprId;
@@ -170,15 +170,18 @@ pub(crate) fn parse(
     mut args: FormatArgumentsCollector,
     is_direct_literal: bool,
     mut synth: impl FnMut(Name) -> ExprId,
+    mut record_usage: impl FnMut(Name, Option<TextRange>),
 ) -> FormatArgs {
-    let text = s.text();
+    let text = s.text_without_quotes();
     let str_style = match s.quote_offsets() {
         Some(offsets) => {
             let raw = u32::from(offsets.quotes.0.len()) - 1;
-            (raw != 0).then_some(raw as usize)
+            // subtract 1 for the `r` prefix
+            (raw != 0).then(|| raw as usize - 1)
         }
         None => None,
     };
+
     let mut parser =
         parse::Parser::new(text, str_style, fmt_snippet, false, parse::ParseMode::Format);
 
@@ -199,6 +202,7 @@ pub(crate) fn parse(
     let to_span = |inner_span: parse::InnerSpan| {
         is_source_literal.then(|| {
             TextRange::new(inner_span.start.try_into().unwrap(), inner_span.end.try_into().unwrap())
+                - TextSize::from(str_style.map(|it| it + 1).unwrap_or(0) as u32 + 1)
         })
     };
 
@@ -230,9 +234,10 @@ pub(crate) fn parse(
                     Err(index)
                 }
             }
-            ArgRef::Name(name, _span) => {
+            ArgRef::Name(name, span) => {
                 let name = Name::new_text_dont_use(SmolStr::new(name));
                 if let Some((index, _)) = args.by_name(&name) {
+                    record_usage(name, span);
                     // Name found in `args`, so we resolve it to its index.
                     if index < args.explicit_args().len() {
                         // Mark it as used, if it was an explicit argument.
@@ -246,6 +251,7 @@ pub(crate) fn parse(
                         // disabled (see RFC #2795)
                         // FIXME: Diagnose
                     }
+                    record_usage(name.clone(), span);
                     Ok(args.add(FormatArgument {
                         kind: FormatArgumentKind::Captured(name.clone()),
                         // FIXME: This is problematic, we might want to synthesize a dummy

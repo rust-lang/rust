@@ -751,9 +751,7 @@ impl FunctionBody {
                         .descendants_with_tokens()
                         .filter_map(SyntaxElement::into_token)
                         .filter(|it| matches!(it.kind(), SyntaxKind::IDENT | T![self]))
-                        .flat_map(|t| {
-                            sema.descend_into_macros(DescendPreference::None, t, 0.into())
-                        })
+                        .flat_map(|t| sema.descend_into_macros(DescendPreference::None, t))
                         .for_each(|t| add_name_if_local(t.parent().and_then(ast::NameRef::cast)));
                 }
             }

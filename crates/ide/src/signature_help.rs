@@ -82,7 +82,7 @@ pub(crate) fn signature_help(
         // if the cursor is sandwiched between two space tokens and the call is unclosed
         // this prevents us from leaving the CallExpression
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
-    let token = sema.descend_into_macros_single(DescendPreference::None, token, offset);
+    let token = sema.descend_into_macros_single(DescendPreference::None, token);
 
     for node in token.parent_ancestors() {
         match_ast! {

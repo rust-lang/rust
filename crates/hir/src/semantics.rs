@@ -29,8 +29,9 @@ use smallvec::{smallvec, SmallVec};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody},
-    match_ast, AstNode, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
+    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody, IsString as _},
+    match_ast, AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    TextRange, TextSize,
 };
 
 use crate::{
@@ -49,7 +50,7 @@ pub enum DescendPreference {
     None,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PathResolution {
     /// An item
     Def(ModuleDef),
@@ -402,6 +403,41 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
+    pub fn resolve_offset_in_format_args(
+        &self,
+        string: ast::String,
+        offset: TextSize,
+    ) -> Option<(TextRange, Option<PathResolution>)> {
+        debug_assert!(offset <= string.syntax().text_range().len());
+        let literal = string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
+        let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
+        let source_analyzer = &self.analyze_no_infer(format_args.syntax())?;
+        let format_args = self.wrap_node_infile(format_args);
+        source_analyzer.resolve_offset_in_format_args(self.db, format_args.as_ref(), offset)
+    }
+
+    pub fn check_for_format_args_template(
+        &self,
+        original_token: SyntaxToken,
+        offset: TextSize,
+    ) -> Option<(TextRange, Option<PathResolution>)> {
+        if let Some(original_string) = ast::String::cast(original_token.clone()) {
+            if let Some(quote) = original_string.open_quote_text_range() {
+                return self
+                    .descend_into_macros(DescendPreference::SameText, original_token.clone())
+                    .into_iter()
+                    .find_map(|token| {
+                        self.resolve_offset_in_format_args(
+                            ast::String::cast(token)?,
+                            offset - quote.end(),
+                        )
+                    })
+                    .map(|(range, res)| (range + quote.end(), res));
+            }
+        }
+        None
+    }
+
     /// Maps a node down by mapping its first and last token down.
     pub fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
         // This might not be the correct way to do this, but it works for now
@@ -419,8 +455,12 @@ impl<'db> SemanticsImpl<'db> {
 
         if first == last {
             // node is just the token, so descend the token
-            self.descend_into_macros_impl(first, 0.into(), &mut |InFile { value, .. }| {
-                if let Some(node) = value.parent_ancestors().find_map(N::cast) {
+            self.descend_into_macros_impl(first, &mut |InFile { value, .. }| {
+                if let Some(node) = value
+                    .parent_ancestors()
+                    .take_while(|it| it.text_range() == value.text_range())
+                    .find_map(N::cast)
+                {
                     res.push(node)
                 }
                 ControlFlow::Continue(())
@@ -428,7 +468,7 @@ impl<'db> SemanticsImpl<'db> {
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(first, 0.into(), &mut |token| {
+            self.descend_into_macros_impl(first, &mut |token| {
                 scratch.push(token);
                 ControlFlow::Continue(())
             });
@@ -436,7 +476,6 @@ impl<'db> SemanticsImpl<'db> {
             let mut scratch = scratch.into_iter();
             self.descend_into_macros_impl(
                 last,
-                0.into(),
                 &mut |InFile { value: last, file_id: last_fid }| {
                     if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
                         if first_fid == last_fid {
@@ -467,7 +506,6 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         mode: DescendPreference,
         token: SyntaxToken,
-        offset: TextSize,
     ) -> SmallVec<[SyntaxToken; 1]> {
         enum Dp<'t> {
             SameText(&'t str),
@@ -487,7 +525,7 @@ impl<'db> SemanticsImpl<'db> {
             DescendPreference::None => Dp::None,
         };
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token.clone(), offset, &mut |InFile { value, .. }| {
+        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
             let is_a_match = match mode {
                 Dp::SameText(text) => value.text() == text,
                 Dp::SameKind(preferred_kind) => {
@@ -513,7 +551,6 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         mode: DescendPreference,
         token: SyntaxToken,
-        offset: TextSize,
     ) -> SyntaxToken {
         enum Dp<'t> {
             SameText(&'t str),
@@ -533,7 +570,7 @@ impl<'db> SemanticsImpl<'db> {
             DescendPreference::None => Dp::None,
         };
         let mut res = token.clone();
-        self.descend_into_macros_impl(token.clone(), offset, &mut |InFile { value, .. }| {
+        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
             let is_a_match = match mode {
                 Dp::SameText(text) => value.text() == text,
                 Dp::SameKind(preferred_kind) => {
@@ -558,9 +595,6 @@ impl<'db> SemanticsImpl<'db> {
     fn descend_into_macros_impl(
         &self,
         token: SyntaxToken,
-        // FIXME: We might want this to be Option<TextSize> to be able to opt out of subrange
-        // mapping, specifically for node downmapping
-        _offset: TextSize,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
     ) {
         // FIXME: Clean this up
@@ -729,7 +763,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: TextSize,
     ) -> impl Iterator<Item = impl Iterator<Item = SyntaxNode> + '_> + '_ {
         node.token_at_offset(offset)
-            .map(move |token| self.descend_into_macros(DescendPreference::None, token, offset))
+            .map(move |token| self.descend_into_macros(DescendPreference::None, token))
             .map(|descendants| {
                 descendants.into_iter().map(move |it| self.token_ancestors_with_macros(it))
             })

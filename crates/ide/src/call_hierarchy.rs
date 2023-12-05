@@ -87,7 +87,7 @@ pub(crate) fn outgoing_calls(
     })?;
     let mut calls = CallLocations::default();
 
-    sema.descend_into_macros(DescendPreference::None, token, offset)
+    sema.descend_into_macros(DescendPreference::None, token)
         .into_iter()
         .filter_map(|it| it.parent_ancestors().nth(1).and_then(ast::Item::cast))
         .filter_map(|item| match item {

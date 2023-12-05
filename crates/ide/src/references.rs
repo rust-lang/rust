@@ -109,7 +109,7 @@ pub(crate) fn find_all_refs(
         }
         None => {
             let search = make_searcher(false);
-            Some(find_defs(sema, &syntax, position.offset)?.map(search).collect())
+            Some(find_defs(sema, &syntax, position.offset)?.into_iter().map(search).collect())
         }
     }
 }
@@ -118,15 +118,27 @@ pub(crate) fn find_defs<'a>(
     sema: &'a Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
-) -> Option<impl Iterator<Item = Definition> + 'a> {
+) -> Option<impl IntoIterator<Item = Definition> + 'a> {
     let token = syntax.token_at_offset(offset).find(|t| {
         matches!(
             t.kind(),
-            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self]
+            IDENT
+                | INT_NUMBER
+                | LIFETIME_IDENT
+                | STRING
+                | T![self]
+                | T![super]
+                | T![crate]
+                | T![Self]
         )
-    });
-    token.map(|token| {
-        sema.descend_into_macros(DescendPreference::SameText, token, offset)
+    })?;
+
+    if let Some((_, resolution)) = sema.check_for_format_args_template(token.clone(), offset) {
+        return resolution.map(Definition::from).map(|it| vec![it]);
+    }
+
+    Some(
+        sema.descend_into_macros(DescendPreference::SameText, token)
             .into_iter()
             .filter_map(|it| ast::NameLike::cast(it.parent()?))
             .filter_map(move |name_like| {
@@ -162,7 +174,8 @@ pub(crate) fn find_defs<'a>(
                 };
                 Some(def)
             })
-    })
+            .collect(),
+    )
 }
 
 pub(crate) fn decl_mutability(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> bool {
@@ -2089,6 +2102,29 @@ fn main() { r#fn(); }
                 r#fn Function FileId(0) 0..12 3..7
 
                 FileId(0) 25..29
+            "#]],
+        );
+    }
+
+    #[test]
+    fn implicit_format_args() {
+        check(
+            r#"
+//- minicore: fmt
+fn test() {
+    let a = "foo";
+    format_args!("hello {a} {a$0} {}", a);
+                      // ^
+                          // ^
+                                   // ^
+}
+"#,
+            expect![[r#"
+                a Local FileId(0) 20..21 20..21
+
+                FileId(0) 56..57 Read
+                FileId(0) 60..61 Read
+                FileId(0) 68..69 Read
             "#]],
         );
     }

@@ -41,7 +41,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // ```
 
     let derive = sema
-        .descend_into_macros(DescendPreference::None, tok.clone(), 0.into())
+        .descend_into_macros(DescendPreference::None, tok.clone())
         .into_iter()
         .find_map(|descended| {
             let hir_file = sema.hir_file_for(&descended.parent()?);

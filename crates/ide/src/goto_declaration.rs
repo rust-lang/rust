@@ -29,7 +29,7 @@ pub(crate) fn goto_declaration(
         .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate] | T![Self]))?;
     let range = original_token.text_range();
     let info: Vec<NavigationTarget> = sema
-        .descend_into_macros(DescendPreference::None, original_token, offset)
+        .descend_into_macros(DescendPreference::None, original_token)
         .iter()
         .filter_map(|token| {
             let parent = token.parent()?;

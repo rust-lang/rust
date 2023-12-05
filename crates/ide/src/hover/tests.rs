@@ -6613,3 +6613,63 @@ fn test() {
         "#]],
     );
 }
+
+#[test]
+fn format_args_implicit() {
+    check(
+        r#"
+//- minicore: fmt
+fn test() {
+let aaaaa = "foo";
+format_args!("{aaaaa$0}");
+}
+"#,
+        expect![[r#"
+            *aaaaa*
+
+            ```rust
+            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn format_args_implicit2() {
+    check(
+        r#"
+//- minicore: fmt
+fn test() {
+let aaaaa = "foo";
+format_args!("{$0aaaaa}");
+}
+"#,
+        expect![[r#"
+            *aaaaa*
+
+            ```rust
+            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn format_args_implicit_raw() {
+    check(
+        r#"
+//- minicore: fmt
+fn test() {
+let aaaaa = "foo";
+format_args!(r"{$0aaaaa}");
+}
+"#,
+        expect![[r#"
+            *aaaaa*
+
+            ```rust
+            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+            ```
+        "#]],
+    );
+}

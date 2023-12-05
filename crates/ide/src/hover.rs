@@ -150,6 +150,19 @@ fn hover_simple(
         });
     }
 
+    if let Some((range, resolution)) =
+        sema.check_for_format_args_template(original_token.clone(), offset)
+    {
+        let res = hover_for_definition(
+            sema,
+            file_id,
+            Definition::from(resolution?),
+            &original_token.parent()?,
+            config,
+        )?;
+        return Some(RangeInfo::new(range, res));
+    }
+
     let in_attr = original_token
         .parent_ancestors()
         .filter_map(ast::Item::cast)
@@ -164,7 +177,6 @@ fn hover_simple(
     let descended = sema.descend_into_macros(
         if in_attr { DescendPreference::SameKind } else { DescendPreference::SameText },
         original_token.clone(),
-        offset,
     );
     let descended = || descended.iter();
 
@@ -298,11 +310,11 @@ pub(crate) fn hover_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     definition: Definition,
-    node: &SyntaxNode,
+    scope_node: &SyntaxNode,
     config: &HoverConfig,
 ) -> Option<HoverResult> {
     let famous_defs = match &definition {
-        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(node)?.krate())),
+        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(scope_node)?.krate())),
         _ => None,
     };
     render::definition(sema.db, definition, famous_defs.as_ref(), config).map(|markup| {

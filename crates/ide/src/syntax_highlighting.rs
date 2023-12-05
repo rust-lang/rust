@@ -399,7 +399,6 @@ fn traverse(
                             Some(AttrOrDerive::Derive(_)) | None => DescendPreference::None,
                         },
                         token,
-                        0.into(),
                     );
                     match token.parent().and_then(ast::NameLike::cast) {
                         // Remap the token into the wrapping single token nodes
