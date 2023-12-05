@@ -1311,7 +1311,7 @@ pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub constness: Const,
-    pub asyncness: Async,
+    pub coro_kind: Option<CoroutineKind>,
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,
     pub body: P<Expr>,
@@ -2406,28 +2406,34 @@ pub enum Unsafe {
     No,
 }
 
+/// Describes what kind of coroutine markers, if any, a function has.
+///
+/// Coroutine markers are things that cause the function to generate a coroutine, such as `async`,
+/// which makes the function return `impl Future`, or `gen`, which makes the function return `impl
+/// Iterator`.
 #[derive(Copy, Clone, Encodable, Decodable, Debug)]
-pub enum Async {
-    Yes { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    No,
+pub enum CoroutineKind {
+    /// `async`, which evaluates to `impl Future`
+    Async { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    /// `gen`, which evaluates to `impl Iterator`
+    Gen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug)]
-pub enum Gen {
-    Yes { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    No,
-}
-
-impl Async {
+impl CoroutineKind {
     pub fn is_async(self) -> bool {
-        matches!(self, Async::Yes { .. })
+        matches!(self, CoroutineKind::Async { .. })
     }
 
-    /// In this case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
-    pub fn opt_return_id(self) -> Option<(NodeId, Span)> {
+    pub fn is_gen(self) -> bool {
+        matches!(self, CoroutineKind::Gen { .. })
+    }
+
+    /// In this case this is an `async` or `gen` return, the `NodeId` for the generated `impl Trait`
+    /// item.
+    pub fn return_id(self) -> (NodeId, Span) {
         match self {
-            Async::Yes { return_impl_trait_id, span, .. } => Some((return_impl_trait_id, span)),
-            Async::No => None,
+            CoroutineKind::Async { return_impl_trait_id, span, .. }
+            | CoroutineKind::Gen { return_impl_trait_id, span, .. } => (return_impl_trait_id, span),
         }
     }
 }
@@ -2831,8 +2837,8 @@ impl Extern {
 pub struct FnHeader {
     /// The `unsafe` keyword, if any
     pub unsafety: Unsafe,
-    /// The `async` keyword, if any
-    pub asyncness: Async,
+    /// Whether this is `async`, `gen`, or nothing.
+    pub coro_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
     pub constness: Const,
     /// The `extern` keyword and corresponding ABI string, if any
@@ -2842,9 +2848,9 @@ pub struct FnHeader {
 impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
-        let Self { unsafety, asyncness, constness, ext } = self;
+        let Self { unsafety, coro_kind, constness, ext } = self;
         matches!(unsafety, Unsafe::Yes(_))
-            || asyncness.is_async()
+            || coro_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
@@ -2852,12 +2858,7 @@ impl FnHeader {
 
 impl Default for FnHeader {
     fn default() -> FnHeader {
-        FnHeader {
-            unsafety: Unsafe::No,
-            asyncness: Async::No,
-            constness: Const::No,
-            ext: Extern::None,
-        }
+        FnHeader { unsafety: Unsafe::No, coro_kind: None, constness: Const::No, ext: Extern::None }
     }
 }
 
@@ -3177,7 +3178,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 152);
+    static_assert_size!(Fn, 160);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);

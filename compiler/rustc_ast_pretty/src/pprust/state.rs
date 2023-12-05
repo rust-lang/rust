@@ -1490,9 +1490,14 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_asyncness(&mut self, asyncness: ast::Async) {
-        if asyncness.is_async() {
-            self.word_nbsp("async");
+    fn print_coro_kind(&mut self, coro_kind: ast::CoroutineKind) {
+        match coro_kind {
+            ast::CoroutineKind::Gen { .. } => {
+                self.word_nbsp("gen");
+            }
+            ast::CoroutineKind::Async { .. } => {
+                self.word_nbsp("async");
+            }
         }
     }
 
@@ -1685,7 +1690,7 @@ impl<'a> State<'a> {
 
     fn print_fn_header_info(&mut self, header: ast::FnHeader) {
         self.print_constness(header.constness);
-        self.print_asyncness(header.asyncness);
+        header.coro_kind.map(|coro_kind| self.print_coro_kind(coro_kind));
         self.print_unsafety(header.unsafety);
 
         match header.ext {

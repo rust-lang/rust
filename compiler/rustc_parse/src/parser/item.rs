@@ -11,8 +11,8 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::MacCall;
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
-use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingAnnotation, Block, FnDecl, FnSig, Param, SelfKind};
+use rustc_ast::{Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
@@ -2401,7 +2401,7 @@ impl<'a> Parser<'a> {
         let ext_start_sp = self.token.span;
         let ext = self.parse_extern(case);
 
-        if let Async::Yes { span, .. } = asyncness {
+        if let Some(CoroutineKind::Async { span, .. }) = asyncness {
             if span.is_rust_2015() {
                 self.sess.emit_err(errors::AsyncFnIn2015 {
                     span,
@@ -2410,8 +2410,16 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if let Gen::Yes { span, .. } = genness {
-            self.sess.emit_err(errors::GenFn { span });
+        if let Some(CoroutineKind::Gen { span, .. }) = genness {
+            self.sess.gated_spans.gate(sym::gen_blocks, span);
+        }
+
+        if let (
+            Some(CoroutineKind::Async { span: async_span, .. }),
+            Some(CoroutineKind::Gen { span: gen_span, .. }),
+        ) = (asyncness, genness)
+        {
+            self.sess.emit_err(errors::AsyncGenFn { span: async_span.to(gen_span) });
         }
 
         if !self.eat_keyword_case(kw::Fn, case) {
@@ -2444,13 +2452,18 @@ impl<'a> Parser<'a> {
                         }
                     } else if self.check_keyword(kw::Async) {
                         match asyncness {
-                            Async::Yes { span, .. } => Some(WrongKw::Duplicated(span)),
-                            Async::No => {
-                                recover_asyncness = Async::Yes {
+                            Some(CoroutineKind::Async { span, .. }) => {
+                                Some(WrongKw::Duplicated(span))
+                            }
+                            Some(CoroutineKind::Gen { .. }) => {
+                                panic!("not sure how to recover here")
+                            }
+                            None => {
+                                recover_asyncness = Some(CoroutineKind::Async {
                                     span: self.token.span,
                                     closure_id: DUMMY_NODE_ID,
                                     return_impl_trait_id: DUMMY_NODE_ID,
-                                };
+                                });
                                 Some(WrongKw::Misplaced(unsafe_start_sp))
                             }
                         }
@@ -2531,6 +2544,8 @@ impl<'a> Parser<'a> {
                         }
                     }
 
+                    // FIXME(gen_blocks): add keyword recovery logic for genness
+
                     if wrong_kw.is_some()
                         && self.may_recover()
                         && self.look_ahead(1, |tok| tok.is_keyword_case(kw::Fn, case))
@@ -2542,7 +2557,7 @@ impl<'a> Parser<'a> {
                         return Ok(FnHeader {
                             constness: recover_constness,
                             unsafety: recover_unsafety,
-                            asyncness: recover_asyncness,
+                            coro_kind: recover_asyncness,
                             ext,
                         });
                     }
@@ -2552,7 +2567,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(FnHeader { constness, unsafety, asyncness, ext })
+        let coro_kind = match asyncness {
+            Some(CoroutineKind::Async { .. }) => asyncness,
+            Some(CoroutineKind::Gen { .. }) => unreachable!("asycness cannot be Gen"),
+            None => genness,
+        };
+
+        Ok(FnHeader { constness, unsafety, coro_kind, ext })
     }
 
     /// Parses the parameter list and result type of a function declaration.

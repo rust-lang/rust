@@ -206,15 +206,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let asyncness = header.asyncness;
-                    let body_id =
-                        this.lower_maybe_async_body(span, hir_id, decl, asyncness, body.as_deref());
+                    let coro_kind = header.coro_kind;
+                    let body_id = this.lower_maybe_coroutine_body(
+                        span,
+                        hir_id,
+                        decl,
+                        coro_kind,
+                        body.as_deref(),
+                    );
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
                         this.lower_generics(generics, header.constness, id, &itctx, |this| {
-                            let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
+                            this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coro_kind)
                         });
                     let sig = hir::FnSig {
                         decl,
@@ -725,27 +729,30 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (generics, kind, expr.is_some())
             }
             AssocItemKind::Fn(box Fn { sig, generics, body: None, .. }) => {
-                let asyncness = sig.header.asyncness;
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    asyncness.opt_return_id(),
+                    sig.header.coro_kind,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
             AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), .. }) => {
-                let asyncness = sig.header.asyncness;
-                let body_id =
-                    self.lower_maybe_async_body(i.span, hir_id, &sig.decl, asyncness, Some(body));
+                let body_id = self.lower_maybe_coroutine_body(
+                    i.span,
+                    hir_id,
+                    &sig.decl,
+                    sig.header.coro_kind,
+                    Some(body),
+                );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    asyncness.opt_return_id(),
+                    sig.header.coro_kind,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
@@ -834,12 +841,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
             ),
             AssocItemKind::Fn(box Fn { sig, generics, body, .. }) => {
-                let asyncness = sig.header.asyncness;
-                let body_id = self.lower_maybe_async_body(
+                let body_id = self.lower_maybe_coroutine_body(
                     i.span,
                     hir_id,
                     &sig.decl,
-                    asyncness,
+                    sig.header.coro_kind,
                     body.as_deref(),
                 );
                 let (generics, sig) = self.lower_method_sig(
@@ -847,7 +853,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
-                    asyncness.opt_return_id(),
+                    sig.header.coro_kind,
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -1011,17 +1017,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    fn lower_maybe_async_body(
+    /// Takes what may be the body of an `async fn` or a `gen fn` and wraps it in an `async {}` or
+    /// `gen {}` block as appropriate.
+    fn lower_maybe_coroutine_body(
         &mut self,
         span: Span,
         fn_id: hir::HirId,
         decl: &FnDecl,
-        asyncness: Async,
+        coro_kind: Option<CoroutineKind>,
         body: Option<&Block>,
     ) -> hir::BodyId {
-        let (closure_id, body) = match (asyncness, body) {
-            (Async::Yes { closure_id, .. }, Some(body)) => (closure_id, body),
-            _ => return self.lower_fn_body_block(span, decl, body),
+        let (Some(coro_kind), Some(body)) = (coro_kind, body) else {
+            return self.lower_fn_body_block(span, decl, body);
+        };
+        let closure_id = match coro_kind {
+            CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. } => {
+                closure_id
+            }
         };
 
         self.lower_body(|this| {
@@ -1163,44 +1175,54 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 parameters.push(new_parameter);
             }
 
-            let async_expr = this.make_async_expr(
-                CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
-                closure_id,
-                None,
-                body.span,
-                hir::CoroutineSource::Fn,
-                |this| {
-                    // Create a block from the user's function body:
-                    let user_body = this.lower_block_expr(body);
+            let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
+                // Create a block from the user's function body:
+                let user_body = this.lower_block_expr(body);
 
-                    // Transform into `drop-temps { <user-body> }`, an expression:
-                    let desugared_span =
-                        this.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
-                    let user_body =
-                        this.expr_drop_temps(desugared_span, this.arena.alloc(user_body));
+                // Transform into `drop-temps { <user-body> }`, an expression:
+                let desugared_span =
+                    this.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
+                let user_body = this.expr_drop_temps(desugared_span, this.arena.alloc(user_body));
 
-                    // As noted above, create the final block like
-                    //
-                    // ```
-                    // {
-                    //   let $param_pattern = $raw_param;
-                    //   ...
-                    //   drop-temps { <user-body> }
-                    // }
-                    // ```
-                    let body = this.block_all(
-                        desugared_span,
-                        this.arena.alloc_from_iter(statements),
-                        Some(user_body),
-                    );
+                // As noted above, create the final block like
+                //
+                // ```
+                // {
+                //   let $param_pattern = $raw_param;
+                //   ...
+                //   drop-temps { <user-body> }
+                // }
+                // ```
+                let body = this.block_all(
+                    desugared_span,
+                    this.arena.alloc_from_iter(statements),
+                    Some(user_body),
+                );
 
-                    this.expr_block(body)
-                },
-            );
+                this.expr_block(body)
+            };
+            let coroutine_expr = match coro_kind {
+                CoroutineKind::Async { .. } => this.make_async_expr(
+                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
+                    closure_id,
+                    None,
+                    body.span,
+                    hir::CoroutineSource::Fn,
+                    mkbody,
+                ),
+                CoroutineKind::Gen { .. } => this.make_gen_expr(
+                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
+                    closure_id,
+                    None,
+                    body.span,
+                    hir::CoroutineSource::Fn,
+                    mkbody,
+                ),
+            };
 
             let hir_id = this.lower_node_id(closure_id);
             this.maybe_forward_track_caller(body.span, fn_id, hir_id);
-            let expr = hir::Expr { hir_id, kind: async_expr, span: this.lower_span(body.span) };
+            let expr = hir::Expr { hir_id, kind: coroutine_expr, span: this.lower_span(body.span) };
 
             (this.arena.alloc_from_iter(parameters), expr)
         })
@@ -1212,21 +1234,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig: &FnSig,
         id: NodeId,
         kind: FnDeclKind,
-        is_async: Option<(NodeId, Span)>,
+        coro_kind: Option<CoroutineKind>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) =
             self.lower_generics(generics, sig.header.constness, id, &itctx, |this| {
-                this.lower_fn_decl(&sig.decl, id, sig.span, kind, is_async)
+                this.lower_fn_decl(&sig.decl, id, sig.span, kind, coro_kind)
             });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
+        let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coro_kind {
+            hir::IsAsync::Async(span)
+        } else {
+            hir::IsAsync::NotAsync
+        };
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
-            asyncness: self.lower_asyncness(h.asyncness),
+            asyncness: asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
         }
@@ -1266,13 +1293,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }),
             command: "rustc --print=calling-conventions".to_string(),
         });
-    }
-
-    fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
-        match a {
-            Async::Yes { span, .. } => hir::IsAsync::Async(span),
-            Async::No => hir::IsAsync::NotAsync,
-        }
     }
 
     pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
