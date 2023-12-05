@@ -69,7 +69,7 @@ pub fn check(
                                 if !ignore {
                                     get_test_spans(&item, &mut test_attr_spans);
                                 }
-                                let is_async = matches!(sig.header.coro_kind, CoroutineKind::Async { .. });
+                                let is_async = matches!(sig.header.coro_kind, Some(CoroutineKind::Async { .. }));
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
                                     FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
