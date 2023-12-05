@@ -2,9 +2,8 @@ use std::cmp::Ordering;
 
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::{
-    BoundVar, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, ConstKind,
-    ConstTy, DebruijnIndex, InferConst, InferCtxtLike, InferTy, Interner, IntoKind, Placeholder,
-    RegionKind, TyKind, UniverseIndex, INNERMOST,
+    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, ConstTy,
+    InferCtxtLike, Interner, IntoKind, PlaceholderLike,
 };
 
 /// Whether we're canonicalizing a query input or the query response.
@@ -32,33 +31,33 @@ pub enum CanonicalizeMode {
         ///
         /// This doesn't work for universes created inside of the query so
         /// we do remember their universe in the response.
-        max_input_universe: UniverseIndex,
+        max_input_universe: ty::UniverseIndex,
     },
 }
 
-pub struct Canonicalizer<'a, Infcx: InferCtxtLike> {
+pub struct Canonicalizer<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
     infcx: &'a Infcx,
     canonicalize_mode: CanonicalizeMode,
 
-    variables: &'a mut Vec<<Infcx::Interner as Interner>::GenericArg>,
-    primitive_var_infos: Vec<CanonicalVarInfo<Infcx::Interner>>,
-    binder_index: DebruijnIndex,
+    variables: &'a mut Vec<I::GenericArg>,
+    primitive_var_infos: Vec<CanonicalVarInfo<I>>,
+    binder_index: ty::DebruijnIndex,
 }
 
-impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infcx> {
+impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infcx, I> {
     pub fn canonicalize<T: TypeFoldable<I>>(
         infcx: &'a Infcx,
         canonicalize_mode: CanonicalizeMode,
-        variables: &'a mut Vec<<I as Interner>::GenericArg>,
+        variables: &'a mut Vec<I::GenericArg>,
         value: T,
-    ) -> Canonical<I, T> {
+    ) -> ty::Canonical<I, T> {
         let mut canonicalizer = Canonicalizer {
             infcx,
             canonicalize_mode,
 
             variables,
             primitive_var_infos: Vec::new(),
-            binder_index: INNERMOST,
+            binder_index: ty::INNERMOST,
         };
 
         let value = value.fold_with(&mut canonicalizer);
@@ -71,7 +70,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
         Canonical { max_universe, variables, value }
     }
 
-    fn finalize(self) -> (UniverseIndex, <I as Interner>::CanonicalVars) {
+    fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVars) {
         let mut var_infos = self.primitive_var_infos;
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
@@ -88,15 +87,16 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
             CanonicalizeMode::Response { max_input_universe } => {
                 for var in var_infos.iter_mut() {
                     let uv = var.universe();
-                    let new_uv =
-                        UniverseIndex::from(uv.index().saturating_sub(max_input_universe.index()));
+                    let new_uv = ty::UniverseIndex::from(
+                        uv.index().saturating_sub(max_input_universe.index()),
+                    );
                     *var = var.with_updated_universe(new_uv);
                 }
                 let max_universe = var_infos
                     .iter()
                     .map(|info| info.universe())
                     .max()
-                    .unwrap_or(UniverseIndex::ROOT);
+                    .unwrap_or(ty::UniverseIndex::ROOT);
 
                 let var_infos = self.infcx.interner().mk_canonical_var_infos(&var_infos);
                 return (max_universe, var_infos);
@@ -120,9 +120,9 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
         //
         // This algorithm runs in `O(n²)` where `n` is the number of different universe
         // indices in the input. This should be fine as `n` is expected to be small.
-        let mut curr_compressed_uv = UniverseIndex::ROOT;
+        let mut curr_compressed_uv = ty::UniverseIndex::ROOT;
         let mut existential_in_new_uv = false;
-        let mut next_orig_uv = Some(UniverseIndex::ROOT);
+        let mut next_orig_uv = Some(ty::UniverseIndex::ROOT);
         while let Some(orig_uv) = next_orig_uv.take() {
             let mut update_uv = |var: &mut CanonicalVarInfo<I>, orig_uv, is_existential| {
                 let uv = var.universe();
@@ -176,8 +176,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
         for var in var_infos.iter_mut() {
             if var.is_region() {
                 assert!(var.is_existential());
-                let compressed_var = var.with_updated_universe(curr_compressed_uv);
-                *var = compressed_var;
+                *var = var.with_updated_universe(curr_compressed_uv);
             }
         }
 
@@ -186,7 +185,9 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonicalizer<'_, Infcx> {
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+    for Canonicalizer<'_, Infcx, I>
+{
     fn interner(&self) -> I {
         self.infcx.interner()
     }
@@ -204,7 +205,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonica
 
     fn fold_region(&mut self, r: I::Region) -> I::Region {
         let kind = match r.kind() {
-            RegionKind::ReBound(..) => return r,
+            ty::ReBound(..) => return r,
 
             // We may encounter `ReStatic` in item signatures or the hidden type
             // of an opaque. `ReErased` should only be encountered in the hidden
@@ -214,23 +215,21 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonica
             // FIXME: We should investigate the perf implications of not uniquifying
             // `ReErased`. We may be able to short-circuit registering region
             // obligations if we encounter a `ReErased` on one side, for example.
-            RegionKind::ReStatic | RegionKind::ReErased => match self.canonicalize_mode {
-                CanonicalizeMode::Input => CanonicalVarKind::Region(UniverseIndex::ROOT),
+            ty::ReStatic | ty::ReErased => match self.canonicalize_mode {
+                CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { .. } => return r,
             },
 
-            RegionKind::ReEarlyParam(_) | RegionKind::ReLateParam(_) => {
-                match self.canonicalize_mode {
-                    CanonicalizeMode::Input => CanonicalVarKind::Region(UniverseIndex::ROOT),
-                    CanonicalizeMode::Response { .. } => {
-                        panic!("unexpected region in response: {r:?}")
-                    }
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) => match self.canonicalize_mode {
+                CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                CanonicalizeMode::Response { .. } => {
+                    panic!("unexpected region in response: {r:?}")
                 }
-            }
+            },
 
-            RegionKind::RePlaceholder(placeholder) => match self.canonicalize_mode {
+            ty::RePlaceholder(placeholder) => match self.canonicalize_mode {
                 // We canonicalize placeholder regions as existentials in query inputs.
-                CanonicalizeMode::Input => CanonicalVarKind::Region(UniverseIndex::ROOT),
+                CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { max_input_universe } => {
                     // If we have a placeholder region inside of a query, it must be from
                     // a new universe.
@@ -241,38 +240,37 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonica
                 }
             },
 
-            RegionKind::ReVar(vid) => {
+            ty::ReVar(vid) => {
                 assert_eq!(
-                    self.infcx.root_lt_var(vid.clone()),
+                    self.infcx.root_lt_var(vid),
                     vid,
                     "region vid should have been resolved fully before canonicalization"
                 );
                 assert_eq!(
-                    self.infcx.probe_lt_var(vid.clone()),
+                    self.infcx.probe_lt_var(vid),
                     None,
                     "region vid should have been resolved fully before canonicalization"
                 );
 
                 match self.canonicalize_mode {
-                    CanonicalizeMode::Input => CanonicalVarKind::Region(UniverseIndex::ROOT),
+                    CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                     CanonicalizeMode::Response { .. } => {
                         CanonicalVarKind::Region(self.infcx.universe_of_lt(vid).unwrap())
                     }
                 }
             }
-            RegionKind::ReError(_) => return r,
+            ty::ReError(_) => return r,
         };
 
         let existing_bound_var = match self.canonicalize_mode {
             CanonicalizeMode::Input => None,
             CanonicalizeMode::Response { .. } => {
-                let r = r.clone().into();
-                self.variables.iter().position(|v| v == &r).map(BoundVar::from)
+                self.variables.iter().position(|&v| v == r.into()).map(ty::BoundVar::from)
             }
         };
 
         let var = existing_bound_var.unwrap_or_else(|| {
-            let var = BoundVar::from(self.variables.len());
+            let var = ty::BoundVar::from(self.variables.len());
             self.variables.push(r.into());
             self.primitive_var_infos.push(CanonicalVarInfo { kind });
             var
@@ -286,8 +284,8 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonica
         I::Ty: TypeSuperFoldable<I>,
     {
         let kind = match t.kind() {
-            TyKind::Infer(i) => match i {
-                InferTy::TyVar(vid) => {
+            ty::Infer(i) => match i {
+                ty::TyVar(vid) => {
                     assert_eq!(
                         self.infcx.root_ty_var(vid),
                         vid,
@@ -305,59 +303,59 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonica
                             .unwrap_or_else(|| panic!("ty var should have been resolved: {t:?}")),
                     ))
                 }
-                InferTy::IntVar(_) => CanonicalVarKind::Ty(CanonicalTyVarKind::Int),
-                InferTy::FloatVar(_) => CanonicalVarKind::Ty(CanonicalTyVarKind::Float),
-                InferTy::FreshTy(_) | InferTy::FreshIntTy(_) | InferTy::FreshFloatTy(_) => {
+                ty::IntVar(_) => CanonicalVarKind::Ty(CanonicalTyVarKind::Int),
+                ty::FloatVar(_) => CanonicalVarKind::Ty(CanonicalTyVarKind::Float),
+                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
                     todo!()
                 }
             },
-            TyKind::Placeholder(placeholder) => match self.canonicalize_mode {
-                CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(Placeholder::new(
+            ty::Placeholder(placeholder) => match self.canonicalize_mode {
+                CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(PlaceholderLike::new(
                     placeholder.universe(),
                     self.variables.len().into(),
                 )),
                 CanonicalizeMode::Response { .. } => CanonicalVarKind::PlaceholderTy(placeholder),
             },
-            TyKind::Param(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(Placeholder::new(
-                    UniverseIndex::ROOT,
+            ty::Param(_) => match self.canonicalize_mode {
+                CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(PlaceholderLike::new(
+                    ty::UniverseIndex::ROOT,
                     self.variables.len().into(),
                 )),
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {t:?}"),
             },
-            TyKind::Bool
-            | TyKind::Char
-            | TyKind::Int(_)
-            | TyKind::Uint(_)
-            | TyKind::Float(_)
-            | TyKind::Adt(_, _)
-            | TyKind::Foreign(_)
-            | TyKind::Str
-            | TyKind::Array(_, _)
-            | TyKind::Slice(_)
-            | TyKind::RawPtr(_)
-            | TyKind::Ref(_, _, _)
-            | TyKind::FnDef(_, _)
-            | TyKind::FnPtr(_)
-            | TyKind::Dynamic(_, _, _)
-            | TyKind::Closure(_, _)
-            | TyKind::Coroutine(_, _, _)
-            | TyKind::CoroutineWitness(..)
-            | TyKind::Never
-            | TyKind::Tuple(_)
-            | TyKind::Alias(_, _)
-            | TyKind::Bound(_, _)
-            | TyKind::Error(_) => return t.super_fold_with(self),
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::Coroutine(_, _, _)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Alias(_, _)
+            | ty::Bound(_, _)
+            | ty::Error(_) => return t.super_fold_with(self),
         };
 
-        let t = t.clone().into();
-        let var =
-            BoundVar::from(self.variables.iter().position(|v| v == &t).unwrap_or_else(|| {
+        let var = ty::BoundVar::from(
+            self.variables.iter().position(|&v| v == t.into()).unwrap_or_else(|| {
                 let var = self.variables.len();
-                self.variables.push(t);
+                self.variables.push(t.into());
                 self.primitive_var_infos.push(CanonicalVarInfo { kind });
                 var
-            }));
+            }),
+        );
 
         self.interner().mk_bound_ty(self.binder_index, var)
     }
@@ -367,10 +365,10 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonica
         I::Const: TypeSuperFoldable<I>,
     {
         let kind = match c.kind() {
-            ConstKind::Infer(i) => {
+            ty::ConstKind::Infer(i) => {
                 // FIXME: we should fold the ty too eventually
                 match i {
-                    InferConst::Var(vid) => {
+                    ty::InferConst::Var(vid) => {
                         assert_eq!(
                             self.infcx.root_ct_var(vid),
                             vid,
@@ -383,43 +381,42 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for Canonica
                         );
                         CanonicalVarKind::Const(self.infcx.universe_of_ct(vid).unwrap(), c.ty())
                     }
-                    InferConst::EffectVar(_) => CanonicalVarKind::Effect,
-                    InferConst::Fresh(_) => todo!(),
+                    ty::InferConst::EffectVar(_) => CanonicalVarKind::Effect,
+                    ty::InferConst::Fresh(_) => todo!(),
                 }
             }
-            ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {
+            ty::ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderConst(
-                    Placeholder::new(placeholder.universe(), self.variables.len().into()),
+                    PlaceholderLike::new(placeholder.universe(), self.variables.len().into()),
                     c.ty(),
                 ),
                 CanonicalizeMode::Response { .. } => {
                     CanonicalVarKind::PlaceholderConst(placeholder, c.ty())
                 }
             },
-            ConstKind::Param(_) => match self.canonicalize_mode {
+            ty::ConstKind::Param(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderConst(
-                    Placeholder::new(UniverseIndex::ROOT, self.variables.len().into()),
+                    PlaceholderLike::new(ty::UniverseIndex::ROOT, self.variables.len().into()),
                     c.ty(),
                 ),
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {c:?}"),
             },
-            ConstKind::Bound(_, _)
-            | ConstKind::Unevaluated(_)
-            | ConstKind::Value(_)
-            | ConstKind::Error(_)
-            | ConstKind::Expr(_) => return c.super_fold_with(self),
+            ty::ConstKind::Bound(_, _)
+            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Error(_)
+            | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
         };
 
-        let ty = c.ty();
-        let c = c.clone().into();
-        let var =
-            BoundVar::from(self.variables.iter().position(|v| v == &c).unwrap_or_else(|| {
+        let var = ty::BoundVar::from(
+            self.variables.iter().position(|&v| v == c.into()).unwrap_or_else(|| {
                 let var = self.variables.len();
-                self.variables.push(c);
+                self.variables.push(c.into());
                 self.primitive_var_infos.push(CanonicalVarInfo { kind });
                 var
-            }));
+            }),
+        );
 
-        self.interner().mk_bound_const(self.binder_index, var, ty)
+        self.interner().mk_bound_const(self.binder_index, var, c.ty())
     }
 }

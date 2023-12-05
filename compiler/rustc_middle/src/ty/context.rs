@@ -131,40 +131,29 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         (ty, mutbl)
     }
 
-    fn mk_canonical_var_infos(
-        &self,
-        infos: &[rustc_type_ir::CanonicalVarInfo<Self>],
-    ) -> Self::CanonicalVars {
-        (*self).mk_canonical_var_infos(infos)
+    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
+        self.mk_canonical_var_infos(infos)
     }
 
-    fn mk_bound_ty(
-        &self,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: rustc_type_ir::BoundVar,
-    ) -> Self::Ty {
-        Ty::new_bound(*self, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
+    fn mk_bound_ty(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Ty {
+        Ty::new_bound(self, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
     }
 
-    fn mk_bound_region(
-        &self,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: rustc_type_ir::BoundVar,
-    ) -> Self::Region {
+    fn mk_bound_region(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Region {
         Region::new_bound(
-            *self,
+            self,
             debruijn,
             ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon },
         )
     }
 
     fn mk_bound_const(
-        &self,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: rustc_type_ir::BoundVar,
+        self,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
         ty: Self::Ty,
     ) -> Self::Const {
-        Const::new_bound(*self, debruijn, var, ty)
+        Const::new_bound(self, debruijn, var, ty)
     }
 }
 

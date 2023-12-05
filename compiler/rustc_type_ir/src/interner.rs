@@ -7,95 +7,95 @@ use crate::{
     TyKind, UniverseIndex,
 };
 
-#[allow(rustc::usage_of_ty_tykind)]
 pub trait Interner: Sized {
-    type DefId: Clone + Debug + Hash + Ord;
-    type AdtDef: Clone + Debug + Hash + Ord;
+    type DefId: Copy + Debug + Hash + Ord;
+    type AdtDef: Copy + Debug + Hash + Ord;
 
-    type GenericArgs: Clone
+    type GenericArgs: Copy
         + DebugWithInfcx<Self>
         + Hash
         + Ord
         + IntoIterator<Item = Self::GenericArg>;
-    type GenericArg: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type Term: Clone + Debug + Hash + Ord;
+    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Ord;
+    type Term: Copy + Debug + Hash + Ord;
 
     type Binder<T>;
-    type TypeAndMut: Clone + Debug + Hash + Ord;
-    type CanonicalVars: Clone + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
+    type TypeAndMut: Copy + Debug + Hash + Ord;
+    type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
 
     // Kinds of tys
-    type Ty: Clone
+    type Ty: Copy
         + DebugWithInfcx<Self>
         + Hash
         + Ord
         + Into<Self::GenericArg>
         + IntoKind<Kind = TyKind<Self>>;
-    type Tys: Clone + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
-    type AliasTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type ParamTy: Clone + Debug + Hash + Ord;
-    type BoundTy: Clone + Debug + Hash + Ord;
-    type PlaceholderTy: Clone + Debug + Hash + Ord + Placeholder;
+    type Tys: Copy + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
+    type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Ord;
+    type ParamTy: Copy + Debug + Hash + Ord;
+    type BoundTy: Copy + Debug + Hash + Ord;
+    type PlaceholderTy: Copy + Debug + Hash + Ord + PlaceholderLike;
 
     // Things stored inside of tys
-    type ErrorGuaranteed: Clone + Debug + Hash + Ord;
-    type BoundExistentialPredicates: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type PolyFnSig: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type AllocId: Clone + Debug + Hash + Ord;
+    type ErrorGuaranteed: Copy + Debug + Hash + Ord;
+    type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Ord;
+    type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Ord;
+    type AllocId: Copy + Debug + Hash + Ord;
 
     // Kinds of consts
-    type Const: Clone
+    type Const: Copy
         + DebugWithInfcx<Self>
         + Hash
         + Ord
         + Into<Self::GenericArg>
         + IntoKind<Kind = ConstKind<Self>>
         + ConstTy<Self>;
-    type AliasConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type PlaceholderConst: Clone + Debug + Hash + Ord + Placeholder;
-    type ParamConst: Clone + Debug + Hash + Ord;
-    type BoundConst: Clone + Debug + Hash + Ord;
-    type ValueConst: Clone + Debug + Hash + Ord;
-    type ExprConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Ord;
+    type PlaceholderConst: Copy + Debug + Hash + Ord + PlaceholderLike;
+    type ParamConst: Copy + Debug + Hash + Ord;
+    type BoundConst: Copy + Debug + Hash + Ord;
+    type ValueConst: Copy + Debug + Hash + Ord;
+    type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Ord;
 
     // Kinds of regions
-    type Region: Clone
+    type Region: Copy
         + DebugWithInfcx<Self>
         + Hash
         + Ord
         + Into<Self::GenericArg>
         + IntoKind<Kind = RegionKind<Self>>;
-    type EarlyParamRegion: Clone + Debug + Hash + Ord;
-    type LateParamRegion: Clone + Debug + Hash + Ord;
-    type BoundRegion: Clone + Debug + Hash + Ord;
-    type InferRegion: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type PlaceholderRegion: Clone + Debug + Hash + Ord + Placeholder;
+    type EarlyParamRegion: Copy + Debug + Hash + Ord;
+    type LateParamRegion: Copy + Debug + Hash + Ord;
+    type BoundRegion: Copy + Debug + Hash + Ord;
+    type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Ord;
+    type PlaceholderRegion: Copy + Debug + Hash + Ord + PlaceholderLike;
 
     // Predicates
-    type Predicate: Clone + Debug + Hash + Eq;
-    type TraitPredicate: Clone + Debug + Hash + Eq;
-    type RegionOutlivesPredicate: Clone + Debug + Hash + Eq;
-    type TypeOutlivesPredicate: Clone + Debug + Hash + Eq;
-    type ProjectionPredicate: Clone + Debug + Hash + Eq;
-    type SubtypePredicate: Clone + Debug + Hash + Eq;
-    type CoercePredicate: Clone + Debug + Hash + Eq;
-    type ClosureKind: Clone + Debug + Hash + Eq;
+    type Predicate: Copy + Debug + Hash + Eq;
+    type TraitPredicate: Copy + Debug + Hash + Eq;
+    type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
+    type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
+    type ProjectionPredicate: Copy + Debug + Hash + Eq;
+    type SubtypePredicate: Copy + Debug + Hash + Eq;
+    type CoercePredicate: Copy + Debug + Hash + Eq;
+    type ClosureKind: Copy + Debug + Hash + Eq;
 
     fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
 
-    fn mk_canonical_var_infos(&self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+    fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 
-    fn mk_bound_ty(&self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
-    fn mk_bound_region(&self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
-    fn mk_bound_const(&self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
+    // FIXME: We should not have all these constructors on `Interner`, but as functions on some trait.
+    fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
+    fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
+    fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
 }
 
 /// Common capabilities of placeholder kinds
-pub trait Placeholder {
-    fn universe(&self) -> UniverseIndex;
-    fn var(&self) -> BoundVar;
+pub trait PlaceholderLike {
+    fn universe(self) -> UniverseIndex;
+    fn var(self) -> BoundVar;
 
-    fn with_updated_universe(&self, ui: UniverseIndex) -> Self;
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self;
 
     fn new(ui: UniverseIndex, var: BoundVar) -> Self;
 }
@@ -103,11 +103,11 @@ pub trait Placeholder {
 pub trait IntoKind {
     type Kind;
 
-    fn kind(&self) -> Self::Kind;
+    fn kind(self) -> Self::Kind;
 }
 
 pub trait ConstTy<I: Interner> {
-    fn ty(&self) -> I::Ty;
+    fn ty(self) -> I::Ty;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

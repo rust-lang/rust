@@ -1492,8 +1492,8 @@ pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 impl<'tcx> IntoKind for Region<'tcx> {
     type Kind = RegionKind<'tcx>;
 
-    fn kind(&self) -> RegionKind<'tcx> {
-        **self
+    fn kind(self) -> RegionKind<'tcx> {
+        *self
     }
 }
 

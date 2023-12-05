@@ -81,7 +81,7 @@ impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
         match this.data {
             Param(param) => write!(f, "{param:?}"),
             Infer(var) => write!(f, "{:?}", &this.wrap(var)),
-            Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var.clone()),
+            Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
             Unevaluated(uv) => {
                 write!(f, "{:?}", &this.wrap(uv))
