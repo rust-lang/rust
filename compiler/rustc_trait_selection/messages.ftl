@@ -55,3 +55,6 @@ trait_selection_trait_has_no_impls = this trait has no implementations, consider
 
 trait_selection_ty_alias_overflow = in case this is a recursive type alias, consider using a struct, enum, or union instead
 trait_selection_unable_to_construct_constant_value = unable to construct a constant value for the unevaluated constant {$unevaluated}
+
+trait_selection_unknown_format_parameter_for_on_unimplemented_attr = there is no parameter `{$argument_name}` on trait `{$trait_name}`
+    .help = expect either a generic argument name or {"`{Self}`"} as format argument

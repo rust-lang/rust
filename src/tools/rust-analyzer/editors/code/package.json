@@ -1264,6 +1264,11 @@
                         "Show prefix or postfix depending on which uses less parenthesis, preferring postfix."
                     ]
                 },
+                "rust-analyzer.inlayHints.implicitDrops.enable": {
+                    "markdownDescription": "Whether to show implicit drop hints.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",

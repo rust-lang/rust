@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import type * as ra from "./lsp_ext";
 
-import { Cargo, getRustcId, getSysroot } from "./toolchain";
+import { Cargo, type ExecutableInfo, getRustcId, getSysroot } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { prepareEnv } from "./run";
 import { unwrapUndefinable } from "./undefinable";
@@ -12,6 +12,7 @@ const debugOutput = vscode.window.createOutputChannel("Debug");
 type DebugConfigProvider = (
     config: ra.Runnable,
     executable: string,
+    cargoWorkspace: string,
     env: Record<string, string>,
     sourceFileMap?: Record<string, string>,
 ) => vscode.DebugConfiguration;
@@ -130,7 +131,7 @@ async function getDebugConfiguration(
     }
 
     const env = prepareEnv(runnable, ctx.config.runnablesExtraEnv);
-    const executable = await getDebugExecutable(runnable, env);
+    const { executable, workspace: cargoWorkspace } = await getDebugExecutableInfo(runnable, env);
     let sourceFileMap = debugOptions.sourceFileMap;
     if (sourceFileMap === "auto") {
         // let's try to use the default toolchain
@@ -142,7 +143,13 @@ async function getDebugConfiguration(
     }
 
     const provider = unwrapUndefinable(knownEngines[debugEngine.id]);
-    const debugConfig = provider(runnable, simplifyPath(executable), env, sourceFileMap);
+    const debugConfig = provider(
+        runnable,
+        simplifyPath(executable),
+        cargoWorkspace,
+        env,
+        sourceFileMap,
+    );
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
         for (var key in settingsMap) {
@@ -164,20 +171,21 @@ async function getDebugConfiguration(
     return debugConfig;
 }
 
-async function getDebugExecutable(
+async function getDebugExecutableInfo(
     runnable: ra.Runnable,
     env: Record<string, string>,
-): Promise<string> {
+): Promise<ExecutableInfo> {
     const cargo = new Cargo(runnable.args.workspaceRoot || ".", debugOutput, env);
-    const executable = await cargo.executableFromArgs(runnable.args.cargoArgs);
+    const executableInfo = await cargo.executableInfoFromArgs(runnable.args.cargoArgs);
 
     // if we are here, there were no compilation errors.
-    return executable;
+    return executableInfo;
 }
 
 function getLldbDebugConfig(
     runnable: ra.Runnable,
     executable: string,
+    cargoWorkspace: string,
     env: Record<string, string>,
     sourceFileMap?: Record<string, string>,
 ): vscode.DebugConfiguration {
@@ -187,7 +195,7 @@ function getLldbDebugConfig(
         name: runnable.label,
         program: executable,
         args: runnable.args.executableArgs,
-        cwd: runnable.args.workspaceRoot,
+        cwd: cargoWorkspace || runnable.args.workspaceRoot,
         sourceMap: sourceFileMap,
         sourceLanguages: ["rust"],
         env,
@@ -197,6 +205,7 @@ function getLldbDebugConfig(
 function getCppvsDebugConfig(
     runnable: ra.Runnable,
     executable: string,
+    cargoWorkspace: string,
     env: Record<string, string>,
     sourceFileMap?: Record<string, string>,
 ): vscode.DebugConfiguration {
@@ -206,7 +215,7 @@ function getCppvsDebugConfig(
         name: runnable.label,
         program: executable,
         args: runnable.args.executableArgs,
-        cwd: runnable.args.workspaceRoot,
+        cwd: cargoWorkspace || runnable.args.workspaceRoot,
         sourceFileMap,
         env,
     };

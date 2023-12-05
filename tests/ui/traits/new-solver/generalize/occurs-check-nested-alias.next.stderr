@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `<<T as Id<_>>::Id as Unnormalizable>::Assoc == _`
+  --> $DIR/occurs-check-nested-alias.rs:35:9
+   |
+LL |     x = y;
+   |         ^ types differ
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.
