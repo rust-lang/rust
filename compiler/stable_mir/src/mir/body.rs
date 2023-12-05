@@ -658,7 +658,7 @@ pub const RETURN_LOCAL: Local = 0;
 /// `b`'s `FieldIdx` is `1`,
 /// `c`'s `FieldIdx` is `0`, and
 /// `g`'s `FieldIdx` is `2`.
-type FieldIdx = usize;
+pub type FieldIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
 

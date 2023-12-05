@@ -376,6 +376,16 @@ impl AdtDef {
         with(|cx| cx.adt_kind(*self))
     }
 
+    /// Retrieve the type of this Adt.
+    pub fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.0))
+    }
+
+    /// Retrieve the type of this Adt instantiating the type with the given arguments.
+    pub fn ty_with_args(&self, args: &GenericArgs) -> Result<Ty, Error> {
+        with(|cx| cx.def_ty_with_args(self.0, args))
+    }
+
     pub fn is_box(&self) -> bool {
         with(|cx| cx.adt_is_box(*self))
     }
@@ -397,7 +407,7 @@ impl AdtDef {
     }
 
     pub fn variant(&self, idx: VariantIdx) -> Option<VariantDef> {
-        self.variants().get(idx.to_index()).copied()
+        (idx.to_index() < self.num_variants()).then_some(VariantDef { idx, adt_def: *self })
     }
 }
 
@@ -421,6 +431,36 @@ pub struct VariantDef {
 impl VariantDef {
     pub fn name(&self) -> Symbol {
         with(|cx| cx.variant_name(*self))
+    }
+
+    /// Retrieve all the fields in this variant.
+    // We expect user to cache this and use it directly since today it is expensive to generate all
+    // fields name.
+    pub fn fields(&self) -> Vec<FieldDef> {
+        with(|cx| cx.variant_fields(*self))
+    }
+}
+
+pub struct FieldDef {
+    /// The field definition.
+    ///
+    /// ## Warning
+    /// Do not access this field directly! This is public for the compiler to have access to it.
+    pub def: DefId,
+
+    /// The field name.
+    pub name: Symbol,
+}
+
+impl FieldDef {
+    /// Retrieve the type of this field instantiating the type with the given arguments.
+    pub fn ty_with_args(&self, args: &GenericArgs) -> Result<Ty, Error> {
+        with(|cx| cx.def_ty_with_args(self.def, args))
+    }
+
+    /// Retrieve the type of this field.
+    pub fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.def))
     }
 }
 

@@ -60,11 +60,29 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_span::Symbol {
+    type T = stable_mir::Symbol;
+
+    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        self.to_string()
+    }
+}
+
 impl<'tcx> Stable<'tcx> for rustc_span::Span {
     type T = stable_mir::ty::Span;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables.create_span(*self)
+    }
+}
+
+impl<'tcx, T> Stable<'tcx> for &[T]
+where
+    T: Stable<'tcx>,
+{
+    type T = Vec<T::T>;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        self.iter().map(|e| e.stable(tables)).collect()
     }
 }
 
