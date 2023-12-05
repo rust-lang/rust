@@ -513,6 +513,11 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see PR #117984 \
         <https://github.com/rust-lang/rust/pull/117984> for more information",
     );
+    store.register_removed(
+        "coinductive_overlap_in_coherence",
+        "converted into hard error, see PR #118649 \
+         <https://github.com/rust-lang/rust/pull/118649> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
