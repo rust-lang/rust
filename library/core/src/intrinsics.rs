@@ -1906,6 +1906,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::ctlz;
     ///
@@ -1918,6 +1919,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::ctlz;
     ///
@@ -1939,6 +1941,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::ctlz_nonzero;
     ///
@@ -1965,6 +1968,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::cttz;
     ///
@@ -1977,6 +1981,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::cttz;
     ///
@@ -1998,6 +2003,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::cttz_nonzero;
     ///
@@ -2463,6 +2469,7 @@ extern "rust-intrinsic" {
     /// ```no_run
     /// #![feature(const_eval_select)]
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     /// use std::hint::unreachable_unchecked;
     /// use std::intrinsics::const_eval_select;
     ///
