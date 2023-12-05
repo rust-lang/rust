@@ -128,9 +128,9 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
             &[
                 &"cargo",
                 &"build",
+                &"--release",
                 &"--target",
                 &config.target_triple,
-                &"--release",
             ],
             Some(start_dir),
             Some(&env),

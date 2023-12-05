@@ -13,6 +13,8 @@ pub struct ConfigInfo {
     pub dylib_ext: String,
     pub sysroot_release_channel: bool,
     pub sysroot_panic_abort: bool,
+    pub cg_backend_path: String,
+    pub sysroot_path: String,
 }
 
 impl ConfigInfo {
@@ -118,13 +120,12 @@ impl ConfigInfo {
             .get("BUILTIN_BACKEND")
             .map(|backend| !backend.is_empty())
             .unwrap_or(false);
-        let cg_backend_path;
 
         let mut rustflags = Vec::new();
         if has_builtin_backend {
             // It means we're building inside the rustc testsuite, so some options need to be handled
             // a bit differently.
-            cg_backend_path = "gcc".to_string();
+            self.cg_backend_path = "gcc".to_string();
 
             match env.get("RUSTC_SYSROOT") {
                 Some(rustc_sysroot) if !rustc_sysroot.is_empty() => {
@@ -134,15 +135,17 @@ impl ConfigInfo {
             }
             rustflags.push("-Cpanic=abort".to_string());
         } else {
-            cg_backend_path = current_dir
+            self.cg_backend_path = current_dir
                 .join("target")
                 .join(channel)
                 .join(&format!("librustc_codegen_gcc.{}", self.dylib_ext))
                 .display()
                 .to_string();
-            let sysroot_path = current_dir.join("build_sysroot/sysroot");
-            rustflags
-                .extend_from_slice(&["--sysroot".to_string(), sysroot_path.display().to_string()]);
+            self.sysroot_path = current_dir
+                .join("build_sysroot/sysroot")
+                .display()
+                .to_string();
+            rustflags.extend_from_slice(&["--sysroot".to_string(), self.sysroot_path.clone()]);
         };
 
         // This environment variable is useful in case we want to change options of rustc commands.
@@ -156,7 +159,7 @@ impl ConfigInfo {
         rustflags.extend_from_slice(&[
             "-Csymbol-mangling-version=v0".to_string(),
             "-Cdebuginfo=2".to_string(),
-            format!("-Zcodegen-backend={}", cg_backend_path),
+            format!("-Zcodegen-backend={}", self.cg_backend_path),
         ]);
 
         // Since we don't support ThinLTO, disable LTO completely when not trying to do LTO.

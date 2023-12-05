@@ -1,14 +1,13 @@
 use crate::build;
 use crate::config::ConfigInfo;
 use crate::utils::{
-    get_gcc_path, get_toolchain, run_command, run_command_with_env,
+    get_gcc_path, get_toolchain, remove_file, run_command, run_command_with_env,
     run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
-    remove_file,
 };
 
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
-use std::fs::{File, remove_dir_all};
+use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -213,8 +212,11 @@ impl TestArg {
         match (test_arg.current_part, test_arg.nb_parts) {
             (Some(_), Some(_)) | (None, None) => {}
             _ => {
-                return Err("If either `--current-part` or `--nb-parts` is specified, the other one \
-                            needs to be specified as well!".to_string());
+                return Err(
+                    "If either `--current-part` or `--nb-parts` is specified, the other one \
+                            needs to be specified as well!"
+                        .to_string(),
+                );
             }
         }
         Ok(Some(test_arg))
@@ -230,20 +232,19 @@ fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
         return Ok(());
     }
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
-    if args.channel == Channel::Release {
-        let mut env = env.clone();
-        env.insert("CARGO_INCREMENTAL".to_string(), "1".to_string());
+    let mut tmp_env;
+    let env = if args.channel == Channel::Release {
+        tmp_env = env.clone();
+        tmp_env.insert("CARGO_INCREMENTAL".to_string(), "1".to_string());
         command.push(&"--release");
-        for flag in args.flags.iter() {
-            command.push(flag);
-        }
-        run_command_with_output_and_env(&command, None, Some(&env))
+        &tmp_env
     } else {
-        for flag in args.flags.iter() {
-            command.push(flag);
-        }
-        run_command_with_output_and_env(&command, None, Some(&env))
+        &env
+    };
+    for flag in args.flags.iter() {
+        command.push(flag);
     }
+    run_command_with_output_and_env(&command, None, Some(env))
 }
 
 fn clean(_env: &Env, args: &TestArg) -> Result<(), String> {
@@ -403,11 +404,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &args.config_info.target_triple,
         ]);
         run_command_with_env(&command, None, Some(env))?;
-        maybe_run_command_in_vm(
-            &[&cargo_target_dir.join("alloc_example")],
-            env,
-            args,
-        )?;
+        maybe_run_command_in_vm(&[&cargo_target_dir.join("alloc_example")], env, args)?;
     }
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
@@ -424,11 +421,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &args.config_info.target_triple,
     ]);
     run_command_with_env(&command, None, Some(env))?;
-    maybe_run_command_in_vm(
-        &[&cargo_target_dir.join("dst_field_align")],
-        env,
-        args,
-    )?;
+    maybe_run_command_in_vm(&[&cargo_target_dir.join("dst_field_align")], env, args)?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] std_example");
@@ -525,6 +518,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
         None,
         Some(env),
     );
+    run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
     run_command_with_output_and_env(&[&"git", &"fetch"], rust_dir, Some(env))?;
     let rustc_commit = match rustc_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
         Some(commit_hash) => commit_hash,
@@ -532,7 +526,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
     };
     run_command_with_output_and_env(&[&"git", &"checkout", &rustc_commit], rust_dir, Some(env))?;
     // FIXME: Is it really needed to empty `RUSTFLAGS` here?
-    env.insert("RUSTFLAGS".to_string(), String::new());
+    // env.insert("RUSTFLAGS".to_string(), String::new());
     let cargo = String::from_utf8(
         run_command_with_env(&[&"rustup", &"which", &"cargo"], rust_dir, Some(env))?.stdout,
     )
@@ -591,15 +585,6 @@ download-ci-llvm = false
         ),
     )
     .map_err(|error| format!("Failed to write into `rust/config.toml`: {:?}", error))?;
-
-    let rustc_commit = match rustc_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
-        Some(commit_hash) => commit_hash,
-        None => return Err("Couldn't retrieve rustc commit hash".to_string()),
-    };
-    // FIXME: create a function "display_if_not_quiet" or something along the line.
-    println!("commit: {:?}", rustc_commit);
-    let command: &[&dyn AsRef<OsStr>] = &[&"git", &"checkout", &rustc_commit, &"tests"];
-    run_command_with_output_and_env(command, rust_dir, Some(env))?;
     Ok(())
 }
 
@@ -834,27 +819,6 @@ fn extended_sysroot_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
-fn should_remove_ui_test(file: File) -> bool {
-    for line in BufReader::new(file).lines() {
-        if let Ok(line) = line {
-            if [
-                "// error-pattern:",
-                "// build-fail",
-                "// run-fail",
-                "-Cllvm-args",
-                "//~",
-                "// ~",
-            ]
-            .iter()
-            .any(|check| line.contains(check))
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 fn should_not_remove_test(file: &str) -> bool {
     // contains //~ERROR, but shouldn't be removed
     [
@@ -870,21 +834,40 @@ fn should_not_remove_test(file: &str) -> bool {
     .any(|to_ignore| file.ends_with(to_ignore))
 }
 
-fn should_remove_test(path: &Path, path_str: &str) -> bool {
+fn should_remove_test(file_path: &Path) -> Result<bool, String> {
     // Tests generating errors.
-    path.file_name()
-        .and_then(|name| name.to_str())
-        .map(|name| name.contains("thread"))
-        .unwrap_or(false)
-        || [
-            "consts/issue-miri-1910.rs",
-            // Tests generating errors.
-            "consts/issue-94675.rs",
-            // this test is oom-killed in the CI.
-            "mir/mir_heavy/issue-miri-1910.rs",
+    let file = File::open(file_path)
+        .map_err(|error| format!("Failed to read `{}`: {:?}", file_path.display(), error))?;
+    for line in BufReader::new(file).lines().filter_map(|line| line.ok()) {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if [
+            "// error-pattern:",
+            "// build-fail",
+            "// run-fail",
+            "-Cllvm-args",
+            "//~",
+            "thread",
         ]
         .iter()
-        .any(|to_ignore| path_str.ends_with(to_ignore))
+        .any(|check| line.contains(check))
+        {
+            return Ok(true);
+        }
+        if line.contains("//[") && line.contains("]~") {
+            return Ok(true);
+        }
+    }
+    if file_path
+        .display()
+        .to_string()
+        .contains("ambiguous-4-extern.rs")
+    {
+        eprintln!("nothing found for {file_path:?}");
+    }
+    Ok(false)
 }
 
 fn test_rustc_inner<F>(env: &Env, args: &TestArg, prepare_files_callback: F) -> Result<(), String>
@@ -895,6 +878,8 @@ where
     println!("[TEST] rust-lang/rust");
     let mut env = env.clone();
     setup_rustc(&mut env, args)?;
+
+    let rust_path = Path::new("rust");
 
     walk_dir(
         "rust/tests/ui",
@@ -924,32 +909,41 @@ where
     // These two functions are used to remove files that are known to not be working currently
     // with the GCC backend to reduce noise.
     fn dir_handling(dir: &Path) -> Result<(), String> {
+        if dir
+            .file_name()
+            .map(|name| name == "auxiliary")
+            .unwrap_or(true)
+        {
+            return Ok(());
+        }
         walk_dir(dir, dir_handling, file_handling)
     }
     fn file_handling(file_path: &Path) -> Result<(), String> {
-        let path_str = file_path.display().to_string().replace("\\", "/");
-        if !path_str.ends_with(".rs") {
+        if !file_path
+            .extension()
+            .map(|extension| extension == "rs")
+            .unwrap_or(false)
+        {
             return Ok(());
-        } else if should_not_remove_test(&path_str) {
-            return Ok(());
-        } else if should_remove_test(file_path, &path_str) {
-            return remove_file(&file_path);
         }
-        let file = File::open(file_path)
-            .map_err(|error| format!("Failed to read `{}`: {:?}", file_path.display(), error))?;
-        if should_remove_ui_test(file) {
-            remove_file(&file_path)?;
+        let path_str = file_path.display().to_string().replace("\\", "/");
+        if should_not_remove_test(&path_str) {
+            return Ok(());
+        } else if should_remove_test(file_path)? {
+            return remove_file(&file_path);
         }
         Ok(())
     }
 
-    let rust_path = Path::new("rust");
+    remove_file(&rust_path.join("tests/ui/consts/const_cmp_type_id.rs"))?;
+    remove_file(&rust_path.join("tests/ui/consts/issue-73976-monomorphic.rs"))?;
+    // this test is oom-killed in the CI.
+    remove_file(&rust_path.join("tests/ui/consts/issue-miri-1910.rs"))?;
+    // Tests generating errors.
+    remove_file(&rust_path.join("tests/ui/consts/issue-94675.rs"))?;
+    remove_file(&rust_path.join("tests/ui/mir/mir_heavy_promoted.rs"))?;
 
     walk_dir(rust_path.join("tests/ui"), dir_handling, file_handling)?;
-    let file = rust_path.join("tests/ui/consts/const_cmp_type_id.rs");
-    remove_file(&file)?;
-    let file = rust_path.join("tests/ui/consts/issue-73976-monomorphic.rs");
-    remove_file(&file)?;
 
     if !prepare_files_callback()? {
         // FIXME: create a function "display_if_not_quiet" or something along the line.
@@ -992,14 +986,16 @@ where
         // We increment the number of tests by one because if this is an odd number, we would skip
         // one test.
         let count = files.len() / nb_parts + 1;
-        let start = nb_parts * count;
-        let end = start + count;
-        for (pos, path) in files.iter().enumerate() {
-            if pos >= start && pos <= end {
-                continue;
-            }
-            let test_path = rust_path.join(path);
-            remove_file(&test_path)?;
+        let start = current_part * count;
+        let end = current_part * count + count;
+        // We remove the files we don't want to test.
+        for path in files
+            .iter()
+            .enumerate()
+            .filter(|(pos, _)| *pos < start || *pos >= end)
+            .map(|(_, path)| path)
+        {
+            remove_file(&rust_path.join(path))?;
         }
     }
 
@@ -1007,11 +1003,13 @@ where
     println!("[TEST] rustc test suite");
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
     let rustc_args = format!(
-        "{} {}",
-        env.get("RUSTFLAGS")
-            .expect("RUSTFLAGS should not be empty at this stage"),
+        "{} -Csymbol-mangling-version=v0 -Zcodegen-backend={} --sysroot {}",
         env.get("TEST_FLAGS").unwrap_or(&String::new()),
+        args.config_info.cg_backend_path,
+        args.config_info.sysroot_path,
     );
+
+    env.get_mut("RUSTFLAGS").unwrap().clear();
     run_command_with_output_and_env(
         &[
             &"./x.py",

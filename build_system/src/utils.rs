@@ -336,7 +336,11 @@ pub fn split_args(args: &str) -> Result<Vec<String>, String> {
                     }
                 }
                 if !found_end {
-                    return Err(format!("Didn't find `{}` at the end of `{}`", end, &args[start..]));
+                    return Err(format!(
+                        "Didn't find `{}` at the end of `{}`",
+                        end,
+                        &args[start..]
+                    ));
                 }
             } else if c == '\\' {
                 // We skip the escaped character.
