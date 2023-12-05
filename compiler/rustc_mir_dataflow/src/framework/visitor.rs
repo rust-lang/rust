@@ -1,8 +1,6 @@
-use std::borrow::Borrow;
-
 use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Direction, EntrySets, Results};
+use super::{Analysis, Direction, Results};
 
 /// Calls the corresponding method in `ResultsVisitor` for every location in a `mir::Body` with the
 /// dataflow state at that location.
@@ -143,10 +141,9 @@ pub trait ResultsVisitable<'tcx> {
     );
 }
 
-impl<'tcx, A, E> ResultsVisitable<'tcx> for Results<'tcx, A, E>
+impl<'tcx, A> ResultsVisitable<'tcx> for Results<'tcx, A>
 where
     A: Analysis<'tcx>,
-    E: Borrow<EntrySets<'tcx, A>>,
 {
     type FlowState = A::Domain;
 
