@@ -255,16 +255,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.tcx.type_of(item.internal(&mut *tables)).instantiate_identity().stable(&mut *tables)
     }
 
-    fn def_ty_with_args(
-        &self,
-        item: stable_mir::DefId,
-        args: &GenericArgs,
-    ) -> Result<stable_mir::ty::Ty, Error> {
+    fn def_ty_with_args(&self, item: stable_mir::DefId, args: &GenericArgs) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         let args = args.internal(&mut *tables);
         let def_ty = tables.tcx.type_of(item.internal(&mut *tables));
-        // FIXME(celinval): use try_fold instead to avoid crashing.
-        Ok(def_ty.instantiate(tables.tcx, args).stable(&mut *tables))
+        def_ty.instantiate(tables.tcx, args).stable(&mut *tables)
     }
 
     fn const_literal(&self, cnst: &stable_mir::ty::Const) -> String {

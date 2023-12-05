@@ -382,7 +382,9 @@ impl AdtDef {
     }
 
     /// Retrieve the type of this Adt instantiating the type with the given arguments.
-    pub fn ty_with_args(&self, args: &GenericArgs) -> Result<Ty, Error> {
+    ///
+    /// This will assume the type can be instantiated with these arguments.
+    pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
         with(|cx| cx.def_ty_with_args(self.0, args))
     }
 
@@ -441,6 +443,7 @@ impl VariantDef {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FieldDef {
     /// The field definition.
     ///
@@ -454,7 +457,9 @@ pub struct FieldDef {
 
 impl FieldDef {
     /// Retrieve the type of this field instantiating the type with the given arguments.
-    pub fn ty_with_args(&self, args: &GenericArgs) -> Result<Ty, Error> {
+    ///
+    /// This will assume the type can be instantiated with these arguments.
+    pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
         with(|cx| cx.def_ty_with_args(self.def, args))
     }
 
