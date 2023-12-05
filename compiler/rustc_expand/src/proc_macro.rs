@@ -156,7 +156,7 @@ impl MultiItemModifier for DeriveProcMacro {
             }
         };
 
-        let error_count_before = ecx.sess.parse_sess.span_diagnostic.err_count();
+        let error_count_before = ecx.sess.diagnostic().err_count();
         let mut parser =
             rustc_parse::stream_to_parser(&ecx.sess.parse_sess, stream, Some("proc-macro derive"));
         let mut items = vec![];
@@ -179,7 +179,7 @@ impl MultiItemModifier for DeriveProcMacro {
         }
 
         // fail if there have been errors emitted
-        if ecx.sess.parse_sess.span_diagnostic.err_count() > error_count_before {
+        if ecx.sess.diagnostic().err_count() > error_count_before {
             ecx.sess.emit_err(errors::ProcMacroDeriveTokens { span });
         }
 

@@ -367,7 +367,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
             if ending == Ending::Newline {
                 let mut clause = " ".repeat(indent.saturating_sub(1));
-                write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
+                write!(clause, "<div class=\"where\">where{where_preds},</div>")?;
                 clause
             } else {
                 // insert a newline after a single space but before multiple spaces at the start

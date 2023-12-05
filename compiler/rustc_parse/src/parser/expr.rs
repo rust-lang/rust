@@ -1283,7 +1283,7 @@ impl<'a> Parser<'a> {
                                         .collect(),
                                 },
                             }
-                            .into_diagnostic(&self.sess.span_diagnostic);
+                            .into_diagnostic(self.diagnostic());
                             replacement_err.emit();
 
                             let old_err = mem::replace(err, replacement_err);
@@ -1705,7 +1705,7 @@ impl<'a> Parser<'a> {
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a, ErrorGuaranteed>,
     ) -> L {
         if let Some(mut diag) =
-            self.sess.span_diagnostic.steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
+            self.diagnostic().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
         {
             diag.span_suggestion_verbose(
                 lifetime.span.shrink_to_hi(),
@@ -1896,7 +1896,7 @@ impl<'a> Parser<'a> {
 
         let Some((ident, false)) = self.token.ident() else {
             let err = errors::ExpectedBuiltinIdent { span: self.token.span }
-                .into_diagnostic(&self.sess.span_diagnostic);
+                .into_diagnostic(self.diagnostic());
             return Err(err);
         };
         self.sess.gated_spans.gate(sym::builtin_syntax, ident.span);
@@ -1907,7 +1907,7 @@ impl<'a> Parser<'a> {
             Ok(res)
         } else {
             let err = errors::UnknownBuiltinConstruct { span: lo.to(ident.span), name: ident.name }
-                .into_diagnostic(&self.sess.span_diagnostic);
+                .into_diagnostic(self.diagnostic());
             return Err(err);
         };
         self.expect(&TokenKind::CloseDelim(Delimiter::Parenthesis))?;
@@ -1971,7 +1971,7 @@ impl<'a> Parser<'a> {
             && matches!(e.kind, ExprKind::Err)
         {
             let mut err = errors::InvalidInterpolatedExpression { span: self.token.span }
-                .into_diagnostic(&self.sess.span_diagnostic);
+                .into_diagnostic(self.diagnostic());
             err.downgrade_to_delayed_bug();
             return Err(err);
         }
@@ -2183,7 +2183,7 @@ impl<'a> Parser<'a> {
                     return Err(errors::MissingSemicolonBeforeArray {
                         open_delim: open_delim_span,
                         semicolon: prev_span.shrink_to_hi(),
-                    }.into_diagnostic(&self.sess.span_diagnostic));
+                    }.into_diagnostic(self.diagnostic()));
                 }
                 Ok(_) => (),
                 Err(err) => err.cancel(),
@@ -2323,7 +2323,7 @@ impl<'a> Parser<'a> {
             if self.check_keyword(kw::Async) {
                 let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
                 Err(errors::AsyncMoveOrderIncorrect { span: move_async_span }
-                    .into_diagnostic(&self.sess.span_diagnostic))
+                    .into_diagnostic(self.diagnostic()))
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
@@ -2513,7 +2513,7 @@ impl<'a> Parser<'a> {
             };
             if self.prev_token.kind == token::BinOp(token::Or) {
                 // This was part of a closure, the that part of the parser recover.
-                return Err(err.into_diagnostic(&self.sess.span_diagnostic));
+                return Err(err.into_diagnostic(self.diagnostic()));
             } else {
                 Some(self.sess.emit_err(err))
             }
@@ -3162,7 +3162,7 @@ impl<'a> Parser<'a> {
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
         if self.eat_keyword(kw::Catch) {
             Err(errors::CatchAfterTry { span: self.prev_token.span }
-                .into_diagnostic(&self.sess.span_diagnostic))
+                .into_diagnostic(self.diagnostic()))
         } else {
             let span = span_lo.to(body.span);
             self.sess.gated_spans.gate(sym::try_blocks, span);

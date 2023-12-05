@@ -430,7 +430,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             last_section = Some(my_section);
             write!(
                 w,
-                "<h2 id=\"{id}\" class=\"small-section-header\">\
+                "<h2 id=\"{id}\" class=\"section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>{ITEM_TABLE_OPEN}",
                 id = cx.derive_id(my_section.id()),
@@ -827,7 +827,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
             w,
-            "<h2 id=\"{0}\" class=\"small-section-header\">\
+            "<h2 id=\"{0}\" class=\"section-header\">\
                 {1}<a href=\"#{0}\" class=\"anchor\">§</a>\
              </h2>{2}",
             id, title, extra_content
@@ -1260,7 +1260,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     if let Some(inner_type) = &t.inner_type {
         write!(
             w,
-            "<h2 id=\"aliased-type\" class=\"small-section-header\">\
+            "<h2 id=\"aliased-type\" class=\"section-header\">\
                 Aliased Type<a href=\"#aliased-type\" class=\"anchor\">§</a></h2>"
         );
 
@@ -1509,7 +1509,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
                 matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
             })
         {
-            return f.write_str("/* private fields */");
+            return f.write_str("<span class=\"comment\">/* private fields */</span>");
         }
 
         for (i, ty) in s.iter().enumerate() {
@@ -1666,7 +1666,7 @@ fn render_enum_fields(
         }
 
         if variants_stripped && !is_non_exhaustive {
-            w.write_str("    // some variants omitted\n");
+            w.write_str("    <span class=\"comment\">// some variants omitted</span>\n");
         }
         if toggle {
             toggle_close(&mut w);
@@ -1685,7 +1685,7 @@ fn item_variants(
     let tcx = cx.tcx();
     write!(
         w,
-        "<h2 id=\"variants\" class=\"variants small-section-header\">\
+        "<h2 id=\"variants\" class=\"variants section-header\">\
             Variants{}<a href=\"#variants\" class=\"anchor\">§</a>\
         </h2>\
         {}\
@@ -1737,7 +1737,14 @@ fn item_variants(
         w.write_str("</h3></section>");
 
         let heading_and_fields = match &variant_data.kind {
-            clean::VariantKind::Struct(s) => Some(("Fields", &s.fields)),
+            clean::VariantKind::Struct(s) => {
+                // If there is no field to display, no need to add the heading.
+                if s.fields.iter().any(|f| !f.is_doc_hidden()) {
+                    Some(("Fields", &s.fields))
+                } else {
+                    None
+                }
+            }
             clean::VariantKind::Tuple(fields) => {
                 // Documentation on tuple variant fields is rare, so to reduce noise we only emit
                 // the section if at least one field is documented.
@@ -1772,7 +1779,7 @@ fn item_variants(
                         write!(
                             w,
                             "<div class=\"sub-variant-field\">\
-                                 <span id=\"{id}\" class=\"small-section-header\">\
+                                 <span id=\"{id}\" class=\"section-header\">\
                                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
                                      <code>{f}: {t}</code>\
                                  </span>",
@@ -1811,7 +1818,8 @@ fn item_proc_macro(
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                write!(buffer, "{name}!() {{ /* proc-macro */ }}").unwrap();
+                write!(buffer, "{name}!() {{ <span class=\"comment\">/* proc-macro */</span> }}")
+                    .unwrap();
             }
             MacroKind::Attr => {
                 write!(buffer, "#[{name}]").unwrap();
@@ -1819,7 +1827,12 @@ fn item_proc_macro(
             MacroKind::Derive => {
                 write!(buffer, "#[derive({name})]").unwrap();
                 if !m.helpers.is_empty() {
-                    buffer.write_str("\n{\n    // Attributes available to this derive:\n").unwrap();
+                    buffer
+                        .write_str(
+                            "\n{\n    \
+                        <span class=\"comment\">// Attributes available to this derive:</span>\n",
+                        )
+                        .unwrap();
                     for attr in &m.helpers {
                         writeln!(buffer, "    #[{attr}]").unwrap();
                     }
@@ -1929,7 +1942,7 @@ fn item_fields(
         if fields.peek().is_some() {
             write!(
                 w,
-                "<h2 id=\"fields\" class=\"fields small-section-header\">\
+                "<h2 id=\"fields\" class=\"fields section-header\">\
                      {}{}<a href=\"#fields\" class=\"anchor\">§</a>\
                  </h2>\
                  {}",
@@ -1943,7 +1956,7 @@ fn item_fields(
                 let id = cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
                 write!(
                     w,
-                    "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
+                    "<span id=\"{id}\" class=\"{item_type} section-header\">\
                          <a href=\"#{id}\" class=\"anchor field\">§</a>\
                          <code>{field_name}: {ty}</code>\
                      </span>",
@@ -2181,7 +2194,7 @@ fn render_union<'a, 'cx: 'a>(
         }
 
         if it.has_stripped_entries().unwrap() {
-            write!(f, "    /* private fields */\n")?;
+            write!(f, "    <span class=\"comment\">/* private fields */</span>\n")?;
         }
         if toggle {
             toggle_close(&mut f);
@@ -2267,11 +2280,11 @@ fn render_struct_fields(
 
             if has_visible_fields {
                 if has_stripped_entries {
-                    write!(w, "\n{tab}    /* private fields */");
+                    write!(w, "\n{tab}    <span class=\"comment\">/* private fields */</span>");
                 }
                 write!(w, "\n{tab}");
             } else if has_stripped_entries {
-                write!(w, " /* private fields */ ");
+                write!(w, " <span class=\"comment\">/* private fields */</span> ");
             }
             if toggle {
                 toggle_close(&mut w);
@@ -2285,7 +2298,7 @@ fn render_struct_fields(
                     matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
                 })
             {
-                write!(w, "/* private fields */");
+                write!(w, "<span class=\"comment\">/* private fields */</span>");
             } else {
                 for (i, field) in fields.iter().enumerate() {
                     if i > 0 {

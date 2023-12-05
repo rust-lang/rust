@@ -79,7 +79,7 @@ fn resolve_associated_item<'tcx>(
     let vtbl = match tcx.codegen_select_candidate((param_env, trait_ref)) {
         Ok(vtbl) => vtbl,
         Err(CodegenObligationError::Ambiguity) => {
-            let reported = tcx.sess.delay_span_bug(
+            let reported = tcx.sess.span_delayed_bug(
                 tcx.def_span(trait_item_id),
                 format!(
                     "encountered ambiguity selecting `{trait_ref:?}` during codegen, presuming due to \
@@ -171,7 +171,7 @@ fn resolve_associated_item<'tcx>(
 
             // Any final impl is required to define all associated items.
             if !leaf_def.item.defaultness(tcx).has_value() {
-                let guard = tcx.sess.delay_span_bug(
+                let guard = tcx.sess.span_delayed_bug(
                     tcx.def_span(leaf_def.item.def_id),
                     "missing value for assoc item in impl",
                 );

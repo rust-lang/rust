@@ -30,7 +30,7 @@ fn int_range(_1: usize, _2: usize) -> () {
                     scope 7 {
                     }
                 }
-                scope 8 (inlined cmp::impls::<impl PartialOrd for usize>::lt) {
+                scope 8 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
                     debug self => _6;
                     debug other => _7;
                     let mut _8: usize;

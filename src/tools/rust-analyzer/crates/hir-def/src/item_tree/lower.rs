@@ -13,7 +13,7 @@ use crate::{
 use super::*;
 
 fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
-    FileItemTreeId { index, _p: PhantomData }
+    FileItemTreeId(index)
 }
 
 pub(super) struct Ctx<'a> {

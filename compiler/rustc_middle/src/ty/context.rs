@@ -714,8 +714,10 @@ impl<'tcx> TyCtxt<'tcx> {
             {
                 Bound::Included(a)
             } else {
-                self.sess
-                    .delay_span_bug(attr.span, "invalid rustc_layout_scalar_valid_range attribute");
+                self.sess.span_delayed_bug(
+                    attr.span,
+                    "invalid rustc_layout_scalar_valid_range attribute",
+                );
                 Bound::Unbounded
             }
         };
@@ -975,7 +977,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
     pub fn create_def(
         self,
         parent: LocalDefId,
-        data: hir::definitions::DefPathData,
+        name: Symbol,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         // This function modifies `self.definitions` using a side-effect.
@@ -998,6 +1000,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
+        let data = def_kind.def_path_data(name);
         let key = self.untracked.definitions.write().create_def(parent, data);
 
         let feed = TyCtxtFeed { tcx: self.tcx, key };

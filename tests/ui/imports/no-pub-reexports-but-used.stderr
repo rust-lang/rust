@@ -1,0 +1,20 @@
+warning: glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
+  --> $DIR/no-pub-reexports-but-used.rs:9:9
+   |
+LL | pub use m::*;
+   |         ^^^^
+   |
+note: the most public imported item is `pub(crate)`
+  --> $DIR/no-pub-reexports-but-used.rs:9:9
+   |
+LL | pub use m::*;
+   |         ^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+note: the lint level is defined here
+  --> $DIR/no-pub-reexports-but-used.rs:8:8
+   |
+LL | #[warn(unused_imports)]
+   |        ^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

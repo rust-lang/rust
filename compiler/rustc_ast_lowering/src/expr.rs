@@ -13,10 +13,9 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::DefPathData;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_span::{DesugaringKind, Span};
 use thin_vec::{thin_vec, ThinVec};
@@ -327,7 +326,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err(
-                    self.tcx.sess.delay_span_bug(e.span, "lowered ExprKind::Err"),
+                    self.tcx.sess.span_delayed_bug(e.span, "lowered ExprKind::Err"),
                 ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
@@ -376,7 +375,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.create_def(
                     parent_def_id.def_id,
                     node_id,
-                    DefPathData::AnonConst,
+                    kw::Empty,
                     DefKind::AnonConst,
                     f.span,
                 );
@@ -799,7 +798,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.expr_ident_mut(span, task_context_ident, task_context_hid)
             } else {
                 // Use of `await` outside of an async context, we cannot use `task_context` here.
-                self.expr_err(span, self.tcx.sess.delay_span_bug(span, "no task_context hir id"))
+                self.expr_err(span, self.tcx.sess.span_delayed_bug(span, "no task_context hir id"))
             };
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,

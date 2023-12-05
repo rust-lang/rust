@@ -5,8 +5,8 @@
 #![crate_name = "foo"]
 
 // @has 'foo/index.html'
-// @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 1
-// @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Modules'
+// @count - '//*[@id="main-content"]/*[@class="section-header"]' 1
+// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Modules'
 // @count - '//*[@id="main-content"]/*[@class="item-table"]//*[@class="mod"]' 2
 // @has - '//*[@id="main-content"]//*[@class="mod"]' 'banana'
 // @has - '//*[@id="main-content"]//*[@href="banana/index.html"]' 'banana'

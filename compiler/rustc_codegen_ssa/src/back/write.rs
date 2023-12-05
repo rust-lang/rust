@@ -148,23 +148,12 @@ impl ModuleConfig {
 
         let emit_obj = if !should_emit_obj {
             EmitObj::None
-        } else if sess.target.obj_is_bitcode
-            || (sess.opts.cg.linker_plugin_lto.enabled() && !no_builtins)
-        {
+        } else if sess.target.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled() {
             // This case is selected if the target uses objects as bitcode, or
             // if linker plugin LTO is enabled. In the linker plugin LTO case
             // the assumption is that the final link-step will read the bitcode
             // and convert it to object code. This may be done by either the
             // native linker or rustc itself.
-            //
-            // Note, however, that the linker-plugin-lto requested here is
-            // explicitly ignored for `#![no_builtins]` crates. These crates are
-            // specifically ignored by rustc's LTO passes and wouldn't work if
-            // loaded into the linker. These crates define symbols that LLVM
-            // lowers intrinsics to, and these symbol dependencies aren't known
-            // until after codegen. As a result any crate marked
-            // `#![no_builtins]` is assumed to not participate in LTO and
-            // instead goes on to generate object code.
             EmitObj::Bitcode
         } else if need_bitcode_in_object(tcx) {
             EmitObj::ObjectCode(BitcodeSection::Full)
@@ -1037,9 +1026,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, crate_info, cnum) {
-            return;
-        }
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
@@ -1870,7 +1856,7 @@ impl SharedEmitterMain {
                     let mut err = match level {
                         Level::Error { lint: false } => sess.struct_err(msg).forget_guarantee(),
                         Level::Warning(_) => sess.struct_warn(msg),
-                        Level::Note => sess.struct_note_without_error(msg),
+                        Level::Note => sess.struct_note(msg),
                         _ => bug!("Invalid inline asm diagnostic level"),
                     };
 

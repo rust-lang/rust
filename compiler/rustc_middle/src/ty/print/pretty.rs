@@ -1804,13 +1804,13 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
 // (but also some things just print a `DefId` generally so maybe we need this?)
 fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
     match tcx.def_key(def_id).disambiguated_data.data {
-        DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::ImplTrait => {
+        DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::OpaqueTy => {
             Namespace::TypeNS
         }
 
         DefPathData::ValueNs(..)
         | DefPathData::AnonConst
-        | DefPathData::ClosureExpr
+        | DefPathData::Closure
         | DefPathData::Ctor => Namespace::ValueNS,
 
         DefPathData::MacroNs(..) => Namespace::MacroNS,
@@ -3025,7 +3025,7 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
         //
         // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
         // wrapper can be used to suppress this query, in exchange for full paths being formatted.
-        tcx.sess.delay_good_path_bug(
+        tcx.sess.good_path_delayed_bug(
             "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
         );
     }

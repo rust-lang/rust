@@ -430,6 +430,7 @@ mod desc {
     pub const parse_inlining_threshold: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
+    pub const parse_function_return: &str = "`keep` or `thunk-extern`";
 }
 
 mod parse {
@@ -1359,6 +1360,15 @@ mod parse {
         slot.push((key.to_string(), value, behavior));
         true
     }
+
+    pub(crate) fn parse_function_return(slot: &mut FunctionReturn, v: Option<&str>) -> bool {
+        match v {
+            Some("keep") => *slot = FunctionReturn::Keep,
+            Some("thunk-extern") => *slot = FunctionReturn::ThunkExtern,
+            _ => return false,
+        }
+        true
+    }
 }
 
 options! {
@@ -1603,6 +1613,8 @@ options! {
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
+    function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED],
+        "replace returns with jumps to `__x86_return_thunk` (default: `keep`)"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether each function should go in its own section"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
@@ -1801,7 +1813,7 @@ options! {
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
-        "immediately print bugs registered with `delay_span_bug` (default: no)"),
+        "immediately print bugs registered with `span_delayed_bug` (default: no)"),
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
@@ -1972,10 +1984,4 @@ written to standard error output)"),
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
     // - src/doc/unstable-book/src/compiler-flags
-}
-
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum WasiExecModel {
-    Command,
-    Reactor,
 }

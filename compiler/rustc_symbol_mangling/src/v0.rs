@@ -770,17 +770,16 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
             DefPathData::ValueNs(_) => 'v',
-            DefPathData::ClosureExpr => 'C',
+            DefPathData::Closure => 'C',
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'k',
-            DefPathData::ImplTrait => 'i',
+            DefPathData::OpaqueTy => 'i',
 
             // These should never show up as `path_append` arguments.
             DefPathData::CrateRoot
             | DefPathData::Use
             | DefPathData::GlobalAsm
             | DefPathData::Impl
-            | DefPathData::ImplTraitAssocTy
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

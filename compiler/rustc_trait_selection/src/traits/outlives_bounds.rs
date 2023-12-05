@@ -111,7 +111,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
 
             let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.span_delayed_bug(
                     span,
                     "implied_outlives_bounds failed to solve obligations from instantiation",
                 );

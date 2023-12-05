@@ -335,7 +335,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // though this may happen when we call `poly_trait_ref_binder_info` with
                     // an (erroneous, #113423) associated return type bound in an impl header.
                     if !supertrait_bound_vars.is_empty() {
-                        self.tcx.sess.delay_span_bug(
+                        self.tcx.sess.span_delayed_bug(
                             DUMMY_SP,
                             format!(
                                 "found supertrait lifetimes without a binder to append \
@@ -1363,7 +1363,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(
+        self.tcx.sess.span_delayed_bug(
             lifetime_ref.ident.span,
             format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
         );
@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(
+        self.tcx.sess.span_delayed_bug(
             self.tcx.hir().span(hir_id),
             format!("could not resolve {param_def_id:?}"),
         );
@@ -1724,7 +1724,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 } else {
                     self.tcx
                         .sess
-                        .delay_span_bug(binding.ident.span, "bad return type notation here");
+                        .span_delayed_bug(binding.ident.span, "bad return type notation here");
                     vec![]
                 };
                 self.with(scope, |this| {
@@ -2057,7 +2057,7 @@ fn is_late_bound_map(
                                         Some(true) => Some(arg),
                                         Some(false) => None,
                                         None => {
-                                            tcx.sess.delay_span_bug(
+                                            tcx.sess.span_delayed_bug(
                                                 *span,
                                                 format!(
                                                     "Incorrect generic arg count for alias {alias_def:?}"

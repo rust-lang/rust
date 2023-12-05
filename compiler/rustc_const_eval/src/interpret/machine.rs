@@ -12,12 +12,12 @@ use rustc_middle::mir;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
-    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, PlaceTy, Pointer, Provenance,
+    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy,
+    InterpCx, InterpResult, MPlaceTy, MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -143,11 +143,18 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether, when checking alignment, we should look at the actual address and thus support
-    /// custom alignment logic based on whatever the integer address happens to be.
-    ///
-    /// If this returns true, Provenance::OFFSET_IS_ADDR must be true.
-    fn use_addr_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// Gives the machine a chance to detect more misalignment than the built-in checks would catch.
+    #[inline(always)]
+    fn alignment_check(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _alloc_id: AllocId,
+        _alloc_align: Align,
+        _alloc_kind: AllocKind,
+        _offset: Size,
+        _align: Align,
+    ) -> Option<Misalignment> {
+        None
+    }
 
     /// Whether to enforce the validity invariant for a specific layout.
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
@@ -518,12 +525,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type AllocExtra = ();
     type FrameExtra = ();
     type Bytes = Box<[u8]>;
-
-    #[inline(always)]
-    fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        // We do not support `use_addr`.
-        false
-    }
 
     #[inline(always)]
     fn ignore_optional_overflow_checks(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {

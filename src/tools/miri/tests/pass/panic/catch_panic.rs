@@ -1,5 +1,3 @@
-// We test the `align_offset` panic below, make sure we test the interpreter impl and not the "real" one.
-//@compile-flags: -Zmiri-symbolic-alignment-check
 #![feature(never_type)]
 #![allow(unconditional_panic, non_fmt_panics)]
 
@@ -70,6 +68,7 @@ fn main() {
         process::abort()
     });
 
+    // Panic somewhere in the standard library.
     test(Some("align_offset: align is not a power-of-two"), |_old_val| {
         let _ = std::ptr::null::<u8>().align_offset(3);
         process::abort()

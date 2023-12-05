@@ -9,7 +9,7 @@ mod a {
         //~^ ERROR cannot be re-exported
         //~| WARNING unused import: `super::foo`
         pub use super::*;
-        //~^ WARNING glob import doesn't reexport anything because no candidate is public enough
+        //~^ WARNING glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
         //~| WARNING unused import: `super::*`
     }
 }

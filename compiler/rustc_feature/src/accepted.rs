@@ -77,6 +77,8 @@ declare_features! (
     (accepted, bindings_after_at, "1.56.0", Some(65490), None),
     /// Allows empty structs and enum variants with braces.
     (accepted, braced_empty_structs, "1.8.0", Some(29720), None),
+    /// Allows `c"foo"` literals.
+    (accepted, c_str_literals, "CURRENT_RUSTC_VERSION", Some(105723), None),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.

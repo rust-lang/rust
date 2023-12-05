@@ -7,7 +7,7 @@ note: inside `std::ptr::read::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `mem::swap_simple::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-note: inside `ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
+note: inside `std::ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `swap_nonoverlapping::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

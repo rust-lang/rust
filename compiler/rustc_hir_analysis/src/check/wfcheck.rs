@@ -118,10 +118,10 @@ where
         if tcx.sess.err_count() > 0 {
             return Err(err);
         } else {
-            // HACK(oli-obk): tests/ui/specialization/min_specialization/specialize_on_type_error.rs causes an
-            // error (delay_span_bug) during normalization, without reporting an error, so we need to act as if
-            // no error happened, in order to let our callers continue and report an error later in
-            // check_impl_items_against_trait.
+            // HACK(oli-obk): tests/ui/specialization/min_specialization/specialize_on_type_error.rs
+            // causes an error (span_delayed_bug) during normalization, without reporting an error,
+            // so we need to act as if no error happened, in order to let our callers continue and
+            // report an error later in check_impl_items_against_trait.
             return Ok(());
         }
     }
@@ -1040,7 +1040,7 @@ fn check_type_defn<'tcx>(
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
                         tcx.sess
-                            .delay_span_bug(item.span, format!("inference variables in {ty:?}"));
+                            .span_delayed_bug(item.span, format!("inference variables in {ty:?}"));
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
@@ -1812,8 +1812,10 @@ fn check_variances_for_type_defn<'tcx>(
             //
             // if they aren't in the same order, then the user has written invalid code, and already
             // got an error about it (or I'm wrong about this)
-            tcx.sess
-                .delay_span_bug(hir_param.span, "hir generics and ty generics in different order");
+            tcx.sess.span_delayed_bug(
+                hir_param.span,
+                "hir generics and ty generics in different order",
+            );
             continue;
         }
 

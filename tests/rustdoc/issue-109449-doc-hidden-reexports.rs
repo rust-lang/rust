@@ -66,8 +66,8 @@ pub mod single_reexport_inherit_hidden {
 pub mod single_reexport_no_inline {
     // First we ensure that we only have re-exports and no inlined items.
     // @has 'foo/single_reexport_no_inline/index.html'
-    // @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 1
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Re-exports'
+    // @count - '//*[@id="main-content"]/*[@class="section-header"]' 1
+    // @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Re-exports'
 
     // Now we check that we don't have links to the items, just `pub use`.
     // @has - '//*[@id="main-content"]//*' 'pub use crate::private_module::Public as XFoo;'
@@ -101,10 +101,10 @@ pub mod glob_reexport {
     // With glob re-exports, we don't inline `#[doc(hidden)]` items so only `module` items
     // should be inlined.
     // @has 'foo/glob_reexport/index.html'
-    // @count - '//*[@id="main-content"]/*[@class="small-section-header"]' 3
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Re-exports'
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Structs'
-    // @has - '//*[@id="main-content"]/*[@class="small-section-header"]' 'Type Aliases'
+    // @count - '//*[@id="main-content"]/*[@class="section-header"]' 3
+    // @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Re-exports'
+    // @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Structs'
+    // @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Type Aliases'
 
     // Now we check we have 1 re-export and 2 inlined items.
     // If not item from a glob re-export is visible, we don't show the re-export.

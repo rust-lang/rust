@@ -2,8 +2,7 @@
 // Code ported from the `packed_simd` crate
 // Run this code with `cargo test --example matrix_inversion`
 #![feature(array_chunks, portable_simd)]
-use core_simd::simd::*;
-use Which::*;
+use core_simd::simd::prelude::*;
 
 // Gotta define our own 4x4 matrix since Rust doesn't ship multidim arrays yet :^)
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
@@ -164,10 +163,10 @@ pub fn simd_inv4x4(m: Matrix4x4) -> Option<Matrix4x4> {
     let m_2 = f32x4::from_array(m[2]);
     let m_3 = f32x4::from_array(m[3]);
 
-    const SHUFFLE01: [Which; 4] = [First(0), First(1), Second(0), Second(1)];
-    const SHUFFLE02: [Which; 4] = [First(0), First(2), Second(0), Second(2)];
-    const SHUFFLE13: [Which; 4] = [First(1), First(3), Second(1), Second(3)];
-    const SHUFFLE23: [Which; 4] = [First(2), First(3), Second(2), Second(3)];
+    const SHUFFLE01: [usize; 4] = [0, 1, 4, 5];
+    const SHUFFLE02: [usize; 4] = [0, 2, 4, 6];
+    const SHUFFLE13: [usize; 4] = [1, 3, 5, 7];
+    const SHUFFLE23: [usize; 4] = [2, 3, 6, 7];
 
     let tmp = simd_swizzle!(m_0, m_1, SHUFFLE01);
     let row1 = simd_swizzle!(m_2, m_3, SHUFFLE01);
@@ -180,58 +179,58 @@ pub fn simd_inv4x4(m: Matrix4x4) -> Option<Matrix4x4> {
     let row2 = simd_swizzle!(tmp, row3, SHUFFLE02);
     let row3 = simd_swizzle!(row3, tmp, SHUFFLE13);
 
-    let tmp = (row2 * row3).reverse().rotate_lanes_right::<2>();
+    let tmp = (row2 * row3).reverse().rotate_elements_right::<2>();
     let minor0 = row1 * tmp;
     let minor1 = row0 * tmp;
-    let tmp = tmp.rotate_lanes_right::<2>();
+    let tmp = tmp.rotate_elements_right::<2>();
     let minor0 = (row1 * tmp) - minor0;
     let minor1 = (row0 * tmp) - minor1;
-    let minor1 = minor1.rotate_lanes_right::<2>();
+    let minor1 = minor1.rotate_elements_right::<2>();
 
-    let tmp = (row1 * row2).reverse().rotate_lanes_right::<2>();
+    let tmp = (row1 * row2).reverse().rotate_elements_right::<2>();
     let minor0 = (row3 * tmp) + minor0;
     let minor3 = row0 * tmp;
-    let tmp = tmp.rotate_lanes_right::<2>();
+    let tmp = tmp.rotate_elements_right::<2>();
 
     let minor0 = minor0 - row3 * tmp;
     let minor3 = row0 * tmp - minor3;
-    let minor3 = minor3.rotate_lanes_right::<2>();
+    let minor3 = minor3.rotate_elements_right::<2>();
 
-    let tmp = (row3 * row1.rotate_lanes_right::<2>())
+    let tmp = (row3 * row1.rotate_elements_right::<2>())
         .reverse()
-        .rotate_lanes_right::<2>();
-    let row2 = row2.rotate_lanes_right::<2>();
+        .rotate_elements_right::<2>();
+    let row2 = row2.rotate_elements_right::<2>();
     let minor0 = row2 * tmp + minor0;
     let minor2 = row0 * tmp;
-    let tmp = tmp.rotate_lanes_right::<2>();
+    let tmp = tmp.rotate_elements_right::<2>();
     let minor0 = minor0 - row2 * tmp;
     let minor2 = row0 * tmp - minor2;
-    let minor2 = minor2.rotate_lanes_right::<2>();
+    let minor2 = minor2.rotate_elements_right::<2>();
 
-    let tmp = (row0 * row1).reverse().rotate_lanes_right::<2>();
+    let tmp = (row0 * row1).reverse().rotate_elements_right::<2>();
     let minor2 = minor2 + row3 * tmp;
     let minor3 = row2 * tmp - minor3;
-    let tmp = tmp.rotate_lanes_right::<2>();
+    let tmp = tmp.rotate_elements_right::<2>();
     let minor2 = row3 * tmp - minor2;
     let minor3 = minor3 - row2 * tmp;
 
-    let tmp = (row0 * row3).reverse().rotate_lanes_right::<2>();
+    let tmp = (row0 * row3).reverse().rotate_elements_right::<2>();
     let minor1 = minor1 - row2 * tmp;
     let minor2 = row1 * tmp + minor2;
-    let tmp = tmp.rotate_lanes_right::<2>();
+    let tmp = tmp.rotate_elements_right::<2>();
     let minor1 = row2 * tmp + minor1;
     let minor2 = minor2 - row1 * tmp;
 
-    let tmp = (row0 * row2).reverse().rotate_lanes_right::<2>();
+    let tmp = (row0 * row2).reverse().rotate_elements_right::<2>();
     let minor1 = row3 * tmp + minor1;
     let minor3 = minor3 - row1 * tmp;
-    let tmp = tmp.rotate_lanes_right::<2>();
+    let tmp = tmp.rotate_elements_right::<2>();
     let minor1 = minor1 - row3 * tmp;
     let minor3 = row1 * tmp + minor3;
 
     let det = row0 * minor0;
-    let det = det.rotate_lanes_right::<2>() + det;
-    let det = det.reverse().rotate_lanes_right::<2>() + det;
+    let det = det.rotate_elements_right::<2>() + det;
+    let det = det.reverse().rotate_elements_right::<2>() + det;
 
     if det.reduce_sum() == 0. {
         return None;

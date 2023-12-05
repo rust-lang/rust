@@ -24,16 +24,16 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
                         debug src => _1;
                         scope 7 (inlined intrinsics::is_aligned_and_not_null::<u32>) {
                             debug ptr => _1;
-                            scope 8 (inlined ptr::const_ptr::<impl *const u32>::is_null) {
+                            scope 8 (inlined std::ptr::const_ptr::<impl *const u32>::is_null) {
                                 debug self => _1;
                                 let mut _3: *const u8;
                                 scope 9 {
-                                    scope 10 (inlined ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
+                                    scope 10 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
                                         debug ptr => _3;
-                                        scope 11 (inlined ptr::const_ptr::<impl *const u8>::addr) {
+                                        scope 11 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
                                             debug self => _3;
                                             scope 12 {
-                                                scope 13 (inlined ptr::const_ptr::<impl *const u8>::cast::<()>) {
+                                                scope 13 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
                                                     debug self => _3;
                                                 }
                                             }
@@ -41,7 +41,7 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
                                     }
                                 }
                             }
-                            scope 14 (inlined ptr::const_ptr::<impl *const u32>::is_aligned) {
+                            scope 14 (inlined std::ptr::const_ptr::<impl *const u32>::is_aligned) {
                                 debug self => _1;
                                 scope 15 (inlined align_of::<u32>) {
                                 }

@@ -1201,7 +1201,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             }
                                         };
                                         self.report_error(span, error);
-                                        self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
+                                        self.tcx.sess.span_delayed_bug(span, CG_BUG_STR);
                                     }
 
                                     return Res::Err;

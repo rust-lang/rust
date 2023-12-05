@@ -218,7 +218,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fulfillment errors")
+        self.tcx.sess.span_delayed_bug(DUMMY_SP, "expected fulfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -369,7 +369,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut span = obligation.cause.span;
         // FIXME: statically guarantee this by tainting after the diagnostic is emitted
         self.set_tainted_by_errors(
-            tcx.sess.delay_span_bug(span, "`report_selection_error` did not emit an error"),
+            tcx.sess.span_delayed_bug(span, "`report_selection_error` did not emit an error"),
         );
 
         let mut err = match *error {

@@ -1,7 +1,7 @@
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CrateType, InstrumentCoverage, OptLevel, OutFileName, OutputType,
+    self, CrateType, FunctionReturn, InstrumentCoverage, OptLevel, OutFileName, OutputType,
     RemapPathScopeComponents, SwitchWithOptPath,
 };
 use crate::config::{ErrorOutputType, Input};
@@ -10,8 +10,6 @@ use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
 
-pub use rustc_ast::attr::MarkedAttrs;
-pub use rustc_ast::Attribute;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
@@ -26,7 +24,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
     ErrorGuaranteed, FluentBundle, Handler, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
-    TerminalUrl,
+    SubdiagnosticMessage, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -48,7 +46,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{atomic::AtomicBool, Arc};
 
-pub struct OptimizationFuel {
+struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
     remaining: u64,
     /// We're rejecting all further optimizations.
@@ -304,7 +302,7 @@ impl Session {
         if diags.is_empty() {
             return;
         }
-        self.parse_sess.span_diagnostic.emit_future_breakage_report(diags);
+        self.diagnostic().emit_future_breakage_report(diags);
     }
 
     /// Returns true if the crate is a testing one.
@@ -480,7 +478,7 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) {
+    ) -> ErrorGuaranteed {
         self.diagnostic().span_err_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
@@ -553,8 +551,8 @@ impl Session {
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.diagnostic().has_errors()
     }
-    pub fn has_errors_or_delayed_span_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.diagnostic().has_errors_or_delayed_span_bugs()
+    pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.diagnostic().has_errors_or_span_delayed_bugs()
     }
     pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
         self.diagnostic().is_compilation_going_to_fail()
@@ -580,7 +578,7 @@ impl Session {
         if self.err_count() == old_count {
             Ok(result)
         } else {
-            Err(self.delay_span_bug(
+            Err(self.span_delayed_bug(
                 rustc_span::DUMMY_SP,
                 "`self.err_count()` changed but an error was not emitted",
             ))
@@ -621,24 +619,28 @@ impl Session {
     ///
     /// This can be used in code paths that should never run on successful compilations.
     /// For example, it can be used to create an [`ErrorGuaranteed`]
-    /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission directly).
+    /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission
+    /// directly).
     ///
     /// If no span is available, use [`DUMMY_SP`].
     ///
     /// [`DUMMY_SP`]: rustc_span::DUMMY_SP
+    ///
+    /// Note: this function used to be called `delay_span_bug`. It was renamed
+    /// to match similar functions like `span_err`, `span_warn`, etc.
     #[track_caller]
-    pub fn delay_span_bug<S: Into<MultiSpan>>(
+    pub fn span_delayed_bug<S: Into<MultiSpan>>(
         &self,
         sp: S,
         msg: impl Into<String>,
     ) -> ErrorGuaranteed {
-        self.diagnostic().delay_span_bug(sp, msg)
+        self.diagnostic().span_delayed_bug(sp, msg)
     }
 
     /// Used for code paths of expensive computations that should only take place when
     /// warnings or errors are emitted. If no messages are emitted ("good path"), then
     /// it's likely a bug.
-    pub fn delay_good_path_bug(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
         if self.opts.unstable_opts.print_type_sizes
             || self.opts.unstable_opts.query_dep_graph
             || self.opts.unstable_opts.dump_mir.is_some()
@@ -649,40 +651,33 @@ impl Session {
             return;
         }
 
-        self.diagnostic().delay_good_path_bug(msg)
+        self.diagnostic().good_path_delayed_bug(msg)
     }
 
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
-        self.diagnostic().note_without_error(msg)
+    pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
+        self.diagnostic().note(msg)
     }
 
     #[track_caller]
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn span_note_without_error<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) {
-        self.diagnostic().span_note_without_error(sp, msg)
+    pub fn span_note<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
+        self.diagnostic().span_note(sp, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn struct_note_without_error(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_note_without_error(msg)
+    pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
+        self.diagnostic().struct_note(msg)
     }
 
     #[inline]
-    pub fn diagnostic(&self) -> &rustc_errors::Handler {
+    pub fn diagnostic(&self) -> &Handler {
         &self.parse_sess.span_diagnostic
     }
 
@@ -816,12 +811,7 @@ impl Session {
         if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
     }
 
-    pub fn init_incr_comp_session(
-        &self,
-        session_dir: PathBuf,
-        lock_file: flock::Lock,
-        load_dep_graph: bool,
-    ) {
+    pub fn init_incr_comp_session(&self, session_dir: PathBuf, lock_file: flock::Lock) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
         if let IncrCompSession::NotInitialized = *incr_comp_session {
@@ -830,7 +820,7 @@ impl Session {
         }
 
         *incr_comp_session =
-            IncrCompSession::Active { session_directory: session_dir, lock_file, load_dep_graph };
+            IncrCompSession::Active { session_directory: session_dir, _lock_file: lock_file };
     }
 
     pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
@@ -893,7 +883,7 @@ impl Session {
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
                     if self.diagnostic().can_emit_warnings() {
                         // We only call `msg` in case we can actually emit warnings.
-                        // Otherwise, this could cause a `delay_good_path_bug` to
+                        // Otherwise, this could cause a `good_path_delayed_bug` to
                         // trigger (issue #79546).
                         self.emit_warning(errors::OptimisationFuelExhausted { msg: msg() });
                     }
@@ -1417,7 +1407,7 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let mut span_diagnostic = rustc_errors::Handler::with_emitter(emitter)
+    let mut span_diagnostic = Handler::with_emitter(emitter)
         .with_flags(sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
         span_diagnostic = span_diagnostic.with_ice_file(ice_file);
@@ -1478,6 +1468,11 @@ pub fn build_session(
 
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
+
+    // Check jobserver before getting `jobserver::client`.
+    jobserver::check(|err| {
+        handler.early_warn_with_note(err, "the build environment is likely misconfigured")
+    });
 
     let sess = Session {
         target: target_cfg,
@@ -1678,17 +1673,41 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             sess.emit_err(errors::IncompatibleLinkerFlavor { flavor, compatible_list });
         }
     }
+
+    if sess.opts.unstable_opts.function_return != FunctionReturn::default() {
+        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+            sess.emit_err(errors::FunctionReturnRequiresX86OrX8664);
+        }
+    }
+
+    // The code model check applies to `thunk` and `thunk-extern`, but not `thunk-inline`, so it is
+    // kept as a `match` to force a change if new ones are added, even if we currently only support
+    // `thunk-extern` like Clang.
+    match sess.opts.unstable_opts.function_return {
+        FunctionReturn::Keep => (),
+        FunctionReturn::ThunkExtern => {
+            // FIXME: In principle, the inherited base LLVM target code model could be large,
+            // but this only checks whether we were passed one explicitly (like Clang does).
+            if let Some(code_model) = sess.code_model()
+                && code_model == CodeModel::Large
+            {
+                sess.emit_err(errors::FunctionReturnThunkExternRequiresNonLargeCodeModel);
+            }
+        }
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
 #[derive(Debug)]
-pub enum IncrCompSession {
+enum IncrCompSession {
     /// This is the state the session will be in until the incr. comp. dir is
     /// needed.
     NotInitialized,
     /// This is the state during which the session directory is private and can
-    /// be modified.
-    Active { session_directory: PathBuf, lock_file: flock::Lock, load_dep_graph: bool },
+    /// be modified. `_lock_file` is never directly used, but its presence
+    /// alone has an effect, because the file will unlock when the session is
+    /// dropped.
+    Active { session_directory: PathBuf, _lock_file: flock::Lock },
     /// This is the state after the session directory has been finalized. In this
     /// state, the contents of the directory must not be modified any more.
     Finalized { session_directory: PathBuf },
@@ -1706,7 +1725,7 @@ pub struct EarlyErrorHandler {
 impl EarlyErrorHandler {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: rustc_errors::Handler::with_emitter(emitter) }
+        Self { handler: Handler::with_emitter(emitter) }
     }
 
     pub fn abort_if_errors(&self) {
@@ -1726,7 +1745,7 @@ impl EarlyErrorHandler {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_note_without_error(msg).emit()
+        self.handler.struct_note(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1750,7 +1769,7 @@ impl EarlyErrorHandler {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub(crate) fn early_struct_error(
+    pub fn early_struct_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, !> {
@@ -1761,6 +1780,16 @@ impl EarlyErrorHandler {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.handler.struct_warn(msg).emit()
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_warn_with_note(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+        note: impl Into<SubdiagnosticMessage>,
+    ) {
+        self.handler.struct_warn(msg).note(note).emit()
     }
 }
 

@@ -267,7 +267,7 @@ fn make_count<'hir>(
                 ctx.expr(
                     sp,
                     hir::ExprKind::Err(
-                        ctx.tcx.sess.delay_span_bug(sp, "lowered bad format_args count"),
+                        ctx.tcx.sess.span_delayed_bug(sp, "lowered bad format_args count"),
                     ),
                 )
             }
@@ -306,7 +306,7 @@ fn make_format_spec<'hir>(
         }
         Err(_) => ctx.expr(
             sp,
-            hir::ExprKind::Err(ctx.tcx.sess.delay_span_bug(sp, "lowered bad format_args count")),
+            hir::ExprKind::Err(ctx.tcx.sess.span_delayed_bug(sp, "lowered bad format_args count")),
         ),
     };
     let &FormatOptions {

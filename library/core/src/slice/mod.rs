@@ -1045,11 +1045,11 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let slice = ['r', 'u', 's', 't'];
-    /// let mut iter = slice.windows(2);
-    /// assert_eq!(iter.next().unwrap(), &['r', 'u']);
-    /// assert_eq!(iter.next().unwrap(), &['u', 's']);
-    /// assert_eq!(iter.next().unwrap(), &['s', 't']);
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.windows(3);
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o', 'r']);
+    /// assert_eq!(iter.next().unwrap(), &['o', 'r', 'e']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e', 'm']);
     /// assert!(iter.next().is_none());
     /// ```
     ///
@@ -3868,6 +3868,12 @@ impl<T> [T] {
         } else {
             let (left, rest) = self.split_at(offset);
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
+            // Inform Miri that we want to consider the "middle" pointer to be suitably aligned.
+            #[cfg(miri)]
+            crate::intrinsics::miri_promise_symbolic_alignment(
+                rest.as_ptr().cast(),
+                mem::align_of::<U>(),
+            );
             // SAFETY: now `rest` is definitely aligned, so `from_raw_parts` below is okay,
             // since the caller guarantees that we can transmute `T` to `U` safely.
             unsafe {
@@ -3938,6 +3944,12 @@ impl<T> [T] {
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let rest_len = rest.len();
             let mut_ptr = rest.as_mut_ptr();
+            // Inform Miri that we want to consider the "middle" pointer to be suitably aligned.
+            #[cfg(miri)]
+            crate::intrinsics::miri_promise_symbolic_alignment(
+                mut_ptr.cast() as *const (),
+                mem::align_of::<U>(),
+            );
             // We can't use `rest` again after this, that would invalidate its alias `mut_ptr`!
             // SAFETY: see comments for `align_to`.
             unsafe {
@@ -3979,7 +3991,7 @@ impl<T> [T] {
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use core::simd::SimdFloat;
+    /// use core::simd::prelude::*;
     ///
     /// let short = &[1, 2, 3];
     /// let (prefix, middle, suffix) = short.as_simd::<4>();
@@ -3991,7 +4003,6 @@ impl<T> [T] {
     ///
     /// fn basic_simd_sum(x: &[f32]) -> f32 {
     ///     use std::ops::Add;
-    ///     use std::simd::f32x4;
     ///     let (prefix, middle, suffix) = x.as_simd();
     ///     let sums = f32x4::from_array([
     ///         prefix.iter().copied().sum(),

@@ -28,10 +28,16 @@ trait Doom {}
 //~|WARN missing options for `on_unimplemented` attribute
 trait Whatever {}
 
+#[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
+//~^WARN there is no parameter `DoesNotExist` on trait `Test`
+//~|WARN there is no parameter `DoesNotExist` on trait `Test`
+trait Test {}
+
 fn take_foo(_: impl Foo) {}
 fn take_baz(_: impl Baz) {}
 fn take_boom(_: impl Boom) {}
 fn take_whatever(_: impl Whatever) {}
+fn take_test(_: impl Test) {}
 
 fn main() {
     take_foo(1_i32);
@@ -42,4 +48,6 @@ fn main() {
     //~^ERROR Boom
     take_whatever(1_i32);
     //~^ERROR the trait bound `i32: Whatever` is not satisfied
+    take_test(());
+    //~^ERROR {DoesNotExist}
 }

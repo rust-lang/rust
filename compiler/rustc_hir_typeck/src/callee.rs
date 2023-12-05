@@ -6,9 +6,8 @@ use crate::errors;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::{self, CtorKind, DefKind, Namespace, Res};
+use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
@@ -245,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
                 if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
-                    self.tcx.sess.delay_span_bug(
+                    self.tcx.sess.span_delayed_bug(
                         call_expr.span,
                         "input to overloaded call fn is not a self receiver",
                     );
@@ -260,9 +259,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
                         // The `fn`/`fn_mut` lang item is ill-formed, which should have
                         // caused an error elsewhere.
-                        self.tcx
-                            .sess
-                            .delay_span_bug(call_expr.span, "input to call/call_mut is not a ref");
+                        self.tcx.sess.span_delayed_bug(
+                            call_expr.span,
+                            "input to call/call_mut is not a ref",
+                        );
                         return None;
                     };
 
@@ -373,7 +373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
-                self.enforce_context_effects(call_expr.hir_id, call_expr.span, def_id, args);
+                self.enforce_context_effects(call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Unit testing: function items annotated with
@@ -770,7 +770,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self, span))]
     pub(super) fn enforce_context_effects(
         &self,
-        call_expr_hir: HirId,
         span: Span,
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
@@ -781,38 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let generics = tcx.generics_of(callee_did);
         let Some(host_effect_index) = generics.host_effect_index else { return };
 
-        // if the callee does have the param, we need to equate the param to some const
-        // value no matter whether the effects feature is enabled in the local crate,
-        // because inference will fail if we don't.
-        let mut host_always_on =
-            !tcx.features().effects || tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
-
-        // Compute the constness required by the context.
-        let context = tcx.hir().enclosing_body_owner(call_expr_hir);
-        let const_context = tcx.hir().body_const_context(context);
-
-        let kind = tcx.def_kind(context.to_def_id());
-        debug_assert_ne!(kind, DefKind::ConstParam);
-
-        if tcx.has_attr(context.to_def_id(), sym::rustc_do_not_const_check) {
-            trace!("do not const check this context");
-            host_always_on = true;
-        }
-
-        let effect = match const_context {
-            _ if host_always_on => tcx.consts.true_,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { .. }) => {
-                tcx.consts.false_
-            }
-            Some(hir::ConstContext::ConstFn) => {
-                let host_idx = tcx
-                    .generics_of(context)
-                    .host_effect_index
-                    .expect("ConstContext::Maybe must have host effect param");
-                ty::GenericArgs::identity_for_item(tcx, context).const_at(host_idx)
-            }
-            None => tcx.consts.true_,
-        };
+        let effect = tcx.expected_const_effect_param_for_body(self.body_id);
 
         trace!(?effect, ?generics, ?callee_args);
 

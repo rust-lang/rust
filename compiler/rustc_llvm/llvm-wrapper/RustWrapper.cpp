@@ -278,6 +278,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::AllocAlign;
   case SanitizeSafeStack:
     return Attribute::SafeStack;
+  case FnRetThunkExtern:
+    return Attribute::FnRetThunkExtern;
   }
   report_fatal_error("bad AttributeKind");
 }

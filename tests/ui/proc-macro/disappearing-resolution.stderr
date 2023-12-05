@@ -19,7 +19,11 @@ note: ...and refers to the derive macro `Empty` which is defined here
   --> $DIR/auxiliary/test-macros.rs:25:1
    |
 LL | pub fn empty_derive(_: TokenStream) -> TokenStream {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ consider importing it directly
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `Empty` directly
+   |
+LL | use test_macros::Empty;
+   |     ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

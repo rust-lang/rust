@@ -292,7 +292,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     // Rustdoc normalizes possibly not well-formed types, so only
                     // treat this as a bug if we're not in rustdoc.
                     if !tcx.sess.opts.actually_rustdoc {
-                        tcx.sess.delay_span_bug(
+                        tcx.sess.span_delayed_bug(
                             DUMMY_SP,
                             format!("unexpected ambiguity: {c_data:?} {result:?}"),
                         );

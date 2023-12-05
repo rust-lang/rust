@@ -160,6 +160,18 @@ impl<'tcx> Collector<'tcx> {
                                 }
                                 NativeLibKind::RawDylib
                             }
+                            "link-arg" => {
+                                if !features.link_arg_attribute {
+                                    feature_err(
+                                        &sess.parse_sess,
+                                        sym::link_arg_attribute,
+                                        span,
+                                        "link kind `link-arg` is unstable",
+                                    )
+                                    .emit();
+                                }
+                                NativeLibKind::LinkArg
+                            }
                             kind => {
                                 sess.emit_err(errors::UnknownLinkKind { span, kind });
                                 continue;

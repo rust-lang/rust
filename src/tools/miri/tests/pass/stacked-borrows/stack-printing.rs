@@ -1,4 +1,7 @@
-//@compile-flags: -Zmiri-permissive-provenance
+// We disable the GC for this test because it would change what is printed. We are testing the
+// printing, not how it interacts with the GC.
+//@compile-flags: -Zmiri-permissive-provenance -Zmiri-provenance-gc=0
+
 #![feature(strict_provenance)]
 use std::{
     alloc::{self, Layout},

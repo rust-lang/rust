@@ -82,13 +82,13 @@ where
     let value = infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::new(infcx);
         let value = op(&ocx).map_err(|_| {
-            infcx.tcx.sess.delay_span_bug(span, format!("error performing operation: {name}"))
+            infcx.tcx.sess.span_delayed_bug(span, format!("error performing operation: {name}"))
         })?;
         let errors = ocx.select_all_or_error();
         if errors.is_empty() {
             Ok(value)
         } else {
-            Err(infcx.tcx.sess.delay_span_bug(
+            Err(infcx.tcx.sess.span_delayed_bug(
                 DUMMY_SP,
                 format!("errors selecting obligation during MIR typeck: {errors:?}"),
             ))

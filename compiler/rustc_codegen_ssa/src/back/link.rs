@@ -143,7 +143,7 @@ pub fn link_binary<'a>(
                 }
             }
             if sess.opts.json_artifact_notifications {
-                sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename, "link");
+                sess.diagnostic().emit_artifact_notification(&out_filename, "link");
             }
 
             if sess.prof.enabled() {
@@ -270,8 +270,14 @@ pub fn each_linked_rlib(
 
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
-            Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
-            Some(_) => {}
+            Some(&Linkage::NotLinked | &Linkage::Dynamic) => continue,
+            Some(&Linkage::IncludedFromDylib) => {
+                // We always link crate `compiler_builtins` statically. When enabling LTO, we include it as well.
+                if info.compiler_builtins != Some(cnum) {
+                    continue;
+                }
+            }
+            Some(&Linkage::Static) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
         }
         let crate_name = info.crate_name[&cnum];
@@ -520,8 +526,7 @@ fn link_staticlib<'a>(
         &codegen_results.crate_info,
         Some(CrateType::Staticlib),
         &mut |cnum, path| {
-            let lto = are_upstream_rust_objects_already_included(sess)
-                && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
+            let lto = are_upstream_rust_objects_already_included(sess);
 
             let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
             let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
@@ -1256,24 +1261,6 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
     }
 }
 
-/// Returns a boolean indicating whether the specified crate should be ignored
-/// during LTO.
-///
-/// Crates ignored during LTO are not lumped together in the "massive object
-/// file" that we create and are linked in their normal rlib states. See
-/// comments below for what crates do not participate in LTO.
-///
-/// It's unusual for a crate to not participate in LTO. Typically only
-/// compiler-specific and unstable crates have a reason to not participate in
-/// LTO.
-pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
-    // If our target enables builtin function lowering in LLVM then the
-    // crates providing these functions don't participate in LTO (e.g.
-    // no_builtins or compiler builtins crates).
-    !sess.target.no_builtins
-        && (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
-}
-
 /// This functions tries to determine the appropriate linker (and corresponding LinkerFlavor) to use
 pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     fn infer_from(
@@ -1477,7 +1464,7 @@ fn print_native_static_libs(
                 sess.emit_note(errors::StaticLibraryNativeArtifacts);
                 // Prefix for greppability
                 // Note: This must not be translated as tools are allowed to depend on this exact string.
-                sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
+                sess.note(format!("native-static-libs: {}", &lib_args.join(" ")));
             }
         }
     }
@@ -2739,10 +2726,6 @@ fn rehome_sysroot_lib_dir<'a>(sess: &'a Session, lib_dir: &Path) -> PathBuf {
 // symbols). We must continue to include the rest of the rlib, however, as
 // it may contain static native libraries which must be linked in.
 //
-// (*) Crates marked with `#![no_builtins]` don't participate in LTO and
-// their bytecode wasn't included. The object files in those libraries must
-// still be passed to the linker.
-//
 // Note, however, that if we're not doing LTO we can just pass the rlib
 // blindly to the linker (fast) because it's fine if it's not actually
 // included as we're at the end of the dependency chain.
@@ -2768,9 +2751,7 @@ fn add_static_crate<'a>(
         cmd.link_rlib(&rlib_path);
     };
 
-    if !are_upstream_rust_objects_already_included(sess)
-        || ignored_for_lto(sess, &codegen_results.crate_info, cnum)
-    {
+    if !are_upstream_rust_objects_already_included(sess) {
         link_upstream(cratepath);
         return;
     }
@@ -2784,8 +2765,6 @@ fn add_static_crate<'a>(
         let canonical_name = name.replace('-', "_");
         let upstream_rust_objects_already_included =
             are_upstream_rust_objects_already_included(sess);
-        let is_builtins =
-            sess.target.no_builtins || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(
@@ -2802,9 +2781,8 @@ fn add_static_crate<'a>(
 
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the
-                // LTO module. Note that `#![no_builtins]` is excluded from LTO,
-                // though, so we let that object file slide.
-                if upstream_rust_objects_already_included && is_rust_object && is_builtins {
+                // LTO module.
+                if upstream_rust_objects_already_included && is_rust_object {
                     return true;
                 }
 

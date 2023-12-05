@@ -1,3 +1,4 @@
+// We disable the GC for this test because it would change what is printed.
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-provenance-gc=0
 
 #[path = "../../utils/mod.rs"]

@@ -92,9 +92,9 @@ const PARSED = [
         query: 'mod\t:',
         elems: [],
         foundElems: 0,
-        original: 'mod\t:',
+        original: 'mod :',
         returned: [],
-        userQuery: 'mod\t:',
+        userQuery: 'mod :',
         error: "Unexpected `:` (expected path after type filter `mod:`)",
     },
 ];

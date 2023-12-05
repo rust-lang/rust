@@ -1740,9 +1740,9 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
     debug_assert!(needle.len() > 1);
 
     use crate::ops::BitAnd;
+    use crate::simd::cmp::SimdPartialEq;
     use crate::simd::mask8x16 as Mask;
     use crate::simd::u8x16 as Block;
-    use crate::simd::{SimdPartialEq, ToBitMask};
 
     let first_probe = needle[0];
     let last_byte_offset = needle.len() - 1;
@@ -1765,7 +1765,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
     };
 
     // do a naive search if the haystack is too small to fit
-    if haystack.len() < Block::LANES + last_byte_offset {
+    if haystack.len() < Block::LEN + last_byte_offset {
         return Some(haystack.windows(needle.len()).any(|c| c == needle));
     }
 
@@ -1812,7 +1812,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
         let eq_first: Mask = a.simd_eq(first_probe);
         let eq_last: Mask = b.simd_eq(second_probe);
         let both = eq_first.bitand(eq_last);
-        let mask = both.to_bitmask();
+        let mask = both.to_bitmask() as u16;
 
         return mask;
     };
@@ -1822,32 +1822,32 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
     // The loop condition must ensure that there's enough headroom to read LANE bytes,
     // and not only at the current index but also at the index shifted by block_offset
     const UNROLL: usize = 4;
-    while i + last_byte_offset + UNROLL * Block::LANES < haystack.len() && !result {
+    while i + last_byte_offset + UNROLL * Block::LEN < haystack.len() && !result {
         let mut masks = [0u16; UNROLL];
         for j in 0..UNROLL {
-            masks[j] = test_chunk(i + j * Block::LANES);
+            masks[j] = test_chunk(i + j * Block::LEN);
         }
         for j in 0..UNROLL {
             let mask = masks[j];
             if mask != 0 {
-                result |= check_mask(i + j * Block::LANES, mask, result);
+                result |= check_mask(i + j * Block::LEN, mask, result);
             }
         }
-        i += UNROLL * Block::LANES;
+        i += UNROLL * Block::LEN;
     }
-    while i + last_byte_offset + Block::LANES < haystack.len() && !result {
+    while i + last_byte_offset + Block::LEN < haystack.len() && !result {
         let mask = test_chunk(i);
         if mask != 0 {
             result |= check_mask(i, mask, result);
         }
-        i += Block::LANES;
+        i += Block::LEN;
     }
 
     // Process the tail that didn't fit into LANES-sized steps.
     // This simply repeats the same procedure but as right-aligned chunk instead
     // of a left-aligned one. The last byte must be exactly flush with the string end so
     // we don't miss a single byte or read out of bounds.
-    let i = haystack.len() - last_byte_offset - Block::LANES;
+    let i = haystack.len() - last_byte_offset - Block::LEN;
     let mask = test_chunk(i);
     if mask != 0 {
         result |= check_mask(i, mask, result);

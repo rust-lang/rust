@@ -437,7 +437,7 @@ pub trait ReportErrorExt {
     {
         ty::tls::with(move |tcx| {
             let mut builder = tcx.sess.struct_allow(DiagnosticMessage::Str(String::new().into()));
-            let handler = &tcx.sess.parse_sess.span_diagnostic;
+            let handler = tcx.sess.diagnostic();
             let message = self.diagnostic_message();
             self.add_args(handler, &mut builder);
             let s = handler.eagerly_translate_to_string(message, builder.args());

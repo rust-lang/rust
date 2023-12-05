@@ -3,7 +3,7 @@ use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::BytePos;
 
 declare_clippy_lint! {

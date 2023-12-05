@@ -14,7 +14,7 @@ use crate::{
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
 
-    fn delay_bug(&self, txt: String);
+    fn delayed_bug(&self, txt: String);
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef;
 
     fn scalar_pair<FieldIdx: Idx, VariantIdx: Idx>(
@@ -792,7 +792,7 @@ pub trait LayoutCalculator {
         let only_variant = &variants[VariantIdx::new(0)];
         for field in only_variant {
             if field.is_unsized() {
-                self.delay_bug("unsized field in union".to_string());
+                self.delayed_bug("unsized field in union".to_string());
             }
 
             align = align.max(field.align);
@@ -1038,7 +1038,7 @@ fn univariant<
     for &i in &inverse_memory_index {
         let field = &fields[i];
         if !sized {
-            this.delay_bug(format!(
+            this.delayed_bug(format!(
                 "univariant: field #{} comes after unsized field",
                 offsets.len(),
             ));

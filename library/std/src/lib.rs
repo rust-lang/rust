@@ -317,6 +317,7 @@
 #![feature(error_iter)]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
+#![feature(exposed_provenance)]
 #![feature(extend_one)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
@@ -341,6 +342,7 @@
 #![feature(round_ties_even)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
+#![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
@@ -583,9 +585,10 @@ pub mod time;
 #[unstable(feature = "portable_simd", issue = "86656")]
 mod std_float;
 
-#[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 #[unstable(feature = "portable_simd", issue = "86656")]
 pub mod simd {
+    #![doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
+
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
     #[doc(inline)]

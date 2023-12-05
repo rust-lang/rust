@@ -6,7 +6,7 @@ macro_rules! impl_unary_op_test {
     { $scalar:ty, $trait:ident :: $fn:ident, $scalar_fn:expr } => {
         test_helpers::test_lanes! {
             fn $fn<const LANES: usize>() {
-                test_helpers::test_unary_elementwise(
+                test_helpers::test_unary_elementwise_flush_subnormals(
                     &<core_simd::simd::Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                     &$scalar_fn,
                     &|_| true,
@@ -31,7 +31,7 @@ macro_rules! impl_binary_op_test {
 
             test_helpers::test_lanes! {
                 fn normal<const LANES: usize>() {
-                    test_helpers::test_binary_elementwise(
+                    test_helpers::test_binary_elementwise_flush_subnormals(
                         &<Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                         &$scalar_fn,
                         &|_, _| true,
@@ -39,7 +39,7 @@ macro_rules! impl_binary_op_test {
                 }
 
                 fn assign<const LANES: usize>() {
-                    test_helpers::test_binary_elementwise(
+                    test_helpers::test_binary_elementwise_flush_subnormals(
                         &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
                         &|_, _| true,
@@ -68,6 +68,7 @@ macro_rules! impl_binary_checked_op_test {
 
             test_helpers::test_lanes! {
                 fn normal<const LANES: usize>() {
+                    #![allow(clippy::redundant_closure_call)]
                     test_helpers::test_binary_elementwise(
                         &<Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                         &$scalar_fn,
@@ -76,6 +77,7 @@ macro_rules! impl_binary_checked_op_test {
                 }
 
                 fn assign<const LANES: usize>() {
+                    #![allow(clippy::redundant_closure_call)]
                     test_helpers::test_binary_elementwise(
                         &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
@@ -94,11 +96,43 @@ macro_rules! impl_binary_checked_op_test {
 macro_rules! impl_common_integer_tests {
     { $vector:ident, $scalar:ident } => {
         test_helpers::test_lanes! {
+            fn shr<const LANES: usize>() {
+                use core::ops::Shr;
+                let shr = |x: $scalar, y: $scalar| x.wrapping_shr(y as _);
+                test_helpers::test_binary_elementwise(
+                    &<$vector::<LANES> as Shr<$vector::<LANES>>>::shr,
+                    &shr,
+                    &|_, _| true,
+                );
+                test_helpers::test_binary_scalar_rhs_elementwise(
+                    &<$vector::<LANES> as Shr<$scalar>>::shr,
+                    &shr,
+                    &|_, _| true,
+                );
+            }
+
+            fn shl<const LANES: usize>() {
+                use core::ops::Shl;
+                let shl = |x: $scalar, y: $scalar| x.wrapping_shl(y as _);
+                test_helpers::test_binary_elementwise(
+                    &<$vector::<LANES> as Shl<$vector::<LANES>>>::shl,
+                    &shl,
+                    &|_, _| true,
+                );
+                test_helpers::test_binary_scalar_rhs_elementwise(
+                    &<$vector::<LANES> as Shl<$scalar>>::shl,
+                    &shl,
+                    &|_, _| true,
+                );
+            }
+
             fn reduce_sum<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
+                    use test_helpers::subnormals::{flush, flush_in};
                     test_helpers::prop_assert_biteq! (
                         $vector::<LANES>::from_array(x).reduce_sum(),
                         x.iter().copied().fold(0 as $scalar, $scalar::wrapping_add),
+                        flush(x.iter().copied().map(flush_in).fold(0 as $scalar, $scalar::wrapping_add)),
                     );
                     Ok(())
                 });
@@ -106,9 +140,11 @@ macro_rules! impl_common_integer_tests {
 
             fn reduce_product<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
+                    use test_helpers::subnormals::{flush, flush_in};
                     test_helpers::prop_assert_biteq! (
                         $vector::<LANES>::from_array(x).reduce_product(),
                         x.iter().copied().fold(1 as $scalar, $scalar::wrapping_mul),
+                        flush(x.iter().copied().map(flush_in).fold(1 as $scalar, $scalar::wrapping_mul)),
                     );
                     Ok(())
                 });
@@ -163,6 +199,54 @@ macro_rules! impl_common_integer_tests {
                     Ok(())
                 });
             }
+
+            fn swap_bytes<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::swap_bytes,
+                    &$scalar::swap_bytes,
+                    &|_| true,
+                )
+            }
+
+            fn reverse_bits<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::reverse_bits,
+                    &$scalar::reverse_bits,
+                    &|_| true,
+                )
+            }
+
+            fn leading_zeros<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::leading_zeros,
+                    &|x| x.leading_zeros() as _,
+                    &|_| true,
+                )
+            }
+
+            fn trailing_zeros<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::trailing_zeros,
+                    &|x| x.trailing_zeros() as _,
+                    &|_| true,
+                )
+            }
+
+            fn leading_ones<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::leading_ones,
+                    &|x| x.leading_ones() as _,
+                    &|_| true,
+                )
+            }
+
+            fn trailing_ones<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::trailing_ones,
+                    &|x| x.trailing_ones() as _,
+                    &|_| true,
+                )
+            }
         }
     }
 }
@@ -172,7 +256,7 @@ macro_rules! impl_common_integer_tests {
 macro_rules! impl_signed_tests {
     { $scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdInt;
+            use core_simd::simd::num::SimdInt;
             type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -224,7 +308,7 @@ macro_rules! impl_signed_tests {
                 }
 
                 fn simd_min<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                    use core_simd::simd::cmp::SimdOrd;
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(0);
                     assert_eq!(a.simd_min(b), a);
@@ -234,7 +318,7 @@ macro_rules! impl_signed_tests {
                 }
 
                 fn simd_max<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                    use core_simd::simd::cmp::SimdOrd;
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(0);
                     assert_eq!(a.simd_max(b), b);
@@ -244,7 +328,7 @@ macro_rules! impl_signed_tests {
                 }
 
                 fn simd_clamp<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                    use core_simd::simd::cmp::SimdOrd;
                     let min = Vector::<LANES>::splat(Scalar::MIN);
                     let max = Vector::<LANES>::splat(Scalar::MAX);
                     let zero = Vector::<LANES>::splat(0);
@@ -313,7 +397,7 @@ macro_rules! impl_signed_tests {
 macro_rules! impl_unsigned_tests {
     { $scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdUint;
+            use core_simd::simd::num::SimdUint;
             type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -324,6 +408,16 @@ macro_rules! impl_unsigned_tests {
                     let a = Vector::<LANES>::splat(42);
                     let b = Vector::<LANES>::splat(0);
                     let _ = a % b;
+                }
+            }
+
+            test_helpers::test_lanes! {
+                fn wrapping_neg<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::wrapping_neg,
+                        &Scalar::wrapping_neg,
+                        &|_| true,
+                    );
                 }
             }
 
@@ -348,7 +442,7 @@ macro_rules! impl_unsigned_tests {
 macro_rules! impl_float_tests {
     { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdFloat;
+            use core_simd::simd::num::SimdFloat;
             type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -433,7 +527,7 @@ macro_rules! impl_float_tests {
                 }
 
                 fn to_degrees<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
+                    test_helpers::test_unary_elementwise_flush_subnormals(
                         &Vector::<LANES>::to_degrees,
                         &Scalar::to_degrees,
                         &|_| true,
@@ -441,7 +535,7 @@ macro_rules! impl_float_tests {
                 }
 
                 fn to_radians<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
+                    test_helpers::test_unary_elementwise_flush_subnormals(
                         &Vector::<LANES>::to_radians,
                         &Scalar::to_radians,
                         &|_| true,
@@ -511,7 +605,12 @@ macro_rules! impl_float_tests {
                 }
 
                 fn simd_clamp<const LANES: usize>() {
+                    if cfg!(all(target_arch = "powerpc64", target_feature = "vsx")) {
+                        // https://gitlab.com/qemu-project/qemu/-/issues/1780
+                        return;
+                    }
                     test_helpers::test_3(&|value: [Scalar; LANES], mut min: [Scalar; LANES], mut max: [Scalar; LANES]| {
+                        use test_helpers::subnormals::flush_in;
                         for (min, max) in min.iter_mut().zip(max.iter_mut()) {
                             if max < min {
                                 core::mem::swap(min, max);
@@ -528,8 +627,20 @@ macro_rules! impl_float_tests {
                         for i in 0..LANES {
                             result_scalar[i] = value[i].clamp(min[i], max[i]);
                         }
+                        let mut result_scalar_flush = [Scalar::default(); LANES];
+                        for i in 0..LANES {
+                            // Comparisons flush-to-zero, but return value selection is _not_ flushed.
+                            let mut value = value[i];
+                            if flush_in(value) < flush_in(min[i]) {
+                                value = min[i];
+                            }
+                            if flush_in(value) > flush_in(max[i]) {
+                                value = max[i];
+                            }
+                            result_scalar_flush[i] = value
+                        }
                         let result_vector = Vector::from_array(value).simd_clamp(min.into(), max.into()).to_array();
-                        test_helpers::prop_assert_biteq!(result_scalar, result_vector);
+                        test_helpers::prop_assert_biteq!(result_vector, result_scalar, result_scalar_flush);
                         Ok(())
                     })
                 }

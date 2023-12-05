@@ -589,6 +589,7 @@ Definite bugs found:
 * [`regex` incorrectly handling unaligned `Vec<u8>` buffers](https://www.reddit.com/r/rust/comments/vq3mmu/comment/ienc7t0?context=3)
 * [Incorrect use of `compare_exchange_weak` in `once_cell`](https://github.com/matklad/once_cell/issues/186)
 * [Dropping with unaligned pointers in `vec::IntoIter`](https://github.com/rust-lang/rust/pull/106084)
+* [Deallocating with the wrong layout in new specializations for in-place `Iterator::collect`](https://github.com/rust-lang/rust/pull/118460)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

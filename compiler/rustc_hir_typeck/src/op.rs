@@ -900,7 +900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) {
             self.tcx
                 .sess
-                .delay_span_bug(span, "operator didn't have the right number of generic args");
+                .span_delayed_bug(span, "operator didn't have the right number of generic args");
             return Err(vec![]);
         }
 
@@ -933,7 +933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This path may do some inference, so make sure we've really
                 // doomed compilation so as to not accidentally stabilize new
                 // inference or something here...
-                self.tcx.sess.delay_span_bug(span, "this path really should be doomed...");
+                self.tcx.sess.span_delayed_bug(span, "this path really should be doomed...");
                 // Guide inference for the RHS expression if it's provided --
                 // this will allow us to better error reporting, at the expense
                 // of making some error messages a bit more specific.

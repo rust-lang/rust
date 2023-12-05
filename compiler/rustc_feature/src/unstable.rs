@@ -354,8 +354,6 @@ declare_features! (
     (unstable, async_fn_track_caller, "1.73.0", Some(110011), None),
     /// Allows builtin # foo() syntax
     (unstable, builtin_syntax, "1.71.0", Some(110680), None),
-    /// Allows `c"foo"` literals.
-    (unstable, c_str_literals, "1.71.0", Some(105723), None),
     /// Treat `extern "C"` function as nounwind.
     (unstable, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
@@ -500,6 +498,9 @@ declare_features! (
     (incomplete, lazy_type_alias, "1.72.0", Some(112792), None),
     /// Allows `if/while p && let q = r && ...` chains.
     (unstable, let_chains, "1.37.0", Some(53667), None),
+    /// Allows using `#[link(kind = "link-arg", name = "...")]`
+    /// to pass custom arguments to the linker.
+    (unstable, link_arg_attribute, "CURRENT_RUSTC_VERSION", Some(99427), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (unstable, lint_reasons, "1.31.0", Some(54503), None),
     /// Give access to additional metadata about declarative macro meta-variables.
@@ -542,8 +543,6 @@ declare_features! (
     (unstable, offset_of_enum, "1.75.0", Some(106655), None),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882), None),
-    /// Allows exhaustive integer pattern matching on `usize` and `isize`.
-    (unstable, precise_pointer_size_matching, "1.32.0", Some(56354), None),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.

@@ -86,6 +86,10 @@ LL |     const_eval_select((true,), foo, baz);
               found function signature `fn(i32) -> _`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+help: consider wrapping the function in a closure
+   |
+LL |     const_eval_select((true,), |arg0: bool| foo(/* i32 */), baz);
+   |                                ++++++++++++    +++++++++++
 
 error: this argument must be a `const fn`
   --> $DIR/const-eval-select-bad.rs:42:29

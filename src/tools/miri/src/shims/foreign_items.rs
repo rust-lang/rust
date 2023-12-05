@@ -467,7 +467,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ptr = this.read_pointer(ptr)?;
                 let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr).map_err(|_e| {
                     err_machine_stop!(TerminationInfo::Abort(format!(
-                        "pointer passed to miri_get_alloc_id must not be dangling, got {ptr:?}"
+                        "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
                     )))
                 })?;
                 this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
@@ -499,7 +499,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr)?;
                 if offset != Size::ZERO {
                     throw_unsup_format!(
-                        "pointer passed to miri_static_root must point to beginning of an allocated block"
+                        "pointer passed to `miri_static_root` must point to beginning of an allocated block"
                     );
                 }
                 this.machine.static_roots.push(alloc_id);
@@ -554,6 +554,49 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "miri_write_to_stderr" => std::io::stderr().write_all(msg),
                     _ => unreachable!(),
                 };
+            }
+
+            // Promises that a pointer has a given symbolic alignment.
+            "miri_promise_symbolic_alignment" => {
+                use rustc_target::abi::AlignFromBytesError;
+
+                let [ptr, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let align = this.read_target_usize(align)?;
+                if !align.is_power_of_two() {
+                    throw_unsup_format!(
+                        "`miri_promise_symbolic_alignment`: alignment must be a power of 2, got {align}"
+                    );
+                }
+                let align = Align::from_bytes(align).unwrap_or_else(|err| {
+                    match err {
+                        AlignFromBytesError::NotPowerOfTwo(_) => unreachable!(),
+                        // When the alignment is a power of 2 but too big, clamp it to MAX.
+                        AlignFromBytesError::TooLarge(_) => Align::MAX,
+                    }
+                });
+                let (_, addr) = ptr.into_parts(); // we know the offset is absolute
+                // Cannot panic since `align` is a power of 2 and hence non-zero.
+                if addr.bytes().checked_rem(align.bytes()).unwrap() != 0 {
+                    throw_unsup_format!(
+                        "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
+                    );
+                }
+                if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr) {
+                    let (_size, alloc_align, _kind) = this.get_alloc_info(alloc_id);
+                    // Not `get_alloc_extra_mut`, need to handle read-only allocations!
+                    let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                    // If the newly promised alignment is bigger than the native alignment of this
+                    // allocation, and bigger than the previously promised alignment, then set it.
+                    if align > alloc_align
+                        && !alloc_extra
+                            .symbolic_alignment
+                            .get()
+                            .is_some_and(|(_, old_align)| align <= old_align)
+                    {
+                        alloc_extra.symbolic_alignment.set(Some((offset, align)));
+                    }
+                }
             }
 
             // Standard C allocation

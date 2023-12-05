@@ -7,7 +7,6 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::CRATE_DEF_ID;
-use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
@@ -31,8 +30,8 @@ use crate::{
     nll::PoloniusOutput,
     region_infer::reverse_sccs::ReverseSccGraph,
     region_infer::values::{
-        LivenessValues, PlaceholderIndices, PointIndex, RegionElement, RegionValueElements,
-        RegionValues, ToElementIndex,
+        LivenessValues, PlaceholderIndices, RegionElement, RegionValueElements, RegionValues,
+        ToElementIndex,
     },
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
     universal_regions::UniversalRegions,
@@ -120,9 +119,6 @@ pub struct RegionInferenceContext<'tcx> {
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-
-    /// The set of loans that are live at a given point in the CFG, when using `-Zpolonius=next`.
-    live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -335,7 +331,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues,
         elements: &Rc<RegionValueElements>,
-        live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
     ) -> Self {
         debug!("universal_regions: {:#?}", universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
@@ -389,7 +384,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             type_tests,
             universal_regions,
             universal_region_relations,
-            live_loans,
         };
 
         result.init_free_and_bound_regions();
@@ -2325,7 +2319,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Note: for now, the sets of live loans is only available when using `-Zpolonius=next`.
     pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, location: Location) -> bool {
         let point = self.liveness_constraints.point_from_location(location);
-        self.live_loans.contains(point, loan_idx)
+        self.liveness_constraints.is_loan_live_at(loan_idx, point)
     }
 }
 

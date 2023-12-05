@@ -1,5 +1,10 @@
 #![cfg_attr(feature = "as_crate", no_std)] // We are std!
-#![cfg_attr(feature = "as_crate", feature(platform_intrinsics), feature(portable_simd))]
+#![cfg_attr(
+    feature = "as_crate",
+    feature(platform_intrinsics),
+    feature(portable_simd),
+    allow(internal_features)
+)]
 #[cfg(not(feature = "as_crate"))]
 use core::simd;
 #[cfg(feature = "as_crate")]
@@ -144,7 +149,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simd::*;
+    use simd::prelude::*;
 
     #[test]
     fn everything_works() {

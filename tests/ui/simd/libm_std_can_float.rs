@@ -3,7 +3,7 @@
 // This is the converse of the other libm test.
 #![feature(portable_simd)]
 use std::simd::f32x4;
-use std::simd::{SimdFloat, StdFloat};
+use std::simd::{num::SimdFloat, StdFloat};
 
 // For SIMD float ops, the LLIR version which is used to implement the portable
 // forms of them may become calls to math.h AKA libm. So, we can't guarantee

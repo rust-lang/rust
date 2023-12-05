@@ -357,7 +357,7 @@ fn parse_sep_and_kleene_op<'a>(
 fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &ParseSess, token: &Token) {
     sess.span_diagnostic
         .span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));
-    sess.span_diagnostic.span_note_without_error(
+    sess.span_diagnostic.span_note(
         token.span,
         "`$$` and meta-variable expressions are not allowed inside macro parameter definitions",
     );

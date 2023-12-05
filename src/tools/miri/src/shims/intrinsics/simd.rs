@@ -1,10 +1,13 @@
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
+use rustc_span::{sym, Symbol};
 use rustc_target::abi::{Endian, HasDataLayout};
 
+use crate::helpers::{
+    bool_to_simd_element, check_arg_count, round_to_next_multiple_of, simd_element_to_bool,
+};
 use crate::*;
-use helpers::{bool_to_simd_element, check_arg_count, simd_element_to_bool};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -25,7 +28,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "floor"
             | "round"
             | "trunc"
-            | "fsqrt" => {
+            | "fsqrt"
+            | "ctlz"
+            | "cttz"
+            | "bswap"
+            | "bitreverse"
+            => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
@@ -38,6 +46,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Abs,
                     Sqrt,
                     Round(rustc_apfloat::Round),
+                    Numeric(Symbol),
                 }
                 let which = match intrinsic_name {
                     "neg" => Op::MirOp(mir::UnOp::Neg),
@@ -47,6 +56,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "floor" => Op::Round(rustc_apfloat::Round::TowardNegative),
                     "round" => Op::Round(rustc_apfloat::Round::NearestTiesToAway),
                     "trunc" => Op::Round(rustc_apfloat::Round::TowardZero),
+                    "ctlz" => Op::Numeric(sym::ctlz),
+                    "cttz" => Op::Numeric(sym::cttz),
+                    "bswap" => Op::Numeric(sym::bswap),
+                    "bitreverse" => Op::Numeric(sym::bitreverse),
                     _ => unreachable!(),
                 };
 
@@ -101,6 +114,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 }
                             }
                         }
+                        Op::Numeric(name) => {
+                            this.numeric_intrinsic(name, op.to_scalar(), op.layout)?
+                        }
                     };
                     this.write_scalar(val, &dest)?;
                 }
@@ -126,7 +142,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "fmin"
             | "saturating_add"
             | "saturating_sub"
-            | "arith_offset" => {
+            | "arith_offset"
+            => {
                 use mir::BinOp;
 
                 let [left, right] = check_arg_count(args)?;
@@ -379,14 +396,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_immediate(*val, &dest)?;
                 }
             }
+            // Variant of `select` that takes a bitmask rather than a "vector of bool".
             "select_bitmask" => {
                 let [mask, yes, no] = check_arg_count(args)?;
                 let (yes, yes_len) = this.operand_to_simd(yes)?;
                 let (no, no_len) = this.operand_to_simd(no)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
-                let bitmask_len = dest_len.max(8);
+                let bitmask_len = round_to_next_multiple_of(dest_len, 8);
 
-                assert!(mask.layout.ty.is_integral());
+                // The mask must be an integer or an array.
+                assert!(
+                    mask.layout.ty.is_integral()
+                        || matches!(mask.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
+                );
                 assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, mask.layout.size.bits());
                 assert_eq!(dest_len, yes_len);
@@ -394,13 +416,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let dest_len = u32::try_from(dest_len).unwrap();
                 let bitmask_len = u32::try_from(bitmask_len).unwrap();
 
-                let mask: u64 =
-                    this.read_scalar(mask)?.to_bits(mask.layout.size)?.try_into().unwrap();
+                // To read the mask, we transmute it to an integer.
+                // That does the right thing wrt endianess.
+                let mask_ty = this.machine.layouts.uint(mask.layout.size).unwrap();
+                let mask = mask.transmute(mask_ty, this)?;
+                let mask: u64 = this.read_scalar(&mask)?.to_bits(mask_ty.size)?.try_into().unwrap();
+
                 for i in 0..dest_len {
-                    let mask = mask
-                        & 1u64
-                            .checked_shl(simd_bitmask_index(i, dest_len, this.data_layout().endian))
-                            .unwrap();
+                    let bit_i = simd_bitmask_index(i, dest_len, this.data_layout().endian);
+                    let mask = mask & 1u64.checked_shl(bit_i).unwrap();
                     let yes = this.read_immediate(&this.project_index(&yes, i.into())?)?;
                     let no = this.read_immediate(&this.project_index(&no, i.into())?)?;
                     let dest = this.project_index(&dest, i.into())?;
@@ -410,6 +434,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
                 for i in dest_len..bitmask_len {
                     // If the mask is "padded", ensure that padding is all-zero.
+                    // This deliberately does not use `simd_bitmask_index`; these bits are outside
+                    // the bitmask. It does not matter in which order we check them.
                     let mask = mask & 1u64.checked_shl(i).unwrap();
                     if mask != 0 {
                         throw_ub_format!(
@@ -417,6 +443,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         );
                     }
                 }
+            }
+            // Converts a "vector of bool" into a bitmask.
+            "bitmask" => {
+                let [op] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let bitmask_len = round_to_next_multiple_of(op_len, 8);
+
+                // Returns either an unsigned integer or array of `u8`.
+                assert!(
+                    dest.layout.ty.is_integral()
+                        || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
+                );
+                assert!(bitmask_len <= 64);
+                assert_eq!(bitmask_len, dest.layout.size.bits());
+                let op_len = u32::try_from(op_len).unwrap();
+
+                let mut res = 0u64;
+                for i in 0..op_len {
+                    let op = this.read_immediate(&this.project_index(&op, i.into())?)?;
+                    if simd_element_to_bool(op)? {
+                        res |= 1u64
+                            .checked_shl(simd_bitmask_index(i, op_len, this.data_layout().endian))
+                            .unwrap();
+                    }
+                }
+                // We have to change the type of the place to be able to write `res` into it. This
+                // transmutes the integer to an array, which does the right thing wrt endianess.
+                let dest =
+                    dest.transmute(this.machine.layouts.uint(dest.layout.size).unwrap(), this)?;
+                this.write_int(res, &dest)?;
             }
             "cast" | "as" | "cast_ptr" | "expose_addr" | "from_exposed_addr" => {
                 let [op] = check_arg_count(args)?;
@@ -599,34 +655,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         this.write_immediate(*value, &place)?;
                     }
                 }
-            }
-            "bitmask" => {
-                let [op] = check_arg_count(args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let bitmask_len = op_len.max(8);
-
-                // Returns either an unsigned integer or array of `u8`.
-                assert!(
-                    dest.layout.ty.is_integral()
-                        || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
-                );
-                assert!(bitmask_len <= 64);
-                assert_eq!(bitmask_len, dest.layout.size.bits());
-                let op_len = u32::try_from(op_len).unwrap();
-
-                let mut res = 0u64;
-                for i in 0..op_len {
-                    let op = this.read_immediate(&this.project_index(&op, i.into())?)?;
-                    if simd_element_to_bool(op)? {
-                        res |= 1u64
-                            .checked_shl(simd_bitmask_index(i, op_len, this.data_layout().endian))
-                            .unwrap();
-                    }
-                }
-                // We have to force the place type to be an int so that we can write `res` into it.
-                let mut dest = this.force_allocation(dest)?;
-                dest.layout = this.machine.layouts.uint(dest.layout.size).unwrap();
-                this.write_int(res, &dest)?;
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),

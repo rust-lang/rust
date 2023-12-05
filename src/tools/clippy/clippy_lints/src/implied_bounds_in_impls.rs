@@ -10,7 +10,7 @@ use rustc_hir::{
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, ClauseKind, Generics, Ty, TyCtxt};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.74.0"]
     pub IMPLIED_BOUNDS_IN_IMPLS,
-    nursery,
+    complexity,
     "specifying bounds that are implied by other bounds in `impl Trait` type"
 }
 declare_lint_pass!(ImpliedBoundsInImpls => [IMPLIED_BOUNDS_IN_IMPLS]);

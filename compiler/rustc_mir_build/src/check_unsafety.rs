@@ -470,7 +470,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     if let Some((assigned_ty, assignment_span)) = self.assignment_info {
                         if assigned_ty.needs_drop(self.tcx, self.param_env) {
                             // This would be unsafe, but should be outright impossible since we reject such unions.
-                            self.tcx.sess.delay_span_bug(assignment_span, format!("union fields that need dropping should be impossible: {assigned_ty}"));
+                            self.tcx.sess.span_delayed_bug(assignment_span, format!("union fields that need dropping should be impossible: {assigned_ty}"));
                         }
                     } else {
                         self.requires_unsafe(expr.span, AccessToUnionField);

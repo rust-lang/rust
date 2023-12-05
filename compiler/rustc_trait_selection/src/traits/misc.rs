@@ -173,7 +173,7 @@ pub fn all_fields_implement_trait<'tcx>(
             // between expected and found const-generic types. Don't report an
             // additional copy error here, since it's not typically useful.
             if !normalization_errors.is_empty() || ty.references_error() {
-                tcx.sess.delay_span_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking {tr} implementation", tr = tcx.def_path_str(trait_def_id)));
+                tcx.sess.span_delayed_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking {tr} implementation", tr = tcx.def_path_str(trait_def_id)));
                 continue;
             }
 

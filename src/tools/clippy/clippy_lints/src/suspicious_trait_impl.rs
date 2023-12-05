@@ -4,7 +4,7 @@ use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TR
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

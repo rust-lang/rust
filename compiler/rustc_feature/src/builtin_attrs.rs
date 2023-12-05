@@ -813,7 +813,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
         TEST, rustc_error, Normal,
-        template!(Word, List: "delay_span_bug_from_inside_query"), WarnFollowingWordOnly
+        template!(Word, List: "span_delayed_bug_from_inside_query"), WarnFollowingWordOnly
     ),
     rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),

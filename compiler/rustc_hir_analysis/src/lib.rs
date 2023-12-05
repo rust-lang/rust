@@ -209,8 +209,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
 
-    // HACK: `check_mod_type_wf` may spuriously emit errors due to `delay_span_bug`, even if those errors
-    // only actually get emitted in `check_mod_item_types`.
+    // HACK: `check_mod_type_wf` may spuriously emit errors due to `span_delayed_bug`, even if
+    // those errors only actually get emitted in `check_mod_item_types`.
     errs?;
 
     if tcx.features().rustc_attrs {

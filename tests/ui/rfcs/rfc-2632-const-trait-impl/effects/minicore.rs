@@ -21,8 +21,7 @@ trait Add<Rhs = Self> {
     fn add(self, rhs: Rhs) -> Self::Output;
 }
 
-// FIXME(effects) we shouldn't need to have to specify `Rhs`.
-impl const Add<i32> for i32 {
+impl const Add for i32 {
     type Output = i32;
     fn add(self, rhs: i32) -> i32 {
         loop {}
@@ -336,7 +335,7 @@ fn from_str(s: &str) -> Result<bool, ()> {
 }
 
 #[lang = "eq"]
-// FIXME #[const_trait]
+#[const_trait]
 trait PartialEq<Rhs: ?Sized = Self> {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool {
@@ -344,8 +343,16 @@ trait PartialEq<Rhs: ?Sized = Self> {
     }
 }
 
-// FIXME(effects): again, this should not error without Rhs specified
-impl PartialEq<str> for str {
+impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
+where
+    A: ~const PartialEq<B>,
+{
+    fn eq(&self, other: &&B) -> bool {
+        PartialEq::eq(*self, *other)
+    }
+}
+
+impl PartialEq for str {
     fn eq(&self, other: &str) -> bool {
         loop {}
     }

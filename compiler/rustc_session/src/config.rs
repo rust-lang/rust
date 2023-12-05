@@ -8,23 +8,19 @@ use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
-use rustc_target::abi::Align;
-use rustc_target::spec::LinkSelfContainedComponents;
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
-use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
-
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
-
-use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
-
+use rustc_target::abi::Align;
+use rustc_target::spec::LinkSelfContainedComponents;
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -555,12 +551,15 @@ impl Default for ErrorOutputType {
 /// Parameter to control path trimming.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TrimmedDefPaths {
-    /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive query
+    /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive
+    /// query.
     #[default]
     Never,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call `delay_good_path_bug`
+    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call
+    /// `good_path_delayed_bug`.
     Always,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_good_path_bug`
+    /// `try_print_trimmed_def_path` calls the expensive query, the query calls
+    /// `good_path_delayed_bug`.
     GoodPath,
 }
 
@@ -1250,7 +1249,7 @@ fn default_configuration(sess: &Session) -> Cfg {
     // NOTE: This should be kept in sync with `CheckCfg::fill_well_known` below.
     let end = &sess.target.endian;
     let arch = &sess.target.arch;
-    let wordsz = sess.target.pointer_width.to_string();
+    let wordsz = sess.target.pointer_width as u64;
     let os = &sess.target.os;
     let env = &sess.target.env;
     let abi = &sess.target.abi;
@@ -1277,7 +1276,7 @@ fn default_configuration(sess: &Session) -> Cfg {
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
     ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
-    ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
+    ret.insert((sym::target_pointer_width, Some(sym::integer(wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_abi, Some(Symbol::intern(abi))));
     if sess.is_nightly_build() {
@@ -1297,19 +1296,18 @@ fn default_configuration(sess: &Session) -> Cfg {
     ] {
         if i >= min_atomic_width && i <= max_atomic_width {
             has_atomic = true;
-            let mut insert_atomic = |s, align: Align| {
-                ret.insert((sym::target_has_atomic_load_store, Some(Symbol::intern(s))));
+            let mut insert_atomic = |sym, align: Align| {
+                ret.insert((sym::target_has_atomic_load_store, Some(sym)));
                 if atomic_cas {
-                    ret.insert((sym::target_has_atomic, Some(Symbol::intern(s))));
+                    ret.insert((sym::target_has_atomic, Some(sym)));
                 }
                 if align.bits() == i {
-                    ret.insert((sym::target_has_atomic_equal_alignment, Some(Symbol::intern(s))));
+                    ret.insert((sym::target_has_atomic_equal_alignment, Some(sym)));
                 }
             };
-            let s = i.to_string();
-            insert_atomic(&s, align);
-            if s == wordsz {
-                insert_atomic("ptr", layout.pointer_align.abi);
+            insert_atomic(sym::integer(i), align);
+            if wordsz == i {
+                insert_atomic(sym::ptr, layout.pointer_align.abi);
             }
         }
     }
@@ -2150,25 +2148,27 @@ fn collect_print_requests(
     }
 
     const PRINT_KINDS: &[(&str, PrintKind)] = &[
-        ("crate-name", PrintKind::CrateName),
-        ("file-names", PrintKind::FileNames),
-        ("sysroot", PrintKind::Sysroot),
-        ("target-libdir", PrintKind::TargetLibdir),
-        ("cfg", PrintKind::Cfg),
+        // tidy-alphabetical-start
+        ("all-target-specs-json", PrintKind::AllTargetSpecs),
         ("calling-conventions", PrintKind::CallingConventions),
-        ("target-list", PrintKind::TargetList),
+        ("cfg", PrintKind::Cfg),
+        ("code-models", PrintKind::CodeModels),
+        ("crate-name", PrintKind::CrateName),
+        ("deployment-target", PrintKind::DeploymentTarget),
+        ("file-names", PrintKind::FileNames),
+        ("link-args", PrintKind::LinkArgs),
+        ("native-static-libs", PrintKind::NativeStaticLibs),
+        ("relocation-models", PrintKind::RelocationModels),
+        ("split-debuginfo", PrintKind::SplitDebuginfo),
+        ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+        ("sysroot", PrintKind::Sysroot),
         ("target-cpus", PrintKind::TargetCPUs),
         ("target-features", PrintKind::TargetFeatures),
-        ("relocation-models", PrintKind::RelocationModels),
-        ("code-models", PrintKind::CodeModels),
-        ("tls-models", PrintKind::TlsModels),
-        ("native-static-libs", PrintKind::NativeStaticLibs),
-        ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+        ("target-libdir", PrintKind::TargetLibdir),
+        ("target-list", PrintKind::TargetList),
         ("target-spec-json", PrintKind::TargetSpec),
-        ("all-target-specs-json", PrintKind::AllTargetSpecs),
-        ("link-args", PrintKind::LinkArgs),
-        ("split-debuginfo", PrintKind::SplitDebuginfo),
-        ("deployment-target", PrintKind::DeploymentTarget),
+        ("tls-models", PrintKind::TlsModels),
+        // tidy-alphabetical-end
     ];
 
     // We disallow reusing the same path in multiple prints, such as `--print
@@ -2297,14 +2297,7 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
-fn select_debuginfo_compression(
-    _handler: &EarlyErrorHandler,
-    unstable_opts: &UnstableOptions,
-) -> DebugInfoCompression {
-    unstable_opts.debuginfo_compression
-}
-
-pub(crate) fn parse_assert_incr_state(
+fn parse_assert_incr_state(
     handler: &EarlyErrorHandler,
     opt_assertion: &Option<String>,
 ) -> Option<IncrementalStateAssertion> {
@@ -2460,6 +2453,17 @@ pub fn parse_externs(
     matches: &getopts::Matches,
     unstable_opts: &UnstableOptions,
 ) -> Externs {
+    fn is_ascii_ident(string: &str) -> bool {
+        let mut chars = string.chars();
+        if let Some(start) = chars.next()
+            && (start.is_ascii_alphabetic() || start == '_')
+        {
+            chars.all(|char| char.is_ascii_alphanumeric() || char == '_')
+        } else {
+            false
+        }
+    }
+
     let is_unstable_enabled = unstable_opts.unstable_options;
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for arg in matches.opt_strs("extern") {
@@ -2472,12 +2476,12 @@ pub fn parse_externs(
             Some((opts, name)) => (Some(opts), name.to_string()),
         };
 
-        if !crate::utils::is_ascii_ident(&name) {
+        if !is_ascii_ident(&name) {
             let mut error = handler.early_struct_error(format!(
                 "crate name `{name}` passed to `--extern` is not a valid ASCII identifier"
             ));
             let adjusted_name = name.replace('-', "_");
-            if crate::utils::is_ascii_ident(&adjusted_name) {
+            if is_ascii_ident(&adjusted_name) {
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
                 ));
@@ -2791,8 +2795,7 @@ pub fn build_session_options(
     // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
-    let debuginfo_compression: DebugInfoCompression =
-        select_debuginfo_compression(handler, &unstable_opts);
+    let debuginfo_compression = unstable_opts.debuginfo_compression;
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
@@ -3143,6 +3146,12 @@ impl PpMode {
     }
 }
 
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub enum WasiExecModel {
+    Command,
+    Reactor,
+}
+
 /// Command-line arguments passed to the compiler have to be incorporated with
 /// the dependency tracking system for incremental compilation. This module
 /// provides some utilities to make this more convenient.
@@ -3164,13 +3173,13 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
-        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
+        ErrorOutputType, FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay,
+        LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType,
+        OutputTypes, Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
         SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        WasiExecModel,
     };
     use crate::lint;
-    use crate::options::WasiExecModel;
     use crate::utils::NativeLib;
     use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;
@@ -3273,6 +3282,7 @@ pub(crate) mod dep_tracking {
         TraitSolver,
         Polonius,
         InliningThreshold,
+        FunctionReturn,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3450,4 +3460,15 @@ impl Default for InliningThreshold {
     fn default() -> Self {
         Self::Sometimes(100)
     }
+}
+
+/// The different settings that the `-Zfunction-return` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+pub enum FunctionReturn {
+    /// Keep the function return unmodified.
+    #[default]
+    Keep,
+
+    /// Replace returns with jumps to thunk, without emitting the thunk.
+    ThunkExtern,
 }

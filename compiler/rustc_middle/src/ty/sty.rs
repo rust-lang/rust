@@ -1545,7 +1545,7 @@ impl<'tcx> Region<'tcx> {
         tcx.intern_region(ty::ReError(reported))
     }
 
-    /// Constructs a `RegionKind::ReError` region and registers a `delay_span_bug` to ensure it
+    /// Constructs a `RegionKind::ReError` region and registers a `span_delayed_bug` to ensure it
     /// gets used.
     #[track_caller]
     pub fn new_error_misc(tcx: TyCtxt<'tcx>) -> Region<'tcx> {
@@ -1556,7 +1556,7 @@ impl<'tcx> Region<'tcx> {
         )
     }
 
-    /// Constructs a `RegionKind::ReError` region and registers a `delay_span_bug` with the given
+    /// Constructs a `RegionKind::ReError` region and registers a `span_delayed_bug` with the given
     /// `msg` to ensure it gets used.
     #[track_caller]
     pub fn new_error_with_message<S: Into<MultiSpan>>(
@@ -1564,7 +1564,7 @@ impl<'tcx> Region<'tcx> {
         span: S,
         msg: &'static str,
     ) -> Region<'tcx> {
-        let reported = tcx.sess.delay_span_bug(span, msg);
+        let reported = tcx.sess.span_delayed_bug(span, msg);
         Region::new_error(tcx, reported)
     }
 
@@ -1997,13 +1997,13 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Error(reported))
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` to ensure it gets used.
     #[track_caller]
     pub fn new_misc_error(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         Ty::new_error_with_message(tcx, DUMMY_SP, "TyKind::Error constructed but no error reported")
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
+    /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
     pub fn new_error_with_message<S: Into<MultiSpan>>(
@@ -2011,7 +2011,7 @@ impl<'tcx> Ty<'tcx> {
         span: S,
         msg: impl Into<String>,
     ) -> Ty<'tcx> {
-        let reported = tcx.sess.delay_span_bug(span, msg);
+        let reported = tcx.sess.span_delayed_bug(span, msg);
         Ty::new(tcx, Error(reported))
     }
 

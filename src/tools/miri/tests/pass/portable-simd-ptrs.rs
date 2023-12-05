@@ -2,7 +2,7 @@
 //@compile-flags: -Zmiri-permissive-provenance
 #![feature(portable_simd, platform_intrinsics)]
 use std::ptr;
-use std::simd::*;
+use std::simd::prelude::*;
 
 fn main() {
     // Pointer casts

@@ -464,7 +464,7 @@ pub fn eval_entry<'tcx>(
         // Check for thread leaks.
         if !ecx.have_all_terminated() {
             tcx.sess.err("the main thread terminated without waiting for all remaining threads");
-            tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
+            tcx.sess.note("pass `-Zmiri-ignore-leaks` to disable this check");
             return None;
         }
         // Check for memory leaks.
@@ -475,7 +475,7 @@ pub fn eval_entry<'tcx>(
             let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
             if ecx.machine.collect_leak_backtraces {
                 // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
-                tcx.sess.note_without_error(leak_message);
+                tcx.sess.note(leak_message);
             } else {
                 // If we do not have backtraces, we just report an error without any span.
                 tcx.sess.err(leak_message);

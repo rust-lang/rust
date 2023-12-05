@@ -18,7 +18,6 @@ use crate::errors::{
     UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
     UseEqInstead, WrapType,
 };
-
 use crate::fluent_generated as fluent;
 use crate::parser;
 use crate::parser::attr::InnerAttrPolicy;
@@ -247,11 +246,11 @@ impl<'a> Parser<'a> {
         sp: S,
         m: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        self.sess.span_diagnostic.struct_span_err(sp, m)
+        self.diagnostic().struct_span_err(sp, m)
     }
 
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: impl Into<String>) -> ! {
-        self.sess.span_diagnostic.span_bug(sp, m)
+        self.diagnostic().span_bug(sp, m)
     }
 
     pub(super) fn diagnostic(&self) -> &'a Handler {
@@ -285,7 +284,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 missing_comma: None,
             }
-            .into_diagnostic(&self.sess.span_diagnostic));
+            .into_diagnostic(self.diagnostic()));
         }
 
         let valid_follow = &[
@@ -348,7 +347,7 @@ impl<'a> Parser<'a> {
             suggest_remove_comma,
             help_cannot_start_number,
         };
-        let mut err = err.into_diagnostic(&self.sess.span_diagnostic);
+        let mut err = err.into_diagnostic(self.diagnostic());
 
         // if the token we have is a `<`
         // it *might* be a misplaced generic
@@ -674,15 +673,6 @@ impl<'a> Parser<'a> {
             );
         }
 
-        // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
-        // there are unclosed angle brackets
-        if self.unmatched_angle_bracket_count > 0
-            && self.token.kind == TokenKind::Eq
-            && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Gt)))
-        {
-            err.span_label(self.prev_token.span, "maybe try to close unmatched angle bracket");
-        }
-
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_token.span
@@ -772,8 +762,10 @@ impl<'a> Parser<'a> {
                 && let ast::AttrKind::Normal(attr_kind) = &attr.kind
                 && let [segment] = &attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
+                && let Some(args_span) = attr_kind.item.args.span()
                 && let Ok(next_attr) = snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
+                && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
                 && let [next_segment] = &next_attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
                 && let Ok(next_expr) = snapshot.parse_expr()
@@ -787,23 +779,14 @@ impl<'a> Parser<'a> {
                 let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
                 let sugg = vec![
                     (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
-                    (
-                        attr_kind.item.args.span().unwrap().shrink_to_hi().with_hi(attr.span.hi()),
-                        " {".to_string(),
-                    ),
+                    (args_span.shrink_to_hi().with_hi(attr.span.hi()), " {".to_string()),
                     (expr.span.shrink_to_lo(), "    ".to_string()),
                     (
                         next_attr.span.with_hi(next_segment.span().hi()),
                         "} else if cfg!".to_string(),
                     ),
                     (
-                        next_attr_kind
-                            .item
-                            .args
-                            .span()
-                            .unwrap()
-                            .shrink_to_hi()
-                            .with_hi(next_attr.span.hi()),
+                        next_attr_args_span.shrink_to_hi().with_hi(next_attr.span.hi()),
                         " {".to_string(),
                     ),
                     (next_expr.span.shrink_to_lo(), "    ".to_string()),
@@ -819,6 +802,7 @@ impl<'a> Parser<'a> {
         }
         err.emit();
     }
+
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
         let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
@@ -1426,7 +1410,7 @@ impl<'a> Parser<'a> {
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
                                 self.restore_snapshot(snapshot);
-                                Err(err.into_diagnostic(&self.sess.span_diagnostic))
+                                Err(err.into_diagnostic(self.diagnostic()))
                             }
                         }
                     } else if token::OpenDelim(Delimiter::Parenthesis) == self.token.kind {
@@ -1441,7 +1425,7 @@ impl<'a> Parser<'a> {
                         }
                         // Consume the fn call arguments.
                         match self.consume_fn_args() {
-                            Err(()) => Err(err.into_diagnostic(&self.sess.span_diagnostic)),
+                            Err(()) => Err(err.into_diagnostic(self.diagnostic())),
                             Ok(()) => {
                                 self.sess.emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
@@ -1467,7 +1451,7 @@ impl<'a> Parser<'a> {
                             mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                         } else {
                             // These cases cause too many knock-down errors, bail out (#61329).
-                            Err(err.into_diagnostic(&self.sess.span_diagnostic))
+                            Err(err.into_diagnostic(self.diagnostic()))
                         }
                     };
                 }
@@ -1992,6 +1976,39 @@ impl<'a> Parser<'a> {
         } else {
             Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
         }
+    }
+
+    /// When trying to close a generics list and encountering code like
+    /// ```text
+    /// impl<S: Into<std::borrow::Cow<'static, str>> From<S> for Canonical {}
+    ///                                          // ^ missing > here
+    /// ```
+    /// we provide a structured suggestion on the error from `expect_gt`.
+    pub(super) fn expect_gt_or_maybe_suggest_closing_generics(
+        &mut self,
+        params: &[ast::GenericParam],
+    ) -> PResult<'a, ()> {
+        let Err(mut err) = self.expect_gt() else {
+            return Ok(());
+        };
+        // Attempt to find places where a missing `>` might belong.
+        if let [.., ast::GenericParam { bounds, .. }] = params
+            && let Some(poly) = bounds
+                .iter()
+                .filter_map(|bound| match bound {
+                    ast::GenericBound::Trait(poly, _) => Some(poly),
+                    _ => None,
+                })
+                .last()
+        {
+            err.span_suggestion_verbose(
+                poly.span.shrink_to_hi(),
+                "you might have meant to end the type parameters here",
+                ">",
+                Applicability::MaybeIncorrect,
+            );
+        }
+        Err(err)
     }
 
     pub(super) fn recover_seq_parse_error(
@@ -2522,8 +2539,7 @@ impl<'a> Parser<'a> {
             Ok(Some(GenericArg::Const(self.parse_const_arg()?)))
         } else {
             let after_kw_const = self.token.span;
-            self.recover_const_arg(after_kw_const, err.into_diagnostic(&self.sess.span_diagnostic))
-                .map(Some)
+            self.recover_const_arg(after_kw_const, err.into_diagnostic(self.diagnostic())).map(Some)
         }
     }
 
@@ -2886,7 +2902,7 @@ impl<'a> Parser<'a> {
                         span: path.span.shrink_to_hi(),
                         between: between_span,
                     }
-                    .into_diagnostic(&self.sess.span_diagnostic));
+                    .into_diagnostic(self.diagnostic()));
                 }
             }
         }

@@ -84,3 +84,21 @@ fn issue9956() {
     bar()((|| || 42)()(), 5);
     foo((|| || 42)()(), 5);
 }
+
+async fn issue11357() {
+    (|| async {})().await;
+}
+
+mod issue11707 {
+    use core::future::Future;
+
+    fn spawn_on(fut: impl Future<Output = ()>) {}
+
+    fn demo() {
+        spawn_on((|| async move {})());
+    }
+}
+
+fn avoid_double_parens() {
+    std::convert::identity((|| 13_i32 + 36_i32)()).leading_zeros();
+}
