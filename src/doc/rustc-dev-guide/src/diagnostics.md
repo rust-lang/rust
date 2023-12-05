@@ -523,7 +523,7 @@ are:
 - Early lint pass: Works on [AST nodes] after [macro expansion] and name
   resolution, just before [HIR lowering]. These lints are for purely
   syntactical lints.
-  - Example: The [`unsued_parens`] lint checks for parenthesized-expressions
+  - Example: The [`unused_parens`] lint checks for parenthesized-expressions
     in situations where they are not needed, like an `if` condition.
 
 - Late lint pass: Works on [HIR nodes], towards the end of [analysis] (after
@@ -558,7 +558,7 @@ compiler](#linting-early-in-the-compiler).
 [macro expansion]: macro-expansion.md
 [analysis]: part-4-intro.md
 [`keyword_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#keyword-idents
-[`unsued_parens`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unused-parens
+[`unused_parens`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unused-parens
 [`invalid_value`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#invalid-value
 [`arithmetic_overflow`]: https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#arithmetic-overflow
 [`unused_mut`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unused-mut
