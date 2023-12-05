@@ -23,8 +23,6 @@ parse_async_block_in_2015 = `async` blocks are only allowed in Rust 2018 or late
 parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
     .label = to use `async fn`, switch to Rust 2018 or later
 
-parse_async_gen_fn = `async gen` functions are not supported
-
 parse_async_move_block_in_2015 = `async move` blocks are only allowed in Rust 2018 or later
 
 parse_async_move_order_incorrect = the order of `move` and `async` is incorrect

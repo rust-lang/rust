@@ -874,7 +874,8 @@ pub fn noop_visit_closure_binder<T: MutVisitor>(binder: &mut ClosureBinder, vis:
 pub fn noop_visit_coroutine_kind<T: MutVisitor>(coroutine_kind: &mut CoroutineKind, vis: &mut T) {
     match coroutine_kind {
         CoroutineKind::Async { span, closure_id, return_impl_trait_id }
-        | CoroutineKind::Gen { span, closure_id, return_impl_trait_id } => {
+        | CoroutineKind::Gen { span, closure_id, return_impl_trait_id }
+        | CoroutineKind::AsyncGen { span, closure_id, return_impl_trait_id } => {
             vis.visit_span(span);
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);

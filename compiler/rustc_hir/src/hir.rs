@@ -2255,11 +2255,6 @@ pub enum ImplItemKind<'hir> {
     Type(&'hir Ty<'hir>),
 }
 
-/// The name of the associated type for `Fn` return types.
-pub const FN_OUTPUT_NAME: Symbol = sym::Output;
-/// The name of the associated type for `Iterator` item types.
-pub const ITERATOR_ITEM_NAME: Symbol = sym::Item;
-
 /// Bind a type to an associated type (i.e., `A = Foo`).
 ///
 /// Bindings like `A: Debug` are represented as a special type `A =

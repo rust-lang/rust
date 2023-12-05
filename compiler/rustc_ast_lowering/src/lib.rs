@@ -1904,7 +1904,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_node_id = match coro {
             CoroutineKind::Async { return_impl_trait_id, .. }
-            | CoroutineKind::Gen { return_impl_trait_id, .. } => return_impl_trait_id,
+            | CoroutineKind::Gen { return_impl_trait_id, .. }
+            | CoroutineKind::AsyncGen { return_impl_trait_id, .. } => return_impl_trait_id,
         };
 
         let captured_lifetimes: Vec<_> = self
@@ -1960,8 +1961,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // "<$assoc_ty_name = T>"
         let (assoc_ty_name, trait_lang_item) = match coro {
-            CoroutineKind::Async { .. } => (hir::FN_OUTPUT_NAME, hir::LangItem::Future),
-            CoroutineKind::Gen { .. } => (hir::ITERATOR_ITEM_NAME, hir::LangItem::Iterator),
+            CoroutineKind::Async { .. } => (sym::Output, hir::LangItem::Future),
+            CoroutineKind::Gen { .. } => (sym::Item, hir::LangItem::Iterator),
+            CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncIterator),
         };
 
         let future_args = self.arena.alloc(hir::GenericArgs {

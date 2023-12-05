@@ -1035,11 +1035,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (Some(coroutine_kind), Some(body)) = (coroutine_kind, body) else {
             return self.lower_fn_body_block(span, decl, body);
         };
-        let closure_id = match coroutine_kind {
-            CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. } => {
-                closure_id
-            }
-        };
+        let (CoroutineKind::Async { closure_id, .. }
+        | CoroutineKind::Gen { closure_id, .. }
+        | CoroutineKind::AsyncGen { closure_id, .. }) = coroutine_kind;
 
         self.lower_body(|this| {
             let mut parameters: Vec<hir::Param<'_>> = Vec::new();
@@ -1217,6 +1215,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     mkbody,
                 ),
                 CoroutineKind::Gen { .. } => this.make_gen_expr(
+                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
+                    closure_id,
+                    None,
+                    body.span,
+                    hir::CoroutineSource::Fn,
+                    mkbody,
+                ),
+                CoroutineKind::AsyncGen { .. } => this.make_async_gen_expr(
                     CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
                     closure_id,
                     None,

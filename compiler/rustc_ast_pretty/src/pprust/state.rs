@@ -1498,6 +1498,10 @@ impl<'a> State<'a> {
             ast::CoroutineKind::Async { .. } => {
                 self.word_nbsp("async");
             }
+            ast::CoroutineKind::AsyncGen { .. } => {
+                self.word_nbsp("async");
+                self.word_nbsp("gen");
+            }
         }
     }
 

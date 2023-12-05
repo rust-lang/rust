@@ -13,6 +13,7 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::span_bug;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -202,15 +203,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     fn_decl_span,
                     fn_arg_span,
                 }) => match coroutine_kind {
-                    Some(
-                        CoroutineKind::Async { closure_id, .. }
-                        | CoroutineKind::Gen { closure_id, .. },
-                    ) => self.lower_expr_async_closure(
+                    Some(coroutine_kind) => self.lower_expr_coroutine_closure(
                         binder,
                         *capture_clause,
                         e.id,
                         hir_id,
-                        *closure_id,
+                        *coroutine_kind,
                         fn_decl,
                         body,
                         *fn_decl_span,
@@ -1098,18 +1096,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (binder, params)
     }
 
-    fn lower_expr_async_closure(
+    fn lower_expr_coroutine_closure(
         &mut self,
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
         closure_hir_id: hir::HirId,
-        inner_closure_id: NodeId,
+        coroutine_kind: CoroutineKind,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
+        let CoroutineKind::Async { closure_id: inner_closure_id, .. } = coroutine_kind else {
+            span_bug!(fn_decl_span, "`async gen` and `gen` closures are not supported, yet");
+        };
+
         if let &ClosureBinder::For { span, .. } = binder {
             self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }

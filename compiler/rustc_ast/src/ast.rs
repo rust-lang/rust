@@ -2415,10 +2415,12 @@ pub enum Unsafe {
 /// Iterator`.
 #[derive(Copy, Clone, Encodable, Decodable, Debug)]
 pub enum CoroutineKind {
-    /// `async`, which evaluates to `impl Future`
+    /// `async`, which returns an `impl Future`
     Async { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    /// `gen`, which evaluates to `impl Iterator`
+    /// `gen`, which returns an `impl Iterator`
     Gen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    /// `async gen`, which returns an `impl AsyncIterator`
+    AsyncGen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
 }
 
 impl CoroutineKind {
@@ -2435,7 +2437,10 @@ impl CoroutineKind {
     pub fn return_id(self) -> (NodeId, Span) {
         match self {
             CoroutineKind::Async { return_impl_trait_id, span, .. }
-            | CoroutineKind::Gen { return_impl_trait_id, span, .. } => (return_impl_trait_id, span),
+            | CoroutineKind::Gen { return_impl_trait_id, span, .. }
+            | CoroutineKind::AsyncGen { return_impl_trait_id, span, .. } => {
+                (return_impl_trait_id, span)
+            }
         }
     }
 }

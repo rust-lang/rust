@@ -1,11 +1,13 @@
 // edition: 2024
 // compile-flags: -Zunstable-options
-#![feature(gen_blocks)]
+// check-pass
 
-// async generators are not yet supported, so this test makes sure they make some kind of reasonable
-// error.
+#![feature(gen_blocks, async_iterator)]
 
-async gen fn foo() {}
-//~^ `async gen` functions are not supported
+async fn bar() {}
+
+async gen fn foo() {
+    yield bar().await;
+}
 
 fn main() {}

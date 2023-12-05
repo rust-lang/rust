@@ -287,7 +287,8 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 match closure.coroutine_kind {
                     Some(
                         CoroutineKind::Async { closure_id, .. }
-                        | CoroutineKind::Gen { closure_id, .. },
+                        | CoroutineKind::Gen { closure_id, .. }
+                        | CoroutineKind::AsyncGen { closure_id, .. },
                     ) => self.create_def(closure_id, kw::Empty, DefKind::Closure, expr.span),
                     None => closure_def,
                 }
