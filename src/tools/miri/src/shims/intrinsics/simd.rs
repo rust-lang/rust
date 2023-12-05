@@ -115,18 +115,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             }
                         }
                         Op::Numeric(name) => {
-                            assert!(op.layout.ty.is_integral());
-                            let size = op.layout.size;
-                            let bits = op.to_scalar().to_bits(size).unwrap();
-                            let extra = 128u128.checked_sub(u128::from(size.bits())).unwrap();
-                            let bits_out = match name {
-                                sym::ctlz => u128::from(bits.leading_zeros()).checked_sub(extra).unwrap(),
-                                sym::cttz => u128::from((bits << extra).trailing_zeros()).checked_sub(extra).unwrap(),
-                                sym::bswap => (bits << extra).swap_bytes(),
-                                sym::bitreverse => (bits << extra).reverse_bits(),
-                                _ => unreachable!(),
-                            };
-                            Scalar::from_uint(bits_out, size)
+                            this.numeric_intrinsic(name, op.to_scalar(), op.layout)?
                         }
                     };
                     this.write_scalar(val, &dest)?;
