@@ -1,6 +1,6 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 mod input;
 mod change;
