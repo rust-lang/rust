@@ -1,13 +1,16 @@
+use std::mem;
+
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::visit::MaxUniverse;
+use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_span::Span;
 
 use crate::infer::nll_relate::TypeRelatingDelegate;
-use crate::infer::type_variable::TypeVariableValue;
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind, TypeVariableValue};
 use crate::infer::{InferCtxt, RegionVariableOrigin};
 
 /// Attempts to generalize `term` for the type variable `for_vid`.
@@ -38,27 +41,30 @@ pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>>
         root_vid,
         for_universe,
         root_term: term.into(),
+        in_alias: false,
         needs_wf: false,
         cache: Default::default(),
     };
 
     assert!(!term.has_escaping_bound_vars());
-    let value = generalizer.relate(term, term)?;
+    let value_may_be_infer = generalizer.relate(term, term)?;
     let needs_wf = generalizer.needs_wf;
-    Ok(Generalization { value, needs_wf })
+    Ok(Generalization { value_may_be_infer, needs_wf })
 }
 
 /// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
 /// in the generalizer code.
-pub trait GeneralizerDelegate<'tcx> {
+pub(super) trait GeneralizerDelegate<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn forbid_inference_vars() -> bool;
 
+    fn span(&self) -> Span;
+
     fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
 }
 
-pub struct CombineDelegate<'cx, 'tcx> {
+pub(super) struct CombineDelegate<'cx, 'tcx> {
     pub infcx: &'cx InferCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub span: Span,
@@ -71,6 +77,10 @@ impl<'tcx> GeneralizerDelegate<'tcx> for CombineDelegate<'_, 'tcx> {
 
     fn forbid_inference_vars() -> bool {
         false
+    }
+
+    fn span(&self) -> Span {
+        self.span
     }
 
     fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
@@ -91,6 +101,10 @@ where
 
     fn forbid_inference_vars() -> bool {
         <Self as TypeRelatingDelegate<'tcx>>::forbid_inference_vars()
+    }
+
+    fn span(&self) -> Span {
+        <Self as TypeRelatingDelegate<'tcx>>::span(&self)
     }
 
     fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
@@ -138,6 +152,13 @@ struct Generalizer<'me, 'tcx, D> {
     root_term: Term<'tcx>,
 
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
+
+    /// This is set once we're generalizing the arguments of an alias.
+    ///
+    /// This is necessary to correctly handle
+    /// `<T as Bar<<?0 as Foo>::Assoc>::Assoc == ?0`. This equality can
+    /// hold by either normalizing the outer or the inner associated type.
+    in_alias: bool,
 
     /// See the field `needs_wf` in `Generalization`.
     needs_wf: bool,
@@ -193,7 +214,7 @@ where
                 opt_variances,
                 a_subst,
                 b_subst,
-                true,
+                false,
             )
         }
     }
@@ -307,6 +328,44 @@ where
                     );
                     Err(TypeError::Mismatch)
                 }
+            }
+
+            ty::Alias(kind, data) => {
+                // An occurs check failure inside of an alias does not mean
+                // that the types definitely don't unify. We may be able
+                // to normalize the alias after all.
+                //
+                // We handle this by lazily equating the alias and generalizing
+                // it to an inference variable.
+                let is_nested_alias = mem::replace(&mut self.in_alias, true);
+                let result = match self.relate(data, data) {
+                    Ok(data) => Ok(Ty::new_alias(self.tcx(), kind, data)),
+                    Err(e) => {
+                        if is_nested_alias {
+                            return Err(e);
+                        } else {
+                            let mut visitor = MaxUniverse::new();
+                            t.visit_with(&mut visitor);
+                            let infer_replacement_is_complete =
+                                self.for_universe.can_name(visitor.max_universe())
+                                    && !t.has_escaping_bound_vars();
+                            if !infer_replacement_is_complete {
+                                warn!("may incompletely handle alias type: {t:?}");
+                            }
+
+                            debug!("generalization failure in alias");
+                            Ok(self.infcx.next_ty_var_in_universe(
+                                TypeVariableOrigin {
+                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    span: self.delegate.span(),
+                                },
+                                self.for_universe,
+                            ))
+                        }
+                    }
+                };
+                self.in_alias = is_nested_alias;
+                result
             }
 
             _ => relate::structurally_relate_tys(self, t, t),
@@ -456,8 +515,16 @@ where
 /// not only the generalized type, but also a bool flag
 /// indicating whether further WF checks are needed.
 #[derive(Debug)]
-pub struct Generalization<T> {
-    pub value: T,
+pub(super) struct Generalization<T> {
+    /// When generalizing `<?0 as Trait>::Assoc` or
+    /// `<T as Bar<<?0 as Foo>::Assoc>>::Assoc`
+    /// for `?0` generalization returns an inference
+    /// variable.
+    ///
+    /// This has to be handled wotj care as it can
+    /// otherwise very easily result in infinite
+    /// recursion.
+    pub(super) value_may_be_infer: T,
 
     /// If true, then the generalized type may not be well-formed,
     /// even if the source type is well-formed, so we should add an
@@ -484,5 +551,5 @@ pub struct Generalization<T> {
     /// will force the calling code to check that `WF(Foo<?C, ?D>)`
     /// holds, which in turn implies that `?C::Item == ?D`. So once
     /// `?C` is constrained, that should suffice to restrict `?D`.
-    pub needs_wf: bool,
+    pub(super) needs_wf: bool,
 }
