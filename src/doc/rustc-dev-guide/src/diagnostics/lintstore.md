@@ -4,9 +4,8 @@ This page documents some of the machinery around lint registration and how we
 run lints in the compiler.
 
 The [`LintStore`] is the central piece of infrastructure, around which
-everything rotates. It's not available during the early parts of compilation
-(i.e., before TyCtxt) in most code, as we need to fill it in with all of the
-lints, which can only happen after plugin registration.
+everything rotates. The `LintStore` is held as part of the [`Session`], and it
+gets populated with the list of lints shortly after the `Session` is created.
 
 ## Lints vs. lint passes
 
@@ -39,16 +38,15 @@ lints are emitted as part of other work (e.g., type checking, etc.).
 
 ### High-level overview
 
-In [`rustc_interface::register_plugins`],
+In [`rustc_interface::run_compiler`],
 the [`LintStore`] is created,
 and all lints are registered.
 
-There are four 'sources' of lints:
+There are three 'sources' of lints:
 
 * internal lints: lints only used by the rustc codebase
 * builtin lints: lints built into the compiler and not provided by some outside
   source
-* plugin lints: lints created by plugins through the plugin system.
 * `rustc_interface::Config`[`register_lints`]: lints passed into the compiler
   during construction
 
@@ -56,8 +54,7 @@ Lints are registered via the [`LintStore::register_lint`] function. This should
 happen just once for any lint, or an ICE will occur.
 
 Once the registration is complete, we "freeze" the lint store by placing it in
-an `Lrc`. Later in the driver, it's passed into the `GlobalCtxt` constructor
-where it lives in an immutable form from then on.
+an `Lrc`.
 
 Lint passes are registered separately into one of the categories
 (pre-expansion, early, late, late module). Passes are registered as a closure
@@ -68,8 +65,8 @@ they can keep track of state internally.
 
 #### Internal lints
 
-These are lints used just by the compiler or plugins like `clippy`. They can be
-found in `rustc_lint::internal`.
+These are lints used just by the compiler or drivers like `clippy`. They can be
+found in [`rustc_lint::internal`].
 
 An example of such a lint is the check that lint passes are implemented using
 the `declare_lint_pass!` macro and not by hand. This is accomplished with the
@@ -91,18 +88,6 @@ The builtin lint registration happens in
 the [`rustc_lint::register_builtins`] function.
 Just like with internal lints,
 this happens inside of [`rustc_lint::new_lint_store`].
-
-#### Plugin lints
-
-This is one of the primary use cases remaining for plugins/drivers. Plugins are
-given access to the mutable `LintStore` during registration (which happens
-inside of [`rustc_interface::register_plugins`]) and they can call any
-functions they need on the `LintStore`, just like rustc code.
-
-Plugins are intended to declare lints with the `plugin` field set to true
-(e.g., by way of the [`declare_tool_lint!`] macro), but this is purely for
-diagnostics and help text; otherwise plugin lints are mostly just as first
-class as rustc builtin lints.
 
 #### Driver lints
 
@@ -127,7 +112,6 @@ approach, it is beneficial to do so for performance reasons.
 
 [`LintStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html
 [`LintStore::register_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_lints
-[`rustc_interface::register_plugins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.register_plugins.html
 [`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
 [`rustc_lint::register_internals`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_internals.html
 [`rustc_lint::new_lint_store`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.new_lint_store.html
@@ -135,3 +119,6 @@ approach, it is beneficial to do so for performance reasons.
 [`declare_tool_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/macro.declare_tool_lint.html
 [`register_lints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html#structfield.register_lints
 [`&rustc_lint_defs::Lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/struct.Lint.html
+[`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
+[`rustc_interface::run_compiler`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html#reexport.run_compiler
+[`rustc_lint::internal`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/internal/index.html

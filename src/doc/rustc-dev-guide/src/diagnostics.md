@@ -572,7 +572,6 @@ generally based on how they are registered.
 - *Built-in* lints are defined inside the compiler source.
 - *Driver-registered* lints are registered when the compiler driver is created
   by an external driver. This is the mechanism used by Clippy, for example.
-- *Plugin* lints are registered by the [deprecated plugin system].
 - *Tool* lints are lints with a path prefix like `clippy::` or `rustdoc::`.
 - *Internal* lints are the `rustc::` scoped tool lints that only run on the
   rustc source tree itself and are defined in the compiler source like a
@@ -581,7 +580,6 @@ generally based on how they are registered.
 More information about lint registration can be found in the [LintStore]
 chapter.
 
-[deprecated plugin system]: https://doc.rust-lang.org/nightly/unstable-book/language-features/plugin.html
 [LintStore]: diagnostics/lintstore.md
 
 ### Declaring a lint
