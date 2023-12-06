@@ -491,7 +491,10 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    if !query.anon() && !query.eval_always() {
+    let is_reconstructible = !query.anon()
+        && qcx.dep_context().dep_kind_info(query.dep_kind()).force_from_dep_node.is_some();
+
+    if is_reconstructible && !query.eval_always() {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
             dep_node_opt.get_or_insert_with(|| query.construct_dep_node(*qcx.dep_context(), &key));
@@ -510,23 +513,26 @@ where
 
     let (result, dep_node_index) =
         qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
-            if query.anon() {
-                return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
-                    query.compute(qcx, key)
-                });
+            if is_reconstructible {
+                // `to_dep_node` is expensive for some `DepKind`s.
+                let dep_node = dep_node_opt
+                    .unwrap_or_else(|| query.construct_dep_node(*qcx.dep_context(), &key));
+
+                dep_graph_data.with_task(
+                    dep_node,
+                    (qcx, query),
+                    key,
+                    |(qcx, query), key| query.compute(qcx, key),
+                    query.hash_result(),
+                )
+            } else {
+                dep_graph_data.with_anon_task(
+                    *qcx.dep_context(),
+                    query.dep_kind(),
+                    query.anon(),
+                    || query.compute(qcx, key),
+                )
             }
-
-            // `to_dep_node` is expensive for some `DepKind`s.
-            let dep_node =
-                dep_node_opt.unwrap_or_else(|| query.construct_dep_node(*qcx.dep_context(), &key));
-
-            dep_graph_data.with_task(
-                dep_node,
-                (qcx, query),
-                key,
-                |(qcx, query), key| query.compute(qcx, key),
-                query.hash_result(),
-            )
         });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());

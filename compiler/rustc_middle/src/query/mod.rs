@@ -1066,7 +1066,7 @@ rustc_queries! {
             "const-evaluating + checking `{}`",
             key.value.display(tcx)
         }
-        cache_on_disk_if { true }
+        // cache_on_disk_if { true }  Cannot cache this anymore
     }
 
     /// Evaluates const items or anonymous constants
@@ -1081,7 +1081,7 @@ rustc_queries! {
             "simplifying constant for the type system `{}`",
             key.value.display(tcx)
         }
-        cache_on_disk_if { true }
+        // cache_on_disk_if { true }  Cannot cache this anymore
     }
 
     /// Evaluate a constant and convert it to a type level constant or
@@ -1148,7 +1148,7 @@ rustc_queries! {
     /// look up the correct symbol name of instances from upstream crates.
     query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName<'tcx> {
         desc { "computing the symbol for `{}`", key }
-        cache_on_disk_if { true }
+        // cache_on_disk_if { true }  Cannot cache this anymore
     }
 
     query def_kind(def_id: DefId) -> DefKind {
@@ -1284,7 +1284,7 @@ rustc_queries! {
     query codegen_select_candidate(
         key: (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>)
     ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
-        cache_on_disk_if { true }
+        // cache_on_disk_if { true }  Cannot cache this anymore
         desc { |tcx| "computing candidate for `{}`", key.1 }
     }
 
@@ -1894,7 +1894,7 @@ rustc_queries! {
     }
 
     query unused_generic_params(key: ty::InstanceDef<'tcx>) -> UnusedGenericParams {
-        cache_on_disk_if { key.def_id().is_local() }
+        // cache_on_disk_if { key.def_id().is_local() }  Cannot cache this anymore
         desc {
             |tcx| "determining which generic parameters are unused by `{}`",
                 tcx.def_path_str(key.def_id())

@@ -259,8 +259,16 @@ impl SerializedDepGraph {
             .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
             .collect();
 
+        let anon_node_fingerprint: PackedFingerprint = anon_node_fingerprint().into();
+
         for (idx, node) in nodes.iter_enumerated() {
-            index[node.kind.as_usize()].insert(node.hash, idx);
+            // FIXME(sparse_fps): Filter out anon nodes from the reverse index
+            //                    by looking for the special DepNode::hash. This
+            //                    is a hack, we should not store depnodes and
+            //                    fingerprints for these to begin with.
+            if node.hash != anon_node_fingerprint {
+                index[node.kind.as_usize()].insert(node.hash, idx);
+            }
         }
 
         SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index }
@@ -311,7 +319,14 @@ impl<D: Deps> SerializedNodeHeader<D> {
     fn new(node_info: &NodeInfo) -> Self {
         debug_assert_eq!(Self::TOTAL_BITS, Self::LEN_BITS + Self::WIDTH_BITS + Self::KIND_BITS);
 
-        let NodeInfo { node, fingerprint, edges } = node_info;
+        let (node, fingerprint, edges) = match node_info {
+            NodeInfo::Full(node, fingerprint, edges) => (*node, *fingerprint, edges),
+            NodeInfo::Anon(kind, edges) => (
+                DepNode { kind: *kind, hash: anon_node_fingerprint().into() },
+                anon_node_fingerprint(),
+                edges,
+            ),
+        };
 
         let mut head = node.kind.as_inner();
 
@@ -336,10 +351,10 @@ impl<D: Deps> SerializedNodeHeader<D> {
         #[cfg(debug_assertions)]
         {
             let res = Self { bytes, _marker: PhantomData };
-            assert_eq!(node_info.fingerprint, res.fingerprint());
-            assert_eq!(node_info.node, res.node());
+            assert_eq!(node_info.fingerprint(), res.fingerprint());
+            assert_eq!(node_info.node(), res.node());
             if let Some(len) = res.len() {
-                assert_eq!(node_info.edges.len(), len);
+                assert_eq!(node_info.edges().len(), len);
             }
         }
         Self { bytes, _marker: PhantomData }
@@ -394,23 +409,45 @@ impl<D: Deps> SerializedNodeHeader<D> {
 }
 
 #[derive(Debug)]
-struct NodeInfo {
-    node: DepNode,
-    fingerprint: Fingerprint,
-    edges: EdgesVec,
+enum NodeInfo {
+    Full(DepNode, Fingerprint, EdgesVec),
+    Anon(DepKind, EdgesVec),
 }
 
 impl NodeInfo {
+    #[cfg(debug_assertions)]
+    fn fingerprint(&self) -> Fingerprint {
+        match *self {
+            NodeInfo::Full(_, fingerprint, _) => fingerprint,
+            NodeInfo::Anon(_, _) => anon_node_fingerprint(),
+        }
+    }
+
+    #[inline]
+    fn node(&self) -> DepNode {
+        match *self {
+            NodeInfo::Full(node, _, _) => node,
+            NodeInfo::Anon(kind, _) => DepNode { kind, hash: anon_node_fingerprint().into() },
+        }
+    }
+
+    #[inline]
+    fn edges(&self) -> &EdgesVec {
+        match self {
+            NodeInfo::Full(_, _, edges) | NodeInfo::Anon(_, edges) => edges,
+        }
+    }
+
     fn encode<D: Deps>(&self, e: &mut FileEncoder) {
         let header = SerializedNodeHeader::<D>::new(self);
         e.write_array(header.bytes);
 
         if header.len().is_none() {
-            e.emit_usize(self.edges.len());
+            e.emit_usize(self.edges().len());
         }
 
         let bytes_per_index = header.bytes_per_index();
-        for node_index in self.edges.iter() {
+        for node_index in self.edges().iter() {
             e.write_with(|dest| {
                 *dest = node_index.as_u32().to_le_bytes();
                 bytes_per_index
@@ -455,20 +492,20 @@ impl<D: Deps> EncoderState<D> {
     ) -> DepNodeIndex {
         let index = DepNodeIndex::new(self.total_node_count);
         self.total_node_count += 1;
-        self.kind_stats[node.node.kind.as_usize()] += 1;
+        self.kind_stats[node.node().kind.as_usize()] += 1;
 
-        let edge_count = node.edges.len();
+        let edge_count = node.edges().len();
         self.total_edge_count += edge_count;
 
         if let Some(record_graph) = &record_graph {
             // Do not ICE when a query is called from within `with_query`.
             if let Some(record_graph) = &mut record_graph.try_lock() {
-                record_graph.push(index, node.node, &node.edges);
+                record_graph.push(index, node.node(), node.edges());
             }
         }
 
         if let Some(stats) = &mut self.stats {
-            let kind = node.node.kind;
+            let kind = node.node().kind;
 
             let stat = stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
             stat.node_counter += 1;
@@ -597,7 +634,18 @@ impl<D: Deps> GraphEncoder<D> {
         edges: EdgesVec,
     ) -> DepNodeIndex {
         let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
-        let node = NodeInfo { node, fingerprint, edges };
+        let node = NodeInfo::Full(node, fingerprint, edges);
+        self.status.lock().encode_node(&node, &self.record_graph)
+    }
+
+    pub(crate) fn send_anon_node(
+        &self,
+        profiler: &SelfProfilerRef,
+        dep_kind: DepKind,
+        edges: EdgesVec,
+    ) -> DepNodeIndex {
+        let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
+        let node = NodeInfo::Anon(dep_kind, edges);
         self.status.lock().encode_node(&node, &self.record_graph)
     }
 
@@ -605,4 +653,9 @@ impl<D: Deps> GraphEncoder<D> {
         let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
         self.status.into_inner().finish(profiler)
     }
+}
+
+#[inline]
+pub fn anon_node_fingerprint() -> Fingerprint {
+    Fingerprint::new(0x01234567_89abcdef, 0xfedcba98_7654321)
 }
