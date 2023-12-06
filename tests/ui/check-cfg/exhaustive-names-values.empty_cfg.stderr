@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `unknown_key`
-  --> $DIR/exhaustive-names-values.rs:11:7
+  --> $DIR/exhaustive-names-values.rs:10:7
    |
 LL | #[cfg(unknown_key = "value")]
    |       ^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[cfg(unknown_key = "value")]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `value`
-  --> $DIR/exhaustive-names-values.rs:15:7
+  --> $DIR/exhaustive-names-values.rs:14:7
    |
 LL | #[cfg(test = "value")]
    |       ^^^^----------
@@ -18,13 +18,13 @@ LL | #[cfg(test = "value")]
    = note: no expected value for `test`
 
 warning: unexpected `cfg` condition name: `feature`
-  --> $DIR/exhaustive-names-values.rs:19:7
+  --> $DIR/exhaustive-names-values.rs:18:7
    |
 LL | #[cfg(feature = "unk")]
    |       ^^^^^^^^^^^^^^^
 
 warning: unexpected `cfg` condition name: `feature`
-  --> $DIR/exhaustive-names-values.rs:26:7
+  --> $DIR/exhaustive-names-values.rs:25:7
    |
 LL | #[cfg(feature = "std")]
    |       ^^^^^^^^^^^^^^^
