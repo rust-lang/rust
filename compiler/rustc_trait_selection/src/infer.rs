@@ -29,7 +29,7 @@ pub trait InferCtxtExt<'tcx> {
     /// - the parameter environment
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
-    /// `Ty: Trait` causes overflow, EvaluatedToRecur (or EvaluatedToUnknown)
+    /// `Ty: Trait` causes overflow, EvaluatedToErrStackDependent (or EvaluatedToAmbigStackDependent)
     /// will be returned.
     fn type_implements_trait(
         &self,
