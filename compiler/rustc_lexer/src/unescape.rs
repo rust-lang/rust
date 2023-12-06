@@ -395,7 +395,7 @@ where
     let mut chars = src.chars();
 
     // The `start` and `end` computation here matches the one in
-    // `unescape_str_or_byte_str` for consistency, even though this function
+    // `unescape_str_common` for consistency, even though this function
     // doesn't have to worry about skipping any chars.
     while let Some(c) = chars.next() {
         let start = src.len() - chars.as_str().len() - c.len_utf8();
