@@ -179,9 +179,6 @@ pub trait HirFileIdExt {
     /// one of the calls comes from an `include!``.
     fn original_file_respecting_includes(self, db: &dyn db::ExpandDatabase) -> FileId;
 
-    /// If this is a macro call, returns the syntax node of the call.
-    fn call_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<SyntaxNode>>;
-
     /// If this is a macro call, returns the syntax node of the very first macro call this file resides in.
     fn original_call_node(self, db: &dyn db::ExpandDatabase) -> Option<InRealFile<SyntaxNode>>;
 
@@ -190,19 +187,6 @@ pub trait HirFileIdExt {
 
     fn as_builtin_derive_attr_node(&self, db: &dyn db::ExpandDatabase)
         -> Option<InFile<ast::Attr>>;
-    fn is_builtin_derive(&self, db: &dyn db::ExpandDatabase) -> bool;
-    fn is_custom_derive(&self, db: &dyn db::ExpandDatabase) -> bool;
-
-    /// Return whether this file is an include macro
-    fn is_include_macro(&self, db: &dyn db::ExpandDatabase) -> bool;
-
-    fn is_eager(&self, db: &dyn db::ExpandDatabase) -> bool;
-    /// Return whether this file is an attr macro
-    fn is_attr_macro(&self, db: &dyn db::ExpandDatabase) -> bool;
-
-    /// Return whether this file is the pseudo expansion of the derive attribute.
-    /// See [`crate::builtin_attr_macro::derive_attr_expand`].
-    fn is_derive_attr_pseudo_expansion(&self, db: &dyn db::ExpandDatabase) -> bool;
 }
 
 impl HirFileIdExt for HirFileId {
@@ -241,12 +225,6 @@ impl HirFileIdExt for HirFileId {
         }
     }
 
-    fn call_node(self, db: &dyn db::ExpandDatabase) -> Option<InFile<SyntaxNode>> {
-        let macro_file = self.macro_file()?;
-        let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-        Some(loc.to_node(db))
-    }
-
     fn original_call_node(self, db: &dyn db::ExpandDatabase) -> Option<InRealFile<SyntaxNode>> {
         let mut call = db.lookup_intern_macro_call(self.macro_file()?.macro_call_id).to_node(db);
         loop {
@@ -278,77 +256,34 @@ impl HirFileIdExt for HirFileId {
         };
         Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
     }
-
-    fn is_custom_derive(&self, db: &dyn db::ExpandDatabase) -> bool {
-        match self.macro_file() {
-            Some(macro_file) => {
-                matches!(
-                    db.lookup_intern_macro_call(macro_file.macro_call_id).def.kind,
-                    MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _)
-                )
-            }
-            None => false,
-        }
-    }
-
-    fn is_builtin_derive(&self, db: &dyn db::ExpandDatabase) -> bool {
-        match self.macro_file() {
-            Some(macro_file) => {
-                matches!(
-                    db.lookup_intern_macro_call(macro_file.macro_call_id).def.kind,
-                    MacroDefKind::BuiltInDerive(..)
-                )
-            }
-            None => false,
-        }
-    }
-
-    fn is_include_macro(&self, db: &dyn db::ExpandDatabase) -> bool {
-        match self.macro_file() {
-            Some(macro_file) => {
-                db.lookup_intern_macro_call(macro_file.macro_call_id).def.is_include()
-            }
-            _ => false,
-        }
-    }
-
-    fn is_eager(&self, db: &dyn db::ExpandDatabase) -> bool {
-        match self.macro_file() {
-            Some(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                matches!(loc.def.kind, MacroDefKind::BuiltInEager(..))
-            }
-            _ => false,
-        }
-    }
-
-    fn is_attr_macro(&self, db: &dyn db::ExpandDatabase) -> bool {
-        match self.macro_file() {
-            Some(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                matches!(loc.kind, MacroCallKind::Attr { .. })
-            }
-            _ => false,
-        }
-    }
-
-    fn is_derive_attr_pseudo_expansion(&self, db: &dyn db::ExpandDatabase) -> bool {
-        match self.macro_file() {
-            Some(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                loc.def.is_attribute_derive()
-            }
-            None => false,
-        }
-    }
 }
 
 pub trait MacroFileIdExt {
     fn expansion_level(self, db: &dyn db::ExpandDatabase) -> u32;
+    /// If this is a macro call, returns the syntax node of the call.
+    fn call_node(self, db: &dyn db::ExpandDatabase) -> InFile<SyntaxNode>;
+
     fn expansion_info(self, db: &dyn db::ExpandDatabase) -> ExpansionInfo;
+
+    fn is_builtin_derive(&self, db: &dyn db::ExpandDatabase) -> bool;
+    fn is_custom_derive(&self, db: &dyn db::ExpandDatabase) -> bool;
+
+    /// Return whether this file is an include macro
+    fn is_include_macro(&self, db: &dyn db::ExpandDatabase) -> bool;
+
+    fn is_eager(&self, db: &dyn db::ExpandDatabase) -> bool;
+    /// Return whether this file is an attr macro
+    fn is_attr_macro(&self, db: &dyn db::ExpandDatabase) -> bool;
+
+    /// Return whether this file is the pseudo expansion of the derive attribute.
+    /// See [`crate::builtin_attr_macro::derive_attr_expand`].
+    fn is_derive_attr_pseudo_expansion(&self, db: &dyn db::ExpandDatabase) -> bool;
 }
 
 impl MacroFileIdExt for MacroFileId {
+    fn call_node(self, db: &dyn db::ExpandDatabase) -> InFile<SyntaxNode> {
+        db.lookup_intern_macro_call(self.macro_call_id).to_node(db)
+    }
     fn expansion_level(self, db: &dyn db::ExpandDatabase) -> u32 {
         let mut level = 0;
         let mut macro_file = self;
@@ -366,6 +301,39 @@ impl MacroFileIdExt for MacroFileId {
     /// Return expansion information if it is a macro-expansion file
     fn expansion_info(self, db: &dyn db::ExpandDatabase) -> ExpansionInfo {
         ExpansionInfo::new(db, self)
+    }
+
+    fn is_custom_derive(&self, db: &dyn db::ExpandDatabase) -> bool {
+        matches!(
+            db.lookup_intern_macro_call(self.macro_call_id).def.kind,
+            MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _)
+        )
+    }
+
+    fn is_builtin_derive(&self, db: &dyn db::ExpandDatabase) -> bool {
+        matches!(
+            db.lookup_intern_macro_call(self.macro_call_id).def.kind,
+            MacroDefKind::BuiltInDerive(..)
+        )
+    }
+
+    fn is_include_macro(&self, db: &dyn db::ExpandDatabase) -> bool {
+        db.lookup_intern_macro_call(self.macro_call_id).def.is_include()
+    }
+
+    fn is_eager(&self, db: &dyn db::ExpandDatabase) -> bool {
+        let loc: MacroCallLoc = db.lookup_intern_macro_call(self.macro_call_id);
+        matches!(loc.def.kind, MacroDefKind::BuiltInEager(..))
+    }
+
+    fn is_attr_macro(&self, db: &dyn db::ExpandDatabase) -> bool {
+        let loc: MacroCallLoc = db.lookup_intern_macro_call(self.macro_call_id);
+        matches!(loc.kind, MacroCallKind::Attr { .. })
+    }
+
+    fn is_derive_attr_pseudo_expansion(&self, db: &dyn db::ExpandDatabase) -> bool {
+        let loc: MacroCallLoc = db.lookup_intern_macro_call(self.macro_call_id);
+        loc.def.is_attribute_derive()
     }
 }
 
@@ -653,14 +621,14 @@ impl ExpansionInfo {
         Some(tokens.map(move |token| InMacroFile::new(self.expanded.file_id, token)))
     }
 
-    /// Maps up the text range out of the expansion hierarchy back into the original file its from.
-    pub fn map_token_range_up(
+    /// Looks up the span at the given offset.
+    pub fn span_for_offset(
         &self,
         db: &dyn db::ExpandDatabase,
-        range: TextRange,
+        offset: TextSize,
     ) -> (FileRange, SyntaxContextId) {
-        debug_assert!(self.expanded.value.text_range().contains_range(range));
-        let span = self.exp_map.span_at(range.start());
+        debug_assert!(self.expanded.value.text_range().contains(offset));
+        let span = self.exp_map.span_at(offset);
         let anchor_offset = db
             .ast_id_map(span.anchor.file_id.into())
             .get_erased(span.anchor.ast_id)

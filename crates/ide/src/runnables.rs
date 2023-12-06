@@ -142,7 +142,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
                     Definition::Function(it) => it.source(db).map(|src| src.file_id),
                     _ => None,
                 };
-                if let Some(file_id) = file_id.filter(|file| file.call_node(db).is_some()) {
+                if let Some(file_id) = file_id.filter(|file| file.macro_file().is_some()) {
                     in_macro_expansion.entry(file_id).or_default().push(runnable);
                     return;
                 }

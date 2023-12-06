@@ -20,8 +20,8 @@ use hir_def::{
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
-    db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, HirFileIdExt, MacroCallId,
-    MacroFileId, MacroFileIdExt,
+    db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, MacroCallId, MacroFileId,
+    MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -865,7 +865,7 @@ impl<'db> SemanticsImpl<'db> {
                 Some(parent) => Some(InFile::new(file_id, parent)),
                 None => {
                     self.cache(value.clone(), file_id);
-                    file_id.call_node(db)
+                    Some(file_id.macro_file()?.call_node(db))
                 }
             }
         })

@@ -24,7 +24,7 @@ use hir_def::{
 };
 use hir_expand::{
     name::{AsName, Name},
-    HirFileId, HirFileIdExt,
+    HirFileId, MacroFileIdExt,
 };
 use stdx::{always, never};
 use syntax::{
@@ -196,7 +196,7 @@ impl<'a> DeclValidator<'a> {
                 AttrDefId::GenericParamId(_) => None,
             }
             .map_or(false, |file_id| {
-                file_id.is_custom_derive(db.upcast()) || file_id.is_builtin_derive(db.upcast())
+                matches!(file_id.macro_file(), Some(file_id) if file_id.is_custom_derive(db.upcast()) || file_id.is_builtin_derive(db.upcast()))
             })
         };
 
