@@ -98,9 +98,8 @@ pub use self::sty::{
     CoroutineArgs, CoroutineArgsParts, EarlyParamRegion, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, GenSig, InlineConstArgs,
     InlineConstArgsParts, LateParamRegion, ParamConst, ParamTy, PolyExistentialPredicate,
-    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
-    PredicateKind, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarArgs,
-    VarianceDiagInfo,
+    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyTraitRef, PredicateKind,
+    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
