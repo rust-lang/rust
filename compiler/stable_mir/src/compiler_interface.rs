@@ -125,7 +125,7 @@ pub trait Context {
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
-    fn mono_instance(&self, item: CrateItem) -> Instance;
+    fn mono_instance(&self, def_id: DefId) -> Instance;
 
     /// Item requires monomorphization.
     fn requires_monomorphization(&self, def_id: DefId) -> bool;

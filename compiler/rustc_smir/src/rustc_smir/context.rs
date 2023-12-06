@@ -322,9 +322,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         matches!(instance.def, ty::InstanceDef::DropGlue(_, None))
     }
 
-    fn mono_instance(&self, item: stable_mir::CrateItem) -> stable_mir::mir::mono::Instance {
+    fn mono_instance(&self, def_id: stable_mir::DefId) -> stable_mir::mir::mono::Instance {
         let mut tables = self.0.borrow_mut();
-        let def_id = tables[item.0];
+        let def_id = tables[def_id];
         Instance::mono(tables.tcx, def_id).stable(&mut *tables)
     }
 
