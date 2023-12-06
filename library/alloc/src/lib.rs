@@ -235,6 +235,8 @@ pub mod alloc;
 // to allow code to have `use boxed::Box;` declarations.
 #[cfg(not(test))]
 pub mod boxed;
+mod unaligned;
+
 #[cfg(test)]
 mod boxed {
     pub use std::boxed::Box;

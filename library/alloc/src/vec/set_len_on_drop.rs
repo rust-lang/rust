@@ -1,17 +1,19 @@
+use crate::unaligned::Unaligned;
+
 // Set the length of the vec when the `SetLenOnDrop` value goes out of scope.
 //
 // The idea is: The length field in SetLenOnDrop is a local variable
 // that the optimizer will see does not alias with any stores through the Vec's data
 // pointer. This is a workaround for alias analysis issue #32155
 pub(super) struct SetLenOnDrop<'a> {
-    len: &'a mut usize,
+    len: &'a mut Unaligned<usize>,
     local_len: usize,
 }
 
 impl<'a> SetLenOnDrop<'a> {
     #[inline]
-    pub(super) fn new(len: &'a mut usize) -> Self {
-        SetLenOnDrop { local_len: *len, len }
+    pub(super) fn new(len: &'a mut Unaligned<usize>) -> Self {
+        SetLenOnDrop { local_len: len.0, len }
     }
 
     #[inline]
@@ -28,6 +30,6 @@ impl<'a> SetLenOnDrop<'a> {
 impl Drop for SetLenOnDrop<'_> {
     #[inline]
     fn drop(&mut self) {
-        *self.len = self.local_len;
+        self.len.0 = self.local_len;
     }
 }

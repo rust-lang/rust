@@ -13,6 +13,7 @@ use crate::alloc::{Allocator, Global, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind::*;
+use crate::unaligned::Unaligned;
 
 #[cfg(test)]
 mod tests;
@@ -49,8 +50,8 @@ enum AllocInit {
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
 pub(crate) struct RawVec<T, A: Allocator = Global> {
-    ptr: Unique<T>,
-    cap: usize,
+    ptr: Unaligned<Unique<T>>,
+    cap: Unaligned<usize>,
     alloc: A,
 }
 
@@ -119,7 +120,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr: Unique::dangling(), cap: 0, alloc }
+        Self { ptr: Unaligned(Unique::dangling()), cap: Unaligned(0), alloc }
     }
 
     /// Like `with_capacity`, but parameterized over the choice of
@@ -193,8 +194,8 @@ impl<T, A: Allocator> RawVec<T, A> {
             // matches the size requested. If that ever changes, the capacity
             // here should change to `ptr.len() / mem::size_of::<T>()`.
             Self {
-                ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
-                cap: capacity,
+                ptr: Unaligned(unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) }),
+                cap: Unaligned(capacity),
                 alloc,
             }
         }
@@ -212,7 +213,11 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
-        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc }
+        Self {
+            ptr: Unaligned(unsafe { Unique::new_unchecked(ptr) }),
+            cap: Unaligned(capacity),
+            alloc,
+        }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
@@ -220,7 +225,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// be careful.
     #[inline]
     pub fn ptr(&self) -> *mut T {
-        self.ptr.as_ptr()
+        self.ptr.0.as_ptr()
     }
 
     /// Gets the capacity of the allocation.
@@ -228,7 +233,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        if T::IS_ZST { usize::MAX } else { self.cap }
+        if T::IS_ZST { usize::MAX } else { self.cap.0 }
     }
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
@@ -237,7 +242,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
-        if T::IS_ZST || self.cap == 0 {
+        if T::IS_ZST || self.cap.0 == 0 {
             None
         } else {
             // We could use Layout::array here which ensures the absence of isize and usize overflows
@@ -247,9 +252,9 @@ impl<T, A: Allocator> RawVec<T, A> {
             let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
             unsafe {
                 let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>().unchecked_mul(self.cap);
+                let size = mem::size_of::<T>().unchecked_mul(self.cap.0);
                 let layout = Layout::from_size_align_unchecked(size, align);
-                Some((self.ptr.cast().into(), layout))
+                Some((self.ptr.0.cast().into(), layout))
             }
         }
     }
@@ -379,8 +384,8 @@ impl<T, A: Allocator> RawVec<T, A> {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
         // change to `ptr.len() / mem::size_of::<T>()`.
-        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
-        self.cap = cap;
+        self.ptr.0 = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.cap.0 = cap;
     }
 
     // This method is usually instantiated many times. So we want it to be as
@@ -405,7 +410,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap * 2, required_cap);
+        let cap = cmp::max(self.cap.0 * 2, required_cap);
         let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
         let new_layout = Layout::array::<T>(cap);
@@ -448,8 +453,8 @@ impl<T, A: Allocator> RawVec<T, A> {
         // None.
         if cap == 0 {
             unsafe { self.alloc.deallocate(ptr, layout) };
-            self.ptr = Unique::dangling();
-            self.cap = 0;
+            self.ptr.0 = Unique::dangling();
+            self.cap.0 = 0;
         } else {
             let ptr = unsafe {
                 // `Layout::array` cannot overflow here because it would have
