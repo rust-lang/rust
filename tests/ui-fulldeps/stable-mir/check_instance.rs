@@ -64,8 +64,12 @@ fn test_body(body: mir::Body) {
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
                 let instance = Instance::resolve(def, &args).unwrap();
                 let mangled_name = instance.mangled_name();
-                let body = instance.body();
-                assert!(body.is_some() || mangled_name == "setpwent", "Failed: {func:?}");
+                assert!(instance.has_body() || (mangled_name == "setpwent"), "Failed: {func:?}");
+                assert!(instance.has_body() ^ instance.is_foreign_item());
+                if instance.has_body() {
+                    let body = instance.body().unwrap();
+                    assert!(!body.locals().is_empty(), "Body must at least have a return local");
+                }
             }
             Goto { .. } | Assert { .. } | SwitchInt { .. } | Return | Drop { .. } => {
                 /* Do nothing */

@@ -120,7 +120,7 @@ impl CrateItem {
     }
 
     pub fn is_foreign_item(&self) -> bool {
-        with(|cx| cx.is_foreign_item(*self))
+        with(|cx| cx.is_foreign_item(self.0))
     }
 
     pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {

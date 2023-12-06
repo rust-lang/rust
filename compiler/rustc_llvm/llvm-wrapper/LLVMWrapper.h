@@ -1,3 +1,5 @@
+#include "SuppressLLVMWarnings.h"
+
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/Object.h"
