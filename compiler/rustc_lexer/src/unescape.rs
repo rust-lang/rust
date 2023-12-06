@@ -7,7 +7,9 @@ use std::str::Chars;
 #[cfg(test)]
 mod tests;
 
-/// Errors and warnings that can occur during string unescaping.
+/// Errors and warnings that can occur during string unescaping. They mostly
+/// relate to malformed escape sequences, but there are a few that are about
+/// other problems.
 #[derive(Debug, PartialEq, Eq)]
 pub enum EscapeError {
     /// Expected 1 char, but 0 were found.
@@ -73,9 +75,11 @@ impl EscapeError {
     }
 }
 
-/// Takes a contents of a literal (without quotes) and produces a
-/// sequence of escaped characters or errors.
-/// Values are returned through invoking of the provided callback.
+/// Takes a contents of a literal (without quotes) and produces a sequence of
+/// escaped characters or errors.
+///
+/// Values are returned by invoking `callback`. For `Char` and `Byte` modes,
+/// the callback will be called exactly once.
 pub fn unescape_literal<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
