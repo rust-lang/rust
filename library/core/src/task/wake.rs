@@ -213,7 +213,7 @@ impl<'a> Context<'a> {
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
-        ContextBuilder::new().waker(waker).build()
+        ContextBuilder::from_waker(waker).build()
     }
 
     /// Returns a reference to the [`Waker`] for the current task.
@@ -261,28 +261,43 @@ impl fmt::Debug for Context<'_> {
 /// let local_waker = LocalWaker::noop();
 /// let waker = Waker::noop();
 ///
-/// let context = ContextBuilder::default()
-///     .local_waker(&local_waker)
+/// let context = ContextBuilder::from_local_waker(&local_waker)
 ///     .waker(&waker)
 ///     .build();
+///
+/// let future = pin::pin!(async { 20 });
+/// let poll = future.poll(&mut context);
+/// assert_eq!(poll, task::Poll::Ready(20));
+///
 /// ```
 #[unstable(feature = "local_waker", issue = "none")]
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct ContextBuilder<'a> {
     waker: Option<&'a Waker>,
-    local_waker: Option<&'a LocalWaker>,
+    local_waker: &'a LocalWaker,
 }
 
 impl<'a> ContextBuilder<'a> {
-    /// Creates a new empty `ContextBuilder`.
+    /// Create a ContextBuilder from a Waker.
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[unstable(feature = "local_waker", issue = "none")]
-    pub const fn new() -> Self {
-        ContextBuilder { waker: None, local_waker: None }
+    pub const fn from_waker(waker: &'a Waker) -> Self {
+        // SAFETY: LocalWaker is just Waker without thread safety
+        let local_waker = unsafe { transmute(waker) };
+        Self { waker: Some(waker), local_waker }
+    }
+
+    /// Create a ContextBuilder from a LocalWaker.
+    #[inline]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    #[unstable(feature = "local_waker", issue = "none")]
+    pub const fn from_local_waker(local_waker: &'a LocalWaker) -> Self {
+        Self { local_waker, waker: None }
     }
 
     /// This field is used to set the value of the waker on `Context`.
+
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[unstable(feature = "local_waker", issue = "none")]
@@ -291,58 +306,19 @@ impl<'a> ContextBuilder<'a> {
     }
 
     /// This method is used to set the value for the local waker on `Context`.
-    ///
-    /// # Examples
-    /// ```
-    /// #![feature(local_waker)]
-    /// #![feature(noop_waker)]
-    ///
-    /// use std::task;
-    /// use std::pin;
-    /// use std::future::Future;
-    ///
-    /// let local_waker = task::LocalWaker::noop();
-    ///
-    /// let mut context = task::ContextBuilder::new()
-    ///     .local_waker(&local_waker)
-    ///     .build();
-    ///
-    /// let future = pin::pin!(async { 20 });
-    ///
-    /// let poll = future.poll(&mut context);
-    ///
-    /// assert_eq!(poll, task::Poll::Ready(20));
-    /// ```
     #[inline]
     #[unstable(feature = "local_waker", issue = "none")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn local_waker(self, local_waker: &'a LocalWaker) -> Self {
-        Self { local_waker: Some(local_waker), ..self }
+        Self { local_waker, ..self }
     }
 
     /// Builds the `Context`.
-    ///
-    /// # Panics
-    /// Panics if no `Waker` or `LocalWaker` is set.
     #[inline]
     #[unstable(feature = "local_waker", issue = "none")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn build(self) -> Context<'a> {
         let ContextBuilder { waker, local_waker } = self;
-        assert!(
-            waker.is_some() || local_waker.is_some(),
-            "at least one waker must be set with either the `local_waker` or `waker` methods on `ContextBuilder`."
-        );
-        let local_waker = match local_waker {
-            Some(local_waker) => local_waker,
-            None => {
-                // SAFETY:
-                // It is safe to transmute a `&Waker` into a `&LocalWaker` since both are a transparent
-                // wrapper around a local waker. Also, the Option<&Waker> here cannot be None because
-                // of the previous assert.
-                unsafe { transmute(self.waker) }
-            }
-        };
         Context { waker, local_waker, _marker: PhantomData, _marker2: PhantomData }
     }
 }
@@ -549,8 +525,8 @@ impl fmt::Debug for Waker {
 /// Local wakers can be requested from a `Context` with the [`local_waker`] method.
 ///
 /// The typical life of a `LocalWaker` is that it is constructed by an executor, wrapped in a
-/// [`Context`], then passed to [`Future::poll()`]. Then, if the future chooses to return
-/// [`Poll::Pending`], it must also store the waker somehow and call [`Waker::wake()`] when
+/// [`Context`] using [`ContextBuilder`], then passed to [`Future::poll()`]. Then, if the future chooses to return
+/// [`Poll::Pending`], it must also store the waker somehow and call [`LocalWaker::wake()`] when
 /// the future should be polled again.
 ///
 /// Implements [`Clone`], but neither [`Send`] nor [`Sync`]; therefore, a local waker may
@@ -564,7 +540,7 @@ impl fmt::Debug for Waker {
 /// unnecessarily if the two wakers [wake the same task](Self::will_wake).
 ///
 /// # Examples
-///
+/// Usage of a local waker to implement a future
 /// ```
 /// #![feature(local_waker)]
 /// use std::future::{Future, poll_fn};
@@ -582,12 +558,13 @@ impl fmt::Debug for Waker {
 ///         return Poll::Ready(())
 ///     })
 /// }
+///
 /// # #[allow(unused_must_use)]
 /// # async fn __() {
 /// yield_now().await;
 /// # }
 /// ```
-///
+/// 
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`local_waker`]: core::task::Context::local_waker
