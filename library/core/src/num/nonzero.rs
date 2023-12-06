@@ -26,8 +26,12 @@ macro_rules! nonzero_integer {
     (
         Self = $Ty:ident,
         Primitive = $signedness:ident $Int:ident,
+        UnsignedPrimitive = $UnsignedPrimitive:ty,
         feature = $feature:literal,
         original_stabilization = $since:literal,
+
+        // Used in doc comments.
+        leading_zeros_test = $leading_zeros_test:expr,
     ) => {
         /// An integer that is known not to equal zero.
         ///
@@ -122,6 +126,53 @@ macro_rules! nonzero_integer {
                 }
                 self.0
             }
+
+            /// Returns the number of leading zeros in the binary representation of `self`.
+            ///
+            /// On many architectures, this function can perform better than `leading_zeros()` on the underlying integer type, as special handling of zero can be avoided.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(", stringify!($leading_zeros_test), ").unwrap();")]
+            ///
+            /// assert_eq!(n.leading_zeros(), 0);
+            /// ```
+            #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+            #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn leading_zeros(self) -> u32 {
+                // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
+                unsafe { intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive) as u32 }
+            }
+
+            /// Returns the number of trailing zeros in the binary representation
+            /// of `self`.
+            ///
+            /// On many architectures, this function can perform better than `trailing_zeros()` on the underlying integer type, as special handling of zero can be avoided.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(0b0101000).unwrap();")]
+            ///
+            /// assert_eq!(n.trailing_zeros(), 3);
+            /// ```
+            #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+            #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn trailing_zeros(self) -> u32 {
+                // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
+                unsafe { intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive) as u32 }
+            }
         }
 
         #[stable(feature = "from_nonzero", since = "1.31.0")]
@@ -204,77 +255,6 @@ macro_rules! nonzero_integer {
 
         nonzero_integer_impl_div_rem!($Ty $signedness $Int);
     };
-}
-
-macro_rules! nonzero_leading_trailing_zeros {
-    ( $( $Ty: ident($Uint: ty) , $LeadingTestExpr:expr ;)+ ) => {
-        $(
-            impl $Ty {
-                /// Returns the number of leading zeros in the binary representation of `self`.
-                ///
-                /// On many architectures, this function can perform better than `leading_zeros()` on the underlying integer type, as special handling of zero can be avoided.
-                ///
-                /// # Examples
-                ///
-                /// Basic usage:
-                ///
-                /// ```
-                #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(", stringify!($LeadingTestExpr), ").unwrap();")]
-                ///
-                /// assert_eq!(n.leading_zeros(), 0);
-                /// ```
-                #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
-                #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
-                #[must_use = "this returns the result of the operation, \
-                              without modifying the original"]
-                #[inline]
-                pub const fn leading_zeros(self) -> u32 {
-                    // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
-                    unsafe { intrinsics::ctlz_nonzero(self.get() as $Uint) as u32 }
-                }
-
-                /// Returns the number of trailing zeros in the binary representation
-                /// of `self`.
-                ///
-                /// On many architectures, this function can perform better than `trailing_zeros()` on the underlying integer type, as special handling of zero can be avoided.
-                ///
-                /// # Examples
-                ///
-                /// Basic usage:
-                ///
-                /// ```
-                #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(0b0101000).unwrap();")]
-                ///
-                /// assert_eq!(n.trailing_zeros(), 3);
-                /// ```
-                #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
-                #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
-                #[must_use = "this returns the result of the operation, \
-                              without modifying the original"]
-                #[inline]
-                pub const fn trailing_zeros(self) -> u32 {
-                    // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
-                    unsafe { intrinsics::cttz_nonzero(self.get() as $Uint) as u32 }
-                }
-
-            }
-        )+
-    }
-}
-
-nonzero_leading_trailing_zeros! {
-    NonZeroU8(u8), u8::MAX;
-    NonZeroU16(u16), u16::MAX;
-    NonZeroU32(u32), u32::MAX;
-    NonZeroU64(u64), u64::MAX;
-    NonZeroU128(u128), u128::MAX;
-    NonZeroUsize(usize), usize::MAX;
-    NonZeroI8(u8), -1i8;
-    NonZeroI16(u16), -1i16;
-    NonZeroI32(u32), -1i32;
-    NonZeroI64(u64), -1i64;
-    NonZeroI128(u128), -1i128;
-    NonZeroIsize(usize), -1isize;
 }
 
 macro_rules! nonzero_integer_impl_div_rem {
@@ -1376,83 +1356,107 @@ nonzero_bits! {
 nonzero_integer! {
     Self = NonZeroU8,
     Primitive = unsigned u8,
+    UnsignedPrimitive = u8,
     feature = "nonzero",
     original_stabilization = "1.28.0",
+    leading_zeros_test = u8::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU16,
     Primitive = unsigned u16,
+    UnsignedPrimitive = u16,
     feature = "nonzero",
     original_stabilization = "1.28.0",
+    leading_zeros_test = u16::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU32,
     Primitive = unsigned u32,
+    UnsignedPrimitive = u32,
     feature = "nonzero",
     original_stabilization = "1.28.0",
+    leading_zeros_test = u32::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU64,
     Primitive = unsigned u64,
+    UnsignedPrimitive = u64,
     feature = "nonzero",
     original_stabilization = "1.28.0",
+    leading_zeros_test = u64::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU128,
     Primitive = unsigned u128,
+    UnsignedPrimitive = u128,
     feature = "nonzero",
     original_stabilization = "1.28.0",
+    leading_zeros_test = u128::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    UnsignedPrimitive = usize,
     feature = "nonzero",
     original_stabilization = "1.28.0",
+    leading_zeros_test = usize::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroI8,
     Primitive = signed i8,
+    UnsignedPrimitive = u8,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
+    leading_zeros_test = -1i8,
 }
 
 nonzero_integer! {
     Self = NonZeroI16,
     Primitive = signed i16,
+    UnsignedPrimitive = u16,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
+    leading_zeros_test = -1i16,
 }
 
 nonzero_integer! {
     Self = NonZeroI32,
     Primitive = signed i32,
+    UnsignedPrimitive = u32,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
+    leading_zeros_test = -1i32,
 }
 
 nonzero_integer! {
     Self = NonZeroI64,
     Primitive = signed i64,
+    UnsignedPrimitive = u64,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
+    leading_zeros_test = -1i64,
 }
 
 nonzero_integer! {
     Self = NonZeroI128,
     Primitive = signed i128,
+    UnsignedPrimitive = u128,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
+    leading_zeros_test = -1i128,
 }
 
 nonzero_integer! {
     Self = NonZeroIsize,
     Primitive = signed isize,
+    UnsignedPrimitive = usize,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
+    leading_zeros_test = -1isize,
 }
