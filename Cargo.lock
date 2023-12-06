@@ -608,6 +608,7 @@ dependencies = [
 name = "ide"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "cfg",
  "cov-mark",
  "crossbeam-channel",

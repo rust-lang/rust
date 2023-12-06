@@ -66,6 +66,7 @@ pub(crate) fn goto_declaration(
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
             item.try_to_nav(db)
         })
+        .flatten()
         .collect();
 
     if info.is_empty() {

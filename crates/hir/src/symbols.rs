@@ -9,7 +9,7 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
-use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
+use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr};
 
 use crate::{Module, ModuleDef, Semantics};
 
@@ -32,7 +32,7 @@ pub struct DeclarationLocation {
     /// This points to the whole syntax node of the declaration.
     pub ptr: SyntaxNodePtr,
     /// This points to the [`syntax::ast::Name`] identifier of the declaration.
-    pub name_ptr: SyntaxNodePtr,
+    pub name_ptr: AstPtr<syntax::ast::Name>,
 }
 
 impl DeclarationLocation {
@@ -185,7 +185,7 @@ impl<'a> SymbolCollector<'a> {
                 let dec_loc = DeclarationLocation {
                     hir_file_id: source.file_id,
                     ptr: SyntaxNodePtr::new(use_tree_src.syntax()),
-                    name_ptr: SyntaxNodePtr::new(name.syntax()),
+                    name_ptr: AstPtr::new(&name),
                 };
 
                 self.symbols.push(FileSymbol {
@@ -289,7 +289,7 @@ impl<'a> SymbolCollector<'a> {
         let dec_loc = DeclarationLocation {
             hir_file_id: source.file_id,
             ptr: SyntaxNodePtr::new(source.value.syntax()),
-            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+            name_ptr: AstPtr::new(&name_node),
         };
 
         if let Some(attrs) = def.attrs(self.db) {
@@ -322,7 +322,7 @@ impl<'a> SymbolCollector<'a> {
         let dec_loc = DeclarationLocation {
             hir_file_id: declaration.file_id,
             ptr: SyntaxNodePtr::new(module.syntax()),
-            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+            name_ptr: AstPtr::new(&name_node),
         };
 
         let def = ModuleDef::Module(module_id.into());

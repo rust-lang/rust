@@ -880,7 +880,7 @@ mod tests {
     fn detect_cyclic_dependency_indirect() {
         let mut graph = CrateGraph::default();
         let crate1 = graph.add_crate_root(
-            FileId(1u32),
+            FileId::from_raw(1u32),
             Edition2018,
             None,
             None,
@@ -893,7 +893,7 @@ mod tests {
             None,
         );
         let crate2 = graph.add_crate_root(
-            FileId(2u32),
+            FileId::from_raw(2u32),
             Edition2018,
             None,
             None,
@@ -906,7 +906,7 @@ mod tests {
             None,
         );
         let crate3 = graph.add_crate_root(
-            FileId(3u32),
+            FileId::from_raw(3u32),
             Edition2018,
             None,
             None,
@@ -942,7 +942,7 @@ mod tests {
     fn detect_cyclic_dependency_direct() {
         let mut graph = CrateGraph::default();
         let crate1 = graph.add_crate_root(
-            FileId(1u32),
+            FileId::from_raw(1u32),
             Edition2018,
             None,
             None,
@@ -955,7 +955,7 @@ mod tests {
             None,
         );
         let crate2 = graph.add_crate_root(
-            FileId(2u32),
+            FileId::from_raw(2u32),
             Edition2018,
             None,
             None,
@@ -985,7 +985,7 @@ mod tests {
     fn it_works() {
         let mut graph = CrateGraph::default();
         let crate1 = graph.add_crate_root(
-            FileId(1u32),
+            FileId::from_raw(1u32),
             Edition2018,
             None,
             None,
@@ -998,7 +998,7 @@ mod tests {
             None,
         );
         let crate2 = graph.add_crate_root(
-            FileId(2u32),
+            FileId::from_raw(2u32),
             Edition2018,
             None,
             None,
@@ -1011,7 +1011,7 @@ mod tests {
             None,
         );
         let crate3 = graph.add_crate_root(
-            FileId(3u32),
+            FileId::from_raw(3u32),
             Edition2018,
             None,
             None,
@@ -1041,7 +1041,7 @@ mod tests {
     fn dashes_are_normalized() {
         let mut graph = CrateGraph::default();
         let crate1 = graph.add_crate_root(
-            FileId(1u32),
+            FileId::from_raw(1u32),
             Edition2018,
             None,
             None,
@@ -1054,7 +1054,7 @@ mod tests {
             None,
         );
         let crate2 = graph.add_crate_root(
-            FileId(2u32),
+            FileId::from_raw(2u32),
             Edition2018,
             None,
             None,

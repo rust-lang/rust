@@ -135,7 +135,7 @@ impl ChangeFixture {
 
         let mut file_set = FileSet::default();
         let mut current_source_root_kind = SourceRootKind::Local;
-        let mut file_id = FileId(0);
+        let mut file_id = FileId::from_raw(0);
         let mut roots = Vec::new();
 
         let mut file_position = None;
@@ -210,7 +210,7 @@ impl ChangeFixture {
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
-            file_id.0 += 1;
+            file_id = FileId::from_raw(file_id.index() + 1);
         }
 
         if crates.is_empty() {
@@ -255,7 +255,7 @@ impl ChangeFixture {
 
         if let Some(mini_core) = mini_core {
             let core_file = file_id;
-            file_id.0 += 1;
+            file_id = FileId::from_raw(file_id.index() + 1);
 
             let mut fs = FileSet::default();
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
@@ -296,7 +296,6 @@ impl ChangeFixture {
         let mut proc_macros = ProcMacros::default();
         if !proc_macro_names.is_empty() {
             let proc_lib_file = file_id;
-            file_id.0 += 1;
 
             proc_macro_defs.extend(default_test_proc_macros());
             let (proc_macro, source) = filter_test_proc_macros(&proc_macro_names, proc_macro_defs);

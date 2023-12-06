@@ -22,10 +22,15 @@ use crate::{syntax_node::RustLanguage, AstNode, SyntaxNode};
 pub type SyntaxNodePtr = rowan::ast::SyntaxNodePtr<RustLanguage>;
 
 /// Like `SyntaxNodePtr`, but remembers the type of node.
-#[derive(Debug)]
 pub struct AstPtr<N: AstNode> {
     raw: SyntaxNodePtr,
     _ty: PhantomData<fn() -> N>,
+}
+
+impl<N: AstNode + std::fmt::Debug> std::fmt::Debug for AstPtr<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("AstPtr").field(&self.raw).finish()
+    }
 }
 
 impl<N: AstNode> Clone for AstPtr<N> {

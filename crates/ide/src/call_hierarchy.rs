@@ -1,5 +1,7 @@
 //! Entry point for call-hierarchy
 
+use std::iter;
+
 use hir::{DescendPreference, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
@@ -66,7 +68,10 @@ pub(crate) fn incoming_calls(
                 def.try_to_nav(sema.db)
             });
             if let Some(nav) = nav {
-                calls.add(nav, sema.original_range(name.syntax()).range);
+                calls.add(nav.call_site, sema.original_range(name.syntax()).range);
+                if let Some(other) = nav.def_site {
+                    calls.add(other, sema.original_range(name.syntax()).range);
+                }
             }
         }
     }
@@ -117,8 +122,9 @@ pub(crate) fn outgoing_calls(
                     function.try_to_nav(db).zip(Some(range))
                 }
             }?;
-            Some((nav_target, range))
+            Some(nav_target.into_iter().zip(iter::repeat(range)))
         })
+        .flatten()
         .for_each(|(nav, range)| calls.add(nav, range));
 
     Some(calls.into_items())

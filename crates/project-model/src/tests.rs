@@ -58,7 +58,7 @@ fn load_cargo_with_sysroot(
         &mut {
             |path| {
                 let len = file_map.len();
-                Some(*file_map.entry(path.to_path_buf()).or_insert(FileId(len as u32)))
+                Some(*file_map.entry(path.to_path_buf()).or_insert(FileId::from_raw(len as u32)))
             }
         },
         &Default::default(),
@@ -142,7 +142,7 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacro
             let mut counter = 0;
             move |_path| {
                 counter += 1;
-                Some(FileId(counter))
+                Some(FileId::from_raw(counter))
             }
         },
         &Default::default(),

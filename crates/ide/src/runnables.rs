@@ -335,7 +335,8 @@ pub(crate) fn runnable_fn(
         sema.db,
         def.source(sema.db)?.as_ref().map(|it| it as &dyn ast::HasName),
         SymbolKind::Function,
-    );
+    )
+    .call_site();
     let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { use_name_in_title: false, nav, kind, cfg })
 }
@@ -357,7 +358,7 @@ pub(crate) fn runnable_mod(
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
-    let nav = NavigationTarget::from_module_to_decl(sema.db, def);
+    let nav = NavigationTarget::from_module_to_decl(sema.db, def).call_site();
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
@@ -370,7 +371,7 @@ pub(crate) fn runnable_impl(
         return None;
     }
     let cfg = attrs.cfg();
-    let nav = def.try_to_nav(sema.db)?;
+    let nav = def.try_to_nav(sema.db)?.call_site();
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.generic_parameters(sema.db).peekable();
@@ -407,7 +408,7 @@ fn runnable_mod_outline_definition(
     match def.definition_source(sema.db).value {
         hir::ModuleSource::SourceFile(_) => Some(Runnable {
             use_name_in_title: false,
-            nav: def.to_nav(sema.db),
+            nav: def.to_nav(sema.db).call_site(),
             kind: RunnableKind::TestMod { path },
             cfg,
         }),
@@ -465,7 +466,8 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
     let mut nav = match def {
         Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),
         def => def.try_to_nav(db)?,
-    };
+    }
+    .call_site();
     nav.focus_range = None;
     nav.description = None;
     nav.docs = None;

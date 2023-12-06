@@ -197,6 +197,7 @@ pub trait SyntaxContextExt {
     fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> Self;
     fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> Self;
     fn parent_ctxt(self, db: &dyn ExpandDatabase) -> Self;
+    fn remove_mark(&mut self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency);
     fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency);
     fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)>;
 }
@@ -221,6 +222,11 @@ impl SyntaxContextExt for SyntaxContextId {
     }
     fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency) {
         let data = db.lookup_intern_syntax_context(self);
+        (data.outer_expn, data.outer_transparency)
+    }
+    fn remove_mark(&mut self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency) {
+        let data = db.lookup_intern_syntax_context(*self);
+        *self = data.parent;
         (data.outer_expn, data.outer_transparency)
     }
     fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)> {

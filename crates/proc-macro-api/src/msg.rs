@@ -147,8 +147,10 @@ mod tests {
     use super::*;
 
     fn fixture_token_tree() -> Subtree<SpanData> {
-        let anchor =
-            SpanAnchor { file_id: FileId(0), ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)) };
+        let anchor = SpanAnchor {
+            file_id: FileId::from_raw(0),
+            ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)),
+        };
         let mut subtree = Subtree {
             delimiter: Delimiter {
                 open: SpanData {

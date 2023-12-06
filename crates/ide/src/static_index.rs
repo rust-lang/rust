@@ -13,6 +13,7 @@ use ide_db::{
 use syntax::{AstNode, SyntaxKind::*, TextRange, T};
 
 use crate::inlay_hints::InlayFieldsToResolve;
+use crate::navigation_target::UpmappingResult;
 use crate::{
     hover::hover_for_definition,
     inlay_hints::AdjustmentHintsMode,
@@ -166,9 +167,8 @@ impl StaticIndex<'_> {
             } else {
                 let it = self.tokens.insert(TokenStaticData {
                     hover: hover_for_definition(&sema, file_id, def, &node, &hover_config),
-                    definition: def.try_to_nav(self.db).map(|it| FileRange {
-                        file_id: it.file_id,
-                        range: it.focus_or_full_range(),
+                    definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
+                        FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
                     }),
                     references: vec![],
                     moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
@@ -179,7 +179,7 @@ impl StaticIndex<'_> {
             let token = self.tokens.get_mut(id).unwrap();
             token.references.push(ReferenceData {
                 range: FileRange { range, file_id },
-                is_definition: match def.try_to_nav(self.db) {
+                is_definition: match def.try_to_nav(self.db).map(UpmappingResult::call_site) {
                     Some(it) => it.file_id == file_id && it.focus_or_full_range() == range,
                     None => false,
                 },

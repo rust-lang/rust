@@ -117,7 +117,7 @@ fn highlight_closure_captures(
                 local
                     .sources(sema.db)
                     .into_iter()
-                    .map(|x| x.to_nav(sema.db))
+                    .flat_map(|x| x.to_nav(sema.db))
                     .filter(|decl| decl.file_id == file_id)
                     .filter_map(|decl| decl.focus_range)
                     .map(move |range| HighlightedRange { range, category })
@@ -216,7 +216,7 @@ fn highlight_references(
                 local
                     .sources(sema.db)
                     .into_iter()
-                    .map(|x| x.to_nav(sema.db))
+                    .flat_map(|x| x.to_nav(sema.db))
                     .filter(|decl| decl.file_id == file_id)
                     .filter_map(|decl| decl.focus_range)
                     .map(|range| HighlightedRange { range, category })
@@ -225,21 +225,27 @@ fn highlight_references(
                     });
             }
             def => {
-                let hl_range = match def {
+                let navs = match def {
                     Definition::Module(module) => {
-                        Some(NavigationTarget::from_module_to_decl(sema.db, module))
+                        NavigationTarget::from_module_to_decl(sema.db, module)
                     }
-                    def => def.try_to_nav(sema.db),
-                }
-                .filter(|decl| decl.file_id == file_id)
-                .and_then(|decl| decl.focus_range)
-                .map(|range| {
-                    let category = references::decl_mutability(&def, node, range)
-                        .then_some(ReferenceCategory::Write);
-                    HighlightedRange { range, category }
-                });
-                if let Some(hl_range) = hl_range {
-                    res.insert(hl_range);
+                    def => match def.try_to_nav(sema.db) {
+                        Some(it) => it,
+                        None => continue,
+                    },
+                };
+                for nav in navs {
+                    if nav.file_id != file_id {
+                        continue;
+                    }
+                    let hl_range = nav.focus_range.map(|range| {
+                        let category = references::decl_mutability(&def, node, range)
+                            .then_some(ReferenceCategory::Write);
+                        HighlightedRange { range, category }
+                    });
+                    if let Some(hl_range) = hl_range {
+                        res.insert(hl_range);
+                    }
                 }
             }
         }

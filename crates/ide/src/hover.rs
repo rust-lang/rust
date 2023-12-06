@@ -21,6 +21,7 @@ use crate::{
     doc_links::token_as_doc_comment,
     markdown_remove::remove_markdown,
     markup::Markup,
+    navigation_target::UpmappingResult,
     runnables::{runnable_fn, runnable_mod},
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
 };
@@ -73,7 +74,7 @@ impl HoverAction {
                         it.module(db)?,
                         it.name(db).map(|name| name.display(db).to_string()),
                     ),
-                    nav: it.try_to_nav(db)?,
+                    nav: it.try_to_nav(db)?.call_site(),
                 })
             })
             .collect();
@@ -342,22 +343,26 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
     }
 
     let adt = match def {
-        Definition::Trait(it) => return it.try_to_nav(db).map(to_action),
+        Definition::Trait(it) => {
+            return it.try_to_nav(db).map(UpmappingResult::call_site).map(to_action)
+        }
         Definition::Adt(it) => Some(it),
         Definition::SelfType(it) => it.self_ty(db).as_adt(),
         _ => None,
     }?;
-    adt.try_to_nav(db).map(to_action)
+    adt.try_to_nav(db).map(UpmappingResult::call_site).map(to_action)
 }
 
 fn show_fn_references_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     match def {
-        Definition::Function(it) => it.try_to_nav(db).map(|nav_target| {
-            HoverAction::Reference(FilePosition {
-                file_id: nav_target.file_id,
-                offset: nav_target.focus_or_full_range().start(),
+        Definition::Function(it) => {
+            it.try_to_nav(db).map(UpmappingResult::call_site).map(|nav_target| {
+                HoverAction::Reference(FilePosition {
+                    file_id: nav_target.file_id,
+                    offset: nav_target.focus_or_full_range().start(),
+                })
             })
-        }),
+        }
         _ => None,
     }
 }

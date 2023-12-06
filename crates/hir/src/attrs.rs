@@ -241,7 +241,7 @@ fn modpath_from_str(db: &dyn HirDatabase, link: &str) -> Option<ModPath> {
         ModPath::from_src(
             db.upcast(),
             ast_path,
-            SpanMapRef::RealSpanMap(&RealSpanMap::absolute(FileId(0))),
+            SpanMapRef::RealSpanMap(&RealSpanMap::absolute(FileId::BOGUS)),
         )
     };
 
