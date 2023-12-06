@@ -264,7 +264,7 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
             TargetFeatureFoldStrength::EnableOnly("neon"),
         ),
         // The unaligned-scalar-mem feature was renamed to fast-unaligned-access.
-        ("riscv32" | "riscv64", "fast-unaligned-access") if get_version().0 <= 18 => {
+        ("riscv32" | "riscv64", "fast-unaligned-access") if get_version().0 <= 17 => {
             LLVMFeature::new("unaligned-scalar-mem")
         }
         (_, s) => LLVMFeature::new(s),
