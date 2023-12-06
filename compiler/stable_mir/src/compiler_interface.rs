@@ -60,7 +60,7 @@ pub trait Context {
     fn item_kind(&self, item: CrateItem) -> ItemKind;
 
     /// Returns whether this is a foreign item.
-    fn is_foreign_item(&self, item: CrateItem) -> bool;
+    fn is_foreign_item(&self, item: DefId) -> bool;
 
     /// Returns the kind of a given algebraic data type
     fn adt_kind(&self, def: AdtDef) -> AdtKind;

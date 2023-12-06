@@ -187,9 +187,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         new_item_kind(tables.tcx.def_kind(tables[item.0]))
     }
 
-    fn is_foreign_item(&self, item: CrateItem) -> bool {
+    fn is_foreign_item(&self, item: DefId) -> bool {
         let tables = self.0.borrow();
-        tables.tcx.is_foreign_item(tables[item.0])
+        tables.tcx.is_foreign_item(tables[item])
     }
 
     fn adt_kind(&self, def: AdtDef) -> AdtKind {

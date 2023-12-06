@@ -40,8 +40,7 @@ impl Instance {
     }
 
     pub fn is_foreign_item(&self) -> bool {
-        let item = CrateItem::try_from(*self);
-        item.as_ref().is_ok_and(CrateItem::is_foreign_item)
+        with(|cx| cx.is_foreign_item(self.def.def_id()))
     }
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.

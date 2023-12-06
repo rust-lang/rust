@@ -65,7 +65,8 @@ fn test_body(body: mir::Body) {
                 let instance = Instance::resolve(def, &args).unwrap();
                 let mangled_name = instance.mangled_name();
                 let body = instance.body();
-                assert!(body.is_some() || mangled_name == "setpwent", "Failed: {func:?}");
+                assert!(body.is_some() || (mangled_name == "setpwent"), "Failed: {func:?}");
+                assert!(body.is_some() ^ instance.is_foreign_item());
             }
             Goto { .. } | Assert { .. } | SwitchInt { .. } | Return | Drop { .. } => {
                 /* Do nothing */
