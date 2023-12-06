@@ -590,10 +590,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     // SAFETY: if and only if `lock.inner.write()` (or `lock.inner.try_write()`) has been
     // successfully called from the same thread before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockWriteGuard<'rwlock, T>> {
-        poison::map_result(lock.poison.guard(), |guard| RwLockWriteGuard {
-            lock,
-            poison: guard,
-        })
+        poison::map_result(lock.poison.guard(), |guard| RwLockWriteGuard { lock, poison: guard })
     }
 }
 
