@@ -160,8 +160,8 @@ pub struct PanicMessage {
 }
 
 impl PanicMessage {
-    pub fn as_str(&self) -> Option<String> {
-        self.message.clone()
+    pub fn into_string(self) -> Option<String> {
+        self.message
     }
 }
 

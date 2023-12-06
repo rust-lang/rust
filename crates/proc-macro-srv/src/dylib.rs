@@ -160,7 +160,7 @@ impl Expander {
             .inner
             .proc_macros
             .expand(macro_name, macro_body, attributes, def_site, call_site, mixed_site);
-        result.map_err(|e| e.as_str().unwrap_or_else(|| "<unknown error>".to_string()))
+        result.map_err(|e| e.into_string().unwrap_or_default())
     }
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {

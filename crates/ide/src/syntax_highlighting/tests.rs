@@ -47,10 +47,12 @@ struct Foo;
 fn macros() {
     check_highlighting(
         r#"
-//- proc_macros: mirror
+//- proc_macros: mirror, identity, derive_identity
 //- minicore: fmt, include, concat
 //- /lib.rs crate:lib
-proc_macros::mirror! {
+use proc_macros::{mirror, identity, DeriveIdentity};
+
+mirror! {
     {
         ,i32 :x pub
         ,i32 :y pub

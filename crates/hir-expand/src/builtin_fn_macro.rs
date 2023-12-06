@@ -152,6 +152,8 @@ fn line_expand(
     span: SpanData,
 ) -> ExpandResult<tt::Subtree> {
     // dummy implementation for type-checking purposes
+    // Note that `line!` and `column!` will never be implemented properly, as they are by definition
+    // not incremental
     ExpandResult::ok(tt::Subtree {
         delimiter: tt::Delimiter::dummy_invisible(),
         token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
