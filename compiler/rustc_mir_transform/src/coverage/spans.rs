@@ -385,38 +385,36 @@ impl<'a> CoverageSpansGenerator<'a> {
         self.refined_spans.push(macro_name_cov);
     }
 
+    #[track_caller]
     fn curr(&self) -> &CoverageSpan {
-        self.some_curr
-            .as_ref()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
+        self.some_curr.as_ref().unwrap_or_else(|| bug!("some_curr is None (curr)"))
     }
 
+    #[track_caller]
     fn curr_mut(&mut self) -> &mut CoverageSpan {
-        self.some_curr
-            .as_mut()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
+        self.some_curr.as_mut().unwrap_or_else(|| bug!("some_curr is None (curr_mut)"))
     }
 
     /// If called, then the next call to `next_coverage_span()` will *not* update `prev` with the
     /// `curr` coverage span.
+    #[track_caller]
     fn take_curr(&mut self) -> CoverageSpan {
-        self.some_curr.take().unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
+        self.some_curr.take().unwrap_or_else(|| bug!("some_curr is None (take_curr)"))
     }
 
+    #[track_caller]
     fn prev(&self) -> &CoverageSpan {
-        self.some_prev
-            .as_ref()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_prev"))
+        self.some_prev.as_ref().unwrap_or_else(|| bug!("some_prev is None (prev)"))
     }
 
+    #[track_caller]
     fn prev_mut(&mut self) -> &mut CoverageSpan {
-        self.some_prev
-            .as_mut()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_prev"))
+        self.some_prev.as_mut().unwrap_or_else(|| bug!("some_prev is None (prev_mut)"))
     }
 
+    #[track_caller]
     fn take_prev(&mut self) -> CoverageSpan {
-        self.some_prev.take().unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_prev"))
+        self.some_prev.take().unwrap_or_else(|| bug!("some_prev is None (take_prev)"))
     }
 
     /// If there are `pending_dups` but `prev` is not a matching dup (`prev.span` doesn't match the
