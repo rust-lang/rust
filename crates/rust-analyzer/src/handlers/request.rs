@@ -51,8 +51,7 @@ use crate::{
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    // FIXME: use `Arc::from_iter` when it becomes available
-    state.proc_macro_clients = Arc::from(Vec::new());
+    state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
     state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), false);
@@ -60,8 +59,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow:
 }
 
 pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    // FIXME: use `Arc::from_iter` when it becomes available
-    state.proc_macro_clients = Arc::from(Vec::new());
+    state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
     state.fetch_build_data_queue.request_op("rebuild proc macros request".to_string(), ());
