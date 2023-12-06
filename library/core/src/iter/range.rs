@@ -1,13 +1,16 @@
 use crate::ascii::Char as AsciiChar;
+use crate::cmp::Ordering;
 use crate::convert::TryFrom;
-use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr};
 use crate::num::NonZeroUsize;
 use crate::ops::{self, Try};
 
 use super::{
-    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
+    FromIterator, FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
+    TrustedStep,
 };
+
+mod legacy;
 
 // Safety: All invariants are upheld.
 macro_rules! unsafe_impl_trusted_step {
@@ -595,7 +598,7 @@ impl Step for Ipv6Addr {
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl ExactSizeIterator for ops::Range<$t> { }
+        impl ExactSizeIterator for RangeIter<$t> { }
     )*)
 }
 
@@ -605,11 +608,11 @@ macro_rules! unsafe_range_trusted_random_access_impl {
     ($($t:ty)*) => ($(
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
-        unsafe impl TrustedRandomAccess for ops::Range<$t> {}
+        unsafe impl TrustedRandomAccess for RangeIter<$t> {}
 
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
-        unsafe impl TrustedRandomAccessNoCoerce for ops::Range<$t> {
+        unsafe impl TrustedRandomAccessNoCoerce for RangeIter<$t> {
             const MAY_HAVE_SIDE_EFFECT: bool = false;
         }
     )*)
@@ -618,235 +621,52 @@ macro_rules! unsafe_range_trusted_random_access_impl {
 macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "inclusive_range", since = "1.26.0")]
-        impl ExactSizeIterator for ops::RangeInclusive<$t> { }
+        impl ExactSizeIterator for RangeInclusiveIter<$t> { }
     )*)
 }
 
-/// Specialization implementations for `Range`.
-trait RangeIteratorImpl {
-    type Item;
-
-    // Iterator
-    fn spec_next(&mut self) -> Option<Self::Item>;
-    fn spec_nth(&mut self, n: usize) -> Option<Self::Item>;
-    fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize>;
-
-    // DoubleEndedIterator
-    fn spec_next_back(&mut self) -> Option<Self::Item>;
-    fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item>;
-    fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize>;
+/// Iterator type for [`ops::range::Range`]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone, Debug)]
+pub struct RangeIter<A> {
+    pub(crate) inner: ops::range::legacy::Range<A>,
 }
 
-impl<A: Step> RangeIteratorImpl for ops::Range<A> {
-    type Item = A;
-
-    #[inline]
-    default fn spec_next(&mut self) -> Option<A> {
-        if self.start < self.end {
-            let n =
-                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
-            Some(mem::replace(&mut self.start, n))
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    default fn spec_nth(&mut self, n: usize) -> Option<A> {
-        if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
-            if plus_n < self.end {
-                self.start =
-                    Step::forward_checked(plus_n.clone(), 1).expect("`Step` invariants not upheld");
-                return Some(plus_n);
-            }
-        }
-
-        self.start = self.end.clone();
-        None
-    }
-
-    #[inline]
-    default fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        let available = if self.start <= self.end {
-            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
-        } else {
-            0
-        };
-
-        let taken = available.min(n);
-
-        self.start =
-            Step::forward_checked(self.start.clone(), taken).expect("`Step` invariants not upheld");
-
-        NonZeroUsize::new(n - taken).map_or(Ok(()), Err)
-    }
-
-    #[inline]
-    default fn spec_next_back(&mut self) -> Option<A> {
-        if self.start < self.end {
-            self.end =
-                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
-            Some(self.end.clone())
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    default fn spec_nth_back(&mut self, n: usize) -> Option<A> {
-        if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
-            if minus_n > self.start {
-                self.end =
-                    Step::backward_checked(minus_n, 1).expect("`Step` invariants not upheld");
-                return Some(self.end.clone());
-            }
-        }
-
-        self.end = self.start.clone();
-        None
-    }
-
-    #[inline]
-    default fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        let available = if self.start <= self.end {
-            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
-        } else {
-            0
-        };
-
-        let taken = available.min(n);
-
-        self.end =
-            Step::backward_checked(self.end.clone(), taken).expect("`Step` invariants not upheld");
-
-        NonZeroUsize::new(n - taken).map_or(Ok(()), Err)
-    }
-}
-
-impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
-    #[inline]
-    fn spec_next(&mut self) -> Option<T> {
-        if self.start < self.end {
-            let old = self.start;
-            // SAFETY: just checked precondition
-            self.start = unsafe { Step::forward_unchecked(old, 1) };
-            Some(old)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn spec_nth(&mut self, n: usize) -> Option<T> {
-        if let Some(plus_n) = Step::forward_checked(self.start, n) {
-            if plus_n < self.end {
-                // SAFETY: just checked precondition
-                self.start = unsafe { Step::forward_unchecked(plus_n, 1) };
-                return Some(plus_n);
-            }
-        }
-
-        self.start = self.end;
-        None
-    }
-
-    #[inline]
-    fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        let available = if self.start <= self.end {
-            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
-        } else {
-            0
-        };
-
-        let taken = available.min(n);
-
-        // SAFETY: the conditions above ensure that the count is in bounds. If start <= end
-        // then steps_between either returns a bound to which we clamp or returns None which
-        // together with the initial inequality implies more than usize::MAX steps.
-        // Otherwise 0 is returned which always safe to use.
-        self.start = unsafe { Step::forward_unchecked(self.start, taken) };
-
-        NonZeroUsize::new(n - taken).map_or(Ok(()), Err)
-    }
-
-    #[inline]
-    fn spec_next_back(&mut self) -> Option<T> {
-        if self.start < self.end {
-            // SAFETY: just checked precondition
-            self.end = unsafe { Step::backward_unchecked(self.end, 1) };
-            Some(self.end)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn spec_nth_back(&mut self, n: usize) -> Option<T> {
-        if let Some(minus_n) = Step::backward_checked(self.end, n) {
-            if minus_n > self.start {
-                // SAFETY: just checked precondition
-                self.end = unsafe { Step::backward_unchecked(minus_n, 1) };
-                return Some(self.end);
-            }
-        }
-
-        self.end = self.start;
-        None
-    }
-
-    #[inline]
-    fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        let available = if self.start <= self.end {
-            Step::steps_between(&self.start, &self.end).unwrap_or(usize::MAX)
-        } else {
-            0
-        };
-
-        let taken = available.min(n);
-
-        // SAFETY: same as the spec_advance_by() implementation
-        self.end = unsafe { Step::backward_unchecked(self.end, taken) };
-
-        NonZeroUsize::new(n - taken).map_or(Ok(()), Err)
+impl<A> RangeIter<A> {
+    #[doc(hidden)]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn inner(&self) -> &ops::range::legacy::Range<A> {
+        &self.inner
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> Iterator for ops::Range<A> {
+impl<A: Step> Iterator for RangeIter<A> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.spec_next()
+        self.inner.next()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.start < self.end {
-            let hint = Step::steps_between(&self.start, &self.end);
-            (hint.unwrap_or(usize::MAX), hint)
-        } else {
-            (0, Some(0))
-        }
+        self.inner.size_hint()
     }
 
     #[inline]
     fn count(self) -> usize {
-        if self.start < self.end {
-            Step::steps_between(&self.start, &self.end).expect("count overflowed usize")
-        } else {
-            0
-        }
+        self.inner.count()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        self.spec_nth(n)
+        self.inner.nth(n)
     }
 
     #[inline]
     fn last(mut self) -> Option<A> {
-        self.next_back()
+        self.inner.next_back()
     }
 
     #[inline]
@@ -854,7 +674,7 @@ impl<A: Step> Iterator for ops::Range<A> {
     where
         A: Ord,
     {
-        self.next()
+        self.inner.next()
     }
 
     #[inline]
@@ -862,17 +682,17 @@ impl<A: Step> Iterator for ops::Range<A> {
     where
         A: Ord,
     {
-        self.next_back()
+        self.inner.next_back()
     }
 
     #[inline]
     fn is_sorted(self) -> bool {
-        true
+        self.inner.is_sorted()
     }
 
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        self.spec_advance_by(n)
+        self.inner.advance_by(n)
     }
 
     #[inline]
@@ -884,7 +704,7 @@ impl<A: Step> Iterator for ops::Range<A> {
         // that is in bounds.
         // Additionally Self: TrustedRandomAccess is only implemented for Copy types
         // which means even repeated reads of the same index would be safe.
-        unsafe { Step::forward_unchecked(self.start.clone(), idx) }
+        unsafe { Step::forward_unchecked(self.inner.start.clone(), idx) }
     }
 }
 
@@ -937,20 +757,20 @@ range_incl_exact_iter_impl! {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> DoubleEndedIterator for ops::Range<A> {
+impl<A: Step> DoubleEndedIterator for RangeIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        self.spec_next_back()
+        self.inner.next_back()
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<A> {
-        self.spec_nth_back(n)
+        self.inner.nth_back(n)
     }
 
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        self.spec_advance_back_by(n)
+        self.inner.advance_back_by(n)
     }
 }
 
@@ -971,308 +791,190 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
 //
 // The second invariant logically follows the first so long as the `PartialOrd`
 // implementation is correct; regardless it is explicitly stated. If `a < b`
-// then `(0, Some(0))` is returned by `ops::Range<A: Step>::size_hint`. As such
+// then `(0, Some(0))` is returned by `ops::range::Range<A: Step>::size_hint`. As such
 // the second invariant is upheld.
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: TrustedStep> TrustedLen for ops::Range<A> {}
+unsafe impl<A: TrustedStep> TrustedLen for RangeIter<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<A: Step> FusedIterator for ops::Range<A> {}
+impl<A: Step> FusedIterator for RangeIter<A> {}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<Idx: Step> IntoIterator for ops::range::Range<Idx> {
+    type Item = Idx;
+    type IntoIter = RangeIter<Idx>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RangeIter { inner: ops::range::legacy::Range { start: self.start, end: self.end } }
+    }
+}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<Idx: Step + Copy> IntoIterator for &ops::range::Range<Idx> {
+    type Item = Idx;
+    type IntoIter = RangeIter<Idx>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (*self).into_iter()
+    }
+}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<Idx: Step + Copy> IntoIterator for &mut ops::range::Range<Idx> {
+    type Item = Idx;
+    type IntoIter = RangeIter<Idx>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (*self).into_iter()
+    }
+}
+
+impl<Idx: Step> ops::range::Range<Idx> {
+    /// Returns and advances `start` unless the range is empty.
+    ///
+    /// This differs from `.into_iter().next()` because
+    /// that copies the range before advancing the iterator
+    /// but this modifies the range in place.
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    pub fn next(&mut self) -> Option<Idx> {
+        let mut iter = self.clone().into_iter();
+        let out = iter.next();
+
+        self.start = iter.inner.start;
+        self.end = iter.inner.end;
+
+        out
+    }
+}
+
+/// Iterator type for [`ops::range::RangeFrom`]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone, Debug)]
+pub struct RangeFromIter<A> {
+    inner: ops::range::legacy::RangeFrom<A>,
+}
+
+impl<A> RangeFromIter<A> {
+    #[doc(hidden)]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn inner(&self) -> &ops::range::legacy::RangeFrom<A> {
+        &self.inner
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> Iterator for ops::RangeFrom<A> {
+impl<A: Step> Iterator for RangeFromIter<A> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let n = Step::forward(self.start.clone(), 1);
-        Some(mem::replace(&mut self.start, n))
+        self.inner.next()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::MAX, None)
+        self.inner.size_hint()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        let plus_n = Step::forward(self.start.clone(), n);
-        self.start = Step::forward(plus_n.clone(), 1);
-        Some(plus_n)
+        self.inner.nth(n)
     }
 }
 
-// Safety: See above implementation for `ops::Range<A>`
+// Safety: See above implementation for `ops::range::Range<A>`
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: TrustedStep> TrustedLen for ops::RangeFrom<A> {}
+unsafe impl<A: TrustedStep> TrustedLen for RangeFromIter<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
+impl<A: Step> FusedIterator for RangeFromIter<A> {}
 
-trait RangeInclusiveIteratorImpl {
-    type Item;
-
-    // Iterator
-    fn spec_next(&mut self) -> Option<Self::Item>;
-    fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>;
-
-    // DoubleEndedIterator
-    fn spec_next_back(&mut self) -> Option<Self::Item>;
-    fn spec_try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>;
-}
-
-impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<A: Step> IntoIterator for ops::range::RangeFrom<A> {
     type Item = A;
+    type IntoIter = RangeFromIter<A>;
 
-    #[inline]
-    default fn spec_next(&mut self) -> Option<A> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            let n =
-                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
-            mem::replace(&mut self.start, n)
-        } else {
-            self.exhausted = true;
-            self.start.clone()
-        })
-    }
-
-    #[inline]
-    default fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, A) -> R,
-        R: Try<Output = B>,
-    {
-        if self.is_empty() {
-            return try { init };
-        }
-
-        let mut accum = init;
-
-        while self.start < self.end {
-            let n =
-                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
-            let n = mem::replace(&mut self.start, n);
-            accum = f(accum, n)?;
-        }
-
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
-
-        try { accum }
-    }
-
-    #[inline]
-    default fn spec_next_back(&mut self) -> Option<A> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            let n =
-                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
-            mem::replace(&mut self.end, n)
-        } else {
-            self.exhausted = true;
-            self.end.clone()
-        })
-    }
-
-    #[inline]
-    default fn spec_try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, A) -> R,
-        R: Try<Output = B>,
-    {
-        if self.is_empty() {
-            return try { init };
-        }
-
-        let mut accum = init;
-
-        while self.start < self.end {
-            let n =
-                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
-            let n = mem::replace(&mut self.end, n);
-            accum = f(accum, n)?;
-        }
-
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
-
-        try { accum }
+    fn into_iter(self) -> Self::IntoIter {
+        RangeFromIter { inner: ops::range::legacy::RangeFrom { start: self.start } }
     }
 }
 
-impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
-    #[inline]
-    fn spec_next(&mut self) -> Option<T> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
-            mem::replace(&mut self.start, n)
-        } else {
-            self.exhausted = true;
-            self.start.clone()
-        })
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<A: Step + Copy> IntoIterator for &ops::range::RangeFrom<A> {
+    type Item = A;
+    type IntoIter = RangeFromIter<A>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (*self).into_iter()
     }
+}
 
-    #[inline]
-    fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, T) -> R,
-        R: Try<Output = B>,
-    {
-        if self.is_empty() {
-            return try { init };
-        }
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<A: Step + Copy> IntoIterator for &mut ops::range::RangeFrom<A> {
+    type Item = A;
+    type IntoIter = RangeFromIter<A>;
 
-        let mut accum = init;
-
-        while self.start < self.end {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
-            let n = mem::replace(&mut self.start, n);
-            accum = f(accum, n)?;
-        }
-
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
-
-        try { accum }
+    fn into_iter(self) -> Self::IntoIter {
+        (*self).into_iter()
     }
+}
 
-    #[inline]
-    fn spec_next_back(&mut self) -> Option<T> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
-            mem::replace(&mut self.end, n)
-        } else {
-            self.exhausted = true;
-            self.end.clone()
-        })
+impl<Idx: Step> ops::range::RangeFrom<Idx> {
+    /// Returns and advances `start` unless the range is empty.
+    ///
+    /// This differs from `.into_iter().next()` because
+    /// that copies the range before advancing the iterator
+    /// but this modifies the range in place.
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    pub fn next(&mut self) -> Option<Idx> {
+        let mut iter = self.clone().into_iter();
+        let out = iter.next();
+
+        self.start = iter.inner.start;
+
+        out
     }
+}
 
-    #[inline]
-    fn spec_try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, T) -> R,
-        R: Try<Output = B>,
-    {
-        if self.is_empty() {
-            return try { init };
-        }
+/// Iterator type for [`ops::range::RangeInclusive`]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone, Debug)]
+pub struct RangeInclusiveIter<A> {
+    pub(crate) inner: ops::range::legacy::RangeInclusive<A>,
+}
 
-        let mut accum = init;
-
-        while self.start < self.end {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
-            let n = mem::replace(&mut self.end, n);
-            accum = f(accum, n)?;
-        }
-
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
-
-        try { accum }
+impl<A> RangeInclusiveIter<A> {
+    #[doc(hidden)]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn inner(&self) -> &ops::range::legacy::RangeInclusive<A> {
+        &self.inner
     }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<A: Step> Iterator for ops::RangeInclusive<A> {
+impl<A: Step> Iterator for RangeInclusiveIter<A> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.spec_next()
+        self.inner.next()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.is_empty() {
-            return (0, Some(0));
-        }
-
-        match Step::steps_between(&self.start, &self.end) {
-            Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
-            None => (usize::MAX, None),
-        }
+        self.inner.size_hint()
     }
 
     #[inline]
     fn count(self) -> usize {
-        if self.is_empty() {
-            return 0;
-        }
-
-        Step::steps_between(&self.start, &self.end)
-            .and_then(|steps| steps.checked_add(1))
-            .expect("count overflowed usize")
+        self.inner.count()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        if self.is_empty() {
-            return None;
-        }
-
-        if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
-            use crate::cmp::Ordering::*;
-
-            match plus_n.partial_cmp(&self.end) {
-                Some(Less) => {
-                    self.start = Step::forward(plus_n.clone(), 1);
-                    return Some(plus_n);
-                }
-                Some(Equal) => {
-                    self.start = plus_n.clone();
-                    self.exhausted = true;
-                    return Some(plus_n);
-                }
-                _ => {}
-            }
-        }
-
-        self.start = self.end.clone();
-        self.exhausted = true;
-        None
+        self.inner.nth(n)
     }
 
     #[inline]
@@ -1282,71 +984,54 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        self.spec_try_fold(init, f)
+        self.inner.try_fold(init, f)
     }
 
-    impl_fold_via_try_fold! { fold -> try_fold }
-
-    #[inline]
-    fn last(mut self) -> Option<A> {
-        self.next_back()
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
     }
 
     #[inline]
-    fn min(mut self) -> Option<A>
+    fn last(self) -> Option<A> {
+        self.inner.last()
+    }
+
+    #[inline]
+    fn min(self) -> Option<A>
     where
         A: Ord,
     {
-        self.next()
+        self.inner.min()
     }
 
     #[inline]
-    fn max(mut self) -> Option<A>
+    fn max(self) -> Option<A>
     where
         A: Ord,
     {
-        self.next_back()
+        self.inner.max()
     }
 
     #[inline]
     fn is_sorted(self) -> bool {
-        true
+        self.inner.is_sorted()
     }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
+impl<A: Step> DoubleEndedIterator for RangeInclusiveIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        self.spec_next_back()
+        self.inner.next_back()
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<A> {
-        if self.is_empty() {
-            return None;
-        }
-
-        if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
-            use crate::cmp::Ordering::*;
-
-            match minus_n.partial_cmp(&self.start) {
-                Some(Greater) => {
-                    self.end = Step::backward(minus_n.clone(), 1);
-                    return Some(minus_n);
-                }
-                Some(Equal) => {
-                    self.end = minus_n.clone();
-                    self.exhausted = true;
-                    return Some(minus_n);
-                }
-                _ => {}
-            }
-        }
-
-        self.end = self.start.clone();
-        self.exhausted = true;
-        None
+        self.inner.nth_back(n)
     }
 
     #[inline]
@@ -1356,15 +1041,678 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        self.spec_try_rfold(init, f)
+        self.inner.try_rfold(init, f)
     }
 
-    impl_fold_via_try_fold! { rfold -> try_rfold }
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.rfold(init, f)
+    }
 }
 
-// Safety: See above implementation for `ops::Range<A>`
+// Safety: See above implementation for `ops::range::Range<A>`
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: TrustedStep> TrustedLen for ops::RangeInclusive<A> {}
+unsafe impl<A: TrustedStep> TrustedLen for RangeInclusiveIter<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}
+impl<A: Step> FusedIterator for RangeInclusiveIter<A> {}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<A: Step> IntoIterator for ops::range::RangeInclusive<A> {
+    type Item = A;
+    type IntoIter = RangeInclusiveIter<A>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RangeInclusiveIter {
+            inner: ops::range::legacy::RangeInclusive {
+                start: self.start,
+                end: self.end,
+                exhausted: false,
+            },
+        }
+    }
+}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<A: Step + Copy> IntoIterator for &ops::range::RangeInclusive<A> {
+    type Item = A;
+    type IntoIter = RangeInclusiveIter<A>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (*self).into_iter()
+    }
+}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<A: Step + Copy> IntoIterator for &mut ops::range::RangeInclusive<A> {
+    type Item = A;
+    type IntoIter = RangeInclusiveIter<A>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (*self).into_iter()
+    }
+}
+
+impl<Idx: Step> ops::range::RangeInclusive<Idx> {
+    /// Returns and advances `start` unless the range is empty.
+    ///
+    /// This differs from `.into_iter().next()` because
+    /// that copies the range before advancing the iterator
+    /// but this modifies the range in place.
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    pub fn next(&mut self) -> Option<Idx> {
+        let mut iter = self.clone().into_iter();
+        let out = iter.next();
+
+        if iter.inner.exhausted {
+            // When exhausted, attempt to put end before start so the range is empty
+            // If end is the minimum value (`start = end = 0`), set start past end
+            if let Some(n) = Step::backward_checked(iter.inner.start.clone(), 1) {
+                self.end = n;
+                self.start = iter.inner.start;
+            } else {
+                self.start = Step::forward(iter.inner.end.clone(), 1);
+                self.end = iter.inner.end;
+            }
+        } else {
+            // Not exhausted, so just set new start and end
+            self.start = iter.inner.start;
+            self.end = iter.inner.end;
+        }
+
+        out
+    }
+}
+
+macro_rules! iter_methods {
+    ($($ty:ident),*) => {$(
+
+impl<Idx: Step> ops::range::$ty<Idx> {
+    /// Shorthand for `.into_iter().size_hint()`.
+    ///
+    /// See [`Iterator::size_hint`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn size_hint(&self) -> (usize, Option<usize>) {
+        self.clone().into_iter().size_hint()
+    }
+
+    /// Shorthand for `.into_iter().count()`.
+    ///
+    /// See [`Iterator::count`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn count(self) -> usize {
+        self.into_iter().count()
+    }
+
+    /// Shorthand for `.into_iter().last()`.
+    ///
+    /// See [`Iterator::last`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn last(self) -> Option<Idx> {
+        self.into_iter().last()
+    }
+
+    /// Shorthand for `.into_iter().step_by(...)`.
+    ///
+    /// See [`Iterator::step_by`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn step_by(self, step: usize) -> crate::iter::StepBy<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().step_by(step)
+    }
+
+    /// Shorthand for `.into_iter().chain(...)`
+    ///
+    /// See [`Iterator::chain`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn chain<U>(self, other: U) -> crate::iter::Chain<<Self as IntoIterator>::IntoIter, U::IntoIter>
+    where
+        U: IntoIterator<Item = Idx>,
+    {
+        self.into_iter().chain(other)
+    }
+
+    /// Shorthand for `.into_iter().zip(...)`
+    ///
+    /// See [`Iterator::zip`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn zip<U>(self, other: U) -> crate::iter::Zip<<Self as IntoIterator>::IntoIter, U::IntoIter>
+    where
+        U: IntoIterator,
+    {
+        self.into_iter().zip(other)
+    }
+
+    /// Shorthand for `.into_iter().intersperse(...)`
+    ///
+    /// See [`Iterator::intersperse`]
+    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+    pub fn intersperse(self, separator: Idx) -> crate::iter::Intersperse<<Self as IntoIterator>::IntoIter>
+    where
+        Idx: Clone,
+    {
+        self.into_iter().intersperse(separator)
+    }
+
+    /// Shorthand for `.into_iter().intersperse_with(...)`
+    ///
+    /// See [`Iterator::intersperse_with`]
+    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+    pub fn intersperse_with<G>(self, separator: G) -> crate::iter::IntersperseWith<<Self as IntoIterator>::IntoIter, G>
+    where
+        G: FnMut() -> Idx,
+    {
+        self.into_iter().intersperse_with(separator)
+    }
+
+    /// Shorthand for `.into_iter().map(...)`
+    ///
+    /// See [`Iterator::map`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn map<B, F>(self, f: F) -> crate::iter::Map<<Self as IntoIterator>::IntoIter, F>
+    where
+        F: FnMut(Idx) -> B,
+    {
+        self.into_iter().map(f)
+    }
+
+    /// Shorthand for `.into_iter().for_each(...)`
+    ///
+    /// See [`Iterator::for_each`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn for_each<F>(self, f: F)
+    where
+        F: FnMut(Idx),
+    {
+        self.into_iter().for_each(f)
+    }
+
+    /// Shorthand for `.into_iter().filter(...)`
+    ///
+    /// See [`Iterator::filter`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn filter<P>(self, predicate: P) -> crate::iter::Filter<<Self as IntoIterator>::IntoIter, P>
+    where P:
+        FnMut(&Idx) -> bool,
+    {
+        self.into_iter().filter(predicate)
+    }
+
+    /// Shorthand for `.into_iter().filter_map(...)`
+    ///
+    /// See [`Iterator::filter_map`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn filter_map<B, F>(self, f: F) -> crate::iter::FilterMap<<Self as IntoIterator>::IntoIter, F>
+    where
+        F: FnMut(Idx) -> Option<B>,
+    {
+        self.into_iter().filter_map(f)
+    }
+
+    /// Shorthand for `.into_iter().enumerate()`
+    ///
+    /// See [`Iterator::enumerate`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn enumerate(self) -> crate::iter::Enumerate<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().enumerate()
+    }
+
+    /// Shorthand for `.into_iter().peekable()`
+    ///
+    /// See [`Iterator::peekable`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn peekable(self) -> crate::iter::Peekable<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().peekable()
+    }
+
+    /// Shorthand for `.into_iter().filter_map(...)`
+    ///
+    /// See [`Iterator::filter_map`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn skip_while<P>(self, predicate: P) -> crate::iter::SkipWhile<<Self as IntoIterator>::IntoIter, P>
+    where
+        P: FnMut(&Idx) -> bool,
+    {
+        self.into_iter().skip_while(predicate)
+    }
+
+    /// Shorthand for `.into_iter().take_while(...)`
+    ///
+    /// See [`Iterator::take_while`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn take_while<P>(self, predicate: P) -> crate::iter::TakeWhile<<Self as IntoIterator>::IntoIter, P>
+    where
+        P: FnMut(&Idx) -> bool,
+    {
+        self.into_iter().take_while(predicate)
+    }
+
+    /// Shorthand for `.into_iter().map_while(...)`
+    ///
+    /// See [`Iterator::map_while`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn map_while<B, P>(self, predicate: P) -> crate::iter::MapWhile<<Self as IntoIterator>::IntoIter, P>
+    where
+        P: FnMut(Idx) -> Option<B>,
+    {
+        self.into_iter().map_while(predicate)
+    }
+
+    /// Shorthand for `.into_iter().skip(...)`
+    ///
+    /// See [`Iterator::skip`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn skip(self, n: usize) -> crate::iter::Skip<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().skip(n)
+    }
+
+    /// Shorthand for `.into_iter().take(...)`
+    ///
+    /// See [`Iterator::take`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn take(self, n: usize) -> crate::iter::Take<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().take(n)
+    }
+
+    /// Shorthand for `.into_iter().scan(...)`
+    ///
+    /// See [`Iterator::scan`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn scan<St, B, F>(self, initial_state: St, f: F) -> crate::iter::Scan<<Self as IntoIterator>::IntoIter, St, F>
+    where
+        F: FnMut(&mut St, Idx) -> Option<B>,
+    {
+        self.into_iter().scan(initial_state, f)
+    }
+
+    /// Shorthand for `.into_iter().flat_map(...)`
+    ///
+    /// See [`Iterator::flat_map`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn flat_map<U, F>(self, f: F) -> crate::iter::FlatMap<<Self as IntoIterator>::IntoIter, U, F>
+    where
+        U: IntoIterator,
+        F: FnMut(Idx) -> U,
+    {
+        self.into_iter().flat_map(f)
+    }
+
+    /// Shorthand for `.into_iter().fuse()`
+    ///
+    /// See [`Iterator::fuse`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn fuse(self) -> crate::iter::Fuse<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().fuse()
+    }
+
+    /// Shorthand for `.into_iter().inspect(...)`
+    ///
+    /// See [`Iterator::inspect`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn inspect<F>(self, f: F) -> crate::iter::Inspect<<Self as IntoIterator>::IntoIter, F>
+    where
+        F: FnMut(&Idx),
+    {
+        self.into_iter().inspect(f)
+    }
+
+    /// Shorthand for `.into_iter().collect()`
+    ///
+    /// See [`Iterator::collect`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn collect<B: FromIterator<Idx>>(self) -> B {
+        FromIterator::from_iter(self)
+    }
+
+    /// Shorthand for `.into_iter().partition(...)`
+    ///
+    /// See [`Iterator::partition`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn partition<B, F>(self, f: F) -> (B, B)
+    where
+        B: Default + Extend<Idx>,
+        F: FnMut(&Idx) -> bool,
+    {
+        self.into_iter().partition(f)
+    }
+
+    /// Shorthand for `.into_iter().fold(...)`
+    ///
+    /// See [`Iterator::fold`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Idx) -> B,
+    {
+        self.into_iter().fold(init, f)
+    }
+
+    /// Shorthand for `.into_iter().reduce(...)`
+    ///
+    /// See [`Iterator::reduce`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn reduce<F>(self, f: F) -> Option<Idx>
+    where
+        F: FnMut(Idx, Idx) -> Idx,
+    {
+        self.into_iter().reduce(f)
+    }
+
+    /// Shorthand for `.into_iter().all(...)`
+    ///
+    /// One noticeable difference is that this takes the
+    /// range by copy, rather than mutating it in place.
+    ///
+    /// See [`Iterator::all`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    pub fn all<F>(self, f: F) -> bool
+    where
+        F: FnMut(Idx) -> bool,
+    {
+        self.into_iter().all(f)
+    }
+
+    /// Shorthand for `.into_iter().any(...)`
+    ///
+    /// One noticeable difference is that this takes the
+    /// range by copy, rather than mutating it in place.
+    ///
+    /// See [`Iterator::any`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    pub fn any<F>(self, f: F) -> bool
+    where
+        F: FnMut(Idx) -> bool,
+    {
+        self.into_iter().any(f)
+    }
+
+    /// Shorthand for `.into_iter().find(...)`
+    ///
+    /// One noticeable difference is that this takes the
+    /// range by copy, rather than mutating it in place.
+    ///
+    /// See [`Iterator::find`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    pub fn find<P>(self, predicate: P) -> Option<Idx>
+    where
+        P: FnMut(&Idx) -> bool,
+    {
+        self.into_iter().find(predicate)
+    }
+
+    /// Shorthand for `.into_iter().max()`
+    ///
+    /// See [`Iterator::max`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn max(self) -> Option<Idx>
+    where
+        Idx: Ord,
+    {
+        self.into_iter().max()
+    }
+
+    /// Shorthand for `.into_iter().min()`
+    ///
+    /// See [`Iterator::min`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn min(self) -> Option<Idx>
+    where
+        Idx: Ord,
+    {
+        self.into_iter().min()
+    }
+
+    /// Shorthand for `.into_iter().max_by_key(...)`
+    ///
+    /// See [`Iterator::max_by_key`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn max_by_key<B: Ord, F>(self, f: F) -> Option<Idx>
+    where
+        F: FnMut(&Idx) -> B,
+    {
+        self.into_iter().max_by_key(f)
+    }
+
+    /// Shorthand for `.into_iter().max_by(...)`
+    ///
+    /// See [`Iterator::max_by`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn max_by<F>(self, f: F) -> Option<Idx>
+    where
+        F: FnMut(&Idx, &Idx) -> Ordering,
+    {
+        self.into_iter().max_by(f)
+    }
+
+    /// Shorthand for `.into_iter().min_by_key(...)`
+    ///
+    /// See [`Iterator::min_by_key`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn min_by_key<B: Ord, F>(self, f: F) -> Option<Idx>
+    where
+        F: FnMut(&Idx) -> B,
+    {
+        self.into_iter().min_by_key(f)
+    }
+
+    /// Shorthand for `.into_iter().min_by(...)`
+    ///
+    /// See [`Iterator::min_by`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn min_by<F>(self, f: F) -> Option<Idx>
+    where
+        F: FnMut(&Idx, &Idx) -> Ordering,
+    {
+        self.into_iter().min_by(f)
+    }
+
+    /// Shorthand for `.into_iter().rev()`
+    ///
+    /// See [`Iterator::rev`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn rev(self) -> crate::iter::Rev<<Self as IntoIterator>::IntoIter>
+    where <Self as IntoIterator>::IntoIter: DoubleEndedIterator
+    {
+        self.into_iter().rev()
+    }
+
+    /// Shorthand for `.into_iter().cycle()`
+    ///
+    /// See [`Iterator::cycle`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn cycle(self) -> crate::iter::Cycle<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().cycle()
+    }
+
+    /// Shorthand for `.into_iter().array_chunks()`
+    ///
+    /// See [`Iterator::array_chunks`]
+    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+    pub fn array_chunks<const N: usize>(self) -> crate::iter::ArrayChunks<<Self as IntoIterator>::IntoIter, N> {
+        self.into_iter().array_chunks()
+    }
+
+    /// Shorthand for `.into_iter().sum()`
+    ///
+    /// See [`Iterator::sum`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn sum<S>(self) -> S
+    where
+        S: crate::iter::Sum<Idx>,
+    {
+        self.into_iter().sum()
+    }
+
+    /// Shorthand for `.into_iter().product()`
+    ///
+    /// See [`Iterator::product`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn product<P>(self) -> P
+    where
+        P: crate::iter::Product<Idx>,
+    {
+        self.into_iter().product()
+    }
+
+    /// Shorthand for `.into_iter().cmp(...)`
+    ///
+    /// See [`Iterator::cmp`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn cmp<I>(self, other: I) -> Ordering
+    where
+        I: IntoIterator<Item = Idx>,
+        Idx: Ord,
+    {
+        self.into_iter().cmp(other)
+    }
+
+    /// Shorthand for `.into_iter().cmp_by(...)`
+    ///
+    /// See [`Iterator::cmp_by`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn cmp_by<I, F>(self, other: I, cmp: F) -> Ordering
+    where
+        I: IntoIterator,
+        F: FnMut(Idx, I::Item) -> Ordering,
+    {
+        self.into_iter().cmp_by(other, cmp)
+    }
+
+    /// Shorthand for `.into_iter().partial_cmp(...)`
+    ///
+    /// See [`Iterator::partial_cmp`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn partial_cmp<I>(self, other: I) -> Option<Ordering>
+    where
+        I: IntoIterator<Item = Idx>,
+        Idx: Ord,
+    {
+        self.into_iter().partial_cmp(other)
+    }
+
+    /// Shorthand for `.into_iter().partial_cmp_by(...)`
+    ///
+    /// See [`Iterator::partial_cmp_by`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn partial_cmp_by<I, F>(self, other: I, partial_cmp: F) -> Option<Ordering>
+    where
+        I: IntoIterator,
+        F: FnMut(Idx, I::Item) -> Option<Ordering>,
+    {
+        self.into_iter().partial_cmp_by(other, partial_cmp)
+    }
+
+    /// Shorthand for `.into_iter().eq(...)`
+    ///
+    /// See [`Iterator::eq`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn eq<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Idx: PartialEq<I::Item>,
+    {
+        self.into_iter().eq(other)
+    }
+
+    /// Shorthand for `.into_iter().eq_by(...)`
+    ///
+    /// See [`Iterator::eq_by`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn eq_by<I, F>(self, other: I, eq: F) -> bool
+    where
+        I: IntoIterator,
+        F: FnMut(Idx, I::Item) -> bool,
+    {
+        self.into_iter().eq_by(other, eq)
+    }
+
+    /// Shorthand for `.into_iter().ne(...)`
+    ///
+    /// See [`Iterator::ne`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn ne<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Idx: PartialEq<I::Item>,
+    {
+        self.into_iter().ne(other)
+    }
+
+    /// Shorthand for `.into_iter().lt(...)`
+    ///
+    /// See [`Iterator::lt`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn lt<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Idx: PartialOrd<I::Item>,
+    {
+        self.into_iter().lt(other)
+    }
+
+    /// Shorthand for `.into_iter().le(...)`
+    ///
+    /// See [`Iterator::le`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn le<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Idx: PartialOrd<I::Item>,
+    {
+        self.into_iter().le(other)
+    }
+
+    /// Shorthand for `.into_iter().gt(...)`
+    ///
+    /// See [`Iterator::gt`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn gt<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Idx: PartialOrd<I::Item>,
+    {
+        self.into_iter().gt(other)
+    }
+
+    /// Shorthand for `.into_iter().ge(...)`
+    ///
+    /// See [`Iterator::ge`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn ge<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Idx: PartialOrd<I::Item>,
+    {
+        self.into_iter().ge(other)
+    }
+
+    /// Shorthand for `.into_iter().is_sorted()`
+    ///
+    /// See [`Iterator::ge`]
+    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    pub fn is_sorted(self) -> bool
+    where
+        Idx: PartialOrd,
+    {
+        self.into_iter().is_sorted()
+    }
+
+    /// Returns the length of the `Range`.
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn len(&self) -> usize
+    where <Self as IntoIterator>::IntoIter: ExactSizeIterator
+    {
+        ExactSizeIterator::len(&self.clone().into_iter())
+    }
+}
+
+    )*}
+}
+
+iter_methods!(Range, RangeFrom, RangeInclusive);

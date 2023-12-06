@@ -41,8 +41,8 @@ fn test_rev() {
 #[test]
 fn test_rev_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
-    assert_eq!((1..10).rev().try_fold(7, f), (1..10).try_rfold(7, f));
-    assert_eq!((1..10).rev().try_rfold(7, f), (1..10).try_fold(7, f));
+    assert_eq!((1..10).rev().try_fold(7, f), (1..10).into_iter().try_rfold(7, f));
+    assert_eq!((1..10).rev().try_rfold(7, f), (1..10).into_iter().try_fold(7, f));
 
     let a = [10, 20, 30, 40, 100, 60, 70, 80, 90];
     let mut iter = a.iter().rev();

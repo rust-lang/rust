@@ -39,10 +39,10 @@ fn test_skip_while_try_fold() {
     fn p(&x: &i32) -> bool {
         (x % 10) <= 5
     }
-    assert_eq!((1..20).skip_while(p).try_fold(7, f), (6..20).try_fold(7, f));
+    assert_eq!((1..20).skip_while(p).try_fold(7, f), (6..20).into_iter().try_fold(7, f));
     let mut iter = (1..20).skip_while(p);
     assert_eq!(iter.nth(5), Some(11));
-    assert_eq!(iter.try_fold(7, f), (12..20).try_fold(7, f));
+    assert_eq!(iter.try_fold(7, f), (12..20).into_iter().try_fold(7, f));
 
     let mut iter = (0..50).skip_while(|&x| (x % 20) < 15);
     assert_eq!(iter.try_fold(0, i8::checked_add), None);

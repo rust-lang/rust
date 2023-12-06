@@ -122,42 +122,7 @@ unsafe impl SliceIndex<str> for ops::RangeFull {
     }
 }
 
-/// Implements substring slicing with syntax `&self[begin .. end]` or `&mut
-/// self[begin .. end]`.
-///
-/// Returns a slice of the given string from the byte range
-/// [`begin`, `end`).
-///
-/// This operation is *O*(1).
-///
-/// Prior to 1.20.0, these indexing operations were still supported by
-/// direct implementation of `Index` and `IndexMut`.
-///
-/// # Panics
-///
-/// Panics if `begin` or `end` does not point to the starting byte offset of
-/// a character (as defined by `is_char_boundary`), if `begin > end`, or if
-/// `end > len`.
-///
-/// # Examples
-///
-/// ```
-/// let s = "Löwe 老虎 Léopard";
-/// assert_eq!(&s[0 .. 1], "L");
-///
-/// assert_eq!(&s[1 .. 9], "öwe 老");
-///
-/// // these will panic:
-/// // byte 2 lies within `ö`:
-/// // &s[2 ..3];
-///
-/// // byte 8 lies within `老`
-/// // &s[1 .. 8];
-///
-/// // byte 100 is outside the string
-/// // &s[3 .. 100];
-/// ```
-#[stable(feature = "str_checked_slicing", since = "1.20.0")]
+#[stable(feature = "new_range", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl SliceIndex<str> for ops::Range<usize> {
     type Output = str;
@@ -245,6 +210,79 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         } else {
             super::slice_error_fail(slice, self.start, self.end)
         }
+    }
+}
+
+/// Implements substring slicing with syntax `&self[begin .. end]` or `&mut
+/// self[begin .. end]`.
+///
+/// Returns a slice of the given string from the byte range
+/// [`begin`, `end`).
+///
+/// This operation is *O*(1).
+///
+/// Prior to 1.20.0, these indexing operations were still supported by
+/// direct implementation of `Index` and `IndexMut`.
+///
+/// # Panics
+///
+/// Panics if `begin` or `end` does not point to the starting byte offset of
+/// a character (as defined by `is_char_boundary`), if `begin > end`, or if
+/// `end > len`.
+///
+/// # Examples
+///
+/// ```
+/// let s = "Löwe 老虎 Léopard";
+/// assert_eq!(&s[0 .. 1], "L");
+///
+/// assert_eq!(&s[1 .. 9], "öwe 老");
+///
+/// // these will panic:
+/// // byte 2 lies within `ö`:
+/// // &s[2 ..3];
+///
+/// // byte 8 lies within `老`
+/// // &s[1 .. 8];
+///
+/// // byte 100 is outside the string
+/// // &s[3 .. 100];
+/// ```
+#[stable(feature = "str_checked_slicing", since = "1.20.0")]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+unsafe impl SliceIndex<str> for ops::range::legacy::Range<usize> {
+    type Output = str;
+
+    #[inline]
+    fn get(self, slice: &str) -> Option<&str> {
+        ops::range::Range::from(self).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut str) -> Option<&mut str> {
+        ops::range::Range::from(self).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const str) -> *const str {
+        // SAFETY: delegates to new range impl
+        unsafe { ops::range::Range::from(self).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut str {
+        // SAFETY: delegates to new range impl
+        unsafe { ops::range::Range::from(self).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &str) -> &str {
+        ops::range::Range::from(self).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut str) -> &mut str {
+        ops::range::Range::from(self).index_mut(slice)
     }
 }
 
@@ -458,7 +496,7 @@ unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
 /// byte offset or equal to `len`), if `begin > end`, or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
+unsafe impl SliceIndex<str> for ops::range::legacy::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -488,6 +526,44 @@ unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
         if *self.end() == usize::MAX {
+            str_index_overflow_fail();
+        }
+        self.into_slice_range().index_mut(slice)
+    }
+}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
+    type Output = str;
+    #[inline]
+    fn get(self, slice: &str) -> Option<&Self::Output> {
+        if self.end == usize::MAX { None } else { self.into_slice_range().get(slice) }
+    }
+    #[inline]
+    fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+        if self.end == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+    }
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+        unsafe { self.into_slice_range().get_unchecked(slice) }
+    }
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
+    }
+    #[inline]
+    fn index(self, slice: &str) -> &Self::Output {
+        if self.end == usize::MAX {
+            str_index_overflow_fail();
+        }
+        self.into_slice_range().index(slice)
+    }
+    #[inline]
+    fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+        if self.end == usize::MAX {
             str_index_overflow_fail();
         }
         self.into_slice_range().index_mut(slice)

@@ -16,7 +16,7 @@ fn test_iterator_take_while() {
 #[test]
 fn test_take_while_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
-    assert_eq!((1..20).take_while(|&x| x != 10).try_fold(7, f), (1..10).try_fold(7, f));
+    assert_eq!((1..20).take_while(|&x| x != 10).try_fold(7, f), (1..10).into_iter().try_fold(7, f));
     let mut iter = (1..20).take_while(|&x| x != 10);
     assert_eq!(iter.try_fold(0, |x, y| Some(x + y)), Some((1..10).sum()));
     assert_eq!(iter.next(), None, "flag should be set");

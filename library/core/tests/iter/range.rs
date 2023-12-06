@@ -12,16 +12,16 @@ fn test_range() {
     assert_eq!((200..200).count(), 0);
     assert_eq!((200..200).rev().count(), 0);
 
-    assert_eq!((0..100).size_hint(), (100, Some(100)));
+    assert_eq!((0..100).into_iter().into_iter().size_hint(), (100, Some(100)));
     // this test is only meaningful when sizeof usize < sizeof u64
-    assert_eq!((usize::MAX - 1..usize::MAX).size_hint(), (1, Some(1)));
-    assert_eq!((-10..-1).size_hint(), (9, Some(9)));
-    assert_eq!((-1..-10).size_hint(), (0, Some(0)));
+    assert_eq!((usize::MAX - 1..usize::MAX).into_iter().into_iter().size_hint(), (1, Some(1)));
+    assert_eq!((-10..-1).into_iter().into_iter().size_hint(), (9, Some(9)));
+    assert_eq!((-1..-10).into_iter().into_iter().size_hint(), (0, Some(0)));
 
-    assert_eq!((-70..58).size_hint(), (128, Some(128)));
-    assert_eq!((-128..127).size_hint(), (255, Some(255)));
+    assert_eq!((-70..58).into_iter().into_iter().size_hint(), (128, Some(128)));
+    assert_eq!((-128..127).into_iter().into_iter().size_hint(), (255, Some(255)));
     assert_eq!(
-        (-2..isize::MAX).size_hint(),
+        (-2..isize::MAX).into_iter().into_iter().size_hint(),
         (isize::MAX as usize + 2, Some(isize::MAX as usize + 2))
     );
 }
@@ -35,9 +35,9 @@ fn test_char_range() {
     assert!((from..=to).rev().eq((from as u32..=to as u32).filter_map(char::from_u32).rev()));
 
     assert_eq!(('\u{D7FF}'..='\u{E000}').count(), 2);
-    assert_eq!(('\u{D7FF}'..='\u{E000}').size_hint(), (2, Some(2)));
+    assert_eq!(('\u{D7FF}'..='\u{E000}').into_iter().size_hint(), (2, Some(2)));
     assert_eq!(('\u{D7FF}'..'\u{E000}').count(), 1);
-    assert_eq!(('\u{D7FF}'..'\u{E000}').size_hint(), (1, Some(1)));
+    assert_eq!(('\u{D7FF}'..'\u{E000}').into_iter().size_hint(), (1, Some(1)));
 }
 
 #[test]
@@ -48,150 +48,150 @@ fn test_ascii_char_range() {
     assert!((from..=to).rev().eq((from as u8..=to as u8).filter_map(AsciiChar::from_u8).rev()));
 
     assert_eq!((AsciiChar::CapitalA..=AsciiChar::CapitalZ).count(), 26);
-    assert_eq!((AsciiChar::CapitalA..=AsciiChar::CapitalZ).size_hint(), (26, Some(26)));
+    assert_eq!((AsciiChar::CapitalA..=AsciiChar::CapitalZ).into_iter().size_hint(), (26, Some(26)));
     assert_eq!((AsciiChar::SmallA..=AsciiChar::SmallZ).count(), 26);
-    assert_eq!((AsciiChar::SmallA..=AsciiChar::SmallZ).size_hint(), (26, Some(26)));
+    assert_eq!((AsciiChar::SmallA..=AsciiChar::SmallZ).into_iter().size_hint(), (26, Some(26)));
     assert_eq!((AsciiChar::Digit0..=AsciiChar::Digit9).count(), 10);
-    assert_eq!((AsciiChar::Digit0..=AsciiChar::Digit9).size_hint(), (10, Some(10)));
+    assert_eq!((AsciiChar::Digit0..=AsciiChar::Digit9).into_iter().size_hint(), (10, Some(10)));
 }
 
 #[test]
 fn test_range_exhaustion() {
-    let mut r = 10..10;
+    let mut r = (10..10).into_iter();
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
     assert_eq!(r.next_back(), None);
-    assert_eq!(r, 10..10);
+    assert_eq!(*r.inner(), 10..10);
 
-    let mut r = 10..12;
+    let mut r = (10..12).into_iter();
     assert_eq!(r.next(), Some(10));
     assert_eq!(r.next(), Some(11));
     assert!(r.is_empty());
-    assert_eq!(r, 12..12);
+    assert_eq!(*r.inner(), 12..12);
     assert_eq!(r.next(), None);
 
-    let mut r = 10..12;
+    let mut r = (10..12).into_iter();
     assert_eq!(r.next_back(), Some(11));
     assert_eq!(r.next_back(), Some(10));
     assert!(r.is_empty());
-    assert_eq!(r, 10..10);
+    assert_eq!(*r.inner(), 10..10);
     assert_eq!(r.next_back(), None);
 
-    let mut r = 100..10;
+    let mut r = (100..10).into_iter();
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
     assert_eq!(r.next_back(), None);
-    assert_eq!(r, 100..10);
+    assert_eq!(*r.inner(), 100..10);
 }
 
 #[test]
 fn test_range_inclusive_exhaustion() {
-    let mut r = 10..=10;
+    let mut r = (10_u16..=10).into_iter();
     assert_eq!(r.next(), Some(10));
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
     assert_eq!(r.next(), None);
 
-    assert_eq!(*r.start(), 10);
-    assert_eq!(*r.end(), 10);
-    assert_ne!(r, 10..=10);
+    assert_eq!(*r.inner().start(), 10);
+    assert_eq!(*r.inner().end(), 10);
+    assert_ne!(*r.inner(), 10..=10);
 
-    let mut r = 10..=10;
+    let mut r = (10_u16..=10).into_iter();
     assert_eq!(r.next_back(), Some(10));
     assert!(r.is_empty());
     assert_eq!(r.next_back(), None);
 
-    assert_eq!(*r.start(), 10);
-    assert_eq!(*r.end(), 10);
-    assert_ne!(r, 10..=10);
+    assert_eq!(*r.inner().start(), 10);
+    assert_eq!(*r.inner().end(), 10);
+    assert_ne!(*r.inner(), 10..=10);
 
-    let mut r = 10..=12;
+    let mut r = (10_u16..=12).into_iter();
     assert_eq!(r.next(), Some(10));
     assert_eq!(r.next(), Some(11));
     assert_eq!(r.next(), Some(12));
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
 
-    let mut r = 10..=12;
+    let mut r = (10_u16..=12).into_iter();
     assert_eq!(r.next_back(), Some(12));
     assert_eq!(r.next_back(), Some(11));
     assert_eq!(r.next_back(), Some(10));
     assert!(r.is_empty());
     assert_eq!(r.next_back(), None);
 
-    let mut r = 10..=12;
+    let mut r = (10_u16..=12).into_iter();
     assert_eq!(r.nth(2), Some(12));
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
 
-    let mut r = 10..=12;
+    let mut r = (10_u16..=12).into_iter();
     assert_eq!(r.nth(5), None);
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
 
-    let mut r = 100..=10;
+    let mut r = (100_u16..=10).into_iter();
     assert_eq!(r.next(), None);
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
     assert_eq!(r.next(), None);
-    assert_eq!(r, 100..=10);
+    assert_eq!(*r.inner(), 100..=10);
 
-    let mut r = 100..=10;
+    let mut r = (100_u16..=10).into_iter();
     assert_eq!(r.next_back(), None);
     assert!(r.is_empty());
     assert_eq!(r.next_back(), None);
     assert_eq!(r.next_back(), None);
-    assert_eq!(r, 100..=10);
+    assert_eq!(*r.inner(), 100..=10);
 }
 
 #[test]
 fn test_range_nth() {
-    assert_eq!((10..15).nth(0), Some(10));
-    assert_eq!((10..15).nth(1), Some(11));
-    assert_eq!((10..15).nth(4), Some(14));
-    assert_eq!((10..15).nth(5), None);
+    assert_eq!((10..15).into_iter().nth(0), Some(10));
+    assert_eq!((10..15).into_iter().nth(1), Some(11));
+    assert_eq!((10..15).into_iter().nth(4), Some(14));
+    assert_eq!((10..15).into_iter().nth(5), None);
 
-    let mut r = 10..20;
+    let mut r = (10..20).into_iter();
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 13..20);
+    assert_eq!(*r.inner(), 13..20);
     assert_eq!(r.nth(2), Some(15));
-    assert_eq!(r, 16..20);
+    assert_eq!(*r.inner(), 16..20);
     assert_eq!(r.nth(10), None);
-    assert_eq!(r, 20..20);
+    assert_eq!(*r.inner(), 20..20);
 }
 
 #[test]
 fn test_range_nth_back() {
-    assert_eq!((10..15).nth_back(0), Some(14));
-    assert_eq!((10..15).nth_back(1), Some(13));
-    assert_eq!((10..15).nth_back(4), Some(10));
-    assert_eq!((10..15).nth_back(5), None);
-    assert_eq!((-120..80_i8).nth_back(199), Some(-120));
+    assert_eq!((10..15).into_iter().nth_back(0), Some(14));
+    assert_eq!((10..15).into_iter().nth_back(1), Some(13));
+    assert_eq!((10..15).into_iter().nth_back(4), Some(10));
+    assert_eq!((10..15).into_iter().nth_back(5), None);
+    assert_eq!((-120..80_i8).into_iter().nth_back(199), Some(-120));
 
-    let mut r = 10..20;
+    let mut r = (10..20).into_iter();
     assert_eq!(r.nth_back(2), Some(17));
-    assert_eq!(r, 10..17);
+    assert_eq!(*r.inner(), 10..17);
     assert_eq!(r.nth_back(2), Some(14));
-    assert_eq!(r, 10..14);
+    assert_eq!(*r.inner(), 10..14);
     assert_eq!(r.nth_back(10), None);
-    assert_eq!(r, 10..10);
+    assert_eq!(*r.inner(), 10..10);
 }
 
 #[test]
 fn test_range_from_nth() {
-    assert_eq!((10..).nth(0), Some(10));
-    assert_eq!((10..).nth(1), Some(11));
-    assert_eq!((10..).nth(4), Some(14));
+    assert_eq!((10..).into_iter().nth(0), Some(10));
+    assert_eq!((10..).into_iter().nth(1), Some(11));
+    assert_eq!((10..).into_iter().nth(4), Some(14));
 
-    let mut r = 10..;
+    let mut r = (10..).into_iter();
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 13..);
+    assert_eq!(*r.inner(), 13..);
     assert_eq!(r.nth(2), Some(15));
-    assert_eq!(r, 16..);
+    assert_eq!(*r.inner(), 16..);
     assert_eq!(r.nth(10), Some(26));
-    assert_eq!(r, 27..);
+    assert_eq!(*r.inner(), 27..);
 
-    assert_eq!((0..).size_hint(), (usize::MAX, None));
+    assert_eq!((0..).into_iter().size_hint(), (usize::MAX, None));
 }
 
 #[test]
@@ -202,9 +202,9 @@ fn test_range_from_take() {
     assert_eq!(it.next(), Some(2));
     assert_eq!(it.next(), None);
     is_trusted_len((0..).take(3));
-    assert_eq!((0..).take(3).size_hint(), (3, Some(3)));
-    assert_eq!((0..).take(0).size_hint(), (0, Some(0)));
-    assert_eq!((0..).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..).take(3).into_iter().size_hint(), (3, Some(3)));
+    assert_eq!((0..).take(0).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((0..).take(usize::MAX).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
 }
 
 #[test]
@@ -215,48 +215,48 @@ fn test_range_from_take_collect() {
 
 #[test]
 fn test_range_inclusive_nth() {
-    assert_eq!((10..=15).nth(0), Some(10));
-    assert_eq!((10..=15).nth(1), Some(11));
-    assert_eq!((10..=15).nth(5), Some(15));
-    assert_eq!((10..=15).nth(6), None);
+    assert_eq!((10..=15).into_iter().nth(0), Some(10));
+    assert_eq!((10..=15).into_iter().nth(1), Some(11));
+    assert_eq!((10..=15).into_iter().nth(5), Some(15));
+    assert_eq!((10..=15).into_iter().nth(6), None);
 
-    let mut exhausted_via_next = 10_u8..=20;
+    let mut exhausted_via_next = (10_u8..=20).into_iter();
     while exhausted_via_next.next().is_some() {}
 
-    let mut r = 10_u8..=20;
+    let mut r = (10_u8..=20).into_iter();
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 13..=20);
+    assert_eq!(*r.inner(), 13..=20);
     assert_eq!(r.nth(2), Some(15));
-    assert_eq!(r, 16..=20);
+    assert_eq!(*r.inner(), 16..=20);
     assert_eq!(r.is_empty(), false);
     assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, exhausted_via_next);
+    assert_eq!(*r.inner(), *exhausted_via_next.inner());
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
 #[test]
 fn test_range_inclusive_nth_back() {
-    assert_eq!((10..=15).nth_back(0), Some(15));
-    assert_eq!((10..=15).nth_back(1), Some(14));
-    assert_eq!((10..=15).nth_back(5), Some(10));
-    assert_eq!((10..=15).nth_back(6), None);
-    assert_eq!((-120..=80_i8).nth_back(200), Some(-120));
+    assert_eq!((10..=15).into_iter().nth_back(0), Some(15));
+    assert_eq!((10..=15).into_iter().nth_back(1), Some(14));
+    assert_eq!((10..=15).into_iter().nth_back(5), Some(10));
+    assert_eq!((10..=15).into_iter().nth_back(6), None);
+    assert_eq!((-120..=80_i8).into_iter().nth_back(200), Some(-120));
 
-    let mut exhausted_via_next_back = 10_u8..=20;
+    let mut exhausted_via_next_back = (10_u8..=20).into_iter();
     while exhausted_via_next_back.next_back().is_some() {}
 
-    let mut r = 10_u8..=20;
+    let mut r = (10_u8..=20).into_iter();
     assert_eq!(r.nth_back(2), Some(18));
-    assert_eq!(r, 10..=17);
+    assert_eq!(*r.inner(), 10..=17);
     assert_eq!(r.nth_back(2), Some(15));
-    assert_eq!(r, 10..=14);
+    assert_eq!(*r.inner(), 10..=14);
     assert_eq!(r.is_empty(), false);
     assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth_back(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, exhausted_via_next_back);
+    assert_eq!(*r.inner(), *exhausted_via_next_back.inner());
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
@@ -289,21 +289,21 @@ fn test_range_step() {
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
 
-    assert_eq!((0..20).step_by(1).size_hint(), (20, Some(20)));
-    assert_eq!((0..20).step_by(21).size_hint(), (1, Some(1)));
-    assert_eq!((0..20).step_by(5).size_hint(), (4, Some(4)));
-    assert_eq!((1..21).rev().step_by(5).size_hint(), (4, Some(4)));
-    assert_eq!((1..21).rev().step_by(6).size_hint(), (4, Some(4)));
-    assert_eq!((20..-5).step_by(1).size_hint(), (0, Some(0)));
-    assert_eq!((20..20).step_by(1).size_hint(), (0, Some(0)));
-    assert_eq!((i8::MIN..i8::MAX).step_by(-(i8::MIN as i32) as usize).size_hint(), (2, Some(2)));
-    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).size_hint(), (3, Some(3)));
-    assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..20).step_by(1).into_iter().size_hint(), (20, Some(20)));
+    assert_eq!((0..20).step_by(21).into_iter().size_hint(), (1, Some(1)));
+    assert_eq!((0..20).step_by(5).into_iter().size_hint(), (4, Some(4)));
+    assert_eq!((1..21).rev().step_by(5).into_iter().size_hint(), (4, Some(4)));
+    assert_eq!((1..21).rev().step_by(6).into_iter().size_hint(), (4, Some(4)));
+    assert_eq!((20..-5).step_by(1).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((20..20).step_by(1).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((i8::MIN..i8::MAX).step_by(-(i8::MIN as i32) as usize).into_iter().size_hint(), (2, Some(2)));
+    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).into_iter().size_hint(), (3, Some(3)));
+    assert_eq!((isize::MIN..isize::MAX).step_by(1).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
 }
 
 #[test]
 fn test_range_advance_by() {
-    let mut r = 0..usize::MAX;
+    let mut r = (0..usize::MAX).into_iter();
     assert_eq!(Ok(()), r.advance_by(0));
     assert_eq!(Ok(()), r.advance_back_by(0));
 
@@ -312,19 +312,19 @@ fn test_range_advance_by() {
     assert_eq!(Ok(()), r.advance_by(1));
     assert_eq!(Ok(()), r.advance_back_by(1));
 
-    assert_eq!((r.start, r.end), (1, usize::MAX - 1));
+    assert_eq!((r.inner().start, r.inner().end), (1, usize::MAX - 1));
 
     assert_eq!(Err(NonZeroUsize::new(2).unwrap()), r.advance_by(usize::MAX));
 
     assert_eq!(Ok(()), r.advance_by(0));
     assert_eq!(Ok(()), r.advance_back_by(0));
 
-    let mut r = 0u128..u128::MAX;
+    let mut r = (0u128..u128::MAX).into_iter();
 
     assert_eq!(Ok(()), r.advance_by(usize::MAX));
     assert_eq!(Ok(()), r.advance_back_by(usize::MAX));
 
-    assert_eq!((r.start, r.end), (0u128 + usize::MAX as u128, u128::MAX - usize::MAX as u128));
+    assert_eq!((r.inner().start, r.inner().end), (0u128 + usize::MAX as u128, u128::MAX - usize::MAX as u128));
 }
 
 #[test]
@@ -351,14 +351,14 @@ fn test_range_inclusive_last_max() {
     assert_eq!((0..=20).last(), Some(20));
     assert_eq!((-20..=0).last(), Some(0));
     assert_eq!((5..=5).last(), Some(5));
-    let mut r = 10..=10;
+    let mut r = (10..=10).into_iter();
     r.next();
     assert_eq!(r.last(), None);
 
     assert_eq!((0..=20).max(), Some(20));
     assert_eq!((-20..=0).max(), Some(0));
     assert_eq!((5..=5).max(), Some(5));
-    let mut r = 10..=10;
+    let mut r = (10..=10).into_iter();
     r.next();
     assert_eq!(r.max(), None);
 }
@@ -375,7 +375,7 @@ fn test_range_inclusive_min() {
     assert_eq!((0..=20).min(), Some(0));
     assert_eq!((-20..=0).min(), Some(-20));
     assert_eq!((5..=5).min(), Some(5));
-    let mut r = 10..=10;
+    let mut r = (10..=10).into_iter();
     r.next();
     assert_eq!(r.min(), None);
 }
@@ -385,33 +385,33 @@ fn test_range_inclusive_folds() {
     assert_eq!((1..=10).sum::<i32>(), 55);
     assert_eq!((1..=10).rev().sum::<i32>(), 55);
 
-    let mut it = 44..=50;
+    let mut it = (44..=50).into_iter();
     assert_eq!(it.try_fold(0, i8::checked_add), None);
-    assert_eq!(it, 47..=50);
+    assert_eq!(*it.inner(), 47..=50);
     assert_eq!(it.try_fold(0, i8::checked_add), None);
-    assert_eq!(it, 50..=50);
+    assert_eq!(*it.inner(), 50..=50);
     assert_eq!(it.try_fold(0, i8::checked_add), Some(50));
     assert!(it.is_empty());
     assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
     assert!(it.is_empty());
 
-    let mut it = 40..=47;
+    let mut it = (40..=47).into_iter();
     assert_eq!(it.try_rfold(0, i8::checked_add), None);
-    assert_eq!(it, 40..=44);
+    assert_eq!(*it.inner(), 40..=44);
     assert_eq!(it.try_rfold(0, i8::checked_add), None);
-    assert_eq!(it, 40..=41);
+    assert_eq!(*it.inner(), 40..=41);
     assert_eq!(it.try_rfold(0, i8::checked_add), Some(81));
     assert!(it.is_empty());
     assert_eq!(it.try_rfold(0, i8::checked_add), Some(0));
     assert!(it.is_empty());
 
-    let mut it = 10..=20;
+    let mut it = (10_u16..=20).into_iter();
     assert_eq!(it.try_fold(0, |a, b| Some(a + b)), Some(165));
     assert!(it.is_empty());
     assert_eq!(it.try_fold(0, |a, b| Some(a + b)), Some(0));
     assert!(it.is_empty());
 
-    let mut it = 10..=20;
+    let mut it = (10_u16..=20).into_iter();
     assert_eq!(it.try_rfold(0, |a, b| Some(a + b)), Some(165));
     assert!(it.is_empty());
     assert_eq!(it.try_rfold(0, |a, b| Some(a + b)), Some(0));
@@ -420,58 +420,58 @@ fn test_range_inclusive_folds() {
 
 #[test]
 fn test_range_size_hint() {
-    assert_eq!((0..0usize).size_hint(), (0, Some(0)));
-    assert_eq!((0..100usize).size_hint(), (100, Some(100)));
-    assert_eq!((0..usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..0usize).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((0..100usize).into_iter().size_hint(), (100, Some(100)));
+    assert_eq!((0..usize::MAX).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
 
     let umax = u128::try_from(usize::MAX).unwrap();
-    assert_eq!((0..0u128).size_hint(), (0, Some(0)));
-    assert_eq!((0..100u128).size_hint(), (100, Some(100)));
-    assert_eq!((0..umax).size_hint(), (usize::MAX, Some(usize::MAX)));
-    assert_eq!((0..umax + 1).size_hint(), (usize::MAX, None));
+    assert_eq!((0..0u128).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((0..100u128).into_iter().size_hint(), (100, Some(100)));
+    assert_eq!((0..umax).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..umax + 1).into_iter().size_hint(), (usize::MAX, None));
 
-    assert_eq!((0..0isize).size_hint(), (0, Some(0)));
-    assert_eq!((-100..100isize).size_hint(), (200, Some(200)));
-    assert_eq!((isize::MIN..isize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..0isize).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((-100..100isize).into_iter().size_hint(), (200, Some(200)));
+    assert_eq!((isize::MIN..isize::MAX).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
 
     let imin = i128::try_from(isize::MIN).unwrap();
     let imax = i128::try_from(isize::MAX).unwrap();
-    assert_eq!((0..0i128).size_hint(), (0, Some(0)));
-    assert_eq!((-100..100i128).size_hint(), (200, Some(200)));
-    assert_eq!((imin..imax).size_hint(), (usize::MAX, Some(usize::MAX)));
-    assert_eq!((imin..imax + 1).size_hint(), (usize::MAX, None));
+    assert_eq!((0..0i128).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((-100..100i128).into_iter().size_hint(), (200, Some(200)));
+    assert_eq!((imin..imax).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((imin..imax + 1).into_iter().size_hint(), (usize::MAX, None));
 }
 
 #[test]
 fn test_range_inclusive_size_hint() {
-    assert_eq!((1..=0usize).size_hint(), (0, Some(0)));
-    assert_eq!((0..=0usize).size_hint(), (1, Some(1)));
-    assert_eq!((0..=100usize).size_hint(), (101, Some(101)));
-    assert_eq!((0..=usize::MAX - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
-    assert_eq!((0..=usize::MAX).size_hint(), (usize::MAX, None));
+    assert_eq!((1..=0usize).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((0..=0usize).into_iter().size_hint(), (1, Some(1)));
+    assert_eq!((0..=100usize).into_iter().size_hint(), (101, Some(101)));
+    assert_eq!((0..=usize::MAX - 1).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..=usize::MAX).into_iter().size_hint(), (usize::MAX, None));
 
     let umax = u128::try_from(usize::MAX).unwrap();
-    assert_eq!((1..=0u128).size_hint(), (0, Some(0)));
-    assert_eq!((0..=0u128).size_hint(), (1, Some(1)));
-    assert_eq!((0..=100u128).size_hint(), (101, Some(101)));
-    assert_eq!((0..=umax - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
-    assert_eq!((0..=umax).size_hint(), (usize::MAX, None));
-    assert_eq!((0..=umax + 1).size_hint(), (usize::MAX, None));
+    assert_eq!((1..=0u128).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((0..=0u128).into_iter().size_hint(), (1, Some(1)));
+    assert_eq!((0..=100u128).into_iter().size_hint(), (101, Some(101)));
+    assert_eq!((0..=umax - 1).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..=umax).into_iter().size_hint(), (usize::MAX, None));
+    assert_eq!((0..=umax + 1).into_iter().size_hint(), (usize::MAX, None));
 
-    assert_eq!((0..=-1isize).size_hint(), (0, Some(0)));
-    assert_eq!((0..=0isize).size_hint(), (1, Some(1)));
-    assert_eq!((-100..=100isize).size_hint(), (201, Some(201)));
-    assert_eq!((isize::MIN..=isize::MAX - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
-    assert_eq!((isize::MIN..=isize::MAX).size_hint(), (usize::MAX, None));
+    assert_eq!((0..=-1isize).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((0..=0isize).into_iter().size_hint(), (1, Some(1)));
+    assert_eq!((-100..=100isize).into_iter().size_hint(), (201, Some(201)));
+    assert_eq!((isize::MIN..=isize::MAX - 1).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((isize::MIN..=isize::MAX).into_iter().size_hint(), (usize::MAX, None));
 
     let imin = i128::try_from(isize::MIN).unwrap();
     let imax = i128::try_from(isize::MAX).unwrap();
-    assert_eq!((0..=-1i128).size_hint(), (0, Some(0)));
-    assert_eq!((0..=0i128).size_hint(), (1, Some(1)));
-    assert_eq!((-100..=100i128).size_hint(), (201, Some(201)));
-    assert_eq!((imin..=imax - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
-    assert_eq!((imin..=imax).size_hint(), (usize::MAX, None));
-    assert_eq!((imin..=imax + 1).size_hint(), (usize::MAX, None));
+    assert_eq!((0..=-1i128).into_iter().size_hint(), (0, Some(0)));
+    assert_eq!((0..=0i128).into_iter().size_hint(), (1, Some(1)));
+    assert_eq!((-100..=100i128).into_iter().size_hint(), (201, Some(201)));
+    assert_eq!((imin..=imax - 1).into_iter().size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((imin..=imax).into_iter().size_hint(), (usize::MAX, None));
+    assert_eq!((imin..=imax + 1).into_iter().size_hint(), (usize::MAX, None));
 }
 
 #[test]

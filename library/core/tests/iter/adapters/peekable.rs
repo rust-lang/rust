@@ -220,16 +220,16 @@ fn test_iterator_peekable_remember_peek_none_3() {
 fn test_peek_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
 
-    assert_eq!((1..20).peekable().try_fold(7, f), (1..20).try_fold(7, f));
-    assert_eq!((1..20).peekable().try_rfold(7, f), (1..20).try_rfold(7, f));
+    assert_eq!((1..20).peekable().try_fold(7, f), (1..20).into_iter().try_fold(7, f));
+    assert_eq!((1..20).peekable().try_rfold(7, f), (1..20).into_iter().try_rfold(7, f));
 
     let mut iter = (1..20).peekable();
     assert_eq!(iter.peek(), Some(&1));
-    assert_eq!(iter.try_fold(7, f), (1..20).try_fold(7, f));
+    assert_eq!(iter.try_fold(7, f), (1..20).into_iter().try_fold(7, f));
 
     let mut iter = (1..20).peekable();
     assert_eq!(iter.peek(), Some(&1));
-    assert_eq!(iter.try_rfold(7, f), (1..20).try_rfold(7, f));
+    assert_eq!(iter.try_rfold(7, f), (1..20).into_iter().try_rfold(7, f));
 
     let mut iter = [100, 20, 30, 40, 50, 60, 70].iter().cloned().peekable();
     assert_eq!(iter.peek(), Some(&100));

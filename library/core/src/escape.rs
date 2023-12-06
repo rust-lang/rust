@@ -1,6 +1,7 @@
 //! Helper code for character escaping.
 
 use crate::ascii;
+use crate::iter::range::RangeIter;
 use crate::num::NonZeroUsize;
 use crate::ops::Range;
 
@@ -68,14 +69,14 @@ pub(crate) struct EscapeIterInner<const N: usize> {
     pub(crate) data: [ascii::Char; N],
 
     // Invariant: alive.start <= alive.end <= N.
-    pub(crate) alive: Range<u8>,
+    pub(crate) alive: RangeIter<u8>,
 }
 
 impl<const N: usize> EscapeIterInner<N> {
     pub fn new(data: [ascii::Char; N], alive: Range<u8>) -> Self {
         const { assert!(N < 256) };
         debug_assert!(alive.start <= alive.end && usize::from(alive.end) <= N, "{alive:?}");
-        Self { data, alive }
+        Self { data, alive: alive.into_iter() }
     }
 
     pub fn from_array<const M: usize>(array: [ascii::Char; M]) -> Self {
@@ -87,7 +88,7 @@ impl<const N: usize> EscapeIterInner<N> {
     }
 
     pub fn as_ascii(&self) -> &[ascii::Char] {
-        &self.data[usize::from(self.alive.start)..usize::from(self.alive.end)]
+        &self.data[usize::from(self.alive.inner.start)..usize::from(self.alive.inner.end)]
     }
 
     pub fn as_str(&self) -> &str {
@@ -95,7 +96,7 @@ impl<const N: usize> EscapeIterInner<N> {
     }
 
     pub fn len(&self) -> usize {
-        usize::from(self.alive.end - self.alive.start)
+        usize::from(self.alive.inner.end - self.alive.inner.start)
     }
 
     pub fn next(&mut self) -> Option<u8> {

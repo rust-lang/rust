@@ -899,10 +899,13 @@ fn test_extend_impl(trusted_len: bool) {
             Self { test: VecDeque::new(), expected: VecDeque::new(), trusted_len }
         }
 
-        fn test_extend<I>(&mut self, iter: I)
+        fn test_extend<I, IntoIter>(&mut self, iter: I)
         where
-            I: Iterator<Item = usize> + TrustedLen + Clone,
+            I: IntoIterator<IntoIter = IntoIter>,
+            IntoIter: Iterator<Item = usize> + TrustedLen + Clone,
         {
+            let iter = iter.into_iter();
+
             struct BasicIterator<I>(I);
             impl<I> Iterator for BasicIterator<I>
             where

@@ -1,8 +1,8 @@
 use crate::convert::TryFrom;
 use crate::{
     intrinsics,
-    iter::{from_fn, TrustedLen},
-    ops::{Range, Try},
+    iter::{from_fn, range::RangeIter, TrustedLen},
+    ops::{range::legacy::Range, Try},
 };
 
 /// An iterator for stepping iterators by a custom amount.
@@ -486,6 +486,89 @@ macro_rules! spec_int_ranges {
         /// the outer length calculation won't encounter clamped values
         #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl TrustedLen for StepBy<Range<$t>> {}
+
+        impl SpecRangeSetup<RangeIter<$t>> for RangeIter<$t> {
+            #[inline]
+            fn setup(mut r: RangeIter<$t>, step: usize) -> RangeIter<$t> {
+                r.inner = <Range<$t> as SpecRangeSetup::<Range<$t>>>::setup(r.inner.clone(), step);
+                r
+            }
+        }
+
+        unsafe impl StepByImpl<RangeIter<$t>> for StepBy<RangeIter<$t>> {
+            #[inline]
+            fn spec_next(&mut self) -> Option<$t> {
+                // if a step size larger than the type has been specified fall back to
+                // t::MAX, in which case remaining will be at most 1.
+                // The `+ 1` can't overflow since the constructor substracted 1 from the original value.
+                let step = <$t>::try_from(self.step + 1).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.inner.end;
+                if remaining > 0 {
+                    let val = self.iter.inner.start;
+                    // this can only overflow during the last step, after which the value
+                    // will not be used
+                    self.iter.inner.start = val.wrapping_add(step);
+                    self.iter.inner.end = remaining - 1;
+                    Some(val)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn spec_size_hint(&self) -> (usize, Option<usize>) {
+                let remaining = self.iter.inner.end as usize;
+                (remaining, Some(remaining))
+            }
+
+            // The methods below are all copied from the Iterator trait default impls.
+            // We have to repeat them here so that the specialization overrides the StepByImpl defaults
+
+            #[inline]
+            fn spec_nth(&mut self, n: usize) -> Option<Self::Item> {
+                self.advance_by(n).ok()?;
+                self.next()
+            }
+
+            #[inline]
+            fn spec_try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+                where
+                    F: FnMut(Acc, Self::Item) -> R,
+                    R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+                where
+                    F: FnMut(Acc, Self::Item) -> Acc
+            {
+                // if a step size larger than the type has been specified fall back to
+                // t::MAX, in which case remaining will be at most 1.
+                let step = <$t>::try_from(self.step + 1).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.inner.end;
+                let mut acc = init;
+                let mut val = self.iter.inner.start;
+                for _ in 0..remaining {
+                    acc = f(acc, val);
+                    // this can only overflow during the last step, after which the value
+                    // will no longer be used
+                    val = val.wrapping_add(step);
+                }
+                acc
+            }
+        }
+
+        /// Safety: This macro is only applied to ranges over types <= usize
+        /// which means the inner length is guaranteed to fit into a usize and so
+        /// the outer length calculation won't encounter clamped values
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for StepBy<RangeIter<$t>> {}
     )*)
 }
 
@@ -504,6 +587,64 @@ macro_rules! spec_int_ranges_r {
                 if remaining > 0 {
                     let start = self.iter.start;
                     self.iter.end = remaining - 1;
+                    Some(start + step * (remaining - 1))
+                } else {
+                    None
+                }
+            }
+
+            // The methods below are all copied from the Iterator trait default impls.
+            // We have to repeat them here so that the specialization overrides the StepByImplBack defaults
+
+            #[inline]
+            fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item>
+                where Self: DoubleEndedIterator,
+            {
+                if self.advance_back_by(n).is_err() {
+                    return None;
+                }
+                self.next_back()
+            }
+
+            #[inline]
+            fn spec_try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+                where
+                    Self: DoubleEndedIterator,
+                    F: FnMut(Acc, Self::Item) -> R,
+                    R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+                where
+                    Self: DoubleEndedIterator,
+                    F: FnMut(Acc, Self::Item) -> Acc
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x);
+                }
+                accum
+            }
+        }
+
+        unsafe impl StepByBackImpl<RangeIter<$t>> for StepBy<RangeIter<$t>> {
+
+            #[inline]
+            fn spec_next_back(&mut self) -> Option<Self::Item>
+                where RangeIter<$t>: DoubleEndedIterator + ExactSizeIterator,
+            {
+                let step = (self.step + 1) as $t;
+                let remaining = self.iter.inner.end;
+                if remaining > 0 {
+                    let start = self.iter.inner.start;
+                    self.iter.inner.end = remaining - 1;
                     Some(start + step * (remaining - 1))
                 } else {
                     None

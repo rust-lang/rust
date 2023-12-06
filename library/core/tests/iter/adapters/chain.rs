@@ -210,7 +210,7 @@ fn test_chain_try_folds() {
     let c = || (0..10).chain(10..20);
 
     let f = &|acc, x| i32::checked_add(2 * acc, x);
-    assert_eq!(c().try_fold(7, f), (0..20).try_fold(7, f));
+    assert_eq!(c().try_fold(7, f), (0..20).into_iter().try_fold(7, f));
     assert_eq!(c().try_rfold(7, f), (0..20).rev().try_fold(7, f));
 
     let mut iter = c();
@@ -229,11 +229,11 @@ fn test_chain_try_folds() {
 
     let mut iter = c();
     iter.by_ref().rev().nth(14); // skip the last 15, ending in state Front
-    assert_eq!(iter.try_fold(7, f), (0..5).try_fold(7, f));
+    assert_eq!(iter.try_fold(7, f), (0..5).into_iter().try_fold(7, f));
 
     let mut iter = c();
     iter.nth(14); // skip the first 15, ending in state Back
-    assert_eq!(iter.try_rfold(7, f), (15..20).try_rfold(7, f));
+    assert_eq!(iter.try_rfold(7, f), (15..20).into_iter().try_rfold(7, f));
 }
 
 #[test]

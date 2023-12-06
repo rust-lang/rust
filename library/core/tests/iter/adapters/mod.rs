@@ -35,8 +35,11 @@ pub struct NonFused<I> {
 }
 
 impl<I> NonFused<I> {
-    pub fn new(iter: I) -> Self {
-        Self { iter, done: false }
+    pub fn new<IntoIter>(iter: IntoIter) -> Self
+    where
+        IntoIter: IntoIterator<IntoIter = I>,
+    {
+        Self { iter: iter.into_iter(), done: false }
     }
 }
 

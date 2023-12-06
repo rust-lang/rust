@@ -17,7 +17,7 @@ use crate::{convert, ops};
 /// ```
 /// use std::ops::ControlFlow;
 ///
-/// let r = (2..100).try_for_each(|x| {
+/// let r = (2..100).into_iter().try_for_each(|x| {
 ///     if 403 % x == 0 {
 ///         return ControlFlow::Break(x)
 ///     }

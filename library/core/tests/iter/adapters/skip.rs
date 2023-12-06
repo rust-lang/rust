@@ -153,8 +153,8 @@ fn test_iterator_skip_fold() {
 #[test]
 fn test_skip_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
-    assert_eq!((1..20).skip(9).try_fold(7, f), (10..20).try_fold(7, f));
-    assert_eq!((1..20).skip(9).try_rfold(7, f), (10..20).try_rfold(7, f));
+    assert_eq!((1..20).skip(9).try_fold(7, f), (10..20).into_iter().try_fold(7, f));
+    assert_eq!((1..20).skip(9).try_rfold(7, f), (10..20).into_iter().try_rfold(7, f));
 
     let mut iter = (0..30).skip(10);
     assert_eq!(iter.try_fold(0, i8::checked_add), None);

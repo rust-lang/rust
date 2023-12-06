@@ -3,8 +3,8 @@ use core::iter::*;
 #[test]
 fn test_map_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
-    assert_eq!((0..10).map(|x| x + 3).try_fold(7, f), (3..13).try_fold(7, f));
-    assert_eq!((0..10).map(|x| x + 3).try_rfold(7, f), (3..13).try_rfold(7, f));
+    assert_eq!((0..10).map(|x| x + 3).try_fold(7, f), (3..13).into_iter().try_fold(7, f));
+    assert_eq!((0..10).map(|x| x + 3).try_rfold(7, f), (3..13).into_iter().try_rfold(7, f));
 
     let mut iter = (0..40).map(|x| x + 10);
     assert_eq!(iter.try_fold(0, i8::checked_add), None);

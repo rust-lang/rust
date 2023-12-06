@@ -31,8 +31,8 @@ fn test_filter_try_folds() {
         0 <= x && x < 10
     }
     let f = &|acc, x| i32::checked_add(2 * acc, x);
-    assert_eq!((-10..20).filter(p).try_fold(7, f), (0..10).try_fold(7, f));
-    assert_eq!((-10..20).filter(p).try_rfold(7, f), (0..10).try_rfold(7, f));
+    assert_eq!((-10..20).filter(p).try_fold(7, f), (0..10).into_iter().try_fold(7, f));
+    assert_eq!((-10..20).filter(p).try_rfold(7, f), (0..10).into_iter().try_rfold(7, f));
 
     let mut iter = (0..40).filter(|&x| x % 2 == 1);
     assert_eq!(iter.try_fold(0, i8::checked_add), None);

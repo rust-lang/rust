@@ -493,42 +493,42 @@ fn bench_next_chunk_trusted_random_access(b: &mut Bencher) {
 
 #[bench]
 fn bench_next_chunk_filter_even(b: &mut Bencher) {
-    let a = (0..1024).next_chunk::<1024>().unwrap();
+    let a = (0..1024).into_iter().next_chunk::<1024>().unwrap();
 
     b.iter(|| black_box(&a).iter().filter(|&&i| i % 2 == 0).next_chunk::<32>())
 }
 
 #[bench]
 fn bench_next_chunk_filter_predictably_true(b: &mut Bencher) {
-    let a = (0..1024).next_chunk::<1024>().unwrap();
+    let a = (0..1024).into_iter().next_chunk::<1024>().unwrap();
 
     b.iter(|| black_box(&a).iter().filter(|&&i| i < 100).next_chunk::<32>())
 }
 
 #[bench]
 fn bench_next_chunk_filter_mostly_false(b: &mut Bencher) {
-    let a = (0..1024).next_chunk::<1024>().unwrap();
+    let a = (0..1024).into_iter().next_chunk::<1024>().unwrap();
 
     b.iter(|| black_box(&a).iter().filter(|&&i| i > 900).next_chunk::<32>())
 }
 
 #[bench]
 fn bench_next_chunk_filter_map_even(b: &mut Bencher) {
-    let a = (0..1024).next_chunk::<1024>().unwrap();
+    let a = (0..1024).into_iter().next_chunk::<1024>().unwrap();
 
     b.iter(|| black_box(&a).iter().filter_map(|&i| (i % 2 == 0).then(|| i)).next_chunk::<32>())
 }
 
 #[bench]
 fn bench_next_chunk_filter_map_predictably_true(b: &mut Bencher) {
-    let a = (0..1024).next_chunk::<1024>().unwrap();
+    let a = (0..1024).into_iter().next_chunk::<1024>().unwrap();
 
     b.iter(|| black_box(&a).iter().filter_map(|&i| (i < 100).then(|| i)).next_chunk::<32>())
 }
 
 #[bench]
 fn bench_next_chunk_filter_map_mostly_false(b: &mut Bencher) {
-    let a = (0..1024).next_chunk::<1024>().unwrap();
+    let a = (0..1024).into_iter().next_chunk::<1024>().unwrap();
 
     b.iter(|| black_box(&a).iter().filter_map(|&i| (i > 900).then(|| i)).next_chunk::<32>())
 }

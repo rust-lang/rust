@@ -216,7 +216,7 @@ pub trait Iterator {
     /// ```
     /// // an infinite iterator has no upper bound
     /// // and the maximum possible lower bound
-    /// let iter = 0..;
+    /// let iter = (0..).into_iter();
     ///
     /// assert_eq!((usize::MAX, None), iter.size_hint());
     /// ```
@@ -2430,7 +2430,7 @@ pub trait Iterator {
     /// ```
     /// use std::ops::ControlFlow;
     ///
-    /// let triangular = (1..30).try_fold(0_i8, |prev, x| {
+    /// let triangular = (1..30).into_iter().try_fold(0_i8, |prev, x| {
     ///     if let Some(next) = prev.checked_add(x) {
     ///         ControlFlow::Continue(next)
     ///     } else {
@@ -2439,7 +2439,7 @@ pub trait Iterator {
     /// });
     /// assert_eq!(triangular, ControlFlow::Break(120));
     ///
-    /// let triangular = (1..30).try_fold(0_u64, |prev, x| {
+    /// let triangular = (1..30).into_iter().try_fold(0_u64, |prev, x| {
     ///     if let Some(next) = prev.checked_add(x) {
     ///         ControlFlow::Continue(next)
     ///     } else {
@@ -2498,7 +2498,7 @@ pub trait Iterator {
     /// ```
     /// use std::ops::ControlFlow;
     ///
-    /// let r = (2..100).try_for_each(|x| {
+    /// let r = (2..100).into_iter().try_for_each(|x| {
     ///     if 323 % x == 0 {
     ///         return ControlFlow::Break(x)
     ///     }

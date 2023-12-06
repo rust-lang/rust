@@ -78,7 +78,7 @@ fn test_monad_laws_right_identity() {
 #[test]
 fn test_monad_laws_associativity() {
     fn f(x: usize) -> impl Iterator<Item = usize> {
-        0..x
+        (0..x).into_iter()
     }
     fn g(x: usize) -> impl Iterator<Item = usize> {
         (0..x).rev()

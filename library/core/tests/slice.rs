@@ -1627,17 +1627,17 @@ mod slice_index {
 
             good: data[0..=5] == [0, 1, 2, 3, 4, 5];
             good: data[{
-                let mut iter = 0..=5;
+                let mut iter = (0..=5).into_iter();
                 iter.by_ref().count(); // exhaust it
-                iter
+                iter.inner().clone()
             }] == [];
 
             // 0..=6 is out of range before exhaustion, so it
             // stands to reason that it still would be after.
             bad: data[{
-                let mut iter = 0..=6;
+                let mut iter = (0..=6).into_iter();
                 iter.by_ref().count(); // exhaust it
-                iter
+                iter.inner().clone()
             }];
             message: "out of range";
         }

@@ -464,6 +464,6 @@ pub(crate) use self::adapters::try_process;
 pub(crate) use self::traits::UncheckedIterator;
 
 mod adapters;
-mod range;
+pub(crate) mod range;
 mod sources;
 mod traits;

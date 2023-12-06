@@ -126,8 +126,8 @@ fn test_iterator_take_short() {
 #[test]
 fn test_take_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
-    assert_eq!((10..30).take(10).try_fold(7, f), (10..20).try_fold(7, f));
-    assert_eq!((10..30).take(10).try_rfold(7, f), (10..20).try_rfold(7, f));
+    assert_eq!((10..30).take(10).try_fold(7, f), (10..20).into_iter().try_fold(7, f));
+    assert_eq!((10..30).take(10).try_rfold(7, f), (10..20).into_iter().try_rfold(7, f));
 
     let mut iter = (10..30).take(20);
     assert_eq!(iter.try_fold(0, i8::checked_add), None);
@@ -150,20 +150,20 @@ fn test_take_try_folds() {
 
 #[test]
 fn test_byref_take_consumed_items() {
-    let mut inner = 10..90;
+    let mut inner = (10..90).into_iter();
 
     let mut count = 0;
     inner.by_ref().take(0).for_each(|_| count += 1);
     assert_eq!(count, 0);
-    assert_eq!(inner, 10..90);
+    assert_eq!(*inner.inner(), 10..90);
 
     let mut count = 0;
     inner.by_ref().take(10).for_each(|_| count += 1);
     assert_eq!(count, 10);
-    assert_eq!(inner, 20..90);
+    assert_eq!(*inner.inner(), 20..90);
 
     let mut count = 0;
     inner.by_ref().take(100).for_each(|_| count += 1);
     assert_eq!(count, 70);
-    assert_eq!(inner, 90..90);
+    assert_eq!(*inner.inner(), 90..90);
 }

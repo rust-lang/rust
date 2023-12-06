@@ -132,9 +132,9 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///     unsafe { Ok(buffer.transpose().assume_init()) }
     /// }
     ///
-    /// let r: [_; 4] = next_chunk(&mut (10..16)).unwrap();
+    /// let r: [_; 4] = next_chunk(&mut (10..16).into_iter()).unwrap();
     /// assert_eq!(r, [10, 11, 12, 13]);
-    /// let r: IntoIter<_, 40> = next_chunk(&mut (10..16)).unwrap_err();
+    /// let r: IntoIter<_, 40> = next_chunk(&mut (10..16).into_iter()).unwrap_err();
     /// assert_eq!(r.collect::<Vec<_>>(), vec![10, 11, 12, 13, 14, 15]);
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]

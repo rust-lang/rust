@@ -105,7 +105,7 @@ pub trait ExactSizeIterator: Iterator {
     ///
     /// ```
     /// // a finite range knows exactly how many times it will iterate
-    /// let mut range = 0..5;
+    /// let mut range = (0..5).into_iter();
     ///
     /// assert_eq!(5, range.len());
     /// let _ = range.next();

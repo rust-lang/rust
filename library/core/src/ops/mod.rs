@@ -147,7 +147,8 @@ mod drop;
 mod function;
 mod index;
 mod index_range;
-mod range;
+#[stable(feature = "new_range", since = "1.0.0")]
+pub mod range;
 mod try_trait;
 mod unsize;
 
@@ -182,10 +183,13 @@ pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 pub(crate) use self::index_range::IndexRange;
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
+pub use self::range::{RangeInclusive, RangeToInclusive};
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+pub use self::range::bounds::{Bound, RangeBounds};
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
-pub use self::range::OneSidedRange;
+pub use self::range::bounds::OneSidedRange;
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub use self::try_trait::{FromResidual, Try};

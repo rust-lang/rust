@@ -590,7 +590,7 @@ mod slice_index {
 
             good: data[0..=5] == "abcdef";
             good: data[{
-                let mut iter = 0..=5;
+                let mut iter = core::ops::range::legacy::RangeInclusive::from(0..=5);
                 iter.by_ref().count(); // exhaust it
                 iter
             }] == "";
@@ -598,7 +598,7 @@ mod slice_index {
             // 0..=6 is out of bounds before exhaustion, so it
             // stands to reason that it still would be after.
             bad: data[{
-                let mut iter = 0..=6;
+                let mut iter = core::ops::range::legacy::RangeInclusive::from(0..=6);
                 iter.by_ref().count(); // exhaust it
                 iter
             }];

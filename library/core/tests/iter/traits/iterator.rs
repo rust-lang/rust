@@ -222,7 +222,7 @@ fn test_iterator_size_hint() {
     let v2 = &[10, 11, 12];
     let vi = v.iter();
 
-    assert_eq!((0..).size_hint(), (usize::MAX, None));
+    assert_eq!((0..).into_iter().size_hint(), (usize::MAX, None));
     assert_eq!(c.size_hint(), (usize::MAX, None));
     assert_eq!(vi.clone().size_hint(), (10, Some(10)));
 
@@ -363,7 +363,7 @@ fn test_min_by() {
 
 #[test]
 fn test_by_ref() {
-    let mut xs = 0..10;
+    let mut xs = (0..10).into_iter();
     // sum the first five values
     let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
     assert_eq!(partial_sum, 10);
@@ -608,7 +608,7 @@ fn iter_try_collect_uses_try_fold_not_next() {
 
 #[test]
 fn test_next_chunk() {
-    let mut it = 0..12;
+    let mut it = (0..12).into_iter();
     assert_eq!(it.next_chunk().unwrap(), [0, 1, 2, 3]);
     assert_eq!(it.next_chunk().unwrap(), []);
     assert_eq!(it.next_chunk().unwrap(), [4, 5, 6, 7, 8, 9]);

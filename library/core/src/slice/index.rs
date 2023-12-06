@@ -126,17 +126,25 @@ mod private_slice_index {
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for usize {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::Range<usize> {}
+    impl Sealed for ops::range::legacy::Range<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::RangeTo<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::RangeFrom<usize> {}
+    impl Sealed for ops::range::legacy::RangeFrom<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::RangeFull {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::RangeInclusive<usize> {}
+    impl Sealed for ops::range::legacy::RangeInclusive<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::RangeToInclusive<usize> {}
+
+    #[stable(feature = "new_range", since = "1.0.0")]
+    impl Sealed for ops::range::Range<usize> {}
+    #[stable(feature = "new_range", since = "1.0.0")]
+    impl Sealed for ops::range::RangeFrom<usize> {}
+    #[stable(feature = "new_range", since = "1.0.0")]
+    impl Sealed for ops::range::RangeInclusive<usize> {}
+
     #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
     impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
 
@@ -332,9 +340,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     }
 }
 
-#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
+#[stable(feature = "new_range", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::range::Range<usize> {
     type Output = [T];
 
     #[inline]
@@ -411,6 +419,44 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+unsafe impl<T> SliceIndex<[T]> for ops::range::legacy::Range<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        ops::range::Range::from(self).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        ops::range::Range::from(self).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: delegates to new range impl
+        unsafe { ops::range::Range::from(self).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: delegates to new range impl
+        unsafe { ops::range::Range::from(self).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        ops::range::Range::from(self).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        ops::range::Range::from(self).index_mut(slice)
+    }
+}
+
+#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     type Output = [T];
 
@@ -447,9 +493,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     }
 }
 
-#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
+#[stable(feature = "new_range", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::range::RangeFrom<usize> {
     type Output = [T];
 
     #[inline]
@@ -495,6 +541,44 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+unsafe impl<T> SliceIndex<[T]> for ops::range::legacy::RangeFrom<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        ops::range::RangeFrom::from(self).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        ops::range::RangeFrom::from(self).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: delegates to new range impl
+        unsafe { ops::range::RangeFrom::from(self).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: delegates to new range impl
+        unsafe { ops::range::RangeFrom::from(self).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        ops::range::RangeFrom::from(self).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        ops::range::RangeFrom::from(self).index_mut(slice)
+    }
+}
+
+#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
     type Output = [T];
 
@@ -531,7 +615,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::range::legacy::RangeInclusive<usize> {
     type Output = [T];
 
     #[inline]
@@ -567,6 +651,50 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         if *self.end() == usize::MAX {
+            slice_end_index_overflow_fail();
+        }
+        self.into_slice_range().index_mut(slice)
+    }
+}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+unsafe impl<T> SliceIndex<[T]> for ops::range::RangeInclusive<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        if self.end == usize::MAX { None } else { self.into_slice_range().get(slice) }
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        if self.end == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { self.into_slice_range().get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        if self.end == usize::MAX {
+            slice_end_index_overflow_fail();
+        }
+        self.into_slice_range().index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        if self.end == usize::MAX {
             slice_end_index_overflow_fail();
         }
         self.into_slice_range().index_mut(slice)
