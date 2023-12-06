@@ -380,6 +380,21 @@ impl MacroDefId {
         db.intern_macro_call(MacroCallLoc { def: self, krate, eager: None, kind, call_site })
     }
 
+    pub fn definition_range(&self, db: &dyn db::ExpandDatabase) -> InFile<TextRange> {
+        match self.kind {
+            MacroDefKind::Declarative(id)
+            | MacroDefKind::BuiltIn(_, id)
+            | MacroDefKind::BuiltInAttr(_, id)
+            | MacroDefKind::BuiltInDerive(_, id)
+            | MacroDefKind::BuiltInEager(_, id) => {
+                id.with_value(db.ast_id_map(id.file_id).get(id.value).text_range())
+            }
+            MacroDefKind::ProcMacro(_, _, id) => {
+                id.with_value(db.ast_id_map(id.file_id).get(id.value).text_range())
+            }
+        }
+    }
+
     pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {
         match self.kind {
             MacroDefKind::ProcMacro(.., id) => return Either::Right(id),

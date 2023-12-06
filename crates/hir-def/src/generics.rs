@@ -524,7 +524,7 @@ fn file_id_and_params_of(
             (src.file_id, src.value.generic_param_list())
         }
         // We won't be using this ID anyway
-        GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => (FileId(!0).into(), None),
+        GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => (FileId::BOGUS.into(), None),
     }
 }
 

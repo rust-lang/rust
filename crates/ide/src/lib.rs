@@ -100,7 +100,7 @@ pub use crate::{
     markup::Markup,
     moniker::{MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation},
     move_item::Direction,
-    navigation_target::NavigationTarget,
+    navigation_target::{NavigationTarget, UpmappingResult},
     prime_caches::ParallelPrimeCachesProgress,
     references::ReferenceSearchResult,
     rename::RenameError,
@@ -230,7 +230,7 @@ impl Analysis {
     // `AnalysisHost` for creating a fully-featured analysis.
     pub fn from_single_file(text: String) -> (Analysis, FileId) {
         let mut host = AnalysisHost::default();
-        let file_id = FileId(0);
+        let file_id = FileId::from_raw(0);
         let mut file_set = FileSet::default();
         file_set.insert(file_id, VfsPath::new_virtual_path("/main.rs".to_string()));
         let source_root = SourceRoot::new_local(file_set);
@@ -413,6 +413,7 @@ impl Analysis {
             symbol_index::world_symbols(db, query)
                 .into_iter() // xx: should we make this a par iter?
                 .filter_map(|s| s.try_to_nav(db))
+                .map(UpmappingResult::call_site)
                 .collect::<Vec<_>>()
         })
     }

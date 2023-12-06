@@ -54,8 +54,10 @@ pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> Synta
     let dummy_range = TextRange::empty(TextSize::new(0));
     // we use a file id of `FileId(!0)` to signal a fake node, and the text range's start offset as
     // the index into the replacement vec but only if the end points to !0
-    let dummy_anchor =
-        SpanAnchor { file_id: FileId(!0), ast_id: ErasedFileAstId::from_raw(RawIdx::from(!0)) };
+    let dummy_anchor = SpanAnchor {
+        file_id: FileId::from_raw(!0),
+        ast_id: ErasedFileAstId::from_raw(RawIdx::from(!0)),
+    };
     let fake_span = |range| SpanData {
         range: dummy_range,
         anchor: dummy_anchor,
@@ -308,7 +310,7 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
         .filter(|tt| match tt {
             tt::TokenTree::Leaf(leaf) => {
                 let span = leaf.span();
-                span.anchor.file_id != FileId(!0) || span.range.end() == TextSize::new(!0)
+                span.anchor.file_id != FileId::from_raw(!0) || span.range.end() == TextSize::new(!0)
             }
             tt::TokenTree::Subtree(_) => true,
         })
@@ -318,7 +320,7 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
                 SmallVec::from_const([tt.into()])
             }
             tt::TokenTree::Leaf(leaf) => {
-                if leaf.span().anchor.file_id == FileId(!0) {
+                if leaf.span().anchor.file_id == FileId::from_raw(!0) {
                     let original = undo_info[u32::from(leaf.span().range.start()) as usize].clone();
                     if original.delimiter.kind == tt::DelimiterKind::Invisible {
                         original.token_trees.into()
@@ -373,7 +375,7 @@ mod tests {
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture);
-        let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId(0))));
+        let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
         let fixups = super::fixup_syntax(span_map.as_ref(), &parsed.syntax_node());
         let mut tt = mbe::syntax_node_to_token_tree_modified(
             &parsed.syntax_node(),

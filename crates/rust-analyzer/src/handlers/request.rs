@@ -1438,7 +1438,7 @@ pub(crate) fn handle_inlay_hints_resolve(
     };
 
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
-    let file_id = FileId(resolve_data.file_id);
+    let file_id = FileId::from_raw(resolve_data.file_id);
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;

@@ -82,7 +82,11 @@ pub(crate) fn goto_implementation(
 }
 
 fn impls_for_ty(sema: &Semantics<'_, RootDatabase>, ty: hir::Type) -> Vec<NavigationTarget> {
-    Impl::all_for_type(sema.db, ty).into_iter().filter_map(|imp| imp.try_to_nav(sema.db)).collect()
+    Impl::all_for_type(sema.db, ty)
+        .into_iter()
+        .filter_map(|imp| imp.try_to_nav(sema.db))
+        .flatten()
+        .collect()
 }
 
 fn impls_for_trait(
@@ -92,6 +96,7 @@ fn impls_for_trait(
     Impl::all_for_trait(sema.db, trait_)
         .into_iter()
         .filter_map(|imp| imp.try_to_nav(sema.db))
+        .flatten()
         .collect()
 }
 
@@ -109,6 +114,7 @@ fn impls_for_trait_item(
             })?;
             item.try_to_nav(sema.db)
         })
+        .flatten()
         .collect()
 }
 

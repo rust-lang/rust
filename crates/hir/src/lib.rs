@@ -125,6 +125,7 @@ pub use {
     },
     hir_expand::{
         attrs::{Attr, AttrId},
+        hygiene::{marks_rev, SyntaxContextExt},
         name::{known, Name},
         tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
     },

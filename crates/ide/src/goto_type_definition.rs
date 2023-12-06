@@ -31,9 +31,11 @@ pub(crate) fn goto_type_definition(
 
     let mut res = Vec::new();
     let mut push = |def: Definition| {
-        if let Some(nav) = def.try_to_nav(db) {
-            if !res.contains(&nav) {
-                res.push(nav);
+        if let Some(navs) = def.try_to_nav(db) {
+            for nav in navs {
+                if !res.contains(&nav) {
+                    res.push(nav);
+                }
             }
         }
     };

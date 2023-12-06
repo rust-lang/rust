@@ -52,7 +52,7 @@ pub(crate) fn goto_definition(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, _, link_range| {
             let nav = def.try_to_nav(db)?;
-            Some(RangeInfo::new(link_range, vec![nav]))
+            Some(RangeInfo::new(link_range, nav.collect()))
         });
     }
 
@@ -88,6 +88,7 @@ pub(crate) fn goto_definition(
                                 .resolved_crate(db)
                                 .map(|it| it.root_module().to_nav(sema.db))
                                 .into_iter()
+                                .flatten()
                                 .collect();
                         }
                         try_filter_trait_item_definition(sema, &def)
@@ -138,6 +139,7 @@ fn try_lookup_include_path(
         docs: None,
     })
 }
+
 /// finds the trait definition of an impl'd item, except function
 /// e.g.
 /// ```rust
@@ -166,13 +168,13 @@ fn try_filter_trait_item_definition(
                 .iter()
                 .filter(|itm| discriminant(*itm) == discri_value)
                 .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
-                .map(|it| vec![it])
+                .map(|it| it.collect())
         }
     }
 }
 
 fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {
-    def.try_to_nav(db).map(|it| vec![it]).unwrap_or_default()
+    def.try_to_nav(db).map(|it| it.collect()).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -405,8 +407,6 @@ fn bar() {
         );
     }
 
-    // FIXME: We should emit two targets here, one for the identifier in the declaration, one for
-    // the macro call
     #[test]
     fn goto_def_for_macro_defined_fn_no_arg() {
         check(
@@ -414,7 +414,7 @@ fn bar() {
 //- /lib.rs
 macro_rules! define_fn {
     () => (fn foo() {})
-
+            //^^^
 }
 
   define_fn!();
@@ -1748,9 +1748,9 @@ macro_rules! foo {
         fn $ident(Foo { $ident }: Foo) {}
     }
 }
-foo!(foo$0);
-   //^^^
-   //^^^
+  foo!(foo$0);
+     //^^^
+     //^^^
 "#,
         );
         check(

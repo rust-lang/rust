@@ -307,6 +307,40 @@ impl InFile<TextRange> {
         };
         range
     }
+
+    pub fn original_node_file_range(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> (FileRange, SyntaxContextId) {
+        match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                (FileRange { file_id, range: self.value }, SyntaxContextId::ROOT)
+            }
+            HirFileIdRepr::MacroFile(mac_file) => {
+                match ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value) {
+                    Some(it) => it,
+                    None => {
+                        let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
+                        (loc.kind.original_call_range(db), SyntaxContextId::ROOT)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn original_node_file_range_opt(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> Option<(FileRange, SyntaxContextId)> {
+        match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                Some((FileRange { file_id, range: self.value }, SyntaxContextId::ROOT))
+            }
+            HirFileIdRepr::MacroFile(mac_file) => {
+                ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value)
+            }
+        }
+    }
 }
 
 impl<N: AstNode> InFile<N> {

@@ -9,6 +9,8 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
+use std::collections::HashMap;
+
 use hir::{DescendPreference, PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
@@ -60,19 +62,6 @@ pub(crate) fn find_all_refs(
     let syntax = sema.parse(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
-            let declaration = match def {
-                Definition::Module(module) => {
-                    Some(NavigationTarget::from_module_to_decl(sema.db, module))
-                }
-                def => def.try_to_nav(sema.db),
-            }
-            .map(|nav| {
-                let decl_range = nav.focus_or_full_range();
-                Declaration {
-                    is_mut: decl_mutability(&def, sema.parse(nav.file_id).syntax(), decl_range),
-                    nav,
-                }
-            });
             let mut usages =
                 def.usages(sema).set_scope(search_scope.as_ref()).include_self_refs().all();
 
@@ -80,7 +69,7 @@ pub(crate) fn find_all_refs(
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
 
-            let references = usages
+            let mut references = usages
                 .into_iter()
                 .map(|(file_id, refs)| {
                     (
@@ -91,8 +80,30 @@ pub(crate) fn find_all_refs(
                             .collect(),
                     )
                 })
-                .collect();
-
+                .collect::<HashMap<_, Vec<_>, _>>();
+            let declaration = match def {
+                Definition::Module(module) => {
+                    Some(NavigationTarget::from_module_to_decl(sema.db, module))
+                }
+                def => def.try_to_nav(sema.db),
+            }
+            .map(|nav| {
+                let (nav, extra_ref) = match nav.def_site {
+                    Some(call) => (call, Some(nav.call_site)),
+                    None => (nav.call_site, None),
+                };
+                if let Some(extra_ref) = extra_ref {
+                    references
+                        .entry(extra_ref.file_id)
+                        .or_default()
+                        .push((extra_ref.focus_or_full_range(), None));
+                }
+                let decl_range = nav.focus_or_full_range();
+                Declaration {
+                    is_mut: decl_mutability(&def, sema.parse(nav.file_id).syntax(), decl_range),
+                    nav,
+                }
+            });
             ReferenceSearchResult { declaration, references }
         }
     };
@@ -882,7 +893,7 @@ pub(super) struct Foo$0 {
 
         check_with_scope(
             code,
-            Some(SearchScope::single_file(FileId(2))),
+            Some(SearchScope::single_file(FileId::from_raw(2))),
             expect![[r#"
                 quux Function FileId(0) 19..35 26..30
 
@@ -1181,7 +1192,7 @@ fn foo<'a, 'b: 'a>(x: &'a$0 ()) -> &'a () where &'a (): Foo<'a> {
 }
 "#,
             expect![[r#"
-                'a LifetimeParam FileId(0) 55..57 55..57
+                'a LifetimeParam FileId(0) 55..57
 
                 FileId(0) 63..65
                 FileId(0) 71..73
@@ -1199,7 +1210,7 @@ fn foo<'a, 'b: 'a>(x: &'a$0 ()) -> &'a () where &'a (): Foo<'a> {
 type Foo<'a, T> where T: 'a$0 = &'a T;
 "#,
             expect![[r#"
-                'a LifetimeParam FileId(0) 9..11 9..11
+                'a LifetimeParam FileId(0) 9..11
 
                 FileId(0) 25..27
                 FileId(0) 31..33
@@ -1221,7 +1232,7 @@ impl<'a> Foo<'a> for &'a () {
 }
 "#,
             expect![[r#"
-                'a LifetimeParam FileId(0) 47..49 47..49
+                'a LifetimeParam FileId(0) 47..49
 
                 FileId(0) 55..57
                 FileId(0) 64..66

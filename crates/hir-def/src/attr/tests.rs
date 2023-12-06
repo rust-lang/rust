@@ -13,7 +13,7 @@ fn assert_parse_result(input: &str, expected: DocExpr) {
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let tt = syntax_node_to_token_tree(
         tt.syntax(),
-        SpanMapRef::RealSpanMap(&RealSpanMap::absolute(FileId(0))),
+        SpanMapRef::RealSpanMap(&RealSpanMap::absolute(FileId::from_raw(0))),
     );
     let cfg = DocExpr::parse(&tt);
     assert_eq!(cfg, expected);
