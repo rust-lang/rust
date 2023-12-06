@@ -87,6 +87,9 @@ pub trait Context {
     /// Create a new type from the given kind.
     fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
 
+    /// Create a new box type, `Box<T>`, for the given inner type `T`.
+    fn new_box_ty(&self, ty: Ty) -> Ty;
+
     /// Returns the type of given crate item.
     fn def_ty(&self, item: DefId) -> Ty;
 
@@ -101,6 +104,9 @@ pub trait Context {
 
     /// Obtain the representation of a type.
     fn ty_kind(&self, ty: Ty) -> TyKind;
+
+    // Get the discriminant Ty for this Ty if there's one.
+    fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> Ty;
 
     /// Get the body of an Instance which is already monomorphized.
     fn instance_body(&self, instance: InstanceDef) -> Option<Body>;

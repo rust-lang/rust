@@ -274,6 +274,32 @@ pub enum BinOp {
     Offset,
 }
 
+impl BinOp {
+    /// Return the type of this operation for the given input Ty.
+    /// This function does not perform type checking, and it currently doesn't handle SIMD.
+    pub fn ty(&self, lhs_ty: Ty, _rhs_ty: Ty) -> Ty {
+        match self {
+            BinOp::Add
+            | BinOp::AddUnchecked
+            | BinOp::Sub
+            | BinOp::SubUnchecked
+            | BinOp::Mul
+            | BinOp::MulUnchecked
+            | BinOp::Div
+            | BinOp::Rem
+            | BinOp::BitXor
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::Shl
+            | BinOp::ShlUnchecked
+            | BinOp::Shr
+            | BinOp::ShrUnchecked
+            | BinOp::Offset => lhs_ty,
+            BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => Ty::bool_ty(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UnOp {
     Not,
@@ -473,6 +499,63 @@ pub enum Rvalue {
 
     /// Yields the operand unchanged
     Use(Operand),
+}
+
+impl Rvalue {
+    pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
+        match self {
+            Rvalue::Use(operand) => operand.ty(locals),
+            Rvalue::Repeat(operand, count) => {
+                Ok(Ty::new_array_with_const_len(operand.ty(locals)?, count.clone()))
+            }
+            Rvalue::ThreadLocalRef(did) => Ok(did.ty()),
+            Rvalue::Ref(reg, bk, place) => {
+                let place_ty = place.ty(locals)?;
+                Ok(Ty::new_ref(reg.clone(), place_ty, bk.to_mutable_lossy()))
+            }
+            Rvalue::AddressOf(mutability, place) => {
+                let place_ty = place.ty(locals)?;
+                Ok(Ty::new_ptr(place_ty, *mutability))
+            }
+            Rvalue::Len(..) => Ok(Ty::usize_ty()),
+            Rvalue::Cast(.., ty) => Ok(*ty),
+            Rvalue::BinaryOp(op, lhs, rhs) => {
+                let lhs_ty = lhs.ty(locals)?;
+                let rhs_ty = rhs.ty(locals)?;
+                Ok(op.ty(lhs_ty, rhs_ty))
+            }
+            Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+                let lhs_ty = lhs.ty(locals)?;
+                let rhs_ty = rhs.ty(locals)?;
+                let ty = op.ty(lhs_ty, rhs_ty);
+                Ok(Ty::new_tuple(&[ty, Ty::bool_ty()]))
+            }
+            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, operand) => operand.ty(locals),
+            Rvalue::Discriminant(place) => {
+                let place_ty = place.ty(locals)?;
+                place_ty
+                    .kind()
+                    .discriminant_ty()
+                    .ok_or_else(|| error!("Expected a `RigidTy` but found: {place_ty:?}"))
+            }
+            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
+                Ok(Ty::usize_ty())
+            }
+            Rvalue::Aggregate(ak, ops) => match *ak {
+                AggregateKind::Array(ty) => Ty::try_new_array(ty, ops.len() as u64),
+                AggregateKind::Tuple => Ok(Ty::new_tuple(
+                    &ops.iter().map(|op| op.ty(locals)).collect::<Result<Vec<_>, _>>()?,
+                )),
+                AggregateKind::Adt(def, _, ref args, _, _) => Ok(def.ty_with_args(args)),
+                AggregateKind::Closure(def, ref args) => Ok(Ty::new_closure(def, args.clone())),
+                AggregateKind::Coroutine(def, ref args, mov) => {
+                    Ok(Ty::new_coroutine(def, args.clone(), mov))
+                }
+            },
+            Rvalue::ShallowInitBox(_, ty) => Ok(Ty::new_box(*ty)),
+            Rvalue::CopyForDeref(place) => place.ty(locals),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -723,6 +806,17 @@ pub enum BorrowKind {
         /// `true` if this borrow arose from method-call auto-ref
         kind: MutBorrowKind,
     },
+}
+
+impl BorrowKind {
+    pub fn to_mutable_lossy(self) -> Mutability {
+        match self {
+            BorrowKind::Mut { .. } => Mutability::Mut,
+            BorrowKind::Shared => Mutability::Not,
+            // There's no type corresponding to a shallow borrow, so use `&` as an approximation.
+            BorrowKind::Fake => Mutability::Not,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

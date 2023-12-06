@@ -250,6 +250,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.tcx.mk_ty_from_kind(internal_kind).stable(&mut *tables)
     }
 
+    #[allow(rustc::usage_of_qualified_ty)]
+    fn new_box_ty(&self, ty: stable_mir::ty::Ty) -> stable_mir::ty::Ty {
+        let mut tables = self.0.borrow_mut();
+        let inner = ty.internal(&mut *tables);
+        ty::Ty::new_box(tables.tcx, inner).stable(&mut *tables)
+    }
+
     fn def_ty(&self, item: stable_mir::DefId) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         tables.tcx.type_of(item.internal(&mut *tables)).instantiate_identity().stable(&mut *tables)
@@ -274,6 +281,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn ty_kind(&self, ty: stable_mir::ty::Ty) -> TyKind {
         let mut tables = self.0.borrow_mut();
         tables.types[ty].kind().stable(&mut *tables)
+    }
+
+    fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> stable_mir::ty::Ty {
+        let mut tables = self.0.borrow_mut();
+        let internal_kind = ty.internal(&mut *tables);
+        let internal_ty = tables.tcx.mk_ty_from_kind(internal_kind);
+        internal_ty.discriminant_ty(tables.tcx).stable(&mut *tables)
     }
 
     fn instance_body(&self, def: InstanceDef) -> Option<Body> {

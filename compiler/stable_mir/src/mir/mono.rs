@@ -212,6 +212,21 @@ impl TryFrom<CrateItem> for StaticDef {
     }
 }
 
+impl TryFrom<Instance> for StaticDef {
+    type Error = crate::Error;
+
+    fn try_from(value: Instance) -> Result<Self, Self::Error> {
+        StaticDef::try_from(CrateItem::try_from(value)?)
+    }
+}
+
+impl From<StaticDef> for Instance {
+    fn from(value: StaticDef) -> Self {
+        // A static definition should always be convertible to an instance.
+        Instance::try_from(CrateItem::from(value)).unwrap()
+    }
+}
+
 impl StaticDef {
     /// Return the type of this static definition.
     pub fn ty(&self) -> Ty {
