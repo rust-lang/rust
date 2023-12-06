@@ -832,7 +832,7 @@ pub enum MutBorrowKind {
     ClosureCapture,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Mutability {
     Not,
     Mut,

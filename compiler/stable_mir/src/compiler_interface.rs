@@ -8,6 +8,7 @@ use std::cell::Cell;
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
+use crate::target::MachineInfo;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl,
@@ -150,6 +151,9 @@ pub trait Context {
     /// Evaluate a static's initializer.
     fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error>;
 
+    /// Try to evaluate an instance into a constant.
+    fn eval_instance(&self, def: InstanceDef, const_ty: Ty) -> Result<Allocation, Error>;
+
     /// Retrieve global allocation for the given allocation ID.
     fn global_alloc(&self, id: AllocId) -> GlobalAlloc;
 
@@ -157,6 +161,9 @@ pub trait Context {
     fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
     fn krate(&self, def_id: DefId) -> Crate;
     fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol;
+
+    /// Return the number of bytes for a pointer size.
+    fn target_info(&self) -> MachineInfo;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

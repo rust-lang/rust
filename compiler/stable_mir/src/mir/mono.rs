@@ -132,6 +132,14 @@ impl Instance {
     pub fn is_empty_shim(&self) -> bool {
         self.kind == InstanceKind::Shim && with(|cx| cx.is_empty_drop_shim(self.def))
     }
+
+    /// Try to constant evaluate the instance into a constant with the given type.
+    ///
+    /// This can be used to retrieve a constant that represents an intrinsic return such as
+    /// `type_id`.
+    pub fn try_const_eval(&self, const_ty: Ty) -> Result<Allocation, Error> {
+        with(|cx| cx.eval_instance(self.def, const_ty))
+    }
 }
 
 impl Debug for Instance {
