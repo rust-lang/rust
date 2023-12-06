@@ -1,8 +1,8 @@
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/repr_packed.rs:21:24
+  --> $DIR/repr_packed.rs:25:26
    |
-LL |         println!("{}", foo.x);
-   |                        ^^^^^
+LL |         println!("{:?}", foo.x);
+   |                          ^^^^^
    |
    = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)

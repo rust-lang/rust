@@ -1,5 +1,9 @@
 // edition:2021
 
+// Type that requires alignment and is not Copy.
+#[derive(Debug)]
+struct NeedsAlignment(u64);
+
 // Given how the closure desugaring is implemented (at least at the time of writing this test),
 // we don't need to truncate the captured path to a reference into a packed-struct if the field
 // being referenced will be moved into the closure, since it's safe to move out a field from a
@@ -13,12 +17,12 @@
 // into a packed-struct. Here we test that the compiler still detects that case.
 fn test_missing_unsafe_warning_on_repr_packed() {
     #[repr(packed)]
-    struct Foo { x: String }
+    struct Foo { x: NeedsAlignment }
 
-    let foo = Foo { x: String::new() };
+    let foo = Foo { x: NeedsAlignment(0) };
 
     let c = || {
-        println!("{}", foo.x);
+        println!("{:?}", foo.x);
         //~^ ERROR: reference to packed field is unaligned
         let _z = foo.x;
     };
