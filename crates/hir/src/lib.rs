@@ -671,7 +671,8 @@ impl Module {
                 _ => (),
             };
 
-            if let Some(trait_) = trait_ {
+            // Negative impls can't have items, don't emit missing items diagnostic for them
+            if let (false, Some(trait_)) = (impl_is_negative, trait_) {
                 let items = &db.trait_data(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
