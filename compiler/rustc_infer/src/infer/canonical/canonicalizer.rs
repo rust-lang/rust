@@ -44,29 +44,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.canonicalize_query_with_mode(value, query_state, &CanonicalizeAllFreeRegions)
     }
 
-    /// Like [Self::canonicalize_query], but preserves distinct universes. For
-    /// example, canonicalizing `&'?0: Trait<'?1>`, where `'?0` is in `U1` and
-    /// `'?1` is in `U3` would be canonicalized to have `?0` in `U1` and `'?1`
-    /// in `U2`.
-    ///
-    /// This is used for Chalk integration.
-    pub fn canonicalize_query_preserving_universes<V>(
-        &self,
-        value: V,
-        query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonical<'tcx, V>
-    where
-        V: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        Canonicalizer::canonicalize(
-            value,
-            Some(self),
-            self.tcx,
-            &CanonicalizeAllFreeRegionsPreservingUniverses,
-            query_state,
-        )
-    }
-
     /// Canonicalizes a query *response* `V`. When we canonicalize a
     /// query response, we only canonicalize unbound inference
     /// variables, and we leave other free regions alone. So,
@@ -310,30 +287,6 @@ impl CanonicalizeMode for CanonicalizeAllFreeRegions {
 
     fn preserve_universes(&self) -> bool {
         false
-    }
-}
-
-struct CanonicalizeAllFreeRegionsPreservingUniverses;
-
-impl CanonicalizeMode for CanonicalizeAllFreeRegionsPreservingUniverses {
-    fn canonicalize_free_region<'tcx>(
-        &self,
-        canonicalizer: &mut Canonicalizer<'_, 'tcx>,
-        r: ty::Region<'tcx>,
-    ) -> ty::Region<'tcx> {
-        let universe = canonicalizer.infcx.unwrap().universe_of_region(r);
-        canonicalizer.canonical_var_for_region(
-            CanonicalVarInfo { kind: CanonicalVarKind::Region(universe) },
-            r,
-        )
-    }
-
-    fn any(&self) -> bool {
-        true
-    }
-
-    fn preserve_universes(&self) -> bool {
-        true
     }
 }
 
