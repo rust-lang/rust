@@ -137,6 +137,17 @@ impl<'tcx> Stable<'tcx> for ty::AdtKind {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::FieldDef {
+    type T = stable_mir::ty::FieldDef;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::ty::FieldDef {
+            def: tables.create_def_id(self.did),
+            name: self.name.stable(tables),
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
     type T = stable_mir::ty::GenericArgs;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {

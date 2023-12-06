@@ -1,7 +1,7 @@
 //! Conversion of internal Rust compiler items to stable ones.
 
 use rustc_target::abi::FieldIdx;
-use stable_mir::mir::VariantIdx;
+use stable_mir::ty::{IndexedVal, VariantIdx};
 
 use crate::rustc_smir::{Stable, Tables};
 
@@ -25,17 +25,10 @@ impl<'tcx> Stable<'tcx> for FieldIdx {
     }
 }
 
-impl<'tcx> Stable<'tcx> for (rustc_target::abi::VariantIdx, FieldIdx) {
-    type T = (usize, usize);
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        (self.0.as_usize(), self.1.as_usize())
-    }
-}
-
 impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
     type T = VariantIdx;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        self.as_usize()
+        VariantIdx::to_val(self.as_usize())
     }
 }
 
@@ -64,6 +57,14 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
             }
             CoroutineKind::Coroutine => stable_mir::mir::CoroutineKind::Coroutine,
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_span::Symbol {
+    type T = stable_mir::Symbol;
+
+    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        self.to_string()
     }
 }
 
