@@ -312,6 +312,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
     };
 }
 
+#[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5974
 macro_rules! nonzero_integer_signedness_dependent_methods {
     // Methods for unsigned nonzero types only.
     (
