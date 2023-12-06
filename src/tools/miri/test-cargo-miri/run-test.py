@@ -181,7 +181,7 @@ def test_cargo_miri_test():
     )
     del os.environ["CARGO_TARGET_DIR"] # this overrides `build.target-dir` passed by `--config`, so unset it
     test("`cargo miri test` (config-cli)",
-        cargo_miri("test") + ["--config=build.target-dir=\"config-cli\"", "-Zunstable-options"],
+        cargo_miri("test") + ["--config=build.target-dir=\"config-cli\""],
         default_ref, "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
     )
