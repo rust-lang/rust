@@ -190,13 +190,9 @@ macro_rules! nonzero_integer {
             #[stable(feature = $feature, since = $since)]
             (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
         }
-    };
-}
 
-macro_rules! from_str_radix_nzint_impl {
-    ($($t:ty)*) => {$(
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
-        impl FromStr for $t {
+        impl FromStr for $Ty {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 Self::new(from_str_radix(src, 10)?)
@@ -205,11 +201,8 @@ macro_rules! from_str_radix_nzint_impl {
                     })
             }
         }
-    )*}
+    };
 }
-
-from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
-NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
 
 macro_rules! nonzero_leading_trailing_zeros {
     ( $( $Ty: ident($Uint: ty) , $LeadingTestExpr:expr ;)+ ) => {
