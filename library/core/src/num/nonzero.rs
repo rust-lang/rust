@@ -181,6 +181,207 @@ macro_rules! nonzero_integer {
                 $(UnsignedNonZero = $UnsignedNonZero,)?
                 UnsignedPrimitive = $UnsignedPrimitive,
             }
+
+            /// Multiplies two non-zero integers together.
+            /// Checks for overflow and returns [`None`] on overflow.
+            /// As a consequence, the result cannot wrap to zero.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+            #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+            #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                            stringify!($Int), "::MAX)?;")]
+            ///
+            /// assert_eq!(Some(four), two.checked_mul(two));
+            /// assert_eq!(None, max.checked_mul(two));
+            /// # Some(())
+            /// # }
+            /// ```
+            #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn checked_mul(self, other: $Ty) -> Option<$Ty> {
+                if let Some(result) = self.get().checked_mul(other.get()) {
+                    // SAFETY:
+                    // - `checked_mul` returns `None` on overflow
+                    // - `self` and `other` are non-zero
+                    // - the only way to get zero from a multiplication without overflow is for one
+                    //   of the sides to be zero
+                    //
+                    // So the result cannot be zero.
+                    Some(unsafe { $Ty::new_unchecked(result) })
+                } else {
+                    None
+                }
+            }
+
+            /// Multiplies two non-zero integers together.
+            #[doc = concat!("Return [`", stringify!($Ty), "::MAX`] on overflow.")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+            #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+            #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                            stringify!($Int), "::MAX)?;")]
+            ///
+            /// assert_eq!(four, two.saturating_mul(two));
+            /// assert_eq!(max, four.saturating_mul(max));
+            /// # Some(())
+            /// # }
+            /// ```
+            #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn saturating_mul(self, other: $Ty) -> $Ty {
+                // SAFETY:
+                // - `saturating_mul` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
+                //   all of which are non-zero
+                // - `self` and `other` are non-zero
+                // - the only way to get zero from a multiplication without overflow is for one
+                //   of the sides to be zero
+                //
+                // So the result cannot be zero.
+                unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
+            }
+
+            /// Multiplies two non-zero integers together,
+            /// assuming overflow cannot occur.
+            /// Overflow is unchecked, and it is undefined behaviour to overflow
+            /// *even if the result would wrap to a non-zero value*.
+            /// The behaviour is undefined as soon as
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    concat!("`self * rhs > ", stringify!($Int), "::MAX`, ",
+                            "or `self * rhs < ", stringify!($Int), "::MIN`.")
+                }
+                if unsigned {
+                    concat!("`self * rhs > ", stringify!($Int), "::MAX`.")
+                }
+            }]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(nonzero_ops)]
+            ///
+            #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+            #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+            ///
+            /// assert_eq!(four, unsafe { two.unchecked_mul(two) });
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_ops", issue = "84186")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const unsafe fn unchecked_mul(self, other: $Ty) -> $Ty {
+                // SAFETY: The caller ensures there is no overflow.
+                unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
+            }
+
+            /// Raises non-zero value to an integer power.
+            /// Checks for overflow and returns [`None`] on overflow.
+            /// As a consequence, the result cannot wrap to zero.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
+            #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
+            #[doc = concat!("let half_max = ", stringify!($Ty), "::new(",
+                            stringify!($Int), "::MAX / 2)?;")]
+            ///
+            /// assert_eq!(Some(twenty_seven), three.checked_pow(3));
+            /// assert_eq!(None, half_max.checked_pow(3));
+            /// # Some(())
+            /// # }
+            /// ```
+            #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn checked_pow(self, other: u32) -> Option<$Ty> {
+                if let Some(result) = self.get().checked_pow(other) {
+                    // SAFETY:
+                    // - `checked_pow` returns `None` on overflow/underflow
+                    // - `self` is non-zero
+                    // - the only way to get zero from an exponentiation without overflow is
+                    //   for base to be zero
+                    //
+                    // So the result cannot be zero.
+                    Some(unsafe { $Ty::new_unchecked(result) })
+                } else {
+                    None
+                }
+            }
+
+            /// Raise non-zero value to an integer power.
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    concat!("Return [`", stringify!($Ty), "::MIN`] ",
+                                "or [`", stringify!($Ty), "::MAX`] on overflow.")
+                }
+                if unsigned {
+                    concat!("Return [`", stringify!($Ty), "::MAX`] on overflow.")
+                }
+            }]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
+            #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
+            #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                            stringify!($Int), "::MAX)?;")]
+            ///
+            /// assert_eq!(twenty_seven, three.saturating_pow(3));
+            /// assert_eq!(max, max.saturating_pow(3));
+            /// # Some(())
+            /// # }
+            /// ```
+            #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+            #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn saturating_pow(self, other: u32) -> $Ty {
+                // SAFETY:
+                // - `saturating_pow` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
+                //   all of which are non-zero
+                // - `self` is non-zero
+                // - the only way to get zero from an exponentiation without overflow is
+                //   for base to be zero
+                //
+                // So the result cannot be zero.
+                unsafe { $Ty::new_unchecked(self.get().saturating_pow(other)) }
+            }
         }
 
         #[stable(feature = "from_nonzero", since = "1.31.0")]
@@ -938,216 +1139,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
     };
 }
 
-// A bunch of methods for both signed and unsigned nonzero types.
-macro_rules! nonzero_unsigned_signed_operations {
-    ( $( $signedness:ident $Ty: ident($Int: ty); )+ ) => {
-        $(
-            impl $Ty {
-                /// Multiplies two non-zero integers together.
-                /// Checks for overflow and returns [`None`] on overflow.
-                /// As a consequence, the result cannot wrap to zero.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                /// # fn main() { test().unwrap(); }
-                /// # fn test() -> Option<()> {
-                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
-                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
-                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
-                                stringify!($Int), "::MAX)?;")]
-                ///
-                /// assert_eq!(Some(four), two.checked_mul(two));
-                /// assert_eq!(None, max.checked_mul(two));
-                /// # Some(())
-                /// # }
-                /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
-                #[must_use = "this returns the result of the operation, \
-                              without modifying the original"]
-                #[inline]
-                pub const fn checked_mul(self, other: $Ty) -> Option<$Ty> {
-                    if let Some(result) = self.get().checked_mul(other.get()) {
-                        // SAFETY:
-                        // - `checked_mul` returns `None` on overflow
-                        // - `self` and `other` are non-zero
-                        // - the only way to get zero from a multiplication without overflow is for one
-                        //   of the sides to be zero
-                        //
-                        // So the result cannot be zero.
-                        Some(unsafe { $Ty::new_unchecked(result) })
-                    } else {
-                        None
-                    }
-                }
-
-                /// Multiplies two non-zero integers together.
-                #[doc = concat!("Return [`", stringify!($Ty), "::MAX`] on overflow.")]
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                /// # fn main() { test().unwrap(); }
-                /// # fn test() -> Option<()> {
-                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
-                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
-                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
-                                stringify!($Int), "::MAX)?;")]
-                ///
-                /// assert_eq!(four, two.saturating_mul(two));
-                /// assert_eq!(max, four.saturating_mul(max));
-                /// # Some(())
-                /// # }
-                /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
-                #[must_use = "this returns the result of the operation, \
-                              without modifying the original"]
-                #[inline]
-                pub const fn saturating_mul(self, other: $Ty) -> $Ty {
-                    // SAFETY:
-                    // - `saturating_mul` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
-                    //   all of which are non-zero
-                    // - `self` and `other` are non-zero
-                    // - the only way to get zero from a multiplication without overflow is for one
-                    //   of the sides to be zero
-                    //
-                    // So the result cannot be zero.
-                    unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
-                }
-
-                /// Multiplies two non-zero integers together,
-                /// assuming overflow cannot occur.
-                /// Overflow is unchecked, and it is undefined behaviour to overflow
-                /// *even if the result would wrap to a non-zero value*.
-                /// The behaviour is undefined as soon as
-                #[doc = sign_dependent_expr!{
-                    $signedness ?
-                    if signed {
-                        concat!("`self * rhs > ", stringify!($Int), "::MAX`, ",
-                                "or `self * rhs < ", stringify!($Int), "::MIN`.")
-                    }
-                    if unsigned {
-                        concat!("`self * rhs > ", stringify!($Int), "::MAX`.")
-                    }
-                }]
-                ///
-                /// # Examples
-                ///
-                /// ```
-                /// #![feature(nonzero_ops)]
-                ///
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                /// # fn main() { test().unwrap(); }
-                /// # fn test() -> Option<()> {
-                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
-                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
-                ///
-                /// assert_eq!(four, unsafe { two.unchecked_mul(two) });
-                /// # Some(())
-                /// # }
-                /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
-                #[must_use = "this returns the result of the operation, \
-                              without modifying the original"]
-                #[inline]
-                pub const unsafe fn unchecked_mul(self, other: $Ty) -> $Ty {
-                    // SAFETY: The caller ensures there is no overflow.
-                    unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
-                }
-
-                /// Raises non-zero value to an integer power.
-                /// Checks for overflow and returns [`None`] on overflow.
-                /// As a consequence, the result cannot wrap to zero.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                /// # fn main() { test().unwrap(); }
-                /// # fn test() -> Option<()> {
-                #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
-                #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
-                #[doc = concat!("let half_max = ", stringify!($Ty), "::new(",
-                                stringify!($Int), "::MAX / 2)?;")]
-                ///
-                /// assert_eq!(Some(twenty_seven), three.checked_pow(3));
-                /// assert_eq!(None, half_max.checked_pow(3));
-                /// # Some(())
-                /// # }
-                /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
-                #[must_use = "this returns the result of the operation, \
-                              without modifying the original"]
-                #[inline]
-                pub const fn checked_pow(self, other: u32) -> Option<$Ty> {
-                    if let Some(result) = self.get().checked_pow(other) {
-                        // SAFETY:
-                        // - `checked_pow` returns `None` on overflow/underflow
-                        // - `self` is non-zero
-                        // - the only way to get zero from an exponentiation without overflow is
-                        //   for base to be zero
-                        //
-                        // So the result cannot be zero.
-                        Some(unsafe { $Ty::new_unchecked(result) })
-                    } else {
-                        None
-                    }
-                }
-
-                /// Raise non-zero value to an integer power.
-                #[doc = sign_dependent_expr!{
-                    $signedness ?
-                    if signed {
-                        concat!("Return [`", stringify!($Ty), "::MIN`] ",
-                                    "or [`", stringify!($Ty), "::MAX`] on overflow.")
-                    }
-                    if unsigned {
-                        concat!("Return [`", stringify!($Ty), "::MAX`] on overflow.")
-                    }
-                }]
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                /// # fn main() { test().unwrap(); }
-                /// # fn test() -> Option<()> {
-                #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
-                #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
-                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
-                                stringify!($Int), "::MAX)?;")]
-                ///
-                /// assert_eq!(twenty_seven, three.saturating_pow(3));
-                /// assert_eq!(max, max.saturating_pow(3));
-                /// # Some(())
-                /// # }
-                /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
-                #[must_use = "this returns the result of the operation, \
-                              without modifying the original"]
-                #[inline]
-                pub const fn saturating_pow(self, other: u32) -> $Ty {
-                    // SAFETY:
-                    // - `saturating_pow` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
-                    //   all of which are non-zero
-                    // - `self` is non-zero
-                    // - the only way to get zero from an exponentiation without overflow is
-                    //   for base to be zero
-                    //
-                    // So the result cannot be zero.
-                    unsafe { $Ty::new_unchecked(self.get().saturating_pow(other)) }
-                }
-            }
-        )+
-    }
-}
-
 // Use this when the generated code should differ between signed and unsigned types.
 macro_rules! sign_dependent_expr {
     (signed ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
@@ -1156,21 +1147,6 @@ macro_rules! sign_dependent_expr {
     (unsigned ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
         $unsigned_case
     };
-}
-
-nonzero_unsigned_signed_operations! {
-    unsigned NonZeroU8(u8);
-    unsigned NonZeroU16(u16);
-    unsigned NonZeroU32(u32);
-    unsigned NonZeroU64(u64);
-    unsigned NonZeroU128(u128);
-    unsigned NonZeroUsize(usize);
-    signed NonZeroI8(i8);
-    signed NonZeroI16(i16);
-    signed NonZeroI32(i32);
-    signed NonZeroI64(i64);
-    signed NonZeroI128(i128);
-    signed NonZeroIsize(isize);
 }
 
 macro_rules! nonzero_unsigned_is_power_of_two {
