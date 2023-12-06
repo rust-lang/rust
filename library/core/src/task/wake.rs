@@ -225,20 +225,31 @@ impl<'a> Context<'a> {
     /// # Panics
     /// This function will panic if no `Waker` was set on the context. This happens if
     /// the executor does not support working with thread safe wakers. An alternative
-    /// may be to call [`.local_waker()`](Context::local_waker) instead.
+    /// may be to call [`.local_waker()`](Context::local_waker) instead. For a fallible
+    /// version of this function see [`.try_waker()`](Context::try_waker).
+    #[inline]
+    #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[must_use]
-    #[inline]
     pub const fn waker(&self) -> &'a Waker {
         &self
             .waker
             .expect("no waker was set on this context, consider calling `local_waker` instead.")
     }
     /// Returns a reference to the [`LocalWaker`] for the current task.
+    #[inline]
     #[unstable(feature = "local_waker", issue = "none")]
-    pub fn local_waker(&self) -> &'a LocalWaker {
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const fn local_waker(&self) -> &'a LocalWaker {
         &self.local_waker
+    }
+    /// Returns a `Some(&Waker)` if a waker was defined on the `Context`,
+    /// otherwise it returns `None`.
+    #[inline]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    #[unstable(feature = "local_waker", issue = "none")]
+    pub const fn try_waker(&self) -> Option<&'a Waker> {
+        self.waker
     }
 }
 
@@ -256,18 +267,19 @@ impl fmt::Debug for Context<'_> {
 /// ```
 /// #![feature(local_waker)]
 /// #![feature(noop_waker)]
-/// use std::task::{ContextBuilder, LocalWaker, Waker};
-///
+/// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
+/// use std::future::Future;
+/// 
 /// let local_waker = LocalWaker::noop();
 /// let waker = Waker::noop();
 ///
-/// let context = ContextBuilder::from_local_waker(&local_waker)
+/// let mut cx = ContextBuilder::from_local_waker(&local_waker)
 ///     .waker(&waker)
 ///     .build();
 ///
-/// let future = pin::pin!(async { 20 });
-/// let poll = future.poll(&mut context);
-/// assert_eq!(poll, task::Poll::Ready(20));
+/// let mut future = std::pin::pin!(async { 20 });
+/// let poll = future.as_mut().poll(&mut cx);
+/// assert_eq!(poll, Poll::Ready(20));
 ///
 /// ```
 #[unstable(feature = "local_waker", issue = "none")]
@@ -320,6 +332,50 @@ impl<'a> ContextBuilder<'a> {
     pub const fn build(self) -> Context<'a> {
         let ContextBuilder { waker, local_waker } = self;
         Context { waker, local_waker, _marker: PhantomData, _marker2: PhantomData }
+    }
+}
+
+/// Construct a `ContextBuilder`` from a `Context`. This is useful for
+/// overriding values from a context.
+///
+/// # Examples
+/// An example of a future that allows to set a Waker on Context if none was defined.
+/// This can be used to await futures that require a `Waker` even if the runtime does not
+/// support `Waker`.
+/// ```rust
+/// #![feature(noop_waker, local_waker)]
+/// use std::task::{Waker, ContextBuilder};
+/// use std::future::{poll_fn, Future};
+/// use std::pin::pin;
+///
+/// async fn with_waker<F>(f: F, waker: &Waker) -> F::Output
+/// where
+///     F: Future
+/// {
+///     let mut f = pin!(f);
+///     poll_fn(move |cx| {
+///         let has_waker = cx.try_waker().is_some();
+///         if has_waker {
+///             return f.as_mut().poll(cx);
+///         }
+///
+///         let mut cx = ContextBuilder::from(cx)
+///             .waker(&waker)
+///             .build();
+///         f.as_mut().poll(&mut cx)
+///     }).await
+/// }
+/// 
+/// # async fn __() {
+/// with_waker(async { /* ... */ }, &Waker::noop()).await;
+/// # }
+/// ```
+#[unstable(feature = "local_waker", issue = "none")]
+impl<'a> From<&mut Context<'a>> for ContextBuilder<'a> {
+    #[inline]
+    fn from(value: &mut Context<'a>) -> Self {
+        let Context { waker, local_waker, .. } = *value;
+        ContextBuilder { waker, local_waker }
     }
 }
 
@@ -559,12 +615,11 @@ impl fmt::Debug for Waker {
 ///     })
 /// }
 ///
-/// # #[allow(unused_must_use)]
 /// # async fn __() {
 /// yield_now().await;
 /// # }
 /// ```
-/// 
+///
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`local_waker`]: core::task::Context::local_waker

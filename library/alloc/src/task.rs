@@ -165,16 +165,15 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 
 /// # Examples
 ///
-/// A
-///
 /// This is a simplified example of a `spawn` and a `block_on` function. The `spawn` function
 /// is used to push new tasks onto the run queue, while the block on function will remove them
 /// and poll them. When a task is woken, it will put itself back on the run queue to be polled by the executor.
 ///
 /// **Note:** A real world example would interlieve poll calls with calls to an io reactor to wait for events instead
-/// of spinning on a loop.
+/// of spinning on a loop. 
 ///
 /// ```rust
+/// #![feature(local_waker)]
 /// use std::task::{LocalWake, ContextBuilder, LocalWaker};
 /// use std::future::Future;
 /// use std::pin::Pin;
@@ -204,9 +203,9 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 /// where
 ///     F: Future<Output=()> + 'static + Send + Sync
 /// {
-///     let task = Rc::new(Box::pin(future));
+///     let task = RefCell::new(Box::pin(future));
 ///     RUN_QUEUE.with_borrow_mut(|queue| {
-///         queue.push_back(task)
+///         queue.push_back(Rc::new(Task(task)));
 ///     });
 /// }
 ///
@@ -221,19 +220,22 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 ///             return;
 ///         };
 ///         // cast the Rc<Task> into a `LocalWaker`
-///         let waker: LocalWaker = task.into();
+///         let waker: LocalWaker = task.clone().into();
 ///         // Build the context using `ContextBuilder`
-///         let mut cx = ContextBuilder::new()
-///             .local_waker(&waker)
+///         let mut cx = ContextBuilder::from_local_waker(&waker)
 ///             .build();
 ///
 ///         // Poll the task
-///         task.0
+///         let _ = task.0
 ///             .borrow_mut()
 ///             .as_mut()
 ///             .poll(&mut cx);
 ///     }
 /// }
+///
+/// block_on(async {
+///     println!("hello world");
+/// });
 /// ```
 ///
 #[unstable(feature = "local_waker", issue = "none")]
