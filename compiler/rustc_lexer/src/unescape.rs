@@ -351,8 +351,6 @@ where
                     _ => scan_escape::<T>(&mut chars, mode),
                 }
             }
-            '\n' => Ok(b'\n'.into()),
-            '\t' => Ok(b'\t'.into()),
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
             _ => ascii_check(c, mode.characters_should_be_ascii()).map(Into::into),
