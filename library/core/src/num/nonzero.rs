@@ -26,6 +26,7 @@ macro_rules! nonzero_integer {
     (
         Self = $Ty:ident,
         Primitive = $signedness:ident $Int:ident,
+        $(UnsignedNonZero = $UnsignedNonZero:ident,)?
         UnsignedPrimitive = $UnsignedPrimitive:ty,
         feature = $feature:literal,
         original_stabilization = $since:literal,
@@ -173,6 +174,13 @@ macro_rules! nonzero_integer {
                 // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
                 unsafe { intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive) as u32 }
             }
+
+            nonzero_integer_signedness_dependent_methods! {
+                Self = $Ty,
+                Primitive = $signedness $Int,
+                $(UnsignedNonZero = $UnsignedNonZero,)?
+                UnsignedPrimitive = $UnsignedPrimitive,
+            }
         }
 
         #[stable(feature = "from_nonzero", since = "1.31.0")]
@@ -304,11 +312,13 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
     };
 }
 
-// A bunch of methods for unsigned nonzero types only.
-macro_rules! nonzero_unsigned_operations {
-    ( $( $Ty: ident($Int: ident); )+ ) => {
-        $(
-            impl $Ty {
+macro_rules! nonzero_integer_signedness_dependent_methods {
+    // Methods for unsigned nonzero types only.
+    (
+        Self = $Ty:ident,
+        Primitive = unsigned $Int:ident,
+        UnsignedPrimitive = $Uint:ty,
+    ) => {
                 /// Adds an unsigned integer to a non-zero value.
                 /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
@@ -538,25 +548,15 @@ macro_rules! nonzero_unsigned_operations {
                     // never being 0.
                     unsafe { $Ty::new_unchecked(self.get().midpoint(rhs.get())) }
                 }
-            }
-        )+
-    }
-}
+    };
 
-nonzero_unsigned_operations! {
-    NonZeroU8(u8);
-    NonZeroU16(u16);
-    NonZeroU32(u32);
-    NonZeroU64(u64);
-    NonZeroU128(u128);
-    NonZeroUsize(usize);
-}
-
-// A bunch of methods for signed nonzero types only.
-macro_rules! nonzero_signed_operations {
-    ( $( $Ty: ident($Int: ty) -> $Uty: ident($Uint: ty); )+ ) => {
-        $(
-            impl $Ty {
+    // Methods for signed nonzero types only.
+    (
+        Self = $Ty:ident,
+        Primitive = signed $Int:ident,
+        UnsignedNonZero = $Uty:ident,
+        UnsignedPrimitive = $Uint:ty,
+    ) => {
                 /// Computes the absolute value of self.
                 #[doc = concat!("See [`", stringify!($Int), "::abs`]")]
                 /// for documentation on overflow behaviour.
@@ -934,18 +934,7 @@ macro_rules! nonzero_signed_operations {
                     // SAFETY: negation of nonzero cannot yield zero values.
                     unsafe { $Ty::new_unchecked(result) }
                 }
-            }
-        )+
-    }
-}
-
-nonzero_signed_operations! {
-    NonZeroI8(i8) -> NonZeroU8(u8);
-    NonZeroI16(i16) -> NonZeroU16(u16);
-    NonZeroI32(i32) -> NonZeroU32(u32);
-    NonZeroI64(i64) -> NonZeroU64(u64);
-    NonZeroI128(i128) -> NonZeroU128(u128);
-    NonZeroIsize(isize) -> NonZeroUsize(usize);
+    };
 }
 
 // A bunch of methods for both signed and unsigned nonzero types.
@@ -1410,6 +1399,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroI8,
     Primitive = signed i8,
+    UnsignedNonZero = NonZeroU8,
     UnsignedPrimitive = u8,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
@@ -1419,6 +1409,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroI16,
     Primitive = signed i16,
+    UnsignedNonZero = NonZeroU16,
     UnsignedPrimitive = u16,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
@@ -1428,6 +1419,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroI32,
     Primitive = signed i32,
+    UnsignedNonZero = NonZeroU32,
     UnsignedPrimitive = u32,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
@@ -1437,6 +1429,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroI64,
     Primitive = signed i64,
+    UnsignedNonZero = NonZeroU64,
     UnsignedPrimitive = u64,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
@@ -1446,6 +1439,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroI128,
     Primitive = signed i128,
+    UnsignedNonZero = NonZeroU128,
     UnsignedPrimitive = u128,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
@@ -1455,6 +1449,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroIsize,
     Primitive = signed isize,
+    UnsignedNonZero = NonZeroUsize,
     UnsignedPrimitive = usize,
     feature = "signed_nonzero",
     original_stabilization = "1.34.0",
