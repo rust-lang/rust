@@ -484,6 +484,20 @@ impl DroplessArena {
         }
     }
 
+    /// Allocates a string slice that is copied into the `DroplessArena`, returning a
+    /// reference to it. Will panic if passed an empty string.
+    ///
+    /// Panics:
+    ///
+    ///  - Zero-length string
+    #[inline]
+    pub fn alloc_str(&self, string: &str) -> &str {
+        let slice = self.alloc_slice(string.as_bytes());
+
+        // SAFETY: the result has a copy of the same valid UTF-8 bytes.
+        unsafe { std::str::from_utf8_unchecked(slice) }
+    }
+
     /// # Safety
     ///
     /// The caller must ensure that `mem` is valid for writes up to `size_of::<T>() * len`, and that
@@ -653,6 +667,14 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
                 return &mut [];
             }
             self.dropless.alloc_slice(value)
+        }
+
+        #[inline]
+        pub fn alloc_str(&self, string: &str) -> &str {
+            if string.is_empty() {
+                return "";
+            }
+            self.dropless.alloc_str(string)
         }
 
         #[allow(clippy::mut_from_ref)]
