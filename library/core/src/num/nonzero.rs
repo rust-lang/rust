@@ -805,13 +805,47 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         }
     };
 
-    // Methods for signed nonzero types only.
+    // Associated items for signed nonzero types only.
     (
         Self = $Ty:ident,
         Primitive = signed $Int:ident,
         UnsignedNonZero = $Uty:ident,
         UnsignedPrimitive = $Uint:ty,
     ) => {
+        /// The smallest value that can be represented by this non-zero
+        /// integer type,
+        #[doc = concat!("equal to [`", stringify!($Int), "::MIN`].")]
+        ///
+        /// Note: While most integer types are defined for every whole
+        /// number between `MIN` and `MAX`, signed non-zero integers are
+        /// a special case. They have a "gap" at 0.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+        #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), ", stringify!($Int), "::MIN);")]
+        /// ```
+        #[stable(feature = "nonzero_min_max", since = "1.70.0")]
+        pub const MIN: Self = Self::new(<$Int>::MIN).unwrap();
+
+        /// The largest value that can be represented by this non-zero
+        /// integer type,
+        #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
+        ///
+        /// Note: While most integer types are defined for every whole
+        /// number between `MIN` and `MAX`, signed non-zero integers are
+        /// a special case. They have a "gap" at 0.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+        #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
+        /// ```
+        #[stable(feature = "nonzero_min_max", since = "1.70.0")]
+        pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
+
         /// Computes the absolute value of self.
         #[doc = concat!("See [`", stringify!($Int), "::abs`]")]
         /// for documentation on overflow behaviour.
@@ -1200,57 +1234,6 @@ macro_rules! sign_dependent_expr {
     (unsigned ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
         $unsigned_case
     };
-}
-
-macro_rules! nonzero_min_max_signed {
-    ( $( $Ty: ident($Int: ident); )+ ) => {
-        $(
-            impl $Ty {
-                /// The smallest value that can be represented by this non-zero
-                /// integer type,
-                #[doc = concat!("equal to [`", stringify!($Int), "::MIN`].")]
-                ///
-                /// Note: While most integer types are defined for every whole
-                /// number between `MIN` and `MAX`, signed non-zero integers are
-                /// a special case. They have a "gap" at 0.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), ", stringify!($Int), "::MIN);")]
-                /// ```
-                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
-                pub const MIN: Self = Self::new(<$Int>::MIN).unwrap();
-
-                /// The largest value that can be represented by this non-zero
-                /// integer type,
-                #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
-                ///
-                /// Note: While most integer types are defined for every whole
-                /// number between `MIN` and `MAX`, signed non-zero integers are
-                /// a special case. They have a "gap" at 0.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
-                /// ```
-                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
-                pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
-            }
-        )+
-    }
-}
-
-nonzero_min_max_signed! {
-    NonZeroI8(i8);
-    NonZeroI16(i16);
-    NonZeroI32(i32);
-    NonZeroI64(i64);
-    NonZeroI128(i128);
-    NonZeroIsize(isize);
 }
 
 macro_rules! nonzero_bits {
