@@ -24,7 +24,10 @@ macro_rules! impl_nonzero_fmt {
 
 macro_rules! nonzero_integer {
     (
-        #[$stability:meta] #[$const_new_unchecked_stability:meta] $Ty:ident($Int:ty);
+        Self = $Ty:ident,
+        Primitive = $signedness:ident $Int:ident,
+        feature = $feature:literal,
+        original_stabilization = $since:literal,
     ) => {
         /// An integer that is known not to equal zero.
         ///
@@ -56,7 +59,7 @@ macro_rules! nonzero_integer {
         /// ```
         ///
         /// [null pointer optimization]: crate::option#representation
-        #[$stability]
+        #[stable(feature = $feature, since = $since)]
         #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
         #[repr(transparent)]
         #[rustc_layout_scalar_valid_range_start(1)]
@@ -71,8 +74,8 @@ macro_rules! nonzero_integer {
             /// # Safety
             ///
             /// The value must not be zero.
-            #[$stability]
-            #[$const_new_unchecked_stability]
+            #[stable(feature = $feature, since = $since)]
+            #[rustc_const_stable(feature = $feature, since = $since)]
             #[must_use]
             #[inline]
             pub const unsafe fn new_unchecked(n: $Int) -> Self {
@@ -87,7 +90,7 @@ macro_rules! nonzero_integer {
             }
 
             /// Creates a non-zero if the given value is not zero.
-            #[$stability]
+            #[stable(feature = $feature, since = $since)]
             #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
             #[must_use]
             #[inline]
@@ -101,7 +104,7 @@ macro_rules! nonzero_integer {
             }
 
             /// Returns the value as a primitive type.
-            #[$stability]
+            #[stable(feature = $feature, since = $since)]
             #[inline]
             #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
             pub const fn get(self) -> $Int {
@@ -119,7 +122,6 @@ macro_rules! nonzero_integer {
                 }
                 self.0
             }
-
         }
 
         #[stable(feature = "from_nonzero", since = "1.31.0")]
@@ -185,7 +187,8 @@ macro_rules! nonzero_integer {
         }
 
         impl_nonzero_fmt! {
-            #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
+            #[stable(feature = $feature, since = $since)]
+            (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
         }
     };
 }
@@ -1383,49 +1386,85 @@ nonzero_bits! {
 }
 
 nonzero_integer! {
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8);
+    Self = NonZeroU8,
+    Primitive = unsigned u8,
+    feature = "nonzero",
+    original_stabilization = "1.28.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
+    Self = NonZeroU16,
+    Primitive = unsigned u16,
+    feature = "nonzero",
+    original_stabilization = "1.28.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
+    Self = NonZeroU32,
+    Primitive = unsigned u32,
+    feature = "nonzero",
+    original_stabilization = "1.28.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU64(u64);
+    Self = NonZeroU64,
+    Primitive = unsigned u64,
+    feature = "nonzero",
+    original_stabilization = "1.28.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128);
+    Self = NonZeroU128,
+    Primitive = unsigned u128,
+    feature = "nonzero",
+    original_stabilization = "1.28.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroUsize(usize);
+    Self = NonZeroUsize,
+    Primitive = unsigned usize,
+    feature = "nonzero",
+    original_stabilization = "1.28.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI8(i8);
+    Self = NonZeroI8,
+    Primitive = signed i8,
+    feature = "signed_nonzero",
+    original_stabilization = "1.34.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI16(i16);
+    Self = NonZeroI16,
+    Primitive = signed i16,
+    feature = "signed_nonzero",
+    original_stabilization = "1.34.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI32(i32);
+    Self = NonZeroI32,
+    Primitive = signed i32,
+    feature = "signed_nonzero",
+    original_stabilization = "1.34.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI64(i64);
+    Self = NonZeroI64,
+    Primitive = signed i64,
+    feature = "signed_nonzero",
+    original_stabilization = "1.34.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128);
+    Self = NonZeroI128,
+    Primitive = signed i128,
+    feature = "signed_nonzero",
+    original_stabilization = "1.34.0",
 }
 
 nonzero_integer! {
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
+    Self = NonZeroIsize,
+    Primitive = signed isize,
+    feature = "signed_nonzero",
+    original_stabilization = "1.34.0",
 }
