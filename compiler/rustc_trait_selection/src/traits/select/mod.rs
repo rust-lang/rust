@@ -78,7 +78,7 @@ impl<'tcx> IntercrateAmbiguityCause<'tcx> {
             IntercrateAmbiguityCause::DownstreamCrate { trait_ref, self_ty } => {
                 format!(
                     "downstream crates may implement trait `{trait_desc}`{self_desc}",
-                    trait_desc = trait_ref.print_only_trait_path(),
+                    trait_desc = trait_ref.print_trait_sugared(),
                     self_desc = if let Some(self_ty) = self_ty {
                         format!(" for type `{self_ty}`")
                     } else {
@@ -90,7 +90,7 @@ impl<'tcx> IntercrateAmbiguityCause<'tcx> {
                 format!(
                     "upstream crates may add a new impl of trait `{trait_desc}`{self_desc} \
                 in future versions",
-                    trait_desc = trait_ref.print_only_trait_path(),
+                    trait_desc = trait_ref.print_trait_sugared(),
                     self_desc = if let Some(self_ty) = self_ty {
                         format!(" for type `{self_ty}`")
                     } else {
