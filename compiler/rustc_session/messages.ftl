@@ -72,8 +72,6 @@ session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be u
 
 session_not_supported = not supported
 
-session_nul_in_c_str = null characters in C string literals are not supported
-
 session_octal_float_literal_not_supported = octal float literal is not supported
 
 session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}

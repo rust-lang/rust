@@ -2144,6 +2144,11 @@ pub enum UnescapeError {
         #[subdiagnostic]
         suggestion: MoreThanOneCharSugg,
     },
+    #[diag(parse_nul_in_c_str)]
+    NulInCStr {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Subdiagnostic)]
