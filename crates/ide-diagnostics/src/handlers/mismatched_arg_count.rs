@@ -1,8 +1,9 @@
 use either::Either;
 use hir::InFile;
+use ide_db::base_db::FileRange;
 use syntax::{
     ast::{self, HasArgList},
-    AstNode, SyntaxNodePtr, TextRange,
+    AstNode, SyntaxNodePtr,
 };
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
@@ -48,7 +49,7 @@ fn invalid_args_range(
     source: InFile<SyntaxNodePtr>,
     expected: usize,
     found: usize,
-) -> TextRange {
+) -> FileRange {
     adjusted_display_range::<Either<ast::Expr, ast::TupleStructPat>>(ctx, source, &|expr| {
         let (text_range, r_paren_token, expected_arg) = match expr {
             Either::Left(ast::Expr::CallExpr(call)) => {

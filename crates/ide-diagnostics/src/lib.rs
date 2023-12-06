@@ -133,7 +133,7 @@ impl DiagnosticCode {
 pub struct Diagnostic {
     pub code: DiagnosticCode,
     pub message: String,
-    pub range: TextRange,
+    pub range: FileRange,
     pub severity: Severity,
     pub unused: bool,
     pub experimental: bool,
@@ -143,7 +143,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    fn new(code: DiagnosticCode, message: impl Into<String>, range: TextRange) -> Diagnostic {
+    fn new(code: DiagnosticCode, message: impl Into<String>, range: FileRange) -> Diagnostic {
         let message = message.into();
         Diagnostic {
             code,
@@ -172,7 +172,7 @@ impl Diagnostic {
         node: InFile<SyntaxNodePtr>,
     ) -> Diagnostic {
         let file_id = node.file_id;
-        Diagnostic::new(code, message, ctx.sema.diagnostics_display_range(node.clone()).range)
+        Diagnostic::new(code, message, ctx.sema.diagnostics_display_range(node.clone()))
             .with_main_node(node.map(|x| x.to_node(&ctx.sema.parse_or_expand(file_id))))
     }
 
@@ -267,7 +267,7 @@ impl DiagnosticsContext<'_> {
         &self,
         node: &InFile<SyntaxNodePtr>,
         precise_location: Option<TextRange>,
-    ) -> TextRange {
+    ) -> FileRange {
         let sema = &self.sema;
         (|| {
             let precise_location = precise_location?;
@@ -280,10 +280,11 @@ impl DiagnosticsContext<'_> {
             }
         })()
         .unwrap_or_else(|| sema.diagnostics_display_range(node.clone()))
-        .range
     }
 }
 
+/// Request diagnostics for the given [`FileId`]. The produced diagnostics may point to other files
+/// due to macros.
 pub fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
@@ -300,7 +301,7 @@ pub fn diagnostics(
         Diagnostic::new(
             DiagnosticCode::RustcHardError("syntax-error"),
             format!("Syntax Error: {err}"),
-            err.range(),
+            FileRange { file_id, range: err.range() },
         )
     }));
 
@@ -569,12 +570,15 @@ fn adjusted_display_range<N: AstNode>(
     ctx: &DiagnosticsContext<'_>,
     diag_ptr: InFile<SyntaxNodePtr>,
     adj: &dyn Fn(N) -> Option<TextRange>,
-) -> TextRange {
+) -> FileRange {
     let FileRange { file_id, range } = ctx.sema.diagnostics_display_range(diag_ptr);
 
     let source_file = ctx.sema.db.parse(file_id);
-    find_node_at_range::<N>(&source_file.syntax_node(), range)
-        .filter(|it| it.syntax().text_range() == range)
-        .and_then(adj)
-        .unwrap_or(range)
+    FileRange {
+        file_id,
+        range: find_node_at_range::<N>(&source_file.syntax_node(), range)
+            .filter(|it| it.syntax().text_range() == range)
+            .and_then(adj)
+            .unwrap_or(range),
+    }
 }
