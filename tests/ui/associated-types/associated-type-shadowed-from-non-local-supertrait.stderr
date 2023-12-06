@@ -1,0 +1,12 @@
+error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
+  --> $DIR/associated-type-shadowed-from-non-local-supertrait.rs:8:27
+   |
+LL |     type Item;
+   |     --------- `Iterator::Item` shadowed here, consider renaming it
+...
+LL | impl<T> Clone for Box<dyn NewIter<Item = T>> {
+   |                           ^^^^^^^^^^^^^^^^^ associated type `Item` must be specified
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.
