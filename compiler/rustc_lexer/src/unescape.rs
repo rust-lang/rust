@@ -169,8 +169,9 @@ impl Mode {
     /// Non-byte literals should have `\xXX` escapes that are within the ASCII range.
     fn ascii_escapes_should_be_ascii(self) -> bool {
         match self {
-            Mode::Char | Mode::Str | Mode::RawStr => true,
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
+            Mode::Char | Mode::Str => true,
+            Mode::Byte | Mode::ByteStr | Mode::CStr => false,
+            Mode::RawStr | Mode::RawByteStr | Mode::RawCStr => unreachable!(),
         }
     }
 
