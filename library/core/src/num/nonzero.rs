@@ -201,6 +201,8 @@ macro_rules! nonzero_integer {
                     })
             }
         }
+
+        nonzero_integer_impl_div_rem!($Ty $signedness $Int);
     };
 }
 
@@ -275,9 +277,12 @@ nonzero_leading_trailing_zeros! {
     NonZeroIsize(usize), -1isize;
 }
 
-macro_rules! nonzero_integers_div {
-    ( $( $Ty: ident($Int: ty); )+ ) => {
-        $(
+macro_rules! nonzero_integer_impl_div_rem {
+    ($Ty:ident signed $Int:ty) => {
+        // nothing for signed ints
+    };
+
+    ($Ty:ident unsigned $Int:ty) => {
             #[stable(feature = "nonzero_div", since = "1.51.0")]
             impl Div<$Ty> for $Int {
                 type Output = $Int;
@@ -302,17 +307,7 @@ macro_rules! nonzero_integers_div {
                     unsafe { crate::intrinsics::unchecked_rem(self, other.get()) }
                 }
             }
-        )+
-    }
-}
-
-nonzero_integers_div! {
-    NonZeroU8(u8);
-    NonZeroU16(u16);
-    NonZeroU32(u32);
-    NonZeroU64(u64);
-    NonZeroU128(u128);
-    NonZeroUsize(usize);
+    };
 }
 
 // A bunch of methods for unsigned nonzero types only.
