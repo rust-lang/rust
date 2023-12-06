@@ -73,7 +73,8 @@ impl<'a> TokenTreesReader<'a> {
                         }
                     };
                     let this_tok = std::mem::replace(&mut self.token, next_tok);
-                    buf.push(TokenTree::Token(this_tok, this_spacing));
+                    let span = this_tok.span;
+                    buf.push(TokenTree::Token(this_tok, this_spacing, span));
                 }
             }
         }
@@ -202,7 +203,7 @@ impl<'a> TokenTreesReader<'a> {
             _ => unreachable!(),
         }
 
-        Ok(TokenTree::Delimited(delim_span, open_delim, tts))
+        Ok(TokenTree::Delimited(delim_span, open_delim, tts, delim_span.entire()))
     }
 
     fn unclosed_delim_err(&mut self, tts: TokenStream, mut errs: Vec<PErr<'a>>) -> Vec<PErr<'a>> {

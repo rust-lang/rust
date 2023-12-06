@@ -2630,7 +2630,7 @@ fn filter_tokens_from_list(
     let mut skip_next_comma = false;
     for token in args_tokens.trees() {
         match token {
-            TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _) if skip_next_comma => {
+            TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _, _) if skip_next_comma => {
                 skip_next_comma = false;
             }
             token if should_retain(token) => {
@@ -2704,6 +2704,7 @@ fn add_without_unwanted_attributes<'hir>(
                                             ..
                                         },
                                         _,
+                                        _
                                     ),
                                 )
                             });

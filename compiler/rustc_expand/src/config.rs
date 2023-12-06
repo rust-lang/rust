@@ -365,7 +365,7 @@ impl<'a> StripUnconfigured<'a> {
         // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
         // for `attr` when we expand it to `#[attr]`
         let mut orig_trees = orig_tokens.trees();
-        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) =
+        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _, _) =
             orig_trees.next().unwrap().clone()
         else {
             panic!("Bad tokens for attribute {attr:?}");
@@ -375,7 +375,7 @@ impl<'a> StripUnconfigured<'a> {
         let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
         if attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
+            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _, _) =
                 orig_trees.next().unwrap().clone()
             else {
                 panic!("Bad tokens for attribute {attr:?}");

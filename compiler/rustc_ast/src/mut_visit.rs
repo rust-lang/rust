@@ -706,10 +706,10 @@ pub fn visit_attr_tt<T: MutVisitor>(tt: &mut AttrTokenTree, vis: &mut T) {
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
-        TokenTree::Token(token, _) => {
+        TokenTree::Token(token, _, _) => {
             visit_token(token, vis);
         }
-        TokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
+        TokenTree::Delimited(DelimSpan { open, close }, _delim, tts, _) => {
             vis.visit_span(open);
             vis.visit_span(close);
             visit_tts(tts, vis);

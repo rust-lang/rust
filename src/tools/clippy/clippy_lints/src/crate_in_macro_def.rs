@@ -92,7 +92,7 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
         {
             return Some(span);
         }
-        if let TokenTree::Delimited(_, _, tts) = &curr {
+        if let TokenTree::Delimited(_, _, tts, _) = &curr {
             let span = contains_unhygienic_crate_reference(tts);
             if span.is_some() {
                 return span;
@@ -110,6 +110,7 @@ fn is_crate_keyword(tt: &TokenTree) -> Option<Span> {
             span,
         },
         _,
+        _
     ) = tt
         && symbol.as_str() == "crate"
     {
@@ -120,7 +121,7 @@ fn is_crate_keyword(tt: &TokenTree) -> Option<Span> {
 }
 
 fn is_token(tt: &TokenTree, kind: &TokenKind) -> bool {
-    if let TokenTree::Token(Token { kind: other, .. }, _) = tt {
+    if let TokenTree::Token(Token { kind: other, .. }, _, _) = tt {
         kind == other
     } else {
         false

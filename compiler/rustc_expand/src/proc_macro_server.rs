@@ -98,7 +98,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
         while let Some(tree) = cursor.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, delim, tts) => {
+                tokenstream::TokenTree::Delimited(span, delim, tts, _) => {
                     let delimiter = pm::Delimiter::from_internal(delim);
                     trees.push(TokenTree::Group(Group {
                         delimiter,
@@ -111,7 +111,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                     continue;
                 }
-                tokenstream::TokenTree::Token(token, spacing) => (token, spacing == Joint),
+                tokenstream::TokenTree::Token(token, spacing, _) => (token, spacing == Joint),
             };
 
             // Split the operator into one or more `Punct`s, one per character.
@@ -303,10 +303,12 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 }]
             }
             TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
+                let dspan = tokenstream::DelimSpan { open, close };
                 smallvec![tokenstream::TokenTree::Delimited(
-                    tokenstream::DelimSpan { open, close },
+                    dspan,
                     delimiter.to_internal(),
                     stream.unwrap_or_default(),
+                    dspan.entire()
                 )]
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {

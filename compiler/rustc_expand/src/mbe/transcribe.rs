@@ -126,7 +126,7 @@ pub(super) fn transcribe<'a>(
                 if repeat_idx < repeat_len {
                     *idx = 0;
                     if let Some(sep) = sep {
-                        result.push(TokenTree::Token(sep.clone(), Spacing::Alone));
+                        result.push(TokenTree::Token(sep.clone(), Spacing::Alone, sep.span));
                     }
                     continue;
                 }
@@ -151,7 +151,8 @@ pub(super) fn transcribe<'a>(
                     }
 
                     // Step back into the parent Delimited.
-                    let tree = TokenTree::Delimited(span, delim, TokenStream::new(result));
+                    let tree =
+                        TokenTree::Delimited(span, delim, TokenStream::new(result), span.entire());
                     result = result_stack.pop().unwrap();
                     result.push(tree);
                 }
@@ -244,6 +245,7 @@ pub(super) fn transcribe<'a>(
                     result.push(TokenTree::Token(
                         Token::from_ast_ident(original_ident),
                         Spacing::Alone,
+                        original_ident.span,
                     ));
                 }
             }
@@ -274,7 +276,8 @@ pub(super) fn transcribe<'a>(
             mbe::TokenTree::Token(token) => {
                 let mut token = token.clone();
                 mut_visit::visit_token(&mut token, &mut marker);
-                let tt = TokenTree::Token(token, Spacing::Alone);
+                let span = token.span;
+                let tt = TokenTree::Token(token, Spacing::Alone, span);
                 result.push(tt);
             }
 

@@ -44,9 +44,9 @@ use std::{cmp, fmt, iter, mem};
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
     /// delimiters are implicitly represented by `Delimited`.
-    Token(Token, Spacing),
+    Token(Token, Spacing, Span),
     /// A delimited sequence of token trees.
-    Delimited(DelimSpan, Delimiter, TokenStream),
+    Delimited(DelimSpan, Delimiter, TokenStream, Span),
 }
 
 // Ensure all fields of `TokenTree` are `DynSend` and `DynSync`.
@@ -65,8 +65,10 @@ impl TokenTree {
     /// Checks if this `TokenTree` is equal to the other, regardless of span information.
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
-            (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
-            (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
+            (TokenTree::Token(token, _, _), TokenTree::Token(token2, _, _)) => {
+                token.kind == token2.kind
+            }
+            (TokenTree::Delimited(_, delim, tts, _), TokenTree::Delimited(_, delim2, tts2, _)) => {
                 delim == delim2 && tts.eq_unspanned(tts2)
             }
             _ => false,
@@ -76,7 +78,7 @@ impl TokenTree {
     /// Retrieves the `TokenTree`'s span.
     pub fn span(&self) -> Span {
         match self {
-            TokenTree::Token(token, _) => token.span,
+            TokenTree::Token(token, _, _) => token.span,
             TokenTree::Delimited(sp, ..) => sp.entire(),
         }
     }
@@ -84,25 +86,25 @@ impl TokenTree {
     /// Modify the `TokenTree`'s span in-place.
     pub fn set_span(&mut self, span: Span) {
         match self {
-            TokenTree::Token(token, _) => token.span = span,
+            TokenTree::Token(token, _, _) => token.span = span,
             TokenTree::Delimited(dspan, ..) => *dspan = DelimSpan::from_single(span),
         }
     }
 
     /// Create a `TokenTree::Token` with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenTree {
-        TokenTree::Token(Token::new(kind, span), Spacing::Alone)
+        TokenTree::Token(Token::new(kind, span), Spacing::Alone, span)
     }
 
     /// Create a `TokenTree::Token` with joint spacing.
     pub fn token_joint(kind: TokenKind, span: Span) -> TokenTree {
-        TokenTree::Token(Token::new(kind, span), Spacing::Joint)
+        TokenTree::Token(Token::new(kind, span), Spacing::Joint, span)
     }
 
     pub fn uninterpolate(&self) -> Cow<'_, TokenTree> {
         match self {
-            TokenTree::Token(token, spacing) => match token.uninterpolate() {
-                Cow::Owned(token) => Cow::Owned(TokenTree::Token(token, *spacing)),
+            TokenTree::Token(token, spacing, span) => match token.uninterpolate() {
+                Cow::Owned(token) => Cow::Owned(TokenTree::Token(token, *spacing, *span)),
                 Cow::Borrowed(_) => Cow::Borrowed(self),
             },
             _ => Cow::Borrowed(self),
@@ -206,12 +208,15 @@ impl AttrTokenStream {
             .iter()
             .flat_map(|tree| match &tree {
                 AttrTokenTree::Token(inner, spacing) => {
-                    smallvec![TokenTree::Token(inner.clone(), *spacing)].into_iter()
+                    smallvec![TokenTree::Token(inner.clone(), *spacing, inner.span)].into_iter()
                 }
-                AttrTokenTree::Delimited(span, delim, stream) => {
-                    smallvec![TokenTree::Delimited(*span, *delim, stream.to_tokenstream()),]
-                        .into_iter()
-                }
+                AttrTokenTree::Delimited(span, delim, stream) => smallvec![TokenTree::Delimited(
+                    *span,
+                    *delim,
+                    stream.to_tokenstream(),
+                    span.entire()
+                ),]
+                .into_iter(),
                 AttrTokenTree::Attributes(data) => {
                     let idx = data
                         .attrs
@@ -230,7 +235,7 @@ impl AttrTokenStream {
                         let mut found = false;
                         // Check the last two trees (to account for a trailing semi)
                         for tree in target_tokens.iter_mut().rev().take(2) {
-                            if let TokenTree::Delimited(span, delim, delim_tokens) = tree {
+                            if let TokenTree::Delimited(span, delim, delim_tokens, _) = tree {
                                 // Inner attributes are only supported on extern blocks, functions,
                                 // impls, and modules. All of these have their inner attributes
                                 // placed at the beginning of the rightmost outermost braced group:
@@ -250,7 +255,7 @@ impl AttrTokenStream {
                                     stream.push_stream(inner_attr.tokens());
                                 }
                                 stream.push_stream(delim_tokens.clone());
-                                *tree = TokenTree::Delimited(*span, *delim, stream);
+                                *tree = TokenTree::Delimited(*span, *delim, stream, span.entire());
                                 found = true;
                                 break;
                             }
@@ -330,10 +335,10 @@ impl TokenStream {
         while let Some((pos, ts)) = iter.next() {
             if let Some((_, next)) = iter.peek() {
                 let sp = match (&ts, &next) {
-                    (_, TokenTree::Token(Token { kind: token::Comma, .. }, _)) => continue,
+                    (_, TokenTree::Token(Token { kind: token::Comma, .. }, _, _)) => continue,
                     (
-                        TokenTree::Token(token_left, Spacing::Alone),
-                        TokenTree::Token(token_right, _),
+                        TokenTree::Token(token_left, Spacing::Alone, _),
+                        TokenTree::Token(token_right, _, _),
                     ) if ((token_left.is_ident() && !token_left.is_reserved_ident())
                         || token_left.is_lit())
                         && ((token_right.is_ident() && !token_right.is_reserved_ident())
@@ -433,7 +438,7 @@ impl TokenStream {
 
     /// Create a token stream containing a single `Delimited`.
     pub fn delimited(span: DelimSpan, delim: Delimiter, tts: TokenStream) -> TokenStream {
-        TokenStream::new(vec![TokenTree::Delimited(span, delim, tts)])
+        TokenStream::new(vec![TokenTree::Delimited(span, delim, tts, span.entire())])
     }
 
     pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
@@ -475,25 +480,32 @@ impl TokenStream {
         }
     }
 
-    fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
+    fn flatten_token(token: &Token, spacing: Spacing, span: Span) -> TokenTree {
         match &token.kind {
             token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = nt.0 => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
+                TokenTree::Token(
+                    Token::new(token::Ident(ident.name, is_raw), ident.span),
+                    spacing,
+                    token.span,
+                )
             }
             token::Interpolated(nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 Delimiter::Invisible,
                 TokenStream::from_nonterminal_ast(&nt.0).flattened(),
+                token.span,
             ),
-            _ => TokenTree::Token(token.clone(), spacing),
+            _ => TokenTree::Token(token.clone(), spacing, span),
         }
     }
 
     fn flatten_token_tree(tree: &TokenTree) -> TokenTree {
         match tree {
-            TokenTree::Token(token, spacing) => TokenStream::flatten_token(token, *spacing),
-            TokenTree::Delimited(span, delim, tts) => {
-                TokenTree::Delimited(*span, *delim, tts.flattened())
+            TokenTree::Token(token, spacing, span) => {
+                TokenStream::flatten_token(token, *spacing, *span)
+            }
+            TokenTree::Delimited(span, delim, tts, span2) => {
+                TokenTree::Delimited(*span, *delim, tts.flattened(), *span2)
             }
         }
     }
@@ -502,8 +514,8 @@ impl TokenStream {
     pub fn flattened(&self) -> TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {
             stream.trees().all(|tree| match tree {
-                TokenTree::Token(token, _) => !matches!(token.kind, token::Interpolated(_)),
-                TokenTree::Delimited(_, _, inner) => can_skip(inner),
+                TokenTree::Token(token, _, _) => !matches!(token.kind, token::Interpolated(_)),
+                TokenTree::Delimited(_, _, inner, _) => can_skip(inner),
             })
         }
 
@@ -517,13 +529,13 @@ impl TokenStream {
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
     // value indicates if gluing took place.
     fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
-        if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = vec.last()
-            && let TokenTree::Token(tok, spacing) = tt
+        if let Some(TokenTree::Token(last_tok, Spacing::Joint, _)) = vec.last()
+            && let TokenTree::Token(tok, spacing, span) = tt
             && let Some(glued_tok) = last_tok.glue(tok)
         {
             // ...then overwrite the last token tree in `vec` with the
             // glued token, and skip the first token tree from `stream`.
-            *vec.last_mut().unwrap() = TokenTree::Token(glued_tok, *spacing);
+            *vec.last_mut().unwrap() = TokenTree::Token(glued_tok, *spacing, *span);
             true
         } else {
             false
@@ -582,6 +594,7 @@ impl TokenStream {
                     &TokenTree::Token(
                         Token { kind: token::DocComment(_, attr_style, data), span },
                         _spacing,
+                        _,
                     ) => {
                         let desugared = desugared_tts(attr_style, data, span);
                         let desugared_len = desugared.len();
@@ -592,9 +605,14 @@ impl TokenStream {
 
                     &TokenTree::Token(..) => i += 1,
 
-                    &TokenTree::Delimited(sp, delim, ref delim_stream) => {
+                    &TokenTree::Delimited(sp, delim, ref delim_stream, _) => {
                         if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
-                            let new_tt = TokenTree::Delimited(sp, delim, desugared_delim_stream);
+                            let new_tt = TokenTree::Delimited(
+                                sp,
+                                delim,
+                                desugared_delim_stream,
+                                sp.entire(),
+                            );
                             Lrc::make_mut(&mut stream.0)[i] = new_tt;
                             modified = true;
                         }
@@ -637,6 +655,7 @@ impl TokenStream {
                 ]
                 .into_iter()
                 .collect::<TokenStream>(),
+                delim_span.entire(),
             );
 
             if attr_style == AttrStyle::Inner {
@@ -748,6 +767,6 @@ mod size_asserts {
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
     static_assert_size!(TokenStream, 8);
-    static_assert_size!(TokenTree, 32);
+    static_assert_size!(TokenTree, 40);
     // tidy-alphabetical-end
 }

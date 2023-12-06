@@ -609,12 +609,14 @@ fn check_should_panic_reason(cx: &LateContext<'_>, attr: &Attribute) {
                     ..
                 },
                 _,
+                _
             )) = tt_iter.next()
             && let Some(TokenTree::Token(
                 Token {
                     kind: TokenKind::Eq, ..
                 },
                 _,
+                _
             )) = tt_iter.next()
             && let Some(TokenTree::Token(
                 Token {
@@ -622,6 +624,7 @@ fn check_should_panic_reason(cx: &LateContext<'_>, attr: &Attribute) {
                     ..
                 },
                 _,
+                _
             )) = tt_iter.next()
         {
             // `#[should_panic(expected = "..")]` found, good

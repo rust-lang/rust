@@ -310,9 +310,10 @@ impl MetaItem {
             Some(&TokenTree::Token(
                 Token { kind: ref kind @ (token::Ident(..) | token::ModSep), span },
                 _,
+                _,
             )) => 'arm: {
                 let mut segments = if let &token::Ident(name, _) = kind {
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _, _)) =
                         tokens.peek()
                     {
                         tokens.next();
@@ -324,14 +325,17 @@ impl MetaItem {
                     thin_vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    if let Some(&TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
-                        tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref()
+                    if let Some(&TokenTree::Token(
+                        Token { kind: token::Ident(name, _), span },
+                        _,
+                        _,
+                    )) = tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref()
                     {
                         segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
                         return None;
                     }
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _, _)) =
                         tokens.peek()
                     {
                         tokens.next();
@@ -342,11 +346,13 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &nt.0 {
-                token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
-                token::Nonterminal::NtPath(path) => (**path).clone(),
-                _ => return None,
-            },
+            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _, _)) => {
+                match &nt.0 {
+                    token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
+                    token::Nonterminal::NtPath(path) => (**path).clone(),
+                    _ => return None,
+                }
+            }
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
@@ -376,7 +382,7 @@ impl MetaItemKind {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
             result.push(item);
             match tokens.next() {
-                None | Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) => {}
+                None | Some(TokenTree::Token(Token { kind: token::Comma, .. }, _, _)) => {}
                 _ => return None,
             }
         }
@@ -387,10 +393,10 @@ impl MetaItemKind {
         tokens: &mut impl Iterator<Item = &'a TokenTree>,
     ) -> Option<MetaItemKind> {
         match tokens.next() {
-            Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens, _)) => {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
             }
-            Some(TokenTree::Token(token, _)) => {
+            Some(TokenTree::Token(token, _, _)) => {
                 MetaItemLit::from_token(token).map(MetaItemKind::NameValue)
             }
             _ => None,
@@ -401,13 +407,13 @@ impl MetaItemKind {
         tokens: &mut iter::Peekable<impl Iterator<Item = &'a TokenTree>>,
     ) -> Option<MetaItemKind> {
         match tokens.peek() {
-            Some(TokenTree::Delimited(_, Delimiter::Parenthesis, inner_tokens)) => {
+            Some(TokenTree::Delimited(_, Delimiter::Parenthesis, inner_tokens, _)) => {
                 let inner_tokens = inner_tokens.clone();
                 tokens.next();
                 MetaItemKind::list_from_tokens(inner_tokens).map(MetaItemKind::List)
             }
             Some(TokenTree::Delimited(..)) => None,
-            Some(TokenTree::Token(Token { kind: token::Eq, .. }, _)) => {
+            Some(TokenTree::Token(Token { kind: token::Eq, .. }, _, _)) => {
                 tokens.next();
                 MetaItemKind::name_value_from_tokens(tokens)
             }
@@ -520,11 +526,13 @@ impl NestedMetaItem {
         I: Iterator<Item = &'a TokenTree>,
     {
         match tokens.peek() {
-            Some(TokenTree::Token(token, _)) if let Some(lit) = MetaItemLit::from_token(token) => {
+            Some(TokenTree::Token(token, _, _))
+                if let Some(lit) = MetaItemLit::from_token(token) =>
+            {
                 tokens.next();
                 return Some(NestedMetaItem::Lit(lit));
             }
-            Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens, _)) => {
                 tokens.next();
                 return NestedMetaItem::from_tokens(&mut inner_tokens.trees().peekable());
             }
@@ -585,6 +593,7 @@ pub fn mk_attr_nested_word(
     let inner_tokens = TokenStream::new(vec![TokenTree::Token(
         Token::from_ast_ident(Ident::new(inner, span)),
         Spacing::Alone,
+        span,
     )]);
     let outer_ident = Ident::new(outer, span);
     let path = Path::from_ident(outer_ident);

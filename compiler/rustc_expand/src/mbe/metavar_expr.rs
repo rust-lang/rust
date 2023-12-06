@@ -35,7 +35,7 @@ impl MetaVarExpr {
     ) -> PResult<'sess, MetaVarExpr> {
         let mut tts = input.trees();
         let ident = parse_ident(&mut tts, sess, outer_span)?;
-        let Some(TokenTree::Delimited(_, Delimiter::Parenthesis, args)) = tts.next() else {
+        let Some(TokenTree::Delimited(_, Delimiter::Parenthesis, args, _)) = tts.next() else {
             let msg = "meta-variable expression parameter must be wrapped in parentheses";
             return Err(sess.span_diagnostic.struct_span_err(ident.span, msg));
         };
@@ -114,7 +114,8 @@ fn parse_depth<'sess>(
     span: Span,
 ) -> PResult<'sess, usize> {
     let Some(tt) = iter.next() else { return Ok(0) };
-    let TokenTree::Token(token::Token { kind: token::TokenKind::Literal(lit), .. }, _) = tt else {
+    let TokenTree::Token(token::Token { kind: token::TokenKind::Literal(lit), .. }, _, _) = tt
+    else {
         return Err(sess
             .span_diagnostic
             .struct_span_err(span, "meta-variable expression depth must be a literal"));
@@ -137,7 +138,7 @@ fn parse_ident<'sess>(
     span: Span,
 ) -> PResult<'sess, Ident> {
     if let Some(tt) = iter.next()
-        && let TokenTree::Token(token, _) = tt
+        && let TokenTree::Token(token, _, _) = tt
     {
         if let Some((elem, false)) = token.ident() {
             return Ok(elem);
@@ -160,7 +161,9 @@ fn parse_ident<'sess>(
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
 fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
-    if let Some(TokenTree::Token(token::Token { kind: token::Comma, .. }, _)) = iter.look_ahead(0) {
+    if let Some(TokenTree::Token(token::Token { kind: token::Comma, .. }, _, _)) =
+        iter.look_ahead(0)
+    {
         let _ = iter.next();
         return true;
     }

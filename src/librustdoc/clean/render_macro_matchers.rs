@@ -40,7 +40,7 @@ pub(super) fn render_macro_matcher(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Stri
     printer.zerobreak();
     printer.ibox(0);
     match matcher {
-        TokenTree::Delimited(_span, _delim, tts) => print_tts(&mut printer, tts),
+        TokenTree::Delimited(_span, _delim, tts, _) => print_tts(&mut printer, tts),
         // Matcher which is not a Delimited is unexpected and should've failed
         // to compile, but we render whatever it is wrapped in parens.
         TokenTree::Token(..) => print_tt(&mut printer, matcher),
@@ -90,14 +90,14 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
 
 fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
     match tt {
-        TokenTree::Token(token, _) => {
+        TokenTree::Token(token, _, _) => {
             let token_str = printer.token_to_string(token);
             printer.word(token_str);
             if let token::DocComment(..) = token.kind {
                 printer.hardbreak()
             }
         }
-        TokenTree::Delimited(_span, delim, tts) => {
+        TokenTree::Delimited(_span, delim, tts, _) => {
             let open_delim = printer.token_kind_to_string(&token::OpenDelim(*delim));
             printer.word(open_delim);
             if !tts.is_empty() {
@@ -135,7 +135,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
     let mut state = Start;
     for tt in tts.trees() {
         let (needs_space, next_state) = match &tt {
-            TokenTree::Token(tt, _) => match (state, &tt.kind) {
+            TokenTree::Token(tt, _, _) => match (state, &tt.kind) {
                 (Dollar, token::Ident(..)) => (false, DollarIdent),
                 (DollarIdent, token::Colon) => (false, DollarIdentColon),
                 (DollarIdentColon, token::Ident(..)) => (false, Other),
@@ -158,7 +158,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 (_, token::Pound) => (true, Pound),
                 (_, _) => (true, Other),
             },
-            TokenTree::Delimited(_, delim, _) => match (state, delim) {
+            TokenTree::Delimited(_, delim, _, _) => match (state, delim) {
                 (Dollar, Delimiter::Parenthesis) => (false, DollarParen),
                 (Pound | PoundBang, Delimiter::Bracket) => (false, Other),
                 (Ident, Delimiter::Parenthesis | Delimiter::Bracket) => (false, Other),

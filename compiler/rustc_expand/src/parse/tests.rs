@@ -77,20 +77,24 @@ fn string_to_tts_macro() {
                 TokenTree::Token(Token { kind: token::Ident(name_macro_rules, false), .. }, _),
                 TokenTree::Token(Token { kind: token::Not, .. }, _),
                 TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. }, _),
-                TokenTree::Delimited(_, macro_delim, macro_tts),
+                TokenTree::Delimited(_, macro_delim, macro_tts, _),
             ] if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" => {
                 let tts = &macro_tts.trees().collect::<Vec<_>>();
                 match &tts[..] {
                     [
-                        TokenTree::Delimited(_, first_delim, first_tts),
-                        TokenTree::Token(Token { kind: token::FatArrow, .. }, _),
-                        TokenTree::Delimited(_, second_delim, second_tts),
+                        TokenTree::Delimited(_, first_delim, first_tts, _),
+                        TokenTree::Token(Token { kind: token::FatArrow, .. }, _, _),
+                        TokenTree::Delimited(_, second_delim, second_tts, _),
                     ] if macro_delim == &Delimiter::Parenthesis => {
                         let tts = &first_tts.trees().collect::<Vec<_>>();
                         match &tts[..] {
                             [
-                                TokenTree::Token(Token { kind: token::Dollar, .. }, _),
-                                TokenTree::Token(Token { kind: token::Ident(name, false), .. }, _),
+                                TokenTree::Token(Token { kind: token::Dollar, .. }, _, _),
+                                TokenTree::Token(
+                                    Token { kind: token::Ident(name, false), .. },
+                                    _,
+                                    _,
+                                ),
                             ] if first_delim == &Delimiter::Parenthesis && name.as_str() == "a" => {
                             }
                             _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
@@ -130,6 +134,7 @@ fn string_to_tts_1() {
                     TokenTree::token_alone(token::Ident(sym::i32, false), sp(10, 13)),
                 ])
                 .into(),
+                _,
             ),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
@@ -139,6 +144,7 @@ fn string_to_tts_1() {
                     TokenTree::token_alone(token::Semi, sp(18, 19)),
                 ])
                 .into(),
+                _,
             ),
         ]);
 

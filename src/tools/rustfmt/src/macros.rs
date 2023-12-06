@@ -707,8 +707,8 @@ struct MacroArgParser {
 
 fn last_tok(tt: &TokenTree) -> Token {
     match *tt {
-        TokenTree::Token(ref t, _) => t.clone(),
-        TokenTree::Delimited(delim_span, delim, _) => Token {
+        TokenTree::Token(ref t, _, _) => t.clone(),
+        TokenTree::Delimited(delim_span, delim, _, _) => Token {
             kind: TokenKind::CloseDelim(delim),
             span: delim_span.close,
         },
@@ -768,6 +768,7 @@ impl MacroArgParser {
                     ..
                 },
                 _,
+                _,
             )) => {
                 self.result.push(ParsedMacroArg {
                     kind: MacroArgKind::MetaVariable(name, self.buf.clone()),
@@ -811,12 +812,14 @@ impl MacroArgParser {
                         ..
                     },
                     _,
+                    _,
                 )
                 | TokenTree::Token(
                     Token {
                         kind: TokenKind::Question,
                         ..
                     },
+                    _,
                     _,
                 )
                 | TokenTree::Token(
@@ -825,10 +828,11 @@ impl MacroArgParser {
                         ..
                     },
                     _,
+                    _,
                 ) => {
                     break;
                 }
-                TokenTree::Token(ref t, _) => {
+                TokenTree::Token(ref t, _, _) => {
                     buffer.push_str(&pprust::token_to_string(t));
                 }
                 _ => return None,
@@ -902,6 +906,7 @@ impl MacroArgParser {
                         span,
                     },
                     _,
+                    _,
                 ) => {
                     // We always want to add a separator before meta variables.
                     if !self.buf.is_empty() {
@@ -921,11 +926,12 @@ impl MacroArgParser {
                         ..
                     },
                     _,
+                    _,
                 ) if self.is_meta_var => {
                     self.add_meta_variable(&mut iter)?;
                 }
-                TokenTree::Token(ref t, _) => self.update_buffer(t),
-                &TokenTree::Delimited(_delimited_span, delimited, ref tts) => {
+                TokenTree::Token(ref t, _, _) => self.update_buffer(t),
+                &TokenTree::Delimited(_delimited_span, delimited, ref tts, _) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok.kind) == SpaceState::Always {
                             self.add_separator();
@@ -1167,7 +1173,7 @@ impl<'a> MacroParser<'a> {
         let tok = self.toks.next()?;
         let (lo, args_paren_kind) = match tok {
             TokenTree::Token(..) => return None,
-            &TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
+            &TokenTree::Delimited(delimited_span, d, _, _) => (delimited_span.open.lo(), d),
         };
         let args = TokenStream::new(vec![tok.clone()]);
         match self.toks.next()? {
@@ -1176,6 +1182,7 @@ impl<'a> MacroParser<'a> {
                     kind: TokenKind::FatArrow,
                     ..
                 },
+                _,
                 _,
             ) => {}
             _ => return None,
@@ -1201,6 +1208,7 @@ impl<'a> MacroParser<'a> {
                 kind: TokenKind::Semi,
                 span,
             },
+            _,
             _,
         )) = self.toks.look_ahead(0)
         {

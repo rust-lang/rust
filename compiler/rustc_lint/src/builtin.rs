@@ -1829,12 +1829,12 @@ impl KeywordIdents {
         for tt in tokens.trees() {
             match tt {
                 // Only report non-raw idents.
-                TokenTree::Token(token, _) => {
+                TokenTree::Token(token, _, _) => {
                     if let Some((ident, false)) = token.ident() {
                         self.check_ident_token(cx, UnderMacro(true), ident);
                     }
                 }
-                TokenTree::Delimited(_, _, tts) => self.check_tokens(cx, tts),
+                TokenTree::Delimited(_, _, tts, _) => self.check_tokens(cx, tts),
             }
         }
     }

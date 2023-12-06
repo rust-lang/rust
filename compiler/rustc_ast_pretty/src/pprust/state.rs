@@ -164,11 +164,11 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     // this match.
     match (tt1, tt2) {
         // No space after line doc comments.
-        (Tok(Token { kind: DocComment(CommentKind::Line, ..), .. }, _), _) => false,
+        (Tok(Token { kind: DocComment(CommentKind::Line, ..), .. }, _, _), _) => false,
 
         // `.` + ANYTHING: `x.y`, `tup.0`
         // `$` + ANYTHING: `$e`
-        (Tok(Token { kind: Dot | Dollar, .. }, _), _) => false,
+        (Tok(Token { kind: Dot | Dollar, .. }, _, _), _) => false,
 
         // ANYTHING + `,`: `foo,`
         // ANYTHING + `.`: `x.y`, `tup.0`
@@ -177,16 +177,16 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         // FIXME: Incorrect cases:
         // - Logical not: `x =! y`, `if! x { f(); }`
         // - Never type: `Fn() ->!`
-        (_, Tok(Token { kind: Comma | Dot | Not, .. }, _)) => false,
+        (_, Tok(Token { kind: Comma | Dot | Not, .. }, _, _)) => false,
 
         // IDENT + `(`: `f(3)`
         //
         // FIXME: Incorrect cases:
         // - Let: `let(a, b) = (1, 2)`
-        (Tok(Token { kind: Ident(..), .. }, _), Del(_, Parenthesis, _)) => false,
+        (Tok(Token { kind: Ident(..), .. }, _, _), Del(_, Parenthesis, _, _)) => false,
 
         // `#` + `[`: `#[attr]`
-        (Tok(Token { kind: Pound, .. }, _), Del(_, Bracket, _)) => false,
+        (Tok(Token { kind: Pound, .. }, _, _), Del(_, Bracket, _, _)) => false,
 
         _ => true,
     }
@@ -511,14 +511,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// expression arguments as expressions). It can be done! I think.
     fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
-            TokenTree::Token(token, _) => {
+            TokenTree::Token(token, _, _) => {
                 let token_str = self.token_to_string_ext(token, convert_dollar_crate);
                 self.word(token_str);
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
                 }
             }
-            TokenTree::Delimited(dspan, delim, tts) => {
+            TokenTree::Delimited(dspan, delim, tts, _) => {
                 self.print_mac_common(
                     None,
                     false,
