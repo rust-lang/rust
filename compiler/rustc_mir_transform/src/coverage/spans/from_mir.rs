@@ -44,6 +44,16 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
             .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
     });
 
+    // The desugaring of an async function includes a closure containing the
+    // original function body, and a terminator that returns the `impl Future`.
+    // That terminator will cause a confusing coverage count for the function's
+    // closing brace, so discard everything after the body closure span.
+    if let Some(body_closure_index) =
+        initial_spans.iter().rposition(|covspan| covspan.is_closure && covspan.span == body_span)
+    {
+        initial_spans.truncate(body_closure_index + 1);
+    }
+
     initial_spans
 }
 

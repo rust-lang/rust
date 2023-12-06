@@ -319,29 +319,16 @@ impl<'a> CoverageSpansGenerator<'a> {
             }
         }
 
-        let prev = self.take_prev();
-        debug!("    AT END, adding last prev={prev:?}");
-
         // Drain any remaining dups into the output.
         for dup in self.pending_dups.drain(..) {
             debug!("    ...adding at least one pending dup={:?}", dup);
             self.refined_spans.push(dup);
         }
 
-        // Async functions wrap a closure that implements the body to be executed. The enclosing
-        // function is called and returns an `impl Future` without initially executing any of the
-        // body. To avoid showing the return from the enclosing function as a "covered" return from
-        // the closure, the enclosing function's `TerminatorKind::Return`s `CoverageSpan` is
-        // excluded. The closure's `Return` is the only one that will be counted. This provides
-        // adequate coverage, and more intuitive counts. (Avoids double-counting the closing brace
-        // of the function body.)
-        let body_ends_with_closure = if let Some(last_covspan) = self.refined_spans.last() {
-            last_covspan.is_closure && last_covspan.span.hi() == self.body_span.hi()
-        } else {
-            false
-        };
-
-        if !body_ends_with_closure {
+        // There is usually a final span remaining in `prev` after the loop ends,
+        // so add it to the output as well.
+        if let Some(prev) = self.some_prev.take() {
+            debug!("    AT END, adding last prev={prev:?}");
             self.refined_spans.push(prev);
         }
 
