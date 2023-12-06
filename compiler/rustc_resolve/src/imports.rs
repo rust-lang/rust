@@ -477,6 +477,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.per_ns(|this, ns| {
                 let key = BindingKey::new(target, ns);
                 let _ = this.try_define(import.parent_scope.module, key, dummy_binding, false);
+                this.update_resolution(import.parent_scope.module, key, false, |_, resolution| {
+                    resolution.single_imports.remove(&import);
+                })
             });
             self.record_use(target, dummy_binding, false);
         } else if import.imported_module.get().is_none() {
