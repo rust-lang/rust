@@ -34,7 +34,7 @@ use std::ops::Index;
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
 use crate::ty::GenericArg;
-use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
+use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
 pub type Canonical<'tcx, V> = IrCanonical<TyCtxt<'tcx>, V>;
 
@@ -315,6 +315,16 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
             &mut OriginalQueryValues<'tcx>,
         ) -> Canonical<'tcx, ty::ParamEnv<'tcx>>,
     ) -> Canonical<'tcx, ty::ParamEnv<'tcx>> {
+        if !key.has_type_flags(
+            TypeFlags::HAS_INFER | TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_FREE_REGIONS,
+        ) {
+            return Canonical {
+                max_universe: ty::UniverseIndex::ROOT,
+                variables: List::empty(),
+                value: key,
+            };
+        }
+
         assert_eq!(state.var_values.len(), 0);
         assert_eq!(state.universe_map.len(), 1);
         debug_assert_eq!(&*state.universe_map, &[ty::UniverseIndex::ROOT]);
