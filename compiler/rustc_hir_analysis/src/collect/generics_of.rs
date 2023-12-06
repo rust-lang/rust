@@ -9,7 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
@@ -298,13 +298,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 kind,
             })
         }
-        GenericParamKind::Const { default, .. } => {
-            let is_host_param = tcx.has_attr(param.def_id, sym::rustc_host);
-
+        GenericParamKind::Const { ty: _, default, is_host_effect } => {
             if !matches!(allow_defaults, Defaults::Allowed)
                 && default.is_some()
-                // `rustc_host` effect params are allowed to have defaults.
-                && !is_host_param
+                // `host` effect params are allowed to have defaults.
+                && !is_host_effect
             {
                 tcx.sess.span_err(
                     param.span,
@@ -315,7 +313,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             let index = next_index();
 
-            if is_host_param {
+            if is_host_effect {
                 if let Some(idx) = host_effect_index {
                     bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
                 }
@@ -330,7 +328,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 pure_wrt_drop: param.pure_wrt_drop,
                 kind: ty::GenericParamDefKind::Const {
                     has_default: default.is_some(),
-                    is_host_effect: is_host_param,
+                    is_host_effect,
                 },
             })
         }
@@ -489,7 +487,7 @@ struct AnonConstInParamTyDetector {
 
 impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
     fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
-        if let GenericParamKind::Const { ty, default: _ } = p.kind {
+        if let GenericParamKind::Const { ty, default: _, is_host_effect: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
             self.visit_ty(ty);

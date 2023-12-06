@@ -2122,7 +2122,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let default = default.as_ref().map(|def| self.lower_anon_const(def));
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default },
+                    hir::GenericParamKind::Const { ty, default, is_host_effect: false },
                 )
             }
         }
@@ -2550,15 +2550,6 @@ impl<'hir> GenericArgsCtor<'hir> {
             })
         });
 
-        let attr_id = lcx.tcx.sess.parse_sess.attr_id_generator.mk_attr_id();
-        let attr = lcx.arena.alloc(Attribute {
-            kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(sym::rustc_host, span)))),
-            span,
-            id: attr_id,
-            style: AttrStyle::Outer,
-        });
-        lcx.attrs.insert(hir_id.local_id, std::slice::from_ref(attr));
-
         let def_id = lcx.create_def(
             lcx.current_hir_id_owner.def_id,
             id,
@@ -2566,6 +2557,7 @@ impl<'hir> GenericArgsCtor<'hir> {
             DefKind::AnonConst,
             span,
         );
+
         lcx.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         self.args.push(hir::GenericArg::Const(hir::ConstArg {
             value: hir::AnonConst { def_id, hir_id, body },

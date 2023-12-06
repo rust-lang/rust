@@ -565,11 +565,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .params
                     .iter()
                     .find(|param| {
-                        parent_hir
-                            .attrs
-                            .get(param.hir_id.local_id)
-                            .iter()
-                            .any(|attr| attr.has_name(sym::rustc_host))
+                        matches!(
+                            param.kind,
+                            hir::GenericParamKind::Const { is_host_effect: true, .. }
+                        )
                     })
                     .map(|param| param.def_id);
             }
@@ -1372,27 +1371,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let host_param_parts = if let Const::Yes(span) = constness
             && self.tcx.features().effects
         {
-            if let Some(param) =
-                generics.params.iter().find(|x| x.attrs.iter().any(|x| x.has_name(sym::rustc_host)))
-            {
-                // user has manually specified a `rustc_host` param, in this case, we set
-                // the param id so that lowering logic can use that. But we don't create
-                // another host param, so this gives `None`.
-                self.host_param_id = Some(self.local_def_id(param.id));
-                None
-            } else {
-                let param_node_id = self.next_node_id();
-                let hir_id = self.next_id();
-                let def_id = self.create_def(
-                    self.local_def_id(parent_node_id),
-                    param_node_id,
-                    sym::host,
-                    DefKind::ConstParam,
-                    span,
-                );
-                self.host_param_id = Some(def_id);
-                Some((span, hir_id, def_id))
-            }
+            let param_node_id = self.next_node_id();
+            let hir_id = self.next_id();
+            let def_id = self.create_def(
+                self.local_def_id(parent_node_id),
+                param_node_id,
+                sym::host,
+                DefKind::ConstParam,
+                span,
+            );
+            self.host_param_id = Some(def_id);
+            Some((span, hir_id, def_id))
         } else {
             None
         };
@@ -1456,19 +1445,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
             self.children.push((anon_const, hir::MaybeOwner::NonOwner(const_id)));
 
-            let attr_id = self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id();
-
-            let attrs = self.arena.alloc_from_iter([Attribute {
-                kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(
-                    sym::rustc_host,
-                    span,
-                )))),
-                span,
-                id: attr_id,
-                style: AttrStyle::Outer,
-            }]);
-            self.attrs.insert(hir_id.local_id, attrs);
-
             let const_body = self.lower_body(|this| {
                 (
                     &[],
@@ -1510,6 +1486,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir_id: const_id,
                         body: const_body,
                     }),
+                    is_host_effect: true,
                 },
                 colon_span: None,
                 pure_wrt_drop: false,
