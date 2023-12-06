@@ -736,8 +736,6 @@ fn orig_range_with_focus(
             .definition_range(db)
     };
 
-    // FIXME What about include!d things
-
     let value_range = InFile::new(hir_file, value).original_file_range_opt(db);
     let ((call_site_range, call_site_focus), def_site) =
         match InFile::new(hir_file, name.syntax()).original_file_range_opt(db) {

@@ -85,7 +85,7 @@ impl ProcMacroExpander {
                         ProcMacroExpansionError::System(text)
                         | ProcMacroExpansionError::Panic(text) => ExpandResult::new(
                             tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
-                            ExpandError::other(text),
+                            ExpandError::ProcMacroPanic(Box::new(text.into_boxed_str())),
                         ),
                     },
                 }

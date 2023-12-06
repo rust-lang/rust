@@ -78,6 +78,7 @@ pub enum ExpandError {
     Mbe(mbe::ExpandError),
     RecursionOverflowPoisoned,
     Other(Box<Box<str>>),
+    ProcMacroPanic(Box<Box<str>>),
 }
 
 impl ExpandError {
@@ -99,6 +100,10 @@ impl fmt::Display for ExpandError {
             ExpandError::Mbe(it) => it.fmt(f),
             ExpandError::RecursionOverflowPoisoned => {
                 f.write_str("overflow expanding the original macro")
+            }
+            ExpandError::ProcMacroPanic(it) => {
+                f.write_str("proc-macro panicked: ")?;
+                f.write_str(it)
             }
             ExpandError::Other(it) => f.write_str(it),
         }

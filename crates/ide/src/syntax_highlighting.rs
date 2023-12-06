@@ -404,13 +404,7 @@ fn traverse(
                             })
                             .unwrap()
                     } else {
-                        sema.descend_into_macros_single(
-                            match attr_or_derive_item {
-                                Some(AttrOrDerive::Attr(_)) => DescendPreference::SameKind,
-                                Some(AttrOrDerive::Derive(_)) | None => DescendPreference::None,
-                            },
-                            token,
-                        )
+                        sema.descend_into_macros_single(DescendPreference::SameKind, token)
                     };
                     match token.parent().and_then(ast::NameLike::cast) {
                         // Remap the token into the wrapping single token nodes
