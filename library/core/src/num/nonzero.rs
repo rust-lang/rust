@@ -253,15 +253,12 @@ macro_rules! nonzero_integer {
             }
         }
 
-        nonzero_integer_impl_div_rem!($Ty $signedness $Int);
+        nonzero_integer_signedness_dependent_impls!($Ty $signedness $Int);
     };
 }
 
-macro_rules! nonzero_integer_impl_div_rem {
-    ($Ty:ident signed $Int:ty) => {
-        // nothing for signed ints
-    };
-
+macro_rules! nonzero_integer_signedness_dependent_impls {
+    // Impls for unsigned nonzero types only.
     ($Ty:ident unsigned $Int:ty) => {
         #[stable(feature = "nonzero_div", since = "1.51.0")]
         impl Div<$Ty> for $Int {
@@ -287,6 +284,23 @@ macro_rules! nonzero_integer_impl_div_rem {
                 unsafe { crate::intrinsics::unchecked_rem(self, other.get()) }
             }
         }
+    };
+
+    // Impls for signed nonzero types only.
+    ($Ty:ident signed $Int:ty) => {
+        #[stable(feature = "signed_nonzero_neg", since = "1.71.0")]
+        impl Neg for $Ty {
+            type Output = $Ty;
+
+            #[inline]
+            fn neg(self) -> $Ty {
+                // SAFETY: negation of nonzero cannot yield zero values.
+                unsafe { $Ty::new_unchecked(self.get().neg()) }
+            }
+        }
+
+        forward_ref_unop! { impl Neg, neg for $Ty,
+        #[stable(feature = "signed_nonzero_neg", since = "1.71.0")] }
     };
 }
 
@@ -921,20 +935,6 @@ macro_rules! nonzero_signed_operations {
                     unsafe { $Ty::new_unchecked(result) }
                 }
             }
-
-            #[stable(feature = "signed_nonzero_neg", since = "1.71.0")]
-            impl Neg for $Ty {
-                type Output = $Ty;
-
-                #[inline]
-                fn neg(self) -> $Ty {
-                    // SAFETY: negation of nonzero cannot yield zero values.
-                    unsafe { $Ty::new_unchecked(self.get().neg()) }
-                }
-            }
-
-            forward_ref_unop! { impl Neg, neg for $Ty,
-                #[stable(feature = "signed_nonzero_neg", since = "1.71.0")] }
         )+
     }
 }
