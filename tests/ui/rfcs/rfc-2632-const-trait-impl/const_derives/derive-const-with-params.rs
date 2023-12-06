@@ -1,7 +1,7 @@
-// known-bug: #110395
+// check-pass
 
 #![feature(derive_const)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 #[derive_const(PartialEq)]
 pub struct Reverse<T>(T);
