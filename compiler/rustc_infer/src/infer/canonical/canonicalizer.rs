@@ -150,6 +150,7 @@ impl<'tcx> InferCtxt<'tcx> {
     {
         let (param_env, value) = value.into_parts();
         let base = self.tcx.canonical_param_env_cache.get_or_insert(
+            self.tcx,
             param_env,
             query_state,
             |query_state| {

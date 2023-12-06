@@ -300,7 +300,7 @@ pub struct CanonicalParamEnvCache<'tcx> {
     map: Lock<
         FxHashMap<
             ty::ParamEnv<'tcx>,
-            (Canonical<'tcx, ty::ParamEnv<'tcx>>, OriginalQueryValues<'tcx>),
+            (Canonical<'tcx, ty::ParamEnv<'tcx>>, &'tcx [GenericArg<'tcx>]),
         >,
     >,
 }
@@ -308,21 +308,28 @@ pub struct CanonicalParamEnvCache<'tcx> {
 impl<'tcx> CanonicalParamEnvCache<'tcx> {
     pub fn get_or_insert(
         &self,
+        tcx: TyCtxt<'tcx>,
         key: ty::ParamEnv<'tcx>,
         state: &mut OriginalQueryValues<'tcx>,
         canonicalize_op: impl FnOnce(
             &mut OriginalQueryValues<'tcx>,
         ) -> Canonical<'tcx, ty::ParamEnv<'tcx>>,
     ) -> Canonical<'tcx, ty::ParamEnv<'tcx>> {
+        assert_eq!(state.var_values.len(), 0);
+        assert_eq!(state.universe_map.len(), 1);
+        debug_assert_eq!(&*state.universe_map, &[ty::UniverseIndex::ROOT]);
+
         match self.map.borrow().entry(key) {
             Entry::Occupied(e) => {
-                let (canonical, state_cached) = e.get();
-                state.clone_from(state_cached);
+                let (canonical, var_values) = e.get();
+                state.var_values.extend_from_slice(var_values);
                 canonical.clone()
             }
             Entry::Vacant(e) => {
                 let canonical = canonicalize_op(state);
-                e.insert((canonical.clone(), state.clone()));
+                let OriginalQueryValues { var_values, universe_map } = state;
+                assert_eq!(universe_map.len(), 1);
+                e.insert((canonical.clone(), tcx.arena.alloc_slice(var_values)));
                 canonical
             }
         }
