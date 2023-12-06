@@ -18,7 +18,7 @@ use std::{iter, ops::Range, sync};
 
 use base_db::{fixture::WithFixture, span::SpanData, ProcMacro, SourceDatabase};
 use expect_test::Expect;
-use hir_expand::{db::ExpandDatabase, span::SpanMapRef, HirFileIdExt, InFile, MacroFileId};
+use hir_expand::{db::ExpandDatabase, span::SpanMapRef, InFile, MacroFileId, MacroFileIdExt};
 use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -172,35 +172,41 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         };
 
         if let Some(src) = src {
-            if src.file_id.is_attr_macro(&db) || src.file_id.is_custom_derive(&db) {
-                let call = src.file_id.call_node(&db).expect("macro file");
-                let mut show_spans = false;
-                let mut show_ctxt = false;
-                for comment in call.value.children_with_tokens().filter(|it| it.kind() == COMMENT) {
-                    show_spans |= comment.to_string().contains("+spans");
-                    show_ctxt |= comment.to_string().contains("+syntaxctxt");
+            if let Some(file_id) = src.file_id.macro_file() {
+                if file_id.is_attr_macro(&db) || file_id.is_custom_derive(&db) {
+                    let call = file_id.call_node(&db);
+                    let mut show_spans = false;
+                    let mut show_ctxt = false;
+                    for comment in
+                        call.value.children_with_tokens().filter(|it| it.kind() == COMMENT)
+                    {
+                        show_spans |= comment.to_string().contains("+spans");
+                        show_ctxt |= comment.to_string().contains("+syntaxctxt");
+                    }
+                    let pp = pretty_print_macro_expansion(
+                        src.value,
+                        db.span_map(src.file_id).as_ref(),
+                        show_spans,
+                        show_ctxt,
+                    );
+                    format_to!(expanded_text, "\n{}", pp)
                 }
-                let pp = pretty_print_macro_expansion(
-                    src.value,
-                    db.span_map(src.file_id).as_ref(),
-                    show_spans,
-                    show_ctxt,
-                );
-                format_to!(expanded_text, "\n{}", pp)
             }
         }
     }
 
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
-        if src.file_id.is_builtin_derive(&db) {
-            let pp = pretty_print_macro_expansion(
-                src.value.syntax().clone(),
-                db.span_map(src.file_id).as_ref(),
-                false,
-                false,
-            );
-            format_to!(expanded_text, "\n{}", pp)
+        if let Some(macro_file) = src.file_id.macro_file() {
+            if macro_file.is_builtin_derive(&db) {
+                let pp = pretty_print_macro_expansion(
+                    src.value.syntax().clone(),
+                    db.span_map(macro_file.into()).as_ref(),
+                    false,
+                    false,
+                );
+                format_to!(expanded_text, "\n{}", pp)
+            }
         }
     }
 

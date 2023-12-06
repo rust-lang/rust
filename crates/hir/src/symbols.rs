@@ -49,10 +49,6 @@ impl DeclarationLocation {
         let node = resolve_node(db, self.hir_file_id, &self.ptr);
         node.as_ref().original_file_range(db.upcast())
     }
-
-    pub fn original_name_range(&self, db: &dyn HirDatabase) -> FileRange {
-        InFile::new(self.hir_file_id, self.name_ptr.text_range()).original_file_range(db.upcast())
-    }
 }
 
 fn resolve_node(

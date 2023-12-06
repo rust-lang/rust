@@ -6,9 +6,9 @@ use base_db::{
     FileId, FileRange,
 };
 use either::Either;
-use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange};
+use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
-use crate::{db, ExpansionInfo, HirFileIdExt as _};
+use crate::{db, ExpansionInfo, MacroFileIdExt};
 
 /// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
 ///
@@ -119,16 +119,6 @@ impl<FileId: Copy, N: AstNode> InFileWrapper<FileId, N> {
 // region:specific impls
 
 impl InFile<&SyntaxNode> {
-    pub fn ancestors_with_macros(
-        self,
-        db: &dyn db::ExpandDatabase,
-    ) -> impl Iterator<Item = InFile<SyntaxNode>> + Clone + '_ {
-        iter::successors(Some(self.cloned()), move |node| match node.value.parent() {
-            Some(parent) => Some(node.with_value(parent)),
-            None => node.file_id.call_node(db),
-        })
-    }
-
     /// Skips the attributed item that caused the macro invocation we are climbing up
     pub fn ancestors_with_macros_skip_attr_item(
         self,
@@ -137,8 +127,9 @@ impl InFile<&SyntaxNode> {
         let succ = move |node: &InFile<SyntaxNode>| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
-                let parent_node = node.file_id.call_node(db)?;
-                if node.file_id.is_attr_macro(db) {
+                let macro_file_id = node.file_id.macro_file()?;
+                let parent_node = macro_file_id.call_node(db);
+                if macro_file_id.is_attr_macro(db) {
                     // macro call was an attributed item, skip it
                     // FIXME: does this fail if this is a direct expansion of another macro?
                     parent_node.map(|node| node.parent()).transpose()
@@ -222,7 +213,7 @@ impl InFile<&SyntaxNode> {
             }
             HirFileIdRepr::MacroFile(m) => m,
         };
-        if !self.file_id.is_attr_macro(db) {
+        if !file_id.is_attr_macro(db) {
             return None;
         }
 
@@ -243,21 +234,23 @@ impl InFile<&SyntaxNode> {
     }
 }
 
-impl InFile<SyntaxToken> {
+impl InMacroFile<SyntaxToken> {
     pub fn upmap_once(
         self,
         db: &dyn db::ExpandDatabase,
-    ) -> Option<InFile<smallvec::SmallVec<[TextRange; 1]>>> {
-        Some(self.file_id.expansion_info(db)?.map_range_up_once(db, self.value.text_range()))
+    ) -> InFile<smallvec::SmallVec<[TextRange; 1]>> {
+        self.file_id.expansion_info(db).map_range_up_once(db, self.value.text_range())
     }
+}
 
+impl InFile<SyntaxToken> {
     /// Falls back to the macro call range if the node cannot be mapped up fully.
     pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> FileRange {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
             HirFileIdRepr::MacroFile(mac_file) => {
                 let (range, ctxt) = ExpansionInfo::new(db, mac_file)
-                    .map_token_range_up(db, self.value.text_range());
+                    .span_for_offset(db, self.value.text_range().start());
 
                 // FIXME: Figure out an API that makes proper use of ctx, this only exists to
                 // keep pre-token map rewrite behaviour.
@@ -280,7 +273,7 @@ impl InFile<SyntaxToken> {
             }
             HirFileIdRepr::MacroFile(mac_file) => {
                 let (range, ctxt) = ExpansionInfo::new(db, mac_file)
-                    .map_token_range_up(db, self.value.text_range());
+                    .span_for_offset(db, self.value.text_range().start());
 
                 // FIXME: Figure out an API that makes proper use of ctx, this only exists to
                 // keep pre-token map rewrite behaviour.
@@ -294,20 +287,13 @@ impl InFile<SyntaxToken> {
     }
 }
 
-impl InFile<TextRange> {
-    /// Attempts to map the syntax node back up its macro calls.
-    pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> FileRange {
-        let (range, _ctxt) = match self.file_id.repr() {
-            HirFileIdRepr::FileId(file_id) => {
-                (FileRange { file_id, range: self.value }, SyntaxContextId::ROOT)
-            }
-            HirFileIdRepr::MacroFile(m) => {
-                ExpansionInfo::new(db, m).map_token_range_up(db, self.value)
-            }
-        };
-        range
+impl InMacroFile<TextSize> {
+    pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> (FileRange, SyntaxContextId) {
+        ExpansionInfo::new(db, self.file_id).span_for_offset(db, self.value)
     }
+}
 
+impl InFile<TextRange> {
     pub fn original_node_file_range(
         self,
         db: &dyn db::ExpandDatabase,
@@ -353,7 +339,7 @@ impl<N: AstNode> InFile<N> {
             }
             HirFileIdRepr::MacroFile(m) => m,
         };
-        if !self.file_id.is_attr_macro(db) {
+        if !file_id.is_attr_macro(db) {
             return None;
         }
 

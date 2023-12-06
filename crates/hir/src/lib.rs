@@ -128,6 +128,7 @@ pub use {
         hygiene::{marks_rev, SyntaxContextExt},
         name::{known, Name},
         tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
+        MacroFileIdExt,
     },
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
@@ -607,7 +608,7 @@ impl Module {
             let tree = loc.id.item_tree(db.upcast());
             let node = &tree[loc.id.value];
             let file_id = loc.id.file_id();
-            if file_id.is_builtin_derive(db.upcast()) {
+            if file_id.macro_file().map_or(false, |it| it.is_builtin_derive(db.upcast())) {
                 // these expansion come from us, diagnosing them is a waste of resources
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;

@@ -29,7 +29,7 @@ use hir_expand::{
     mod_path::path,
     name,
     name::{AsName, Name},
-    HirFileId, HirFileIdExt, InFile, MacroFileId, MacroFileIdExt,
+    HirFileId, InFile, MacroFileId, MacroFileIdExt,
 };
 use hir_ty::{
     diagnostics::{
@@ -939,11 +939,12 @@ fn scope_for_offset(
             }
 
             // FIXME handle attribute expansion
-            let source = iter::successors(file_id.call_node(db.upcast()), |it| {
-                it.file_id.call_node(db.upcast())
-            })
-            .find(|it| it.file_id == from_file)
-            .filter(|it| it.value.kind() == SyntaxKind::MACRO_CALL)?;
+            let source =
+                iter::successors(file_id.macro_file().map(|it| it.call_node(db.upcast())), |it| {
+                    Some(it.file_id.macro_file()?.call_node(db.upcast()))
+                })
+                .find(|it| it.file_id == from_file)
+                .filter(|it| it.value.kind() == SyntaxKind::MACRO_CALL)?;
             Some((source.value.text_range(), scope))
         })
         .filter(|(expr_range, _scope)| expr_range.start() <= offset && offset <= expr_range.end())
