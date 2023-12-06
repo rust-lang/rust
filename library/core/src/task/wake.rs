@@ -347,7 +347,7 @@ impl<'a> ContextBuilder<'a> {
 /// use std::task::{Waker, ContextBuilder};
 /// use std::future::{poll_fn, Future};
 /// use std::pin::pin;
-///
+/// 
 /// async fn with_waker<F>(f: F, waker: &Waker) -> F::Output
 /// where
 ///     F: Future
@@ -365,7 +365,7 @@ impl<'a> ContextBuilder<'a> {
 ///         f.as_mut().poll(&mut cx)
 ///     }).await
 /// }
-/// 
+///  
 /// # async fn __() {
 /// with_waker(async { /* ... */ }, &Waker::noop()).await;
 /// # }

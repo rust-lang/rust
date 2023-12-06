@@ -254,7 +254,7 @@ pub mod str;
 pub mod string;
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 pub mod sync;
-#[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
+#[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync)))]
 pub mod task;
 #[cfg(test)]
 mod tests;

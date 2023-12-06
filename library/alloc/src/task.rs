@@ -2,15 +2,17 @@
 
 //! Types and Traits for working with asynchronous tasks.
 //!
-//! **Note**: This module is only available on platforms that support atomic
-//! loads and stores of pointers. This may be detected at compile time using
+//! **Note**: Some of the types in this module are only available
+//! on platforms that support atomic loads and stores of pointers. 
+//! This may be detected at compile time using 
 //! `#[cfg(target_has_atomic = "ptr")]`.
 
 use core::mem::ManuallyDrop;
-use core::task::{LocalWaker, RawWaker, RawWakerVTable, Waker};
-
+use core::task::{LocalWaker, RawWaker, RawWakerVTable};
 use crate::rc::Rc;
-use crate::sync::Arc;
+
+#[cfg(target_has_atomic = "ptr")]
+use core::{task::Waker, sync::Arc};
 
 /// The implementation of waking a task on an executor.
 ///
@@ -74,6 +76,7 @@ use crate::sync::Arc;
 ///     println!("Hi from inside a future!");
 /// });
 /// ```
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 pub trait Wake {
     /// Wake this task.
@@ -92,7 +95,7 @@ pub trait Wake {
         self.clone().wake();
     }
 }
-
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     /// Use a `Wake`-able type as a `Waker`.
@@ -104,7 +107,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
         unsafe { Waker::from_raw(raw_waker(waker)) }
     }
 }
-
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     /// Use a `Wake`-able type as a `RawWaker`.
@@ -120,6 +123,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 // the safety of `From<Arc<W>> for Waker` does not depend on the correct
 // trait dispatch - instead both impls call this function directly and
 // explicitly.
+#[cfg(target_has_atomic = "ptr")]
 #[inline(always)]
 fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     // Increment the reference count of the arc to clone it.
