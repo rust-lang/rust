@@ -10,7 +10,7 @@
 )]
 
 use std::fmt::Display;
-use std::ops::Shl;
+use std::ops::{Neg, Shl};
 
 struct Cout;
 
@@ -21,6 +21,14 @@ where
     type Output = Self;
     fn shl(self, rhs: T) -> Self::Output {
         println!("{}", rhs);
+        self
+    }
+}
+
+impl Neg for Cout {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        println!("hello world");
         self
     }
 }
@@ -196,5 +204,5 @@ fn main() {
     }
 
     Cout << 142;
-    Cout << n();
+    -Cout;
 }
