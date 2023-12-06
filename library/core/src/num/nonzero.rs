@@ -26,167 +26,167 @@ macro_rules! nonzero_integer {
     (
         #[$stability:meta] #[$const_new_unchecked_stability:meta] $Ty:ident($Int:ty);
     ) => {
-            /// An integer that is known not to equal zero.
+        /// An integer that is known not to equal zero.
+        ///
+        /// This enables some memory layout optimization.
+        #[doc = concat!("For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:")]
+        ///
+        /// ```rust
+        /// use std::mem::size_of;
+        #[doc = concat!("assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int), ">());")]
+        /// ```
+        ///
+        /// # Layout
+        ///
+        #[doc = concat!("`", stringify!($Ty), "` is guaranteed to have the same layout and bit validity as `", stringify!($Int), "`")]
+        /// with the exception that `0` is not a valid instance.
+        #[doc = concat!("`Option<", stringify!($Ty), ">` is guaranteed to be compatible with `", stringify!($Int), "`,")]
+        /// including in FFI.
+        ///
+        /// Thanks to the [null pointer optimization],
+        #[doc = concat!("`", stringify!($Ty), "` and `Option<", stringify!($Ty), ">`")]
+        /// are guaranteed to have the same size and alignment:
+        ///
+        /// ```
+        /// # use std::mem::{size_of, align_of};
+        #[doc = concat!("use std::num::", stringify!($Ty), ";")]
+        ///
+        #[doc = concat!("assert_eq!(size_of::<", stringify!($Ty), ">(), size_of::<Option<", stringify!($Ty), ">>());")]
+        #[doc = concat!("assert_eq!(align_of::<", stringify!($Ty), ">(), align_of::<Option<", stringify!($Ty), ">>());")]
+        /// ```
+        ///
+        /// [null pointer optimization]: crate::option#representation
+        #[$stability]
+        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        #[repr(transparent)]
+        #[rustc_layout_scalar_valid_range_start(1)]
+        #[rustc_nonnull_optimization_guaranteed]
+        #[rustc_diagnostic_item = stringify!($Ty)]
+        pub struct $Ty($Int);
+
+        impl $Ty {
+            /// Creates a non-zero without checking whether the value is non-zero.
+            /// This results in undefined behaviour if the value is zero.
             ///
-            /// This enables some memory layout optimization.
-            #[doc = concat!("For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:")]
+            /// # Safety
             ///
-            /// ```rust
-            /// use std::mem::size_of;
-            #[doc = concat!("assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int), ">());")]
-            /// ```
-            ///
-            /// # Layout
-            ///
-            #[doc = concat!("`", stringify!($Ty), "` is guaranteed to have the same layout and bit validity as `", stringify!($Int), "`")]
-            /// with the exception that `0` is not a valid instance.
-            #[doc = concat!("`Option<", stringify!($Ty), ">` is guaranteed to be compatible with `", stringify!($Int), "`,")]
-            /// including in FFI.
-            ///
-            /// Thanks to the [null pointer optimization],
-            #[doc = concat!("`", stringify!($Ty), "` and `Option<", stringify!($Ty), ">`")]
-            /// are guaranteed to have the same size and alignment:
-            ///
-            /// ```
-            /// # use std::mem::{size_of, align_of};
-            #[doc = concat!("use std::num::", stringify!($Ty), ";")]
-            ///
-            #[doc = concat!("assert_eq!(size_of::<", stringify!($Ty), ">(), size_of::<Option<", stringify!($Ty), ">>());")]
-            #[doc = concat!("assert_eq!(align_of::<", stringify!($Ty), ">(), align_of::<Option<", stringify!($Ty), ">>());")]
-            /// ```
-            ///
-            /// [null pointer optimization]: crate::option#representation
+            /// The value must not be zero.
             #[$stability]
-            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-            #[repr(transparent)]
-            #[rustc_layout_scalar_valid_range_start(1)]
-            #[rustc_nonnull_optimization_guaranteed]
-            #[rustc_diagnostic_item = stringify!($Ty)]
-            pub struct $Ty($Int);
-
-            impl $Ty {
-                /// Creates a non-zero without checking whether the value is non-zero.
-                /// This results in undefined behaviour if the value is zero.
-                ///
-                /// # Safety
-                ///
-                /// The value must not be zero.
-                #[$stability]
-                #[$const_new_unchecked_stability]
-                #[must_use]
-                #[inline]
-                pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    crate::panic::debug_assert_nounwind!(
-                        n != 0,
-                        concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument")
-                    );
-                    // SAFETY: this is guaranteed to be safe by the caller.
-                    unsafe {
-                        Self(n)
-                    }
-                }
-
-                /// Creates a non-zero if the given value is not zero.
-                #[$stability]
-                #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
-                #[must_use]
-                #[inline]
-                pub const fn new(n: $Int) -> Option<Self> {
-                    if n != 0 {
-                        // SAFETY: we just checked that there's no `0`
-                        Some(unsafe { Self(n) })
-                    } else {
-                        None
-                    }
-                }
-
-                /// Returns the value as a primitive type.
-                #[$stability]
-                #[inline]
-                #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
-                pub const fn get(self) -> $Int {
-                    // FIXME: Remove this after LLVM supports `!range` metadata for function
-                    // arguments https://github.com/llvm/llvm-project/issues/76628
-                    //
-                    // Rustc can set range metadata only if it loads `self` from
-                    // memory somewhere. If the value of `self` was from by-value argument
-                    // of some not-inlined function, LLVM don't have range metadata
-                    // to understand that the value cannot be zero.
-
-                    // SAFETY: It is an invariant of this type.
-                    unsafe {
-                        intrinsics::assume(self.0 != 0);
-                    }
-                    self.0
-                }
-
-            }
-
-            #[stable(feature = "from_nonzero", since = "1.31.0")]
-            impl From<$Ty> for $Int {
-                #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
-                #[inline]
-                fn from(nonzero: $Ty) -> Self {
-                    // Call nonzero to keep information range information
-                    // from get method.
-                    nonzero.get()
+            #[$const_new_unchecked_stability]
+            #[must_use]
+            #[inline]
+            pub const unsafe fn new_unchecked(n: $Int) -> Self {
+                crate::panic::debug_assert_nounwind!(
+                    n != 0,
+                    concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument")
+                );
+                // SAFETY: this is guaranteed to be safe by the caller.
+                unsafe {
+                    Self(n)
                 }
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOr for $Ty {
-                type Output = Self;
-                #[inline]
-                fn bitor(self, rhs: Self) -> Self::Output {
-                    // SAFETY: since `self` and `rhs` are both nonzero, the
-                    // result of the bitwise-or will be nonzero.
-                    unsafe { $Ty::new_unchecked(self.get() | rhs.get()) }
+            /// Creates a non-zero if the given value is not zero.
+            #[$stability]
+            #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
+            #[must_use]
+            #[inline]
+            pub const fn new(n: $Int) -> Option<Self> {
+                if n != 0 {
+                    // SAFETY: we just checked that there's no `0`
+                    Some(unsafe { Self(n) })
+                } else {
+                    None
                 }
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOr<$Int> for $Ty {
-                type Output = Self;
-                #[inline]
-                fn bitor(self, rhs: $Int) -> Self::Output {
-                    // SAFETY: since `self` is nonzero, the result of the
-                    // bitwise-or will be nonzero regardless of the value of
-                    // `rhs`.
-                    unsafe { $Ty::new_unchecked(self.get() | rhs) }
+            /// Returns the value as a primitive type.
+            #[$stability]
+            #[inline]
+            #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
+            pub const fn get(self) -> $Int {
+                // FIXME: Remove this after LLVM supports `!range` metadata for function
+                // arguments https://github.com/llvm/llvm-project/issues/76628
+                //
+                // Rustc can set range metadata only if it loads `self` from
+                // memory somewhere. If the value of `self` was from by-value argument
+                // of some not-inlined function, LLVM don't have range metadata
+                // to understand that the value cannot be zero.
+
+                // SAFETY: It is an invariant of this type.
+                unsafe {
+                    intrinsics::assume(self.0 != 0);
                 }
+                self.0
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOr<$Ty> for $Int {
-                type Output = $Ty;
-                #[inline]
-                fn bitor(self, rhs: $Ty) -> Self::Output {
-                    // SAFETY: since `rhs` is nonzero, the result of the
-                    // bitwise-or will be nonzero regardless of the value of
-                    // `self`.
-                    unsafe { $Ty::new_unchecked(self | rhs.get()) }
-                }
-            }
+        }
 
-            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOrAssign for $Ty {
-                #[inline]
-                fn bitor_assign(&mut self, rhs: Self) {
-                    *self = *self | rhs;
-                }
+        #[stable(feature = "from_nonzero", since = "1.31.0")]
+        impl From<$Ty> for $Int {
+            #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
+            #[inline]
+            fn from(nonzero: $Ty) -> Self {
+                // Call nonzero to keep information range information
+                // from get method.
+                nonzero.get()
             }
+        }
 
-            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOrAssign<$Int> for $Ty {
-                #[inline]
-                fn bitor_assign(&mut self, rhs: $Int) {
-                    *self = *self | rhs;
-                }
+        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+        impl BitOr for $Ty {
+            type Output = Self;
+            #[inline]
+            fn bitor(self, rhs: Self) -> Self::Output {
+                // SAFETY: since `self` and `rhs` are both nonzero, the
+                // result of the bitwise-or will be nonzero.
+                unsafe { $Ty::new_unchecked(self.get() | rhs.get()) }
             }
+        }
 
-            impl_nonzero_fmt! {
-                #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
+        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+        impl BitOr<$Int> for $Ty {
+            type Output = Self;
+            #[inline]
+            fn bitor(self, rhs: $Int) -> Self::Output {
+                // SAFETY: since `self` is nonzero, the result of the
+                // bitwise-or will be nonzero regardless of the value of
+                // `rhs`.
+                unsafe { $Ty::new_unchecked(self.get() | rhs) }
             }
+        }
+
+        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+        impl BitOr<$Ty> for $Int {
+            type Output = $Ty;
+            #[inline]
+            fn bitor(self, rhs: $Ty) -> Self::Output {
+                // SAFETY: since `rhs` is nonzero, the result of the
+                // bitwise-or will be nonzero regardless of the value of
+                // `self`.
+                unsafe { $Ty::new_unchecked(self | rhs.get()) }
+            }
+        }
+
+        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+        impl BitOrAssign for $Ty {
+            #[inline]
+            fn bitor_assign(&mut self, rhs: Self) {
+                *self = *self | rhs;
+            }
+        }
+
+        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+        impl BitOrAssign<$Int> for $Ty {
+            #[inline]
+            fn bitor_assign(&mut self, rhs: $Int) {
+                *self = *self | rhs;
+            }
+        }
+
+        impl_nonzero_fmt! {
+            #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
+        }
     };
 }
 
