@@ -89,7 +89,6 @@ Rustdoc
 -------
 
 - [Add warning block support in rustdoc](https://github.com/rust-lang/rust/pull/106561/)
-- [Accept additional user-defined syntax classes in fenced code blocks](https://github.com/rust-lang/rust/pull/110800/)
 - [rustdoc-search: add support for type parameters](https://github.com/rust-lang/rust/pull/112725/)
 - [rustdoc: show inner enum and struct in type definition for concrete type](https://github.com/rust-lang/rust/pull/114855/)
 

@@ -517,7 +517,7 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             mir::AggregateKind::Adt(def_id, var_idx, generic_arg, user_ty_index, field_idx) => {
                 stable_mir::mir::AggregateKind::Adt(
                     tables.adt_def(*def_id),
-                    var_idx.index(),
+                    var_idx.stable(tables),
                     generic_arg.stable(tables),
                     user_ty_index.map(|idx| idx.index()),
                     field_idx.map(|idx| idx.index()),

@@ -9,9 +9,9 @@ use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl,
-    TraitDef, Ty, TyKind,
+    TraitDef, Ty, TyKind, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
@@ -71,6 +71,13 @@ pub trait Context {
     /// Retrieve the function signature for the given generic arguments.
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
 
+    /// The number of variants in this ADT.
+    fn adt_variants_len(&self, def: AdtDef) -> usize;
+
+    /// The name of a variant.
+    fn variant_name(&self, def: VariantDef) -> Symbol;
+    fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef>;
+
     /// Evaluate constant as a target usize.
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
 
@@ -82,6 +89,9 @@ pub trait Context {
 
     /// Returns the type of given crate item.
     fn def_ty(&self, item: DefId) -> Ty;
+
+    /// Returns the type of given definition instantiated with the given arguments.
+    fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty;
 
     /// Returns literal value of a const as a string.
     fn const_literal(&self, cnst: &Const) -> String;

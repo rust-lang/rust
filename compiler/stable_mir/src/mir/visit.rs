@@ -452,7 +452,7 @@ impl Location {
 }
 
 /// Information about a place's usage.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlaceContext {
     /// Whether the access is mutable or not. Keep this private so we can increment the type in a
     /// backward compatible manner.

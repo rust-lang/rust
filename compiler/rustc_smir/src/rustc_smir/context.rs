@@ -12,8 +12,8 @@ use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::Body;
 use stable_mir::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs, LineInfo,
-    PolyFnSig, RigidTy, Span, TyKind,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
+    LineInfo, PolyFnSig, RigidTy, Span, TyKind, VariantDef,
 };
 use stable_mir::{self, Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
@@ -209,6 +209,21 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         sig.stable(&mut *tables)
     }
 
+    fn adt_variants_len(&self, def: AdtDef) -> usize {
+        let mut tables = self.0.borrow_mut();
+        def.internal(&mut *tables).variants().len()
+    }
+
+    fn variant_name(&self, def: VariantDef) -> Symbol {
+        let mut tables = self.0.borrow_mut();
+        def.internal(&mut *tables).name.to_string()
+    }
+
+    fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef> {
+        let mut tables = self.0.borrow_mut();
+        def.internal(&mut *tables).fields.iter().map(|f| f.stable(&mut *tables)).collect()
+    }
+
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error> {
         let mut tables = self.0.borrow_mut();
         let mir_const = cnst.internal(&mut *tables);
@@ -238,6 +253,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn def_ty(&self, item: stable_mir::DefId) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         tables.tcx.type_of(item.internal(&mut *tables)).instantiate_identity().stable(&mut *tables)
+    }
+
+    fn def_ty_with_args(&self, item: stable_mir::DefId, args: &GenericArgs) -> stable_mir::ty::Ty {
+        let mut tables = self.0.borrow_mut();
+        let args = args.internal(&mut *tables);
+        let def_ty = tables.tcx.type_of(item.internal(&mut *tables));
+        def_ty.instantiate(tables.tcx, args).stable(&mut *tables)
     }
 
     fn const_literal(&self, cnst: &stable_mir::ty::Const) -> String {

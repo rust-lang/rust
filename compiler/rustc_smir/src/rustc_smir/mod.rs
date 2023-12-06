@@ -141,3 +141,24 @@ where
         }
     }
 }
+
+impl<'tcx, T> Stable<'tcx> for &[T]
+where
+    T: Stable<'tcx>,
+{
+    type T = Vec<T::T>;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        self.iter().map(|e| e.stable(tables)).collect()
+    }
+}
+
+impl<'tcx, T, U> Stable<'tcx> for (T, U)
+where
+    T: Stable<'tcx>,
+    U: Stable<'tcx>,
+{
+    type T = (T::T, U::T);
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        (self.0.stable(tables), self.1.stable(tables))
+    }
+}
