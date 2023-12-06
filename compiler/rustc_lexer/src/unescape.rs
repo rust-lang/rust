@@ -167,7 +167,7 @@ impl Mode {
     }
 
     /// Non-byte literals should have `\xXX` escapes that are within the ASCII range.
-    pub fn ascii_escapes_should_be_ascii(self) -> bool {
+    fn ascii_escapes_should_be_ascii(self) -> bool {
         match self {
             Mode::Char | Mode::Str | Mode::RawStr => true,
             Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
@@ -175,7 +175,7 @@ impl Mode {
     }
 
     /// Whether characters within the literal must be within the ASCII range
-    pub fn characters_should_be_ascii(self) -> bool {
+    fn characters_should_be_ascii(self) -> bool {
         match self {
             Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
             Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
@@ -183,7 +183,7 @@ impl Mode {
     }
 
     /// Byte literals do not allow unicode escape.
-    pub fn is_unicode_escape_disallowed(self) -> bool {
+    fn is_unicode_escape_disallowed(self) -> bool {
         match self {
             Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
             Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
