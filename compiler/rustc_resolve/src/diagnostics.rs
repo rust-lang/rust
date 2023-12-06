@@ -27,10 +27,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::{thin_vec, ThinVec};
 
-use crate::errors::{
-    AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
-    ExplicitUnsafeTraits,
-};
+use crate::errors::{AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion};
+use crate::errors::{ConsiderAddingADerive, ExplicitUnsafeTraits, MaybeMissingMacroRulesName};
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
@@ -1421,14 +1419,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             "",
         );
 
+        if macro_kind == MacroKind::Bang && ident.name == sym::macro_rules {
+            err.subdiagnostic(MaybeMissingMacroRulesName { span: ident.span });
+            return;
+        }
+
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             err.subdiagnostic(ExplicitUnsafeTraits { span: ident.span, ident });
             return;
         }
+
         if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
             err.subdiagnostic(AddedMacroUse);
             return;
         }
+
         if ident.name == kw::Default
             && let ModuleKind::Def(DefKind::Enum, def_id, _) = parent_scope.module.kind
         {
