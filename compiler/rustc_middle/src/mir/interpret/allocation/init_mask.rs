@@ -534,7 +534,7 @@ impl InitMaskMaterialized {
             end: Size,
             is_init: bool,
         ) -> Option<Size> {
-            (start..end).find(|&i| init_mask.get(i) == is_init)
+            (start..end).into_iter().find(|&i| init_mask.get(i) == is_init)
         }
 
         let result = find_bit_fast(self, start, end, is_init);

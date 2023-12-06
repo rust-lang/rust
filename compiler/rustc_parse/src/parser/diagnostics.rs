@@ -2910,7 +2910,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn is_diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> bool {
-        (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+        (0..3).into_iter().all(|i| self.look_ahead(i, |tok| tok == long_kind))
             && self.look_ahead(3, |tok| tok == short_kind)
     }
 

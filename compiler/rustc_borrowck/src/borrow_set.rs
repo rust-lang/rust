@@ -161,7 +161,7 @@ impl<'tcx> BorrowSet<'tcx> {
     }
 
     pub(crate) fn indices(&self) -> impl Iterator<Item = BorrowIndex> {
-        BorrowIndex::from_usize(0)..BorrowIndex::from_usize(self.len())
+        (BorrowIndex::from_usize(0)..BorrowIndex::from_usize(self.len())).into_iter()
     }
 
     pub(crate) fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {

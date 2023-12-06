@@ -99,7 +99,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
 /// A type representing iteration over the elements of an array.
 pub struct ArrayIterator<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> {
     base: &'a P,
-    range: Range<u64>,
+    range: <Range<u64> as IntoIterator>::IntoIter,
     stride: Size,
     field_layout: TyAndLayout<'tcx>,
     _phantom: PhantomData<Prov>, // otherwise it says `Prov` is never used...
@@ -280,7 +280,13 @@ where
         debug!("project_array_fields: {base:?} {len}");
         base.offset(len * stride, self.layout_of(self.tcx.types.unit).unwrap(), self)?;
         // Create the iterator.
-        Ok(ArrayIterator { base, range: 0..len, stride, field_layout, _phantom: PhantomData })
+        Ok(ArrayIterator {
+            base,
+            range: (0..len).into_iter(),
+            stride,
+            field_layout,
+            _phantom: PhantomData,
+        })
     }
 
     /// Subslicing

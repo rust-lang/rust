@@ -261,7 +261,7 @@ impl<T: ParameterizedOverTcx> LazyValue<T> {
 }
 
 struct DecodeIterator<'a, 'tcx, T> {
-    elem_counter: std::ops::Range<usize>,
+    elem_counter: <std::ops::Range<usize> as IntoIterator>::IntoIter,
     dcx: DecodeContext<'a, 'tcx>,
     _phantom: PhantomData<fn() -> T>,
 }
@@ -304,7 +304,7 @@ impl<T: ParameterizedOverTcx> LazyArray<T> {
     {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
-        DecodeIterator { elem_counter: (0..self.num_elems), dcx, _phantom: PhantomData }
+        DecodeIterator { elem_counter: (0..self.num_elems).into_iter(), dcx, _phantom: PhantomData }
     }
 }
 

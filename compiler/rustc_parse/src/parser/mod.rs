@@ -1075,7 +1075,7 @@ impl<'a> Parser<'a> {
             // we are in has non-skipped delimiters. Look for skipped
             // delimiters in the lookahead range.
             let tree_cursor = &self.token_cursor.tree_cursor;
-            let all_normal = (0..dist).all(|i| {
+            let all_normal = (0..dist).into_iter().all(|i| {
                 let token = tree_cursor.look_ahead(i);
                 !matches!(token, Some(TokenTree::Delimited(_, Delimiter::Invisible, _)))
             });

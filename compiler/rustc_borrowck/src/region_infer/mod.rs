@@ -2140,7 +2140,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // we still want to screen for an "interesting" point to
         // highlight (e.g., a call site or something).
         let target_scc = self.constraint_sccs.scc(target_region);
-        let mut range = 0..path.len();
+        let mut range = (0..path.len()).into_iter();
 
         // As noted above, when reporting an error, there is typically a chain of constraints
         // leading from some "source" region which must outlive some "target" region.

@@ -28,7 +28,7 @@ pub fn expand_deriving_partial_ord(
             // No data, placing the tag check first makes codegen simpler
             0 => true,
             1..=2 => false,
-            _ => (0..dataful.len() - 1).any(|i| {
+            _ => (0..dataful.len() - 1).into_iter().any(|i| {
                 if dataful[i]
                     && let Some(idx) = dataful[i + 1..].iter().position(|v| *v)
                 {
