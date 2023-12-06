@@ -515,12 +515,37 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
 #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5974
 macro_rules! nonzero_integer_signedness_dependent_methods {
-    // Methods for unsigned nonzero types only.
+    // Associated items for unsigned nonzero types only.
     (
         Self = $Ty:ident,
         Primitive = unsigned $Int:ident,
         UnsignedPrimitive = $Uint:ty,
     ) => {
+        /// The smallest value that can be represented by this non-zero
+        /// integer type, 1.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+        #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), 1", stringify!($Int), ");")]
+        /// ```
+        #[stable(feature = "nonzero_min_max", since = "1.70.0")]
+        pub const MIN: Self = Self::new(1).unwrap();
+
+        /// The largest value that can be represented by this non-zero
+        /// integer type,
+        #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
+        ///
+        /// # Examples
+        ///
+        /// ```
+        #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+        #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
+        /// ```
+        #[stable(feature = "nonzero_min_max", since = "1.70.0")]
+        pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
+
         /// Adds an unsigned integer to a non-zero value.
         /// Checks for overflow and returns [`None`] on overflow.
         /// As a consequence, the result cannot wrap to zero.
@@ -1177,39 +1202,6 @@ macro_rules! sign_dependent_expr {
     };
 }
 
-macro_rules! nonzero_min_max_unsigned {
-    ( $( $Ty: ident($Int: ident); )+ ) => {
-        $(
-            impl $Ty {
-                /// The smallest value that can be represented by this non-zero
-                /// integer type, 1.
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), 1", stringify!($Int), ");")]
-                /// ```
-                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
-                pub const MIN: Self = Self::new(1).unwrap();
-
-                /// The largest value that can be represented by this non-zero
-                /// integer type,
-                #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
-                /// ```
-                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
-                pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
-            }
-        )+
-    }
-}
-
 macro_rules! nonzero_min_max_signed {
     ( $( $Ty: ident($Int: ident); )+ ) => {
         $(
@@ -1250,15 +1242,6 @@ macro_rules! nonzero_min_max_signed {
             }
         )+
     }
-}
-
-nonzero_min_max_unsigned! {
-    NonZeroU8(u8);
-    NonZeroU16(u16);
-    NonZeroU32(u32);
-    NonZeroU64(u64);
-    NonZeroU128(u128);
-    NonZeroUsize(usize);
 }
 
 nonzero_min_max_signed! {
