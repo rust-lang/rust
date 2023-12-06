@@ -54,6 +54,8 @@ nav.sub {
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: none;
+	--toggle-border: #ccc;
+	--toggle-border-hover: #616161;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -157,6 +159,8 @@ nav.sub {
 		--code-attribute-color: #999;
 		--toggles-color: #999;
 		--toggle-filter: invert(100%);
+		--toggle-border: grey;
+		--toggle-border-hover: black;
 		--search-input-focused-border-color: #008dfd;
 		--copy-path-button-color: #999;
 		--copy-path-img-filter: invert(50%);

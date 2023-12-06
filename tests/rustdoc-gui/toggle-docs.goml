@@ -49,7 +49,7 @@ assert-attribute: ("details.toggle", {"open": ""}, ALL)
 show-text: true
 define-function: (
     "check-color",
-    (theme, filter),
+    (theme, filter, border_color, border_color_hover),
     block {
         // Setting the theme.
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
@@ -57,12 +57,12 @@ define-function: (
         reload:
 
         assert-css: ("details.toggle > summary::before", {
-            "opacity": "0.5",
+            "border-color": |border_color|,
             "filter": |filter|,
         }, ALL)
         move-cursor-to: "details.toggle summary"
         assert-css: ("details.toggle > summary:hover::before", {
-            "opacity": "1",
+            "border-color": |border_color_hover|,
             "filter": |filter|,
         })
         // moving the cursor somewhere else to not mess with next function calls.
@@ -70,6 +70,21 @@ define-function: (
     },
 )
 
-call-function: ("check-color", {"theme": "ayu", "filter": "invert(1)"})
-call-function: ("check-color", {"theme": "dark", "filter": "invert(1)"})
-call-function: ("check-color", {"theme": "light", "filter": "none"})
+call-function: ("check-color", {
+    "theme": "ayu",
+    "filter": "invert(1)",
+    "border_color": "#808080",
+    "border_color_hover": "#000",
+})
+call-function: ("check-color", {
+    "theme": "dark",
+    "filter": "invert(1)",
+    "border_color": "#808080",
+    "border_color_hover": "#000",
+})
+call-function: ("check-color", {
+    "theme": "light",
+    "filter": "none",
+    "border_color": "#ccc",
+    "border_color_hover": "#616161",
+})

@@ -1604,16 +1604,15 @@ details.toggle > summary.hideme > span {
 
 details.toggle > summary::before {
 	/* toggle plus */
-	background: url('data:image/svg+xml,<svg width="19" height="19" stroke="black" fill="none" \
-xmlns="http://www.w3.org/2000/svg"><path d="M2.5 2.5h14v14h-14v-14.5" \
-shape-rendering="crispEdges" stroke="grey"/><path d="M6 9.5h7M9.5 13.5V5.5"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="15" height="15" stroke="black" fill="none" \
+xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5h7M6.5 10.5V2.5"/></svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
-	width: 18px;
-	height: 18px;
+	width: 13px;
+	height: 13px;
+	border: solid 1px var(--toggle-border);
 	display: inline-block;
 	vertical-align: middle;
-	opacity: .5;
 	filter: var(--toggle-filter);
 }
 
@@ -1639,7 +1638,7 @@ details.toggle > summary.hideme::after {
 
 details.toggle > summary:focus-visible::before,
 details.toggle > summary:hover::before {
-	opacity: 1;
+	border: solid 1px var(--toggle-border-hover);
 }
 
 details.toggle > summary:focus-visible::before {
@@ -2208,6 +2207,8 @@ in src-script.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: none;
+	--toggle-border: #ccc;
+	--toggle-border-hover: #616161;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2310,6 +2311,8 @@ in src-script.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--toggle-border: grey;
+	--toggle-border-hover: black;
 	--search-input-focused-border-color: #008dfd;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2427,6 +2430,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--toggle-border: grey;
+	--toggle-border-hover: black;
 	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);
