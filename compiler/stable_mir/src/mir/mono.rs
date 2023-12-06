@@ -39,9 +39,16 @@ impl Instance {
         with(|context| context.instance_body(self.def))
     }
 
+    /// Check whether this instance has a body available.
+    ///
+    /// This call is much cheaper than `instance.body().is_some()`, since it doesn't try to build
+    /// the StableMIR body.
+    pub fn has_body(&self) -> bool {
+        with(|cx| cx.has_body(self.def.def_id()))
+    }
+
     pub fn is_foreign_item(&self) -> bool {
-        let item = CrateItem::try_from(*self);
-        item.as_ref().is_ok_and(CrateItem::is_foreign_item)
+        with(|cx| cx.is_foreign_item(self.def.def_id()))
     }
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.
