@@ -24,12 +24,12 @@ macro_rules! impl_nonzero_fmt {
 
 macro_rules! nonzero_integer {
     (
+        #[$stability:meta]
+        #[$const_new_unchecked_stability:meta]
         Self = $Ty:ident,
         Primitive = $signedness:ident $Int:ident,
         $(UnsignedNonZero = $UnsignedNonZero:ident,)?
         UnsignedPrimitive = $UnsignedPrimitive:ty,
-        feature = $feature:literal,
-        original_stabilization = $since:literal,
 
         // Used in doc comments.
         leading_zeros_test = $leading_zeros_test:expr,
@@ -64,7 +64,7 @@ macro_rules! nonzero_integer {
         /// ```
         ///
         /// [null pointer optimization]: crate::option#representation
-        #[stable(feature = $feature, since = $since)]
+        #[$stability]
         #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
         #[repr(transparent)]
         #[rustc_layout_scalar_valid_range_start(1)]
@@ -79,8 +79,8 @@ macro_rules! nonzero_integer {
             /// # Safety
             ///
             /// The value must not be zero.
-            #[stable(feature = $feature, since = $since)]
-            #[rustc_const_stable(feature = $feature, since = $since)]
+            #[$stability]
+            #[$const_new_unchecked_stability]
             #[must_use]
             #[inline]
             pub const unsafe fn new_unchecked(n: $Int) -> Self {
@@ -95,7 +95,7 @@ macro_rules! nonzero_integer {
             }
 
             /// Creates a non-zero if the given value is not zero.
-            #[stable(feature = $feature, since = $since)]
+            #[$stability]
             #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
             #[must_use]
             #[inline]
@@ -109,7 +109,7 @@ macro_rules! nonzero_integer {
             }
 
             /// Returns the value as a primitive type.
-            #[stable(feature = $feature, since = $since)]
+            #[$stability]
             #[inline]
             #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
             pub const fn get(self) -> $Int {
@@ -151,7 +151,7 @@ macro_rules! nonzero_integer {
             /// Basic usage:
             ///
             /// ```
-            #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(", stringify!($leading_zeros_test), ").unwrap();")]
+            #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(", $leading_zeros_test, ").unwrap();")]
             ///
             /// assert_eq!(n.leading_zeros(), 0);
             /// ```
@@ -461,8 +461,7 @@ macro_rules! nonzero_integer {
         }
 
         impl_nonzero_fmt! {
-            #[stable(feature = $feature, since = $since)]
-            (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
+            #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
         }
 
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
@@ -477,6 +476,28 @@ macro_rules! nonzero_integer {
         }
 
         nonzero_integer_signedness_dependent_impls!($Ty $signedness $Int);
+    };
+
+    (Self = $Ty:ident, Primitive = unsigned $Int:ident $(,)?) => {
+        nonzero_integer! {
+            #[stable(feature = "nonzero", since = "1.28.0")]
+            #[rustc_const_stable(feature = "nonzero", since = "1.28.0")]
+            Self = $Ty,
+            Primitive = unsigned $Int,
+            UnsignedPrimitive = $Int,
+            leading_zeros_test = concat!(stringify!($Int), "::MAX"),
+        }
+    };
+
+    (Self = $Ty:ident, Primitive = signed $Int:ident, $($rest:tt)*) => {
+        nonzero_integer! {
+            #[stable(feature = "signed_nonzero", since = "1.34.0")]
+            #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")]
+            Self = $Ty,
+            Primitive = signed $Int,
+            $($rest)*
+            leading_zeros_test = concat!("-1", stringify!($Int)),
+        }
     };
 }
 
@@ -1253,55 +1274,31 @@ macro_rules! sign_dependent_expr {
 nonzero_integer! {
     Self = NonZeroU8,
     Primitive = unsigned u8,
-    UnsignedPrimitive = u8,
-    feature = "nonzero",
-    original_stabilization = "1.28.0",
-    leading_zeros_test = u8::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU16,
     Primitive = unsigned u16,
-    UnsignedPrimitive = u16,
-    feature = "nonzero",
-    original_stabilization = "1.28.0",
-    leading_zeros_test = u16::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU32,
     Primitive = unsigned u32,
-    UnsignedPrimitive = u32,
-    feature = "nonzero",
-    original_stabilization = "1.28.0",
-    leading_zeros_test = u32::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU64,
     Primitive = unsigned u64,
-    UnsignedPrimitive = u64,
-    feature = "nonzero",
-    original_stabilization = "1.28.0",
-    leading_zeros_test = u64::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroU128,
     Primitive = unsigned u128,
-    UnsignedPrimitive = u128,
-    feature = "nonzero",
-    original_stabilization = "1.28.0",
-    leading_zeros_test = u128::MAX,
 }
 
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
-    UnsignedPrimitive = usize,
-    feature = "nonzero",
-    original_stabilization = "1.28.0",
-    leading_zeros_test = usize::MAX,
 }
 
 nonzero_integer! {
@@ -1309,9 +1306,6 @@ nonzero_integer! {
     Primitive = signed i8,
     UnsignedNonZero = NonZeroU8,
     UnsignedPrimitive = u8,
-    feature = "signed_nonzero",
-    original_stabilization = "1.34.0",
-    leading_zeros_test = -1i8,
 }
 
 nonzero_integer! {
@@ -1319,9 +1313,6 @@ nonzero_integer! {
     Primitive = signed i16,
     UnsignedNonZero = NonZeroU16,
     UnsignedPrimitive = u16,
-    feature = "signed_nonzero",
-    original_stabilization = "1.34.0",
-    leading_zeros_test = -1i16,
 }
 
 nonzero_integer! {
@@ -1329,9 +1320,6 @@ nonzero_integer! {
     Primitive = signed i32,
     UnsignedNonZero = NonZeroU32,
     UnsignedPrimitive = u32,
-    feature = "signed_nonzero",
-    original_stabilization = "1.34.0",
-    leading_zeros_test = -1i32,
 }
 
 nonzero_integer! {
@@ -1339,9 +1327,6 @@ nonzero_integer! {
     Primitive = signed i64,
     UnsignedNonZero = NonZeroU64,
     UnsignedPrimitive = u64,
-    feature = "signed_nonzero",
-    original_stabilization = "1.34.0",
-    leading_zeros_test = -1i64,
 }
 
 nonzero_integer! {
@@ -1349,9 +1334,6 @@ nonzero_integer! {
     Primitive = signed i128,
     UnsignedNonZero = NonZeroU128,
     UnsignedPrimitive = u128,
-    feature = "signed_nonzero",
-    original_stabilization = "1.34.0",
-    leading_zeros_test = -1i128,
 }
 
 nonzero_integer! {
@@ -1359,7 +1341,4 @@ nonzero_integer! {
     Primitive = signed isize,
     UnsignedNonZero = NonZeroUsize,
     UnsignedPrimitive = usize,
-    feature = "signed_nonzero",
-    original_stabilization = "1.34.0",
-    leading_zeros_test = -1isize,
 }
