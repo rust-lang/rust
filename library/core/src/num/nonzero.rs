@@ -128,6 +128,20 @@ macro_rules! nonzero_integer {
                 self.0
             }
 
+            /// The size of this non-zero integer type in bits.
+            ///
+            #[doc = concat!("This value is equal to [`", stringify!($Int), "::BITS`].")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+            ///
+            #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
+            /// ```
+            #[stable(feature = "nonzero_bits", since = "1.67.0")]
+            pub const BITS: u32 = <$Int>::BITS;
+
             /// Returns the number of leading zeros in the binary representation of `self`.
             ///
             /// On many architectures, this function can perform better than `leading_zeros()` on the underlying integer type, as special handling of zero can be avoided.
@@ -1234,43 +1248,6 @@ macro_rules! sign_dependent_expr {
     (unsigned ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
         $unsigned_case
     };
-}
-
-macro_rules! nonzero_bits {
-    ( $( $Ty: ident($Int: ty); )+ ) => {
-        $(
-            impl $Ty {
-                /// The size of this non-zero integer type in bits.
-                ///
-                #[doc = concat!("This value is equal to [`", stringify!($Int), "::BITS`].")]
-                ///
-                /// # Examples
-                ///
-                /// ```
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
-                /// ```
-                #[stable(feature = "nonzero_bits", since = "1.67.0")]
-                pub const BITS: u32 = <$Int>::BITS;
-            }
-        )+
-    }
-}
-
-nonzero_bits! {
-    NonZeroU8(u8);
-    NonZeroI8(i8);
-    NonZeroU16(u16);
-    NonZeroI16(i16);
-    NonZeroU32(u32);
-    NonZeroI32(i32);
-    NonZeroU64(u64);
-    NonZeroI64(i64);
-    NonZeroU128(u128);
-    NonZeroI128(i128);
-    NonZeroUsize(usize);
-    NonZeroIsize(isize);
 }
 
 nonzero_integer! {
