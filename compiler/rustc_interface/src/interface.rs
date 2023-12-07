@@ -42,7 +42,7 @@ pub struct Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg {
+pub(crate) fn parse_cfg(handler: &Handler, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
             let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -52,10 +52,14 @@ pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg {
 
             macro_rules! error {
                 ($reason: expr) => {
-                    handler.early_error(format!(
-                        concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
-                        s
-                    ));
+                    #[allow(rustc::untranslatable_diagnostic)]
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    handler
+                        .struct_fatal(format!(
+                            concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
+                            s
+                        ))
+                        .emit();
                 };
             }
 
@@ -97,7 +101,7 @@ pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg {
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg {
+pub(crate) fn parse_check_cfg(handler: &Handler, specs: Vec<String>) -> CheckCfg {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
@@ -112,10 +116,14 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
 
         macro_rules! error {
             ($reason:expr) => {
-                handler.early_error(format!(
-                    concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
-                    s
-                ))
+                #[allow(rustc::untranslatable_diagnostic)]
+                #[allow(rustc::diagnostic_outside_of_impl)]
+                handler
+                    .struct_fatal(format!(
+                        concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
+                        s
+                    ))
+                    .emit()
             };
         }
 
@@ -314,13 +322,13 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         || {
             crate::callbacks::setup_callbacks();
 
-            let handler = EarlyErrorHandler::new(config.opts.error_format);
+            let early_handler = EarlyErrorHandler::new(config.opts.error_format);
 
             let codegen_backend = if let Some(make_codegen_backend) = config.make_codegen_backend {
                 make_codegen_backend(&config.opts)
             } else {
                 util::get_codegen_backend(
-                    &handler,
+                    &early_handler,
                     &config.opts.maybe_sysroot,
                     config.opts.unstable_opts.codegen_backend.as_deref(),
                 )
@@ -337,7 +345,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             ) {
                 Ok(bundle) => bundle,
                 Err(e) => {
-                    handler.early_error(format!("failed to load fluent bundle: {e}"));
+                    early_handler.early_error(format!("failed to load fluent bundle: {e}"));
                 }
             };
 
@@ -348,7 +356,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let target_override = codegen_backend.target_override(&config.opts);
 
             let mut sess = rustc_session::build_session(
-                &handler,
+                early_handler,
                 config.opts,
                 CompilerIO {
                     input: config.input,
@@ -370,12 +378,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             codegen_backend.init(&sess);
 
-            let cfg = parse_cfg(&handler, config.crate_cfg);
+            let cfg = parse_cfg(&sess.diagnostic(), config.crate_cfg);
             let mut cfg = config::build_configuration(&sess, cfg);
             util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
             sess.parse_sess.config = cfg;
 
-            let mut check_cfg = parse_check_cfg(&handler, config.crate_check_cfg);
+            let mut check_cfg = parse_check_cfg(&sess.diagnostic(), config.crate_check_cfg);
             check_cfg.fill_well_known(&sess.target);
             sess.parse_sess.check_config = check_cfg;
 

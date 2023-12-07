@@ -25,10 +25,10 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Session, Cfg) {
+fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
+    let mut early_handler = EarlyErrorHandler::new(ErrorOutputType::default());
     let registry = registry::Registry::new(&[]);
-    let sessopts = build_session_options(handler, &matches);
-    let cfg = parse_cfg(handler, matches.opt_strs("cfg"));
+    let sessopts = build_session_options(&mut early_handler, &matches);
     let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
     let io = CompilerIO {
         input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -37,7 +37,7 @@ fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Se
         temps_dir,
     };
     let sess = build_session(
-        handler,
+        early_handler,
         sessopts,
         io,
         None,
@@ -51,6 +51,7 @@ fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Se
         Arc::default(),
         Default::default(),
     );
+    let cfg = parse_cfg(&sess.diagnostic(), matches.opt_strs("cfg"));
     (sess, cfg)
 }
 
@@ -117,8 +118,7 @@ fn assert_non_crate_hash_different(x: &Options, y: &Options) {
 fn test_switch_implies_cfg_test() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["--test".to_string()]).unwrap();
-        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
-        let (sess, cfg) = mk_session(&mut handler, matches);
+        let (sess, cfg) = mk_session(matches);
         let cfg = build_configuration(&sess, cfg);
         assert!(cfg.contains(&(sym::test, None)));
     });
@@ -129,8 +129,7 @@ fn test_switch_implies_cfg_test() {
 fn test_switch_implies_cfg_test_unless_cfg_test() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]).unwrap();
-        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
-        let (sess, cfg) = mk_session(&mut handler, matches);
+        let (sess, cfg) = mk_session(matches);
         let cfg = build_configuration(&sess, cfg);
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == sym::test);
         assert!(test_items.next().is_some());
@@ -142,23 +141,20 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 fn test_can_print_warnings() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
-        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
-        let (sess, _) = mk_session(&mut handler, matches);
+        let (sess, _) = mk_session(matches);
         assert!(!sess.diagnostic().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches =
             optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
-        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
-        let (sess, _) = mk_session(&mut handler, matches);
+        let (sess, _) = mk_session(matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
-        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
-        let (sess, _) = mk_session(&mut handler, matches);
+        let (sess, _) = mk_session(matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
 }
