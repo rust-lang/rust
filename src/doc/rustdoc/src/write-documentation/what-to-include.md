@@ -85,6 +85,34 @@ The example is the same on the doc page, but has that extra information
 available to anyone trying to use your crate.  More about tests in the
 upcoming [Documentation tests] chapter.
 
+In case you're writing documentation for a macro, it might be useful to use
+the `no-hidden-lines` attribute in order to prevent some `#` characters to be
+stripped:
+
+``````rust
+//! ```rust,no-hidden-lines
+//!
+//! test!(
+//!     # a,
+//!     ##b,
+//!     ###c
+//! );
+//! ```
+macro_rules! test {
+    (# a,##b,###c) => {}
+}
+``````
+
+Without using the `no-hidden-lines` attribute, the generated code example would
+look like this:
+
+```text
+test!(
+    #b,
+    ##c
+);
+```
+
 ## What to Exclude
 
 Certain parts of your public interface may be included by default in the output
