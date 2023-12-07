@@ -8,6 +8,135 @@ use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 
+declare_lint_pass! {
+    /// Does nothing as a lint pass, but registers some `Lint`s
+    /// that are used by other parts of the compiler.
+    HardwiredLints => [
+        // tidy-alphabetical-start
+        ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+        AMBIGUOUS_ASSOCIATED_ITEMS,
+        AMBIGUOUS_GLOB_IMPORTS,
+        AMBIGUOUS_GLOB_REEXPORTS,
+        ARITHMETIC_OVERFLOW,
+        ASM_SUB_REGISTER,
+        BAD_ASM_STYLE,
+        BARE_TRAIT_OBJECTS,
+        BINDINGS_WITH_VARIANT_NAME,
+        BREAK_WITH_LABEL_AND_LOOP,
+        BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
+        CENUM_IMPL_DROP_CAST,
+        COHERENCE_LEAK_CHECK,
+        COINDUCTIVE_OVERLAP_IN_COHERENCE,
+        CONFLICTING_REPR_HINTS,
+        CONST_EVALUATABLE_UNCHECKED,
+        CONST_ITEM_MUTATION,
+        CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
+        DEAD_CODE,
+        DEPRECATED,
+        DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+        DEPRECATED_IN_FUTURE,
+        DEPRECATED_WHERE_CLAUSE_LOCATION,
+        DUPLICATE_MACRO_ATTRIBUTES,
+        ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
+        ELIDED_LIFETIMES_IN_PATHS,
+        EXPORTED_PRIVATE_DEPENDENCIES,
+        FFI_UNWIND_CALLS,
+        FORBIDDEN_LINT_GROUPS,
+        FUNCTION_ITEM_REFERENCES,
+        FUZZY_PROVENANCE_CASTS,
+        HIDDEN_GLOB_REEXPORTS,
+        ILL_FORMED_ATTRIBUTE_INPUT,
+        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+        IMPLIED_BOUNDS_ENTAILMENT,
+        INCOMPLETE_INCLUDE,
+        INDIRECT_STRUCTURAL_MATCH,
+        INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+        INLINE_NO_SANITIZE,
+        INVALID_DOC_ATTRIBUTES,
+        INVALID_MACRO_EXPORT_ARGUMENTS,
+        INVALID_TYPE_PARAM_DEFAULT,
+        IRREFUTABLE_LET_PATTERNS,
+        LARGE_ASSIGNMENTS,
+        LATE_BOUND_LIFETIME_ARGUMENTS,
+        LEGACY_DERIVE_HELPERS,
+        LONG_RUNNING_CONST_EVAL,
+        LOSSY_PROVENANCE_CASTS,
+        MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+        MACRO_USE_EXTERN_CRATE,
+        META_VARIABLE_MISUSE,
+        MISSING_ABI,
+        MISSING_FRAGMENT_SPECIFIER,
+        MUST_NOT_SUSPEND,
+        NAMED_ARGUMENTS_USED_POSITIONALLY,
+        NON_EXHAUSTIVE_OMITTED_PATTERNS,
+        NONTRIVIAL_STRUCTURAL_MATCH,
+        ORDER_DEPENDENT_TRAIT_OBJECTS,
+        OVERLAPPING_RANGE_ENDPOINTS,
+        PATTERNS_IN_FNS_WITHOUT_BODY,
+        POINTER_STRUCTURAL_MATCH,
+        PRIVATE_BOUNDS,
+        PRIVATE_INTERFACES,
+        PROC_MACRO_BACK_COMPAT,
+        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+        PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        REFINING_IMPL_TRAIT,
+        RENAMED_AND_REMOVED_LINTS,
+        REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+        RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
+        RUST_2021_INCOMPATIBLE_OR_PATTERNS,
+        RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+        RUST_2021_PRELUDE_COLLISIONS,
+        SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+        SINGLE_USE_LIFETIMES,
+        SOFT_UNSTABLE,
+        STABLE_FEATURES,
+        SUSPICIOUS_AUTO_TRAIT_IMPLS,
+        TEST_UNSTABLE_LINT,
+        TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+        TRIVIAL_CASTS,
+        TRIVIAL_NUMERIC_CASTS,
+        TYVAR_BEHIND_RAW_POINTER,
+        UNCONDITIONAL_PANIC,
+        UNCONDITIONAL_RECURSION,
+        UNDEFINED_NAKED_FUNCTION_ABI,
+        UNEXPECTED_CFGS,
+        UNFULFILLED_LINT_EXPECTATIONS,
+        UNINHABITED_STATIC,
+        UNKNOWN_CRATE_TYPES,
+        UNKNOWN_LINTS,
+        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+        UNNAMEABLE_TEST_ITEMS,
+        UNNAMEABLE_TYPES,
+        UNREACHABLE_CODE,
+        UNREACHABLE_PATTERNS,
+        UNSAFE_OP_IN_UNSAFE_FN,
+        UNSTABLE_NAME_COLLISIONS,
+        UNSTABLE_SYNTAX_PRE_EXPANSION,
+        UNSUPPORTED_CALLING_CONVENTIONS,
+        UNUSED_ASSIGNMENTS,
+        UNUSED_ASSOCIATED_TYPE_BOUNDS,
+        UNUSED_ATTRIBUTES,
+        UNUSED_CRATE_DEPENDENCIES,
+        UNUSED_EXTERN_CRATES,
+        UNUSED_FEATURES,
+        UNUSED_IMPORTS,
+        UNUSED_LABELS,
+        UNUSED_LIFETIMES,
+        UNUSED_MACRO_RULES,
+        UNUSED_MACROS,
+        UNUSED_MUT,
+        UNUSED_QUALIFICATIONS,
+        UNUSED_TUPLE_STRUCT_FIELDS,
+        UNUSED_UNSAFE,
+        UNUSED_VARIABLES,
+        USELESS_DEPRECATED,
+        WARNINGS,
+        WHERE_CLAUSES_OBJECT_SAFETY,
+        WRITES_THROUGH_IMMUTABLE_POINTER,
+        // tidy-alphabetical-end
+    ]
+}
+
 declare_lint! {
     /// The `forbidden_lint_groups` lint detects violations of
     /// `forbid` applied to a lint group. Due to a bug in the compiler,
@@ -3349,134 +3478,6 @@ declare_lint! {
     "name introduced by a private item shadows a name introduced by a public glob re-export",
 }
 
-declare_lint_pass! {
-    /// Does nothing as a lint pass, but registers some `Lint`s
-    /// that are used by other parts of the compiler.
-    HardwiredLints => [
-        // tidy-alphabetical-start
-        ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-        AMBIGUOUS_ASSOCIATED_ITEMS,
-        AMBIGUOUS_GLOB_IMPORTS,
-        AMBIGUOUS_GLOB_REEXPORTS,
-        ARITHMETIC_OVERFLOW,
-        ASM_SUB_REGISTER,
-        BAD_ASM_STYLE,
-        BARE_TRAIT_OBJECTS,
-        BINDINGS_WITH_VARIANT_NAME,
-        BREAK_WITH_LABEL_AND_LOOP,
-        BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
-        CENUM_IMPL_DROP_CAST,
-        COHERENCE_LEAK_CHECK,
-        COINDUCTIVE_OVERLAP_IN_COHERENCE,
-        CONFLICTING_REPR_HINTS,
-        CONST_EVALUATABLE_UNCHECKED,
-        CONST_ITEM_MUTATION,
-        CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
-        DEAD_CODE,
-        DEPRECATED,
-        DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-        DEPRECATED_IN_FUTURE,
-        DEPRECATED_WHERE_CLAUSE_LOCATION,
-        DUPLICATE_MACRO_ATTRIBUTES,
-        ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
-        ELIDED_LIFETIMES_IN_PATHS,
-        EXPORTED_PRIVATE_DEPENDENCIES,
-        FFI_UNWIND_CALLS,
-        FORBIDDEN_LINT_GROUPS,
-        FUNCTION_ITEM_REFERENCES,
-        FUZZY_PROVENANCE_CASTS,
-        HIDDEN_GLOB_REEXPORTS,
-        ILL_FORMED_ATTRIBUTE_INPUT,
-        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-        IMPLIED_BOUNDS_ENTAILMENT,
-        INCOMPLETE_INCLUDE,
-        INDIRECT_STRUCTURAL_MATCH,
-        INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
-        INLINE_NO_SANITIZE,
-        INVALID_DOC_ATTRIBUTES,
-        INVALID_MACRO_EXPORT_ARGUMENTS,
-        INVALID_TYPE_PARAM_DEFAULT,
-        IRREFUTABLE_LET_PATTERNS,
-        LARGE_ASSIGNMENTS,
-        LATE_BOUND_LIFETIME_ARGUMENTS,
-        LEGACY_DERIVE_HELPERS,
-        LONG_RUNNING_CONST_EVAL,
-        LOSSY_PROVENANCE_CASTS,
-        MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        MACRO_USE_EXTERN_CRATE,
-        META_VARIABLE_MISUSE,
-        MISSING_ABI,
-        MISSING_FRAGMENT_SPECIFIER,
-        MUST_NOT_SUSPEND,
-        NAMED_ARGUMENTS_USED_POSITIONALLY,
-        NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        NONTRIVIAL_STRUCTURAL_MATCH,
-        ORDER_DEPENDENT_TRAIT_OBJECTS,
-        OVERLAPPING_RANGE_ENDPOINTS,
-        PATTERNS_IN_FNS_WITHOUT_BODY,
-        POINTER_STRUCTURAL_MATCH,
-        PRIVATE_BOUNDS,
-        PRIVATE_INTERFACES,
-        PROC_MACRO_BACK_COMPAT,
-        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-        REFINING_IMPL_TRAIT,
-        RENAMED_AND_REMOVED_LINTS,
-        REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-        RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
-        RUST_2021_INCOMPATIBLE_OR_PATTERNS,
-        RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
-        RUST_2021_PRELUDE_COLLISIONS,
-        SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-        SINGLE_USE_LIFETIMES,
-        SOFT_UNSTABLE,
-        STABLE_FEATURES,
-        SUSPICIOUS_AUTO_TRAIT_IMPLS,
-        TEST_UNSTABLE_LINT,
-        TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
-        TRIVIAL_CASTS,
-        TRIVIAL_NUMERIC_CASTS,
-        TYVAR_BEHIND_RAW_POINTER,
-        UNCONDITIONAL_PANIC,
-        UNCONDITIONAL_RECURSION,
-        UNDEFINED_NAKED_FUNCTION_ABI,
-        UNEXPECTED_CFGS,
-        UNFULFILLED_LINT_EXPECTATIONS,
-        UNINHABITED_STATIC,
-        UNKNOWN_CRATE_TYPES,
-        UNKNOWN_LINTS,
-        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-        UNNAMEABLE_TEST_ITEMS,
-        UNNAMEABLE_TYPES,
-        UNREACHABLE_CODE,
-        UNREACHABLE_PATTERNS,
-        UNSAFE_OP_IN_UNSAFE_FN,
-        UNSTABLE_NAME_COLLISIONS,
-        UNSTABLE_SYNTAX_PRE_EXPANSION,
-        UNSUPPORTED_CALLING_CONVENTIONS,
-        UNUSED_ASSIGNMENTS,
-        UNUSED_ASSOCIATED_TYPE_BOUNDS,
-        UNUSED_ATTRIBUTES,
-        UNUSED_CRATE_DEPENDENCIES,
-        UNUSED_EXTERN_CRATES,
-        UNUSED_FEATURES,
-        UNUSED_IMPORTS,
-        UNUSED_LABELS,
-        UNUSED_LIFETIMES,
-        UNUSED_MACRO_RULES,
-        UNUSED_MACROS,
-        UNUSED_MUT,
-        UNUSED_QUALIFICATIONS,
-        UNUSED_TUPLE_STRUCT_FIELDS,
-        UNUSED_UNSAFE,
-        UNUSED_VARIABLES,
-        USELESS_DEPRECATED,
-        WARNINGS,
-        WHERE_CLAUSES_OBJECT_SAFETY,
-        // tidy-alphabetical-end
-    ]
-}
-
 declare_lint! {
     /// The `long_running_const_eval` lint is emitted when const
     /// eval is running for a long time to ensure rustc terminates
@@ -4619,5 +4620,39 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #115010 <https://github.com/rust-lang/rust/issues/115010>",
+    };
+}
+
+declare_lint! {
+    /// The `writes_through_immutable_pointer` lint detects writes through pointers derived from
+    /// shared references.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(const_mut_refs)]
+    /// const WRITE_AFTER_CAST: () = unsafe {
+    ///     let mut x = 0;
+    ///     let ptr = &x as *const i32 as *mut i32;
+    ///     *ptr = 0;
+    /// };
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Shared references are immutable (when there is no `UnsafeCell` involved),
+    /// and writing through them or through pointers derived from them is Undefined Behavior.
+    /// The compiler recently learned to detect such Undefined Behavior during compile-time
+    /// evaluation, and in the future this will raise a hard error.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub WRITES_THROUGH_IMMUTABLE_POINTER,
+    Warn,
+    "shared references are immutable, and pointers derived from them must not be written to",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
     };
 }

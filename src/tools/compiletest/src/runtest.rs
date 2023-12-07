@@ -4288,15 +4288,18 @@ impl<'test> TestCx<'test> {
             let mut seen_allocs = indexmap::IndexSet::new();
 
             // The alloc-id appears in pretty-printed allocations.
-            let re = Regex::new(r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?─*╼").unwrap();
+            let re =
+                Regex::new(r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼")
+                    .unwrap();
             normalized = re
                 .replace_all(&normalized, |caps: &Captures<'_>| {
                     // Renumber the captured index.
                     let index = caps.get(2).unwrap().as_str().to_string();
                     let (index, _) = seen_allocs.insert_full(index);
                     let offset = caps.get(3).map_or("", |c| c.as_str());
+                    let imm = caps.get(4).map_or("", |c| c.as_str());
                     // Do not bother keeping it pretty, just make it deterministic.
-                    format!("╾ALLOC{index}{offset}╼")
+                    format!("╾ALLOC{index}{offset}{imm}╼")
                 })
                 .into_owned();
 

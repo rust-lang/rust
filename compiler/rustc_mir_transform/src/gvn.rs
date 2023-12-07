@@ -388,7 +388,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         self.ecx.copy_op(op, &field_dest, /*allow_transmute*/ false).ok()?;
                     }
                     self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
-                    self.ecx.alloc_mark_immutable(dest.ptr().provenance.unwrap()).ok()?;
+                    self.ecx
+                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
+                        .ok()?;
                     dest.into()
                 } else {
                     return None;
@@ -928,7 +930,8 @@ fn op_to_prop_const<'tcx>(
         }
 
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
-        let (alloc_id, offset) = pointer.into_parts();
+        let (prov, offset) = pointer.into_parts();
+        let alloc_id = prov.alloc_id();
         intern_const_alloc_for_constprop(ecx, alloc_id).ok()?;
         if matches!(ecx.tcx.global_alloc(alloc_id), GlobalAlloc::Memory(_)) {
             // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything

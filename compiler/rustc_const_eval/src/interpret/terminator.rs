@@ -18,14 +18,14 @@ use rustc_target::abi::{
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable,
-    Provenance, Scalar, StackPopCleanup,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
+    Projectable, Provenance, Scalar, StackPopCleanup,
 };
 use crate::fluent_generated as fluent;
 
 /// An argment passed to a function.
 #[derive(Clone, Debug)]
-pub enum FnArg<'tcx, Prov: Provenance = AllocId> {
+pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
     Copy(OpTy<'tcx, Prov>),
     /// Allow for the argument to be passed in-place: destroy the value originally stored at that place and
