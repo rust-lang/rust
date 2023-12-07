@@ -854,6 +854,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::Ambiguous => span_bug!(span, "ambiguous"),
 
+                    ty::PredicateKind::NormalizesTo(..) => span_bug!(
+                        span,
+                        "NormalizesTo predicate should never be the predicate cause of a SelectionError"
+                    ),
+
                     ty::PredicateKind::AliasRelate(..) => span_bug!(
                         span,
                         "AliasRelate predicate should never be the predicate cause of a SelectionError"

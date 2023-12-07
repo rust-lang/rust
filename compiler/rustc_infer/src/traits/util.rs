@@ -261,9 +261,14 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
     fn elaborate(&mut self, elaboratable: &O) {
         let tcx = self.visited.tcx;
 
-        let bound_predicate = elaboratable.predicate().kind();
-        match bound_predicate.skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+        // We only elaborate clauses.
+        let Some(clause) = elaboratable.predicate().as_clause() else {
+            return;
+        };
+
+        let bound_clause = clause.kind();
+        match bound_clause.skip_binder() {
+            ty::ClauseKind::Trait(data) => {
                 // Negative trait bounds do not imply any supertrait bounds
                 if data.polarity == ty::ImplPolarity::Negative {
                     return;
@@ -280,49 +285,16 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 let obligations =
                     predicates.predicates.iter().enumerate().map(|(index, &(clause, span))| {
                         elaboratable.child_with_derived_cause(
-                            clause.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
+                            clause.subst_supertrait(tcx, &bound_clause.rebind(data.trait_ref)),
                             span,
-                            bound_predicate.rebind(data),
+                            bound_clause.rebind(data),
                             index,
                         )
                     });
                 debug!(?data, ?obligations, "super_predicates");
                 self.extend_deduped(obligations);
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..)) => {
-                // Currently, we do not elaborate WF predicates,
-                // although we easily could.
-            }
-            ty::PredicateKind::ObjectSafe(..) => {
-                // Currently, we do not elaborate object-safe
-                // predicates.
-            }
-            ty::PredicateKind::Subtype(..) => {
-                // Currently, we do not "elaborate" predicates like `X <: Y`,
-                // though conceivably we might.
-            }
-            ty::PredicateKind::Coerce(..) => {
-                // Currently, we do not "elaborate" predicates like `X -> Y`,
-                // though conceivably we might.
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
-                // Nothing to elaborate in a projection predicate.
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..)) => {
-                // Currently, we do not elaborate const-evaluatable
-                // predicates.
-            }
-            ty::PredicateKind::ConstEquate(..) => {
-                // Currently, we do not elaborate const-equate
-                // predicates.
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..)) => {
-                // Nothing to elaborate from `'a: 'b`.
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                ty_max,
-                r_min,
-            ))) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
                 // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
@@ -385,15 +357,25 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                             }
                         })
                         .map(|clause| {
-                            elaboratable.child(bound_predicate.rebind(clause).to_predicate(tcx))
+                            elaboratable.child(bound_clause.rebind(clause).to_predicate(tcx))
                         }),
                 );
             }
-            ty::PredicateKind::Ambiguous => {}
-            ty::PredicateKind::AliasRelate(..) => {
-                // No
+            ty::ClauseKind::RegionOutlives(..) => {
+                // Nothing to elaborate from `'a: 'b`.
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..)) => {
+            ty::ClauseKind::WellFormed(..) => {
+                // Currently, we do not elaborate WF predicates,
+                // although we easily could.
+            }
+            ty::ClauseKind::Projection(..) => {
+                // Nothing to elaborate in a projection predicate.
+            }
+            ty::ClauseKind::ConstEvaluatable(..) => {
+                // Currently, we do not elaborate const-evaluatable
+                // predicates.
+            }
+            ty::ClauseKind::ConstArgHasType(..) => {
                 // Nothing to elaborate
             }
         }

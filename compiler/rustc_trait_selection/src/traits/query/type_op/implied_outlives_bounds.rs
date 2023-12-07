@@ -123,9 +123,9 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 Some(pred) => pred,
             };
             match pred {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
                 // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
                 // if we ever support that
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
@@ -134,8 +134,8 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
-                | ty::PredicateKind::AliasRelate(..)
-                 => {}
+                | ty::PredicateKind::NormalizesTo(..)
+                | ty::PredicateKind::AliasRelate(..) => {}
 
                 // We need to search through *all* WellFormed predicates
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
@@ -143,10 +143,9 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 }
 
                 // We need to register region relationships
-                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
-                    r_a,
-                    r_b,
-                ))) => outlives_bounds.push(ty::OutlivesPredicate(r_a.into(), r_b)),
+                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
+                    ty::OutlivesPredicate(r_a, r_b),
+                )) => outlives_bounds.push(ty::OutlivesPredicate(r_a.into(), r_b)),
 
                 ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
                     ty_a,

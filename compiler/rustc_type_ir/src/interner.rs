@@ -57,6 +57,7 @@ pub trait Interner: Sized {
     type RegionOutlivesPredicate: Clone + Debug + Hash + Eq;
     type TypeOutlivesPredicate: Clone + Debug + Hash + Eq;
     type ProjectionPredicate: Clone + Debug + Hash + Eq;
+    type NormalizesTo: Clone + Debug + Hash + Eq;
     type SubtypePredicate: Clone + Debug + Hash + Eq;
     type CoercePredicate: Clone + Debug + Hash + Eq;
     type ClosureKind: Clone + Debug + Hash + Eq;

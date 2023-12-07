@@ -553,6 +553,10 @@ impl<'tcx> Predicate<'tcx> {
     pub fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
             PredicateKind::Clause(ClauseKind::WellFormed(_)) => false,
+            // `NormalizesTo` is only used in the new solver, so this shouldn't
+            // matter. Normalizing `term` would be 'wrong' however, as it changes whether
+            // `normalizes-to(<T as Trait>::Assoc, <T as Trait>::Assoc)` holds.
+            PredicateKind::NormalizesTo(..) => false,
             PredicateKind::Clause(ClauseKind::Trait(_))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
             | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
@@ -1093,6 +1097,33 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     }
 }
 
+/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
+/// proven by actually normalizing `alias`.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct NormalizesTo<'tcx> {
+    pub alias: AliasTy<'tcx>,
+    pub term: Term<'tcx>,
+}
+
+impl<'tcx> NormalizesTo<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.alias.self_ty()
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> NormalizesTo<'tcx> {
+        Self { alias: self.alias.with_self_ty(tcx, self_ty), ..self }
+    }
+
+    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.alias.trait_def_id(tcx)
+    }
+
+    pub fn def_id(self) -> DefId {
+        self.alias.def_id
+    }
+}
+
 pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
@@ -1274,6 +1305,12 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyProjectionPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for NormalizesTo<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::NormalizesTo(self).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_pred(self) -> Option<PolyTraitPredicate<'tcx>> {
         let predicate = self.kind();
@@ -1281,6 +1318,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Projection(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1300,6 +1338,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(ClauseKind::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Trait(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)

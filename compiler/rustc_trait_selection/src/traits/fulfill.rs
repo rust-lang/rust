@@ -360,8 +360,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
+                ty::PredicateKind::NormalizesTo(..) => {
+                    bug!("NormalizesTo is only used by the new solver")
+                }
                 ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                    bug!("AliasRelate is only used by the new solver")
                 }
             },
             Some(pred) => match pred {
@@ -412,8 +415,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
+                ty::PredicateKind::NormalizesTo(..) => {
+                    bug!("NormalizesTo is only used by the new solver")
+                }
                 ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                    bug!("AliasRelate is only used by the new solver")
                 }
 
                 // General case overflow check. Allow `process_trait_obligation`

@@ -423,6 +423,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::ConstEquate(_, _) => {
                     bug!("ConstEquate should not be emitted when `-Ztrait-solver=next` is active")
                 }
+                ty::PredicateKind::NormalizesTo(_) => unimplemented!(),
                 ty::PredicateKind::AliasRelate(lhs, rhs, direction) => self
                     .compute_alias_relate_goal(Goal {
                         param_env,

@@ -272,6 +272,10 @@ impl FlagComputation {
                 self.add_const(found);
             }
             ty::PredicateKind::Ambiguous => {}
+            ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) => {
+                self.add_alias_ty(alias);
+                self.add_term(term);
+            }
             ty::PredicateKind::AliasRelate(t1, t2, _) => {
                 self.add_term(t1);
                 self.add_term(t2);
