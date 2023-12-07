@@ -1,13 +1,9 @@
-// edition: 2024
-// compile-flags: -Zunstable-options
-// check-pass
+// revisions: e2024 none
+//[e2024] compile-flags: --edition 2024 -Zunstable-options
 
-#![feature(gen_blocks, async_iterator)]
-
-async fn bar() {}
-
-async gen fn foo() {
-    yield bar().await;
-}
+async gen fn foo() {}
+//[none]~^ ERROR: `async fn` is not permitted in Rust 2015
+//[none]~| ERROR: expected one of `extern`, `fn`, or `unsafe`, found `gen`
+//[e2024]~^^^ ERROR: gen blocks are experimental
 
 fn main() {}
