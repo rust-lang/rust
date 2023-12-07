@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::{ptr::P, tokenstream::TokenStream};
 use rustc_expand::base::{self, DummyResult};
-use rustc_session::errors::report_lit_error;
+use rustc_parse::parser::report_lit_error;
 use rustc_span::Span;
 
 use crate::errors;

@@ -59,6 +59,8 @@ parse_bare_cr = {$double_quotes ->
 
 parse_bare_cr_in_raw_string = bare CR not allowed in raw string
 
+parse_binary_float_literal_not_supported = binary float literal is not supported
+
 parse_bounds_not_allowed_on_trait_aliases = bounds are not allowed on trait aliases
 
 parse_box_not_pat = expected pattern, found {$descr}
@@ -292,7 +294,11 @@ parse_generic_parameters_without_angle_brackets = generic parameters without sur
 parse_generics_in_path = unexpected generic arguments in path
 
 parse_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
+
 parse_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
+
+parse_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
+
 parse_if_expression_missing_condition = missing condition for `if` expression
     .condition_label = expected condition here
     .block_label = if this block is the condition of the `if` expression, then it must be followed by another block
@@ -364,6 +370,9 @@ parse_inner_doc_comment_not_permitted = expected outer doc comment
     .label_does_not_annotate_this = the inner doc comment doesn't annotate this {$item}
     .sugg_change_inner_to_outer = to annotate the {$item}, change the doc comment from inner to outer style
 
+parse_int_literal_too_large = integer literal is too large
+    .note = value exceeds limit of `{$limit}`
+
 parse_invalid_block_macro_segment = cannot use a `block` macro fragment here
     .label = the `block` fragment is within this context
     .suggestion = wrap this in another block
@@ -388,7 +397,17 @@ parse_invalid_dyn_keyword = invalid `dyn` keyword
     .suggestion = remove this keyword
 
 parse_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
+parse_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
+    .label = invalid suffix `{$suffix}`
+    .help = valid suffixes are `f32` and `f64`
+
+parse_invalid_float_literal_width = invalid width `{$width}` for float literal
+    .help = valid widths are 32 and 64
+
 parse_invalid_identifier_with_leading_number = identifiers cannot start with a number
+
+parse_invalid_int_literal_width = invalid width `{$width}` for integer literal
+    .help = valid widths are 8, 16, 32, 64 and 128
 
 parse_invalid_interpolated_expression = invalid interpolated expression
 
@@ -407,6 +426,14 @@ parse_invalid_logical_operator = `{$incorrect}` is not a logical operator
     .use_pipe_pipe_for_disjunction = use `||` to perform logical disjunction
 
 parse_invalid_meta_item = expected unsuffixed literal or identifier, found `{$token}`
+
+parse_invalid_num_literal_base_prefix = invalid base prefix for number literal
+    .note = base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+    .suggestion = try making the prefix lowercase
+
+parse_invalid_num_literal_suffix = invalid suffix `{$suffix}` for number literal
+    .label = invalid suffix `{$suffix}`
+    .help = the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
 parse_invalid_unicode_escape = invalid unicode character escape
     .label = invalid escape
@@ -613,6 +640,8 @@ parse_note_mut_pattern_usage = `mut` may be followed by `variable` and `variable
 parse_note_pattern_alternatives_use_single_vert = alternatives in or-patterns are separated with `|`, not `||`
 
 parse_nul_in_c_str = null characters in C string literals are not supported
+
+parse_octal_float_literal_not_supported = octal float literal is not supported
 
 parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not allowed in function parameters
 parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings

@@ -17,6 +17,7 @@ use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
+use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, UnOp, DUMMY_NODE_ID};
@@ -30,9 +31,10 @@ use rustc_errors::{
     PResult, StashKey,
 };
 use rustc_macros::Subdiagnostic;
-use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{self, Spanned};
 use rustc_span::symbol::kw::PathRoot;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -3669,6 +3671,90 @@ impl<'a> Parser<'a> {
             };
             Ok((res, trailing))
         })
+    }
+}
+
+pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
+    // Checks if `s` looks like i32 or u1234 etc.
+    fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
+        s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
+    }
+
+    // Try to lowercase the prefix if the prefix and suffix are valid.
+    fn fix_base_capitalisation(prefix: &str, suffix: &str) -> Option<String> {
+        let mut chars = suffix.chars();
+
+        let base_char = chars.next().unwrap();
+        let base = match base_char {
+            'B' => 2,
+            'O' => 8,
+            'X' => 16,
+            _ => return None,
+        };
+
+        // check that the suffix contains only base-appropriate characters
+        let valid = prefix == "0"
+            && chars
+                .filter(|c| *c != '_')
+                .take_while(|c| *c != 'i' && *c != 'u')
+                .all(|c| c.to_digit(base).is_some());
+
+        valid.then(|| format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
+    }
+
+    let token::Lit { kind, symbol, suffix, .. } = lit;
+    match err {
+        // `LexerError` is an error, but it was already reported
+        // by lexer, so here we don't report it the second time.
+        LitError::LexerError => {}
+        LitError::InvalidSuffix => {
+            if let Some(suffix) = suffix {
+                sess.emit_err(errors::InvalidLiteralSuffix { span, kind: kind.descr(), suffix });
+            }
+        }
+        LitError::InvalidIntSuffix => {
+            let suf = suffix.expect("suffix error with no suffix");
+            let suf = suf.as_str();
+            if looks_like_width_suffix(&['i', 'u'], suf) {
+                // If it looks like a width, try to be helpful.
+                sess.emit_err(errors::InvalidIntLiteralWidth { span, width: suf[1..].into() });
+            } else if let Some(fixed) = fix_base_capitalisation(symbol.as_str(), suf) {
+                sess.emit_err(errors::InvalidNumLiteralBasePrefix { span, fixed });
+            } else {
+                sess.emit_err(errors::InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
+            }
+        }
+        LitError::InvalidFloatSuffix => {
+            let suf = suffix.expect("suffix error with no suffix");
+            let suf = suf.as_str();
+            if looks_like_width_suffix(&['f'], suf) {
+                // If it looks like a width, try to be helpful.
+                sess.emit_err(errors::InvalidFloatLiteralWidth {
+                    span,
+                    width: suf[1..].to_string(),
+                });
+            } else {
+                sess.emit_err(errors::InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
+            }
+        }
+        LitError::NonDecimalFloat(base) => {
+            match base {
+                16 => sess.emit_err(errors::HexadecimalFloatLiteralNotSupported { span }),
+                8 => sess.emit_err(errors::OctalFloatLiteralNotSupported { span }),
+                2 => sess.emit_err(errors::BinaryFloatLiteralNotSupported { span }),
+                _ => unreachable!(),
+            };
+        }
+        LitError::IntTooLarge(base) => {
+            let max = u128::MAX;
+            let limit = match base {
+                2 => format!("{max:#b}"),
+                8 => format!("{max:#o}"),
+                16 => format!("{max:#x}"),
+                _ => format!("{max}"),
+            };
+            sess.emit_err(errors::IntLiteralTooLarge { span, limit });
+        }
     }
 }
 

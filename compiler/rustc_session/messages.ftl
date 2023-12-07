@@ -1,4 +1,3 @@
-session_binary_float_literal_not_supported = binary float literal is not supported
 session_branch_protection_requires_aarch64 = `-Zbranch-protection` is only supported on aarch64
 
 session_cannot_enable_crt_static_linux = sanitizer is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`
@@ -32,47 +31,17 @@ session_function_return_requires_x86_or_x86_64 = `-Zfunction-return` (except `ke
 
 session_function_return_thunk_extern_requires_non_large_code_model = `-Zfunction-return=thunk-extern` is only supported on non-large code models
 
-session_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
-
 session_incompatible_linker_flavor = linker flavor `{$flavor}` is incompatible with the current target
     .note = compatible flavors are: {$compatible_list}
 
 session_instrumentation_not_supported = {$us} instrumentation is not supported for this target
 
-session_int_literal_too_large = integer literal is too large
-    .note = value exceeds limit of `{$limit}`
-
 session_invalid_character_in_create_name = invalid character `{$character}` in crate name: `{$crate_name}`
 session_invalid_character_in_create_name_help = you can either pass `--crate-name` on the command line or add `#![crate_name="…"]` to set the crate name
-
-session_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
-    .label = invalid suffix `{$suffix}`
-    .help = valid suffixes are `f32` and `f64`
-
-session_invalid_float_literal_width = invalid width `{$width}` for float literal
-    .help = valid widths are 32 and 64
-
-session_invalid_int_literal_width = invalid width `{$width}` for integer literal
-    .help = valid widths are 8, 16, 32, 64 and 128
-
-session_invalid_literal_suffix = suffixes on {$kind} literals are invalid
-    .label = invalid suffix `{$suffix}`
-
-session_invalid_num_literal_base_prefix = invalid base prefix for number literal
-    .note = base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
-    .suggestion = try making the prefix lowercase
-
-session_invalid_num_literal_suffix = invalid suffix `{$suffix}` for number literal
-    .label = invalid suffix `{$suffix}`
-    .help = the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
 session_linker_plugin_lto_windows_not_supported = linker plugin based LTO is not supported together with `-C prefer-dynamic` when targeting Windows-like targets
 
 session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
-
-session_not_supported = not supported
-
-session_octal_float_literal_not_supported = octal float literal is not supported
 
 session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}
 

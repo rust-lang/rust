@@ -21,8 +21,7 @@ use rustc_errors::{
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
-use rustc_parse::{parser, MACRO_ARGUMENTS};
-use rustc_session::errors::report_lit_error;
+use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
@@ -1251,7 +1250,7 @@ pub fn expr_to_spanned_string<'a>(
             }
             Ok(ast::LitKind::Err) => None,
             Err(err) => {
-                report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
+                parser::report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
                 None
             }
             _ => Some((cx.struct_span_err(expr.span, err_msg), false)),

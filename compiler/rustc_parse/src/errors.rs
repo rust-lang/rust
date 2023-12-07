@@ -2902,3 +2902,95 @@ pub(crate) struct TransposeDynOrImplSugg<'a> {
     pub insertion_span: Span,
     pub kw: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_literal_suffix)]
+pub(crate) struct InvalidLiteralSuffix<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    // FIXME(#100717)
+    pub kind: &'a str,
+    pub suffix: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_int_literal_width)]
+#[help]
+pub(crate) struct InvalidIntLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_num_literal_base_prefix)]
+#[note]
+pub(crate) struct InvalidNumLiteralBasePrefix {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
+    pub span: Span,
+    pub fixed: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_num_literal_suffix)]
+#[help]
+pub(crate) struct InvalidNumLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_float_literal_width)]
+#[help]
+pub(crate) struct InvalidFloatLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_float_literal_suffix)]
+#[help]
+pub(crate) struct InvalidFloatLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_hexadecimal_float_literal_not_supported)]
+pub(crate) struct HexadecimalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(parse_not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_octal_float_literal_not_supported)]
+pub(crate) struct OctalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(parse_not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_binary_float_literal_not_supported)]
+pub(crate) struct BinaryFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(parse_not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_int_literal_too_large)]
+#[note]
+pub(crate) struct IntLiteralTooLarge {
+    #[primary_span]
+    pub span: Span,
+    pub limit: String,
+}

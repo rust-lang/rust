@@ -11,6 +11,7 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
+pub use crate::parser::expr::report_lit_error;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
