@@ -773,12 +773,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Float(..)
-        | ty::Char
-        | ty::Str
-        | ty::Never
-        | ty::Foreign(..)
-        | ty::CoroutineWitness(..) => {}
+        ty::Float(..) | ty::Str | ty::Never | ty::Foreign(..) | ty::CoroutineWitness(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -789,6 +784,14 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 //
                 // Clang represents bool as an 8-bit unsigned integer.
                 ty = tcx.types.u8;
+            }
+        }
+
+        ty::Char => {
+            if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+                // Since #118032, char is guaranteed to have the same size, alignment, and function
+                // call ABI as u32 on all platforms.
+                ty = tcx.types.u32;
             }
         }
 
