@@ -363,7 +363,10 @@ fn analyze_source_file_generic(
             let c = src[i..].chars().next().unwrap();
             char_len = c.len_utf8();
 
-            let pos = TextSize::from(i as u32) + output_offset;
+            // The last element of `lines` represents the offset of the start of
+            // current line. To get the offset inside the line, we subtract it.
+            let pos = TextSize::from(i as u32) + output_offset
+                - lines.last().unwrap_or(&TextSize::default());
 
             if char_len > 1 {
                 assert!((2..=4).contains(&char_len));
