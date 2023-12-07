@@ -162,7 +162,7 @@ pub trait Context {
     fn krate(&self, def_id: DefId) -> Crate;
     fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol;
 
-    /// Return the number of bytes for a pointer size.
+    /// Return information about the target machine.
     fn target_info(&self) -> MachineInfo;
 }
 

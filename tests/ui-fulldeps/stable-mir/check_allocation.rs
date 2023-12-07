@@ -40,6 +40,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
     check_foo(*get_item(&items, (ItemKind::Static, "FOO")).unwrap());
     check_bar(*get_item(&items, (ItemKind::Static, "BAR")).unwrap());
+    check_len(*get_item(&items, (ItemKind::Static, "LEN")).unwrap());
     ControlFlow::Continue(())
 }
 
@@ -76,6 +77,19 @@ fn check_bar(item: CrateItem) {
     assert_eq!(allocation.bytes[0].unwrap(), Char::CapitalB.to_u8());
     assert_eq!(allocation.bytes[1].unwrap(), Char::SmallA.to_u8());
     assert_eq!(allocation.bytes[2].unwrap(), Char::SmallR.to_u8());
+    assert_eq!(std::str::from_utf8(&allocation.raw_bytes().unwrap()), Ok("Bar"));
+}
+
+/// Check the allocation data for `LEN`.
+///
+/// ```no_run
+/// static LEN: usize = 2;
+/// ```
+fn check_len(item: CrateItem) {
+    let def = StaticDef::try_from(item).unwrap();
+    let alloc = def.eval_initializer().unwrap();
+    assert!(alloc.provenance.ptrs.is_empty());
+    assert_eq!(alloc.read_uint(), Ok(2));
 }
 
 // Use internal API to find a function in a crate.
@@ -109,11 +123,13 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
+    static LEN: usize = 2;
     static FOO: [&str; 2] = ["hi", "there"];
     static BAR: &str = "Bar";
 
     pub fn main() {{
         println!("{{FOO:?}}! {{BAR}}");
+        assert_eq!(FOO.len(), LEN);
     }}"#
     )?;
     Ok(())

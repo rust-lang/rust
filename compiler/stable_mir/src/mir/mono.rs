@@ -220,7 +220,7 @@ impl TryFrom<CrateItem> for StaticDef {
     type Error = crate::Error;
 
     fn try_from(value: CrateItem) -> Result<Self, Self::Error> {
-        if matches!(value.kind(), ItemKind::Static | ItemKind::Const) {
+        if matches!(value.kind(), ItemKind::Static) {
             Ok(StaticDef(value.0))
         } else {
             Err(Error::new(format!("Expected a static item, but found: {value:?}")))
