@@ -707,7 +707,8 @@ impl<T: Clone> Clone for Reverse<T> {
 /// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering
 /// based on the top-to-bottom declaration order of the struct's members.
 ///
-/// When `derive`d on enums, variants are ordered by their discriminants.
+/// When `derive`d on enums, variants are ordered primarily by their discriminants.
+/// Secondarily, they are ordered by their fields.
 /// By default, the discriminant is smallest for variants at the top, and
 /// largest for variants at the bottom. Here's an example:
 ///
@@ -960,7 +961,8 @@ pub macro Ord($item:item) {
 /// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering
 /// based on the top-to-bottom declaration order of the struct's members.
 ///
-/// When `derive`d on enums, variants are ordered by their discriminants.
+/// When `derive`d on enums, variants are primarily ordered by their discriminants.
+/// Secondarily, they are ordered by their fields.
 /// By default, the discriminant is smallest for variants at the top, and
 /// largest for variants at the bottom. Here's an example:
 ///
