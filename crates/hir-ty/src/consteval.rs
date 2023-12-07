@@ -1,6 +1,6 @@
 //! Constant evaluation details
 
-use base_db::CrateId;
+use base_db::{salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
     hir::Expr,
@@ -184,7 +184,7 @@ pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
 
 pub(crate) fn const_eval_recover(
     _: &dyn HirDatabase,
-    _: &[String],
+    _: &Cycle,
     _: &GeneralConstId,
     _: &Substitution,
     _: &Option<Arc<TraitEnvironment>>,
@@ -194,7 +194,7 @@ pub(crate) fn const_eval_recover(
 
 pub(crate) fn const_eval_static_recover(
     _: &dyn HirDatabase,
-    _: &[String],
+    _: &Cycle,
     _: &StaticId,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
@@ -202,7 +202,7 @@ pub(crate) fn const_eval_static_recover(
 
 pub(crate) fn const_eval_discriminant_recover(
     _: &dyn HirDatabase,
-    _: &[String],
+    _: &Cycle,
     _: &EnumVariantId,
 ) -> Result<i128, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))

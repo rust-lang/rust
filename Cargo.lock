@@ -1569,11 +1569,10 @@ dependencies = [
 
 [[package]]
 name = "rust-analyzer-salsa"
-version = "0.17.0-pre.3"
+version = "0.17.0-pre.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ca92b657d614d076800aa7bf5d5ba33564e71fa7f16cd79eacdfe301a50ab1c"
+checksum = "16c42b8737c320578b441a82daf7cdf8d897468de64e8a774fa54b53a50b6cc0"
 dependencies = [
- "crossbeam-utils",
  "indexmap",
  "lock_api",
  "log",
@@ -1586,9 +1585,9 @@ dependencies = [
 
 [[package]]
 name = "rust-analyzer-salsa-macros"
-version = "0.17.0-pre.3"
+version = "0.17.0-pre.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b190359266d293f2ee13eaa502a766dc8b77b63fbaa5d460d24fd0210675ceef"
+checksum = "db72b0883f3592ade2be15a10583c75e0b269ec26e1190800fda2e2ce5ae6634"
 dependencies = [
  "heck",
  "proc-macro2",
