@@ -306,12 +306,20 @@ pub struct CanonicalParamEnvCache<'tcx> {
 }
 
 impl<'tcx> CanonicalParamEnvCache<'tcx> {
+    /// Gets the cached canonical form of `key` or executes
+    /// `canonicalize_op` and caches the result if not present.
+    ///
+    /// `canonicalize_op` is intentionally not allowed to be a closure to
+    /// statically prevent it from capturing `InferCtxt` and resolving
+    /// inference variables, which invalidates the cache.
     pub fn get_or_insert(
         &self,
         tcx: TyCtxt<'tcx>,
         key: ty::ParamEnv<'tcx>,
         state: &mut OriginalQueryValues<'tcx>,
-        canonicalize_op: impl FnOnce(
+        canonicalize_op: fn(
+            TyCtxt<'tcx>,
+            ty::ParamEnv<'tcx>,
             &mut OriginalQueryValues<'tcx>,
         ) -> Canonical<'tcx, ty::ParamEnv<'tcx>>,
     ) -> Canonical<'tcx, ty::ParamEnv<'tcx>> {
@@ -336,7 +344,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 canonical.clone()
             }
             Entry::Vacant(e) => {
-                let canonical = canonicalize_op(state);
+                let canonical = canonicalize_op(tcx, key, state);
                 let OriginalQueryValues { var_values, universe_map } = state;
                 assert_eq!(universe_map.len(), 1);
                 e.insert((canonical.clone(), tcx.arena.alloc_slice(var_values)));
