@@ -531,41 +531,18 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         macro_ev: EffectiveVisibility,
     ) -> bool {
         if self.macro_reachable.insert((module_def_id, defining_mod)) {
-            self.update_macro_reachable_mod(module_def_id, defining_mod, macro_ev);
+            for child in self.tcx.module_children_local(module_def_id.to_local_def_id()) {
+                if let Res::Def(def_kind, def_id) = child.res
+                    && let Some(def_id) = def_id.as_local()
+                    && child.vis.is_accessible_from(defining_mod, self.tcx)
+                {
+                    let vis = self.tcx.local_visibility(def_id);
+                    self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod, macro_ev);
+                }
+            }
             true
         } else {
             false
-        }
-    }
-
-    fn update_macro_reachable_mod(
-        &mut self,
-        module_def_id: LocalModDefId,
-        defining_mod: LocalModDefId,
-        macro_ev: EffectiveVisibility,
-    ) {
-        let module = self.tcx.hir().get_module(module_def_id).0;
-        for item_id in module.item_ids {
-            let def_kind = self.tcx.def_kind(item_id.owner_id);
-            let vis = self.tcx.local_visibility(item_id.owner_id.def_id);
-            self.update_macro_reachable_def(
-                item_id.owner_id.def_id,
-                def_kind,
-                vis,
-                defining_mod,
-                macro_ev,
-            );
-        }
-        for child in self.tcx.module_children_local(module_def_id.to_local_def_id()) {
-            // FIXME: Use module children for the logic above too.
-            if !child.reexport_chain.is_empty()
-                && child.vis.is_accessible_from(defining_mod, self.tcx)
-                && let Res::Def(def_kind, def_id) = child.res
-                && let Some(def_id) = def_id.as_local()
-            {
-                let vis = self.tcx.local_visibility(def_id);
-                self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod, macro_ev);
-            }
         }
     }
 
