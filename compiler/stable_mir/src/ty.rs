@@ -901,6 +901,7 @@ impl Allocation {
         read_target_uint(&raw)
     }
 
+    /// Read this allocation and try to convert it to an unassigned integer.
     pub fn read_uint(&self) -> Result<u128, Error> {
         if self.bytes.len() > 16 {
             return Err(error!("Allocation is bigger than largest integer"));
@@ -909,6 +910,7 @@ impl Allocation {
         read_target_uint(&raw)
     }
 
+    /// Read this allocation and try to convert it to a signed integer.
     pub fn read_int(&self) -> Result<i128, Error> {
         if self.bytes.len() > 16 {
             return Err(error!("Allocation is bigger than largest integer"));
@@ -917,6 +919,7 @@ impl Allocation {
         read_target_int(&raw)
     }
 
+    /// Read this allocation and try to convert it to a boolean.
     pub fn read_bool(&self) -> Result<bool, Error> {
         match self.read_int()? {
             0 => Ok(false),
@@ -925,13 +928,14 @@ impl Allocation {
         }
     }
 
+    /// Read this allocation as a pointer and return whether it represents a `null` pointer.
     pub fn is_null(&self) -> Result<bool, Error> {
         let len = self.bytes.len();
         let ptr_len = MachineInfo::target_pointer_width().bytes();
         if len != ptr_len {
             return Err(error!("Expected width of pointer (`{ptr_len}`), but found: `{len}`"));
         }
-        Ok(self.read_uint()? == 0)
+        Ok(self.read_uint()? == 0 && self.provenance.ptrs.is_empty())
     }
 }
 
