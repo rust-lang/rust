@@ -150,8 +150,9 @@ impl TryFrom<CrateItem> for Instance {
 
     fn try_from(item: CrateItem) -> Result<Self, Self::Error> {
         with(|context| {
-            if !context.requires_monomorphization(item.0) {
-                Ok(context.mono_instance(item))
+            let def_id = item.def_id();
+            if !context.requires_monomorphization(def_id) {
+                Ok(context.mono_instance(def_id))
             } else {
                 Err(Error::new("Item requires monomorphization".to_string()))
             }
@@ -216,6 +217,21 @@ impl TryFrom<CrateItem> for StaticDef {
         } else {
             Err(Error::new(format!("Expected a static item, but found: {value:?}")))
         }
+    }
+}
+
+impl TryFrom<Instance> for StaticDef {
+    type Error = crate::Error;
+
+    fn try_from(value: Instance) -> Result<Self, Self::Error> {
+        StaticDef::try_from(CrateItem::try_from(value)?)
+    }
+}
+
+impl From<StaticDef> for Instance {
+    fn from(value: StaticDef) -> Self {
+        // A static definition should always be convertible to an instance.
+        with(|cx| cx.mono_instance(value.def_id()))
     }
 }
 

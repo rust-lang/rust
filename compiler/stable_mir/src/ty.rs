@@ -31,14 +31,49 @@ impl Ty {
         Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, Const::try_from_target_usize(size)?)))
     }
 
+    /// Create a new array type from Const length.
+    pub fn new_array_with_const_len(elem_ty: Ty, len: Const) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Array(elem_ty, len))
+    }
+
     /// Create a new pointer type.
     pub fn new_ptr(pointee_ty: Ty, mutability: Mutability) -> Ty {
         Ty::from_rigid_kind(RigidTy::RawPtr(pointee_ty, mutability))
     }
 
+    /// Create a new reference type.
+    pub fn new_ref(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Ref(reg, pointee_ty, mutability))
+    }
+
+    /// Create a new pointer type.
+    pub fn new_tuple(tys: &[Ty]) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Tuple(Vec::from(tys)))
+    }
+
+    /// Create a new closure type.
+    pub fn new_closure(def: ClosureDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Closure(def, args))
+    }
+
+    /// Create a new coroutine type.
+    pub fn new_coroutine(def: CoroutineDef, args: GenericArgs, mov: Movability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Coroutine(def, args, mov))
+    }
+
+    /// Create a new box type that represents `Box<T>`, for the given inner type `T`.
+    pub fn new_box(inner_ty: Ty) -> Ty {
+        with(|cx| cx.new_box_ty(inner_ty))
+    }
+
     /// Create a type representing `usize`.
     pub fn usize_ty() -> Ty {
         Ty::from_rigid_kind(RigidTy::Uint(UintTy::Usize))
+    }
+
+    /// Create a type representing `bool`.
+    pub fn bool_ty() -> Ty {
+        Ty::from_rigid_kind(RigidTy::Bool)
     }
 }
 
@@ -209,6 +244,19 @@ impl TyKind {
         matches!(self, TyKind::RigidTy(RigidTy::FnPtr(..)))
     }
 
+    pub fn is_primitive(&self) -> bool {
+        matches!(
+            self,
+            TyKind::RigidTy(
+                RigidTy::Bool
+                    | RigidTy::Char
+                    | RigidTy::Int(_)
+                    | RigidTy::Uint(_)
+                    | RigidTy::Float(_)
+            )
+        )
+    }
+
     pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
         if let TyKind::RigidTy(RigidTy::Dynamic(predicates, _, _)) = self {
             if let Some(Binder { value: ExistentialPredicate::Trait(trait_ref), bound_vars }) =
@@ -251,12 +299,18 @@ impl TyKind {
     }
 
     /// Get the function signature for function like types (Fn, FnPtr, Closure, Coroutine)
+    /// FIXME(closure)
     pub fn fn_sig(&self) -> Option<PolyFnSig> {
         match self {
             TyKind::RigidTy(RigidTy::FnDef(def, args)) => Some(with(|cx| cx.fn_sig(*def, args))),
             TyKind::RigidTy(RigidTy::FnPtr(sig)) => Some(sig.clone()),
             _ => None,
         }
+    }
+
+    /// Get the discriminant type for this type.
+    pub fn discriminant_ty(&self) -> Option<Ty> {
+        self.rigid().map(|ty| with(|cx| cx.rigid_ty_discriminant_ty(ty)))
     }
 }
 
@@ -287,6 +341,13 @@ pub enum RigidTy {
     Never,
     Tuple(Vec<Ty>),
     CoroutineWitness(CoroutineWitnessDef, GenericArgs),
+}
+
+impl RigidTy {
+    /// Get the discriminant type for this type.
+    pub fn discriminant_ty(&self) -> Ty {
+        with(|cx| cx.rigid_ty_discriminant_ty(self))
+    }
 }
 
 impl From<RigidTy> for TyKind {
