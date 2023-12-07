@@ -1,6 +1,8 @@
-unsafe fn f() { return; }
+unsafe fn f() {
+    return;
+}
 
 fn main() {
     f();
-    //~^ ERROR call to unsafe function is unsafe
+    //~^ ERROR call to unsafe function `f` is unsafe
 }

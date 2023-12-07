@@ -1,8 +1,8 @@
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:31:5
+  --> $DIR/union-unsafe.rs:31:6
    |
 LL |     *(u.p) = 13;
-   |     ^^^^^^^^^^^ access to union field
+   |      ^^^^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
@@ -39,18 +39,18 @@ LL |     let U1 { a } = u1;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:61:12
+  --> $DIR/union-unsafe.rs:61:20
    |
 LL |     if let U1 { a: 12 } = u1 {}
-   |            ^^^^^^^^^^^^ access to union field
+   |                    ^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:62:12
+  --> $DIR/union-unsafe.rs:62:25
    |
 LL |     if let Some(U1 { a: 13 }) = Some(u1) {}
-   |            ^^^^^^^^^^^^^^^^^^ access to union field
+   |                         ^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 

@@ -10,10 +10,10 @@ unsafe fn unsf() {}
 
 pub unsafe fn foo() { unsafe {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
-    unsf(); //~ ERROR call to unsafe function is unsafe
+    unsf(); //~ ERROR call to unsafe function `unsf` is unsafe
     //~^ NOTE
     //~| NOTE
-    unsf(); //~ ERROR call to unsafe function is unsafe
+    unsf(); //~ ERROR call to unsafe function `unsf` is unsafe
     //~^ NOTE
     //~| NOTE
 }}
@@ -40,10 +40,10 @@ pub unsafe fn baz() -> i32 { unsafe {
 }}
 
 macro_rules! unsafe_macro { () => (unsf()) }
-//~^ ERROR call to unsafe function is unsafe
+//~^ ERROR call to unsafe function `unsf` is unsafe
 //~| NOTE
 //~| NOTE
-//~| ERROR call to unsafe function is unsafe
+//~| ERROR call to unsafe function `unsf` is unsafe
 //~| NOTE
 //~| NOTE
 

@@ -7,10 +7,10 @@ LL |     let b = B;
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/safe-extern-statics-mut.rs:12:14
+  --> $DIR/safe-extern-statics-mut.rs:12:15
    |
 LL |     let rb = &B;
-   |              ^^ use of mutable static
+   |               ^ use of mutable static
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
@@ -23,10 +23,10 @@ LL |     let xb = XB;
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/safe-extern-statics-mut.rs:14:15
+  --> $DIR/safe-extern-statics-mut.rs:14:16
    |
 LL |     let xrb = &XB;
-   |               ^^^ use of mutable static
+   |                ^^ use of mutable static
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 

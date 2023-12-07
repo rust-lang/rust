@@ -8,7 +8,7 @@ LL |     unsafe {static BAR: u64 = FOO;}
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+error[E0133]: call to unsafe function `unsafe_call` is unsafe and requires unsafe function or block
   --> $DIR/unsafe-not-inherited.rs:18:13
    |
 LL |     unsafe {

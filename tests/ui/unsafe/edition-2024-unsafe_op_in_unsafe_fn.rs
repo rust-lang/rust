@@ -8,7 +8,7 @@ unsafe fn unsf() {}
 
 unsafe fn foo() {
     unsf();
-    //~^ WARN call to unsafe function is unsafe and requires unsafe block
+    //~^ WARN call to unsafe function `unsf` is unsafe and requires unsafe block
 
     // no unused_unsafe
     unsafe {

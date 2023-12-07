@@ -11,10 +11,10 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/issue-57472.rs:31:13
+  --> $DIR/issue-57472.rs:32:17
    |
-LL |             Punned { bar: [_] } => println!("bar"),
-   |             ^^^^^^^^^^^^^^^^^^^
+LL |                 Punned { bar: [_] } => println!("bar"),
+   |                 ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

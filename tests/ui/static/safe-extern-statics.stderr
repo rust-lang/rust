@@ -7,10 +7,10 @@ LL |     let a = A;
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
-  --> $DIR/safe-extern-statics.rs:12:14
+  --> $DIR/safe-extern-statics.rs:12:15
    |
 LL |     let ra = &A;
-   |              ^^ use of extern static
+   |               ^ use of extern static
    |
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
@@ -23,10 +23,10 @@ LL |     let xa = XA;
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
-  --> $DIR/safe-extern-statics.rs:14:15
+  --> $DIR/safe-extern-statics.rs:14:16
    |
 LL |     let xra = &XA;
-   |               ^^^ use of extern static
+   |                ^^ use of extern static
    |
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 

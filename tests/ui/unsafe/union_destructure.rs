@@ -10,7 +10,7 @@ struct Pie {
 union Foo {
     #[allow(dead_code)]
     bar: i8,
-    baz: Pie
+    baz: Pie,
 }
 
 fn main() {
@@ -30,20 +30,20 @@ fn main() {
     };
 
     let u = Foo { bar: 9 };
-    unsafe { //~ WARNING unnecessary `unsafe` block
+    unsafe {
         match u {
-            Foo { baz: Pie { .. } } => {},
+            Foo { baz: Pie { .. } } => {}
         };
     }
     let u = Foo { bar: 10 };
-    unsafe { //~ WARNING unnecessary `unsafe` block
+    unsafe {
         match u {
-            Foo { baz: Pie { slices: _, size: _ } } => {},
+            Foo { baz: Pie { slices: _, size: _ } } => {}
         };
     }
 
     let u = Foo { bar: 11 };
     match u {
-        Foo { baz: _ } => {},
+        Foo { baz: _ } => {}
     };
 }

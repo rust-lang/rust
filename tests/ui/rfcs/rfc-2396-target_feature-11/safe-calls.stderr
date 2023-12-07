@@ -1,4 +1,4 @@
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `sse2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:25:5
    |
 LL |     sse2();
@@ -7,7 +7,7 @@ LL |     sse2();
    = help: in order for the call to be safe, the context requires the following additional target feature: sse2
    = note: the sse2 target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:27:5
    |
 LL |     avx_bmi2();
@@ -15,7 +15,7 @@ LL |     avx_bmi2();
    |
    = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:29:5
    |
 LL |     Quux.avx_bmi2();
@@ -23,7 +23,7 @@ LL |     Quux.avx_bmi2();
    |
    = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:35:5
    |
 LL |     avx_bmi2();
@@ -31,7 +31,7 @@ LL |     avx_bmi2();
    |
    = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:37:5
    |
 LL |     Quux.avx_bmi2();
@@ -39,7 +39,7 @@ LL |     Quux.avx_bmi2();
    |
    = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `sse2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:43:5
    |
 LL |     sse2();
@@ -48,7 +48,7 @@ LL |     sse2();
    = help: in order for the call to be safe, the context requires the following additional target feature: sse2
    = note: the sse2 target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:45:5
    |
 LL |     avx_bmi2();
@@ -56,7 +56,7 @@ LL |     avx_bmi2();
    |
    = help: in order for the call to be safe, the context requires the following additional target feature: bmi2
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:47:5
    |
 LL |     Quux.avx_bmi2();
@@ -64,7 +64,7 @@ LL |     Quux.avx_bmi2();
    |
    = help: in order for the call to be safe, the context requires the following additional target feature: bmi2
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `sse2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:54:5
    |
 LL |     sse2();
@@ -73,7 +73,7 @@ LL |     sse2();
    = help: in order for the call to be safe, the context requires the following additional target feature: sse2
    = note: the sse2 target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `sse2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:58:15
    |
 LL | const _: () = sse2();
@@ -82,7 +82,7 @@ LL | const _: () = sse2();
    = help: in order for the call to be safe, the context requires the following additional target feature: sse2
    = note: the sse2 target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
 
-error[E0133]: call to function with `#[target_feature]` is unsafe and requires unsafe function or block
+error[E0133]: call to function `sse2_and_fxsr` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:61:15
    |
 LL | const _: () = sse2_and_fxsr();
@@ -91,7 +91,7 @@ LL | const _: () = sse2_and_fxsr();
    = help: in order for the call to be safe, the context requires the following additional target features: sse2 and fxsr
    = note: the fxsr and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
 
-error: call to function with `#[target_feature]` is unsafe and requires unsafe block (error E0133)
+error: call to function `sse2` with `#[target_feature]` is unsafe and requires unsafe block (error E0133)
   --> $DIR/safe-calls.rs:68:5
    |
 LL |     sse2();

@@ -26,20 +26,19 @@ pub fn main() {
     match foo {
         Foo { bar: _a } => {}, //~ ERROR access to union field is unsafe
     }
-    match foo { //~ ERROR access to union field is unsafe
+    match foo {
         Foo {
-            pizza: Pizza {
+            pizza: Pizza { //~ ERROR access to union field is unsafe
                 topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None
             }
         } => {},
     }
 
-    // MIR unsafeck incorrectly thinks that no unsafe block is needed to do these
     match foo {
-        Foo { zst: () } => {},
+        Foo { zst: () } => {} //~ ERROR access to union field is unsafe
     }
     match foo {
-        Foo { pizza: Pizza { .. } } => {},
+        Foo { pizza: Pizza { .. } } => {} //~ ERROR access to union field is unsafe
     }
 
     // binding to wildcard is okay

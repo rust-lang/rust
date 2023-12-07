@@ -14,7 +14,7 @@ use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 use std::mem;
 use std::ops::Bound;
@@ -886,14 +886,15 @@ impl UnsafeOpKind {
     }
 }
 
-pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
-    // THIR unsafeck is gated under `-Z thir-unsafeck`
+pub fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
+    // THIR unsafeck can be disabled with `-Z thir-unsafeck=off`
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         return;
     }
 
     // Closures and inline consts are handled by their owner, if it has a body
-    if tcx.is_typeck_child(def.to_def_id()) {
+    // Also, don't safety check custom MIR
+    if tcx.is_typeck_child(def.to_def_id()) || tcx.has_attr(def, sym::custom_mir) {
         return;
     }
 

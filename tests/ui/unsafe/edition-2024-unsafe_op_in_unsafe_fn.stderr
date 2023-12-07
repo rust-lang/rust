@@ -1,4 +1,4 @@
-warning: call to unsafe function is unsafe and requires unsafe block (error E0133)
+warning: call to unsafe function `unsf` is unsafe and requires unsafe block (error E0133)
   --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:10:5
    |
 LL |     unsf();
