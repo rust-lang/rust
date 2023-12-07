@@ -316,6 +316,10 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     // Set parallel mode before thread pool creation, which will create `Lock`s.
     rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.unstable_opts.threads > 1);
 
+    // Check jobserver before run_in_thread_pool_with_globals, which call jobserver::acquire_thread
+    let early_handler = EarlyErrorHandler::new(config.opts.error_format);
+    early_handler.initialize_checked_jobserver();
+
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
