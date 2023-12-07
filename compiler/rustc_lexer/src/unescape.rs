@@ -4,6 +4,8 @@
 use std::ops::Range;
 use std::str::Chars;
 
+use Mode::*;
+
 #[cfg(test)]
 mod tests;
 
@@ -85,15 +87,14 @@ where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     match mode {
-        Mode::Char | Mode::Byte => {
+        Char | Byte => {
             let mut chars = src.chars();
             let res = unescape_char_or_byte(&mut chars, mode);
             callback(0..(src.len() - chars.as_str().len()), res);
         }
-        Mode::Str | Mode::ByteStr => unescape_str_common(src, mode, callback),
-
-        Mode::RawStr | Mode::RawByteStr => unescape_raw_str_or_raw_byte_str(src, mode, callback),
-        Mode::CStr | Mode::RawCStr => unreachable!(),
+        Str | ByteStr => unescape_str_common(src, mode, callback),
+        RawStr | RawByteStr => unescape_raw_str_or_raw_byte_str(src, mode, callback),
+        CStr | RawCStr => unreachable!(),
     }
 }
 
@@ -119,36 +120,44 @@ pub fn unescape_c_string<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<CStrUnit, EscapeError>),
 {
-    if mode == Mode::RawCStr {
-        unescape_raw_str_or_raw_byte_str(src, mode, &mut |r, result| {
-            callback(r, result.map(CStrUnit::Char))
-        });
-    } else {
-        unescape_str_common(src, mode, callback);
+    match mode {
+        CStr => {
+            unescape_str_common(src, mode, callback);
+        }
+        RawCStr => {
+            unescape_raw_str_or_raw_byte_str(src, mode, &mut |r, result| {
+                callback(r, result.map(CStrUnit::Char))
+            });
+        }
+        Char | Byte | Str | RawStr | ByteStr | RawByteStr => unreachable!(),
     }
 }
 
 /// Takes a contents of a char literal (without quotes), and returns an
 /// unescaped char or an error.
 pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
-    unescape_char_or_byte(&mut src.chars(), Mode::Char)
+    unescape_char_or_byte(&mut src.chars(), Char)
 }
 
 /// Takes a contents of a byte literal (without quotes), and returns an
 /// unescaped byte or an error.
 pub fn unescape_byte(src: &str) -> Result<u8, EscapeError> {
-    unescape_char_or_byte(&mut src.chars(), Mode::Byte).map(byte_from_char)
+    unescape_char_or_byte(&mut src.chars(), Byte).map(byte_from_char)
 }
 
 /// What kind of literal do we parse.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mode {
     Char,
-    Str,
+
     Byte,
-    ByteStr,
+
+    Str,
     RawStr,
+
+    ByteStr,
     RawByteStr,
+
     CStr,
     RawCStr,
 }
@@ -156,47 +165,42 @@ pub enum Mode {
 impl Mode {
     pub fn in_double_quotes(self) -> bool {
         match self {
-            Mode::Str
-            | Mode::ByteStr
-            | Mode::RawStr
-            | Mode::RawByteStr
-            | Mode::CStr
-            | Mode::RawCStr => true,
-            Mode::Char | Mode::Byte => false,
+            Str | RawStr | ByteStr | RawByteStr | CStr | RawCStr => true,
+            Char | Byte => false,
         }
     }
 
     /// Non-byte literals should have `\xXX` escapes that are within the ASCII range.
     fn ascii_escapes_should_be_ascii(self) -> bool {
         match self {
-            Mode::Char | Mode::Str => true,
-            Mode::Byte | Mode::ByteStr | Mode::CStr => false,
-            Mode::RawStr | Mode::RawByteStr | Mode::RawCStr => unreachable!(),
+            Char | Str => true,
+            Byte | ByteStr | CStr => false,
+            RawStr | RawByteStr | RawCStr => unreachable!(),
         }
     }
 
-    /// Whether characters within the literal must be within the ASCII range
+    /// Whether characters within the literal must be within the ASCII range.
     #[inline]
     fn chars_should_be_ascii(self) -> bool {
         match self {
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-            Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            Byte | ByteStr | RawByteStr => true,
+            Char | Str | RawStr | CStr | RawCStr => false,
         }
     }
 
     /// Byte literals do not allow unicode escape.
     fn is_unicode_escape_disallowed(self) -> bool {
         match self {
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-            Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            Byte | ByteStr | RawByteStr => true,
+            Char | Str | RawStr | CStr | RawCStr => false,
         }
     }
 
     pub fn prefix_noraw(self) -> &'static str {
         match self {
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => "b",
-            Mode::CStr | Mode::RawCStr => "c",
-            Mode::Char | Mode::Str | Mode::RawStr => "",
+            Char | Str | RawStr => "",
+            Byte | ByteStr | RawByteStr => "b",
+            CStr | RawCStr => "c",
         }
     }
 }
@@ -411,7 +415,7 @@ where
 #[inline]
 pub fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    debug_assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
+    debug_assert!(res <= u8::MAX as u32, "guaranteed because of ByteStr");
     res as u8
 }
 
