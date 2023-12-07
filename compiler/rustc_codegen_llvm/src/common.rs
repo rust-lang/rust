@@ -98,10 +98,6 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint) }
     }
 
-    pub fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe { llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint) }
-    }
-
     pub fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
         bytes_in_context(self.llcx, bytes)
     }
@@ -215,6 +211,10 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_struct(&self, elts: &[&'ll Value], packed: bool) -> &'ll Value {
         struct_in_context(self.llcx, elts, packed)
+    }
+
+    fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
+        unsafe { llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint) }
     }
 
     fn const_to_opt_uint(&self, v: &'ll Value) -> Option<u64> {

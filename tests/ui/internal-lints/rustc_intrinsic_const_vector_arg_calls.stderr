@@ -1,0 +1,20 @@
+error: argument at index 0 must be a constant
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:27:9
+   |
+LL |         foo1(i8x2(0,1));
+   |         ^^^^^^^^^^^^^^^
+
+error: argument at index 0 must be a constant
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:28:9
+   |
+LL |         foo1({ i8x2(0,1) });
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: argument at index 1 must be a constant
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:31:9
+   |
+LL |         foo2(const { i8x2(0,1) }, { i8x2(2,3) });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -651,6 +651,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_const_panic_str, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
+    rustc_attr!(
+        rustc_intrinsic_const_vector_arg, Normal, template!(List: "arg1_index, arg2_index, ..."), ErrorFollowing, INTERNAL_UNSTABLE
+    ),
 
     // ==========================================================================
     // Internal attributes, Layout related:
