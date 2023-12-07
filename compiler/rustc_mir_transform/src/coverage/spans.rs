@@ -322,9 +322,8 @@ impl<'a> CoverageSpansGenerator<'a> {
         let prev = self.take_prev();
         debug!("    AT END, adding last prev={prev:?}");
 
-        // Take `pending_dups` so that we can drain it while calling self methods.
-        // It is never used as a field after this point.
-        for dup in std::mem::take(&mut self.pending_dups) {
+        // Drain any remaining dups into the output.
+        for dup in self.pending_dups.drain(..) {
             debug!("    ...adding at least one pending dup={:?}", dup);
             self.refined_spans.push(dup);
         }
@@ -453,19 +452,14 @@ impl<'a> CoverageSpansGenerator<'a> {
             previous iteration, or prev started a new disjoint span"
         );
         if last_dup.span.hi() <= self.curr().span.lo() {
-            // Temporarily steal `pending_dups` into a local, so that we can
-            // drain it while calling other self methods.
-            let mut pending_dups = std::mem::take(&mut self.pending_dups);
-            for dup in pending_dups.drain(..) {
+            for dup in self.pending_dups.drain(..) {
                 debug!("    ...adding at least one pending={:?}", dup);
                 self.refined_spans.push(dup);
             }
-            // The list of dups is now empty, but we can recycle its capacity.
-            assert!(pending_dups.is_empty() && self.pending_dups.is_empty());
-            self.pending_dups = pending_dups;
         } else {
             self.pending_dups.clear();
         }
+        assert!(self.pending_dups.is_empty());
     }
 
     /// Advance `prev` to `curr` (if any), and `curr` to the next `CoverageSpan` in sorted order.
@@ -512,21 +506,17 @@ impl<'a> CoverageSpansGenerator<'a> {
         let has_pre_closure_span = prev.span.lo() < right_cutoff;
         let has_post_closure_span = prev.span.hi() > right_cutoff;
 
-        // Temporarily steal `pending_dups` into a local, so that we can
-        // mutate and/or drain it while calling other self methods.
-        let mut pending_dups = std::mem::take(&mut self.pending_dups);
-
         if has_pre_closure_span {
             let mut pre_closure = self.prev().clone();
             pre_closure.span = pre_closure.span.with_hi(left_cutoff);
             debug!("  prev overlaps a closure. Adding span for pre_closure={:?}", pre_closure);
-            if !pending_dups.is_empty() {
-                for mut dup in pending_dups.iter().cloned() {
-                    dup.span = dup.span.with_hi(left_cutoff);
-                    debug!("    ...and at least one pre_closure dup={:?}", dup);
-                    self.refined_spans.push(dup);
-                }
+
+            for mut dup in self.pending_dups.iter().cloned() {
+                dup.span = dup.span.with_hi(left_cutoff);
+                debug!("    ...and at least one pre_closure dup={:?}", dup);
+                self.refined_spans.push(dup);
             }
+
             self.refined_spans.push(pre_closure);
         }
 
@@ -536,19 +526,17 @@ impl<'a> CoverageSpansGenerator<'a> {
             // about how the `CoverageSpan`s are ordered.)
             self.prev_mut().span = self.prev().span.with_lo(right_cutoff);
             debug!("  Mutated prev.span to start after the closure. prev={:?}", self.prev());
-            for dup in pending_dups.iter_mut() {
+
+            for dup in &mut self.pending_dups {
                 debug!("    ...and at least one overlapping dup={:?}", dup);
                 dup.span = dup.span.with_lo(right_cutoff);
             }
+
             let closure_covspan = self.take_curr(); // Prevent this curr from becoming prev.
             self.refined_spans.push(closure_covspan); // since self.prev() was already updated
         } else {
-            pending_dups.clear();
+            self.pending_dups.clear();
         }
-
-        // Restore the modified post-closure spans, or the empty vector's capacity.
-        assert!(self.pending_dups.is_empty());
-        self.pending_dups = pending_dups;
     }
 
     /// Called if `curr.span` equals `prev_original_span` (and potentially equal to all
