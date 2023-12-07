@@ -796,10 +796,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "coverage_test_macros"
-version = "0.0.0"
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4266,7 +4262,6 @@ dependencies = [
 name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
- "coverage_test_macros",
  "either",
  "itertools",
  "rustc_arena",
