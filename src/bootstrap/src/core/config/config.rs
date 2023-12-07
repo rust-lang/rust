@@ -1519,6 +1519,16 @@ impl Config {
             }
             set(&mut config.lld_mode, rust.lld_mode);
             set(&mut config.lld_enabled, rust.lld);
+
+            if matches!(config.lld_mode, LldMode::SelfContained)
+                && !config.lld_enabled
+                && flags.stage.unwrap_or(0) > 0
+            {
+                panic!(
+                    "Trying to use self-contained lld as a linker, but LLD is not being added to the sysroot. Enable it with rust.lld = true."
+                );
+            }
+
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel = rust
                 .parallel_compiler
