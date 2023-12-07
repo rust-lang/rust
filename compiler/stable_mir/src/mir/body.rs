@@ -813,7 +813,7 @@ impl BorrowKind {
         match self {
             BorrowKind::Mut { .. } => Mutability::Mut,
             BorrowKind::Shared => Mutability::Not,
-            // There's no type corresponding to a shallow borrow, so use `&` as an approximation.
+            // FIXME: There's no type corresponding to a shallow borrow, so use `&` as an approximation.
             BorrowKind::Fake => Mutability::Not,
         }
     }
