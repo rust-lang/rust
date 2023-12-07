@@ -3,7 +3,8 @@
 use base_db::{salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
-    hir::Expr,
+    body::Body,
+    hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
@@ -280,7 +281,7 @@ pub(crate) fn const_eval_discriminant_variant(
 // get an `InferenceResult` instead of an `InferenceContext`. And we should remove `ctx.clone().resolve_all()` here
 // and make this function private. See the fixme comment on `InferenceContext::resolve_all`.
 pub(crate) fn eval_to_const(
-    expr: Idx<Expr>,
+    expr: ExprId,
     mode: ParamLoweringMode,
     ctx: &mut InferenceContext<'_>,
     args: impl FnOnce() -> Generics,
@@ -288,13 +289,24 @@ pub(crate) fn eval_to_const(
 ) -> Const {
     let db = ctx.db;
     let infer = ctx.clone().resolve_all();
+    fn has_closure(body: &Body, expr: ExprId) -> bool {
+        if matches!(body[expr], Expr::Closure { .. }) {
+            return true;
+        }
+        let mut r = false;
+        body[expr].walk_child_exprs(|idx| r |= has_closure(body, idx));
+        r
+    }
+    if has_closure(&ctx.body, expr) {
+        // Type checking clousres need an isolated body (See the above FIXME). Bail out early to prevent panic.
+        return unknown_const(infer[expr].clone());
+    }
     if let Expr::Path(p) = &ctx.body.exprs[expr] {
         let resolver = &ctx.resolver;
         if let Some(c) = path_to_const(db, resolver, p, mode, args, debruijn, infer[expr].clone()) {
             return c;
         }
     }
-    let infer = ctx.clone().resolve_all();
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
         if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true, None).0 {
             return result;
