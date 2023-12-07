@@ -24,7 +24,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   nodejs \
   mingw-w64 \
+  libgccjit-12-dev \
   && rm -rf /var/lib/apt/lists/*
+
+# Note: libgccjit needs to match the default gcc version for the linker to find it.
 
 # Install powershell (universal package) so we can test x.ps1 on Linux
 RUN curl -sL "https://github.com/PowerShell/PowerShell/releases/download/v7.3.1/powershell_7.3.1-1.deb_amd64.deb" > powershell.deb && \
