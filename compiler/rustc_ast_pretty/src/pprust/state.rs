@@ -1162,7 +1162,7 @@ impl<'a> State<'a> {
     /// For example each of the following would mean the wrong thing without
     /// parentheses.
     ///
-    /// ```ignore
+    /// ```ignore (illustrative)
     /// if let _ = (Struct {}) {}
     ///
     /// if let _ = (true && false) {}
@@ -1173,7 +1173,7 @@ impl<'a> State<'a> {
     /// the match guard expression. Parsing of the expression is not terminated
     /// by `{` in that position.
     ///
-    /// ```ignore
+    /// ```ignore (illustrative)
     /// match () {
     ///     () if let _ = Struct {} => {}
     ///     () if let _ = (true && false) => {}
