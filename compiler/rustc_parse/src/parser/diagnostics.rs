@@ -10,13 +10,13 @@ use crate::errors::{
     ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
-    HelpIdentifierStartsWithNumber, InInTypo, IncorrectAwait, IncorrectSemicolon,
-    IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
-    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
-    StructLiteralNeedingParens, StructLiteralNeedingParensSugg, SuggAddMissingLetStmt,
-    SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
+    IncorrectSemicolon, IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType,
+    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::fluent_generated as fluent;
 use crate::parser;
@@ -638,6 +638,28 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
+        }
+
+        // Try to detect an intended c-string literal while using a pre-2021 edition. The heuristic
+        // here is to identify a cooked, uninterpolated `c` id immediately followed by a string, or
+        // a cooked, uninterpolated `cr` id immediately followed by a string or a `#`, in an edition
+        // where c-string literals are not allowed. There is the very slight possibility of a false
+        // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
+        // that in the parser requires unbounded lookahead, so we only add a hint to the existing
+        // error rather than replacing it entirely.
+        if ((self.prev_token.kind == TokenKind::Ident(sym::c, false)
+            && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
+            || (self.prev_token.kind == TokenKind::Ident(sym::cr, false)
+                && matches!(
+                    &self.token.kind,
+                    TokenKind::Literal(token::Lit { kind: token::Str, .. }) | token::Pound
+                )))
+            && self.prev_token.span.hi() == self.token.span.lo()
+            && !self.token.span.at_least_rust_2021()
+        {
+            err.note("you may be trying to write a c-string literal");
+            err.note("c-string literals require Rust 2021 or later");
+            HelpUseLatestEdition::new().add_to_diagnostic(&mut err);
         }
 
         // `pub` may be used for an item or `pub(crate)`
