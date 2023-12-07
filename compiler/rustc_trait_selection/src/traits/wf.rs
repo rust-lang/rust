@@ -761,18 +761,15 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     let defer_to_coercion = self.tcx().features().object_safe_for_dispatch;
 
                     if !defer_to_coercion {
-                        let cause = self.cause(traits::WellFormed(None));
-                        let component_traits = data.auto_traits().chain(data.principal_def_id());
-                        let tcx = self.tcx();
-                        self.out.extend(component_traits.map(|did| {
-                            traits::Obligation::with_depth(
-                                tcx,
-                                cause.clone(),
+                        if let Some(principal) = data.principal_def_id() {
+                            self.out.push(traits::Obligation::with_depth(
+                                self.tcx(),
+                                self.cause(traits::WellFormed(None)),
                                 depth,
                                 param_env,
-                                ty::Binder::dummy(ty::PredicateKind::ObjectSafe(did)),
-                            )
-                        }));
+                                ty::Binder::dummy(ty::PredicateKind::ObjectSafe(principal)),
+                            ));
+                        }
                     }
                 }
 
