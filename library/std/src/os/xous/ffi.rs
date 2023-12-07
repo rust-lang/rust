@@ -88,29 +88,31 @@ fn lend_impl(
     let a3 = opcode;
     let a4 = data.as_ptr() as usize;
     let a5 = data.len();
-    let mut a6 = arg1;
-    let mut a7 = arg2;
+    let a6 = arg1;
+    let a7 = arg2;
+    let mut ret1;
+    let mut ret2;
 
     unsafe {
         core::arch::asm!(
             "ecall",
             inlateout("a0") a0,
-            inlateout("a1") a1 => _,
-            inlateout("a2") a2 => _,
+            inlateout("a1") a1 => ret1,
+            inlateout("a2") a2 => ret2,
             inlateout("a3") a3 => _,
             inlateout("a4") a4 => _,
             inlateout("a5") a5 => _,
-            inlateout("a6") a6,
-            inlateout("a7") a7,
+            inlateout("a6") a6 => _,
+            inlateout("a7") a7 => _,
         )
     };
 
     let result = a0;
 
     if result == SyscallResult::MemoryReturned as usize {
-        Ok((a6, a7))
+        Ok((ret1, ret2))
     } else if result == SyscallResult::Error as usize {
-        Err(a1.into())
+        Err(ret1.into())
     } else {
         Err(Error::InternalError)
     }
