@@ -62,7 +62,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
 
     fn call_return_effect(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
+        _trans: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
