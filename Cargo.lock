@@ -276,7 +276,7 @@ dependencies = [
  "autocfg",
  "cfg-if",
  "crossbeam-utils",
- "memoffset 0.9.0",
+ "memoffset",
  "scopeguard",
 ]
 
@@ -301,12 +301,12 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.4.0"
+version = "5.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
+checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
 dependencies = [
  "cfg-if",
- "hashbrown 0.12.3",
+ "hashbrown",
  "lock_api",
  "once_cell",
  "parking_lot_core",
@@ -448,15 +448,9 @@ checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
 
 [[package]]
 name = "hashbrown"
-version = "0.12.3"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-
-[[package]]
-name = "hashbrown"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f93e7192158dbcda357bdec5fb5788eebf8bbac027f3f33e719d29135ae84156"
+checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
 
 [[package]]
 name = "heck"
@@ -509,7 +503,7 @@ dependencies = [
  "either",
  "expect-test",
  "fst",
- "hashbrown 0.12.3",
+ "hashbrown",
  "hir-expand",
  "indexmap",
  "intern",
@@ -539,7 +533,7 @@ dependencies = [
  "cov-mark",
  "either",
  "expect-test",
- "hashbrown 0.12.3",
+ "hashbrown",
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -765,7 +759,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
- "hashbrown 0.14.2",
+ "hashbrown",
 ]
 
 [[package]]
@@ -793,7 +787,7 @@ name = "intern"
 version = "0.0.0"
 dependencies = [
  "dashmap",
- "hashbrown 0.12.3",
+ "hashbrown",
  "rustc-hash",
  "triomphe",
 ]
@@ -1005,15 +999,6 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d61c719bcfbcf5d62b3a09efa6088de8c54bc0bfcd3ea7ae39fcc186108b8de1"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
-name = "memoffset"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a634b1c61a95585bd15607c6ab0c4e5b226e695ff2800ba0cdccddf208c406c"
@@ -1062,11 +1047,11 @@ dependencies = [
 
 [[package]]
 name = "miow"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52ffbca2f655e33c08be35d87278e5b18b89550a37dbd598c20db92f6a471123"
+checksum = "359f76430b20a79f9e20e115b3428614e654f04fab314482fc0fda0ebd3c6044"
 dependencies = [
- "windows-sys 0.42.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1178,15 +1163,15 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.9.6"
+version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba1ef8814b5c993410bb3adfad7a5ed269563e4a2f90c41f5d85be7fb47133bf"
+checksum = "4c42a9226546d68acdd9c0a280d17ce19bfe27a46bf68784e4066115788d008e"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.2.16",
+ "redox_syscall 0.4.1",
  "smallvec",
- "windows-sys 0.42.0",
+ "windows-targets",
 ]
 
 [[package]]
@@ -1481,15 +1466,6 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb5a58c1855b4b6819d59012155603f0b22ad30cad752600aadfcb695265519a"
-dependencies = [
- "bitflags 1.3.2",
-]
-
-[[package]]
-name = "redox_syscall"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "567664f262709473930a4bf9e51bf2ebf3348f2e748ccc50dea20646858f8f29"
@@ -1498,14 +1474,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "rowan"
-version = "0.15.11"
+name = "redox_syscall"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64449cfef9483a475ed56ae30e2da5ee96448789fb2aa240a04beb6a055078bf"
+checksum = "4722d768eff46b75989dd134e5c353f0d6296e5aaa3132e776cbdb56be7731aa"
+dependencies = [
+ "bitflags 1.3.2",
+]
+
+[[package]]
+name = "rowan"
+version = "0.15.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9672ea408d491b517a4dc370159ec6dd7cb5c5fd2f41b02883830339109ac76"
 dependencies = [
  "countme",
- "hashbrown 0.12.3",
- "memoffset 0.8.0",
+ "hashbrown",
+ "memoffset",
  "rustc-hash",
  "text-size",
 ]
@@ -1533,12 +1518,10 @@ dependencies = [
  "lsp-types",
  "mbe",
  "mimalloc",
- "mio",
  "nohash-hasher",
  "num_cpus",
  "oorandom",
  "parking_lot",
- "parking_lot_core",
  "parser",
  "proc-macro-api",
  "profile",
