@@ -25,9 +25,9 @@ use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::alloc::GlobalAlloc;
-use stable_mir::mir::mono::{Instance, StaticDef};
-use stable_mir::mir::Body;
-use stable_mir::ty::{Allocation, ConstantKind};
+use stable_mir::mir::mono::{Instance, InstanceKind, StaticDef};
+use stable_mir::mir::{Body, TerminatorKind};
+use stable_mir::ty::{Allocation, ConstantKind, RigidTy, TyKind};
 use stable_mir::{CrateItem, CrateItems, ItemKind};
 use std::ascii::Char;
 use std::assert_matches::assert_matches;
@@ -46,6 +46,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     check_bar(*get_item(&items, (ItemKind::Static, "BAR")).unwrap());
     check_len(*get_item(&items, (ItemKind::Static, "LEN")).unwrap());
     check_other_consts(*get_item(&items, (ItemKind::Fn, "other_consts")).unwrap());
+    check_type_id(*get_item(&items, (ItemKind::Fn, "check_type_id")).unwrap());
     ControlFlow::Continue(())
 }
 
@@ -139,6 +140,30 @@ fn check_other_consts(item: CrateItem) {
     }
 }
 
+/// Check that we can retrieve the type id of char and bool, and that they have different values.
+fn check_type_id(item: CrateItem) {
+    let body = Instance::try_from(item).unwrap().body().unwrap();
+    let mut ids: Vec<u128> = vec![];
+    for term in body.blocks.iter().map(|bb| &bb.terminator) {
+        match &term.kind {
+            TerminatorKind::Call { func, destination, .. } => {
+                let TyKind::RigidTy(ty) = func.ty(body.locals()).unwrap().kind() else {
+                    unreachable!()
+                };
+                let RigidTy::FnDef(def, args) = ty else { unreachable!() };
+                let instance = Instance::resolve(def, &args).unwrap();
+                assert_eq!(instance.kind, InstanceKind::Intrinsic);
+                let dest_ty = destination.ty(body.locals()).unwrap();
+                let alloc = instance.try_const_eval(dest_ty).unwrap();
+                ids.push(alloc.read_uint().unwrap());
+            }
+            _ => { /* Do nothing */ }
+        }
+    }
+    assert_eq!(ids.len(), 2);
+    assert_ne!(ids[0], ids[1]);
+}
+
 /// Collects all the constant assignments.
 pub fn collect_consts(body: &Body) -> HashMap<String, &Allocation> {
     body.var_debug_info
@@ -193,6 +218,9 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
+    #![feature(core_intrinsics)]
+    use std::intrinsics::type_id;
+
     static LEN: usize = 2;
     static FOO: [&str; 2] = ["hi", "there"];
     static BAR: &str = "Bar";
@@ -209,6 +237,11 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         let _ptr = &BAR;
         let _null_ptr: *const u8 = NULL;
         let _tuple = TUPLE;
+    }}
+
+    fn check_type_id() {{
+        let _char_id = type_id::<char>();
+        let _bool_id = type_id::<bool>();
     }}
 
     pub fn main() {{
