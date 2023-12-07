@@ -894,7 +894,6 @@ define_config! {
 define_config! {
     struct Dist {
         sign_folder: Option<String> = "sign-folder",
-        gpg_password_file: Option<String> = "gpg-password-file",
         upload_addr: Option<String> = "upload-addr",
         src_tarball: Option<bool> = "src-tarball",
         missing_tools: Option<bool> = "missing-tools",
@@ -1070,7 +1069,6 @@ define_config! {
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
         split_debuginfo: Option<String> = "split-debuginfo",
-        run_dsymutil: Option<bool> = "run-dsymutil",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
         parallel_compiler: Option<bool> = "parallel-compiler",
@@ -1522,7 +1520,6 @@ impl Config {
                 debuginfo_level_tools: debuginfo_level_tools_toml,
                 debuginfo_level_tests: debuginfo_level_tests_toml,
                 split_debuginfo,
-                run_dsymutil: _,
                 backtrace,
                 incremental,
                 parallel_compiler,
@@ -1854,7 +1851,6 @@ impl Config {
         if let Some(dist) = toml.dist {
             let Dist {
                 sign_folder,
-                gpg_password_file: _,
                 upload_addr,
                 src_tarball,
                 missing_tools,
