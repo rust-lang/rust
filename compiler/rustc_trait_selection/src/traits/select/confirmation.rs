@@ -731,7 +731,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_coroutine_candidate");
 
-        let coroutine_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().sig();
 
         // NOTE: The self-type is a coroutine type and hence is
         // in fact unparameterized (or at least does not reference any
@@ -742,15 +742,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .no_bound_vars()
             .expect("unboxed closure type should not capture bound vars from the predicate");
 
-        let trait_ref = super::util::coroutine_trait_ref_and_outputs(
+        let (trait_ref, _, _) = super::util::coroutine_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
             coroutine_sig,
-        )
-        .map_bound(|(trait_ref, ..)| trait_ref);
+        );
 
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let nested = self.confirm_poly_trait_refs(obligation, ty::Binder::dummy(trait_ref))?;
         debug!(?trait_ref, ?nested, "coroutine candidate obligations");
 
         Ok(nested)
@@ -770,17 +769,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_future_candidate");
 
-        let coroutine_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().sig();
 
-        let trait_ref = super::util::future_trait_ref_and_outputs(
+        let (trait_ref, _) = super::util::future_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.no_bound_vars().expect("future has no bound vars").self_ty(),
             coroutine_sig,
-        )
-        .map_bound(|(trait_ref, ..)| trait_ref);
+        );
 
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let nested = self.confirm_poly_trait_refs(obligation, ty::Binder::dummy(trait_ref))?;
         debug!(?trait_ref, ?nested, "future candidate obligations");
 
         Ok(nested)
@@ -800,17 +798,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_iterator_candidate");
 
-        let gen_sig = args.as_coroutine().poly_sig();
+        let gen_sig = args.as_coroutine().sig();
 
-        let trait_ref = super::util::iterator_trait_ref_and_outputs(
+        let (trait_ref, _) = super::util::iterator_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.no_bound_vars().expect("iterator has no bound vars").self_ty(),
             gen_sig,
-        )
-        .map_bound(|(trait_ref, ..)| trait_ref);
+        );
 
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let nested = self.confirm_poly_trait_refs(obligation, ty::Binder::dummy(trait_ref))?;
         debug!(?trait_ref, ?nested, "iterator candidate obligations");
 
         Ok(nested)
