@@ -353,7 +353,7 @@ where
             _ => ascii_check(c, chars_should_be_ascii).map(Into::into),
         };
         let end = src.len() - chars.as_str().len();
-        callback(start..end, res.map(Into::into));
+        callback(start..end, res);
     }
 }
 
