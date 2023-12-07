@@ -244,6 +244,19 @@ impl TyKind {
         matches!(self, TyKind::RigidTy(RigidTy::FnPtr(..)))
     }
 
+    pub fn is_primitive(&self) -> bool {
+        matches!(
+            self,
+            TyKind::RigidTy(
+                RigidTy::Bool
+                    | RigidTy::Char
+                    | RigidTy::Int(_)
+                    | RigidTy::Uint(_)
+                    | RigidTy::Float(_)
+            )
+        )
+    }
+
     pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
         if let TyKind::RigidTy(RigidTy::Dynamic(predicates, _, _)) = self {
             if let Some(Binder { value: ExistentialPredicate::Trait(trait_ref), bound_vars }) =

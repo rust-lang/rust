@@ -277,7 +277,9 @@ pub enum BinOp {
 impl BinOp {
     /// Return the type of this operation for the given input Ty.
     /// This function does not perform type checking, and it currently doesn't handle SIMD.
-    pub fn ty(&self, lhs_ty: Ty, _rhs_ty: Ty) -> Ty {
+    pub fn ty(&self, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
+        assert!(lhs_ty.kind().is_primitive());
+        assert!(rhs_ty.kind().is_primitive());
         match self {
             BinOp::Add
             | BinOp::AddUnchecked
@@ -289,13 +291,17 @@ impl BinOp {
             | BinOp::Rem
             | BinOp::BitXor
             | BinOp::BitAnd
-            | BinOp::BitOr
-            | BinOp::Shl
-            | BinOp::ShlUnchecked
-            | BinOp::Shr
-            | BinOp::ShrUnchecked
-            | BinOp::Offset => lhs_ty,
-            BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => Ty::bool_ty(),
+            | BinOp::BitOr => {
+                assert_eq!(lhs_ty, rhs_ty);
+                lhs_ty
+            }
+            BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked | BinOp::Offset => {
+                lhs_ty
+            }
+            BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
+                assert_eq!(lhs_ty, rhs_ty);
+                Ty::bool_ty()
+            }
         }
     }
 }
