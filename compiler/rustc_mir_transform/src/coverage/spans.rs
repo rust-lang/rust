@@ -89,10 +89,10 @@ impl CoverageSpan {
         }
     }
 
-    pub fn merge_from(&mut self, mut other: CoverageSpan) {
-        debug_assert!(self.is_mergeable(&other));
+    pub fn merge_from(&mut self, other: &Self) {
+        debug_assert!(self.is_mergeable(other));
         self.span = self.span.to(other.span);
-        self.merged_spans.append(&mut other.merged_spans);
+        self.merged_spans.extend_from_slice(&other.merged_spans);
     }
 
     pub fn cutoff_statements_at(&mut self, cutoff_pos: BytePos) {
@@ -267,7 +267,7 @@ impl<'a> CoverageSpansGenerator<'a> {
             if curr.is_mergeable(prev) {
                 debug!("  same bcb (and neither is a closure), merge with prev={prev:?}");
                 let prev = self.take_prev();
-                self.curr_mut().merge_from(prev);
+                self.curr_mut().merge_from(&prev);
                 self.maybe_push_macro_name_span();
             // Note that curr.span may now differ from curr_original_span
             } else if prev.span.hi() <= curr.span.lo() {
@@ -346,6 +346,17 @@ impl<'a> CoverageSpansGenerator<'a> {
             self.push_refined_span(prev);
         }
 
+        // Do one last merge pass, to simplify the output.
+        self.refined_spans.dedup_by(|b, a| {
+            if a.is_mergeable(b) {
+                debug!(?a, ?b, "merging list-adjacent refined spans");
+                a.merge_from(b);
+                true
+            } else {
+                false
+            }
+        });
+
         // Remove `CoverageSpan`s derived from closures, originally added to ensure the coverage
         // regions for the current function leave room for the closure's own coverage regions
         // (injected separately, from the closure's own MIR).
@@ -354,15 +365,7 @@ impl<'a> CoverageSpansGenerator<'a> {
     }
 
     fn push_refined_span(&mut self, covspan: CoverageSpan) {
-        if let Some(last) = self.refined_spans.last_mut()
-            && last.is_mergeable(&covspan)
-        {
-            // Instead of pushing the new span, merge it with the last refined span.
-            debug!(?last, ?covspan, "merging new refined span with last refined span");
-            last.merge_from(covspan);
-        } else {
-            self.refined_spans.push(covspan);
-        }
+        self.refined_spans.push(covspan);
     }
 
     /// If `curr` is part of a new macro expansion, carve out and push a separate
