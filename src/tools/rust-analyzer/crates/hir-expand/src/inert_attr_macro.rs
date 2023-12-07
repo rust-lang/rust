@@ -485,6 +485,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_const_panic_str, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
+    rustc_attr!(rustc_intrinsic_const_vector_arg, Normal, template!(List: "arg_index1, arg_index2, ..."), ErrorFollowing, INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Layout related:

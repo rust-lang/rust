@@ -74,6 +74,8 @@ borrowck_higher_ranked_lifetime_error =
 borrowck_higher_ranked_subtype_error =
     higher-ranked subtype error
 
+borrowck_intrinsic_const_vector_arg_non_const = argument at index {$index} must be a constant
+
 borrowck_lifetime_constraints_error =
     lifetime may not live long enough
 

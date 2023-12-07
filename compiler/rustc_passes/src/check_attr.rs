@@ -11,11 +11,15 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, IntoDiagArg, MultiSpan};
 use rustc_errors::{DiagCtxtHandle, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir as hir;
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{DefId, LocalModDefId};
+
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir};
 use rustc_hir::{
-    self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
+    self, FnSig, ForeignItem, HirId, Item, ItemKind, Path, PathSegment, QPath, TraitItem, TyKind,
+    CRATE_HIR_ID, CRATE_OWNER_ID,
 };
 use rustc_hir::{MethodKind, Safety, Target};
 use rustc_macros::LintDiagnostic;
@@ -205,6 +209,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_confusables] => self.check_confusables(attr, target),
                 [sym::rustc_safe_intrinsic] => {
                     self.check_rustc_safe_intrinsic(hir_id, attr, span, target)
+                }
+                sym::rustc_intrinsic_const_vector_arg => {
+                    self.check_rustc_intrinsic_const_vector_arg(hir_id, attr, span, target)
                 }
                 _ => true,
             };
@@ -2082,6 +2089,89 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         self.dcx().emit_err(errors::RustcSafeIntrinsic { attr_span: attr.span, span });
         false
+    }
+
+    fn check_rustc_intrinsic_const_vector_arg(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        let hir = self.tcx.hir();
+
+        if let Target::ForeignFn = target
+            && let Some(parent) = hir.opt_parent_id(hir_id)
+            && let hir::Node::Item(Item {
+                kind: ItemKind::ForeignMod { abi: Abi::Unadjusted, .. },
+                ..
+            }) = self.tcx.hir_node(parent)
+        {
+            let Some(list) = attr.meta_item_list() else {
+                // The attribute form is validated on AST.
+                return false;
+            };
+
+            let Some(decl) = self.tcx.hir_node(hir_id).fn_decl() else {
+                bug!("should be a function declaration");
+            };
+
+            let arg_count = decl.inputs.len() as u128;
+            for meta in list {
+                if let Some(LitKind::Int(val, _)) = meta.lit().map(|lit| &lit.kind) {
+                    if *val >= arg_count {
+                        self.tcx.sess.emit_err(errors::RustcIntrinsicConstVectorArgOutOfBounds {
+                            attr_span: attr.span,
+                            span: span,
+                            index: *val,
+                            arg_count: decl.inputs.len(),
+                        });
+                        return false;
+                    }
+
+                    let param_ty = decl.inputs[*val as usize];
+                    let type_id: Option<DefId> = match param_ty.kind {
+                        TyKind::Path(path) => match path {
+                            QPath::Resolved(_, Path { res: Res::Def(_, id), .. }) => Some(*id),
+                            QPath::TypeRelative(_, PathSegment { res: Res::Def(_, id), .. }) => {
+                                Some(*id)
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+
+                    let is_simd = if let Some(type_id) = type_id {
+                        self.tcx
+                            .get_attrs(type_id, sym::repr)
+                            .filter_map(|attr| attr.meta_item_list())
+                            .flatten()
+                            .any(|hint: NestedMetaItem| hint.name_or_empty() == sym::simd)
+                    } else {
+                        false
+                    };
+                    if !is_simd {
+                        self.tcx.sess.emit_err(errors::RustcIntrinsicConstVectorArgNonVector {
+                            attr_span: attr.span,
+                            param_span: param_ty.span,
+                            index: *val,
+                        });
+                        return false;
+                    }
+                } else {
+                    self.tcx.sess.emit_err(errors::RustcIntrinsicConstVectorArgInvalid {
+                        span: meta.span(),
+                    });
+                    return false;
+                }
+            }
+        } else {
+            self.tcx
+                .sess
+                .emit_err(errors::RustcIntrinsicConstVectorArg { attr_span: attr.span, span });
+            return false;
+        }
+        true
     }
 
     fn check_rustc_std_internal_symbol(

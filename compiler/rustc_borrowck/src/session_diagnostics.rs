@@ -479,3 +479,11 @@ pub(crate) struct SimdIntrinsicArgConst {
     pub arg: usize,
     pub intrinsic: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(borrowck_intrinsic_const_vector_arg_non_const)]
+pub(crate) struct IntrinsicConstVectorArgNonConst {
+    #[primary_span]
+    pub span: Span,
+    pub index: u128,
+}

@@ -161,6 +161,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
     }
 
+    fn const_vector(&self, values: &[RValue<'gcc>]) -> RValue<'gcc> {
+        let typ = self.type_vector(values[0].get_type(), values.len() as u64);
+        self.context.new_rvalue_from_vector(None, typ, values)
+    }
+
     fn const_to_opt_uint(&self, _v: RValue<'gcc>) -> Option<u64> {
         // TODO(antoyo)
         None

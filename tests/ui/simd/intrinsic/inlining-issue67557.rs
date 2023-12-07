@@ -1,5 +1,5 @@
-// This used to cause assert_10_13 to unexpectingly fail, due to simd_shuffle_indices being passed
-// the wrong Instance, causing issues with inlining. See #67557.
+// This used to cause assert_10_13 to unexpectingly fail, due to early_evaluate_const_vector
+// being passed the wrong Instance, causing issues with inlining. See #67557.
 //
 //@ run-pass
 //@ compile-flags: -Zmir-opt-level=4

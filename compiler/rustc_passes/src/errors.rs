@@ -618,6 +618,43 @@ pub struct RustcSafeIntrinsic {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_intrinsic_const_vector_arg_out_of_bounds)]
+pub(crate) struct RustcIntrinsicConstVectorArgOutOfBounds {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+    pub index: u128,
+    pub arg_count: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_rustc_intrinsic_const_vector_arg_non_vector)]
+pub(crate) struct RustcIntrinsicConstVectorArgNonVector {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub param_span: Span,
+    pub index: u128,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_rustc_intrinsic_const_vector_arg_invalid)]
+pub(crate) struct RustcIntrinsicConstVectorArgInvalid {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_rustc_intrinsic_const_vector_arg)]
+pub struct RustcIntrinsicConstVectorArg {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_rustc_std_internal_symbol)]
 pub struct RustcStdInternalSymbol {
     #[primary_span]

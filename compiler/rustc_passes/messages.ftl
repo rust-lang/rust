@@ -601,6 +601,18 @@ passes_rustc_allow_const_fn_unstable =
 passes_rustc_dirty_clean =
     attribute requires -Z query-dep-graph to be enabled
 
+passes_rustc_intrinsic_const_vector_arg =
+    attribute should be applied to functions in `extern "unadjusted"` modules
+    .label = not a function in an `extern "unadjusted"` module
+
+passes_rustc_intrinsic_const_vector_arg_invalid = attribute requires a parameter index
+
+passes_rustc_intrinsic_const_vector_arg_non_vector = parameter at index {$index} must be a simd type
+    .label = parameter is a non-simd type
+
+passes_rustc_intrinsic_const_vector_arg_out_of_bounds = function does not have a parameter at index {$index}
+    .label = function has {$arg_count} arguments
+
 passes_rustc_layout_scalar_valid_range_arg =
     expected exactly one integer literal argument
 

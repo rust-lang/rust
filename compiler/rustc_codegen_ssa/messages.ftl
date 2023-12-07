@@ -19,6 +19,8 @@ codegen_ssa_check_installed_visual_studio = please ensure that Visual Studio 201
 codegen_ssa_compiler_builtins_cannot_call =
     `compiler_builtins` cannot call functions through upstream monomorphizations; encountered invalid call from `{$caller}` to `{$callee}`
 
+codegen_ssa_const_vector_evaluation = could not evaluate constant vector at compile time
+
 codegen_ssa_copy_path = could not copy {$from} to {$to}: {$error}
 
 codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$error}

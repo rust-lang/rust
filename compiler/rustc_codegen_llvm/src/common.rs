@@ -224,6 +224,10 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         struct_in_context(self.llcx, elts, packed)
     }
 
+    fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
+        unsafe { llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint) }
+    }
+
     fn const_to_opt_uint(&self, v: &'ll Value) -> Option<u64> {
         try_as_const_integral(v).and_then(|v| unsafe {
             let mut i = 0u64;
