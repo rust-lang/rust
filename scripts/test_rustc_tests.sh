@@ -139,6 +139,8 @@ rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet suppo
 
 rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Coroutine's
 
+rm -r tests/ui/packed # rust-lang/rust#118537
+
 # bugs in the test suite
 # ======================
 rm tests/ui/backtrace.rs # TODO warning
