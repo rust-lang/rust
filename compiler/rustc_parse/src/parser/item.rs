@@ -1139,9 +1139,11 @@ impl<'a> Parser<'a> {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
                         ItemKind::Const(box ConstItem { ty, expr, .. }) => {
+                            let const_span = Some(span.with_hi(ident.span.lo()))
+                                .filter(|span| span.can_be_used_for_suggestions());
                             self.sess.emit_err(errors::ExternItemCannotBeConst {
                                 ident_span: ident.span,
-                                const_span: span.with_hi(ident.span.lo()),
+                                const_span,
                             });
                             ForeignItemKind::Static(ty, Mutability::Not, expr)
                         }
