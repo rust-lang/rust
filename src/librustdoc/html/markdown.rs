@@ -288,7 +288,13 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         };
 
         let added_classes = parse_result.added_classes;
-        let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
+        let lines = original_text.lines().filter_map(|l| {
+            if parse_result.no_hidden_lines {
+                Some(Cow::Borrowed(l))
+            } else {
+                map_line(l).for_html()
+            }
+        });
         let text = lines.intersperse("\n".into()).collect::<String>();
 
         compile_fail = parse_result.compile_fail;
@@ -879,6 +885,7 @@ pub(crate) struct LangString {
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
     pub(crate) unknown: Vec<String>,
+    pub(crate) no_hidden_lines: bool,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -1213,6 +1220,7 @@ impl Default for LangString {
             edition: None,
             added_classes: Vec::new(),
             unknown: Vec::new(),
+            no_hidden_lines: false,
         }
     }
 }
@@ -1273,6 +1281,10 @@ impl LangString {
                     LangStringToken::LangToken("rust") => {
                         data.rust = true;
                         seen_rust_tags = true;
+                    }
+                    LangStringToken::LangToken("no_hidden_lines") => {
+                        data.no_hidden_lines = true;
+                        seen_rust_tags = !seen_other_tags;
                     }
                     LangStringToken::LangToken("custom") => {
                         if custom_code_classes_in_docs {
