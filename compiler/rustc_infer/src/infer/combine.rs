@@ -34,6 +34,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVa
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
+use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::DUMMY_SP;
@@ -459,7 +460,12 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ambient_variance,
         )?;
 
-        self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
+        // Constrain `b_vid` to the generalized type `b_ty`.
+        if let &ty::Infer(TyVar(b_ty_vid)) = b_ty.kind() {
+            self.infcx.inner.borrow_mut().type_variables().equate(b_vid, b_ty_vid);
+        } else {
+            self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
+        }
 
         if needs_wf {
             self.obligations.push(Obligation::new(
