@@ -1,4 +1,5 @@
-use hir::{db::ExpandDatabase, Const, Function, HasSource, TypeAlias};
+use hir::{Const, Function, HasSource, TypeAlias};
+use ide_db::base_db::FileRange;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -13,31 +14,37 @@ pub(crate) fn trait_impl_redundant_assoc_item(
     let assoc_item = d.assoc_item.1;
     let db = ctx.sema.db;
 
-    let range = db.parse_or_expand(d.file_id).text_range();
+    let default_range = d.impl_.syntax_node_ptr().text_range();
     let trait_name = d.trait_.name(db).to_smol_str();
 
     let (redundant_item_name, diagnostic_range) = match assoc_item {
         hir::AssocItem::Function(id) => (
             format!("`fn {}`", name.display(db)),
-            Function::from(id).source(db).map(|it| it.syntax().value.text_range()).unwrap_or(range),
+            Function::from(id)
+                .source(db)
+                .map(|it| it.syntax().value.text_range())
+                .unwrap_or(default_range),
         ),
         hir::AssocItem::Const(id) => (
             format!("`const {}`", name.display(db)),
-            Const::from(id).source(db).map(|it| it.syntax().value.text_range()).unwrap_or(range),
+            Const::from(id)
+                .source(db)
+                .map(|it| it.syntax().value.text_range())
+                .unwrap_or(default_range),
         ),
         hir::AssocItem::TypeAlias(id) => (
             format!("`type {}`", name.display(db)),
             TypeAlias::from(id)
                 .source(db)
                 .map(|it| it.syntax().value.text_range())
-                .unwrap_or(range),
+                .unwrap_or(default_range),
         ),
     };
 
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0407"),
         format!("{redundant_item_name} is not a member of trait `{trait_name}`"),
-        diagnostic_range,
+        FileRange { file_id: d.file_id.file_id().unwrap(), range: diagnostic_range },
     )
 }
 

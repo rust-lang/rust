@@ -706,6 +706,7 @@ impl Module {
                         TraitImplRedundantAssocItems {
                             trait_,
                             file_id,
+                            impl_: ast_id_map.get(node.ast_id()),
                             assoc_item: (name, assoc_item),
                         }
                         .into(),
