@@ -2814,7 +2814,7 @@ define_print! {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
-            ty::PredicateKind::NormalizesTo(data) => p!(print(data.alias), " normalizes-to ", print(data.term)),
+            ty::PredicateKind::NormalizesTo(data) => p!(print(data)),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }
     }
@@ -2942,6 +2942,12 @@ define_print_and_forward_display! {
 
     ty::ProjectionPredicate<'tcx> {
         p!(print(self.projection_ty), " == ");
+        cx.reset_type_limit();
+        p!(print(self.term))
+    }
+
+    ty::NormalizesTo<'tcx> {
+        p!(print(self.alias), " normalizes-to ");
         cx.reset_type_limit();
         p!(print(self.term))
     }

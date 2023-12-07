@@ -120,7 +120,7 @@ where
 }
 
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
@@ -169,7 +169,6 @@ pub enum PredicateKind<I: Interner> {
     AliasRelate(I::Term, I::Term, AliasRelationDirection),
 }
 
-/// FIXME: This impl sh
 impl<I: Interner> Copy for PredicateKind<I>
 where
     I::DefId: Copy,
@@ -182,24 +181,6 @@ where
     ClauseKind<I>: Copy,
 {
 }
-
-impl<I: Interner> PartialEq for PredicateKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Clause(l0), Self::Clause(r0)) => l0 == r0,
-            (Self::ObjectSafe(l0), Self::ObjectSafe(r0)) => l0 == r0,
-            (Self::Subtype(l0), Self::Subtype(r0)) => l0 == r0,
-            (Self::Coerce(l0), Self::Coerce(r0)) => l0 == r0,
-            (Self::ConstEquate(l0, l1), Self::ConstEquate(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::AliasRelate(l0, l1, l2), Self::AliasRelate(r0, r1, r2)) => {
-                l0 == r0 && l1 == r1 && l2 == r2
-            }
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
-}
-
-impl<I: Interner> Eq for PredicateKind<I> {}
 
 impl<I: Interner> TypeFoldable<I> for PredicateKind<I>
 where

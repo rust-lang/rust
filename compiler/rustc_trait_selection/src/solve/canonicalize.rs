@@ -69,8 +69,8 @@ impl<'a, 'tcx> Canonicalizer<'a, 'tcx> {
         };
 
         let value = value.fold_with(&mut canonicalizer);
-        assert!(!value.has_infer());
-        assert!(!value.has_placeholders());
+        assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
 
         let (max_universe, variables) = canonicalizer.finalize();
 

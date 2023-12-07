@@ -34,8 +34,8 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVa
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
-use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{AliasRelationDirection, TyVar};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::DUMMY_SP;
 
@@ -490,31 +490,47 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             // cyclic type. We instead delay the unification in case
             // the alias can be normalized to something which does not
             // mention `?0`.
-
-            // FIXME(-Ztrait-solver=next): replace this with `AliasRelate`
-            let &ty::Alias(kind, data) = a_ty.kind() else {
-                bug!("generalization should only result in infer vars for aliases");
-            };
-            if !self.infcx.next_trait_solver() {
-                // The old solver only accepts projection predicates for associated types.
-                match kind {
-                    ty::AliasKind::Projection => {}
-                    ty::AliasKind::Inherent | ty::AliasKind::Weak | ty::AliasKind::Opaque => {
-                        return Err(TypeError::CyclicTy(a_ty));
+            if self.infcx.next_trait_solver() {
+                let (lhs, rhs, direction) = match ambient_variance {
+                    ty::Variance::Invariant => {
+                        (a_ty.into(), b_ty.into(), AliasRelationDirection::Equate)
                     }
+                    ty::Variance::Covariant => {
+                        (a_ty.into(), b_ty.into(), AliasRelationDirection::Subtype)
+                    }
+                    ty::Variance::Contravariant => {
+                        (b_ty.into(), a_ty.into(), AliasRelationDirection::Subtype)
+                    }
+                    ty::Variance::Bivariant => unreachable!("bivariant generalization"),
+                };
+                self.obligations.push(Obligation::new(
+                    self.tcx(),
+                    self.trace.cause.clone(),
+                    self.param_env,
+                    ty::PredicateKind::AliasRelate(lhs, rhs, direction),
+                ));
+            } else {
+                match a_ty.kind() {
+                    &ty::Alias(ty::AliasKind::Projection, data) => {
+                        // FIXME: This does not handle subtyping correctly, we should switch to
+                        // alias-relate in the new solver and could instead create a new inference
+                        // variable for `a_ty`, emitting `Projection(a_ty, a_infer)` and
+                        // `a_infer <: b_ty`.
+                        self.obligations.push(Obligation::new(
+                            self.tcx(),
+                            self.trace.cause.clone(),
+                            self.param_env,
+                            ty::ProjectionPredicate { projection_ty: data, term: b_ty.into() },
+                        ))
+                    }
+                    // The old solver only accepts projection predicates for associated types.
+                    ty::Alias(
+                        ty::AliasKind::Inherent | ty::AliasKind::Weak | ty::AliasKind::Opaque,
+                        _,
+                    ) => return Err(TypeError::CyclicTy(a_ty)),
+                    _ => bug!("generalizated `{a_ty:?} to infer, not an alias"),
                 }
             }
-
-            // FIXME: This does not handle subtyping correctly, we should switch to
-            // alias-relate in the new solver and could instead create a new inference
-            // variable for `a_ty`, emitting `Projection(a_ty, a_infer)` and
-            // `a_infer <: b_ty`.
-            self.obligations.push(Obligation::new(
-                self.tcx(),
-                self.trace.cause.clone(),
-                self.param_env,
-                ty::ProjectionPredicate { projection_ty: data, term: b_ty.into() },
-            ))
         } else {
             match ambient_variance {
                 ty::Variance::Invariant => self.equate(a_is_expected).relate(a_ty, b_ty),
@@ -525,9 +541,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                     a_ty,
                     b_ty,
                 ),
-                ty::Variance::Bivariant => {
-                    unreachable!("no code should be generalizing bivariantly (currently)")
-                }
+                ty::Variance::Bivariant => unreachable!("bivariant generalization"),
             }?;
         }
 

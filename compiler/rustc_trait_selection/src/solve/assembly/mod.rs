@@ -352,15 +352,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         num_steps: usize,
     ) {
         let tcx = self.tcx();
-        let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else { return };
+        let &ty::Alias(_, alias) = goal.predicate.self_ty().kind() else { return };
 
         candidates.extend(self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
             if tcx.recursion_limit().value_within_limit(num_steps) {
                 let normalized_ty = ecx.next_ty_infer();
-                let normalizes_to_goal = goal.with(
-                    tcx,
-                    ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
-                );
+                let normalizes_to_goal =
+                    goal.with(tcx, ty::NormalizesTo { alias, term: normalized_ty.into() });
                 ecx.add_goal(normalizes_to_goal);
                 if let Err(NoSolution) = ecx.try_evaluate_added_goals() {
                     debug!("self type normalization failed");

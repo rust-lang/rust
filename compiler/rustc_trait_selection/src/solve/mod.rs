@@ -35,6 +35,7 @@ mod eval_ctxt;
 mod fulfill;
 pub mod inspect;
 mod normalize;
+mod normalizes_to;
 mod project_goals;
 mod search_graph;
 mod trait_goals;
@@ -216,7 +217,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>) {
+    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
         assert!(
             self.nested_goals.normalizes_to_hack_goal.is_none(),
             "attempted to set the projection eq hack goal when one already exists"
@@ -310,17 +311,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return None;
         }
 
-        let ty::Alias(kind, projection_ty) = *ty.kind() else {
+        let ty::Alias(kind, alias) = *ty.kind() else {
             return Some(ty);
         };
 
         // We do no always define opaque types eagerly to allow non-defining uses in the defining scope.
         if let (DefineOpaqueTypes::No, ty::AliasKind::Opaque) = (define_opaque_types, kind) {
-            if let Some(def_id) = projection_ty.def_id.as_local() {
+            if let Some(def_id) = alias.def_id.as_local() {
                 if self
                     .unify_existing_opaque_tys(
                         param_env,
-                        OpaqueTypeKey { def_id, args: projection_ty.args },
+                        OpaqueTypeKey { def_id, args: alias.args },
                         self.next_ty_infer(),
                     )
                     .is_empty()
@@ -335,7 +336,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             let normalizes_to_goal = Goal::new(
                 this.tcx(),
                 param_env,
-                ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
+                ty::NormalizesTo { alias, term: normalized_ty.into() },
             );
             this.add_goal(normalizes_to_goal);
             this.try_evaluate_added_goals()?;
