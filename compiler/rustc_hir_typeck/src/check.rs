@@ -59,15 +59,35 @@ pub(super) fn check_fn<'a, 'tcx>(
         && can_be_coroutine.is_some()
     {
         let yield_ty = match kind {
-            hir::CoroutineKind::Gen(..)
-            | hir::CoroutineKind::AsyncGen(..)
-            | hir::CoroutineKind::Coroutine => {
+            hir::CoroutineKind::Gen(..) | hir::CoroutineKind::Coroutine => {
                 let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::TypeInference,
                     span,
                 });
                 fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
                 yield_ty
+            }
+            // HACK(-Ztrait-solver=next): In the *old* trait solver, we must eagerly
+            // guide inference on the yield type so that we can handle `AsyncIterator`
+            // in this block in projection correctly. In the new trait solver, it is
+            // not a problem.
+            hir::CoroutineKind::AsyncGen(..) => {
+                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                });
+                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+
+                Ty::new_adt(
+                    tcx,
+                    tcx.adt_def(tcx.require_lang_item(hir::LangItem::Poll, Some(span))),
+                    tcx.mk_args(&[Ty::new_adt(
+                        tcx,
+                        tcx.adt_def(tcx.require_lang_item(hir::LangItem::Option, Some(span))),
+                        tcx.mk_args(&[yield_ty.into()]),
+                    )
+                    .into()]),
+                )
             }
             hir::CoroutineKind::Async(..) => Ty::new_unit(tcx),
         };
