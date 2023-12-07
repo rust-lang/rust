@@ -15,6 +15,7 @@ rustc_index = { path = "../rustc_index" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
+rustc_next_trait_solver = { path = "../rustc_next_trait_solver" }
 rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }

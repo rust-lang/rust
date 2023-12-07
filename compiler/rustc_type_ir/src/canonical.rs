@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::{Interner, Placeholder, UniverseIndex};
+use crate::{Interner, PlaceholderLike, UniverseIndex};
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
@@ -157,7 +157,7 @@ where
 }
 
 impl<I: Interner> CanonicalVarInfo<I> {
-    pub fn universe(&self) -> UniverseIndex {
+    pub fn universe(self) -> UniverseIndex {
         self.kind.universe()
     }
 
@@ -305,11 +305,11 @@ where
 }
 
 impl<I: Interner> CanonicalVarKind<I> {
-    pub fn universe(&self) -> UniverseIndex {
+    pub fn universe(self) -> UniverseIndex {
         match self {
-            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)) => *ui,
-            CanonicalVarKind::Region(ui) => *ui,
-            CanonicalVarKind::Const(ui, _) => *ui,
+            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)) => ui,
+            CanonicalVarKind::Region(ui) => ui,
+            CanonicalVarKind::Const(ui, _) => ui,
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe(),
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe(),
             CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.universe(),

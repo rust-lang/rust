@@ -4309,6 +4309,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_next_trait_solver"
+version = "0.0.0"
+dependencies = [
+ "rustc_type_ir",
+]
+
+[[package]]
 name = "rustc_parse"
 version = "0.0.0"
 dependencies = [
@@ -4576,6 +4583,7 @@ dependencies = [
  "rustc_infer",
  "rustc_macros",
  "rustc_middle",
+ "rustc_next_trait_solver",
  "rustc_parse_format",
  "rustc_query_system",
  "rustc_session",
