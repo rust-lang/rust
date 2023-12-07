@@ -658,6 +658,12 @@ fn check_item<'tcx>(
             // global_asm! is always live.
             worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
         }
+        DefKind::Const => {
+            let item = tcx.hir().item(id);
+            if let hir::ItemKind::Const(_, _, body_id) = item.kind {
+                worklist.push((tcx.hir().body_owner_def_id(body_id), ComesFromAllowExpect::No));
+            }
+        }
         _ => {}
     }
 }
