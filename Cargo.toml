@@ -95,6 +95,9 @@ bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
 dissimilar = "1.0.7"
 either = "1.9.0"
+hashbrown = { version = "0.14", features = [
+  "inline-more",
+], default-features = false }
 indexmap = "2.1.0"
 itertools = "0.12.0"
 libc = "0.2.150"
@@ -121,7 +124,5 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
 triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
 xshell = "0.2.5"
 
-# can't upgrade due to dashmap depending on 0.12.3 currently
-hashbrown = { version = "0.12.3", features = [
-  "inline-more",
-], default-features = false }
+# We need to freeze the version of the crate, as the raw-api feature is considered unstable
+dashmap = { version = "=5.5.3", features = ["raw-api"] }
