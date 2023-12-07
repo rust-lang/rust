@@ -2,7 +2,7 @@ use rustc_middle::mir;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::{round_all, round_first};
+use super::{bin_op_folded, round_all, round_first};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -257,26 +257,18 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             "ptestz" | "ptestc" | "ptestnzc" => {
                 let [op, mask] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let res = bin_op_folded(this, op, mask, true, |acc, op, mask| {
+                    let op = op.to_scalar().to_uint(op.layout.size)?;
+                    let mask = mask.to_scalar().to_uint(mask.layout.size)?;
+                    Ok(match unprefixed_name {
+                        "ptestz" => acc && (op & mask) == 0,
+                        "ptestc" => acc && (op & mask) == mask,
+                        "ptestnzc" => acc && (op & mask) != 0 && (op & mask) != mask,
+                        _ => unreachable!(),
+                    })
+                })?;
 
-                assert_eq!(op_len, mask_len);
-
-                let f = match unprefixed_name {
-                    "ptestz" => |op, mask| op & mask == 0,
-                    "ptestc" => |op, mask| op & mask == mask,
-                    "ptestnzc" => |op, mask| op & mask != 0 && op & mask != mask,
-                    _ => unreachable!(),
-                };
-
-                let mut all_zero = true;
-                for i in 0..op_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_u64()?;
-                    let mask = this.read_scalar(&this.project_index(&mask, i)?)?.to_u64()?;
-                    all_zero &= f(op, mask);
-                }
-
-                this.write_scalar(Scalar::from_i32(all_zero.into()), dest)?;
+                this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
             _ => return Ok(EmulateForeignItemResult::NotSupported),
         }

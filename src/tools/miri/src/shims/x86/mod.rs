@@ -615,3 +615,31 @@ fn horizontal_bin_op<'tcx>(
 
     Ok(())
 }
+
+/// Folds SIMD vectors `lhs` and `rhs` into a value of type `T` using `f`.
+fn bin_op_folded<'tcx, T>(
+    this: &crate::MiriInterpCx<'_, 'tcx>,
+    lhs: &OpTy<'tcx, Provenance>,
+    rhs: &OpTy<'tcx, Provenance>,
+    init: T,
+    mut f: impl FnMut(T, ImmTy<'tcx, Provenance>, ImmTy<'tcx, Provenance>) -> InterpResult<'tcx, T>,
+) -> InterpResult<'tcx, T> {
+    assert_eq!(lhs.layout, rhs.layout);
+
+    let (lhs, lhs_len) = this.operand_to_simd(lhs)?;
+    let (rhs, rhs_len) = this.operand_to_simd(rhs)?;
+
+    assert_eq!(lhs_len, rhs_len);
+
+    let mut acc = init;
+    for i in 0..lhs_len {
+        let lhs = this.project_index(&lhs, i)?;
+        let rhs = this.project_index(&rhs, i)?;
+
+        let lhs = this.read_immediate(&lhs)?;
+        let rhs = this.read_immediate(&rhs)?;
+        acc = f(acc, lhs, rhs)?;
+    }
+
+    Ok(acc)
+}
