@@ -143,6 +143,13 @@ impl flags::Scip {
                             .map(|hover| hover.markup.as_str())
                             .filter(|it| !it.is_empty())
                             .map(|it| vec![it.to_owned()]);
+                        let signature_documentation =
+                            token.signature.clone().map(|text| scip_types::Document {
+                                relative_path: relative_path.clone(),
+                                language: "rust".to_string(),
+                                text,
+                                ..Default::default()
+                            });
                         let symbol_info = scip_types::SymbolInformation {
                             symbol: symbol.clone(),
                             documentation: documentation.unwrap_or_default(),
@@ -150,7 +157,7 @@ impl flags::Scip {
                             special_fields: Default::default(),
                             kind: Default::default(),
                             display_name: token.display_name.clone().unwrap_or_default(),
-                            signature_documentation: Default::default(),
+                            signature_documentation: signature_documentation.into(),
                             enclosing_symbol: enclosing_symbol.unwrap_or_default(),
                         };
 

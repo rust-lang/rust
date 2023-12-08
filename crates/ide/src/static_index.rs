@@ -48,6 +48,7 @@ pub struct TokenStaticData {
     pub moniker: Option<MonikerResult>,
     pub display_name: Option<String>,
     pub enclosing_moniker: Option<MonikerResult>,
+    pub signature: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -178,6 +179,7 @@ impl StaticIndex<'_> {
                     enclosing_moniker: current_crate
                         .zip(def.enclosing_definition(self.db))
                         .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
+                    signature: def.label(self.db),
                 });
                 self.def_map.insert(def, it);
                 it
