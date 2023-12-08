@@ -1,0 +1,302 @@
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:41:5
+   |
+LL |     fn ne(&self, other: &Self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         self.ne(other)
+   |         -------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `-D unconditional-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unconditional_recursion)]`
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:45:5
+   |
+LL |     fn eq(&self, other: &Self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         self.eq(other)
+   |         -------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:11:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         self != other
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::partialeq-ne-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::partialeq_ne_impl)]`
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:11:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         self != other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:13:9
+   |
+LL |         self != other
+   |         ^^^^^^^^^^^^^
+   = note: `-D clippy::unconditional-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unconditional_recursion)]`
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:15:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         self == other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:17:9
+   |
+LL |         self == other
+   |         ^^^^^^^^^^^^^
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:27:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |         self != &Foo2::B // no error here
+LL | |     }
+   | |_____^
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:41:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         self.ne(other)
+LL | |     }
+   | |_____^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:41:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         self.ne(other)
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:43:9
+   |
+LL |         self.ne(other)
+   |         ^^^^^^^^^^^^^^
+
+error: parameter is only used in recursion
+  --> $DIR/unconditional_recursion.rs:41:18
+   |
+LL |     fn ne(&self, other: &Self) -> bool {
+   |                  ^^^^^ help: if this is intentional, prefix it with an underscore: `_other`
+   |
+note: parameter used here
+  --> $DIR/unconditional_recursion.rs:43:17
+   |
+LL |         self.ne(other)
+   |                 ^^^^^
+   = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:45:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         self.eq(other)
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:47:9
+   |
+LL |         self.eq(other)
+   |         ^^^^^^^^^^^^^^
+
+error: parameter is only used in recursion
+  --> $DIR/unconditional_recursion.rs:45:18
+   |
+LL |     fn eq(&self, other: &Self) -> bool {
+   |                  ^^^^^ help: if this is intentional, prefix it with an underscore: `_other`
+   |
+note: parameter used here
+  --> $DIR/unconditional_recursion.rs:47:17
+   |
+LL |         self.eq(other)
+   |                 ^^^^^
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:57:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |         self.eq(other) // no error
+LL | |     }
+   | |_____^
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:77:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |         self.a() // no error
+LL | |     }
+   | |_____^
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:89:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         other != self
+LL | |     }
+   | |_____^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:89:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         other != self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:91:9
+   |
+LL |         other != self
+   |         ^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:93:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         other == self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:95:9
+   |
+LL |         other == self
+   |         ^^^^^^^^^^^^^
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:103:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         other != other
+LL | |     }
+   | |_____^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:103:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         other != other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:105:9
+   |
+LL |         other != other
+   |         ^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> $DIR/unconditional_recursion.rs:105:9
+   |
+LL |         other != other
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::eq_op)]` on by default
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:107:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         other == other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:109:9
+   |
+LL |         other == other
+   |         ^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> $DIR/unconditional_recursion.rs:109:9
+   |
+LL |         other == other
+   |         ^^^^^^^^^^^^^^
+
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> $DIR/unconditional_recursion.rs:116:5
+   |
+LL | /     fn ne(&self, _other: &Self) -> bool {
+LL | |
+LL | |         self != self
+LL | |     }
+   | |_____^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:116:5
+   |
+LL | /     fn ne(&self, _other: &Self) -> bool {
+LL | |
+LL | |         self != self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:118:9
+   |
+LL |         self != self
+   |         ^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> $DIR/unconditional_recursion.rs:118:9
+   |
+LL |         self != self
+   |         ^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:120:5
+   |
+LL | /     fn eq(&self, _other: &Self) -> bool {
+LL | |
+LL | |         self == self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:122:9
+   |
+LL |         self == self
+   |         ^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> $DIR/unconditional_recursion.rs:122:9
+   |
+LL |         self == self
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 26 previous errors
+
