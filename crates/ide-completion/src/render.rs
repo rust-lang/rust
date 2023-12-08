@@ -10,7 +10,7 @@ pub(crate) mod variant;
 pub(crate) mod union_literal;
 pub(crate) mod literal;
 
-use hir::{AsAssocItem, Function, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
+use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
 use ide_db::{
     documentation::{Documentation, HasDocs},
     helpers::item_name,
@@ -393,10 +393,10 @@ fn render_resolution_path(
         ScopeDef::ModuleDef(ModuleDef::Adt(adt)) | ScopeDef::AdtSelfType(adt) => {
             set_item_relevance(adt.ty(db))
         }
-        // Functions are handled at the start of the function.
-        ScopeDef::ModuleDef(ModuleDef::Function(_)) => (), // TODO: Should merge with the match case earlier in the function?
-        // Enum variants are handled at the start of the function.
-        ScopeDef::ModuleDef(ModuleDef::Variant(_)) => (),
+        // Filtered out above
+        ScopeDef::ModuleDef(
+            ModuleDef::Function(_) | ModuleDef::Variant(_) | ModuleDef::Macro(_),
+        ) => (),
         ScopeDef::ModuleDef(ModuleDef::Const(konst)) => set_item_relevance(konst.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::Static(stat)) => set_item_relevance(stat.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::BuiltinType(bt)) => set_item_relevance(bt.ty(db)),
@@ -404,11 +404,12 @@ fn render_resolution_path(
         ScopeDef::GenericParam(_)
         | ScopeDef::Label(_)
         | ScopeDef::Unknown
-        | ScopeDef::ModuleDef(ModuleDef::Trait(_))
-        | ScopeDef::ModuleDef(ModuleDef::TraitAlias(_))
-        | ScopeDef::ModuleDef(ModuleDef::Macro(_))
-        | ScopeDef::ModuleDef(ModuleDef::Module(_))
-        | ScopeDef::ModuleDef(ModuleDef::TypeAlias(_)) => (),
+        | ScopeDef::ModuleDef(
+            ModuleDef::Trait(_)
+            | ModuleDef::TraitAlias(_)
+            | ModuleDef::Module(_)
+            | ModuleDef::TypeAlias(_),
+        ) => (),
     };
 
     item
@@ -497,6 +498,7 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
     }
 }
 
+// FIXME: This checks types without possible coercions which some completions might want to do
 fn match_types(
     ctx: &CompletionContext<'_>,
     ty1: &hir::Type,
@@ -524,41 +526,6 @@ fn compute_type_match(
     }
 
     match_types(ctx, expected_type, completion_ty)
-}
-
-fn compute_function_type_match(
-    ctx: &CompletionContext<'_>,
-    func: &Function,
-) -> Option<CompletionRelevanceTypeMatch> {
-    // We compute a vec of function parameters + the return type for the expected
-    // type as well as the function we are matching with. Doing this allows for
-    // matching all of the types in one iterator.
-
-    let expected_callable = ctx.expected_type.as_ref()?.as_callable(ctx.db)?;
-    let expected_types = expected_callable.params(ctx.db).into_iter().map(|param| param.1);
-    let actual_types =
-        func.ty(ctx.db).as_callable(ctx.db)?.params(ctx.db).into_iter().map(|param| param.1);
-
-    if expected_types.len() != actual_types.len() {
-        return None;
-    }
-
-    let mut matches = expected_types
-        .zip(actual_types)
-        .chain([(expected_callable.return_type(), func.ret_type(ctx.db))])
-        .map(|(expected_type, actual_type)| match_types(ctx, &expected_type, &actual_type));
-
-    // Any missing type match indicates that these types can not be unified.
-    if matches.any(|type_match| type_match.is_none()) {
-        return None;
-    }
-
-    // If any of the types are unifiable but not exact we consider the function types as a whole
-    // to be unifiable. Otherwise if every pair of types is an exact match the functions are an
-    // exact type match.
-    matches
-        .find(|type_match| matches!(type_match, Some(CompletionRelevanceTypeMatch::CouldUnify)))
-        .unwrap_or(Some(CompletionRelevanceTypeMatch::Exact))
 }
 
 fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
@@ -745,16 +712,16 @@ fn main() {
 
 pub mod test_mod_b {
     pub union Union {
-            a: i32,
-            b: i32
-            }
+        a: i32,
+        b: i32
+    }
 }
 
 pub mod test_mod_a {
     pub enum Union {
-                a: i32,
-                b: i32
-            }
+        a: i32,
+        b: i32
+    }
 }
 
 //- /main.rs crate:main deps:dep
@@ -783,14 +750,14 @@ fn main() {
 
 pub mod test_mod_b {
     pub enum Enum {
-                variant
-            }
+        variant
+    }
 }
 
 pub mod test_mod_a {
     pub enum Enum {
-                variant
-            }
+        variant
+    }
 }
 
 //- /main.rs crate:main deps:dep
@@ -812,7 +779,6 @@ fn main() {
         );
     }
 
-    // TODO: How dowe test ModuleDef::Variant(Variant?)
     #[test]
     fn set_enum_variant_type_completion_info() {
         check_relevance(
@@ -821,14 +787,14 @@ fn main() {
 
 pub mod test_mod_b {
     pub enum Enum {
-                Variant
-            }
+        Variant
+    }
 }
 
 pub mod test_mod_a {
     pub enum Enum {
-                Variant
-            }
+        Variant
+    }
 }
 
 //- /main.rs crate:main deps:dep
@@ -836,16 +802,14 @@ pub mod test_mod_a {
 fn test(input: dep::test_mod_b::Enum) { }
 
 fn main() {
-    test(Enum::Variant$0);
+    test(Variant$0);
 }
 "#,
             expect![[r#"
                 ev dep::test_mod_b::Enum::Variant [type_could_unify]
-                en Enum (use dep::test_mod_b::Enum) [type_could_unify+requires_import]
                 fn main() []
                 fn test(…) []
                 md dep []
-                en Enum (use dep::test_mod_a::Enum) [requires_import]
             "#]],
         );
     }
@@ -857,13 +821,11 @@ fn main() {
 //- /lib.rs crate:dep
 
 pub mod test_mod_b {
-    pub fn Function(j: isize) -> i32 {
-            }
+    pub fn function(j: isize) -> i32 {}
 }
 
-            pub mod test_mod_a {
-    pub fn Function(i: usize) -> i32 {
-            }
+pub mod test_mod_a {
+    pub fn function(i: usize) -> i32 {}
 }
 
 //- /main.rs crate:main deps:dep
@@ -871,15 +833,15 @@ pub mod test_mod_b {
 fn test(input: fn(usize) -> i32) { }
 
 fn main() {
-    test(Function$0);
+    test(function$0);
 }
 "#,
             expect![[r#"
-                fn Function (use dep::test_mod_a::Function) [type+requires_import]
                 fn main []
                 fn test []
                 md dep []
-                fn Function (use dep::test_mod_b::Function) [requires_import]
+                fn function (use dep::test_mod_a::function) [requires_import]
+                fn function (use dep::test_mod_b::function) [requires_import]
             "#]],
         );
     }
@@ -891,11 +853,11 @@ fn main() {
 //- /lib.rs crate:dep
 
 pub mod test_mod_b {
-            pub const CONST: i32 = 1;
+    pub const CONST: i32 = 1;
 }
 
 pub mod test_mod_a {
-            pub const CONST: i64 = 2;
+    pub const CONST: i64 = 2;
 }
 
 //- /main.rs crate:main deps:dep
@@ -923,11 +885,11 @@ fn main() {
 //- /lib.rs crate:dep
 
 pub mod test_mod_b {
-            pub static STATIC: i32 = 5;
+    pub static STATIC: i32 = 5;
 }
 
 pub mod test_mod_a {
-            pub static STATIC: i64 = 5;
+    pub static STATIC: i64 = 5;
 }
 
 //- /main.rs crate:main deps:dep
@@ -975,7 +937,7 @@ fn main() {
 
 "#,
             expect![[r#"
-                me Function [type]
+                me Function []
             "#]],
         );
     }
@@ -990,7 +952,7 @@ struct Struct;
 
 impl Struct {
 fn test(&self) {
-        func(Self$0);            
+        func(Self$0);
     }
 }
 
@@ -1013,14 +975,14 @@ fn func(input: Struct) { }
     fn set_builtin_type_completion_info() {
         check_relevance(
             r#"
-//- /main.rs crate:main 
+//- /main.rs crate:main
 
 fn test(input: bool) { }
-    pub Input: bool = false; 
+    pub Input: bool = false;
 
 fn main() {
-    let input = false; 
-    let inputbad = 3; 
+    let input = false;
+    let inputbad = 3;
     test(inp$0);
 }
 "#,
@@ -1424,6 +1386,7 @@ use self::E::*;
                         kind: SymbolKind(
                             Enum,
                         ),
+                        detail: "E",
                         documentation: Documentation(
                             "enum docs",
                         ),
@@ -1668,6 +1631,7 @@ fn go(world: &WorldSnapshot) { go(w$0) }
                 st WorldSnapshot {…} []
                 st &WorldSnapshot {…} [type]
                 st WorldSnapshot []
+                st &WorldSnapshot [type]
                 fn go(…) []
             "#]],
         );
@@ -1767,6 +1731,7 @@ fn main() {
                 st S []
                 st &mut S [type]
                 st S []
+                st &mut S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1783,7 +1748,7 @@ fn main() {
             expect![[r#"
                 lc s [type+name+local]
                 st S [type]
-                st S []
+                st S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1800,7 +1765,7 @@ fn main() {
             expect![[r#"
                 lc ssss [type+local]
                 st S [type]
-                st S []
+                st S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1839,7 +1804,9 @@ fn main() {
                 st S []
                 st &S [type]
                 st S []
+                st &S [type]
                 st T []
+                st &T [type]
                 fn foo(…) []
                 fn main() []
                 md core []
@@ -1885,7 +1852,9 @@ fn main() {
                 st S []
                 st &mut S [type]
                 st S []
+                st &mut S [type]
                 st T []
+                st &mut T [type]
                 fn foo(…) []
                 fn main() []
                 md core []
@@ -1924,7 +1893,7 @@ fn bar(t: Foo) {}
             expect![[r#"
                 ev Foo::A [type]
                 ev Foo::B [type]
-                en Foo []
+                en Foo [type]
                 fn bar(…) []
                 fn foo() []
             "#]],
@@ -1947,6 +1916,7 @@ fn bar(t: &Foo) {}
                 ev Foo::B []
                 ev &Foo::B [type]
                 en Foo []
+                en &Foo [type]
                 fn bar(…) []
                 fn foo() []
             "#]],
@@ -1980,7 +1950,9 @@ fn main() {
                 st S []
                 st &S [type]
                 st S []
+                st &S [type]
                 st T []
+                st &T [type]
                 fn bar() []
                 fn &bar() [type]
                 fn foo(…) []
@@ -2189,8 +2161,8 @@ fn foo() {
                 lc foo [type+local]
                 ev Foo::A(…) [type_could_unify]
                 ev Foo::B [type_could_unify]
+                en Foo [type_could_unify]
                 fn foo() []
-                en Foo []
                 fn bar() []
                 fn baz() []
             "#]],

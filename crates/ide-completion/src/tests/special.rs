@@ -84,10 +84,10 @@ pub mod prelude {
 }
 "#,
         expect![[r#"
-                md std
-                st Option
-                bt u32
-            "#]],
+            md std
+            st Option Option
+            bt u32    u32
+        "#]],
     );
 }
 
@@ -112,11 +112,11 @@ mod macros {
 }
 "#,
         expect![[r#"
-                fn f()        fn()
-                ma concat!(…) macro_rules! concat
-                md std
-                bt u32
-            "#]],
+            fn f()        fn()
+            ma concat!(…) macro_rules! concat
+            md std
+            bt u32        u32
+        "#]],
     );
 }
 
@@ -142,11 +142,11 @@ pub mod prelude {
 }
 "#,
         expect![[r#"
-                md core
-                md std
-                st String
-                bt u32
-            "#]],
+            md core
+            md std
+            st String String
+            bt u32    u32
+        "#]],
     );
 }
 
@@ -171,10 +171,10 @@ pub mod prelude {
 }
             "#,
         expect![[r#"
-                fn f() fn()
-                md std
-                bt u32
-            "#]],
+            fn f() fn()
+            md std
+            bt u32 u32
+        "#]],
     );
 }
 
@@ -446,10 +446,10 @@ mod p {
 }
 "#,
         expect![[r#"
-                ct RIGHT_CONST
-                fn right_fn()  fn()
-                st RightType
-            "#]],
+            ct RIGHT_CONST u32
+            fn right_fn()  fn()
+            st RightType   WrongType
+        "#]],
     );
 
     check_edit(
@@ -881,7 +881,7 @@ fn main() {
             fn main() fn()
             lc foobar i32
             ma x!(…)  macro_rules! x
-            bt u32
+            bt u32    u32
         "#]],
     )
 }
@@ -1008,8 +1008,8 @@ fn here_we_go() {
 "#,
         expect![[r#"
             fn here_we_go()    fn()
-            st Foo (alias Bar)
-            bt u32
+            st Foo (alias Bar) Foo
+            bt u32             u32
             kw const
             kw crate::
             kw enum
@@ -1057,8 +1057,8 @@ fn here_we_go() {
 "#,
         expect![[r#"
             fn here_we_go()           fn()
-            st Foo (alias Bar, Qux, Baz)
-            bt u32
+            st Foo (alias Bar, Qux, Baz) Foo
+            bt u32                    u32
             kw const
             kw crate::
             kw enum
@@ -1178,7 +1178,7 @@ fn bar() { qu$0 }
         expect![[r#"
             fn bar()             fn()
             fn foo() (alias qux) fn()
-            bt u32
+            bt u32               u32
             kw const
             kw crate::
             kw enum
@@ -1227,7 +1227,7 @@ fn here_we_go() {
 }
 "#,
         expect![[r#"
-            st Bar (alias Qux)
+            st Bar (alias Qux) Bar
         "#]],
     );
 }
@@ -1246,7 +1246,7 @@ fn here_we_go() {
 }
 "#,
         expect![[r#"
-            st Bar (alias Qux)
+            st Bar (alias Qux) Bar
         "#]],
     );
 }
@@ -1267,8 +1267,8 @@ fn here_we_go() {
         expect![[r#"
             fn here_we_go()           fn()
             md foo
-            st Bar (alias Qux) (use foo::Bar)
-            bt u32
+            st Bar (alias Qux) (use foo::Bar) Bar
+            bt u32                    u32
             kw crate::
             kw false
             kw for
@@ -1409,7 +1409,7 @@ fn foo() {
         Some('_'),
         expect![[r#"
             fn foo()       fn()
-            bt u32
+            bt u32         u32
             kw const
             kw crate::
             kw enum
@@ -1461,7 +1461,7 @@ fn foo(_: a_$0) { }
 "#,
         Some('_'),
         expect![[r#"
-            bt u32
+            bt u32     u32
             kw crate::
             kw self::
         "#]],
@@ -1475,7 +1475,7 @@ fn foo<T>() {
         Some('_'),
         expect![[r#"
             tp T
-            bt u32
+            bt u32     u32
             kw crate::
             kw self::
         "#]],

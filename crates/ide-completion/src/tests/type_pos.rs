@@ -17,18 +17,18 @@ struct Foo<'lt, T, const C: usize> {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            sp Self
-            st Foo<…>
-            st Record
-            st Tuple
-            st Unit
+            sp Self      Foo<'_, {unknown}, _>
+            st Foo<…>    Foo<'_, {unknown}, _>
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
             tp T
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -42,18 +42,18 @@ fn tuple_struct_field() {
 struct Foo<'lt, T, const C: usize>(f$0);
 "#,
         expect![[r#"
-            en Enum
+            en Enum       Enum
             ma makro!(…)  macro_rules! makro
             md module
-            sp Self
-            st Foo<…>
-            st Record
-            st Tuple
-            st Unit
+            sp Self       Foo<'_, {unknown}, _>
+            st Foo<…>     Foo<'_, {unknown}, _>
+            st Record     Record
+            st Tuple      Tuple
+            st Unit       Unit
             tt Trait
             tp T
-            un Union
-            bt u32
+            un Union      Union
+            bt u32        u32
             kw crate::
             kw pub
             kw pub(crate)
@@ -70,16 +70,16 @@ fn fn_return_type() {
 fn x<'lt, T, const C: usize>() -> $0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
             tp T
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -100,19 +100,19 @@ fn foo() -> B$0 {
 }
 "#,
         expect![[r#"
-        en Enum
-        ma makro!(…) macro_rules! makro
-        md module
-        st Record
-        st Tuple
-        st Unit
-        tt Trait
-        un Union
-        bt u32
-        it ()
-        kw crate::
-        kw self::
-    "#]],
+            en Enum      Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
+            tt Trait
+            un Union     Union
+            bt u32       u32
+            it ()
+            kw crate::
+            kw self::
+        "#]],
     )
 }
 
@@ -124,16 +124,16 @@ struct Foo<T>(T);
 const FOO: $0 = Foo(2);
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Foo<…>
-            st Record
-            st Tuple
-            st Unit
+            st Foo<…>    Foo<{unknown}>
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             it Foo<i32>
             kw crate::
             kw self::
@@ -151,15 +151,15 @@ fn f2() {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             it i32
             kw crate::
             kw self::
@@ -179,15 +179,15 @@ fn f2() {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             it u64
             kw crate::
             kw self::
@@ -204,15 +204,15 @@ fn f2(x: u64) -> $0 {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             it u64
             kw crate::
             kw self::
@@ -230,15 +230,15 @@ fn f2(x: $0) {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             it i32
             kw crate::
             kw self::
@@ -262,17 +262,17 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum                Enum
             ma makro!(…)           macro_rules! makro
             md a
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record              Record
+            st Tuple               Tuple
+            st Unit                Unit
             tt Trait
             tp T
-            un Union
-            bt u32
+            un Union               Union
+            bt u32                 u32
             it a::Foo<a::Foo<i32>>
             kw crate::
             kw self::
@@ -291,17 +291,17 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Foo<…>
-            st Record
-            st Tuple
-            st Unit
+            st Foo<…>    Foo<{unknown}>
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
             tp T
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             it Foo<i32>
             kw crate::
             kw self::
@@ -319,16 +319,16 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
             tp T
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -341,14 +341,14 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
+            un Union     Union
         "#]],
     );
 }
@@ -384,18 +384,18 @@ trait Trait2<T>: Trait1 {
 fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
             tt Trait1
             tt Trait2
             tp T
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -409,15 +409,15 @@ trait Trait2<T> {
 fn foo<'lt, T: Trait2<self::$0>, const CONST_PARAM: usize>(_: T) {}
     "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
             tt Trait2
-            un Union
+            un Union     Union
         "#]],
     );
 }
@@ -434,18 +434,18 @@ trait Tr<T> {
 impl Tr<$0
     "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            sp Self
-            st Record
-            st S
-            st Tuple
-            st Unit
+            sp Self      dyn Tr<{unknown}>
+            st Record    Record
+            st S         S
+            st Tuple     Tuple
+            st Unit      Unit
             tt Tr
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -481,16 +481,16 @@ trait MyTrait<T, U> {
 fn f(t: impl MyTrait<u$0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt MyTrait
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -506,16 +506,16 @@ trait MyTrait<T, U> {
 fn f(t: impl MyTrait<u8, u$0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt MyTrait
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -549,16 +549,16 @@ trait MyTrait<T, U = u8> {
 fn f(t: impl MyTrait<u$0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt MyTrait
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -574,18 +574,18 @@ trait MyTrait<T, U = u8> {
 fn f(t: impl MyTrait<u8, u$0
 "#,
         expect![[r#"
-            en Enum
+            en Enum                  Enum
             ma makro!(…)             macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record                Record
+            st Tuple                 Tuple
+            st Unit                  Unit
             tt MyTrait
             tt Trait
             ta Item1 =  (as MyTrait) type Item1
             ta Item2 =  (as MyTrait) type Item2
-            un Union
-            bt u32
+            un Union                 Union
+            bt u32                   u32
             kw crate::
             kw self::
         "#]],
@@ -619,16 +619,16 @@ trait MyTrait {
 fn f(t: impl MyTrait<Item1 = $0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt MyTrait
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -644,16 +644,16 @@ trait MyTrait {
 fn f(t: impl MyTrait<Item1 = u8, Item2 = $0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt MyTrait
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -668,7 +668,7 @@ trait MyTrait {
 fn f(t: impl MyTrait<C = $0
 "#,
         expect![[r#"
-            ct CONST
+            ct CONST     Unit
             ma makro!(…) macro_rules! makro
             kw crate::
             kw self::
@@ -691,9 +691,9 @@ pub struct S;
 "#,
         expect![[r#"
             md std
-            sp Self
-            st Foo
-            bt u32
+            sp Self    Foo
+            st Foo     Foo
+            bt u32     u32
             kw crate::
             kw self::
         "#]],
@@ -716,10 +716,10 @@ pub struct S;
 "#,
         expect![[r#"
             md std
-            sp Self
-            st Foo
-            st S
-            bt u32
+            sp Self    Foo
+            st Foo     Foo
+            st S       S
+            bt u32     u32
             kw crate::
             kw self::
         "#]],
@@ -739,19 +739,19 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-                en Enum
-                ma makro!(…) macro_rules! makro
-                md module
-                st Foo
-                st Record
-                st Tuple
-                st Unit
-                tt Trait
-                un Union
-                bt u32
-                kw crate::
-                kw self::
-            "#]],
+            en Enum      Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Foo       Foo
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
+            tt Trait
+            un Union     Union
+            bt u32       u32
+            kw crate::
+            kw self::
+        "#]],
     );
     // FIXME: This should probably also suggest completions for types, at least those that have
     // associated constants usable in this position. For example, a user could be typing
@@ -766,12 +766,12 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Method generic params
@@ -785,19 +785,19 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-                en Enum
-                ma makro!(…) macro_rules! makro
-                md module
-                st Foo
-                st Record
-                st Tuple
-                st Unit
-                tt Trait
-                un Union
-                bt u32
-                kw crate::
-                kw self::
-            "#]],
+            en Enum      Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Foo       Foo
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
+            tt Trait
+            un Union     Union
+            bt u32       u32
+            kw crate::
+            kw self::
+        "#]],
     );
     check(
         r#"
@@ -809,12 +809,12 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Associated type generic params
@@ -828,20 +828,20 @@ fn completes_const_and_type_generics_separately() {
     fn foo(_: impl Bar<Baz<F$0, 0> = ()>) {}
             "#,
         expect![[r#"
-                en Enum
-                ma makro!(…) macro_rules! makro
-                md module
-                st Foo
-                st Record
-                st Tuple
-                st Unit
-                tt Bar
-                tt Trait
-                un Union
-                bt u32
-                kw crate::
-                kw self::
-            "#]],
+            en Enum      Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Foo       Foo
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
+            tt Bar
+            tt Trait
+            un Union     Union
+            bt u32       u32
+            kw crate::
+            kw self::
+        "#]],
     );
     check(
         r#"
@@ -853,12 +853,12 @@ fn completes_const_and_type_generics_separately() {
     fn foo<T: Bar<Baz<(), $0> = ()>>() {}
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Type generic params
@@ -871,12 +871,12 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Type alias generic params
@@ -890,12 +890,12 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Enum variant params
@@ -908,12 +908,12 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Trait params
@@ -924,12 +924,12 @@ fn completes_const_and_type_generics_separately() {
     impl Foo<(), $0> for () {}
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Trait alias params
@@ -942,12 +942,12 @@ fn completes_const_and_type_generics_separately() {
     fn foo<T: Bar<X$0, ()>>() {}
             "#,
         expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
+            ct CONST     Unit
+            ct X         usize
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
     );
 
     // Omitted lifetime params
@@ -957,7 +957,7 @@ struct S<'a, 'b, const C: usize, T>(core::marker::PhantomData<&'a &'b T>);
 fn foo<'a>() { S::<F$0, _>; }
         "#,
         expect![[r#"
-            ct CONST
+            ct CONST     Unit
             ma makro!(…) macro_rules! makro
             kw crate::
             kw self::
@@ -970,7 +970,7 @@ struct S<'a, 'b, const C: usize, T>(core::marker::PhantomData<&'a &'b T>);
 fn foo<'a>() { S::<'static, 'static, F$0, _>; }
         "#,
         expect![[r#"
-            ct CONST
+            ct CONST     Unit
             ma makro!(…) macro_rules! makro
             kw crate::
             kw self::
