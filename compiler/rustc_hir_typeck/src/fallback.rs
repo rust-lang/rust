@@ -24,9 +24,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
 
-        let fallback_occured = self.fallback_types() | self.fallback_effects();
+        let fallback_occurred = self.fallback_types() | self.fallback_effects();
 
-        if !fallback_occured {
+        if !fallback_occurred {
             return;
         }
 
@@ -69,14 +69,13 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // We do fallback in two passes, to try to generate
         // better error messages.
         // The first time, we do *not* replace opaque types.
-        //
-        // TODO: We return `true` even if no fallback occurs.
+        let mut fallback_occurred = false;
         for ty in unresolved_variables {
             debug!("unsolved_variable = {:?}", ty);
-            self.fallback_if_possible(ty, &diverging_fallback);
+            fallback_occurred |= self.fallback_if_possible(ty, &diverging_fallback);
         }
 
-        true
+        fallback_occurred
     }
 
     fn fallback_effects(&self) -> bool {
@@ -86,9 +85,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        // not setting `fallback_has_occured` here because that field is only used for type fallback
-        // diagnostics.
-
+        // not setting the `fallback_has_occured` field here because
+        // that field is only used for type fallback diagnostics.
         for effect in unsolved_effects {
             let expected = self.tcx.consts.true_;
             let cause = self.misc(rustc_span::DUMMY_SP);
@@ -124,7 +122,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         diverging_fallback: &UnordMap<Ty<'tcx>, Ty<'tcx>>,
-    ) {
+    ) -> bool {
         // Careful: we do NOT shallow-resolve `ty`. We know that `ty`
         // is an unsolved variable, and we determine its fallback
         // based solely on how it was created, not what other type
@@ -149,7 +147,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
             _ => match diverging_fallback.get(&ty) {
                 Some(&fallback_ty) => fallback_ty,
-                None => return,
+                None => return false,
             },
         };
         debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
@@ -161,6 +159,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .unwrap_or(rustc_span::DUMMY_SP);
         self.demand_eqtype(span, ty, fallback);
         self.fallback_has_occurred.set(true);
+        true
     }
 
     /// The "diverging fallback" system is rather complicated. This is
