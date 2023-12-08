@@ -579,7 +579,7 @@ impl InferenceContext<'_> {
                 }
                 ty
             }
-            Expr::Field { expr, name } => self.infer_field_access(tgt_expr, *expr, name),
+            Expr::Field { expr, name } => self.infer_field_access(tgt_expr, *expr, name, expected),
             Expr::Await { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
@@ -1456,7 +1456,13 @@ impl InferenceContext<'_> {
         })
     }
 
-    fn infer_field_access(&mut self, tgt_expr: ExprId, receiver: ExprId, name: &Name) -> Ty {
+    fn infer_field_access(
+        &mut self,
+        tgt_expr: ExprId,
+        receiver: ExprId,
+        name: &Name,
+        expected: &Expectation,
+    ) -> Ty {
         let receiver_ty = self.infer_expr_inner(receiver, &Expectation::none());
 
         if name.is_missing() {
@@ -1482,28 +1488,42 @@ impl InferenceContext<'_> {
                 ty
             }
             None => {
-                // no field found,
-                let method_with_same_name_exists = {
-                    self.get_traits_in_scope();
-
-                    let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
-                    method_resolution::lookup_method(
-                        self.db,
-                        &canonicalized_receiver.value,
-                        self.table.trait_env.clone(),
-                        self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
-                        VisibleFromModule::Filter(self.resolver.module()),
-                        name,
-                    )
-                    .is_some()
-                };
+                // no field found, lets attempt to resolve it like a function so that IDE things
+                // work out while people are typing
+                let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
+                let resolved = method_resolution::lookup_method(
+                    self.db,
+                    &canonicalized_receiver.value,
+                    self.table.trait_env.clone(),
+                    self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
+                    VisibleFromModule::Filter(self.resolver.module()),
+                    name,
+                );
                 self.result.diagnostics.push(InferenceDiagnostic::UnresolvedField {
                     expr: tgt_expr,
-                    receiver: receiver_ty,
+                    receiver: receiver_ty.clone(),
                     name: name.clone(),
-                    method_with_same_name_exists,
+                    method_with_same_name_exists: resolved.is_some(),
                 });
-                self.err_ty()
+                match resolved {
+                    Some((adjust, func, _)) => {
+                        let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
+                        let generics = generics(self.db.upcast(), func.into());
+                        let substs = self.substs_for_method_call(generics, None);
+                        self.write_expr_adj(receiver, adjustments);
+                        self.write_method_resolution(tgt_expr, func, substs.clone());
+
+                        self.check_method_call(
+                            tgt_expr,
+                            &[],
+                            self.db.value_ty(func.into()),
+                            substs,
+                            ty,
+                            expected,
+                        )
+                    }
+                    None => self.err_ty(),
+                }
             }
         }
     }
@@ -1517,7 +1537,7 @@ impl InferenceContext<'_> {
         generic_args: Option<&GenericArgs>,
         expected: &Expectation,
     ) -> Ty {
-        let receiver_ty = self.infer_expr(receiver, &Expectation::none());
+        let receiver_ty = self.infer_expr_inner(receiver, &Expectation::none());
         let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
 
         let resolved = method_resolution::lookup_method(
@@ -1568,23 +1588,32 @@ impl InferenceContext<'_> {
                 )
             }
         };
+        self.check_method_call(tgt_expr, args, method_ty, substs, receiver_ty, expected)
+    }
+
+    fn check_method_call(
+        &mut self,
+        tgt_expr: ExprId,
+        args: &[ExprId],
+        method_ty: Binders<Ty>,
+        substs: Substitution,
+        receiver_ty: Ty,
+        expected: &Expectation,
+    ) -> Ty {
         let method_ty = method_ty.substitute(Interner, &substs);
         self.register_obligations_for_call(&method_ty);
-        let (formal_receiver_ty, param_tys, ret_ty, is_varargs) =
+        let ((formal_receiver_ty, param_tys), ret_ty, is_varargs) =
             match method_ty.callable_sig(self.db) {
-                Some(sig) => {
+                Some(sig) => (
                     if !sig.params().is_empty() {
-                        (
-                            sig.params()[0].clone(),
-                            sig.params()[1..].to_vec(),
-                            sig.ret().clone(),
-                            sig.is_varargs,
-                        )
+                        (sig.params()[0].clone(), sig.params()[1..].to_vec())
                     } else {
-                        (self.err_ty(), Vec::new(), sig.ret().clone(), sig.is_varargs)
-                    }
-                }
-                None => (self.err_ty(), Vec::new(), self.err_ty(), true),
+                        (self.err_ty(), Vec::new())
+                    },
+                    sig.ret().clone(),
+                    sig.is_varargs,
+                ),
+                None => ((self.err_ty(), Vec::new()), self.err_ty(), true),
             };
         self.unify(&formal_receiver_ty, &receiver_ty);
 

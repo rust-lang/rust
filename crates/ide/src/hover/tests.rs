@@ -6698,3 +6698,30 @@ foo!(r"{$0aaaaa}");
         "#]],
     );
 }
+
+#[test]
+fn method_call_without_parens() {
+    check(
+        r#"
+struct S;
+impl S {
+    fn foo<T>(&self, t: T) {}
+}
+
+fn main() {
+    S.foo$0;
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test::S
+            ```
+
+            ```rust
+            fn foo<T>(&self, t: T)
+            ```
+        "#]],
+    );
+}
