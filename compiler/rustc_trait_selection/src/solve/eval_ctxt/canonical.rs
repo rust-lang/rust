@@ -9,7 +9,6 @@
 //!
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
-use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
 use crate::solve::{
     inspect, response_no_constraints_raw, CanonicalResponse, QueryResult, Response,
 };
@@ -27,6 +26,7 @@ use rustc_middle::traits::solve::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
+use rustc_next_trait_solver::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
