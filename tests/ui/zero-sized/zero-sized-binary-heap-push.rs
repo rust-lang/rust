@@ -1,7 +1,6 @@
 // run-pass
 #![allow(unused_variables)]
 use std::collections::BinaryHeap;
-use std::iter::Iterator;
 
 fn main() {
     const N: usize = 8;

@@ -3,7 +3,6 @@
 use rustc_ast::InlineAsmTemplatePiece;
 
 use super::*;
-use crate::ty;
 
 TrivialTypeTraversalImpls! {
     BlockTailInfo,

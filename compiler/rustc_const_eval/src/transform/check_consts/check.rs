@@ -12,7 +12,7 @@ use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{TraitRef, TypeVisitableExt};
-use rustc_mir_dataflow::{self, Analysis};
+use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};

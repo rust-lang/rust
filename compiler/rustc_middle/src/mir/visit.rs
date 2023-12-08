@@ -63,9 +63,7 @@
 //! `is_cleanup` above.
 
 use crate::mir::*;
-use crate::ty::GenericArgsRef;
-use crate::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::Span;
+use crate::ty::CanonicalUserTypeAnnotation;
 
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {

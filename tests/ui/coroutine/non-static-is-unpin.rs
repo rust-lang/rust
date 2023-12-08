@@ -5,7 +5,7 @@
 #![feature(coroutines, coroutine_trait)]
 #![allow(dropping_copy_types)]
 
-use std::marker::{PhantomPinned, Unpin};
+use std::marker::PhantomPinned;
 
 fn assert_unpin<G: Unpin>(_: G) {
 }

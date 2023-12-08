@@ -1,6 +1,5 @@
 // run-pass
 use std::collections::LinkedList;
-use std::iter::Iterator;
 
 fn main() {
     const N: usize = 8;

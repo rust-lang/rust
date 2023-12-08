@@ -1,5 +1,5 @@
 use super::*;
-use crate::panic::{RefUnwindSafe, UnwindSafe};
+use crate::panic::RefUnwindSafe;
 
 fn generate_fake_frames() -> Vec<BacktraceFrame> {
     vec![

@@ -1,6 +1,6 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
-use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedFused};
+use crate::iter::{FusedIterator, TrustedFused};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, UncheckedIterator};
 use crate::num::NonZeroUsize;
 

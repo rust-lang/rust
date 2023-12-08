@@ -1,7 +1,5 @@
 //! Codegen `extern "platform-intrinsic"` intrinsics.
 
-use rustc_middle::ty::GenericArgsRef;
-use rustc_span::Symbol;
 use rustc_target::abi::Endian;
 
 use super::*;

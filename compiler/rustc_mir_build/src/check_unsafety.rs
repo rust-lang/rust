@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::build::ExprCategory;
 use crate::errors::*;
-use rustc_middle::thir::visit::{self, Visitor};
+use rustc_middle::thir::visit::Visitor;
 
 use rustc_errors::DiagnosticArgValue;
 use rustc_hir as hir;

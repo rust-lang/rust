@@ -1,9 +1,6 @@
 use gsgdt::GraphvizSettings;
 use rustc_graphviz as dot;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
-use std::fmt::Debug;
 use std::io::{self, Write};
 
 use super::generic_graph::mir_fn_to_generic_graph;

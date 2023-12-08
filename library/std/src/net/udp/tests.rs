@@ -1,4 +1,3 @@
-use crate::io::ErrorKind;
 use crate::net::test::{next_test_ip4, next_test_ip6};
 use crate::net::*;
 use crate::sync::mpsc::channel;

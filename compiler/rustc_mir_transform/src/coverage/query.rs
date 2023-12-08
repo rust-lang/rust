@@ -2,9 +2,9 @@ use super::*;
 
 use rustc_data_structures::captures::Captures;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::{Body, Coverage, CoverageIdsInfo};
+use rustc_middle::mir::{Body, CoverageIdsInfo};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self};
 
 /// A `query` provider for retrieving coverage information injected into MIR.
 pub(crate) fn provide(providers: &mut Providers) {

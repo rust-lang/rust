@@ -6,7 +6,6 @@
 #![feature(unboxed_closures, fn_traits)]
 
 use std::marker::PhantomData;
-use std::ops::Fn;
 use std::ops::Add;
 
 struct G<A>(PhantomData<A>);

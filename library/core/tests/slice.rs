@@ -2,7 +2,6 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::mem::MaybeUninit;
 use core::num::NonZeroUsize;
-use core::result::Result::{Err, Ok};
 use core::slice;
 
 #[test]

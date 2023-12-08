@@ -2,12 +2,11 @@ use smallvec::SmallVec;
 use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange, InterpError};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
 use crate::borrow_tracker::{
-    stacked_borrows::Permission, AccessKind, GlobalStateInner, ProtectorKind,
+    AccessKind, GlobalStateInner, ProtectorKind,
 };
 use crate::*;
 

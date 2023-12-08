@@ -1,4 +1,3 @@
-use crate::marker::Unpin;
 use crate::pin::Pin;
 
 /// The result of a coroutine resumption.

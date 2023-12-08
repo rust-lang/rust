@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::ops::RangeBounds;
-use std::vec::Vec;
 
 use rand::{seq::SliceRandom, Rng};
 use test::{black_box, Bencher};
