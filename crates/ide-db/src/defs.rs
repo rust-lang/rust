@@ -10,7 +10,7 @@ use hir::{
     Adt, AsAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType, Const, Crate,
     DefWithBody, DeriveHelper, DocLinkDef, ExternCrateDecl, Field, Function, GenericParam,
     HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module, ModuleDef, Name, PathResolution,
-    Semantics, Static, ToolModule, Trait, TraitAlias, TypeAlias, Variant, Visibility,
+    Semantics, Static, ToolModule, Trait, TraitAlias, TypeAlias, Variant, VariantDef, Visibility,
 };
 use stdx::{format_to, impl_from};
 use syntax::{
@@ -788,6 +788,12 @@ impl From<DocLinkDef> for Definition {
             DocLinkDef::Field(it) => it.into(),
             DocLinkDef::SelfType(it) => it.into(),
         }
+    }
+}
+
+impl From<VariantDef> for Definition {
+    fn from(def: VariantDef) -> Self {
+        ModuleDef::from(def).into()
     }
 }
 

@@ -7,8 +7,8 @@ use std::{
 };
 
 use ide::{
-    LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile, TextRange,
-    TokenId,
+    LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile,
+    SymbolInformationKind, TextRange, TokenId,
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
@@ -155,7 +155,7 @@ impl flags::Scip {
                             documentation: documentation.unwrap_or_default(),
                             relationships: Vec::new(),
                             special_fields: Default::default(),
-                            kind: Default::default(),
+                            kind: symbol_kind(token.kind).into(),
                             display_name: token.display_name.clone().unwrap_or_default(),
                             signature_documentation: signature_documentation.into(),
                             enclosing_symbol: enclosing_symbol.unwrap_or_default(),
@@ -247,6 +247,34 @@ fn new_descriptor(name: &str, suffix: scip_types::descriptor::Suffix) -> scip_ty
         new_descriptor_str(&format!("`{name}`"), suffix)
     } else {
         new_descriptor_str(&name, suffix)
+    }
+}
+
+fn symbol_kind(kind: SymbolInformationKind) -> scip_types::symbol_information::Kind {
+    use scip_types::symbol_information::Kind as ScipKind;
+    match kind {
+        SymbolInformationKind::AssociatedType => ScipKind::AssociatedType,
+        SymbolInformationKind::Attribute => ScipKind::Attribute,
+        SymbolInformationKind::Constant => ScipKind::Constant,
+        SymbolInformationKind::Enum => ScipKind::Enum,
+        SymbolInformationKind::EnumMember => ScipKind::EnumMember,
+        SymbolInformationKind::Field => ScipKind::Field,
+        SymbolInformationKind::Function => ScipKind::Function,
+        SymbolInformationKind::Macro => ScipKind::Macro,
+        SymbolInformationKind::Method => ScipKind::Method,
+        SymbolInformationKind::Module => ScipKind::Module,
+        SymbolInformationKind::Parameter => ScipKind::Parameter,
+        SymbolInformationKind::SelfParameter => ScipKind::SelfParameter,
+        SymbolInformationKind::StaticMethod => ScipKind::StaticMethod,
+        SymbolInformationKind::StaticVariable => ScipKind::StaticVariable,
+        SymbolInformationKind::Struct => ScipKind::Struct,
+        SymbolInformationKind::Trait => ScipKind::Trait,
+        SymbolInformationKind::TraitMethod => ScipKind::TraitMethod,
+        SymbolInformationKind::Type => ScipKind::Type,
+        SymbolInformationKind::TypeAlias => ScipKind::TypeAlias,
+        SymbolInformationKind::TypeParameter => ScipKind::TypeParameter,
+        SymbolInformationKind::Union => ScipKind::Union,
+        SymbolInformationKind::Variable => ScipKind::Variable,
     }
 }
 
@@ -372,6 +400,21 @@ pub mod module {
 }
 "#,
             "rust-analyzer cargo foo 0.1.0 module/MyTrait#func().",
+        );
+    }
+
+    #[test]
+    fn symbol_for_trait_alias() {
+        check_symbol(
+            r#"
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
+#![feature(trait_alias)]
+pub mod module {
+    pub trait MyTrait {}
+    pub trait MyTraitAlias$0 = MyTrait;
+}
+"#,
+            "rust-analyzer cargo foo 0.1.0 module/MyTraitAlias#",
         );
     }
 
@@ -539,6 +582,17 @@ pub mod example_mod {
     }
     "#,
             "rust-analyzer cargo main . foo/Bar#",
+        );
+    }
+
+    #[test]
+    fn symbol_for_for_type_alias() {
+        check_symbol(
+            r#"
+    //- /lib.rs crate:main
+    pub type MyTypeAlias$0 = u8;
+    "#,
+            "rust-analyzer cargo main . MyTypeAlias#",
         );
     }
 }
