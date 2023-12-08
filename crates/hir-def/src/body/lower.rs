@@ -1611,7 +1611,11 @@ impl ExprCollector<'_> {
                     }
                 },
             ),
-            None => FormatArgs { template: Default::default(), arguments: args.finish() },
+            None => FormatArgs {
+                template: Default::default(),
+                arguments: args.finish(),
+                orphans: Default::default(),
+            },
         };
 
         // Create a list of all _unique_ (argument, format trait) combinations.
@@ -1750,7 +1754,13 @@ impl ExprCollector<'_> {
         });
         let unsafe_arg_new = self.alloc_expr_desugared(Expr::Unsafe {
             id: None,
-            statements: Box::default(),
+            // We collect the unused expressions here so that we still infer them instead of
+            // dropping them out of the expression tree
+            statements: fmt
+                .orphans
+                .into_iter()
+                .map(|expr| Statement::Expr { expr, has_semi: true })
+                .collect(),
             tail: Some(unsafe_arg_new),
         });
 

@@ -250,6 +250,7 @@ fn check_dbg(path: &Path, text: &str) {
         // We have .dbg postfix
         "ide-completion/src/completions/postfix.rs",
         "ide-completion/src/completions/keyword.rs",
+        "ide-completion/src/tests/expression.rs",
         "ide-completion/src/tests/proc_macros.rs",
         // The documentation in string literals may contain anything for its own purposes
         "ide-completion/src/lib.rs",

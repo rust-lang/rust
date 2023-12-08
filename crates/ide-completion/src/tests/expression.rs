@@ -1094,3 +1094,157 @@ pub struct UnstableButWeAreOnNightlyAnyway;
         "#]],
     );
 }
+
+#[test]
+fn inside_format_args_completions_work() {
+    check_empty(
+        r#"
+//- minicore: fmt
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    format_args!("{}", Foo.$0);
+}
+"#,
+        expect![[r#"
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
+        "#]],
+    );
+    check_empty(
+        r#"
+//- minicore: fmt
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    format_args!("{}", Foo.f$0);
+}
+"#,
+        expect![[r#"
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn inside_faulty_format_args_completions_work() {
+    check_empty(
+        r#"
+//- minicore: fmt
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    format_args!("", Foo.$0);
+}
+"#,
+        expect![[r#"
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
+        "#]],
+    );
+    check_empty(
+        r#"
+//- minicore: fmt
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    format_args!("", Foo.f$0);
+}
+"#,
+        expect![[r#"
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
+        "#]],
+    );
+    check_empty(
+        r#"
+//- minicore: fmt
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    format_args!("{} {named} {captured} {named} {}", a, named = c, Foo.f$0);
+}
+"#,
+        expect![[r#"
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
+        "#]],
+    );
+    check_empty(
+        r#"
+//- minicore: fmt
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    format_args!("{", Foo.f$0);
+}
+"#,
+        expect![[r#"
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn if     if expr {}
+            sn match  match expr {}
+            sn not    !expr
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
+            sn while  while expr {}
+        "#]],
+    );
+}
