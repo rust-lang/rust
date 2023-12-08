@@ -2640,8 +2640,12 @@ pub fn build_session_options(
         handler.early_error("value for threads must be a positive non-zero integer");
     }
 
-    if unstable_opts.threads > 1 && unstable_opts.fuel.is_some() {
+    let fuel = unstable_opts.fuel.is_some() || unstable_opts.print_fuel.is_some();
+    if fuel && unstable_opts.threads > 1 {
         handler.early_error("optimization fuel is incompatible with multiple threads");
+    }
+    if fuel && cg.incremental.is_some() {
+        handler.early_error("optimization fuel is incompatible with incremental compilation");
     }
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
