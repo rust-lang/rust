@@ -666,30 +666,33 @@ fn conditional_dot_product<'tcx>(
     Ok(())
 }
 
-/// Folds SIMD vectors `lhs` and `rhs` into a value of type `T` using `f`.
-fn bin_op_folded<'tcx, T>(
+/// Calculates two booleans.
+///
+/// The first is true when all the bits of `op & mask` are zero.
+/// The second is true when `(op & mask) == mask`
+fn test_bits_masked<'tcx>(
     this: &crate::MiriInterpCx<'_, 'tcx>,
-    lhs: &OpTy<'tcx, Provenance>,
-    rhs: &OpTy<'tcx, Provenance>,
-    init: T,
-    mut f: impl FnMut(T, ImmTy<'tcx, Provenance>, ImmTy<'tcx, Provenance>) -> InterpResult<'tcx, T>,
-) -> InterpResult<'tcx, T> {
-    assert_eq!(lhs.layout, rhs.layout);
+    op: &OpTy<'tcx, Provenance>,
+    mask: &OpTy<'tcx, Provenance>,
+) -> InterpResult<'tcx, (bool, bool)> {
+    assert_eq!(op.layout, mask.layout);
 
-    let (lhs, lhs_len) = this.operand_to_simd(lhs)?;
-    let (rhs, rhs_len) = this.operand_to_simd(rhs)?;
+    let (op, op_len) = this.operand_to_simd(op)?;
+    let (mask, mask_len) = this.operand_to_simd(mask)?;
 
-    assert_eq!(lhs_len, rhs_len);
+    assert_eq!(op_len, mask_len);
 
-    let mut acc = init;
-    for i in 0..lhs_len {
-        let lhs = this.project_index(&lhs, i)?;
-        let rhs = this.project_index(&rhs, i)?;
+    let mut all_zero = true;
+    let mut masked_set = true;
+    for i in 0..op_len {
+        let op = this.project_index(&op, i)?;
+        let mask = this.project_index(&mask, i)?;
 
-        let lhs = this.read_immediate(&lhs)?;
-        let rhs = this.read_immediate(&rhs)?;
-        acc = f(acc, lhs, rhs)?;
+        let op = this.read_scalar(&op)?.to_uint(op.layout.size)?;
+        let mask = this.read_scalar(&mask)?.to_uint(mask.layout.size)?;
+        all_zero &= (op & mask) == 0;
+        masked_set &= (op & mask) == mask;
     }
 
-    Ok(acc)
+    Ok((all_zero, masked_set))
 }

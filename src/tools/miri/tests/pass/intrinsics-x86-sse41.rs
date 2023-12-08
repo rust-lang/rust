@@ -515,6 +515,11 @@ unsafe fn test_sse41() {
         let mask = _mm_set1_epi8(0b101);
         let r = _mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
+
+        let a = _mm_setr_epi32(0b100, 0, 0, 0b010);
+        let mask = _mm_setr_epi32(0b100, 0, 0, 0b110);
+        let r = _mm_testnzc_si128(a, mask);
+        assert_eq!(r, 1);
     }
     test_mm_testnzc_si128();
 }
