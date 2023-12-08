@@ -1,3 +1,5 @@
+// check-pass
+
 #![crate_type = "lib"]
 #![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs)]
 #![feature(fundamental)]
@@ -5,8 +7,6 @@
 #![allow(internal_features)]
 #![no_std]
 #![no_core]
-
-// known-bug: #110395
 
 #[lang = "sized"]
 trait Sized {}

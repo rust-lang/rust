@@ -781,9 +781,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn expected_const_effect_param_for_body(self, def_id: LocalDefId) -> ty::Const<'tcx> {
-        // if the callee does have the param, we need to equate the param to some const
-        // value no matter whether the effects feature is enabled in the local crate,
-        // because inference will fail if we don't.
+        // FIXME(effects): This is suspicious and should probably not be done,
+        // especially now that we enforce host effects and then properly handle
+        // effect vars during fallback.
         let mut host_always_on =
             !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
 
