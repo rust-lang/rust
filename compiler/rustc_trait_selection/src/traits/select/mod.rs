@@ -990,11 +990,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::NormalizesTo(..) => {
-                    bug!("NormalizesTo is only used by the new solver")
-                }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used by the new solver")
+                ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::AliasRelate(..) => {
+                    bug!("only used by the new solver")
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
