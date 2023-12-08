@@ -13,9 +13,9 @@ use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, HasDataLayout, Size};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, Frame, InterpCx, InterpResult,
-    MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer, Projectable,
-    Provenance, Scalar,
+    alloc_range, from_known_layout, mir_assign_valid_types, CtfeProvenance, Frame, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer,
+    Projectable, Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -26,7 +26,7 @@ use super::{
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug)]
-pub enum Immediate<Prov: Provenance = AllocId> {
+pub enum Immediate<Prov: Provenance = CtfeProvenance> {
     /// A single scalar value (must have *initialized* `Scalar` ABI).
     Scalar(Scalar<Prov>),
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
@@ -93,12 +93,23 @@ impl<Prov: Provenance> Immediate<Prov> {
             Immediate::Uninit => bug!("Got uninit where a scalar pair was expected"),
         }
     }
+
+    /// Returns the scalar from the first component and optionally the 2nd component as metadata.
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
+    pub fn to_scalar_and_meta(self) -> (Scalar<Prov>, MemPlaceMeta<Prov>) {
+        match self {
+            Immediate::ScalarPair(val1, val2) => (val1, MemPlaceMeta::Meta(val2)),
+            Immediate::Scalar(val) => (val, MemPlaceMeta::None),
+            Immediate::Uninit => bug!("Got uninit where a scalar or scalar pair was expected"),
+        }
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
 // as input for binary and cast operations.
 #[derive(Clone)]
-pub struct ImmTy<'tcx, Prov: Provenance = AllocId> {
+pub struct ImmTy<'tcx, Prov: Provenance = CtfeProvenance> {
     imm: Immediate<Prov>,
     pub layout: TyAndLayout<'tcx>,
 }
@@ -334,13 +345,13 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
 #[derive(Copy, Clone, Debug)]
-pub(super) enum Operand<Prov: Provenance = AllocId> {
+pub(super) enum Operand<Prov: Provenance = CtfeProvenance> {
     Immediate(Immediate<Prov>),
     Indirect(MemPlace<Prov>),
 }
 
 #[derive(Clone)]
-pub struct OpTy<'tcx, Prov: Provenance = AllocId> {
+pub struct OpTy<'tcx, Prov: Provenance = CtfeProvenance> {
     op: Operand<Prov>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }
@@ -750,17 +761,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
-                // We rely on mutability being set correctly in that allocation to prevent writes
-                // where none should happen.
-                let ptr = self.global_base_pointer(Pointer::new(alloc_id, offset))?;
+                // This is const data, no mutation allowed.
+                let ptr = self.global_base_pointer(Pointer::new(
+                    CtfeProvenance::from(alloc_id).as_immutable(),
+                    offset,
+                ))?;
                 return Ok(self.ptr_to_mplace(ptr.into(), layout).into());
             }
             mir::ConstValue::Scalar(x) => adjust_scalar(x)?.into(),
             mir::ConstValue::ZeroSized => Immediate::Uninit,
             mir::ConstValue::Slice { data, meta } => {
-                // We rely on mutability being set correctly in `data` to prevent writes
-                // where none should happen.
-                let ptr = Pointer::new(self.tcx.reserve_and_set_memory_alloc(data), Size::ZERO);
+                // This is const data, no mutation allowed.
+                let alloc_id = self.tcx.reserve_and_set_memory_alloc(data);
+                let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
                 Immediate::new_slice(self.global_base_pointer(ptr)?.into(), meta, self)
             }
         };

@@ -12,7 +12,7 @@ If you wish to _contribute_ to the compiler, you should read
 [CONTRIBUTING.md](CONTRIBUTING.md) instead.
 
 <details>
-<summary>Table of content</summary>
+<summary>Table of Contents</summary>
 
 - [Quick Start](#quick-start)
 - [Installing from Source](#installing-from-source)

@@ -1337,13 +1337,13 @@ pub fn write_allocations<'tcx>(
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
     ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.inner().provenance().ptrs().values().copied()
+        alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
     fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
-                Either::Left(std::iter::once(ptr.provenance))
+                Either::Left(std::iter::once(ptr.provenance.alloc_id()))
             }
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => Either::Right(std::iter::empty()),
             ConstValue::ZeroSized => Either::Right(std::iter::empty()),

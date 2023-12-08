@@ -1410,14 +1410,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     ) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
-        let (alloc_id, offset) = ptr.into_parts();
+        let (prov, offset) = ptr.into_parts();
         match ty.kind() {
             // Byte strings (&[u8; N])
             ty::Ref(_, inner, _) => {
                 if let ty::Array(elem, len) = inner.kind() {
                     if let ty::Uint(ty::UintTy::U8) = elem.kind() {
                         if let ty::ConstKind::Value(ty::ValTree::Leaf(int)) = len.kind() {
-                            match self.tcx().try_get_global_alloc(alloc_id) {
+                            match self.tcx().try_get_global_alloc(prov.alloc_id()) {
                                 Some(GlobalAlloc::Memory(alloc)) => {
                                     let len = int.assert_bits(self.tcx().data_layout.pointer_size);
                                     let range =
@@ -1447,7 +1447,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
                 if let Some(GlobalAlloc::Function(instance)) =
-                    self.tcx().try_get_global_alloc(alloc_id)
+                    self.tcx().try_get_global_alloc(prov.alloc_id())
                 {
                     self.typed_value(
                         |this| this.print_value_path(instance.def_id(), instance.args),
@@ -2641,6 +2641,23 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
 }
 
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
+/// the trait path, and additionally tries to "sugar" `Fn(...)` trait bounds.
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
+pub struct TraitRefPrintSugared<'tcx>(ty::TraitRef<'tcx>);
+
+impl<'tcx> rustc_errors::IntoDiagnosticArg for TraitRefPrintSugared<'tcx> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
+impl<'tcx> fmt::Debug for TraitRefPrintSugared<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+/// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait name. That is, it will print `Trait` instead of
 /// `<T as Trait<U>>`.
 #[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
@@ -2657,6 +2674,10 @@ impl<'tcx> ty::TraitRef<'tcx> {
         TraitRefPrintOnlyTraitPath(self)
     }
 
+    pub fn print_trait_sugared(self) -> TraitRefPrintSugared<'tcx> {
+        TraitRefPrintSugared(self)
+    }
+
     pub fn print_only_trait_name(self) -> TraitRefPrintOnlyTraitName<'tcx> {
         TraitRefPrintOnlyTraitName(self)
     }
@@ -2665,6 +2686,10 @@ impl<'tcx> ty::TraitRef<'tcx> {
 impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
     pub fn print_only_trait_path(self) -> ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>> {
         self.map_bound(|tr| tr.print_only_trait_path())
+    }
+
+    pub fn print_trait_sugared(self) -> ty::Binder<'tcx, TraitRefPrintSugared<'tcx>> {
+        self.map_bound(|tr| tr.print_trait_sugared())
     }
 }
 
@@ -2745,6 +2770,7 @@ forward_display_to_print! {
     ty::PolyExistentialTraitRef<'tcx>,
     ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+    ty::Binder<'tcx, TraitRefPrintSugared<'tcx>>,
     ty::Binder<'tcx, ty::FnSig<'tcx>>,
     ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
     ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>>,
@@ -2844,6 +2870,24 @@ define_print_and_forward_display! {
         p!(print_def_path(self.0.def_id, self.0.args));
     }
 
+    TraitRefPrintSugared<'tcx> {
+        if !with_no_queries()
+            && let Some(kind) = cx.tcx().fn_trait_kind_from_def_id(self.0.def_id)
+            && let ty::Tuple(args) = self.0.args.type_at(1).kind()
+        {
+            p!(write("{}", kind.as_str()), "(");
+            for (i, arg) in args.iter().enumerate() {
+                if i > 0 {
+                    p!(", ");
+                }
+                p!(print(arg));
+            }
+            p!(")");
+        } else {
+            p!(print_def_path(self.0.def_id, self.0.args));
+        }
+    }
+
     TraitRefPrintOnlyTraitName<'tcx> {
         p!(print_def_path(self.0.def_id, &[]));
     }
@@ -2892,7 +2936,7 @@ define_print_and_forward_display! {
         if let ty::ImplPolarity::Negative = self.polarity {
             p!("!");
         }
-        p!(print(self.trait_ref.print_only_trait_path()))
+        p!(print(self.trait_ref.print_trait_sugared()))
     }
 
     ty::ProjectionPredicate<'tcx> {

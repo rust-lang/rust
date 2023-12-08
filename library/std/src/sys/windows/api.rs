@@ -48,7 +48,7 @@ use super::c;
 /// converted to a `u32`. Clippy would warn about this but, alas, it's not run
 /// on the standard library.
 const fn win32_size_of<T: Sized>() -> u32 {
-    // Const assert that the size is less than u32::MAX.
+    // Const assert that the size does not exceed u32::MAX.
     // Uses a trait to workaround restriction on using generic types in inner items.
     trait Win32SizeOf: Sized {
         const WIN32_SIZE_OF: u32 = {

@@ -105,20 +105,21 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             }
         })
         .map(|def_id| {
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             // We won't link right if this symbol is stripped during LTO.
             let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
             // We have to preserve the symbols of the built-in functions during LTO.
             let is_builtin_fn = is_compiler_builtins
                 && symbol_export_level(tcx, def_id.to_def_id())
-                    .is_below_threshold(SymbolExportLevel::C);
-            let used = is_builtin_fn || name == "rust_eh_personality";
+                    .is_below_threshold(SymbolExportLevel::C)
+                && codegen_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
+            let used = name == "rust_eh_personality";
 
             let export_level = if special_runtime_crate {
                 SymbolExportLevel::Rust
             } else {
                 symbol_export_level(tcx, def_id.to_def_id())
             };
-            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             debug!(
                 "EXPORTED SYMBOL (local): {} ({:?})",
                 tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
@@ -138,6 +139,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
                     || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
                     || used,
+                used_compiler: is_builtin_fn,
             };
             (def_id.to_def_id(), info)
         })
@@ -150,6 +152,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: false,
+                used_compiler: false,
             },
         );
     }
@@ -198,6 +201,7 @@ fn exported_symbols_provider_local(
                         level: info.level,
                         kind: SymbolExportKind::Text,
                         used: info.used,
+                        used_compiler: false,
                     },
                 )
             })
@@ -214,6 +218,7 @@ fn exported_symbols_provider_local(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Text,
                 used: false,
+                used_compiler: false,
             },
         ));
     }
@@ -233,6 +238,7 @@ fn exported_symbols_provider_local(
                     level: SymbolExportLevel::Rust,
                     kind: SymbolExportKind::Text,
                     used: false,
+                    used_compiler: false,
                 },
             ));
         }
@@ -245,6 +251,7 @@ fn exported_symbols_provider_local(
                 level: SymbolExportLevel::Rust,
                 kind: SymbolExportKind::Data,
                 used: false,
+                used_compiler: false,
             },
         ))
     }
@@ -264,6 +271,7 @@ fn exported_symbols_provider_local(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
+                    used_compiler: false,
                 },
             )
         }));
@@ -289,6 +297,7 @@ fn exported_symbols_provider_local(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
+                    used_compiler: false,
                 },
             )
         }));
@@ -306,6 +315,7 @@ fn exported_symbols_provider_local(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: true,
+                used_compiler: false,
             },
         ));
     }
@@ -346,6 +356,7 @@ fn exported_symbols_provider_local(
                                 level: SymbolExportLevel::Rust,
                                 kind: SymbolExportKind::Text,
                                 used: false,
+                                used_compiler: false,
                             },
                         ));
                     }
@@ -362,6 +373,7 @@ fn exported_symbols_provider_local(
                             level: SymbolExportLevel::Rust,
                             kind: SymbolExportKind::Text,
                             used: false,
+                            used_compiler: false,
                         },
                     ));
                 }

@@ -157,7 +157,7 @@ pub use self::allocation::{
     InitChunk, InitChunkIter,
 };
 
-pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
+pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 
 /// Uniquely identifies one of the following:
 /// - A constant

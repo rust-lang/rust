@@ -39,7 +39,7 @@ Create the following shell scripts that wrap Clang from the OpenHarmony SDK:
 ```sh
 #!/bin/sh
 exec /path/to/ohos-sdk/linux/native/llvm/bin/clang \
-  --target aarch64-linux-gnu \
+  -target aarch64-linux-gnu \
   "$@"
 ```
 
@@ -48,7 +48,7 @@ exec /path/to/ohos-sdk/linux/native/llvm/bin/clang \
 ```sh
 #!/bin/sh
 exec /path/to/ohos-sdk/linux/native/llvm/bin/clang++ \
-  --target aarch64-linux-gnu \
+  -target aarch64-linux-gnu \
   "$@"
 ```
 
@@ -81,6 +81,13 @@ ranlib = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-ranlib"
 llvm-config = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-config"
 ```
 
+```text
+note: You need to insert "/usr/include/x86_64-linux-gnu/" into environment variable: $C_INCLUDE_PATH
+ if some header files like bits/xxx.h not found.
+note: You can install gcc-aarch64-linux-gnu,g++-aarch64-linux-gnu if some files like crti.o not found.
+note: You may need to install libc6-dev-i386 libc6-dev if "gnu/stubs-32.h" not found.
+```
+
 ## Building Rust programs
 
 Rust does not yet ship pre-compiled artifacts for this target. To compile for
@@ -91,7 +98,7 @@ this target, you will either need to build Rust with the target enabled (see
 You will need to configure the linker to use in `~/.cargo/config`:
 ```toml
 [target.aarch64-unknown-teeos]
-linker = "/path/to/aarch64-unknown-teeos-clang.sh"
+linker = "/path/to/aarch64-unknown-teeos-clang.sh" # or aarch64-linux-gnu-ld
 ```
 
 ## Testing

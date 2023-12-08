@@ -285,7 +285,8 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
+    for &(offset, prov) in alloc.provenance().ptrs().iter() {
+        let alloc_id = prov.alloc_id();
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
@@ -313,7 +314,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
 
         llvals.push(cx.scalar_to_backend(
             InterpScalar::from_pointer(
-                interpret::Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
+                interpret::Pointer::new(prov, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
             abi::Scalar::Initialized { value: Primitive::Pointer(address_space), valid_range: WrappingRange::full(dl.pointer_size) },

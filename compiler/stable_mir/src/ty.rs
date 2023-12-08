@@ -30,6 +30,51 @@ impl Ty {
     pub fn try_new_array(elem_ty: Ty, size: u64) -> Result<Ty, Error> {
         Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, Const::try_from_target_usize(size)?)))
     }
+
+    /// Create a new array type from Const length.
+    pub fn new_array_with_const_len(elem_ty: Ty, len: Const) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Array(elem_ty, len))
+    }
+
+    /// Create a new pointer type.
+    pub fn new_ptr(pointee_ty: Ty, mutability: Mutability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::RawPtr(pointee_ty, mutability))
+    }
+
+    /// Create a new reference type.
+    pub fn new_ref(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Ref(reg, pointee_ty, mutability))
+    }
+
+    /// Create a new pointer type.
+    pub fn new_tuple(tys: &[Ty]) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Tuple(Vec::from(tys)))
+    }
+
+    /// Create a new closure type.
+    pub fn new_closure(def: ClosureDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Closure(def, args))
+    }
+
+    /// Create a new coroutine type.
+    pub fn new_coroutine(def: CoroutineDef, args: GenericArgs, mov: Movability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Coroutine(def, args, mov))
+    }
+
+    /// Create a new box type that represents `Box<T>`, for the given inner type `T`.
+    pub fn new_box(inner_ty: Ty) -> Ty {
+        with(|cx| cx.new_box_ty(inner_ty))
+    }
+
+    /// Create a type representing `usize`.
+    pub fn usize_ty() -> Ty {
+        Ty::from_rigid_kind(RigidTy::Uint(UintTy::Usize))
+    }
+
+    /// Create a type representing `bool`.
+    pub fn bool_ty() -> Ty {
+        Ty::from_rigid_kind(RigidTy::Bool)
+    }
 }
 
 impl Ty {
@@ -199,6 +244,19 @@ impl TyKind {
         matches!(self, TyKind::RigidTy(RigidTy::FnPtr(..)))
     }
 
+    pub fn is_primitive(&self) -> bool {
+        matches!(
+            self,
+            TyKind::RigidTy(
+                RigidTy::Bool
+                    | RigidTy::Char
+                    | RigidTy::Int(_)
+                    | RigidTy::Uint(_)
+                    | RigidTy::Float(_)
+            )
+        )
+    }
+
     pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
         if let TyKind::RigidTy(RigidTy::Dynamic(predicates, _, _)) = self {
             if let Some(Binder { value: ExistentialPredicate::Trait(trait_ref), bound_vars }) =
@@ -241,12 +299,18 @@ impl TyKind {
     }
 
     /// Get the function signature for function like types (Fn, FnPtr, Closure, Coroutine)
+    /// FIXME(closure)
     pub fn fn_sig(&self) -> Option<PolyFnSig> {
         match self {
             TyKind::RigidTy(RigidTy::FnDef(def, args)) => Some(with(|cx| cx.fn_sig(*def, args))),
             TyKind::RigidTy(RigidTy::FnPtr(sig)) => Some(sig.clone()),
             _ => None,
         }
+    }
+
+    /// Get the discriminant type for this type.
+    pub fn discriminant_ty(&self) -> Option<Ty> {
+        self.rigid().map(|ty| with(|cx| cx.rigid_ty_discriminant_ty(ty)))
     }
 }
 
@@ -277,6 +341,13 @@ pub enum RigidTy {
     Never,
     Tuple(Vec<Ty>),
     CoroutineWitness(CoroutineWitnessDef, GenericArgs),
+}
+
+impl RigidTy {
+    /// Get the discriminant type for this type.
+    pub fn discriminant_ty(&self) -> Ty {
+        with(|cx| cx.rigid_ty_discriminant_ty(self))
+    }
 }
 
 impl From<RigidTy> for TyKind {
@@ -366,8 +437,96 @@ impl AdtDef {
         with(|cx| cx.adt_kind(*self))
     }
 
+    /// Retrieve the type of this Adt.
+    pub fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.0))
+    }
+
+    /// Retrieve the type of this Adt instantiating the type with the given arguments.
+    ///
+    /// This will assume the type can be instantiated with these arguments.
+    pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
+        with(|cx| cx.def_ty_with_args(self.0, args))
+    }
+
     pub fn is_box(&self) -> bool {
         with(|cx| cx.adt_is_box(*self))
+    }
+
+    /// The number of variants in this ADT.
+    pub fn num_variants(&self) -> usize {
+        with(|cx| cx.adt_variants_len(*self))
+    }
+
+    /// Retrieve the variants in this ADT.
+    pub fn variants(&self) -> Vec<VariantDef> {
+        self.variants_iter().collect()
+    }
+
+    /// Iterate over the variants in this ADT.
+    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> + '_ {
+        (0..self.num_variants())
+            .map(|idx| VariantDef { idx: VariantIdx::to_val(idx), adt_def: *self })
+    }
+
+    pub fn variant(&self, idx: VariantIdx) -> Option<VariantDef> {
+        (idx.to_index() < self.num_variants()).then_some(VariantDef { idx, adt_def: *self })
+    }
+}
+
+/// Definition of a variant, which can be either a struct / union field or an enum variant.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VariantDef {
+    /// The variant index.
+    ///
+    /// ## Warning
+    /// Do not access this field directly!
+    pub idx: VariantIdx,
+    /// The data type where this variant comes from.
+    /// For now, we use this to retrieve information about the variant itself so we don't need to
+    /// cache more information.
+    ///
+    /// ## Warning
+    /// Do not access this field directly!
+    pub adt_def: AdtDef,
+}
+
+impl VariantDef {
+    pub fn name(&self) -> Symbol {
+        with(|cx| cx.variant_name(*self))
+    }
+
+    /// Retrieve all the fields in this variant.
+    // We expect user to cache this and use it directly since today it is expensive to generate all
+    // fields name.
+    pub fn fields(&self) -> Vec<FieldDef> {
+        with(|cx| cx.variant_fields(*self))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldDef {
+    /// The field definition.
+    ///
+    /// ## Warning
+    /// Do not access this field directly! This is public for the compiler to have access to it.
+    pub def: DefId,
+
+    /// The field name.
+    pub name: Symbol,
+}
+
+impl FieldDef {
+    /// Retrieve the type of this field instantiating the type with the given arguments.
+    ///
+    /// This will assume the type can be instantiated with these arguments.
+    pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
+        with(|cx| cx.def_ty_with_args(self.def, args))
+    }
+
+    /// Retrieve the type of this field.
+    pub fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.def))
     }
 }
 
@@ -906,3 +1065,21 @@ macro_rules! index_impl {
 index_impl!(ConstId);
 index_impl!(Ty);
 index_impl!(Span);
+
+/// The source-order index of a variant in a type.
+///
+/// For example, in the following types,
+/// ```ignore(illustrative)
+/// enum Demo1 {
+///    Variant0 { a: bool, b: i32 },
+///    Variant1 { c: u8, d: u64 },
+/// }
+/// struct Demo2 { e: u8, f: u16, g: u8 }
+/// ```
+/// `a` is in the variant with the `VariantIdx` of `0`,
+/// `c` is in the variant with the `VariantIdx` of `1`, and
+/// `g` is in the variant with the `VariantIdx` of `0`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VariantIdx(usize);
+
+index_impl!(VariantIdx);

@@ -10,7 +10,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{GenBlockKind, Pat, Path, PathSegment};
+use ast::{CoroutineKind, GenBlockKind, Pat, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -21,7 +21,7 @@ use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
-use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
+use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -2237,7 +2237,7 @@ impl<'a> Parser<'a> {
         let asyncness = if self.token.uninterpolated_span().at_least_rust_2018() {
             self.parse_asyncness(Case::Sensitive)
         } else {
-            Async::No
+            None
         };
 
         let capture_clause = self.parse_capture_clause()?;
@@ -2261,7 +2261,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if let Async::Yes { span, .. } = asyncness {
+        if let Some(CoroutineKind::Async { span, .. }) = asyncness {
             // Feature-gate `async ||` closures.
             self.sess.gated_spans.gate(sym::async_closure, span);
         }
@@ -2284,7 +2284,7 @@ impl<'a> Parser<'a> {
                 binder,
                 capture_clause,
                 constness,
-                asyncness,
+                coro_kind: asyncness,
                 movability,
                 fn_decl,
                 body,

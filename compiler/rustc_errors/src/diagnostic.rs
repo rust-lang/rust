@@ -239,7 +239,7 @@ impl Diagnostic {
     }
 
     #[track_caller]
-    pub fn new_with_code<M: Into<DiagnosticMessage>>(
+    pub(crate) fn new_with_code<M: Into<DiagnosticMessage>>(
         level: Level,
         code: Option<DiagnosticId>,
         message: M,
@@ -281,7 +281,7 @@ impl Diagnostic {
         }
     }
 
-    pub fn update_unstable_expectation_id(
+    pub(crate) fn update_unstable_expectation_id(
         &mut self,
         unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
     ) {
@@ -307,14 +307,14 @@ impl Diagnostic {
     }
 
     /// Indicates whether this diagnostic should show up in cargo's future breakage report.
-    pub fn has_future_breakage(&self) -> bool {
+    pub(crate) fn has_future_breakage(&self) -> bool {
         match self.code {
             Some(DiagnosticId::Lint { has_future_breakage, .. }) => has_future_breakage,
             _ => false,
         }
     }
 
-    pub fn is_force_warn(&self) -> bool {
+    pub(crate) fn is_force_warn(&self) -> bool {
         match self.code {
             Some(DiagnosticId::Lint { is_force_warn, .. }) => is_force_warn,
             _ => false,
@@ -391,29 +391,6 @@ impl Diagnostic {
         self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
 
-    pub fn note_unsuccessful_coercion(
-        &mut self,
-        expected: DiagnosticStyledString,
-        found: DiagnosticStyledString,
-    ) -> &mut Self {
-        let mut msg: Vec<_> =
-            vec![(Cow::from("required when trying to coerce from type `"), Style::NoStyle)];
-        msg.extend(expected.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (Cow::from(s.clone()), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (Cow::from(s.clone()), Style::Highlight),
-        }));
-        msg.push((Cow::from("` to type '"), Style::NoStyle));
-        msg.extend(found.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (Cow::from(s.clone()), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (Cow::from(s.clone()), Style::Highlight),
-        }));
-        msg.push((Cow::from("`"), Style::NoStyle));
-
-        // For now, just attach these as notes
-        self.highlighted_note(msg);
-        self
-    }
-
     pub fn note_expected_found_extra(
         &mut self,
         expected_label: &dyn fmt::Display,
@@ -475,7 +452,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn highlighted_note<M: Into<SubdiagnosticMessage>>(
+    fn highlighted_note<M: Into<SubdiagnosticMessage>>(
         &mut self,
         msg: Vec<(M, Style)>,
     ) -> &mut Self {
@@ -569,14 +546,6 @@ impl Diagnostic {
     /// (before and after the call to `disable_suggestions`) will be ignored.
     pub fn disable_suggestions(&mut self) -> &mut Self {
         self.suggestions = Err(SuggestionsDisabled);
-        self
-    }
-
-    /// Clear any existing suggestions.
-    pub fn clear_suggestions(&mut self) -> &mut Self {
-        if let Ok(suggestions) = &mut self.suggestions {
-            suggestions.clear();
-        }
         self
     }
 
@@ -992,7 +961,7 @@ impl Diagnostic {
     /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
     /// combining it with the primary message of the diagnostic (if translatable, otherwise it just
     /// passes the user's string along).
-    pub(crate) fn subdiagnostic_message_to_diagnostic_message(
+    fn subdiagnostic_message_to_diagnostic_message(
         &self,
         attr: impl Into<SubdiagnosticMessage>,
     ) -> DiagnosticMessage {

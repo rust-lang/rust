@@ -44,7 +44,7 @@ pub enum TerminationInfo {
     },
     DataRace {
         involves_non_atomic: bool,
-        ptr: Pointer,
+        ptr: Pointer<AllocId>,
         op1: RacingOp,
         op2: RacingOp,
         extra: Option<&'static str>,

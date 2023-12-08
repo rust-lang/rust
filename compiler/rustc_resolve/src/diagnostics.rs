@@ -27,10 +27,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::{thin_vec, ThinVec};
 
-use crate::errors::{
-    AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
-    ExplicitUnsafeTraits,
-};
+use crate::errors::{AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion};
+use crate::errors::{ConsiderAddingADerive, ExplicitUnsafeTraits, MaybeMissingMacroRulesName};
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
@@ -1421,14 +1419,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             "",
         );
 
+        if macro_kind == MacroKind::Bang && ident.name == sym::macro_rules {
+            err.subdiagnostic(MaybeMissingMacroRulesName { span: ident.span });
+            return;
+        }
+
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             err.subdiagnostic(ExplicitUnsafeTraits { span: ident.span, ident });
             return;
         }
+
         if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
             err.subdiagnostic(AddedMacroUse);
             return;
         }
+
         if ident.name == kw::Default
             && let ModuleKind::Def(DefKind::Enum, def_id, _) = parent_scope.module.kind
         {
@@ -1697,6 +1702,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
         err.span_label(ident.span, format!("private {descr}"));
 
+        let mut not_publicly_reexported = false;
         if let Some((this_res, outer_ident)) = outermost_res {
             let import_suggestions = self.lookup_import_candidates(
                 outer_ident,
@@ -1717,6 +1723,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             );
             // If we suggest importing a public re-export, don't point at the definition.
             if point_to_def && ident.span != outer_ident.span {
+                not_publicly_reexported = true;
                 err.span_label(
                     outer_ident.span,
                     format!("{} `{outer_ident}` is not publicly re-exported", this_res.descr()),
@@ -1749,10 +1756,51 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        let mut sugg_paths = vec![];
+        if let Some(mut def_id) = res.opt_def_id() {
+            // We can't use `def_path_str` in resolve.
+            let mut path = vec![def_id];
+            while let Some(parent) = self.tcx.opt_parent(def_id) {
+                def_id = parent;
+                if !def_id.is_top_level_module() {
+                    path.push(def_id);
+                } else {
+                    break;
+                }
+            }
+            // We will only suggest importing directly if it is accessible through that path.
+            let path_names: Option<Vec<String>> = path
+                .iter()
+                .rev()
+                .map(|def_id| {
+                    self.tcx.opt_item_name(*def_id).map(|n| {
+                        if def_id.is_top_level_module() {
+                            "crate".to_string()
+                        } else {
+                            n.to_string()
+                        }
+                    })
+                })
+                .collect();
+            if let Some(def_id) = path.get(0)
+                && let Some(path) = path_names
+            {
+                if let Some(def_id) = def_id.as_local() {
+                    if self.effective_visibilities.is_directly_public(def_id) {
+                        sugg_paths.push((path, false));
+                    }
+                } else if self.is_accessible_from(self.tcx.visibility(def_id), parent_scope.module)
+                {
+                    sugg_paths.push((path, false));
+                }
+            }
+        }
+
         // Print the whole import chain to make it easier to see what happens.
         let first_binding = binding;
         let mut next_binding = Some(binding);
         let mut next_ident = ident;
+        let mut path = vec![];
         while let Some(binding) = next_binding {
             let name = next_ident;
             next_binding = match binding.kind {
@@ -1771,6 +1819,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => None,
             };
 
+            match binding.kind {
+                NameBindingKind::Import { import, .. } => {
+                    for segment in import.module_path.iter().skip(1) {
+                        path.push(segment.ident.to_string());
+                    }
+                    sugg_paths.push((
+                        path.iter()
+                            .cloned()
+                            .chain(vec![ident.to_string()].into_iter())
+                            .collect::<Vec<_>>(),
+                        true, // re-export
+                    ));
+                }
+                NameBindingKind::Res(_) | NameBindingKind::Module(_) => {}
+            }
             let first = binding == first_binding;
             let msg = format!(
                 "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
@@ -1782,7 +1845,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
             if !first && binding.vis.is_public() {
-                note_span.push_span_label(def_span, "consider importing it directly");
+                let desc = match binding.kind {
+                    NameBindingKind::Import { .. } => "re-export",
+                    _ => "directly",
+                };
+                note_span.push_span_label(def_span, format!("you could import this {desc}"));
             }
             // Final step in the import chain, point out if the ADT is `non_exhaustive`
             // which is probably why this privacy violation occurred.
@@ -1795,6 +1862,29 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
             }
             err.span_note(note_span, msg);
+        }
+        // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
+        sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0] == "core", *reexport));
+        for (sugg, reexport) in sugg_paths {
+            if not_publicly_reexported {
+                break;
+            }
+            if sugg.len() <= 1 {
+                // A single path segment suggestion is wrong. This happens on circular imports.
+                // `tests/ui/imports/issue-55884-2.rs`
+                continue;
+            }
+            let path = sugg.join("::");
+            err.span_suggestion_verbose(
+                dedup_span,
+                format!(
+                    "import `{ident}` {}",
+                    if reexport { "through the re-export" } else { "directly" }
+                ),
+                path,
+                Applicability::MachineApplicable,
+            );
+            break;
         }
 
         err.emit();

@@ -158,6 +158,9 @@ declare_features! (
     /// Allows using `#[plugin_registrar]` on functions.
     (removed, plugin_registrar, "1.54.0", Some(29597), None,
      Some("plugins are no longer supported")),
+    /// Allows exhaustive integer pattern matching with `usize::MAX`/`isize::MIN`/`isize::MAX`.
+    (removed, precise_pointer_size_matching, "1.32.0", Some(56354), None,
+     Some("removed in favor of half-open ranges")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_gen, "1.27.0", Some(54727), None,

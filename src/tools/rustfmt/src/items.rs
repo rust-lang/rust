@@ -287,7 +287,7 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     ext: ast::Extern,
-    is_async: Cow<'a, ast::Async>,
+    coro_kind: Cow<'a, Option<ast::CoroutineKind>>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
     unsafety: ast::Unsafe,
@@ -302,7 +302,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
-            is_async: Cow::Borrowed(&method_sig.header.asyncness),
+            coro_kind: Cow::Borrowed(&method_sig.header.coro_kind),
             constness: method_sig.header.constness,
             defaultness: ast::Defaultness::Final,
             ext: method_sig.header.ext,
@@ -328,7 +328,7 @@ impl<'a> FnSig<'a> {
                 generics,
                 ext: fn_sig.header.ext,
                 constness: fn_sig.header.constness,
-                is_async: Cow::Borrowed(&fn_sig.header.asyncness),
+                coro_kind: Cow::Borrowed(&fn_sig.header.coro_kind),
                 defaultness,
                 unsafety: fn_sig.header.unsafety,
                 visibility: vis,
@@ -343,7 +343,8 @@ impl<'a> FnSig<'a> {
         result.push_str(&*format_visibility(context, self.visibility));
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
-        result.push_str(format_async(&self.is_async));
+        self.coro_kind
+            .map(|coro_kind| result.push_str(format_coro(&coro_kind)));
         result.push_str(format_unsafety(self.unsafety));
         result.push_str(&format_extern(
             self.ext,

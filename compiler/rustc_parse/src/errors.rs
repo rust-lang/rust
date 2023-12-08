@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
-use rustc_errors::{AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
+use rustc_errors::{AddToDiagnostic, Applicability, ErrorGuaranteed, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
@@ -563,6 +563,13 @@ pub(crate) struct GenFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_async_gen_fn)]
+pub(crate) struct AsyncGenFn {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_comma_after_base_struct)]
 #[note]
 pub(crate) struct CommaAfterBaseStruct {
@@ -1038,12 +1045,12 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
+impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
     #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, G> {
+    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = handler.struct_diagnostic(match token_descr {
@@ -1095,12 +1102,12 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
+impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
     #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, G> {
+    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = handler.struct_diagnostic(match token_descr {
@@ -1726,7 +1733,7 @@ pub(crate) struct ExternItemCannotBeConst {
     #[primary_span]
     pub ident_span: Span,
     #[suggestion(code = "static ", applicability = "machine-applicable")]
-    pub const_span: Span,
+    pub const_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]

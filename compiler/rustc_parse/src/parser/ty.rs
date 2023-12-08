@@ -304,23 +304,25 @@ impl<'a> Parser<'a> {
                 if self.may_recover()
                     && (self.eat_keyword_noexpect(kw::Impl) || self.eat_keyword_noexpect(kw::Dyn))
                 {
-                    let kw = self.prev_token.ident().unwrap().0.name;
-                    let mut err = self.sess.create_err(errors::TransposeDynOrImpl {
-                        span: self.prev_token.span,
-                        kw: kw.as_str(),
-                        sugg: errors::TransposeDynOrImplSugg {
-                            removal_span: self.prev_token.span.with_hi(self.token.span.lo()),
-                            insertion_span: for_span.shrink_to_lo(),
-                            kw: kw.as_str(),
-                        },
-                    });
+                    let kw = self.prev_token.ident().unwrap().0;
+                    let removal_span = kw.span.with_hi(self.token.span.lo());
                     let path = self.parse_path(PathStyle::Type)?;
                     let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
                     let kind =
                         self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?;
+                    let mut err = self.sess.create_err(errors::TransposeDynOrImpl {
+                        span: kw.span,
+                        kw: kw.name.as_str(),
+                        sugg: errors::TransposeDynOrImplSugg {
+                            removal_span,
+                            insertion_span: for_span.shrink_to_lo(),
+                            kw: kw.name.as_str(),
+                        },
+                    });
+
                     // Take the parsed bare trait object and turn it either
                     // into a `dyn` object or an `impl Trait`.
-                    let kind = match (kind, kw) {
+                    let kind = match (kind, kw.name) {
                         (TyKind::TraitObject(bounds, _), kw::Dyn) => {
                             TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
                         }
@@ -596,7 +598,7 @@ impl<'a> Parser<'a> {
             tokens: None,
         };
         let span_start = self.token.span;
-        let ast::FnHeader { ext, unsafety, constness, asyncness } =
+        let ast::FnHeader { ext, unsafety, constness, coro_kind } =
             self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
         if self.may_recover() && self.token.kind == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
@@ -609,9 +611,10 @@ impl<'a> Parser<'a> {
             // cover it.
             self.sess.emit_err(FnPointerCannotBeConst { span: whole_span, qualifier: span });
         }
-        if let ast::Async::Yes { span, .. } = asyncness {
+        if let Some(ast::CoroutineKind::Async { span, .. }) = coro_kind {
             self.sess.emit_err(FnPointerCannotBeAsync { span: whole_span, qualifier: span });
         }
+        // FIXME(gen_blocks): emit a similar error for `gen fn()`
         let decl_span = span_start.to(self.token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
     }

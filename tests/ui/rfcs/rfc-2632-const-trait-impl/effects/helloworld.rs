@@ -3,15 +3,16 @@
 // gate-test-effects
 // ^ effects doesn't have a gate so we will trick tidy into thinking this is a gate test
 
-#![feature(const_trait_impl, effects, rustc_attrs)]
+#![feature(const_trait_impl, effects, core_intrinsics, const_eval_select)]
 
 // ensure we are passing in the correct host effect in always const contexts.
 
-pub const fn hmm<T, #[rustc_host] const host: bool = true>() -> usize {
-    if host {
-        1
-    } else {
-        0
+pub const fn hmm<T>() -> usize {
+    // FIXME(const_trait_impl): maybe we should have a way to refer to the (hidden) effect param
+    fn one() -> usize { 1 }
+    const fn zero() -> usize { 0 }
+    unsafe {
+        std::intrinsics::const_eval_select((), zero, one)
     }
 }
 

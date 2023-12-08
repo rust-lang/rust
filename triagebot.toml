@@ -431,7 +431,7 @@ changelog-branch = "master"
 cc = ["@bjorn3"]
 
 [mentions."compiler/rustc_codegen_gcc"]
-cc = ["@antoyo"]
+cc = ["@antoyo", "@GuillaumeGomez"]
 
 [mentions."compiler/rustc_const_eval/src/interpret"]
 message = "Some changes occurred to the CTFE / Miri engine"

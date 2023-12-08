@@ -264,6 +264,7 @@ trivial! {
     rustc_middle::middle::stability::DeprecationEntry,
     rustc_middle::mir::ConstQualifs,
     rustc_middle::mir::interpret::AllocId,
+    rustc_middle::mir::interpret::CtfeProvenance,
     rustc_middle::mir::interpret::ErrorHandled,
     rustc_middle::mir::interpret::LitToConstError,
     rustc_middle::thir::ExprId,

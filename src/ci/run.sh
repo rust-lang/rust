@@ -163,6 +163,14 @@ if [ "$IS_NOT_LATEST_LLVM" = "" ]; then
   export COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS=1
 fi
 
+if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
+  # If `ENABLE_GCC_CODEGEN` is set and not empty, we add the `--enable-new-symbol-mangling`
+  # argument to `RUST_CONFIGURE_ARGS` and set the `GCC_EXEC_PREFIX` environment variable.
+  # `cg_gcc` doesn't support the legacy mangling so we need to enforce the new one
+  # if we run `cg_gcc` tests.
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-new-symbol-mangling"
+fi
+
 # Print the date from the local machine and the date from an external source to
 # check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure
 # Pipelines it happened that the certificates were marked as expired.

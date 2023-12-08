@@ -9,9 +9,9 @@ use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FnDef, GenericArgs,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl,
-    TraitDef, Ty, TyKind,
+    TraitDef, Ty, TyKind, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
@@ -60,7 +60,7 @@ pub trait Context {
     fn item_kind(&self, item: CrateItem) -> ItemKind;
 
     /// Returns whether this is a foreign item.
-    fn is_foreign_item(&self, item: CrateItem) -> bool;
+    fn is_foreign_item(&self, item: DefId) -> bool;
 
     /// Returns the kind of a given algebraic data type
     fn adt_kind(&self, def: AdtDef) -> AdtKind;
@@ -71,6 +71,13 @@ pub trait Context {
     /// Retrieve the function signature for the given generic arguments.
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
 
+    /// The number of variants in this ADT.
+    fn adt_variants_len(&self, def: AdtDef) -> usize;
+
+    /// The name of a variant.
+    fn variant_name(&self, def: VariantDef) -> Symbol;
+    fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef>;
+
     /// Evaluate constant as a target usize.
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
 
@@ -80,8 +87,14 @@ pub trait Context {
     /// Create a new type from the given kind.
     fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
 
+    /// Create a new box type, `Box<T>`, for the given inner type `T`.
+    fn new_box_ty(&self, ty: Ty) -> Ty;
+
     /// Returns the type of given crate item.
     fn def_ty(&self, item: DefId) -> Ty;
+
+    /// Returns the type of given definition instantiated with the given arguments.
+    fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty;
 
     /// Returns literal value of a const as a string.
     fn const_literal(&self, cnst: &Const) -> String;
@@ -91,6 +104,9 @@ pub trait Context {
 
     /// Obtain the representation of a type.
     fn ty_kind(&self, ty: Ty) -> TyKind;
+
+    // Get the discriminant Ty for this Ty if there's one.
+    fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> Ty;
 
     /// Get the body of an Instance which is already monomorphized.
     fn instance_body(&self, instance: InstanceDef) -> Option<Body>;
@@ -109,7 +125,7 @@ pub trait Context {
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
-    fn mono_instance(&self, item: CrateItem) -> Instance;
+    fn mono_instance(&self, def_id: DefId) -> Instance;
 
     /// Item requires monomorphization.
     fn requires_monomorphization(&self, def_id: DefId) -> bool;

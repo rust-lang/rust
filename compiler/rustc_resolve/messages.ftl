@@ -181,6 +181,8 @@ resolve_method_not_member_of_trait =
     method `{$method}` is not a member of trait `{$trait_}`
     .label = not a member of trait `{$trait_}`
 
+resolve_missing_macro_rules_name = maybe you have forgotten to define a name for this `macro_rules!`
+
 resolve_module_only =
     visibility must resolve to a module
 

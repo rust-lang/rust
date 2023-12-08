@@ -269,14 +269,9 @@ touch $objdir/${SUMMARY_FILE}
 
 extra_env=""
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
-  extra_env="$EXTRA_ENV --env ENABLE_GCC_CODEGEN=1"
-  # If `ENABLE_GCC_CODEGEN` is set and not empty, we add the `--enable-new-symbol-mangling`
-  # argument to `RUST_CONFIGURE_ARGS` and set the `GCC_EXEC_PREFIX` environment variable.
-  # `cg_gcc` doesn't support the legacy mangling so we need to enforce the new one
-  # if we run `cg_gcc` tests.
-  extra_env="$EXTRA_ENV --env USE_NEW_MANGLING=--enable-new-symbol-mangling"
+  extra_env="$extra_env --env ENABLE_GCC_CODEGEN=1"
   # Fix rustc_codegen_gcc lto issues.
-  extra_env="$EXTRA_ENV --env GCC_EXEC_PREFIX=/usr/lib/gcc/"
+  extra_env="$extra_env --env GCC_EXEC_PREFIX=/usr/lib/gcc/"
   echo "Setting extra environment values for docker: $extra_env"
 fi
 

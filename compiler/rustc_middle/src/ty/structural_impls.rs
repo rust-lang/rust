@@ -440,8 +440,9 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::ClosureKind,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
-    interpret::Scalar,
     interpret::AllocId,
+    interpret::CtfeProvenance,
+    interpret::Scalar,
     rustc_target::abi::Size,
 }
 

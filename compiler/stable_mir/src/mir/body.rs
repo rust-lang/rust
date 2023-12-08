@@ -1,6 +1,7 @@
 use crate::mir::pretty::{function_body, pretty_statement, pretty_terminator};
 use crate::ty::{
     AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
+    VariantIdx,
 };
 use crate::{Error, Opaque, Span, Symbol};
 use std::io;
@@ -9,17 +10,17 @@ use std::io;
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
 
-    // Declarations of locals within the function.
-    //
-    // The first local is the return value pointer, followed by `arg_count`
-    // locals for the function arguments, followed by any user-declared
-    // variables and temporaries.
+    /// Declarations of locals within the function.
+    ///
+    /// The first local is the return value pointer, followed by `arg_count`
+    /// locals for the function arguments, followed by any user-declared
+    /// variables and temporaries.
     pub(super) locals: LocalDecls,
 
-    // The number of arguments this function takes.
+    /// The number of arguments this function takes.
     pub(super) arg_count: usize,
 
-    // Debug information pertaining to user variables, including captures.
+    /// Debug information pertaining to user variables, including captures.
     pub(super) var_debug_info: Vec<VarDebugInfo>,
 }
 
@@ -67,6 +68,11 @@ impl Body {
     /// `arg_locals`, and `inner_locals`.
     pub fn locals(&self) -> &[LocalDecl] {
         &self.locals
+    }
+
+    /// Get the local declaration for this local.
+    pub fn local_decl(&self, local: Local) -> Option<&LocalDecl> {
+        self.locals.get(local)
     }
 
     pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
@@ -266,6 +272,38 @@ pub enum BinOp {
     Ge,
     Gt,
     Offset,
+}
+
+impl BinOp {
+    /// Return the type of this operation for the given input Ty.
+    /// This function does not perform type checking, and it currently doesn't handle SIMD.
+    pub fn ty(&self, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
+        assert!(lhs_ty.kind().is_primitive());
+        assert!(rhs_ty.kind().is_primitive());
+        match self {
+            BinOp::Add
+            | BinOp::AddUnchecked
+            | BinOp::Sub
+            | BinOp::SubUnchecked
+            | BinOp::Mul
+            | BinOp::MulUnchecked
+            | BinOp::Div
+            | BinOp::Rem
+            | BinOp::BitXor
+            | BinOp::BitAnd
+            | BinOp::BitOr => {
+                assert_eq!(lhs_ty, rhs_ty);
+                lhs_ty
+            }
+            BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked | BinOp::Offset => {
+                lhs_ty
+            }
+            BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
+                assert_eq!(lhs_ty, rhs_ty);
+                Ty::bool_ty()
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -469,6 +507,63 @@ pub enum Rvalue {
     Use(Operand),
 }
 
+impl Rvalue {
+    pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
+        match self {
+            Rvalue::Use(operand) => operand.ty(locals),
+            Rvalue::Repeat(operand, count) => {
+                Ok(Ty::new_array_with_const_len(operand.ty(locals)?, count.clone()))
+            }
+            Rvalue::ThreadLocalRef(did) => Ok(did.ty()),
+            Rvalue::Ref(reg, bk, place) => {
+                let place_ty = place.ty(locals)?;
+                Ok(Ty::new_ref(reg.clone(), place_ty, bk.to_mutable_lossy()))
+            }
+            Rvalue::AddressOf(mutability, place) => {
+                let place_ty = place.ty(locals)?;
+                Ok(Ty::new_ptr(place_ty, *mutability))
+            }
+            Rvalue::Len(..) => Ok(Ty::usize_ty()),
+            Rvalue::Cast(.., ty) => Ok(*ty),
+            Rvalue::BinaryOp(op, lhs, rhs) => {
+                let lhs_ty = lhs.ty(locals)?;
+                let rhs_ty = rhs.ty(locals)?;
+                Ok(op.ty(lhs_ty, rhs_ty))
+            }
+            Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+                let lhs_ty = lhs.ty(locals)?;
+                let rhs_ty = rhs.ty(locals)?;
+                let ty = op.ty(lhs_ty, rhs_ty);
+                Ok(Ty::new_tuple(&[ty, Ty::bool_ty()]))
+            }
+            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, operand) => operand.ty(locals),
+            Rvalue::Discriminant(place) => {
+                let place_ty = place.ty(locals)?;
+                place_ty
+                    .kind()
+                    .discriminant_ty()
+                    .ok_or_else(|| error!("Expected a `RigidTy` but found: {place_ty:?}"))
+            }
+            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
+                Ok(Ty::usize_ty())
+            }
+            Rvalue::Aggregate(ak, ops) => match *ak {
+                AggregateKind::Array(ty) => Ty::try_new_array(ty, ops.len() as u64),
+                AggregateKind::Tuple => Ok(Ty::new_tuple(
+                    &ops.iter().map(|op| op.ty(locals)).collect::<Result<Vec<_>, _>>()?,
+                )),
+                AggregateKind::Adt(def, _, ref args, _, _) => Ok(def.ty_with_args(args)),
+                AggregateKind::Closure(def, ref args) => Ok(Ty::new_closure(def, args.clone())),
+                AggregateKind::Coroutine(def, ref args, mov) => {
+                    Ok(Ty::new_coroutine(def, args.clone(), mov))
+                }
+            },
+            Rvalue::ShallowInitBox(_, ty) => Ok(Ty::new_box(*ty)),
+            Rvalue::CopyForDeref(place) => place.ty(locals),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AggregateKind {
     Array(Ty),
@@ -492,12 +587,32 @@ pub struct Place {
     pub projection: Vec<ProjectionElem>,
 }
 
+impl From<Local> for Place {
+    fn from(local: Local) -> Self {
+        Place { local, projection: vec![] }
+    }
+}
+
+/// Debug information pertaining to a user variable.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VarDebugInfo {
+    /// The variable name.
     pub name: Symbol,
+
+    /// Source info of the user variable, including the scope
+    /// within which the variable is visible (to debuginfo).
     pub source_info: SourceInfo,
+
+    /// The user variable's data is split across several fragments,
+    /// each described by a `VarDebugInfoFragment`.
     pub composite: Option<VarDebugInfoFragment>,
+
+    /// Where the data for this user variable is to be found.
     pub value: VarDebugInfoContents,
+
+    /// When present, indicates what argument number this variable is in the function that it
+    /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
+    /// argument number in the original function before it was inlined.
     pub argument_index: Option<u16>,
 }
 
@@ -632,22 +747,7 @@ pub const RETURN_LOCAL: Local = 0;
 /// `b`'s `FieldIdx` is `1`,
 /// `c`'s `FieldIdx` is `0`, and
 /// `g`'s `FieldIdx` is `2`.
-type FieldIdx = usize;
-
-/// The source-order index of a variant in a type.
-///
-/// For example, in the following types,
-/// ```ignore(illustrative)
-/// enum Demo1 {
-///    Variant0 { a: bool, b: i32 },
-///    Variant1 { c: u8, d: u64 },
-/// }
-/// struct Demo2 { e: u8, f: u16, g: u8 }
-/// ```
-/// `a` is in the variant with the `VariantIdx` of `0`,
-/// `c` is in the variant with the `VariantIdx` of `1`, and
-/// `g` is in the variant with the `VariantIdx` of `0`.
-pub type VariantIdx = usize;
+pub type FieldIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
 
@@ -712,6 +812,17 @@ pub enum BorrowKind {
         /// `true` if this borrow arose from method-call auto-ref
         kind: MutBorrowKind,
     },
+}
+
+impl BorrowKind {
+    pub fn to_mutable_lossy(self) -> Mutability {
+        match self {
+            BorrowKind::Mut { .. } => Mutability::Mut,
+            BorrowKind::Shared => Mutability::Not,
+            // FIXME: There's no type corresponding to a shallow borrow, so use `&` as an approximation.
+            BorrowKind::Fake => Mutability::Not,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

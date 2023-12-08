@@ -11,7 +11,10 @@ use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::ty::ScalarInt;
 
-use super::{AllocId, InterpResult, Pointer, PointerArithmetic, Provenance, ScalarSizeMismatch};
+use super::{
+    AllocId, CtfeProvenance, InterpResult, Pointer, PointerArithmetic, Provenance,
+    ScalarSizeMismatch,
+};
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a
 /// `memory::Allocation`. It is in many ways like a small chunk of an `Allocation`, up to 16 bytes in
@@ -22,7 +25,7 @@ use super::{AllocId, InterpResult, Pointer, PointerArithmetic, Provenance, Scala
 /// Do *not* match on a `Scalar`! Use the various `to_*` methods instead.
 #[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
-pub enum Scalar<Prov = AllocId> {
+pub enum Scalar<Prov = CtfeProvenance> {
     /// The raw bytes of a simple value.
     Int(ScalarInt),
 
@@ -267,6 +270,9 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     /// Will perform ptr-to-int casts if needed and possible.
     /// If that fails, we know the offset is relative, so we return an "erased" Scalar
     /// (which is useful for error messages but not much else).
+    ///
+    /// The error type is `AllocId`, not `CtfeProvenance`, since `AllocId` is the "minimal"
+    /// component all provenance types must have.
     #[inline]
     pub fn try_to_int(self) -> Result<ScalarInt, Scalar<AllocId>> {
         match self {

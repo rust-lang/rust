@@ -60,7 +60,7 @@ fn prepare_lto(
     };
 
     let symbol_filter = &|&(ref name, info): &(String, SymbolExportInfo)| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold) || info.used || info.used_compiler {
             Some(CString::new(name.as_str()).unwrap())
         } else {
             None

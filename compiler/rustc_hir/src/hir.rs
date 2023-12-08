@@ -487,6 +487,7 @@ pub enum GenericParamKind<'hir> {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
         default: Option<AnonConst>,
+        is_host_effect: bool,
     },
 }
 
@@ -2255,6 +2256,8 @@ pub enum ImplItemKind<'hir> {
 
 /// The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
+/// The name of the associated type for `Iterator` item types.
+pub const ITERATOR_ITEM_NAME: Symbol = sym::Item;
 
 /// Bind a type to an associated type (i.e., `A = Foo`).
 ///

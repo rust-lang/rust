@@ -1182,10 +1182,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if let Some(bound_span) = bound_span {
                     err.span_label(
                         bound_span,
-                        format!(
-                            "ambiguous `{assoc_name}` from `{}`",
-                            bound.print_only_trait_path(),
-                        ),
+                        format!("ambiguous `{assoc_name}` from `{}`", bound.print_trait_sugared(),),
                     );
                     if let Some(constraint) = &is_equality {
                         where_bounds.push(format!(
