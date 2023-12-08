@@ -87,6 +87,17 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 
 fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     if let StmtKind::Semi(expr) = stmt.kind {
+        // move `expr.span.from_expansion()` ahead
+        if expr.span.from_expansion() {
+            return false;
+        }
+        let expr = peel_blocks(expr);
+
+        if is_operator_overridden(cx, expr) {
+            // Return `true`, to prevent `check_unnecessary_operation` from
+            // linting on this statement as well.
+            return true;
+        }
         if has_no_effect(cx, expr) {
             span_lint_hir_and_then(
                 cx,
@@ -153,11 +164,26 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     false
 }
 
-fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if expr.span.from_expansion() {
-        return false;
+fn is_operator_overridden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    // It's very hard or impossable to check whether overridden operator have side-effect this lint.
+    // So, this function assume user-defined operator is overridden with an side-effect.
+    // The definition of user-defined structure here is ADT-type,
+    // Althrough this will weaken the ability of this lint, less error lint-fix happen.
+    match expr.kind {
+        ExprKind::Binary(..) | ExprKind::Unary(..) => {
+            // No need to check type of `lhs` and `rhs`
+            // because if the operator is overridden, at least one operand is ADT type
+
+            // reference: rust/compiler/rustc_middle/src/ty/typeck_results.rs: `is_method_call`.
+            // use this function to check whether operator is overridden in `ExprKind::{Binary, Unary}`.
+            cx.typeck_results().is_method_call(expr)
+        },
+        _ => false,
     }
-    match peel_blocks(expr).kind {
+}
+
+fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match expr.kind {
         ExprKind::Lit(..) | ExprKind::Closure { .. } => true,
         ExprKind::Path(..) => !has_drop(cx, cx.typeck_results().expr_ty(expr)),
         ExprKind::Index(a, b, _) | ExprKind::Binary(_, a, b) => has_no_effect(cx, a) && has_no_effect(cx, b),
