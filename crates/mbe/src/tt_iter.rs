@@ -131,7 +131,6 @@ impl<'a, S: Span> TtIter<'a, S> {
         let buffer = tt::buffer::TokenBuffer::from_tokens(self.inner.as_slice());
         let parser_input = to_parser_input(&buffer);
         let tree_traversal = entry_point.parse(&parser_input);
-
         let mut cursor = buffer.begin();
         let mut error = false;
         for step in tree_traversal.iter() {
@@ -163,12 +162,10 @@ impl<'a, S: Span> TtIter<'a, S> {
         let mut curr = buffer.begin();
         let mut res = vec![];
 
-        if cursor.is_root() {
-            while curr != cursor {
-                let Some(token) = curr.token_tree() else { break };
-                res.push(token.cloned());
-                curr = curr.bump();
-            }
+        while curr != cursor {
+            let Some(token) = curr.token_tree() else { break };
+            res.push(token.cloned());
+            curr = curr.bump();
         }
 
         self.inner = self.inner.as_slice()[res.len()..].iter();
