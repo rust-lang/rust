@@ -448,9 +448,8 @@ fn render_const_scalar(
 ) -> Result<(), HirDisplayError> {
     // FIXME: We need to get krate from the final callers of the hir display
     // infrastructure and have it here as a field on `f`.
-    let trait_env = Arc::new(TraitEnvironment::empty(
-        *f.db.crate_graph().crates_in_topological_order().last().unwrap(),
-    ));
+    let trait_env =
+        TraitEnvironment::empty(*f.db.crate_graph().crates_in_topological_order().last().unwrap());
     match ty.kind(Interner) {
         TyKind::Scalar(s) => match s {
             Scalar::Bool => write!(f, "{}", if b[0] == 0 { false } else { true }),
