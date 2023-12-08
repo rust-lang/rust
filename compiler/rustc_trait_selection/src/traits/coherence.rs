@@ -6,8 +6,8 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
-use crate::solve::inspect;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::{deeply_normalize_for_diagnostics, inspect};
 use crate::traits::engine::TraitEngineExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::{IntercrateAmbiguityCause, TreatInductiveCycleAs};
@@ -245,7 +245,7 @@ fn overlap<'tcx>(
                                     let trait_ref = infcx.resolve_vars_if_possible(trait_ref);
                                     format!(
                                         "of `{}` for `{}`",
-                                        trait_ref.print_only_trait_path(),
+                                        trait_ref.print_trait_sugared(),
                                         trait_ref.self_ty()
                                     )
                                 }
@@ -308,7 +308,13 @@ fn overlap<'tcx>(
         .iter()
         .any(|c| c.0.involves_placeholders());
 
-    let impl_header = selcx.infcx.resolve_vars_if_possible(impl1_header);
+    let mut impl_header = infcx.resolve_vars_if_possible(impl1_header);
+
+    // Deeply normalize the impl header for diagnostics, ignoring any errors if this fails.
+    if infcx.next_trait_solver() {
+        impl_header = deeply_normalize_for_diagnostics(&infcx, param_env, impl_header);
+    }
+
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
@@ -1084,6 +1090,10 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                         Ok(Ok(())) => warn!("expected an unknowable trait ref: {trait_ref:?}"),
                         Ok(Err(conflict)) => {
                             if !trait_ref.references_error() {
+                                // Normalize the trait ref for diagnostics, ignoring any errors if this fails.
+                                let trait_ref =
+                                    deeply_normalize_for_diagnostics(infcx, param_env, trait_ref);
+
                                 let self_ty = trait_ref.self_ty();
                                 let self_ty = self_ty.has_concrete_skeleton().then(|| self_ty);
                                 ambiguity_cause = Some(match conflict {

@@ -121,8 +121,8 @@ pub trait MutVisitor: Sized {
         noop_visit_fn_decl(d, self);
     }
 
-    fn visit_asyncness(&mut self, a: &mut Async) {
-        noop_visit_asyncness(a, self);
+    fn visit_coro_kind(&mut self, a: &mut CoroutineKind) {
+        noop_visit_coro_kind(a, self);
     }
 
     fn visit_closure_binder(&mut self, b: &mut ClosureBinder) {
@@ -871,13 +871,14 @@ pub fn noop_visit_closure_binder<T: MutVisitor>(binder: &mut ClosureBinder, vis:
     }
 }
 
-pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut Async, vis: &mut T) {
-    match asyncness {
-        Async::Yes { span: _, closure_id, return_impl_trait_id } => {
+pub fn noop_visit_coro_kind<T: MutVisitor>(coro_kind: &mut CoroutineKind, vis: &mut T) {
+    match coro_kind {
+        CoroutineKind::Async { span, closure_id, return_impl_trait_id }
+        | CoroutineKind::Gen { span, closure_id, return_impl_trait_id } => {
+            vis.visit_span(span);
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);
         }
-        Async::No => {}
     }
 }
 
@@ -1170,9 +1171,9 @@ fn visit_const_item<T: MutVisitor>(
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
-    let FnHeader { unsafety, asyncness, constness, ext: _ } = header;
+    let FnHeader { unsafety, coro_kind, constness, ext: _ } = header;
     visit_constness(constness, vis);
-    vis.visit_asyncness(asyncness);
+    coro_kind.as_mut().map(|coro_kind| vis.visit_coro_kind(coro_kind));
     visit_unsafety(unsafety, vis);
 }
 
@@ -1406,7 +1407,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             binder,
             capture_clause,
             constness,
-            asyncness,
+            coro_kind,
             movability: _,
             fn_decl,
             body,
@@ -1415,7 +1416,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }) => {
             vis.visit_closure_binder(binder);
             visit_constness(constness, vis);
-            vis.visit_asyncness(asyncness);
+            coro_kind.as_mut().map(|coro_kind| vis.visit_coro_kind(coro_kind));
             vis.visit_capture_by(capture_clause);
             vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);

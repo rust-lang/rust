@@ -1,14 +1,16 @@
 use std::mem;
 
 use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDiagnosticArg};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::AssertKind;
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, DUMMY_SP};
 
-use super::InterpCx;
+use super::{CompileTimeInterpreter, InterpCx};
 use crate::errors::{self, FrameNote, ReportErrorExt};
-use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, Machine, MachineStopType};
+use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, MachineStopType};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -57,16 +59,20 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     }
 }
 
-pub fn get_span_and_frames<'tcx, 'mir, M: Machine<'mir, 'tcx>>(
-    ecx: &InterpCx<'mir, 'tcx, M>,
+pub fn get_span_and_frames<'tcx, 'mir>(
+    tcx: TyCtxtAt<'tcx>,
+    machine: &CompileTimeInterpreter<'mir, 'tcx>,
 ) -> (Span, Vec<errors::FrameNote>)
 where
     'tcx: 'mir,
 {
-    let mut stacktrace = ecx.generate_stacktrace();
+    let mut stacktrace =
+        InterpCx::<CompileTimeInterpreter<'mir, 'tcx>>::generate_stacktrace_from_stack(
+            &machine.stack,
+        );
     // Filter out `requires_caller_location` frames.
-    stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
-    let span = stacktrace.first().map(|f| f.span).unwrap_or(ecx.tcx.span);
+    stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
+    let span = stacktrace.first().map(|f| f.span).unwrap_or(tcx.span);
 
     let mut frames = Vec::new();
 
@@ -87,7 +93,7 @@ where
 
         let mut last_frame: Option<errors::FrameNote> = None;
         for frame_info in &stacktrace {
-            let frame = frame_info.as_note(*ecx.tcx);
+            let frame = frame_info.as_note(*tcx);
             match last_frame.as_mut() {
                 Some(last_frame)
                     if last_frame.span == frame.span
@@ -155,4 +161,26 @@ where
             ErrorHandled::Reported(err.emit().into(), span)
         }
     }
+}
+
+/// Emit a lint from a const-eval situation.
+// Even if this is unused, please don't remove it -- chances are we will need to emit a lint during const-eval again in the future!
+pub(super) fn lint<'tcx, 'mir, L>(
+    tcx: TyCtxtAt<'tcx>,
+    machine: &CompileTimeInterpreter<'mir, 'tcx>,
+    lint: &'static rustc_session::lint::Lint,
+    decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
+) where
+    L: for<'a> rustc_errors::DecorateLint<'a, ()>,
+{
+    let (span, frames) = get_span_and_frames(tcx, machine);
+
+    tcx.emit_spanned_lint(
+        lint,
+        // We use the root frame for this so the crate that defines the const defines whether the
+        // lint is emitted.
+        machine.stack.first().and_then(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
+        span,
+        decorator(frames),
+    );
 }

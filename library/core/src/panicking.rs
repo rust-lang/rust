@@ -84,6 +84,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 #[rustc_nounwind]
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
+    #[inline] // this should always be inlined into `panic_nounwind_fmt`
     #[track_caller]
     fn runtime(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
         if cfg!(feature = "panic_immediate_abort") {
@@ -112,6 +113,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
     #[inline]
     #[track_caller]
     const fn comptime(fmt: fmt::Arguments<'_>, _force_no_backtrace: bool) -> ! {
+        // We don't unwind anyway at compile-time so we can call the regular `panic_fmt`.
         panic_fmt(fmt);
     }
 
@@ -142,7 +144,8 @@ pub const fn panic(expr: &'static str) -> ! {
     panic_fmt(fmt::Arguments::new_const(&[expr]));
 }
 
-/// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize.
+/// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the caller.
+/// If you want `#[track_caller]` for nicer errors, call `panic_nounwind_fmt` directly.
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
@@ -205,8 +208,8 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     panic!("index out of bounds: the len is {len} but the index is {index}")
 }
 
-#[cold]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
 #[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind

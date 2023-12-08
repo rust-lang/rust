@@ -35,7 +35,12 @@ pub enum SymbolExportKind {
 pub struct SymbolExportInfo {
     pub level: SymbolExportLevel,
     pub kind: SymbolExportKind,
+    /// Used to mark these symbols not to be internalized by LTO. These symbols
+    /// are also added to `symbols.o` to avoid circular dependencies when linking.
     pub used: bool,
+    /// Also used to mark these symbols not to be internalized by LTO. But will
+    /// not be added to `symbols.o`. Currently there are only builtin functions.
+    pub used_compiler: bool,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]

@@ -468,16 +468,6 @@ impl<'tcx> CoroutineArgs<'tcx> {
         self.split().return_ty.expect_ty()
     }
 
-    /// Returns the "coroutine signature", which consists of its yield
-    /// and return types.
-    ///
-    /// N.B., some bits of the code prefers to see this wrapped in a
-    /// binder, but it never contains bound regions. Probably this
-    /// function should be removed.
-    pub fn poly_sig(self) -> PolyGenSig<'tcx> {
-        ty::Binder::dummy(self.sig())
-    }
-
     /// Returns the "coroutine signature", which consists of its resume, yield
     /// and return types.
     pub fn sig(self) -> GenSig<'tcx> {
@@ -1351,8 +1341,6 @@ pub struct GenSig<'tcx> {
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
 }
-
-pub type PolyGenSig<'tcx> = Binder<'tcx, GenSig<'tcx>>;
 
 /// Signature of a function type, which we have arbitrarily
 /// decided to use to refer to the input/output types.

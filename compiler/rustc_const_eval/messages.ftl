@@ -461,6 +461,9 @@ const_eval_validation_uninhabited_val = {$front_matter}: encountered a value of 
 const_eval_validation_uninit = {$front_matter}: encountered uninitialized memory, but {$expected}
 const_eval_validation_unsafe_cell = {$front_matter}: encountered `UnsafeCell` in a `const`
 
+const_eval_write_through_immutable_pointer =
+    writing through a pointer that was derived from a shared (immutable) reference
+
 const_eval_write_to_read_only =
     writing to {$allocation} which is read-only
 const_eval_zst_pointer_out_of_bounds =

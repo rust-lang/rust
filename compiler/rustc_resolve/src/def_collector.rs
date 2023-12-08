@@ -156,7 +156,10 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
-            if let Async::Yes { closure_id, .. } = sig.header.asyncness {
+            if let Some(
+                CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. },
+            ) = sig.header.coro_kind
+            {
                 self.visit_generics(generics);
 
                 // For async functions, we need to create their inner defs inside of a
@@ -281,11 +284,12 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
-                match closure.asyncness {
-                    Async::Yes { closure_id, .. } => {
-                        self.create_def(closure_id, kw::Empty, DefKind::Closure, expr.span)
-                    }
-                    Async::No => closure_def,
+                match closure.coro_kind {
+                    Some(
+                        CoroutineKind::Async { closure_id, .. }
+                        | CoroutineKind::Gen { closure_id, .. },
+                    ) => self.create_def(closure_id, kw::Empty, DefKind::Closure, expr.span),
+                    None => closure_def,
                 }
             }
             ExprKind::Gen(_, _, _) => {

@@ -129,16 +129,14 @@ impl CoverageSpan {
     /// If the span is part of a macro, and the macro is visible (expands directly to the given
     /// body_span), returns the macro name symbol.
     pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
-        if let Some(current_macro) = self.current_macro()
-            && self
-                .expn_span
-                .parent_callsite()
-                .unwrap_or_else(|| bug!("macro must have a parent"))
-                .eq_ctxt(body_span)
-        {
-            return Some(current_macro);
-        }
-        None
+        let current_macro = self.current_macro()?;
+        let parent_callsite = self.expn_span.parent_callsite()?;
+
+        // In addition to matching the context of the body span, the parent callsite
+        // must also be the source callsite, i.e. the parent must have no parent.
+        let is_visible_macro =
+            parent_callsite.parent_callsite().is_none() && parent_callsite.eq_ctxt(body_span);
+        is_visible_macro.then_some(current_macro)
     }
 
     pub fn is_macro_expansion(&self) -> bool {
@@ -379,18 +377,22 @@ impl<'a> CoverageSpansGenerator<'a> {
             return;
         }
 
-        let merged_prefix_len = self.curr_original_span.lo() - curr.span.lo();
-        let after_macro_bang = merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);
-        if self.curr().span.lo() + after_macro_bang > self.curr().span.hi() {
+        // The split point is relative to `curr_original_span`,
+        // because `curr.span` may have been merged with preceding spans.
+        let split_point_after_macro_bang = self.curr_original_span.lo()
+            + BytePos(visible_macro.as_str().len() as u32)
+            + BytePos(1); // add 1 for the `!`
+        debug_assert!(split_point_after_macro_bang <= curr.span.hi());
+        if split_point_after_macro_bang > curr.span.hi() {
             // Something is wrong with the macro name span;
-            // return now to avoid emitting malformed mappings.
-            // FIXME(#117788): Track down why this happens.
+            // return now to avoid emitting malformed mappings (e.g. #117788).
             return;
         }
+
         let mut macro_name_cov = curr.clone();
-        self.curr_mut().span = curr.span.with_lo(curr.span.lo() + after_macro_bang);
-        macro_name_cov.span =
-            macro_name_cov.span.with_hi(macro_name_cov.span.lo() + after_macro_bang);
+        macro_name_cov.span = macro_name_cov.span.with_hi(split_point_after_macro_bang);
+        self.curr_mut().span = curr.span.with_lo(split_point_after_macro_bang);
+
         debug!(
             "  and curr starts a new macro expansion, so add a new span just for \
             the macro `{visible_macro}!`, new span={macro_name_cov:?}",

@@ -168,7 +168,7 @@ const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZeroUsize>,
     step_expand: Option<NonZeroUsize>,
 ) -> bool {
-    if DEST::IS_ZST || mem::align_of::<SRC>() < mem::align_of::<DEST>() {
+    if const { SRC::IS_ZST || DEST::IS_ZST || mem::align_of::<SRC>() < mem::align_of::<DEST>() } {
         return false;
     }
 
@@ -184,6 +184,27 @@ const fn in_place_collectible<DEST, SRC>(
         // tracking.
         _ => false,
     }
+}
+
+const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
+    if const { mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
+        return src_cap > 0;
+    }
+
+    // If src type size is an integer multiple of the destination type size then
+    // the caller will have calculated a `dst_cap` that is an integer multiple of
+    // `src_cap` without remainder.
+    if const {
+        let src_sz = mem::size_of::<SRC>();
+        let dest_sz = mem::size_of::<DEST>();
+        dest_sz != 0 && src_sz % dest_sz == 0
+    } {
+        return false;
+    }
+
+    // type layouts don't guarantee a fit, so do a runtime check to see if
+    // the allocations happen to match
+    return src_cap > 0 && src_cap * mem::size_of::<SRC>() != dst_cap * mem::size_of::<DEST>();
 }
 
 /// This provides a shorthand for the source type since local type aliases aren't a thing.
@@ -259,13 +280,10 @@ where
         // that wasn't a multiple of the destination type size.
         // Since the discrepancy should generally be small this should only result in some
         // bookkeeping updates and no memmove.
-        if (const {
-            let src_sz = mem::size_of::<I::Src>();
-            src_sz > 0 && mem::size_of::<T>() % src_sz != 0
-        } && src_cap * mem::size_of::<I::Src>() != dst_cap * mem::size_of::<T>())
-            || const { mem::align_of::<T>() != mem::align_of::<I::Src>() }
-        {
+        if needs_realloc::<I::Src, T>(src_cap, dst_cap) {
             let alloc = Global;
+            debug_assert_ne!(src_cap, 0);
+            debug_assert_ne!(dst_cap, 0);
             unsafe {
                 // The old allocation exists, therefore it must have a valid layout.
                 let src_align = mem::align_of::<I::Src>();
@@ -286,6 +304,8 @@ where
                 let Ok(reallocated) = result else { handle_alloc_error(new_layout) };
                 dst_buf = reallocated.as_ptr() as *mut T;
             }
+        } else {
+            debug_assert_eq!(src_cap * mem::size_of::<I::Src>(), dst_cap * mem::size_of::<T>());
         }
 
         mem::forget(dst_guard);

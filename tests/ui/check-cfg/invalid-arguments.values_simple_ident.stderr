@@ -1,2 +1,0 @@
-error: invalid `--check-cfg` argument: `values("NOT_IDENT")` (`values()` first argument must be a simple identifier)
-

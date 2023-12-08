@@ -651,9 +651,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     )
                 }
-                Some(hir::CoroutineKind::Gen(hir::CoroutineSource::Fn)) => {
-                    todo!("gen closures do not exist yet")
-                }
+                // For a `gen {}` block created as a `gen fn` body, we need the return type to be
+                // ().
+                Some(hir::CoroutineKind::Gen(hir::CoroutineSource::Fn)) => self.tcx.types.unit,
 
                 _ => astconv.ty_infer(None, decl.output.span()),
             },

@@ -188,7 +188,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: lb,
                 capture_clause: lc,
-                asyncness: la,
+                coro_kind: la,
                 movability: lm,
                 fn_decl: lf,
                 body: le,
@@ -197,7 +197,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: rb,
                 capture_clause: rc,
-                asyncness: ra,
+                coro_kind: ra,
                 movability: rm,
                 fn_decl: rf,
                 body: re,
@@ -206,7 +206,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
-                && la.is_async() == ra.is_async()
+                && la.map_or(false, |la| la.is_async()) == ra.map_or(false, |ra| ra.is_async())
                 && lm == rm
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
@@ -563,9 +563,18 @@ pub fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {
     eq_fn_decl(&l.decl, &r.decl) && eq_fn_header(&l.header, &r.header)
 }
 
+fn eq_opt_coro_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool {
+    match (l, r) {
+        (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
+        | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. })) => true,
+        (None, None) => true,
+        _ => false,
+    }
+}
+
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
     matches!(l.unsafety, Unsafe::No) == matches!(r.unsafety, Unsafe::No)
-        && l.asyncness.is_async() == r.asyncness.is_async()
+        && eq_opt_coro_kind(l.coro_kind, r.coro_kind)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
 }

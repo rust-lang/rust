@@ -99,11 +99,11 @@ fn fn_sig_for_fn_abi<'tcx>(
         }
         ty::Coroutine(did, args, _) => {
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
-            let sig = args.as_coroutine().poly_sig();
+            let sig = args.as_coroutine().sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-            );
+            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(iter::once(
+                ty::BoundVariableKind::Region(ty::BrEnv),
+            ));
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
@@ -124,7 +124,6 @@ fn fn_sig_for_fn_abi<'tcx>(
                 }
             };
 
-            let sig = sig.skip_binder();
             // The `FnSig` and the `ret_ty` here is for a coroutines main
             // `Coroutine::resume(...) -> CoroutineState` function in case we
             // have an ordinary coroutine, the `Future::poll(...) -> Poll`

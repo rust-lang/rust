@@ -3,7 +3,7 @@ use std::num::NonZeroU32;
 use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
-use rustc_errors::{error_code, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, MultiSpan};
+use rustc_errors::{error_code, DiagnosticMessage, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
 use rustc_macros::Diagnostic;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
@@ -13,12 +13,12 @@ pub struct FeatureGateError {
     pub explain: DiagnosticMessage,
 }
 
-impl<'a, T: EmissionGuarantee> IntoDiagnostic<'a, T> for FeatureGateError {
+impl<'a> IntoDiagnostic<'a> for FeatureGateError {
     #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, T> {
+    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut diag = handler.struct_diagnostic(self.explain);
         diag.set_span(self.span);
         diag.code(error_code!(E0658));
@@ -444,3 +444,9 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 #[derive(Diagnostic)]
 #[diag(session_function_return_thunk_extern_requires_non_large_code_model)]
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
+
+#[derive(Diagnostic)]
+#[diag(session_failed_to_create_profiler)]
+pub struct FailedToCreateProfiler {
+    pub err: String,
+}

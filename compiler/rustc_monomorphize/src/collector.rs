@@ -385,8 +385,8 @@ fn collect_items_rec<'tcx>(
             recursion_depth_reset = None;
 
             if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
-                for &id in alloc.inner().provenance().ptrs().values() {
-                    collect_alloc(tcx, id, &mut used_items);
+                for &prov in alloc.inner().provenance().ptrs().values() {
+                    collect_alloc(tcx, prov.alloc_id(), &mut used_items);
                 }
             }
 
@@ -1363,9 +1363,9 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         }
         GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &inner in alloc.inner().provenance().ptrs().values() {
+            for &prov in alloc.inner().provenance().ptrs().values() {
                 rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                    collect_alloc(tcx, inner, output);
+                    collect_alloc(tcx, prov.alloc_id(), output);
                 });
             }
         }
@@ -1440,12 +1440,12 @@ fn collect_const_value<'tcx>(
 ) {
     match value {
         mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
-            collect_alloc(tcx, ptr.provenance, output)
+            collect_alloc(tcx, ptr.provenance.alloc_id(), output)
         }
         mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
         mir::ConstValue::Slice { data, meta: _ } => {
-            for &id in data.inner().provenance().ptrs().values() {
-                collect_alloc(tcx, id, output);
+            for &prov in data.inner().provenance().ptrs().values() {
+                collect_alloc(tcx, prov.alloc_id(), output);
             }
         }
         _ => {}

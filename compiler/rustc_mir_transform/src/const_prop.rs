@@ -11,6 +11,7 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::*;
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{self, GenericArgs, Instance, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{def_id::DefId, Span};
@@ -220,7 +221,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     fn before_access_global(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
         alloc: ConstAllocation<'tcx>,
@@ -240,10 +241,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn expose_ptr(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _ptr: Pointer<AllocId>,
-    ) -> InterpResult<'tcx> {
+    fn expose_ptr(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
         throw_machine_stop_str!("exposing pointers isn't supported in ConstProp")
     }
 

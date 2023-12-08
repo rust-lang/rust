@@ -1,5 +1,5 @@
 use crate::middle::resolve_bound_vars as rbv;
-use crate::mir::interpret::{AllocId, ErrorHandled, LitToConstInput, Scalar};
+use crate::mir::interpret::{ErrorHandled, LitToConstInput, Scalar};
 use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
@@ -413,7 +413,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
+    pub fn try_to_scalar(self) -> Option<Scalar> {
         self.try_to_valtree()?.try_to_scalar()
     }
 

@@ -867,12 +867,6 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                              exhaustively",
                     ));
                 }
-                if cx.tcx.sess.is_nightly_build() {
-                    err.help(format!(
-                            "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
-                             enable precise `{ty}` matching",
-                        ));
-                }
             } else if ty == cx.tcx.types.str_ {
                 err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
             } else if cx.is_foreign_non_exhaustive_enum(ty) {

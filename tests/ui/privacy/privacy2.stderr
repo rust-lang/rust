@@ -19,7 +19,7 @@ note: ...and refers to the function `foo` which is defined here
   --> $DIR/privacy2.rs:16:1
    |
 LL | pub fn foo() {}
-   | ^^^^^^^^^^^^ consider importing it directly
+   | ^^^^^^^^^^^^ you could import this directly
 
 error: requires `sized` lang_item
 

@@ -1,16 +1,21 @@
 error[E0596]: cannot borrow `*rofl` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-85765-closure.rs:6:9
+  --> $DIR/issue-85765-closure.rs:7:9
    |
 LL |         rofl.push(Vec::new());
    |         ^^^^ `rofl` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
+help: you can `clone` the `Vec<Vec<i32>>` value and consume it, but this might not be your desired behavior
+  --> $DIR/issue-85765-closure.rs:4:36
+   |
+LL |         let rofl: &Vec<Vec<i32>> = &mut test;
+   |                                    ^^^^^^^^^
 help: consider changing this binding's type
    |
 LL |         let rofl: &mut Vec<Vec<i32>> = &mut test;
    |                   ~~~~~~~~~~~~~~~~~~
 
 error[E0594]: cannot assign to `*r`, which is behind a `&` reference
-  --> $DIR/issue-85765-closure.rs:13:9
+  --> $DIR/issue-85765-closure.rs:14:9
    |
 LL |         *r = 0;
    |         ^^^^^^ `r` is a `&` reference, so the data it refers to cannot be written
@@ -21,7 +26,7 @@ LL |         let r = &mut mutvar;
    |                  +++
 
 error[E0594]: cannot assign to `*x`, which is behind a `&` reference
-  --> $DIR/issue-85765-closure.rs:20:9
+  --> $DIR/issue-85765-closure.rs:21:9
    |
 LL |         *x = 1;
    |         ^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
@@ -32,7 +37,7 @@ LL |         let x: &mut usize = &mut{0};
    |                ~~~~~~~~~~
 
 error[E0594]: cannot assign to `*y`, which is behind a `&` reference
-  --> $DIR/issue-85765-closure.rs:27:9
+  --> $DIR/issue-85765-closure.rs:28:9
    |
 LL |         *y = 1;
    |         ^^^^^^ `y` is a `&` reference, so the data it refers to cannot be written

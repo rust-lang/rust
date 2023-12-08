@@ -946,6 +946,8 @@ class RustBuild(object):
         target_linker = self.get_toml("linker", build_section)
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
+        # When changing this list, also update the corresponding list in `Builder::cargo`
+        # in `src/bootstrap/src/core/builder.rs`.
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
         if self.warnings == "default":
             deny_warnings = self.get_toml("deny-warnings", "rust") != "false"

@@ -78,7 +78,7 @@ impl<'tcx> IntercrateAmbiguityCause<'tcx> {
             IntercrateAmbiguityCause::DownstreamCrate { trait_ref, self_ty } => {
                 format!(
                     "downstream crates may implement trait `{trait_desc}`{self_desc}",
-                    trait_desc = trait_ref.print_only_trait_path(),
+                    trait_desc = trait_ref.print_trait_sugared(),
                     self_desc = if let Some(self_ty) = self_ty {
                         format!(" for type `{self_ty}`")
                     } else {
@@ -90,7 +90,7 @@ impl<'tcx> IntercrateAmbiguityCause<'tcx> {
                 format!(
                     "upstream crates may add a new impl of trait `{trait_desc}`{self_desc} \
                 in future versions",
-                    trait_desc = trait_ref.print_only_trait_path(),
+                    trait_desc = trait_ref.print_trait_sugared(),
                     self_desc = if let Some(self_ty) = self_ty {
                         format!(" for type `{self_ty}`")
                     } else {
@@ -222,8 +222,8 @@ pub enum TreatInductiveCycleAs {
 impl From<TreatInductiveCycleAs> for EvaluationResult {
     fn from(treat: TreatInductiveCycleAs) -> EvaluationResult {
         match treat {
-            TreatInductiveCycleAs::Ambig => EvaluatedToUnknown,
-            TreatInductiveCycleAs::Recur => EvaluatedToRecur,
+            TreatInductiveCycleAs::Ambig => EvaluatedToAmbigStackDependent,
+            TreatInductiveCycleAs::Recur => EvaluatedToErrStackDependent,
         }
     }
 }
@@ -1231,7 +1231,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             })
         {
             debug!("evaluate_stack --> unbound argument, recursive --> giving up",);
-            return Ok(EvaluatedToUnknown);
+            return Ok(EvaluatedToAmbigStackDependent);
         }
 
         match self.candidate_from_obligation(stack) {

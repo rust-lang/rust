@@ -595,13 +595,13 @@ fn clean_generic_param<'tcx>(
                 },
             )
         }
-        hir::GenericParamKind::Const { ty, default } => (
+        hir::GenericParamKind::Const { ty, default, is_host_effect } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default
                     .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
-                is_host_effect: cx.tcx.has_attr(param.def_id, sym::rustc_host),
+                is_host_effect,
             },
         ),
     };
@@ -2536,11 +2536,12 @@ fn clean_generic_args<'tcx>(
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    // Checking for `#[rustc_host]` on the `AnonConst`  not only accounts for the case
+                    // Checking for `is_desugared_from_effects` on the `AnonConst` not only accounts for the case
                     // where the argument is `host` but for all possible cases (e.g., `true`, `false`).
-                    hir::GenericArg::Const(ct)
-                        if cx.tcx.has_attr(ct.value.def_id, sym::rustc_host) =>
-                    {
+                    hir::GenericArg::Const(hir::ConstArg {
+                        is_desugared_from_effects: true,
+                        ..
+                    }) => {
                         return None;
                     }
                     hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),

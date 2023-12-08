@@ -2843,16 +2843,14 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<WeakInner<'_>> {
-        if is_dangling(self.ptr.as_ptr()) {
+        let ptr = self.ptr.as_ptr();
+        if is_dangling(ptr) {
             None
         } else {
             // We are careful to *not* create a reference covering the "data" field, as
             // the field may be mutated concurrently (for example, if the last `Arc`
             // is dropped, the data field will be dropped in-place).
-            Some(unsafe {
-                let ptr = self.ptr.as_ptr();
-                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
-            })
+            Some(unsafe { WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak } })
         }
     }
 
