@@ -586,6 +586,11 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.cargo.buildScripts.rebuildOnSave": {
+                    "markdownDescription": "Rerun proc-macros building/build-scripts running when proc-macro\nor build-script sources change and are saved.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.cargo.buildScripts.useRustcWrapper": {
                     "markdownDescription": "Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to\navoid checking unnecessary things.",
                     "default": true,

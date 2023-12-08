@@ -351,10 +351,6 @@ impl GlobalState {
 
                     crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
                 });
-            if self.proc_macro_changed && self.config.script_rebuild_on_save() {
-                self.fetch_build_data_queue
-                    .request_op(format!("proc-macro or build script source changed"), ())
-            }
         }
 
         true

@@ -105,7 +105,7 @@ config_data! {
         /// ```
         /// .
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = "null",
-        /// rerun proc-macros building/build-scripts running when proc-macro
+        /// Rerun proc-macros building/build-scripts running when proc-macro
         /// or build-script sources change and are saved.
         cargo_buildScripts_rebuildOnSave: bool = "false",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
