@@ -163,10 +163,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // it does not have a corresponding AST node
         if let ast_visit::FnKind::Fn(_, _, sig, _, _, _) = fk {
             if let Some(coro_kind) = sig.header.coroutine_kind {
-                let (ast::CoroutineKind::Async { closure_id, .. }
-                | ast::CoroutineKind::Gen { closure_id, .. }
-                | ast::CoroutineKind::AsyncGen { closure_id, .. }) = coro_kind;
-                self.check_id(closure_id);
+                self.check_id(coro_kind.closure_id());
             }
         }
     }
@@ -228,10 +225,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
             ast::ExprKind::Closure(box ast::Closure {
                 coroutine_kind: Some(coro_kind), ..
             }) => {
-                let (ast::CoroutineKind::Async { closure_id, .. }
-                | ast::CoroutineKind::Gen { closure_id, .. }
-                | ast::CoroutineKind::AsyncGen { closure_id, .. }) = coro_kind;
-                self.check_id(closure_id);
+                self.check_id(coro_kind.closure_id());
             }
             _ => {}
         }
