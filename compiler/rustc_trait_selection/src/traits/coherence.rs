@@ -273,7 +273,6 @@ fn overlap<'tcx>(
                                     causing the impls to overlap",
                                 infcx.resolve_vars_if_possible(failing_obligation.predicate)
                             ));
-                            lint
                         },
                     );
                 }

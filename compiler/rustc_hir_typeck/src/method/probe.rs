@@ -445,7 +445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         scope_expr_id,
                         span,
                         "type annotations needed",
-                        |lint| lint,
+                        |_| {},
                     );
                 }
             } else {
@@ -1427,8 +1427,6 @@ impl<'tcx> Pick<'tcx> {
                         ));
                     }
                 }
-
-                lint
             },
         );
     }

@@ -925,7 +925,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                     "you can use the `'static` lifetime directly, in place of `{}`",
                                     lifetime.ident,
                                 );
-                                lint.help(help)
+                                lint.help(help);
                             },
                         );
                     }

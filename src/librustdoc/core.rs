@@ -380,7 +380,9 @@ pub(crate) fn run_global_ctxt(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
             "no documentation found for this crate's top-level module",
-            |lint| lint.help(help),
+            |lint| {
+                lint.help(help);
+            },
         );
     }
 

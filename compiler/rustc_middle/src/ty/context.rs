@@ -2030,7 +2030,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let msg = decorator.msg();
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
-            decorator.decorate_lint(diag)
+            decorator.decorate_lint(diag);
         })
     }
 
@@ -2047,9 +2047,7 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_id: HirId,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
@@ -2064,7 +2062,9 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_lint_node(lint, id, decorator.msg(), |diag| decorator.decorate_lint(diag))
+        self.struct_lint_node(lint, id, decorator.msg(), |diag| {
+            decorator.decorate_lint(diag);
+        })
     }
 
     /// Emit a lint at the appropriate level for a hir node.
@@ -2079,9 +2079,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         id: HirId,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
         struct_lint_level(self.sess, lint, level, src, None, msg, decorate);

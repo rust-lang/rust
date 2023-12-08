@@ -89,7 +89,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                     if (generics_start > 0 && dox.as_bytes()[generics_start - 1] == b'<')
                         || (generics_end < dox.len() && dox.as_bytes()[generics_end] == b'>')
                     {
-                        return lint;
+                        return;
                     }
                     // multipart form is chosen here because ``Vec<i32>`` would be confusing.
                     lint.multipart_suggestion(
@@ -101,8 +101,6 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                         Applicability::MaybeIncorrect,
                     );
                 }
-
-                lint
             });
         };
 

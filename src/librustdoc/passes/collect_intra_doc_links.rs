@@ -1755,8 +1755,6 @@ fn report_diagnostic(
         }
 
         decorate(lint, span, link_range);
-
-        lint
     });
 }
 

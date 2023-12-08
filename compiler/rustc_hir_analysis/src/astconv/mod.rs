@@ -1506,8 +1506,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
                         Applicability::MachineApplicable,
                     );
-
-                    lint
                 },
             );
         }

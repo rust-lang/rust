@@ -284,9 +284,7 @@ pub fn struct_lint_level(
     src: LintLevelSource,
     span: Option<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
-    decorate: impl for<'a, 'b> FnOnce(
-        &'b mut DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut DiagnosticBuilder<'a, ()>,
+    decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
@@ -298,12 +296,7 @@ pub fn struct_lint_level(
         src: LintLevelSource,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: Box<
-            dyn '_
-                + for<'a, 'b> FnOnce(
-                    &'b mut DiagnosticBuilder<'a, ()>,
-                ) -> &'b mut DiagnosticBuilder<'a, ()>,
-        >,
+        decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>)>,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;

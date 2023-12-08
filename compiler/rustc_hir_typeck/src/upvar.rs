@@ -912,8 +912,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Applicability::HasPlaceholders
                         );
                     }
-
-                    lint
                 },
             );
         }

@@ -835,7 +835,7 @@ impl<'tcx> ExtraInfo<'tcx> {
                 self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
                 msg,
-                |l| l,
+                |_| {},
             );
         }
     }
@@ -843,9 +843,7 @@ impl<'tcx> ExtraInfo<'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagnosticMessage>,
-        f: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        f: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
@@ -1296,7 +1294,7 @@ impl LangString {
                                     lint.help(format!(
                                         "there is an attribute with a similar name: `edition{}`",
                                         &x[4..],
-                                    ))
+                                    ));
                                 },
                             );
                         }
@@ -1350,7 +1348,7 @@ impl LangString {
                                         lint.help(format!(
                                             "there is an attribute with a similar name: `{flag}`"
                                         ))
-                                        .help(help)
+                                        .help(help);
                                     },
                                 );
                             }
