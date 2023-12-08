@@ -1422,6 +1422,9 @@ impl CheckCfg {
         };
 
         // NOTE: This should be kept in sync with `default_configuration`
+        //
+        // When adding a new config here you should also update
+        // `tests/ui/check-cfg/well-known-values.rs`.
 
         let panic_values = &PanicStrategy::all();
 
