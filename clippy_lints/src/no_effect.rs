@@ -92,8 +92,10 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
             return false;
         }
         let expr = peel_blocks(expr);
-        // assume nontrivial oprand of `Binary` Expr can skip `check_unnecessary_operation`
-        if is_operator_overriden(cx, expr) {
+
+        if is_operator_overridden(cx, expr) {
+            // Return `true`, to prevent `check_unnecessary_operation` from
+            // linting on this statement as well.
             return true;
         }
         if has_no_effect(cx, expr) {
@@ -162,18 +164,18 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     false
 }
 
-fn is_operator_overriden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    // It's very hard or impossable to check whether overrided operator have side-effect this lint.
-    // So, this function assume user-defined operator is overrided with an side-effect.
+fn is_operator_overridden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    // It's very hard or impossable to check whether overridden operator have side-effect this lint.
+    // So, this function assume user-defined operator is overridden with an side-effect.
     // The definition of user-defined structure here is ADT-type,
     // Althrough this will weaken the ability of this lint, less error lint-fix happen.
     match expr.kind {
         ExprKind::Binary(..) | ExprKind::Unary(..) => {
             // No need to check type of `lhs` and `rhs`
-            // because if the operator is overrided, at least one operand is ADT type
+            // because if the operator is overridden, at least one operand is ADT type
 
             // reference: rust/compiler/rustc_middle/src/ty/typeck_results.rs: `is_method_call`.
-            // use this function to check whether operator is overrided in `ExprKind::{Binary, Unary}`.
+            // use this function to check whether operator is overridden in `ExprKind::{Binary, Unary}`.
             cx.typeck_results().is_method_call(expr)
         },
         _ => false,
