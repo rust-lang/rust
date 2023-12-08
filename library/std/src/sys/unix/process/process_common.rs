@@ -93,13 +93,13 @@ pub struct Command {
     /// `args`, followed by a `null`. Be careful when modifying `program` or
     /// `args` to properly update this as well.
     argv: Argv,
-    env: CommandEnv,
+    pub env: CommandEnv,
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
-    saw_nul: bool,
+    pub saw_nul: bool,
     closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     groups: Option<Box<[gid_t]>>,
     stdin: Option<Stdio>,
@@ -402,7 +402,7 @@ fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
 
 // Helper type to manage ownership of the strings within a C-style array.
 pub struct CStringArray {
-    items: Vec<CString>,
+    pub items: Vec<CString>,
     ptrs: Vec<*const c_char>,
 }
 
@@ -426,7 +426,10 @@ impl CStringArray {
     }
 }
 
-fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
+pub(crate) fn construct_envp(
+    env: BTreeMap<OsString, OsString>,
+    saw_nul: &mut bool,
+) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
     for (mut k, v) in env {
         // Reserve additional space for '=' and null terminator

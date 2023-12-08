@@ -11,7 +11,6 @@ use core::ffi::NonZero_c_int;
 use crate::os::linux::process::PidFd;
 #[cfg(target_os = "linux")]
 use crate::os::unix::io::AsRawFd;
-
 #[cfg(any(
     target_os = "macos",
     target_os = "watchos",
@@ -68,6 +67,97 @@ cfg_if::cfg_if! {
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
+#[cfg(target_os = "linux")]
+fn count_env_vars() -> usize {
+    use crate::sys::os::{env_read_lock, environ};
+
+    let mut count = 0;
+    unsafe {
+        let _guard = env_read_lock();
+        let mut environ = *environ();
+        while !(*environ).is_null() {
+            environ = environ.add(1);
+            count += 1;
+        }
+    }
+    count
+}
+
+/// Super-duper optimized version of capturing environment variables, that tries to avoid
+/// unnecessary allocations and sorting.
+#[cfg(target_os = "linux")]
+fn capture_envp(cmd: &mut Command) -> CStringArray {
+    use crate::collections::HashSet;
+    use crate::ffi::{CStr, CString};
+    use crate::os::unix::ffi::OsStrExt;
+    use crate::sys::memchr;
+    use crate::sys::os::env_read_lock;
+    use crate::sys::os::environ;
+
+    // Count the upper bound of environment variables (vars from the environ + vars coming from the
+    // command).
+    let env_count_upper_bound = count_env_vars() + cmd.env.vars.len();
+
+    let mut env_array = CStringArray::with_capacity(env_count_upper_bound);
+
+    // Remember which vars were already set by the user.
+    // If the user value is Some, we will add the variable to `env_array` and modify `visited`.
+    // If the user value is None, we will only modify `visited`.
+    // In either case, a variable with the same name from `environ` will not be added to `env_array`.
+    let mut visited: HashSet<&[u8]> = HashSet::with_capacity(cmd.env.vars.len());
+
+    // First, add user defined variables to `env_array`, and mark the visited ones.
+    for (key, maybe_value) in cmd.env.vars.iter() {
+        if let Some(value) = maybe_value {
+            // One extra byte for '=', and one extra byte for the NULL terminator.
+            let mut env_var: Vec<u8> =
+                Vec::with_capacity(key.as_bytes().len() + value.as_bytes().len() + 2);
+            env_var.extend_from_slice(key.as_bytes());
+            env_var.push(b'=');
+            env_var.extend_from_slice(value.as_bytes());
+
+            if let Ok(item) = CString::new(env_var) {
+                env_array.push(item);
+            } else {
+                cmd.saw_nul = true;
+                return env_array;
+            }
+        }
+        visited.insert(key.as_bytes());
+    }
+
+    // Then, if we're not clearing the original environment, go through it, and add each variable
+    // to env_array if we haven't seen it yet.
+    if !cmd.env.clear {
+        unsafe {
+            let _guard = env_read_lock();
+            let mut environ = *environ();
+            if !environ.is_null() {
+                while !(*environ).is_null() {
+                    let c_str = CStr::from_ptr(*environ);
+                    let key_value = c_str.to_bytes();
+                    if !key_value.is_empty() {
+                        if let Some(pos) = memchr::memchr(b'=', &key_value[1..]).map(|p| p + 1) {
+                            let key = &key_value[..pos];
+                            if !visited.contains(&key) {
+                                env_array.push(CString::from(c_str));
+                            }
+                        }
+                    }
+                    environ = environ.add(1);
+                }
+            }
+        }
+    }
+
+    env_array
+}
+
+#[cfg(target_os = "linux")]
+pub fn capture_env_linux(cmd: &mut Command) -> Option<CStringArray> {
+    if cmd.env.is_unchanged() { None } else { Some(capture_envp(cmd)) }
+}
+
 impl Command {
     pub fn spawn(
         &mut self,
@@ -76,6 +166,9 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         const CLOEXEC_MSG_FOOTER: [u8; 4] = *b"NOEX";
 
+        #[cfg(target_os = "linux")]
+        let envp = capture_env_linux(self);
+        #[cfg(not(target_os = "linux"))]
         let envp = self.capture_env();
 
         if self.saw_nul() {

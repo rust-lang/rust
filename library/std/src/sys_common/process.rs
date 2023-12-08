@@ -12,9 +12,9 @@ use crate::sys::process::{EnvKey, ExitStatus, Process, StdioPipes};
 // Stores a set of changes to an environment
 #[derive(Clone)]
 pub struct CommandEnv {
-    clear: bool,
+    pub clear: bool,
     saw_path: bool,
-    vars: BTreeMap<EnvKey, Option<OsString>>,
+    pub vars: BTreeMap<EnvKey, Option<OsString>>,
 }
 
 impl Default for CommandEnv {
