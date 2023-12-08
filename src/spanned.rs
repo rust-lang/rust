@@ -97,7 +97,12 @@ impl Spanned for ast::Arm {
         } else {
             self.attrs[0].span.lo()
         };
-        span_with_attrs_lo_hi!(self, lo, self.body.span.hi())
+        let hi = if let Some(body) = &self.body {
+            body.span.hi()
+        } else {
+            self.pat.span.hi()
+        };
+        span_with_attrs_lo_hi!(self, lo, hi)
     }
 }
 
