@@ -1,4 +1,3 @@
-use core::iter::Iterator;
 use test::{black_box, Bencher};
 
 #[bench]

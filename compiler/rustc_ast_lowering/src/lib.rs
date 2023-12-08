@@ -45,7 +45,6 @@ extern crate tracing;
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;

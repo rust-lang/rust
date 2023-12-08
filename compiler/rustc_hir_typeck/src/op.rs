@@ -4,7 +4,7 @@ use super::method::MethodCallee;
 use super::{has_expected_num_generic_args, FnCtxt};
 use crate::Expectation;
 use rustc_ast as ast;
-use rustc_errors::{self, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;

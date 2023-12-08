@@ -1,5 +1,4 @@
 use super::*;
-use crate::borrow::Cow;
 
 #[test]
 fn code_point_from_u32() {

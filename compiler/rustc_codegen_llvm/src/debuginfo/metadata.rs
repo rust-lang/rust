@@ -35,7 +35,7 @@ use rustc_middle::ty::{
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
-use rustc_span::{self, FileNameDisplayPreference, SourceFile};
+use rustc_span::{FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use smallvec::smallvec;

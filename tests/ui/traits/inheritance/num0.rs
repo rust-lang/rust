@@ -4,8 +4,6 @@
 
 // pretty-expanded FIXME #23616
 
-use std::cmp::PartialOrd;
-
 pub trait NumCast: Sized {
     fn from(i: i32) -> Option<Self>;
 }

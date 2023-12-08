@@ -9,7 +9,6 @@ use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::Analysis;
 
 use crate::ssa::{SsaLocals, StorageLiveLocals};
-use crate::MirPass;
 
 /// Propagate references using SSA analysis.
 ///

@@ -27,7 +27,6 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
-use crate::MirPass;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};

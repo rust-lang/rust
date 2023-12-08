@@ -1,6 +1,5 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
-use rustc_hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::RemapFileNameExt;
 use rustc_span::Span;

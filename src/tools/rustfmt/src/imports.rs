@@ -1102,7 +1102,6 @@ enum SharedPrefix {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rustc_span::DUMMY_SP;
 
     // Parse the path part of an import. This parser is not robust and is only
     // suitable for use in a test harness.

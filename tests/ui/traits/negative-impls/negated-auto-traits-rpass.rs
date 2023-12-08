@@ -2,8 +2,6 @@
 #![allow(unused_variables)]
 #![feature(negative_impls)]
 
-use std::marker::Send;
-
 pub struct WaitToken;
 impl !Send for WaitToken {}
 

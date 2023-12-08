@@ -3,8 +3,6 @@
 
 use std::{collections::hash_map::Entry, hash::Hash, hash::Hasher, iter};
 
-use crate::MirPass;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;

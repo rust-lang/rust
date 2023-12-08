@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use termcolor::{BufferWriter, ColorChoice};
 
 use super::*;
-use crate::markdown::MdStream;
 
 const INPUT: &str = include_str!("input.md");
 const OUTPUT_PATH: &[&str] = &[env!("CARGO_MANIFEST_DIR"), "src","markdown","tests","output.stdout"];

@@ -1,6 +1,6 @@
-use proc_macro2::{self, Ident};
+use proc_macro2::Ident;
 use quote::quote;
-use syn::{self, parse_quote};
+use syn::parse_quote;
 
 struct Attributes {
     ignore: bool,

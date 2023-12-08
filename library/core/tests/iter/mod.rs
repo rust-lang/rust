@@ -21,7 +21,6 @@ mod sources;
 mod traits;
 
 use core::cell::Cell;
-use core::convert::TryFrom;
 use core::iter::*;
 
 pub fn is_trusted_len<I: TrustedLen>(_: I) {}
