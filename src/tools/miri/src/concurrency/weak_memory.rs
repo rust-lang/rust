@@ -82,7 +82,6 @@ use std::{
     collections::VecDeque,
 };
 
-use rustc_const_eval::interpret::{alloc_range, AllocRange, InterpResult, MPlaceTy, Scalar};
 use rustc_data_structures::fx::FxHashMap;
 
 use crate::*;

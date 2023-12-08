@@ -10,7 +10,7 @@ use rustc_data_structures::sync::{par_for_each_in, try_par_for_each_in, DynSend,
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_index::Idx;
 use rustc_middle::hir::nested_filter;

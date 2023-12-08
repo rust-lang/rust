@@ -1,6 +1,5 @@
 // run-pass
 
-use std::cmp::PartialEq;
 use std::fmt::Debug;
 
 fn sendable() {

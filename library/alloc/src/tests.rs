@@ -1,8 +1,6 @@
 //! Test for `boxed` mod.
 
 use core::any::Any;
-use core::clone::Clone;
-use core::convert::TryInto;
 use core::ops::Deref;
 
 use std::boxed::Box;

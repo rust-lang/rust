@@ -8,9 +8,9 @@
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
+use rustc_ast::walk_list;
 use rustc_ast::*;
-use rustc_ast::{walk_list, StaticItem};
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_feature::Features;

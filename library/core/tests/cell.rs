@@ -1,6 +1,4 @@
 use core::cell::*;
-use core::default::Default;
-use std::mem::drop;
 
 #[test]
 fn smoketest_unsafe_cell() {

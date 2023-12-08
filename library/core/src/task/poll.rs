@@ -2,7 +2,6 @@
 
 use crate::convert;
 use crate::ops::{self, ControlFlow};
-use crate::result::Result;
 
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.

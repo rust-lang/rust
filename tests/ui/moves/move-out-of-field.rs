@@ -1,7 +1,5 @@
 // run-pass
 
-use std::string::String;
-
 struct StringBuffer {
     s: String,
 }

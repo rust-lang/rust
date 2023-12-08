@@ -1,5 +1,4 @@
-use core::cell::Cell;
-use core::iter::{self, Iterator};
+use core::iter::{self};
 
 use super::*;
 

@@ -2,7 +2,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
 use crate::util;
-use crate::MirPass;
 use rustc_middle::mir::patch::MirPatch;
 
 /// This pass moves values being dropped that are within a packed

@@ -1,5 +1,4 @@
 use crate::cmp::Ordering;
-use crate::convert::From;
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics;

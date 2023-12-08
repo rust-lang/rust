@@ -5,11 +5,9 @@ use super::*;
 
 use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};

@@ -1,5 +1,4 @@
 use crate::rustc_middle::ty::util::IntTypeExt;
-use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
