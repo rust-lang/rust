@@ -605,8 +605,8 @@ pub struct ExpansionInfo {
 }
 
 impl ExpansionInfo {
-    pub fn expanded(&self) -> InFile<SyntaxNode> {
-        self.expanded.clone().into()
+    pub fn expanded(&self) -> InMacroFile<SyntaxNode> {
+        self.expanded.clone()
     }
 
     pub fn call_node(&self) -> Option<InFile<SyntaxNode>> {
@@ -617,13 +617,13 @@ impl ExpansionInfo {
     pub fn map_range_down<'a>(
         &'a self,
         span: SpanData,
-    ) -> Option<impl Iterator<Item = InMacroFile<SyntaxToken>> + 'a> {
+    ) -> Option<InMacroFile<impl Iterator<Item = SyntaxToken> + 'a>> {
         let tokens = self
             .exp_map
             .ranges_with_span(span)
             .flat_map(move |range| self.expanded.value.covering_element(range).into_token());
 
-        Some(tokens.map(move |token| InMacroFile::new(self.expanded.file_id, token)))
+        Some(InMacroFile::new(self.expanded.file_id, tokens))
     }
 
     /// Looks up the span at the given offset.
