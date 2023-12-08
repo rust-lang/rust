@@ -6,8 +6,8 @@ LL |             let mut x: HashSet<Day> = v.clone();
    |                        |
    |                        expected due to this
    |
-   = note: expected struct `HashSet<Day>`
-           found reference `&HashSet<Day>`
+   = note: expected struct `HashSet<_>`
+           found reference `&HashSet<_>`
 note: `HashSet<Day>` does not implement `Clone`, so `&HashSet<Day>` was cloned instead
   --> $DIR/assignment-of-clone-call-on-ref-due-to-missing-bound.rs:18:39
    |
