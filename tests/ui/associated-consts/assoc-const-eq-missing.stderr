@@ -1,20 +1,20 @@
-error[E0220]: associated type `Z` not found for `Foo`
-  --> $DIR/assoc-const-eq-missing.rs:15:16
+error[E0220]: associated constant `Z` not found for `Foo`
+  --> $DIR/assoc-const-eq-missing.rs:14:16
    |
-LL | fn foo1<F: Foo<Z=3>>() {}
-   |                ^ associated type `Z` not found
+LL | fn foo1<F: Foo<Z = 3>>() {}
+   |                ^ help: there is an associated constant with a similar name: `N`
 
 error[E0220]: associated type `Z` not found for `Foo`
-  --> $DIR/assoc-const-eq-missing.rs:17:16
+  --> $DIR/assoc-const-eq-missing.rs:16:16
    |
-LL | fn foo2<F: Foo<Z=usize>>() {}
+LL | fn foo2<F: Foo<Z = usize>>() {}
    |                ^ associated type `Z` not found
 
-error[E0220]: associated type `Z` not found for `Foo`
-  --> $DIR/assoc-const-eq-missing.rs:19:16
+error[E0220]: associated constant `Z` not found for `Foo`
+  --> $DIR/assoc-const-eq-missing.rs:18:16
    |
-LL | fn foo3<F: Foo<Z=5>>() {}
-   |                ^ associated type `Z` not found
+LL | fn foo3<F: Foo<Z = 5>>() {}
+   |                ^ help: there is an associated constant with a similar name: `N`
 
 error: aborting due to 3 previous errors
 

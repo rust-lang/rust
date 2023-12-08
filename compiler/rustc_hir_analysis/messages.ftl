@@ -1,8 +1,28 @@
+hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_name}` in bounds of `{$ty_param_name}`
+    .label = ambiguous associated {$assoc_kind} `{$assoc_name}`
+
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
 
-hir_analysis_assoc_bound_on_const = expected associated type, found {$descr}
-    .note = trait bounds not allowed on {$descr}
+hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_name}` not found for `{$ty_param_name}`
+
+hir_analysis_assoc_item_not_found_found_in_other_trait_label = there is {$identically_named ->
+        [true] an
+        *[false] a similarly named
+    } associated {$assoc_kind} `{$suggested_name}` in the trait `{$trait_name}`
+hir_analysis_assoc_item_not_found_label = associated {$assoc_kind} `{$assoc_name}` not found
+hir_analysis_assoc_item_not_found_other_sugg = `{$ty_param_name}` has the following associated {$assoc_kind}
+hir_analysis_assoc_item_not_found_similar_in_other_trait_sugg = change the associated {$assoc_kind} name to use `{$suggested_name}` from `{$trait_name}`
+hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg = and also change the associated {$assoc_kind} name
+hir_analysis_assoc_item_not_found_similar_sugg = there is an associated {$assoc_kind} with a similar name
+
+hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}
+    .label = unexpected {$got}
+    .expected_because_label = expected a {$expected} because of this associated {$expected}
+    .note = the associated {$assoc_kind} is defined here
+    .bound_on_assoc_const_label = bounds are not allowed on associated constants
+
+hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg = consider adding braces here
 
 hir_analysis_assoc_type_binding_not_allowed =
     associated type bindings are not allowed here
@@ -280,10 +300,6 @@ hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is no
 
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 
-hir_analysis_return_type_notation_conflicting_bound =
-    ambiguous associated function `{$assoc_name}` for `{$ty_name}`
-    .note = `{$assoc_name}` is declared in two supertraits: `{$first_bound}` and `{$second_bound}`
-
 hir_analysis_return_type_notation_equality_bound =
     return type notation is not allowed to use type equality
 
@@ -293,9 +309,6 @@ hir_analysis_return_type_notation_illegal_param_const =
 hir_analysis_return_type_notation_illegal_param_type =
     return type notation is not allowed for functions that have type parameters
     .label = type parameter declared here
-
-hir_analysis_return_type_notation_missing_method =
-    cannot find associated function `{$assoc_name}` for `{$ty_name}`
 
 hir_analysis_return_type_notation_on_non_rpitit =
     return type notation used on function that is not `async` and does not return `impl Trait`

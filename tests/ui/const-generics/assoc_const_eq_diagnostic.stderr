@@ -16,30 +16,42 @@ LL | fn no_help() -> Mode::Cool {}
    |                 not a type
    |                 help: try using the variant's enum: `Mode`
 
-error: expected associated constant bound, found type
-  --> $DIR/assoc_const_eq_diagnostic.rs:11:28
+error: expected constant, found type
+  --> $DIR/assoc_const_eq_diagnostic.rs:11:35
    |
 LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
-   |                            ^^^^^^^^^^^^^^^^^ help: if equating a const, try wrapping with braces: `MODE = { const }`
+   |                            ----   ^^^^^^^^^^ unexpected type
+   |                            |
+   |                            expected a constant because of this associated constant
    |
-note: associated constant defined here
+note: the associated constant is defined here
   --> $DIR/assoc_const_eq_diagnostic.rs:8:5
    |
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
+help: consider adding braces here
+   |
+LL | pub trait CoolStuff: Parse<MODE = { Mode::Cool }> {}
+   |                                   +            +
 
-error: expected associated constant bound, found type
-  --> $DIR/assoc_const_eq_diagnostic.rs:11:28
+error: expected constant, found type
+  --> $DIR/assoc_const_eq_diagnostic.rs:11:35
    |
 LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
-   |                            ^^^^^^^^^^^^^^^^^ help: if equating a const, try wrapping with braces: `MODE = { const }`
+   |                            ----   ^^^^^^^^^^ unexpected type
+   |                            |
+   |                            expected a constant because of this associated constant
    |
-note: associated constant defined here
+note: the associated constant is defined here
   --> $DIR/assoc_const_eq_diagnostic.rs:8:5
    |
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding braces here
+   |
+LL | pub trait CoolStuff: Parse<MODE = { Mode::Cool }> {}
+   |                                   +            +
 
 error: aborting due to 4 previous errors
 

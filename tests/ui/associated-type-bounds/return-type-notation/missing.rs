@@ -8,6 +8,6 @@ trait Trait {
 }
 
 fn bar<T: Trait<methid(): Send>>() {}
-//~^ ERROR cannot find associated function `methid` for `Trait`
+//~^ ERROR associated function `methid` not found for `Trait`
 
 fn main() {}
