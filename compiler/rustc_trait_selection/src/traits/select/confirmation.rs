@@ -1172,11 +1172,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         impl_def_id: Option<DefId>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
-        // FIXME(effects)
-        if true {
-            return Ok(vec![]);
-        }
+        let Some(host_effect_index) =
+            self.tcx().generics_of(obligation.predicate.def_id()).host_effect_index
+        else {
+            bug!()
+        };
+        let host_effect_param: ty::GenericArg<'tcx> =
+            obligation.predicate.skip_binder().trait_ref.args.const_at(host_effect_index).into();
 
         let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
 
@@ -1284,7 +1286,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 self.tcx(),
                                 LangItem::Destruct,
                                 cause.span,
-                                [nested_ty],
+                                [nested_ty.into(), host_effect_param],
                             ),
                             polarity: ty::ImplPolarity::Positive,
                         }),
@@ -1310,7 +1312,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.tcx(),
                             LangItem::Destruct,
                             cause.span,
-                            [nested_ty],
+                            [nested_ty.into(), host_effect_param],
                         ),
                         polarity: ty::ImplPolarity::Positive,
                     });
