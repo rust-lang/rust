@@ -8,8 +8,6 @@
 
 // Tests that the new `box` syntax works with unique pointers.
 
-use std::boxed::Box;
-
 struct Structure {
     x: isize,
     y: isize,

@@ -2,7 +2,6 @@
 
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
-use std::vec::Vec;
 
 struct DerefCounter<T> {
     count_imm: Cell<usize>,

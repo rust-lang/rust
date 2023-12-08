@@ -6,7 +6,7 @@
 #![feature(coroutines, coroutine_trait, core_intrinsics, discriminant_kind)]
 
 use std::intrinsics::discriminant_value;
-use std::marker::{DiscriminantKind, Unpin};
+use std::marker::DiscriminantKind;
 use std::mem::size_of_val;
 use std::{cmp, ops::*};
 

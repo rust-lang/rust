@@ -1,4 +1,3 @@
-use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};

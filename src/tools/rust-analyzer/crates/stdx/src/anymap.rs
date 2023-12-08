@@ -17,7 +17,6 @@
 
 #![warn(missing_docs, unused_results)]
 
-use core::convert::TryInto;
 use core::hash::Hasher;
 
 /// A hasher designed to eke a little more speed out, given `TypeId`’s known characteristics.

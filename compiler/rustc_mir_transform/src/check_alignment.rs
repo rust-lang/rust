@@ -1,4 +1,3 @@
-use crate::MirPass;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;

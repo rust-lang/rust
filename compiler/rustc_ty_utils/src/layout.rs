@@ -8,9 +8,7 @@ use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{
-    self, AdtDef, EarlyBinder, GenericArgsRef, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;

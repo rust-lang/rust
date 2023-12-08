@@ -1,13 +1,8 @@
 use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_hir::def::{CtorKind, CtorOf};
+use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
-use rustc_middle::ty::{ParameterizedOverTcx, UnusedGenericParams};
-use rustc_serialize::opaque::FileEncoder;
-use rustc_span::hygiene::MacroKind;
-use std::marker::PhantomData;
-use std::num::NonZeroUsize;
 
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;

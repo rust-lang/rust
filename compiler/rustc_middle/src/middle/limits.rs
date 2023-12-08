@@ -8,7 +8,6 @@
 //! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 //! just peeks and looks for that attribute.
 
-use crate::bug;
 use crate::error::LimitInvalid;
 use crate::query::Providers;
 use rustc_ast::Attribute;

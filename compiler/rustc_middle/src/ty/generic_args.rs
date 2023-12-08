@@ -10,7 +10,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_serialize::{self, Decodable, Encodable};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 

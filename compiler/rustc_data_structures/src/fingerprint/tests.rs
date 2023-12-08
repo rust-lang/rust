@@ -1,5 +1,4 @@
 use super::*;
-use crate::stable_hasher::Hash64;
 
 // Check that `combine_commutative` is order independent.
 #[test]

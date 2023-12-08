@@ -37,7 +37,6 @@
 //! simplicity rather than completeness (it notably
 //! sometimes duplicates abusively).
 
-use crate::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;

@@ -7,7 +7,6 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
 use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
-use std::convert::TryInto;
 use thin_vec::ThinVec;
 use tracing::debug;
 

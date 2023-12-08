@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
-use rustc_passes::{self, abi_test, hir_stats, layout_test};
+use rustc_passes::{abi_test, hir_stats, layout_test};
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};

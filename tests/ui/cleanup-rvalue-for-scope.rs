@@ -5,9 +5,6 @@
 #![allow(unused_variables)]
 // Test that the lifetime of rvalues in for loops is extended
 // to the for loop itself.
-
-use std::ops::Drop;
-
 static mut FLAGS: u64 = 0;
 
 struct Box<T> { f: T }

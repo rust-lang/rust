@@ -2,7 +2,6 @@
 //!
 //! Box is not actually a pointer so it is incorrect to dereference it directly.
 
-use crate::MirPass;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;

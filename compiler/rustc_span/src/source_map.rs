@@ -11,13 +11,11 @@
 
 use crate::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{Hash128, Hash64, StableHasher};
-use rustc_data_structures::sync::{IntoDynSyncSend, Lrc, MappedReadGuard, ReadGuard, RwLock};
-use std::cmp;
+use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
 use std::fs;
 use std::hash::Hash;
 use std::io::{self, BorrowedBuf, Read};
-use std::path::{self, Path, PathBuf};
+use std::path::{self};
 
 #[cfg(test)]
 mod tests;

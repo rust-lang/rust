@@ -1,5 +1,3 @@
-use std::result::Result;
-use std::result::Result::Ok;
 
 static C: Result<(), Box<isize>> = Ok(());
 

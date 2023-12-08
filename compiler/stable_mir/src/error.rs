@@ -4,7 +4,6 @@
 //! - [CompilerError]: This represents errors that can be raised when invoking the compiler.
 //! - [Error]: Generic error that represents the reason why a request that could not be fulfilled.
 
-use std::convert::From;
 use std::fmt::{Debug, Display, Formatter};
 use std::{error, fmt};
 
