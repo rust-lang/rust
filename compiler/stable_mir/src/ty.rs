@@ -4,9 +4,11 @@ use super::{
     with, DefId, Error, Symbol,
 };
 use crate::crate_def::CrateDef;
-use crate::mir::alloc::AllocId;
+use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
+use crate::target::MachineInfo;
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
+use std::ops::Range;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(pub usize);
@@ -366,6 +368,19 @@ pub enum IntTy {
     I128,
 }
 
+impl IntTy {
+    pub fn num_bytes(self) -> usize {
+        match self {
+            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            IntTy::I8 => 1,
+            IntTy::I16 => 2,
+            IntTy::I32 => 4,
+            IntTy::I64 => 8,
+            IntTy::I128 => 16,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UintTy {
     Usize,
@@ -374,6 +389,19 @@ pub enum UintTy {
     U32,
     U64,
     U128,
+}
+
+impl UintTy {
+    pub fn num_bytes(self) -> usize {
+        match self {
+            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            UintTy::U8 => 1,
+            UintTy::U16 => 2,
+            UintTy::U32 => 4,
+            UintTy::U64 => 8,
+            UintTy::U128 => 16,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -821,26 +849,94 @@ pub struct BoundTy {
 pub type Bytes = Vec<Option<u8>>;
 pub type Size = usize;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Prov(pub AllocId);
 pub type Align = u64;
 pub type Promoted = u32;
 pub type InitMaskMaterialized = Vec<u64>;
 
 /// Stores the provenance information of pointers stored in memory.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ProvenanceMap {
     /// Provenance in this map applies from the given offset for an entire pointer-size worth of
     /// bytes. Two entries in this map are always at least a pointer size apart.
     pub ptrs: Vec<(Size, Prov)>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Allocation {
     pub bytes: Bytes,
     pub provenance: ProvenanceMap,
     pub align: Align,
     pub mutability: Mutability,
+}
+
+impl Allocation {
+    /// Get a vector of bytes for an Allocation that has been fully initialized
+    pub fn raw_bytes(&self) -> Result<Vec<u8>, Error> {
+        self.bytes
+            .iter()
+            .copied()
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(|| error!("Found uninitialized bytes: `{:?}`", self.bytes))
+    }
+
+    /// Read a uint value from the specified range.
+    pub fn read_partial_uint(&self, range: Range<usize>) -> Result<u128, Error> {
+        if range.end - range.start > 16 {
+            return Err(error!("Allocation is bigger than largest integer"));
+        }
+        if range.end > self.bytes.len() {
+            return Err(error!(
+                "Range is out of bounds. Allocation length is `{}`, but requested range `{:?}`",
+                self.bytes.len(),
+                range
+            ));
+        }
+        let raw = self.bytes[range]
+            .iter()
+            .copied()
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(|| error!("Found uninitialized bytes: `{:?}`", self.bytes))?;
+        read_target_uint(&raw)
+    }
+
+    /// Read this allocation and try to convert it to an unassigned integer.
+    pub fn read_uint(&self) -> Result<u128, Error> {
+        if self.bytes.len() > 16 {
+            return Err(error!("Allocation is bigger than largest integer"));
+        }
+        let raw = self.raw_bytes()?;
+        read_target_uint(&raw)
+    }
+
+    /// Read this allocation and try to convert it to a signed integer.
+    pub fn read_int(&self) -> Result<i128, Error> {
+        if self.bytes.len() > 16 {
+            return Err(error!("Allocation is bigger than largest integer"));
+        }
+        let raw = self.raw_bytes()?;
+        read_target_int(&raw)
+    }
+
+    /// Read this allocation and try to convert it to a boolean.
+    pub fn read_bool(&self) -> Result<bool, Error> {
+        match self.read_int()? {
+            0 => Ok(false),
+            1 => Ok(true),
+            val @ _ => Err(error!("Unexpected value for bool: `{val}`")),
+        }
+    }
+
+    /// Read this allocation as a pointer and return whether it represents a `null` pointer.
+    pub fn is_null(&self) -> Result<bool, Error> {
+        let len = self.bytes.len();
+        let ptr_len = MachineInfo::target_pointer_width().bytes();
+        if len != ptr_len {
+            return Err(error!("Expected width of pointer (`{ptr_len}`), but found: `{len}`"));
+        }
+        Ok(self.read_uint()? == 0 && self.provenance.ptrs.is_empty())
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
