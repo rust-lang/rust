@@ -1,6 +1,7 @@
 // ignore-tidy-linelength
 
 #![feature(doc_cfg)]
+#![feature(doc_auto_cfg)]
 
 pub mod another_folder;
 pub mod another_mod;
@@ -28,6 +29,14 @@ impl Foo {
     /// Some documentation
     /// # A Heading
     pub fn a_method(&self) {}
+
+    #[cfg(all(
+        feature = "Win32",
+        feature = "Win32_System",
+        feature = "Win32_System_Diagnostics",
+        feature = "Win32_System_Diagnostics_Debug"
+    ))]
+    pub fn lot_of_features() {}
 }
 
 #[doc(cfg(feature = "foo-method"))]

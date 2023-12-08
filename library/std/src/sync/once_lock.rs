@@ -17,25 +17,36 @@ use crate::sync::Once;
 /// ‘lazy static’ or ‘memoizing’):
 ///
 /// ```
-/// use std::collections::HashMap;
 /// use std::sync::OnceLock;
 ///
-/// fn hash_map() -> &'static HashMap<u32, char> {
-///     static HASHMAP: OnceLock<HashMap<u32, char>> = OnceLock::new();
-///     HASHMAP.get_or_init(|| {
-///         let mut m = HashMap::new();
-///         m.insert(0, 'a');
-///         m.insert(1, 'b');
-///         m.insert(2, 'c');
-///         m
-///     })
+/// struct DeepThought {
+///     answer: String,
 /// }
 ///
-/// // The `HashMap` is built, stored in the `OnceLock`, and returned.
-/// let _ = hash_map();
+/// impl DeepThought {
+/// #   fn great_question() -> String {
+/// #       "42".to_string()
+/// #   }
+/// #
+///     fn new() -> Self {
+///         Self {
+///             // M3 Ultra takes about 16 million years in --release config
+///             answer: Self::great_question(),
+///         }
+///     }
+/// }
 ///
-/// // The `HashMap` is retrieved from the `OnceLock` and returned.
-/// let _ = hash_map();
+/// fn computation() -> &'static DeepThought {
+///     // n.b. static items do not call [`Drop`] on program termination, so if
+///     // [`DeepThought`] impls Drop, that will not be used for this instance.
+///     static COMPUTATION: OnceLock<DeepThought> = OnceLock::new();
+///     COMPUTATION.get_or_init(|| DeepThought::new())
+/// }
+///
+/// // The `DeepThought` is built, stored in the `OnceLock`, and returned.
+/// let _ = computation().answer;
+/// // The `DeepThought` is retrieved from the `OnceLock` and returned.
+/// let _ = computation().answer;
 /// ```
 ///
 /// Writing to a `OnceLock` from a separate thread:
