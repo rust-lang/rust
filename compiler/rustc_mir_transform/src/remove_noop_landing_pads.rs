@@ -1,4 +1,3 @@
-use crate::MirPass;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;

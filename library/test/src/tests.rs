@@ -1,34 +1,17 @@
 use super::*;
 
 use crate::{
-    bench::Bencher,
     console::OutputLocation,
     formatters::PrettyFormatter,
-    options::OutputFormat,
     test::{
-        filter_tests,
         parse_opts,
-        run_test,
-        DynTestFn,
-        DynTestName,
         MetricMap,
-        RunIgnored,
-        RunStrategy,
-        ShouldPanic,
-        StaticTestName,
-        TestDesc,
-        TestDescAndFn,
-        TestOpts,
-        TrIgnored,
-        TrOk,
         // FIXME (introduced by #65251)
         // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
         // TestType, TrFailedMsg, TrIgnored, TrOk,
     },
     time::{TestTimeOptions, TimeThreshold},
 };
-use std::sync::mpsc::channel;
-use std::time::Duration;
 
 impl TestOpts {
     fn new() -> TestOpts {

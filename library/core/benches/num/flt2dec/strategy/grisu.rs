@@ -1,7 +1,6 @@
 use super::super::*;
 use core::num::flt2dec::strategy::grisu::*;
 use std::mem::MaybeUninit;
-use test::{black_box, Bencher};
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {

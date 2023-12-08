@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use crate::concurrency::sync::CondvarLock;
-use crate::concurrency::thread::{MachineCallback, Time};
+use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.

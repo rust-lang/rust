@@ -51,8 +51,6 @@ impl Emitter for DiffEmitter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
-    use crate::FileName;
     use std::path::PathBuf;
 
     #[test]

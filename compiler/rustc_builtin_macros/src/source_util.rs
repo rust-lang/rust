@@ -5,11 +5,11 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
 use rustc_expand::module::DirOwnership;
+use rustc_parse::new_parser_from_file;
 use rustc_parse::parser::{ForceCollect, Parser};
-use rustc_parse::{self, new_parser_from_file};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::symbol::Symbol;
-use rustc_span::{self, Pos, Span};
+use rustc_span::{Pos, Span};
 
 use smallvec::SmallVec;
 use std::rc::Rc;

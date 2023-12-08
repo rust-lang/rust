@@ -1,6 +1,5 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-use crate::marker::Unpin;
 use crate::ops;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};

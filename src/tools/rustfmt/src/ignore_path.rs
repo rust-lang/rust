@@ -1,4 +1,4 @@
-use ignore::{self, gitignore};
+use ignore::gitignore;
 
 use crate::config::{FileName, IgnoreList};
 

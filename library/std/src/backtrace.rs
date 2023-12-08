@@ -96,7 +96,6 @@ use crate::panic::UnwindSafe;
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sync::LazyLock;
 use crate::sys_common::backtrace::{lock, output_filename, set_image_base};
-use crate::vec::Vec;
 
 /// A captured OS thread stack backtrace.
 ///

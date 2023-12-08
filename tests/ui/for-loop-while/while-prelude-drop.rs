@@ -1,8 +1,5 @@
 // run-pass
 #![allow(non_camel_case_types)]
-
-use std::string::String;
-
 #[derive(PartialEq)]
 enum t { a, b(String), }
 

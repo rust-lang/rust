@@ -1,8 +1,6 @@
 use super::*;
 use crate::boxed::Box;
 use crate::testing::crash_test::{CrashTestDummy, Panic};
-use core::mem;
-use std::iter::TrustedLen;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]

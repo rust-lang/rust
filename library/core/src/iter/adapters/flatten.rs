@@ -1,7 +1,7 @@
 use crate::iter::adapters::SourceIter;
 use crate::iter::{
-    Cloned, Copied, DoubleEndedIterator, Filter, FilterMap, Fuse, FusedIterator, InPlaceIterable,
-    Iterator, Map, TrustedFused, TrustedLen,
+    Cloned, Copied, Filter, FilterMap, Fuse, FusedIterator, InPlaceIterable, Map, TrustedFused,
+    TrustedLen,
 };
 use crate::iter::{Once, OnceWith};
 use crate::num::NonZeroUsize;

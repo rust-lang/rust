@@ -12,7 +12,6 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
 use std::fmt::Display;
-use std::iter::Iterator;
 
 /// Checks for `for` loops that sequentially copy items from one slice-like
 /// object to another.

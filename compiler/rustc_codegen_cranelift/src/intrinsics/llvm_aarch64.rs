@@ -1,7 +1,5 @@
 //! Emulate AArch64 LLVM intrinsics
 
-use rustc_middle::ty::GenericArgsRef;
-
 use crate::intrinsics::*;
 use crate::prelude::*;
 

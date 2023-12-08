@@ -1,5 +1,4 @@
 use std::collections::BinaryHeap;
-use std::iter::Iterator;
 
 fn zero_sized_push() {
     const N: usize = 8;

@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::cell::RefCell;
-use std::cmp::PartialEq;
 use std::iter::TrustedLen;
 use std::mem;
 use std::rc::{Rc, Weak};

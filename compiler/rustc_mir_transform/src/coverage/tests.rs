@@ -33,7 +33,7 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
-use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 
 fn bcb(index: u32) -> BasicCoverageBlock {
     BasicCoverageBlock::from_u32(index)
