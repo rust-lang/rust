@@ -748,6 +748,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
     tracked!(debug_macros, true);
+    tracked!(default_hidden_visibility, Some(true));
     tracked!(dep_info_omit_d_target, true);
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
