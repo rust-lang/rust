@@ -1084,6 +1084,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 | ExprKind::Struct(..)
                 | ExprKind::Tup(..)
                 | ExprKind::Underscore => false,
+                // Check for unit struct constructor.
+                ExprKind::Path(..) => lower_ctx.extract_unit_struct_path(lhs).is_none(),
                 // Check for tuple struct constructor.
                 ExprKind::Call(callee, ..) => lower_ctx.extract_tuple_struct_path(callee).is_none(),
                 ExprKind::Paren(e) => {
