@@ -117,7 +117,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
             });
             if let Some(Ok(field)) = iter.next()
                 && iter.next().is_none()
-                && field.ty.kind.is_unit()
+                && field.ty.expect_ty().kind.is_unit()
             {
                 span_lint_and_then(
                     cx,

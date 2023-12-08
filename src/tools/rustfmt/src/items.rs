@@ -1087,6 +1087,59 @@ impl<'a> StructParts<'a> {
     }
 }
 
+pub(crate) struct StructStructParts<'a> {
+    prefix: &'a str,
+    ident: symbol::Ident,
+    vis: Option<&'a ast::Visibility>,
+    generics: Option<&'a ast::Generics>,
+    span: Span,
+}
+
+impl<'a> StructStructParts<'a> {
+    fn format_header(&self, context: &RewriteContext<'_>, offset: Indent) -> String {
+        let vis = &ast::Visibility {
+            kind: ast::VisibilityKind::Inherited,
+            span: self.span.shrink_to_lo(),
+            tokens: None,
+        };
+        format_header(
+            context,
+            self.prefix,
+            self.ident,
+            self.vis.unwrap_or(vis),
+            offset,
+        )
+    }
+    fn from_struct(struct_parts: &'a StructParts<'a>) -> Self {
+        StructStructParts {
+            prefix: struct_parts.prefix,
+            ident: struct_parts.ident,
+            vis: Some(struct_parts.vis),
+            generics: struct_parts.generics,
+            span: struct_parts.span,
+        }
+    }
+
+    fn from_anon_record(
+        anon_record: &'a ast::AnonRecord,
+        snippet_provider: &impl SpanUtils,
+    ) -> Self {
+        let prefix = match anon_record.kind {
+            ast::AnonRecordKind::Union => "union ",
+            ast::AnonRecordKind::Struct => "struct ",
+        };
+        let span = anon_record.span;
+        let ident_pos = snippet_provider.span_after(span, prefix);
+        StructStructParts {
+            prefix,
+            ident: symbol::Ident::new(symbol::kw::Empty, mk_sp(ident_pos, ident_pos)),
+            vis: None,
+            generics: None,
+            span,
+        }
+    }
+}
+
 fn enum_variant_span(variant: &ast::Variant, context: &RewriteContext<'_>) -> Span {
     use ast::VariantData::*;
     if let Some(ref anon_const) = variant.disr_expr {
@@ -1117,9 +1170,14 @@ fn format_struct(
         ast::VariantData::Tuple(ref fields, _) => {
             format_tuple_struct(context, struct_parts, fields, offset)
         }
-        ast::VariantData::Struct(ref fields, _) => {
-            format_struct_struct(context, struct_parts, fields, offset, one_line_width)
-        }
+        ast::VariantData::Struct(ref fields, _) => format_struct_struct(
+            context,
+            &StructStructParts::from_struct(struct_parts),
+            fields,
+            offset,
+            one_line_width,
+            false,
+        ),
     }
 }
 
@@ -1391,15 +1449,17 @@ fn format_unit_struct(
 
 pub(crate) fn format_struct_struct(
     context: &RewriteContext<'_>,
-    struct_parts: &StructParts<'_>,
+    struct_parts: &StructStructParts<'_>,
     fields: &[ast::FieldDef],
     offset: Indent,
     one_line_width: Option<usize>,
+    is_anon: bool,
 ) -> Option<String> {
     let mut result = String::with_capacity(1024);
     let span = struct_parts.span;
 
-    let header_str = struct_parts.format_header(context, offset);
+    let header_offset = if is_anon { Indent::empty() } else { offset };
+    let header_str = struct_parts.format_header(context, header_offset);
     result.push_str(&header_str);
 
     let header_hi = struct_parts.ident.span.hi();
@@ -1908,7 +1968,7 @@ pub(crate) fn rewrite_struct_field(
 
     let is_prefix_empty = prefix.is_empty();
     // We must use multiline. We are going to put attributes and a field on different lines.
-    let field_str = rewrite_assign_rhs(context, prefix, &*field.ty, &RhsAssignKind::Ty, shape)?;
+    let field_str = rewrite_assign_rhs(context, prefix, &field.ty, &RhsAssignKind::Ty, shape)?;
     // Remove a leading white-space from `rewrite_assign_rhs()` when rewriting a tuple struct.
     let field_str = if is_prefix_empty {
         field_str.trim_start()
@@ -1916,6 +1976,28 @@ pub(crate) fn rewrite_struct_field(
         &field_str
     };
     combine_strs_with_missing_comments(context, &attrs_str, field_str, missing_span, shape, false)
+}
+
+impl Rewrite for ast::FieldTy {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        match self {
+            ast::FieldTy::Ty(ty) => ty.rewrite(context, shape),
+            ast::FieldTy::AnonRecord(anon_record) => anon_record.rewrite(context, shape),
+        }
+    }
+}
+
+impl Rewrite for ast::AnonRecord {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        format_struct_struct(
+            context,
+            &StructStructParts::from_anon_record(self, context.snippet_provider),
+            &self.fields,
+            shape.indent,
+            None,
+            true,
+        )
+    }
 }
 
 pub(crate) struct StaticParts<'a> {

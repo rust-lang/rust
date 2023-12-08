@@ -556,7 +556,7 @@ pub fn eq_struct_field(l: &FieldDef, r: &FieldDef) -> bool {
         && over(&l.attrs, &r.attrs, eq_attr)
         && eq_vis(&l.vis, &r.vis)
         && both(&l.ident, &r.ident, |l, r| eq_id(*l, *r))
-        && eq_ty(&l.ty, &r.ty)
+        && eq_ty(l.ty.expect_ty(), r.ty.expect_ty())
 }
 
 pub fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {

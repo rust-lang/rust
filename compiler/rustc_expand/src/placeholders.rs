@@ -168,7 +168,7 @@ pub fn placeholder(
             id,
             ident: None,
             span,
-            ty: ty(),
+            ty: ty().into(),
             vis,
             is_placeholder: true,
         }]),

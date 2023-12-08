@@ -808,7 +808,7 @@ impl<'a> TraitDef<'a> {
         is_packed: bool,
     ) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> =
-            struct_def.fields().iter().map(|field| field.ty.clone()).collect();
+            struct_def.fields().iter().map(|field| field.ty.expect_ty().clone()).collect();
 
         let methods = self
             .methods
@@ -863,7 +863,8 @@ impl<'a> TraitDef<'a> {
         let mut field_tys = Vec::new();
 
         for variant in &enum_def.variants {
-            field_tys.extend(variant.data.fields().iter().map(|field| field.ty.clone()));
+            field_tys
+                .extend(variant.data.fields().iter().map(|field| field.ty.expect_ty().clone()));
         }
 
         let methods = self
@@ -1608,11 +1609,12 @@ impl<'a> TraitDef<'a> {
                             }
                         };
 
-                        let exception = if let TyKind::Slice(ty) = &struct_field.ty.kind &&
+                        let struct_field_ty = struct_field.ty.expect_ty();
+                        let exception = if let TyKind::Slice(ty) = &struct_field_ty.kind &&
                             is_simple_path(ty, sym::u8)
                         {
                             Some("byte")
-                        } else if is_simple_path(&struct_field.ty, sym::str) {
+                        } else if is_simple_path(struct_field_ty, sym::str) {
                             Some("string")
                         } else {
                             None

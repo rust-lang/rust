@@ -441,9 +441,6 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::MacCall(mac) => visitor.visit_mac_call(mac),
         TyKind::Never | TyKind::CVarArgs => {}
-        TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
-            walk_list!(visitor, visit_field_def, fields)
-        }
     }
 }
 
@@ -716,7 +713,14 @@ pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) 
     if let Some(ident) = field.ident {
         visitor.visit_ident(ident);
     }
-    visitor.visit_ty(&field.ty);
+    match &field.ty {
+        FieldTy::Ty(ty) => {
+            visitor.visit_ty(ty);
+        }
+        FieldTy::AnonRecord(anon_record) => {
+            walk_list!(visitor, visit_field_def, &anon_record.fields);
+        }
+    }
     walk_list!(visitor, visit_attribute, &field.attrs);
 }
 

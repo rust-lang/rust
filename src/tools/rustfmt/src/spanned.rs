@@ -138,7 +138,7 @@ impl Spanned for ast::GenericParam {
 
 impl Spanned for ast::FieldDef {
     fn span(&self) -> Span {
-        span_with_attrs_lo_hi!(self, self.span.lo(), self.ty.span.hi())
+        span_with_attrs_lo_hi!(self, self.span.lo(), self.ty.span().hi())
     }
 }
 

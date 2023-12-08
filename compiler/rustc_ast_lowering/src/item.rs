@@ -675,17 +675,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_field_def(&mut self, (index, f): (usize, &FieldDef)) -> hir::FieldDef<'hir> {
-        let ty = if let TyKind::Path(qself, path) = &f.ty.kind {
-            let t = self.lower_path_ty(
-                &f.ty,
-                qself,
-                path,
-                ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
-                &ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy),
-            );
-            self.arena.alloc(t)
-        } else {
-            self.lower_ty(&f.ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy))
+        let ty = match &f.ty {
+            FieldTy::Ty(ty) if let TyKind::Path(qself, path) = &ty.kind => {
+                let t = self.lower_path_ty(
+                    ty,
+                    qself,
+                    path,
+                    ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
+                    &ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy),
+                );
+                self.arena.alloc(t)
+            }
+            FieldTy::Ty(ty) => {
+                self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy))
+            }
+            FieldTy::AnonRecord(anon_record) => {
+                let struct_or_union = anon_record.kind.name();
+                let hir_id = self.lower_node_id(anon_record.id);
+                let span = anon_record.span;
+                // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
+                #[allow(rustc::untranslatable_diagnostic)]
+                #[allow(rustc::diagnostic_outside_of_impl)]
+                let kind = hir::TyKind::Err(
+                    self.tcx
+                        .sess
+                        .span_err(span, format!("anonymous {struct_or_union}s are unimplemented")),
+                );
+                let ty = hir::Ty { hir_id, kind, span };
+                self.arena.alloc(ty)
+            }
         };
         let hir_id = self.lower_node_id(f.id);
         self.lower_attrs(hir_id, &f.attrs);

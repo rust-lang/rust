@@ -2074,10 +2074,6 @@ pub enum TyKind {
     Never,
     /// A tuple (`(A, B, C, D,...)`).
     Tup(ThinVec<P<Ty>>),
-    /// An anonymous struct type i.e. `struct { foo: Type }`
-    AnonStruct(ThinVec<FieldDef>),
-    /// An anonymous union type i.e. `union { bar: Type }`
-    AnonUnion(ThinVec<FieldDef>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -2721,6 +2717,93 @@ impl VisibilityKind {
     }
 }
 
+#[derive(Clone, Copy, Encodable, Decodable, Debug)]
+pub enum AnonRecordKind {
+    Struct,
+    Union,
+}
+
+impl AnonRecordKind {
+    /// Returns the lowercase name.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Struct => "struct",
+            Self::Union => "union",
+        }
+    }
+}
+
+/// An anonymous struct or union, i.e. `struct { foo: Foo }` or `union { foo: Foo }`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct AnonRecord {
+    pub id: NodeId,
+    pub span: Span,
+    pub fields: ThinVec<FieldDef>,
+    pub kind: AnonRecordKind,
+    pub recovered: bool,
+}
+
+impl AnonRecord {
+    pub fn is_union(&self) -> bool {
+        matches!(self.kind, AnonRecordKind::Union)
+    }
+    pub fn is_struct(&self) -> bool {
+        matches!(self.kind, AnonRecordKind::Struct)
+    }
+}
+
+/// Type of fields in a struct, variant or union.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum FieldTy {
+    Ty(P<Ty>),
+    /// An anonymous struct or union, i.e. `struct { foo: Foo }` or `union { foo: Foo }`.
+    // AnonRecord(P<Item>),
+    AnonRecord(P<AnonRecord>),
+}
+
+impl From<P<Ty>> for FieldTy {
+    fn from(ty: P<Ty>) -> Self {
+        Self::Ty(ty)
+    }
+}
+
+impl From<AnonRecord> for FieldTy {
+    fn from(anon_record: AnonRecord) -> Self {
+        Self::AnonRecord(P(anon_record))
+    }
+}
+
+impl FieldTy {
+    pub fn id(&self) -> NodeId {
+        match self {
+            Self::Ty(ty) => ty.id,
+            Self::AnonRecord(anon_record) => anon_record.id,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Ty(ty) => ty.span,
+            Self::AnonRecord(anon_record) => anon_record.span,
+        }
+    }
+
+    pub fn as_ty(&self) -> Option<&P<Ty>> {
+        match self {
+            Self::Ty(ty) => Some(ty),
+            _ => None,
+        }
+    }
+
+    /// Expects a `Ty`, otherwise panics.
+    pub fn expect_ty(&self) -> &P<Ty> {
+        let FieldTy::Ty(ty) = &self else {
+            panic!("expect a type, found {self:?}");
+        };
+        ty
+    }
+}
+
 /// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
@@ -2732,7 +2815,7 @@ pub struct FieldDef {
     pub vis: Visibility,
     pub ident: Option<Ident>,
 
-    pub ty: P<Ty>,
+    pub ty: FieldTy,
     pub is_placeholder: bool,
 }
 
@@ -2762,6 +2845,27 @@ impl VariantData {
         }
     }
 
+    /// Return all fields of this variant, with anonymous structs or unions flattened.
+    pub fn all_fields(&self) -> AllFields<'_> {
+        AllFields { iters: smallvec::smallvec![self.fields().iter()] }
+    }
+
+    /// Return whether this variant contains inner anonymous unions.
+    pub fn find_inner_union(&self) -> Option<Span> {
+        // We only check the record-like structs
+        let VariantData::Struct(fields, ..) = self else { return None };
+        fn find_union(fields: &[FieldDef]) -> Option<Span> {
+            fields.iter().find_map(|field| {
+                let FieldTy::AnonRecord(anon_record) = &field.ty else { return None };
+                anon_record
+                    .is_union()
+                    .then(|| anon_record.span)
+                    .or_else(|| find_union(&anon_record.fields))
+            })
+        }
+        find_union(&fields)
+    }
+
     /// Return the `NodeId` of this variant's constructor, if it has one.
     pub fn ctor_node_id(&self) -> Option<NodeId> {
         match *self {
@@ -2770,6 +2874,44 @@ impl VariantData {
         }
     }
 }
+
+/// Iterator of all fields of a `VariantData`.
+///
+/// It iterates on the field tree in preorder, where the unnamed fields with anonymous structs or unions
+/// are flattened to their inner fields.
+pub struct AllFields<'a> {
+    iters: smallvec::SmallVec<[std::slice::Iter<'a, FieldDef>; 1]>,
+}
+
+impl<'a> Iterator for AllFields<'a> {
+    type Item = &'a FieldDef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut top = self.iters.last_mut()?;
+        loop {
+            if let Some(field) = top.next() {
+                if let FieldTy::AnonRecord(anon_record) = &field.ty {
+                    self.iters.push(anon_record.fields.iter());
+                    top = self.iters.last_mut().unwrap();
+                    continue;
+                }
+                return Some(field);
+            }
+            self.iters.pop();
+            top = self.iters.last_mut()?;
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match &self.iters[..] {
+            [] => (0, Some(0)),
+            [single] => (single.size_hint().0, None),
+            [first, .., last] => (first.size_hint().0 + last.size_hint().0, None),
+        }
+    }
+}
+
+impl std::iter::FusedIterator for AllFields<'_> {}
 
 /// An item definition.
 #[derive(Clone, Encodable, Decodable, Debug)]

@@ -1720,7 +1720,7 @@ impl<'a> Parser<'a> {
                         vis,
                         ident: None,
                         id: DUMMY_NODE_ID,
-                        ty,
+                        ty: ty.into(),
                         attrs,
                         is_placeholder: false,
                     },
@@ -1805,7 +1805,9 @@ impl<'a> Parser<'a> {
 
                 // Try to recover extra trailing angle brackets
                 let mut recovered = false;
-                if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind {
+                if let FieldTy::Ty(ty) = &a_var.ty
+                    && let TyKind::Path(_, Path { segments, .. }) = &ty.kind
+                {
                     if let Some(last_segment) = segments.last() {
                         recovered = self.check_trailing_angle_brackets(
                             last_segment,
@@ -1883,6 +1885,42 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn can_begin_anon_struct_or_union(&mut self) -> bool {
+        (self.token.is_keyword(kw::Struct) || self.token.is_keyword(kw::Union))
+            && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace))
+    }
+
+    /// Parse an anonymous struct or union (only for field definitions):
+    /// ```ignore (feature-not-ready)
+    /// #[repr(C)]
+    /// struct Foo {
+    ///     _: struct { // anonymous struct
+    ///         x: u32,
+    ///         y: f64,
+    ///     }
+    ///     _: union { // anonymous union
+    ///         z: u32,
+    ///         w: f64,
+    ///     }
+    /// }
+    /// ```
+    fn parse_anon_struct_or_union(&mut self) -> PResult<'a, AnonRecord> {
+        let kind = match &self.token {
+            token if token.is_keyword(kw::Union) => AnonRecordKind::Union,
+            token if token.is_keyword(kw::Struct) => AnonRecordKind::Struct,
+            token => unreachable!("Expect `struct` or `union`, found {token:?}"),
+        };
+
+        let lo = self.token.span;
+        self.bump();
+
+        let (fields, recovered) = self.parse_record_struct_body(kind.name(), lo, false)?;
+        let span = lo.to(self.prev_token.span);
+        self.sess.gated_spans.gate(sym::unnamed_fields, span);
+        // This can be rejected during AST validation in `deny_anon_adt`.
+        Ok(AnonRecord { id: DUMMY_NODE_ID, span, kind, fields, recovered })
+    }
+
     /// Parses a structure field.
     fn parse_name_and_ty(
         &mut self,
@@ -1900,7 +1938,19 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect_field_ty_separator()?;
-        let ty = self.parse_ty_for_field_def()?;
+        if self.can_begin_anon_struct_or_union() {
+            let anon_record = self.parse_anon_struct_or_union()?;
+            return Ok(FieldDef {
+                span: lo.to(self.prev_token.span),
+                ident: Some(name),
+                vis,
+                id: DUMMY_NODE_ID,
+                ty: anon_record.into(),
+                attrs,
+                is_placeholder: false,
+            });
+        }
+        let ty = self.parse_ty()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
             self.sess.emit_err(errors::SingleColonStructType { span: self.token.span });
         }
@@ -1915,7 +1965,7 @@ impl<'a> Parser<'a> {
             ident: Some(name),
             vis,
             id: DUMMY_NODE_ID,
-            ty,
+            ty: ty.into(),
             attrs,
             is_placeholder: false,
         })

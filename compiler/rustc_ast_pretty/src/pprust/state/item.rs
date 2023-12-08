@@ -462,7 +462,15 @@ impl<'a> State<'a> {
                 self.print_visibility(&field.vis);
                 self.print_ident(field.ident.unwrap());
                 self.word_nbsp(":");
-                self.print_type(&field.ty);
+                match &field.ty {
+                    ast::FieldTy::Ty(ty) => {
+                        self.print_type(&ty);
+                    }
+                    ast::FieldTy::AnonRecord(anon_record) => {
+                        self.head(anon_record.kind.name());
+                        self.print_record_struct_body(&anon_record.fields, anon_record.span);
+                    }
+                }
                 self.word(",");
             }
         }
@@ -488,7 +496,7 @@ impl<'a> State<'a> {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);
-                        s.print_type(&field.ty)
+                        s.print_type(field.ty.expect_ty())
                     });
                     self.pclose();
                 }

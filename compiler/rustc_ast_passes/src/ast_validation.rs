@@ -198,9 +198,6 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
-                walk_list!(self, visit_field_def, fields)
-            }
             _ => visit::walk_ty(self, t),
         }
     }
@@ -209,11 +206,13 @@ impl<'a> AstValidator<'a> {
         if let Some(ident) = field.ident
             && ident.name == kw::Underscore
         {
-            self.check_unnamed_field_ty(&field.ty, ident.span);
+            let ty = self.check_unnamed_field_ty(&field.ty, ident.span);
             self.visit_vis(&field.vis);
             self.visit_ident(ident);
-            self.visit_ty_common(&field.ty);
-            self.walk_ty(&field.ty);
+            if let Some(ty) = ty {
+                self.visit_ty_common(&ty);
+                self.walk_ty(&ty);
+            }
             walk_list!(self, visit_attribute, &field.attrs);
         } else {
             self.visit_field_def(field);
@@ -257,29 +256,24 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_unnamed_field_ty(&self, ty: &Ty, span: Span) {
-        if matches!(
-            &ty.kind,
-            // We already checked for `kw::Underscore` before calling this function,
-            // so skip the check
-            TyKind::AnonStruct(..) | TyKind::AnonUnion(..)
-            // If the anonymous field contains a Path as type, we can't determine
-            // if the path is a valid struct or union, so skip the check
-            | TyKind::Path(..)
-        ) {
-            return;
+    fn check_unnamed_field_ty(&self, f: &'a FieldTy, span: Span) -> Option<&'a Ty> {
+        // We already checked for `kw::Underscore` before calling this function,
+        // so skip the check
+        let ty = &f.as_ty()?;
+        // If the anonymous field contains a Path as type, we can't determine
+        // if the path is a valid struct or union, so skip the check
+        if matches!(&ty.kind, | TyKind::Path(..)) {
+            return Some(ty);
         }
         self.err_handler().emit_err(errors::InvalidUnnamedFieldTy { span, ty_span: ty.span });
+        Some(ty)
     }
 
-    fn deny_anon_struct_or_union(&self, ty: &Ty) {
-        let struct_or_union = match &ty.kind {
-            TyKind::AnonStruct(..) => "struct",
-            TyKind::AnonUnion(..) => "union",
-            _ => return,
-        };
-        self.err_handler()
-            .emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span: ty.span });
+    fn deny_anon_struct_or_union(&self, f: &'a FieldTy) {
+        let FieldTy::AnonRecord(anon_record) = f else { return };
+        let struct_or_union = anon_record.kind.name();
+        let span = anon_record.span;
+        self.err_handler().emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span });
     }
 
     fn deny_unnamed_field(&self, field: &FieldDef) {
@@ -778,7 +772,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
-        self.deny_anon_struct_or_union(ty);
         self.walk_ty(ty)
     }
 
@@ -794,6 +787,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_field_def(&mut self, field: &'a FieldDef) {
         self.deny_unnamed_field(field);
+        self.deny_anon_struct_or_union(&field.ty);
         visit::walk_field_def(self, field)
     }
 

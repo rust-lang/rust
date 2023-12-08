@@ -106,7 +106,7 @@ fn cs_clone_simple(
             // This basic redundancy checking only prevents duplication of
             // assertions like `AssertParamIsClone<Foo>` where the type is a
             // simple name. That's enough to get a lot of cases, though.
-            if let Some(name) = field.ty.kind.is_simple_path()
+            if let Some(name) = field.ty.expect_ty().kind.is_simple_path()
                 && !seen_type_names.insert(name)
             {
                 // Already produced an assertion for this type.
@@ -115,7 +115,7 @@ fn cs_clone_simple(
                 super::assert_ty_bounds(
                     cx,
                     &mut stmts,
-                    field.ty.clone(),
+                    field.ty.expect_ty().clone(),
                     field.span,
                     &[sym::clone, sym::AssertParamIsClone],
                 );

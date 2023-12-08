@@ -35,6 +35,8 @@
 #![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
+#![feature(if_let_guard)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -1323,18 +1325,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Err => {
                 hir::TyKind::Err(self.tcx.sess.span_delayed_bug(t.span, "TyKind::Err lowered"))
             }
-            // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            TyKind::AnonStruct(ref _fields) => hir::TyKind::Err(
-                self.tcx.sess.span_err(t.span, "anonymous structs are unimplemented"),
-            ),
-            // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            TyKind::AnonUnion(ref _fields) => hir::TyKind::Err(
-                self.tcx.sess.span_err(t.span, "anonymous unions are unimplemented"),
-            ),
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Ref(region, mt) => {

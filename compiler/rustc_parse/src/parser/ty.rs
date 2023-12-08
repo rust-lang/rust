@@ -135,17 +135,6 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Parse a type suitable for a field definition.
-    /// The difference from `parse_ty` is that this version
-    /// allows anonymous structs and unions.
-    pub fn parse_ty_for_field_def(&mut self) -> PResult<'a, P<Ty>> {
-        if self.can_begin_anon_struct_or_union() {
-            self.parse_anon_struct_or_union()
-        } else {
-            self.parse_ty()
-        }
-    }
-
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the type.
@@ -380,36 +369,6 @@ impl<'a> Parser<'a> {
             ty = self.maybe_recover_from_question_mark(ty);
         }
         if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
-    }
-
-    /// Parse an anonymous struct or union (only for field definitions):
-    /// ```ignore (feature-not-ready)
-    /// #[repr(C)]
-    /// struct Foo {
-    ///     _: struct { // anonymous struct
-    ///         x: u32,
-    ///         y: f64,
-    ///     }
-    ///     _: union { // anonymous union
-    ///         z: u32,
-    ///         w: f64,
-    ///     }
-    /// }
-    /// ```
-    fn parse_anon_struct_or_union(&mut self) -> PResult<'a, P<Ty>> {
-        assert!(self.token.is_keyword(kw::Union) || self.token.is_keyword(kw::Struct));
-        let is_union = self.token.is_keyword(kw::Union);
-
-        let lo = self.token.span;
-        self.bump();
-
-        let (fields, _recovered) =
-            self.parse_record_struct_body(if is_union { "union" } else { "struct" }, lo, false)?;
-        let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::unnamed_fields, span);
-        // These can be rejected during AST validation in `deny_anon_struct_or_union`.
-        let kind = if is_union { TyKind::AnonUnion(fields) } else { TyKind::AnonStruct(fields) };
-        Ok(self.mk_ty(span, kind))
     }
 
     /// Parses either:
@@ -771,11 +730,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok(bounds)
-    }
-
-    pub(super) fn can_begin_anon_struct_or_union(&mut self) -> bool {
-        (self.token.is_keyword(kw::Struct) || self.token.is_keyword(kw::Union))
-            && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace))
     }
 
     /// Can the current token begin a bound?

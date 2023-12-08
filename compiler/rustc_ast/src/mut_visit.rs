@@ -251,6 +251,10 @@ pub trait MutVisitor: Sized {
         noop_visit_variant_data(vdata, self);
     }
 
+    fn visit_anon_record(&mut self, anon_record: &mut AnonRecord) {
+        noop_visit_anon_record(anon_record, self);
+    }
+
     fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
         noop_flat_map_generic_param(param, self)
     }
@@ -514,9 +518,6 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
-        TyKind::AnonStruct(fields) | TyKind::AnonUnion(fields) => {
-            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
-        }
     }
     vis.visit_span(span);
     visit_lazy_tts(tokens, vis);
@@ -986,6 +987,13 @@ pub fn noop_visit_variant_data<T: MutVisitor>(vdata: &mut VariantData, vis: &mut
     }
 }
 
+pub fn noop_visit_anon_record<T: MutVisitor>(anon_record: &mut AnonRecord, vis: &mut T) {
+    let AnonRecord { span, id, fields, recovered: _recovered, kind: _kind } = anon_record;
+    vis.visit_span(span);
+    vis.visit_id(id);
+    fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
+}
+
 pub fn noop_visit_trait_ref<T: MutVisitor>(TraitRef { path, ref_id }: &mut TraitRef, vis: &mut T) {
     vis.visit_path(path);
     vis.visit_id(ref_id);
@@ -1007,7 +1015,12 @@ pub fn noop_flat_map_field_def<T: MutVisitor>(
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_vis(vis);
     visitor.visit_id(id);
-    visitor.visit_ty(ty);
+    match ty {
+        FieldTy::Ty(ty) => {
+            visitor.visit_ty(ty);
+        }
+        FieldTy::AnonRecord(anon_record) => visitor.visit_anon_record(anon_record),
+    }
     visit_attrs(attrs, visitor);
     smallvec![fd]
 }
