@@ -122,7 +122,7 @@ pub type TyKind = chalk_ir::TyKind<Interner>;
 pub type TypeFlags = chalk_ir::TypeFlags;
 pub type DynTy = chalk_ir::DynTy<Interner>;
 pub type FnPointer = chalk_ir::FnPointer<Interner>;
-// pub type FnSubst = chalk_ir::FnSubst<Interner>;
+// pub type FnSubst = chalk_ir::FnSubst<Interner>; // a re-export so we don't lose the tuple constructor
 pub use chalk_ir::FnSubst;
 pub type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
 pub type AliasTy = chalk_ir::AliasTy<Interner>;

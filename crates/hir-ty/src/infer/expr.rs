@@ -18,7 +18,6 @@ use hir_def::{
 use hir_expand::name::{name, Name};
 use stdx::always;
 use syntax::ast::RangeOp;
-use triomphe::Arc;
 
 use crate::{
     autoderef::{builtin_deref, deref_by_trait, Autoderef},
@@ -40,7 +39,8 @@ use crate::{
     traits::FnTrait,
     utils::{generics, Generics},
     Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnPointer, FnSig, FnSubst,
-    Interner, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    Interner, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt,
+    TyKind,
 };
 
 use super::{
@@ -1291,7 +1291,7 @@ impl InferenceContext<'_> {
         let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
         let prev_env = block_id.map(|block_id| {
             let prev_env = self.table.trait_env.clone();
-            Arc::make_mut(&mut self.table.trait_env).block = Some(block_id);
+            TraitEnvironment::with_block(&mut self.table.trait_env, block_id);
             prev_env
         });
 

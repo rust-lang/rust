@@ -137,7 +137,7 @@ pub fn intern_const_ref(
     ty: Ty,
     krate: CrateId,
 ) -> Const {
-    let layout = db.layout_of_ty(ty.clone(), Arc::new(TraitEnvironment::empty(krate)));
+    let layout = db.layout_of_ty(ty.clone(), TraitEnvironment::empty(krate));
     let bytes = match value {
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.

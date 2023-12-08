@@ -1468,7 +1468,7 @@ pub(crate) fn trait_environment_for_body_query(
 ) -> Arc<TraitEnvironment> {
     let Some(def) = def.as_generic_def_id() else {
         let krate = def.module(db.upcast()).krate();
-        return Arc::new(TraitEnvironment::empty(krate));
+        return TraitEnvironment::empty(krate);
     };
     db.trait_environment(def)
 }
@@ -1528,12 +1528,7 @@ pub(crate) fn trait_environment_query(
 
     let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
 
-    Arc::new(TraitEnvironment {
-        krate,
-        block: None,
-        traits_from_clauses: traits_in_scope.into_boxed_slice(),
-        env,
-    })
+    TraitEnvironment::new(krate, None, traits_in_scope.into_boxed_slice(), env)
 }
 
 /// Resolve the where clause(s) of an item with generics.

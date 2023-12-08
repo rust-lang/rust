@@ -3564,10 +3564,9 @@ impl TraitRef {
         resolver: &Resolver,
         trait_ref: hir_ty::TraitRef,
     ) -> TraitRef {
-        let env = resolver.generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(resolver.krate())),
-            |d| db.trait_environment(d),
-        );
+        let env = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
         TraitRef { env, trait_ref }
     }
 
@@ -3707,15 +3706,14 @@ impl Type {
         resolver: &Resolver,
         ty: Ty,
     ) -> Type {
-        let environment = resolver.generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(resolver.krate())),
-            |d| db.trait_environment(d),
-        );
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
         Type { env: environment, ty }
     }
 
     pub(crate) fn new_for_crate(krate: CrateId, ty: Ty) -> Type {
-        Type { env: Arc::new(TraitEnvironment::empty(krate)), ty }
+        Type { env: TraitEnvironment::empty(krate), ty }
     }
 
     pub fn reference(inner: &Type, m: Mutability) -> Type {
@@ -3731,10 +3729,9 @@ impl Type {
 
     fn new(db: &dyn HirDatabase, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
-        let environment = resolver.generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(resolver.krate())),
-            |d| db.trait_environment(d),
-        );
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
         Type { env: environment, ty }
     }
 
@@ -4304,10 +4301,10 @@ impl Type {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let krate = scope.krate();
-        let environment = scope.resolver().generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(krate.id)),
-            |d| db.trait_environment(d),
-        );
+        let environment = scope
+            .resolver()
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
 
         method_resolution::iterate_method_candidates_dyn(
             &canonical,
@@ -4361,10 +4358,10 @@ impl Type {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let krate = scope.krate();
-        let environment = scope.resolver().generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(krate.id)),
-            |d| db.trait_environment(d),
-        );
+        let environment = scope
+            .resolver()
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
 
         method_resolution::iterate_path_candidates(
             &canonical,
