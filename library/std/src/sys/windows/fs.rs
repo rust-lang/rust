@@ -1,7 +1,7 @@
 use crate::os::windows::prelude::*;
 
 use crate::borrow::Cow;
-use crate::ffi::OsString;
+use crate::ffi::{c_void, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit};
@@ -15,8 +15,6 @@ use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
-
-use core::ffi::c_void;
 
 use super::path::maybe_verbatim;
 use super::{api, to_u16s, IoResult};
@@ -273,7 +271,9 @@ impl OpenOptions {
             (false, false, false) => c::OPEN_EXISTING,
             (true, false, false) => c::OPEN_ALWAYS,
             (false, true, false) => c::TRUNCATE_EXISTING,
-            (true, true, false) => c::CREATE_ALWAYS,
+            // `CREATE_ALWAYS` has weird semantics so we emulate it using
+            // `OPEN_ALWAYS` and a manual truncation step. See #115745.
+            (true, true, false) => c::OPEN_ALWAYS,
             (_, _, true) => c::CREATE_NEW,
         })
     }
@@ -289,19 +289,40 @@ impl OpenOptions {
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = maybe_verbatim(path)?;
+        let creation = opts.get_creation_mode()?;
         let handle = unsafe {
             c::CreateFileW(
                 path.as_ptr(),
                 opts.get_access_mode()?,
                 opts.share_mode,
                 opts.security_attributes,
-                opts.get_creation_mode()?,
+                creation,
                 opts.get_flags_and_attributes(),
                 ptr::null_mut(),
             )
         };
         let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
-        if let Ok(handle) = handle.try_into() {
+        if let Ok(handle) = OwnedHandle::try_from(handle) {
+            // Manual truncation. See #115745.
+            if opts.truncate
+                && creation == c::OPEN_ALWAYS
+                && unsafe { c::GetLastError() } == c::ERROR_ALREADY_EXISTS
+            {
+                unsafe {
+                    // Setting the allocation size to zero also sets the
+                    // EOF position to zero.
+                    let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
+                    let result = c::SetFileInformationByHandle(
+                        handle.as_raw_handle(),
+                        c::FileAllocationInfo,
+                        ptr::addr_of!(alloc).cast::<c_void>(),
+                        mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
+                    );
+                    if result == 0 {
+                        return Err(io::Error::last_os_error());
+                    }
+                }
+            }
             Ok(File { handle: Handle::from_inner(handle) })
         } else {
             Err(Error::last_os_error())
