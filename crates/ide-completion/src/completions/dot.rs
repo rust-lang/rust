@@ -940,9 +940,9 @@ impl Foo { fn foo(&self) { $0 } }"#,
             expect![[r#"
                 fd self.field i32
                 lc self       &Foo
-                sp Self
-                st Foo
-                bt u32
+                sp Self       Foo
+                st Foo        Foo
+                bt u32        u32
                 me self.foo() fn(&self)
             "#]],
         );
@@ -954,9 +954,9 @@ impl Foo { fn foo(&mut self) { $0 } }"#,
             expect![[r#"
                 fd self.0     i32
                 lc self       &mut Foo
-                sp Self
-                st Foo
-                bt u32
+                sp Self       Foo
+                st Foo        Foo
+                bt u32        u32
                 me self.foo() fn(&mut self)
             "#]],
         );

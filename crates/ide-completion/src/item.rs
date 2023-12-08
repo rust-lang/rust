@@ -1,6 +1,6 @@
 //! See `CompletionItem` structure.
 
-use std::fmt;
+use std::{fmt, mem};
 
 use hir::Mutability;
 use ide_db::{
@@ -568,6 +568,13 @@ impl Builder {
     }
     pub(crate) fn set_relevance(&mut self, relevance: CompletionRelevance) -> &mut Builder {
         self.relevance = relevance;
+        self
+    }
+    pub(crate) fn with_relevance(
+        &mut self,
+        relevance: impl FnOnce(CompletionRelevance) -> CompletionRelevance,
+    ) -> &mut Builder {
+        self.relevance = relevance(mem::take(&mut self.relevance));
         self
     }
     pub(crate) fn trigger_call_info(&mut self) -> &mut Builder {

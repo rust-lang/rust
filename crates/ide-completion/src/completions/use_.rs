@@ -71,9 +71,9 @@ pub(crate) fn complete_use_path(
 
                         if add_resolution {
                             let mut builder = Builder::from_resolution(ctx, path_ctx, name, def);
-                            builder.set_relevance(CompletionRelevance {
+                            builder.with_relevance(|r| CompletionRelevance {
                                 is_name_already_imported,
-                                ..Default::default()
+                                ..r
                             });
                             acc.add(builder.build(ctx.db));
                         }
