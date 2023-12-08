@@ -512,10 +512,9 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             } else {
                 match a_ty.kind() {
                     &ty::Alias(ty::AliasKind::Projection, data) => {
-                        // FIXME: This does not handle subtyping correctly, we should switch to
-                        // alias-relate in the new solver and could instead create a new inference
-                        // variable for `a_ty`, emitting `Projection(a_ty, a_infer)` and
-                        // `a_infer <: b_ty`.
+                        // FIXME: This does not handle subtyping correctly, we could
+                        // instead create a new inference variable for `a_ty`, emitting
+                        // `Projection(a_ty, a_infer)` and `a_infer <: b_ty`.
                         self.obligations.push(Obligation::new(
                             self.tcx(),
                             self.trace.cause.clone(),
