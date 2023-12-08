@@ -33,6 +33,10 @@ async fn async_main() {
     assert_eq!(iter.as_mut().next().await, Some(2));
     assert_eq!(iter.as_mut().next().await, Some(3));
     assert_eq!(iter.as_mut().next().await, None);
+
+    // Test that the iterator is fused and does not panic
+    assert_eq!(iter.as_mut().next().await, None);
+    assert_eq!(iter.as_mut().next().await, None);
 }
 
 // ------------------------------------------------------------------------- //

@@ -252,15 +252,15 @@ struct TransformVisitor<'tcx> {
 
 impl<'tcx> TransformVisitor<'tcx> {
     fn insert_none_ret_block(&self, body: &mut Body<'tcx>) -> BasicBlock {
-        assert!(matches!(self.coroutine_kind, CoroutineKind::Gen(_)));
-
         let block = BasicBlock::new(body.basic_blocks.len());
         let source_info = SourceInfo::outermost(body.span);
-        let option_def_id = self.tcx.require_lang_item(LangItem::Option, None);
 
-        let statements = vec![Statement {
-            kind: StatementKind::Assign(Box::new((
-                Place::return_place(),
+        let none_value = match self.coroutine_kind {
+            CoroutineKind::Async(_) => span_bug!(body.span, "`Future`s are not fused inherently"),
+            CoroutineKind::Coroutine => span_bug!(body.span, "`Coroutine`s cannot be fused"),
+            // `gen` continues return `None`
+            CoroutineKind::Gen(_) => {
+                let option_def_id = self.tcx.require_lang_item(LangItem::Option, None);
                 Rvalue::Aggregate(
                     Box::new(AggregateKind::Adt(
                         option_def_id,
@@ -270,8 +270,29 @@ impl<'tcx> TransformVisitor<'tcx> {
                         None,
                     )),
                     IndexVec::new(),
-                ),
-            ))),
+                )
+            }
+            // `async gen` continues to return `Poll::Ready(None)`
+            CoroutineKind::AsyncGen(_) => {
+                let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
+                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                let yield_ty = args.type_at(0);
+                Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    const_: Const::Unevaluated(
+                        UnevaluatedConst::new(
+                            self.tcx.require_lang_item(LangItem::AsyncGenFinished, None),
+                            self.tcx.mk_args(&[yield_ty.into()]),
+                        ),
+                        self.old_yield_ty,
+                    ),
+                    user_ty: None,
+                })))
+            }
+        };
+
+        let statements = vec![Statement {
+            kind: StatementKind::Assign(Box::new((Place::return_place(), none_value))),
             source_info,
         }];
 
@@ -1393,11 +1414,12 @@ fn create_coroutine_resume_function<'tcx>(
 
     if can_return {
         let block = match coroutine_kind {
-            // FIXME(gen_blocks): Should `async gen` yield `None` when resumed once again?
-            CoroutineKind::Async(_) | CoroutineKind::AsyncGen(_) | CoroutineKind::Coroutine => {
+            CoroutineKind::Async(_) | CoroutineKind::Coroutine => {
                 insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))
             }
-            CoroutineKind::Gen(_) => transform.insert_none_ret_block(body),
+            CoroutineKind::AsyncGen(_) | CoroutineKind::Gen(_) => {
+                transform.insert_none_ret_block(body)
+            }
         };
         cases.insert(1, (RETURNED, block));
     }
