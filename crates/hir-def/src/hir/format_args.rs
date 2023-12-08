@@ -3,6 +3,7 @@ use std::mem;
 
 use hir_expand::name::Name;
 use rustc_dependencies::parse_format as parse;
+use stdx::TupleExt;
 use syntax::{
     ast::{self, IsString},
     SmolStr, TextRange, TextSize,
@@ -14,6 +15,7 @@ use crate::hir::ExprId;
 pub struct FormatArgs {
     pub template: Box<[FormatArgsPiece]>,
     pub arguments: FormatArguments,
+    pub orphans: Vec<ExprId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -196,7 +198,11 @@ pub(crate) fn parse(
     let is_source_literal = parser.is_source_literal;
     if !parser.errors.is_empty() {
         // FIXME: Diagnose
-        return FormatArgs { template: Default::default(), arguments: args.finish() };
+        return FormatArgs {
+            template: Default::default(),
+            arguments: args.finish(),
+            orphans: vec![],
+        };
     }
 
     let to_span = |inner_span: parse::InnerSpan| {
@@ -419,7 +425,11 @@ pub(crate) fn parse(
         // FIXME: Diagnose
     }
 
-    FormatArgs { template: template.into_boxed_slice(), arguments: args.finish() }
+    FormatArgs {
+        template: template.into_boxed_slice(),
+        arguments: args.finish(),
+        orphans: unused.into_iter().map(TupleExt::head).collect(),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
