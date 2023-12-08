@@ -1591,10 +1591,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let sig = self.tcx.fn_sig(assoc.def_id).instantiate_identity();
                 sig.inputs().skip_binder().get(0).and_then(|first| {
-                    if first.peel_refs() == rcvr_ty.peel_refs() {
-                        None
-                    } else {
+                    let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity();
+                    // if the type of first arg is the same as the current impl type, we should take the first arg into assoc function
+                    if first.peel_refs() == impl_ty {
                         Some(first.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()))
+                    } else {
+                        None
                     }
                 })
             } else {
