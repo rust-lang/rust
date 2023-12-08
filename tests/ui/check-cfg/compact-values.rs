@@ -8,7 +8,7 @@
 #[cfg(target(os = "linux", arch = "arm"))]
 pub fn expected() {}
 
-#[cfg(target(os = "linux", arch = "X"))]
+#[cfg(target(os = "linux", pointer_width = "X"))]
 //~^ WARNING unexpected `cfg` condition value
 pub fn unexpected() {}
 

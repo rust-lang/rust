@@ -10,10 +10,6 @@
 #[lang = "sized"]
 trait Sized {}
 
-#[cfg(target_os = "linuz")]
-//~^ WARNING unexpected `cfg` condition value
-fn target_os_linux_misspell() {}
-
 #[cfg(target_os = "linux")]
 fn target_os_linux() {}
 
