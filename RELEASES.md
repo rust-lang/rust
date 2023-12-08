@@ -8,6 +8,7 @@ Language
 
 - [Stabilize `async fn` and return-position `impl Trait` in traits.](https://github.com/rust-lang/rust/pull/115822/)
 - [Allow function pointer signatures containing `&mut T` in `const` contexts.](https://github.com/rust-lang/rust/pull/116015/)
+- [Match `usize`/`isize` exhaustively with half-open ranges.](https://github.com/rust-lang/rust/pull/116692/)
 - [Guarantee that `char` has the same size and alignment as `u32`.](https://github.com/rust-lang/rust/pull/116894/)
 - [Document that the null pointer has the 0 address.](https://github.com/rust-lang/rust/pull/116988/)
 - [Allow partially moved values in `match`.](https://github.com/rust-lang/rust/pull/103208/)
@@ -19,7 +20,6 @@ Language
 Compiler
 --------
 
-- [Match usize/isize exhaustively with half-open ranges.](https://github.com/rust-lang/rust/pull/116692/)
 - [Rework negative coherence to properly consider impls that only partly overlap.](https://github.com/rust-lang/rust/pull/112875/)
 - [Bump `COINDUCTIVE_OVERLAP_IN_COHERENCE` to deny, and warn in dependencies.](https://github.com/rust-lang/rust/pull/116493/)
 - [Consider alias bounds when computing liveness in NLL.](https://github.com/rust-lang/rust/pull/116733/)
