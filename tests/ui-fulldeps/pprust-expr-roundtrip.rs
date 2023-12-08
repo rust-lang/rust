@@ -132,7 +132,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                         binder: ClosureBinder::NotPresent,
                         capture_clause: CaptureBy::Value { move_kw: DUMMY_SP },
                         constness: Const::No,
-                        coro_kind: None,
+                        coroutine_kind: None,
                         movability: Movability::Movable,
                         fn_decl: decl.clone(),
                         body: e,

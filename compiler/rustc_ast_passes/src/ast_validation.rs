@@ -1271,14 +1271,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
             constness: Const::Yes(cspan),
-            coro_kind:
-                Some(
-                    CoroutineKind::Async { span: aspan, .. }
-                    | CoroutineKind::Gen { span: aspan, .. },
-                ),
+            coroutine_kind: Some(coro_kind),
             ..
         }) = fk.header()
         {
+            let aspan = match coro_kind {
+                CoroutineKind::Async { span: aspan, .. }
+                | CoroutineKind::Gen { span: aspan, .. }
+                | CoroutineKind::AsyncGen { span: aspan, .. } => aspan,
+            };
             // FIXME(gen_blocks): Report a different error for `const gen`
             self.err_handler().emit_err(errors::ConstAndAsync {
                 spans: vec![cspan, aspan],

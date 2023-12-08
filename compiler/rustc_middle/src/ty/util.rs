@@ -732,6 +732,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     rustc_hir::CoroutineKind::Async(..) => "async closure",
+                    rustc_hir::CoroutineKind::AsyncGen(..) => "async gen closure",
                     rustc_hir::CoroutineKind::Coroutine => "coroutine",
                     rustc_hir::CoroutineKind::Gen(..) => "gen closure",
                 }
@@ -752,6 +753,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     rustc_hir::CoroutineKind::Async(..) => "an",
+                    rustc_hir::CoroutineKind::AsyncGen(..) => "an",
                     rustc_hir::CoroutineKind::Coroutine => "a",
                     rustc_hir::CoroutineKind::Gen(..) => "a",
                 }

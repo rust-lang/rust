@@ -1875,6 +1875,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1904,6 +1905,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1939,6 +1941,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1954,6 +1957,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2061,6 +2065,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2072,6 +2077,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate

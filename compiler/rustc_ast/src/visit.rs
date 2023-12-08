@@ -861,7 +861,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Closure(box Closure {
             binder,
             capture_clause,
-            coro_kind: _,
+            coroutine_kind: _,
             constness: _,
             movability: _,
             fn_decl,

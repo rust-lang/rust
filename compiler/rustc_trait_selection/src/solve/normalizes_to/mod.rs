@@ -510,6 +510,40 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         )
     }
 
+    fn consider_builtin_async_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // Coroutines are not AsyncIterators unless they come from `gen` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.coroutine_is_async_gen(def_id) {
+            return Err(NoSolution);
+        }
+
+        ecx.probe_misc_candidate("builtin AsyncIterator kind").enter(|ecx| {
+            // Take `AsyncIterator<Item = I>` and turn it into the corresponding
+            // coroutine yield ty `Poll<Option<I>>`.
+            let expected_ty = Ty::new_adt(
+                tcx,
+                tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None)),
+                tcx.mk_args(&[Ty::new_adt(
+                    tcx,
+                    tcx.adt_def(tcx.require_lang_item(LangItem::Option, None)),
+                    tcx.mk_args(&[goal.predicate.term.into()]),
+                )
+                .into()]),
+            );
+            let yield_ty = args.as_coroutine().yield_ty();
+            ecx.eq(goal.param_env, expected_ty, yield_ty)?;
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
+
     fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,

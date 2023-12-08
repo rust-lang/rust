@@ -413,7 +413,7 @@ impl<'a> State<'a> {
                 binder,
                 capture_clause,
                 constness,
-                coro_kind,
+                coroutine_kind,
                 movability,
                 fn_decl,
                 body,
@@ -423,7 +423,7 @@ impl<'a> State<'a> {
                 self.print_closure_binder(binder);
                 self.print_constness(*constness);
                 self.print_movability(*movability);
-                coro_kind.map(|coro_kind| self.print_coro_kind(coro_kind));
+                coroutine_kind.map(|coroutine_kind| self.print_coroutine_kind(coroutine_kind));
                 self.print_capture_clause(*capture_clause);
 
                 self.print_fn_params_and_ret(fn_decl, true);

@@ -563,13 +563,6 @@ pub(crate) struct GenFn {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_async_gen_fn)]
-pub(crate) struct AsyncGenFn {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_comma_after_base_struct)]
 #[note]
 pub(crate) struct CommaAfterBaseStruct {

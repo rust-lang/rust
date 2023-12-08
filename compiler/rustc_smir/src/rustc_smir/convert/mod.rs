@@ -56,6 +56,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
                 stable_mir::mir::CoroutineKind::Gen(source.stable(tables))
             }
             CoroutineKind::Coroutine => stable_mir::mir::CoroutineKind::Coroutine,
+            CoroutineKind::AsyncGen(_) => todo!(),
         }
     }
 }
