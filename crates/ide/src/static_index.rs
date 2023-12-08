@@ -46,6 +46,7 @@ pub struct TokenStaticData {
     pub definition: Option<FileRange>,
     pub references: Vec<ReferenceData>,
     pub moniker: Option<MonikerResult>,
+    pub display_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -172,6 +173,7 @@ impl StaticIndex<'_> {
                     }),
                     references: vec![],
                     moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
+                    display_name: def.name(self.db).map(|name| name.display(self.db).to_string()),
                 });
                 self.def_map.insert(def, it);
                 it

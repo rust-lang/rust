@@ -134,7 +134,7 @@ impl flags::Scip {
                             relationships: Vec::new(),
                             special_fields: Default::default(),
                             kind: Default::default(),
-                            display_name: String::new(),
+                            display_name: token.display_name.clone().unwrap_or_default(),
                             signature_documentation: Default::default(),
                             enclosing_symbol: String::new(),
                         };
