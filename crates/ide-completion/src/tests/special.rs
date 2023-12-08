@@ -1287,6 +1287,30 @@ fn here_we_go() {
 }
 
 #[test]
+fn completes_only_public() {
+    check(
+        r#"
+//- /e.rs
+pub(self) fn i_should_be_hidden() {}
+pub(in crate::e) fn i_should_also_be_hidden() {}
+pub fn i_am_public () {}
+
+//- /lib.rs crate:krate
+pub mod e;
+
+//- /main.rs deps:krate crate:main
+use krate::e;
+fn main() {
+    e::$0
+}"#,
+        expect![
+            "fn i_am_public() fn()
+"
+        ],
+    )
+}
+
+#[test]
 fn completion_filtering_excludes_non_identifier_doc_aliases() {
     check_edit(
         "PartialOrdcmporder",
