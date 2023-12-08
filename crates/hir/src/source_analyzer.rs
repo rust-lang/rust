@@ -280,25 +280,49 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<FunctionId> {
+    ) -> Option<Function> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         let (f_in_trait, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
 
-        Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, substs))
+        Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, substs).into())
     }
 
     pub(crate) fn resolve_method_call_fallback(
         &self,
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<Either<FunctionId, FieldId>> {
+    ) -> Option<Either<Function, Field>> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         let inference_result = self.infer.as_ref()?;
         match inference_result.method_resolution(expr_id) {
-            Some((f_in_trait, substs)) => {
-                Some(Either::Left(self.resolve_impl_method_or_trait_def(db, f_in_trait, substs)))
-            }
-            None => inference_result.field_resolution(expr_id).map(Either::Right),
+            Some((f_in_trait, substs)) => Some(Either::Left(
+                self.resolve_impl_method_or_trait_def(db, f_in_trait, substs).into(),
+            )),
+            None => inference_result.field_resolution(expr_id).map(Into::into).map(Either::Right),
+        }
+    }
+
+    pub(crate) fn resolve_field(
+        &self,
+        db: &dyn HirDatabase,
+        field: &ast::FieldExpr,
+    ) -> Option<Field> {
+        let expr_id = self.expr_id(db, &field.clone().into())?;
+        self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
+    }
+
+    pub(crate) fn resolve_field_fallback(
+        &self,
+        db: &dyn HirDatabase,
+        field: &ast::FieldExpr,
+    ) -> Option<Either<Field, Function>> {
+        let expr_id = self.expr_id(db, &field.clone().into())?;
+        let inference_result = self.infer.as_ref()?;
+        match inference_result.field_resolution(expr_id) {
+            Some(field) => Some(Either::Left(field.into())),
+            None => inference_result.method_resolution(expr_id).map(|(f, substs)| {
+                Either::Right(self.resolve_impl_method_or_trait_def(db, f, substs).into())
+            }),
         }
     }
 
@@ -415,15 +439,6 @@ impl SourceAnalyzer {
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
 
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
-    }
-
-    pub(crate) fn resolve_field(
-        &self,
-        db: &dyn HirDatabase,
-        field: &ast::FieldExpr,
-    ) -> Option<Field> {
-        let expr_id = self.expr_id(db, &field.clone().into())?;
-        self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
     }
 
     pub(crate) fn resolve_record_field(

@@ -17,7 +17,7 @@ use hir_def::{
     nameres::MacroSubNs,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
-    AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
+    AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
     db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, InMacroFile, MacroCallId,
@@ -196,20 +196,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         offset: TextSize,
     ) -> impl Iterator<Item = N> + 'slf {
         self.imp.descend_node_at_offset(node, offset).filter_map(|mut it| it.find_map(N::cast))
-    }
-
-    pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        self.imp.resolve_method_call(call).map(Function::from)
-    }
-
-    /// Attempts to resolve this call expression as a method call falling back to resolving it as a field.
-    pub fn resolve_method_call_field_fallback(
-        &self,
-        call: &ast::MethodCallExpr,
-    ) -> Option<Either<Function, Field>> {
-        self.imp
-            .resolve_method_call_fallback(call)
-            .map(|it| it.map_left(Function::from).map_right(Field::from))
     }
 
     pub fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<Function> {
@@ -1048,14 +1034,15 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(pat.syntax())?.binding_mode_of_pat(self.db, pat)
     }
 
-    fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
+    pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         self.analyze(call.syntax())?.resolve_method_call(self.db, call)
     }
 
-    fn resolve_method_call_fallback(
+    /// Attempts to resolve this call expression as a method call falling back to resolving it as a field.
+    pub fn resolve_method_call_fallback(
         &self,
         call: &ast::MethodCallExpr,
-    ) -> Option<Either<FunctionId, FieldId>> {
+    ) -> Option<Either<Function, Field>> {
         self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
     }
 
@@ -1085,6 +1072,13 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
         self.analyze(field.syntax())?.resolve_field(self.db, field)
+    }
+
+    pub fn resolve_field_fallback(
+        &self,
+        field: &ast::FieldExpr,
+    ) -> Option<Either<Field, Function>> {
+        self.analyze(field.syntax())?.resolve_field_fallback(self.db, field)
     }
 
     pub fn resolve_record_field(
@@ -1298,7 +1292,7 @@ impl<'db> SemanticsImpl<'db> {
                     return None;
                 }
 
-                let func = self.resolve_method_call(method_call_expr).map(Function::from)?;
+                let func = self.resolve_method_call(method_call_expr)?;
                 let res = match func.self_param(self.db)?.access(self.db) {
                     Access::Shared | Access::Exclusive => true,
                     Access::Owned => false,

@@ -492,7 +492,7 @@ impl NameRefClass {
         match_ast! {
             match parent {
                 ast::MethodCallExpr(method_call) => {
-                    sema.resolve_method_call_field_fallback(&method_call)
+                    sema.resolve_method_call_fallback(&method_call)
                         .map(|it| {
                             it.map_left(Definition::Function)
                                 .map_right(Definition::Field)
@@ -500,9 +500,12 @@ impl NameRefClass {
                         })
                 },
                 ast::FieldExpr(field_expr) => {
-                    sema.resolve_field(&field_expr)
-                        .map(Definition::Field)
-                        .map(NameRefClass::Definition)
+                    sema.resolve_field_fallback(&field_expr)
+                    .map(|it| {
+                        it.map_left(Definition::Field)
+                            .map_right(Definition::Function)
+                            .either(NameRefClass::Definition, NameRefClass::Definition)
+                    })
                 },
                 ast::RecordPatField(record_pat_field) => {
                     sema.resolve_record_pat_field(&record_pat_field)
