@@ -4,6 +4,8 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(async_iter_from_iter)]
+#![feature(async_iterator)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(const_align_offset)]
@@ -55,6 +57,7 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
+#![feature(noop_waker)]
 #![feature(numfmt)]
 #![feature(num_midpoint)]
 #![feature(isqrt)]
@@ -126,6 +129,7 @@ mod any;
 mod array;
 mod ascii;
 mod asserting;
+mod async_iter;
 mod atomic;
 mod bool;
 mod cell;
