@@ -314,6 +314,21 @@ impl InFile<TextRange> {
         }
     }
 
+    pub fn original_node_file_range_rooted(self, db: &dyn db::ExpandDatabase) -> FileRange {
+        match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value },
+            HirFileIdRepr::MacroFile(mac_file) => {
+                match ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value) {
+                    Some((it, SyntaxContextId::ROOT)) => it,
+                    _ => {
+                        let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
+                        loc.kind.original_call_range(db)
+                    }
+                }
+            }
+        }
+    }
+
     pub fn original_node_file_range_opt(
         self,
         db: &dyn db::ExpandDatabase,

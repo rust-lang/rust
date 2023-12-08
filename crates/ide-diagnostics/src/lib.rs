@@ -90,7 +90,7 @@ use stdx::never;
 use syntax::{
     algo::find_node_at_range,
     ast::{self, AstNode},
-    SyntaxNode, SyntaxNodePtr, TextRange,
+    AstPtr, SyntaxNode, SyntaxNodePtr, TextRange,
 };
 
 // FIXME: Make this an enum
@@ -583,4 +583,17 @@ fn adjusted_display_range<N: AstNode>(
             .and_then(adj)
             .unwrap_or(range),
     }
+}
+
+// FIXME Replace the one above with this one?
+fn adjusted_display_range_new<N: AstNode>(
+    ctx: &DiagnosticsContext<'_>,
+    diag_ptr: InFile<AstPtr<N>>,
+    adj: &dyn Fn(N) -> Option<TextRange>,
+) -> FileRange {
+    let source_file = ctx.sema.parse_or_expand(diag_ptr.file_id);
+    let node = diag_ptr.value.to_node(&source_file);
+    diag_ptr
+        .with_value(adj(node).unwrap_or_else(|| diag_ptr.value.text_range()))
+        .original_node_file_range_rooted(ctx.sema.db)
 }
