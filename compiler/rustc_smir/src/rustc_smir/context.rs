@@ -11,18 +11,29 @@ use stable_mir::compiler_interface::Context;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::Body;
+use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
-    LineInfo, PolyFnSig, RigidTy, Span, TyKind, VariantDef,
+    LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
 use stable_mir::{Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
 
 use crate::rustc_internal::{internal, RustcInternal};
 use crate::rustc_smir::builder::BodyBuilder;
-use crate::rustc_smir::{new_item_kind, smir_crate, Stable, Tables};
+use crate::rustc_smir::{alloc, new_item_kind, smir_crate, Stable, Tables};
 
 impl<'tcx> Context for TablesWrapper<'tcx> {
+    fn target_info(&self) -> MachineInfo {
+        let mut tables = self.0.borrow_mut();
+        MachineInfo {
+            endian: tables.tcx.data_layout.endian.stable(&mut *tables),
+            pointer_width: MachineSize::from_bits(
+                tables.tcx.data_layout.pointer_size.bits().try_into().unwrap(),
+            ),
+        }
+    }
+
     fn entry_fn(&self) -> Option<stable_mir::CrateItem> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
@@ -380,6 +391,21 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let args_ref = args.internal(&mut *tables);
         let closure_kind = kind.internal(&mut *tables);
         Instance::resolve_closure(tables.tcx, def_id, args_ref, closure_kind).stable(&mut *tables)
+    }
+
+    fn eval_instance(&self, def: InstanceDef, const_ty: Ty) -> Result<Allocation, Error> {
+        let mut tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        let result = tables.tcx.const_eval_instance(
+            ParamEnv::reveal_all(),
+            instance,
+            Some(tables.tcx.def_span(instance.def_id())),
+        );
+        result
+            .map(|const_val| {
+                alloc::try_new_allocation(const_ty.internal(&mut *tables), const_val, &mut *tables)
+            })
+            .map_err(|e| e.stable(&mut *tables))?
     }
 
     fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error> {

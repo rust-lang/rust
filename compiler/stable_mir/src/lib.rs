@@ -39,6 +39,7 @@ pub mod compiler_interface;
 #[macro_use]
 pub mod error;
 pub mod mir;
+pub mod target;
 pub mod ty;
 pub mod visitor;
 
