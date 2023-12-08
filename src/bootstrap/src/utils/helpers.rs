@@ -378,6 +378,7 @@ fn absolute_unix(path: &Path) -> io::Result<PathBuf> {
 
 #[cfg(windows)]
 fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
+    use std::ffi::OsString;
     use std::io::Error;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::ptr::null_mut;
@@ -526,7 +527,7 @@ pub fn linker_flags(
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
                 "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(builder.config.lld_mode.clone(), target.is_msvc())
+                lld_flag_no_threads(builder.config.lld_mode, target.is_msvc())
             ));
         }
     }

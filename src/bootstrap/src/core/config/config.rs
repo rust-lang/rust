@@ -111,12 +111,12 @@ impl Display for DebuginfoLevel {
 ///
 /// It is configured depending on the target:
 /// 1) Everything except MSVC
-/// - Self-contained: -Clinker-flavor=gnu-lld-cc -Clink-self-contained=+linker
-/// - External: -Clinker-flavor=gnu-lld-cc
+/// - Self-contained: `-Clinker-flavor=gnu-lld-cc -Clink-self-contained=+linker`
+/// - External: `-Clinker-flavor=gnu-lld-cc`
 /// 2) MSVC
-/// - Self-contained: -Clinker=<path to rust-lld>
-/// - External: -Clinker=lld
-#[derive(Default, Clone)]
+/// - Self-contained: `-Clinker=<path to rust-lld>`
+/// - External: `-Clinker=lld`
+#[derive(Default, Copy, Clone)]
 pub enum LldMode {
     /// Do not use LLD
     #[default]

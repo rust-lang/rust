@@ -19,10 +19,8 @@ use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, s
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::cache::{Cache, Interned, INTERNER};
-use crate::utils::helpers::{
-    self, add_dylib_path, add_link_lib_path, exe, linker_args, linker_flags,
-};
-use crate::utils::helpers::{libdir, output, t, LldThreads};
+use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
+use crate::utils::helpers::{libdir, linker_flags, output, t, LldThreads};
 use crate::Crate;
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
@@ -1675,9 +1673,9 @@ impl<'a> Builder<'a> {
             rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
         }
 
-        linker_args(self, compiler.host, LldThreads::Yes).into_iter().for_each(|flag| {
-            hostflags.arg(flag);
-        });
+        for arg in linker_args(self, compiler.host, LldThreads::Yes) {
+            hostflags.arg(&arg);
+        }
 
         if let Some(target_linker) = self.linker(target) {
             let target = crate::envify(&target.triple);
@@ -1685,12 +1683,12 @@ impl<'a> Builder<'a> {
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
         // `linker_args` here.
-        linker_flags(self, target, LldThreads::Yes).into_iter().for_each(|flag| {
+        for flag in linker_flags(self, target, LldThreads::Yes) {
             rustflags.arg(&flag);
-        });
-        linker_args(self, target, LldThreads::Yes).into_iter().for_each(|flag| {
-            rustdocflags.arg(&flag);
-        });
+        }
+        for arg in linker_args(self, target, LldThreads::Yes) {
+            rustdocflags.arg(&arg);
+        }
 
         if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
