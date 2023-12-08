@@ -21,7 +21,7 @@ pub struct Body {
     pub(super) arg_count: usize,
 
     /// Debug information pertaining to user variables, including captures.
-    pub(super) var_debug_info: Vec<VarDebugInfo>,
+    pub var_debug_info: Vec<VarDebugInfo>,
 }
 
 pub type BasicBlockIdx = usize;
@@ -616,6 +616,24 @@ pub struct VarDebugInfo {
     pub argument_index: Option<u16>,
 }
 
+impl VarDebugInfo {
+    /// Return a local variable if this info is related to one.
+    pub fn local(&self) -> Option<Local> {
+        match &self.value {
+            VarDebugInfoContents::Place(place) if place.projection.is_empty() => Some(place.local),
+            VarDebugInfoContents::Place(_) | VarDebugInfoContents::Const(_) => None,
+        }
+    }
+
+    /// Return a constant if this info is related to one.
+    pub fn constant(&self) -> Option<&ConstOperand> {
+        match &self.value {
+            VarDebugInfoContents::Place(_) => None,
+            VarDebugInfoContents::Const(const_op) => Some(const_op),
+        }
+    }
+}
+
 pub type SourceScope = u32;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -832,7 +850,7 @@ pub enum MutBorrowKind {
     ClosureCapture,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Mutability {
     Not,
     Mut,
