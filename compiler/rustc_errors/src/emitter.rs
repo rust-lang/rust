@@ -2719,7 +2719,7 @@ impl Style {
                 spec.set_bold(true);
             }
             Style::Highlight => {
-                spec.set_bold(true);
+                spec.set_bold(true).set_fg(Some(Color::Magenta));
             }
         }
         spec
