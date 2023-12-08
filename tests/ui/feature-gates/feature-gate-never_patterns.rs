@@ -12,7 +12,7 @@ fn main() {
     unsafe {
         let ptr: *const Void = NonNull::dangling().as_ptr();
         match *ptr {
-            ! => {} //~ ERROR `!` patterns are experimental
+            ! //~ ERROR `!` patterns are experimental
         }
     }
 

@@ -1056,6 +1056,23 @@ impl<'hir> Pat<'hir> {
             true
         })
     }
+
+    /// Whether this a never pattern.
+    pub fn is_never_pattern(&self) -> bool {
+        let mut is_never_pattern = false;
+        self.walk(|pat| match &pat.kind {
+            PatKind::Never => {
+                is_never_pattern = true;
+                false
+            }
+            PatKind::Or(s) => {
+                is_never_pattern = s.iter().all(|p| p.is_never_pattern());
+                false
+            }
+            _ => true,
+        });
+        is_never_pattern
+    }
 }
 
 /// A single field in a struct pattern.

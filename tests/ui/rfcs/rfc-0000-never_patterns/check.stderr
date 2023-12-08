@@ -1,0 +1,35 @@
+error: a never pattern is always unreachable
+  --> $DIR/check.rs:14:20
+   |
+LL |         Some(!) => {}
+   |                    ^^
+   |                    |
+   |                    this will never be executed
+   |                    help: remove this expression
+
+error: a guard on a never pattern will never be run
+  --> $DIR/check.rs:19:20
+   |
+LL |         Some(!) if true,
+   |                    ^^^^ help: remove this guard
+
+error: a never pattern is always unreachable
+  --> $DIR/check.rs:24:28
+   |
+LL |         Some(!) if true => {}
+   |                            ^^
+   |                            |
+   |                            this will never be executed
+   |                            help: remove this expression
+
+error: a never pattern is always unreachable
+  --> $DIR/check.rs:29:27
+   |
+LL |         Some(never!()) => {},
+   |                           ^^
+   |                           |
+   |                           this will never be executed
+   |                           help: remove this expression
+
+error: aborting due to 4 previous errors
+

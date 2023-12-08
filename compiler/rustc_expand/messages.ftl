@@ -71,6 +71,8 @@ expand_macro_const_stability =
     .label = invalid const stability attribute
     .label2 = const stability attribute affects this macro
 
+expand_macro_expands_to_match_arm = macros cannot expand to match arms
+
 expand_malformed_feature_attribute =
     malformed `feature` attribute input
     .expected = expected just one word
