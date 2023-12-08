@@ -1,6 +1,6 @@
 //! Completion of names from the current scope in expression position.
 
-use hir::{HasVisibility, Module, ScopeDef};
+use hir::ScopeDef;
 use syntax::ast;
 
 use crate::{
@@ -8,23 +8,6 @@ use crate::{
     context::{ExprCtx, PathCompletionCtx, Qualified},
     CompletionContext, Completions,
 };
-
-fn scope_def_applicable(
-    def: ScopeDef,
-    ctx: &CompletionContext<'_>,
-    module: Option<&Module>,
-) -> bool {
-    match (def, module) {
-        (ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_), _) => {
-            false
-        }
-        (ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)), _) => mac.is_fn_like(ctx.db),
-        (ScopeDef::ModuleDef(hir::ModuleDef::Function(f)), Some(m)) => {
-            f.is_visible_from(ctx.db, *m)
-        }
-        _ => true,
-    }
-}
 
 pub(crate) fn complete_expr_path(
     acc: &mut Completions,
@@ -53,6 +36,12 @@ pub(crate) fn complete_expr_path(
 
     let wants_mut_token =
         ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);
+
+    let scope_def_applicable = |def| match def {
+        ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => false,
+        ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
+        _ => true,
+    };
 
     let add_assoc_item = |acc: &mut Completions, item| match item {
         hir::AssocItem::Function(func) => acc.add_function(ctx, path_ctx, func, None),
@@ -98,7 +87,7 @@ pub(crate) fn complete_expr_path(
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
                     let module_scope = module.scope(ctx.db, Some(ctx.module));
                     for (name, def) in module_scope {
-                        if scope_def_applicable(def, ctx, Some(module)) {
+                        if scope_def_applicable(def) {
                             acc.add_path_resolution(
                                 ctx,
                                 path_ctx,
@@ -244,7 +233,7 @@ pub(crate) fn complete_expr_path(
                         [..] => acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases),
                     }
                 }
-                _ if scope_def_applicable(def, ctx, None) => {
+                _ if scope_def_applicable(def) => {
                     acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
                 }
                 _ => (),

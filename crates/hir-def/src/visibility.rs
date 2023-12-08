@@ -73,7 +73,7 @@ impl RawVisibility {
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::PubSelf => {
-                let path = ModPath::from_kind(PathKind::Plain);
+                let path = ModPath::from_kind(PathKind::Super(0));
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::Pub => RawVisibility::Public,

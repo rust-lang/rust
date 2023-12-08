@@ -1292,7 +1292,7 @@ fn completes_only_public() {
         r#"
 //- /e.rs
 pub(self) fn i_should_be_hidden() {}
-pub(in crate::krate) fn i_should_also_be_hidden() {}
+pub(in crate::e) fn i_should_also_be_hidden() {}
 pub fn i_am_public () {}
 
 //- /lib.rs crate:krate

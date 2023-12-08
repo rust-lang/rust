@@ -93,15 +93,11 @@ impl DefMap {
                 if remaining.is_some() {
                     return None;
                 }
-                let types = result.take_types();
-
-                match (types, path.kind) {
-                    (Some(ModuleDefId::ModuleId(m)), _) => Visibility::Module(m),
-                    // resolve_path doesn't find any values for a plan pathkind of a private function
-                    (None, PathKind::Plain | PathKind::Crate) => {
-                        Visibility::Module(self.module_id(original_module))
-                    }
-                    (_, _) => {
+                let types = result.take_types()?;
+                match types {
+                    ModuleDefId::ModuleId(m) => Visibility::Module(m),
+                    // error: visibility needs to refer to module
+                    _ => {
                         return None;
                     }
                 }
