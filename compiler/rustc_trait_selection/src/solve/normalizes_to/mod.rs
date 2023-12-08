@@ -13,20 +13,20 @@ use rustc_middle::traits::solve::{
 };
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::ProjectionPredicate;
+use rustc_middle::ty::NormalizesTo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
-mod inherent_projection;
+mod inherent;
 mod opaques;
 mod weak_types;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn compute_projection_goal(
+    pub(super) fn compute_normalizes_to_goal(
         &mut self,
-        goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         let def_id = goal.predicate.def_id();
         match self.tcx().def_kind(def_id) {
@@ -71,16 +71,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     fn normalize_anon_const(
         &mut self,
-        goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         if let Some(normalized_const) = self.try_const_eval_resolve(
             goal.param_env,
-            ty::UnevaluatedConst::new(
-                goal.predicate.projection_ty.def_id,
-                goal.predicate.projection_ty.args,
-            ),
+            ty::UnevaluatedConst::new(goal.predicate.alias.def_id, goal.predicate.alias.args),
             self.tcx()
-                .type_of(goal.predicate.projection_ty.def_id)
+                .type_of(goal.predicate.alias.def_id)
                 .no_bound_vars()
                 .expect("const ty should not rely on other generics"),
         ) {
@@ -92,13 +89,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 }
 
-impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
+impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {
         self.self_ty()
     }
 
     fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
-        self.projection_ty.trait_ref(tcx)
+        self.alias.trait_ref(tcx)
     }
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
@@ -123,7 +120,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         ecx.instantiate_binder_with_infer(projection_pred);
                     ecx.eq(
                         goal.param_env,
-                        goal.predicate.projection_ty,
+                        goal.predicate.alias,
                         assumption_projection_pred.projection_ty,
                     )?;
                     ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
@@ -132,7 +129,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     // Add GAT where clauses from the trait's definition
                     ecx.add_goals(
                         tcx.predicates_of(goal.predicate.def_id())
-                            .instantiate_own(tcx, goal.predicate.projection_ty.args)
+                            .instantiate_own(tcx, goal.predicate.alias.args)
                             .map(|(pred, _)| goal.with(tcx, pred)),
                     );
 
@@ -148,12 +145,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, NormalizesTo<'tcx>>,
         impl_def_id: DefId,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
-        let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
+        let goal_trait_ref = goal.predicate.alias.trait_ref(tcx);
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
         if !drcx.args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args) {
@@ -177,7 +174,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             // Add GAT where clauses from the trait's definition
             ecx.add_goals(
                 tcx.predicates_of(goal.predicate.def_id())
-                    .instantiate_own(tcx, goal.predicate.projection_ty.args)
+                    .instantiate_own(tcx, goal.predicate.alias.args)
                     .map(|(pred, _)| goal.with(tcx, pred)),
             );
 
@@ -202,7 +199,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         tcx,
                         guar,
                         tcx.type_of(goal.predicate.def_id())
-                            .instantiate(tcx, goal.predicate.projection_ty.args),
+                            .instantiate(tcx, goal.predicate.alias.args),
                     )
                     .into(),
                     ty::AssocKind::Type => Ty::new_error(tcx, guar).into(),
@@ -227,11 +224,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             //
             // And then map these args to the args of the defining impl of `Assoc`, going
             // from `[u32, u64]` to `[u32, i32, u64]`.
-            let impl_args_with_gat = goal.predicate.projection_ty.args.rebase_onto(
-                tcx,
-                goal_trait_ref.def_id,
-                impl_args,
-            );
+            let impl_args_with_gat =
+                goal.predicate.alias.args.rebase_onto(tcx, goal_trait_ref.def_id, impl_args);
             let args = ecx.translate_args(
                 goal.param_env,
                 impl_def_id,

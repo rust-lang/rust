@@ -12,10 +12,10 @@ use crate::solve::{EvalCtxt, SolverMode};
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn normalize_opaque_type(
         &mut self,
-        goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
-        let opaque_ty = goal.predicate.projection_ty;
+        let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.ty().expect("no such thing as an opaque const");
 
         match (goal.param_env.reveal(), self.solver_mode()) {
