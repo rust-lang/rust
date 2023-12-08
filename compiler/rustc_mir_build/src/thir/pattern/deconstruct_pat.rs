@@ -1101,13 +1101,12 @@ impl ConstructorSet {
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::Coroutine(_, _, _)
-            | ty::CoroutineWitness(_, _)
             | ty::Alias(_, _)
             | ty::Param(_)
-            | ty::Bound(_, _)
-            | ty::Placeholder(_)
-            | ty::Infer(_)
             | ty::Error(_) => Self::Unlistable,
+            ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
+                bug!("Encountered unexpected type in `ConstructorSet::for_ty`: {ty:?}")
+            }
         }
     }
 
