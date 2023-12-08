@@ -341,7 +341,9 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 
         self.apply(|this| {
             SimilarNamesNameVisitor(this).visit_pat(&arm.pat);
-            this.apply(|this| walk_expr(this, &arm.body));
+            if let Some(body) = &arm.body {
+                this.apply(|this| walk_expr(this, body));
+            }
         });
 
         self.check_single_char_names();

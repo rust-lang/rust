@@ -236,7 +236,7 @@ pub fn eq_field(l: &ExprField, r: &ExprField) -> bool {
 pub fn eq_arm(l: &Arm, r: &Arm) -> bool {
     l.is_placeholder == r.is_placeholder
         && eq_pat(&l.pat, &r.pat)
-        && eq_expr(&l.body, &r.body)
+        && eq_expr_opt(&l.body, &r.body)
         && eq_expr_opt(&l.guard, &r.guard)
         && over(&l.attrs, &r.attrs, eq_attr)
 }
