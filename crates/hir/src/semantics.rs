@@ -1556,6 +1556,10 @@ impl SemanticsScope<'_> {
     pub fn extern_crate_decls(&self) -> impl Iterator<Item = Name> + '_ {
         self.resolver.extern_crate_decls_in_scope(self.db.upcast())
     }
+
+    pub fn has_same_self_type(&self, other: &SemanticsScope<'_>) -> bool {
+        self.resolver.impl_def() == other.resolver.impl_def()
+    }
 }
 
 #[derive(Debug)]
