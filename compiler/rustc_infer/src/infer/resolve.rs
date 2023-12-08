@@ -134,7 +134,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for UnresolvedTypeOrConstFinder<'a, 'tc
                 if let TypeVariableOrigin {
                     kind: TypeVariableOriginKind::TypeParameterDefinition(_, _),
                     span,
-                } = *ty_vars.var_origin(ty_vid)
+                } = ty_vars.var_origin(ty_vid)
                 {
                     Some(span)
                 } else {

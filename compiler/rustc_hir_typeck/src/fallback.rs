@@ -57,19 +57,21 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 
     fn fallback_types(&self) -> bool {
-        // Check if we have any unsolved variables. If not, no need for fallback.
-        let unsolved_variables = self.unsolved_variables();
+        // Check if we have any unresolved variables. If not, no need for fallback.
+        let unresolved_variables = self.unresolved_variables();
 
-        if unsolved_variables.is_empty() {
+        if unresolved_variables.is_empty() {
             return false;
         }
 
-        let diverging_fallback = self.calculate_diverging_fallback(&unsolved_variables);
+        let diverging_fallback = self.calculate_diverging_fallback(&unresolved_variables);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
         // The first time, we do *not* replace opaque types.
-        for ty in unsolved_variables {
+        //
+        // TODO: We return `true` even if no fallback occurs.
+        for ty in unresolved_variables {
             debug!("unsolved_variable = {:?}", ty);
             self.fallback_if_possible(ty, &diverging_fallback);
         }
@@ -230,9 +232,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     ///   any variable that has an edge into `D`.
     fn calculate_diverging_fallback(
         &self,
-        unsolved_variables: &[Ty<'tcx>],
+        unresolved_variables: &[Ty<'tcx>],
     ) -> UnordMap<Ty<'tcx>, Ty<'tcx>> {
-        debug!("calculate_diverging_fallback({:?})", unsolved_variables);
+        debug!("calculate_diverging_fallback({:?})", unresolved_variables);
 
         // Construct a coercion graph where an edge `A -> B` indicates
         // a type variable is that is coerced
@@ -240,7 +242,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         // Extract the unsolved type inference variable vids; note that some
         // unsolved variables are integer/float variables and are excluded.
-        let unsolved_vids = unsolved_variables.iter().filter_map(|ty| ty.ty_vid());
+        let unsolved_vids = unresolved_variables.iter().filter_map(|ty| ty.ty_vid());
 
         // Compute the diverging root vids D -- that is, the root vid of
         // those type variables that (a) are the target of a coercion from

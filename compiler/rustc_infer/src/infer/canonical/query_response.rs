@@ -166,10 +166,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     fn take_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
-            .into_iter()
-            .map(|(k, v)| (k, v.hidden_type.ty))
-            .collect()
+        self.take_opaque_types().into_iter().map(|(k, v)| (k, v.hidden_type.ty)).collect()
     }
 
     /// Given the (canonicalized) result to a canonical query,

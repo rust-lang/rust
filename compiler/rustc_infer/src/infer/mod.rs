@@ -98,6 +98,8 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
 /// call to `start_snapshot` and `rollback_to`.
 #[derive(Clone)]
 pub struct InferCtxtInner<'tcx> {
+    undo_log: InferCtxtUndoLogs<'tcx>,
+
     /// Cache for projections.
     ///
     /// This cache is snapshotted along with the infcx.
@@ -162,8 +164,6 @@ pub struct InferCtxtInner<'tcx> {
     /// that all type inference variables have been bound and so forth.
     region_obligations: Vec<RegionObligation<'tcx>>,
 
-    undo_log: InferCtxtUndoLogs<'tcx>,
-
     /// Caches for opaque type inference.
     opaque_type_storage: OpaqueTypeStorage<'tcx>,
 }
@@ -171,9 +171,10 @@ pub struct InferCtxtInner<'tcx> {
 impl<'tcx> InferCtxtInner<'tcx> {
     fn new() -> InferCtxtInner<'tcx> {
         InferCtxtInner {
+            undo_log: InferCtxtUndoLogs::default(),
+
             projection_cache: Default::default(),
             type_variable_storage: type_variable::TypeVariableStorage::new(),
-            undo_log: InferCtxtUndoLogs::default(),
             const_unification_storage: ut::UnificationTableStorage::new(),
             int_unification_storage: ut::UnificationTableStorage::new(),
             float_unification_storage: ut::UnificationTableStorage::new(),
@@ -759,7 +760,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn type_var_origin(&self, ty: Ty<'tcx>) -> Option<TypeVariableOrigin> {
         match *ty.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                Some(*self.inner.borrow_mut().type_variables().var_origin(vid))
+                Some(self.inner.borrow_mut().type_variables().var_origin(vid))
             }
             _ => None,
         }
@@ -769,11 +770,11 @@ impl<'tcx> InferCtxt<'tcx> {
         freshen::TypeFreshener::new(self)
     }
 
-    pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
+    pub fn unresolved_variables(&self) -> Vec<Ty<'tcx>> {
         let mut inner = self.inner.borrow_mut();
         let mut vars: Vec<Ty<'_>> = inner
             .type_variables()
-            .unsolved_variables()
+            .unresolved_variables()
             .into_iter()
             .map(|t| Ty::new_var(self.tcx, t))
             .collect();
@@ -1282,12 +1283,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn region_var_origin(&self, vid: ty::RegionVid) -> RegionVariableOrigin {
         let mut inner = self.inner.borrow_mut();
         let inner = &mut *inner;
-        inner
-            .region_constraint_storage
-            .as_mut()
-            .expect("regions already resolved")
-            .with_log(&mut inner.undo_log)
-            .var_origin(vid)
+        inner.unwrap_region_constraints().var_origin(vid)
     }
 
     /// Clone the list of variable regions. This is used only during NLL processing
