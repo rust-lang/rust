@@ -4,8 +4,8 @@ error[E0308]: const not compatible with trait
 LL |     const NAME: &'a str = "unit";
    |     ^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected reference `&'static str`
-              found reference `&'a str`
+   = note: expected reference `&'static _`
+              found reference `&'a _`
 note: the lifetime `'a` as defined here...
   --> $DIR/associated-const-impl-wrong-lifetime.rs:6:6
    |

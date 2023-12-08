@@ -44,8 +44,8 @@ LL | fn index<'a, K, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
 LL |     map[k]
    |         ^ expected `&K`, found type parameter `K`
    |
-   = note:   expected reference `&K`
-           found type parameter `K`
+   = note:   expected reference `&_`
+           found type parameter `_`
 help: consider borrowing here
    |
 LL |     map[&k]
@@ -59,8 +59,8 @@ LL | fn index<'a, K, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
 LL |     map[k]
    |     ^^^^^^ expected `&V`, found type parameter `V`
    |
-   = note:   expected reference `&'a V`
-           found type parameter `V`
+   = note:   expected reference `&'a _`
+           found type parameter `_`
 help: consider borrowing here
    |
 LL |     &map[k]

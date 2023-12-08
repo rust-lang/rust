@@ -31,8 +31,8 @@ error[E0308]: mismatched `self` parameter type
 LL |     fn dummy2(self: &Bar<T>) {}
    |                     ^^^^^^^ lifetime mismatch
    |
-   = note: expected reference `&'a Bar<T>`
-              found reference `&Bar<T>`
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
 note: the anonymous lifetime defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:37:21
    |
@@ -50,8 +50,8 @@ error[E0308]: mismatched `self` parameter type
 LL |     fn dummy2(self: &Bar<T>) {}
    |                     ^^^^^^^ lifetime mismatch
    |
-   = note: expected reference `&'a Bar<T>`
-              found reference `&Bar<T>`
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
 note: the lifetime `'a` as defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
@@ -69,8 +69,8 @@ error[E0308]: mismatched `self` parameter type
 LL |     fn dummy3(self: &&Bar<T>) {}
    |                     ^^^^^^^^ lifetime mismatch
    |
-   = note: expected reference `&'a Bar<T>`
-              found reference `&Bar<T>`
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
 note: the anonymous lifetime defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:40:22
    |
@@ -88,8 +88,8 @@ error[E0308]: mismatched `self` parameter type
 LL |     fn dummy3(self: &&Bar<T>) {}
    |                     ^^^^^^^^ lifetime mismatch
    |
-   = note: expected reference `&'a Bar<T>`
-              found reference `&Bar<T>`
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
 note: the lifetime `'a` as defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
@@ -115,8 +115,8 @@ note: type in trait
    |
 LL |     fn dummy2(&self);
    |               ^^^^^
-   = note: expected signature `fn(&&'a Bar<T>)`
-              found signature `fn(&Bar<T>)`
+   = note: expected signature `fn(&&'a Bar<_>)`
+              found signature `fn(&Bar<_>)`
 
 error: aborting due to 8 previous errors
 

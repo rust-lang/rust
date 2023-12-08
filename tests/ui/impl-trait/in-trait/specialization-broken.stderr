@@ -15,8 +15,8 @@ note: type in trait
    |
 LL |     fn bar(&self) -> impl Sized;
    |                      ^^^^^^^^^^
-   = note: expected signature `fn(&U) -> impl Sized`
-              found signature `fn(&U) -> U`
+   = note: expected signature `fn(&_) -> impl Sized`
+              found signature `fn(&_) -> U`
 
 error: method with return-position `impl Trait` in trait cannot be specialized
   --> $DIR/specialization-broken.rs:15:5

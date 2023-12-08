@@ -6,8 +6,8 @@ LL |     needs_i32_ref_fn(foo::<()>);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected fn pointer `fn(&'static i32, i32)`
-                 found fn item `fn(i32, &'static i32) {foo::<()>}`
+   = note: expected fn pointer `fn(&'static _, _)`
+                 found fn item `fn(_, &'static _) {foo::<()>}`
 note: function defined here
   --> $DIR/normalize-fn-sig.rs:11:4
    |

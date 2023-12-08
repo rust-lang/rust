@@ -9,8 +9,8 @@ note: type in trait
    |
 LL |     fn jumbo(&self, x: &usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected signature `fn(&usize, &usize) -> usize`
-              found signature `unsafe fn(&usize, &usize)`
+   = note: expected signature `fn(&_, &_) -> usize`
+              found signature `unsafe fn(&_, &_)`
 
 error: aborting due to 1 previous error
 
