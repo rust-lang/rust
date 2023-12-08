@@ -5,7 +5,7 @@ mod source_to_def;
 use std::{
     cell::RefCell,
     fmt, iter, mem,
-    ops::{self, ControlFlow},
+    ops::{self, ControlFlow, Not},
 };
 
 use base_db::{FileId, FileRange};
@@ -20,8 +20,8 @@ use hir_def::{
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
-    db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, MacroCallId, MacroFileId,
-    MacroFileIdExt,
+    db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, InMacroFile, MacroCallId,
+    MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -29,7 +29,7 @@ use smallvec::{smallvec, SmallVec};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody, IsString as _},
+    ast::{self, HasAttrs as _, HasDocComments, HasGenericParams, HasLoopBody, IsString as _},
     match_ast, AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
     TextRange, TextSize,
 };
@@ -129,9 +129,10 @@ pub struct Semantics<'db, DB> {
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
-    expansion_info_cache: RefCell<FxHashMap<MacroFileId, ExpansionInfo>>,
     /// Rootnode to HirFileId cache
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
+    // These 2 caches are mainly useful for semantic highlighting as nothing else descends a lot of tokens
+    expansion_info_cache: RefCell<FxHashMap<MacroFileId, ExpansionInfo>>,
     /// MacroCall to its expansion's MacroFileId cache
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroFileId>>,
 }
@@ -616,164 +617,196 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    // FIXME: should only take real file inputs for simplicity
     fn descend_into_macros_impl(
         &self,
         token: SyntaxToken,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
     ) {
-        // FIXME: Clean this up
         let _p = profile::span("descend_into_macros");
         let sa = match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
             Some(it) => it,
             None => return,
         };
 
-        let mut cache = self.expansion_info_cache.borrow_mut();
-        let mut mcache = self.macro_call_cache.borrow_mut();
-        let span = match sa.file_id.repr() {
-            base_db::span::HirFileIdRepr::FileId(file_id) => {
-                self.db.real_span_map(file_id).span_for_range(token.text_range())
+        let span = match sa.file_id.file_id() {
+            Some(file_id) => self.db.real_span_map(file_id).span_for_range(token.text_range()),
+            None => {
+                stdx::never!();
+                return;
             }
-            base_db::span::HirFileIdRepr::MacroFile(macro_file) => cache
-                .entry(macro_file)
-                .or_insert_with(|| macro_file.expansion_info(self.db.upcast()))
-                .exp_map
-                .span_at(token.text_range().start()),
         };
 
+        let mut cache = self.expansion_info_cache.borrow_mut();
+        let mut mcache = self.macro_call_cache.borrow_mut();
         let def_map = sa.resolver.def_map();
-        let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
 
-        let mut process_expansion_for_token = |stack: &mut SmallVec<_>, macro_file| {
+        let mut process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
             let expansion_info = cache
                 .entry(macro_file)
                 .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
 
             {
-                let InFile { file_id, value } = expansion_info.expanded();
-                self.cache(value, file_id);
+                let InMacroFile { file_id, value } = expansion_info.expanded();
+                self.cache(value, file_id.into());
             }
 
-            let mapped_tokens = expansion_info.map_range_down(span)?;
-            let len = stack.len();
+            let InMacroFile { file_id, value: mapped_tokens } =
+                expansion_info.map_range_down(span)?;
+            let mapped_tokens: SmallVec<[_; 2]> = mapped_tokens.collect();
 
-            // requeue the tokens we got from mapping our current token down
-            stack.extend(mapped_tokens.map(Into::into));
             // if the length changed we have found a mapping for the token
-            (stack.len() != len).then_some(())
+            let res = mapped_tokens.is_empty().not().then_some(());
+            // requeue the tokens we got from mapping our current token down
+            stack.push((HirFileId::from(file_id), mapped_tokens));
+            res
         };
 
-        // Remap the next token in the queue into a macro call its in, if it is not being remapped
-        // either due to not being in a macro-call or because its unused push it into the result vec,
-        // otherwise push the remapped tokens back into the queue as they can potentially be remapped again.
-        while let Some(token) = stack.pop() {
-            let was_not_remapped = (|| {
-                // First expand into attribute invocations
+        let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![(sa.file_id, smallvec![token])];
 
-                let containing_attribute_macro_call = self.with_ctx(|ctx| {
-                    token.value.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
-                        if item.attrs().next().is_none() {
-                            // Don't force populate the dyn cache for items that don't have an attribute anyways
-                            return None;
-                        }
-                        Some(ctx.item_to_macro_call(token.with_value(item.clone()))?)
-                    })
-                });
-                if let Some(call_id) = containing_attribute_macro_call {
-                    let file_id = call_id.as_macro_file();
-                    return process_expansion_for_token(&mut stack, file_id);
-                }
-
-                // Then check for token trees, that means we are either in a function-like macro or
-                // secondary attribute inputs
-                let tt = token.value.parent_ancestors().map_while(ast::TokenTree::cast).last()?;
-                let parent = tt.syntax().parent()?;
-
-                if tt.left_delimiter_token().map_or(false, |it| it == token.value) {
-                    return None;
-                }
-                if tt.right_delimiter_token().map_or(false, |it| it == token.value) {
-                    return None;
-                }
-
-                if let Some(macro_call) = ast::MacroCall::cast(parent.clone()) {
-                    let mcall: hir_expand::files::InFileWrapper<HirFileId, ast::MacroCall> =
-                        token.with_value(macro_call);
-                    let file_id = match mcache.get(&mcall) {
-                        Some(&it) => it,
-                        None => {
-                            let it = sa.expand(self.db, mcall.as_ref())?;
-                            mcache.insert(mcall, it);
-                            it
-                        }
-                    };
-                    process_expansion_for_token(&mut stack, file_id)
-                } else if let Some(meta) = ast::Meta::cast(parent) {
-                    // attribute we failed expansion for earlier, this might be a derive invocation
-                    // or derive helper attribute
-                    let attr = meta.parent_attr()?;
-
-                    let adt = if let Some(adt) = attr.syntax().parent().and_then(ast::Adt::cast) {
-                        // this might be a derive, or a derive helper on an ADT
-                        let derive_call = self.with_ctx(|ctx| {
-                            // so try downmapping the token into the pseudo derive expansion
-                            // see [hir_expand::builtin_attr_macro] for how the pseudo derive expansion works
-                            ctx.attr_to_derive_macro_call(
-                                token.with_value(&adt),
-                                token.with_value(attr.clone()),
-                            )
-                            .map(|(_, call_id, _)| call_id)
-                        });
-
-                        match derive_call {
-                            Some(call_id) => {
-                                // resolved to a derive
-                                let file_id = call_id.as_macro_file();
-                                return process_expansion_for_token(&mut stack, file_id);
+        while let Some((file_id, mut tokens)) = stack.pop() {
+            while let Some(token) = tokens.pop() {
+                let was_not_remapped = (|| {
+                    // First expand into attribute invocations
+                    let containing_attribute_macro_call = self.with_ctx(|ctx| {
+                        token.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
+                            if item.attrs().next().is_none() {
+                                // Don't force populate the dyn cache for items that don't have an attribute anyways
+                                return None;
                             }
-                            None => Some(adt),
-                        }
-                    } else {
-                        // Otherwise this could be a derive helper on a variant or field
-                        if let Some(field) = attr.syntax().parent().and_then(ast::RecordField::cast)
-                        {
-                            field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
-                        } else if let Some(field) =
-                            attr.syntax().parent().and_then(ast::TupleField::cast)
-                        {
-                            field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
-                        } else if let Some(variant) =
-                            attr.syntax().parent().and_then(ast::Variant::cast)
-                        {
-                            variant.syntax().ancestors().nth(2).and_then(ast::Adt::cast)
-                        } else {
-                            None
-                        }
-                    }?;
-                    if !self.with_ctx(|ctx| ctx.has_derives(InFile::new(token.file_id, &adt))) {
+                            Some((
+                                ctx.item_to_macro_call(InFile::new(file_id, item.clone()))?,
+                                item,
+                            ))
+                        })
+                    });
+                    if let Some((call_id, item)) = containing_attribute_macro_call {
+                        let file_id = call_id.as_macro_file();
+                        let attr_id = match self.db.lookup_intern_macro_call(call_id).kind {
+                            hir_expand::MacroCallKind::Attr { invoc_attr_index, .. } => {
+                                invoc_attr_index.ast_index()
+                            }
+                            _ => 0,
+                        };
+                        let text_range = item.syntax().text_range();
+                        let start = item
+                            .doc_comments_and_attrs()
+                            .nth(attr_id)
+                            .map(|attr| match attr {
+                                Either::Left(it) => it.syntax().text_range().start(),
+                                Either::Right(it) => it.syntax().text_range().start(),
+                            })
+                            .unwrap_or_else(|| text_range.start());
+                        let text_range = TextRange::new(start, text_range.end());
+                        // remove any other token in this macro input, all their mappings are the
+                        // same as this one
+                        tokens.retain(|t| !text_range.contains_range(t.text_range()));
+                        return process_expansion_for_token(&mut stack, file_id);
+                    }
+
+                    // Then check for token trees, that means we are either in a function-like macro or
+                    // secondary attribute inputs
+                    let tt = token.parent_ancestors().map_while(ast::TokenTree::cast).last()?;
+                    let parent = tt.syntax().parent()?;
+
+                    if tt.left_delimiter_token().map_or(false, |it| it == token) {
                         return None;
                     }
-                    // Not an attribute, nor a derive, so it's either a builtin or a derive helper
-                    // Try to resolve to a derive helper and downmap
-                    let attr_name = attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
-                    let id = self.db.ast_id_map(token.file_id).ast_id(&adt);
-                    let helpers =
-                        def_map.derive_helpers_in_scope(InFile::new(token.file_id, id))?;
-                    let mut res = None;
-                    for (.., derive) in helpers.iter().filter(|(helper, ..)| *helper == attr_name) {
-                        res =
-                            res.or(process_expansion_for_token(&mut stack, derive.as_macro_file()));
+                    if tt.right_delimiter_token().map_or(false, |it| it == token) {
+                        return None;
                     }
-                    res
-                } else {
-                    None
-                }
-            })()
-            .is_none();
 
-            if was_not_remapped && f(token).is_break() {
-                break;
+                    if let Some(macro_call) = ast::MacroCall::cast(parent.clone()) {
+                        let mcall: hir_expand::files::InFileWrapper<HirFileId, ast::MacroCall> =
+                            InFile::new(file_id, macro_call);
+                        let file_id = match mcache.get(&mcall) {
+                            Some(&it) => it,
+                            None => {
+                                let it = sa.expand(self.db, mcall.as_ref())?;
+                                mcache.insert(mcall, it);
+                                it
+                            }
+                        };
+                        let text_range = tt.syntax().text_range();
+                        // remove any other token in this macro input, all their mappings are the
+                        // same as this one
+                        tokens.retain(|t| !text_range.contains_range(t.text_range()));
+                        process_expansion_for_token(&mut stack, file_id)
+                    } else if let Some(meta) = ast::Meta::cast(parent) {
+                        // attribute we failed expansion for earlier, this might be a derive invocation
+                        // or derive helper attribute
+                        let attr = meta.parent_attr()?;
+
+                        let adt = if let Some(adt) = attr.syntax().parent().and_then(ast::Adt::cast)
+                        {
+                            // this might be a derive, or a derive helper on an ADT
+                            let derive_call = self.with_ctx(|ctx| {
+                                // so try downmapping the token into the pseudo derive expansion
+                                // see [hir_expand::builtin_attr_macro] for how the pseudo derive expansion works
+                                ctx.attr_to_derive_macro_call(
+                                    InFile::new(file_id, &adt),
+                                    InFile::new(file_id, attr.clone()),
+                                )
+                                .map(|(_, call_id, _)| call_id)
+                            });
+
+                            match derive_call {
+                                Some(call_id) => {
+                                    // resolved to a derive
+                                    let file_id = call_id.as_macro_file();
+                                    let text_range = attr.syntax().text_range();
+                                    // remove any other token in this macro input, all their mappings are the
+                                    // same as this one
+                                    tokens.retain(|t| !text_range.contains_range(t.text_range()));
+                                    return process_expansion_for_token(&mut stack, file_id);
+                                }
+                                None => Some(adt),
+                            }
+                        } else {
+                            // Otherwise this could be a derive helper on a variant or field
+                            if let Some(field) =
+                                attr.syntax().parent().and_then(ast::RecordField::cast)
+                            {
+                                field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
+                            } else if let Some(field) =
+                                attr.syntax().parent().and_then(ast::TupleField::cast)
+                            {
+                                field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
+                            } else if let Some(variant) =
+                                attr.syntax().parent().and_then(ast::Variant::cast)
+                            {
+                                variant.syntax().ancestors().nth(2).and_then(ast::Adt::cast)
+                            } else {
+                                None
+                            }
+                        }?;
+                        if !self.with_ctx(|ctx| ctx.has_derives(InFile::new(file_id, &adt))) {
+                            return None;
+                        }
+                        // Not an attribute, nor a derive, so it's either a builtin or a derive helper
+                        // Try to resolve to a derive helper and downmap
+                        let attr_name =
+                            attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
+                        let id = self.db.ast_id_map(file_id).ast_id(&adt);
+                        let helpers = def_map.derive_helpers_in_scope(InFile::new(file_id, id))?;
+                        let mut res = None;
+                        for (.., derive) in
+                            helpers.iter().filter(|(helper, ..)| *helper == attr_name)
+                        {
+                            res = res.or(process_expansion_for_token(
+                                &mut stack,
+                                derive.as_macro_file(),
+                            ));
+                        }
+                        res
+                    } else {
+                        None
+                    }
+                })()
+                .is_none();
+
+                if was_not_remapped && f(InFile::new(file_id, token)).is_break() {
+                    break;
+                }
             }
         }
     }
