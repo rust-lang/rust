@@ -852,8 +852,8 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right), true)
             }
 
-            ForLoop(_, ref cond, ref block, ..) => {
-                (cond, UnusedDelimsCtx::ForIterExpr, true, None, Some(block.span.lo()), true)
+            ForLoop { ref iter, ref body, .. } => {
+                (iter, UnusedDelimsCtx::ForIterExpr, true, None, Some(body.span.lo()), true)
             }
 
             Match(ref head, _) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
@@ -1085,7 +1085,7 @@ impl EarlyLintPass for UnusedParens {
         }
 
         match e.kind {
-            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop(ref pat, ..) => {
+            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop { ref pat, .. } => {
                 self.check_unused_parens_pat(cx, pat, false, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already

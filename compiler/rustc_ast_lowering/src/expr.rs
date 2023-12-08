@@ -56,12 +56,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     return ex;
                 }
                 // Desugar `ExprForLoop`
-                // from: `[opt_ident]: for <pat> in <head> <body>`
+                // from: `[opt_ident]: for await? <pat> in <iter> <body>`
                 //
                 // This also needs special handling because the HirId of the returned `hir::Expr` will not
                 // correspond to the `e.id`, so `lower_expr_for` handles attribute lowering itself.
-                ExprKind::ForLoop(pat, head, body, opt_label) => {
-                    return self.lower_expr_for(e, pat, head, body, *opt_label);
+                ExprKind::ForLoop { pat, iter, body, label, kind } => {
+                    return self.lower_expr_for(e, pat, iter, body, *label, *kind);
                 }
                 _ => (),
             }
@@ -337,7 +337,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
-                ExprKind::Paren(_) | ExprKind::ForLoop(..) => {
+                ExprKind::Paren(_) | ExprKind::ForLoop{..} => {
                     unreachable!("already handled")
                 }
 
@@ -1673,6 +1673,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         head: &Expr,
         body: &Block,
         opt_label: Option<Label>,
+        _loop_kind: ForLoopKind,
     ) -> hir::Expr<'hir> {
         let head = self.lower_expr_mut(head);
         let pat = self.lower_pat(pat);

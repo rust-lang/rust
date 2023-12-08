@@ -4252,11 +4252,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 });
             }
 
-            ExprKind::ForLoop(ref pat, ref iter_expr, ref block, label) => {
-                self.visit_expr(iter_expr);
+            ExprKind::ForLoop { ref pat, ref iter, ref body, label, kind: _ } => {
+                self.visit_expr(iter);
                 self.with_rib(ValueNS, RibKind::Normal, |this| {
                     this.resolve_pattern_top(pat, PatternSource::For);
-                    this.resolve_labeled_block(label, expr.id, block);
+                    this.resolve_labeled_block(label, expr.id, body);
                 });
             }
 

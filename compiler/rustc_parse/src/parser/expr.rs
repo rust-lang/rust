@@ -10,7 +10,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{CoroutineKind, GenBlockKind, Pat, Path, PathSegment};
+use ast::{CoroutineKind, ForLoopKind, GenBlockKind, Pat, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -1801,7 +1801,7 @@ impl<'a> Parser<'a> {
                     && matches!(
                         expr.kind,
                         ExprKind::While(_, _, None)
-                            | ExprKind::ForLoop(_, _, _, None)
+                            | ExprKind::ForLoop { label: None, .. }
                             | ExprKind::Loop(_, None, _)
                             | ExprKind::Block(_, None)
                     )
@@ -2682,8 +2682,16 @@ impl<'a> Parser<'a> {
         Ok((pat, expr))
     }
 
-    /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
+    /// Parses `for await? <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
     fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+        let is_await = self.eat_keyword(kw::Await);
+
+        if is_await {
+            self.sess.gated_spans.gate(sym::async_for_loop, self.prev_token.span);
+        }
+
+        let kind = if is_await { ForLoopKind::ForAwait } else { ForLoopKind::For };
+
         let (pat, expr) = self.parse_for_head()?;
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
@@ -2696,13 +2704,13 @@ impl<'a> Parser<'a> {
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
             return Ok(self.mk_expr(
                 lo.to(self.prev_token.span),
-                ExprKind::ForLoop(pat, err_expr, block, opt_label),
+                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
             ));
         }
 
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
 
-        let kind = ExprKind::ForLoop(pat, expr, loop_block, opt_label);
+        let kind = ExprKind::ForLoop { pat, iter: expr, body: loop_block, label: opt_label, kind };
 
         self.recover_loop_else("for", lo)?;
 
@@ -3798,7 +3806,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Lit(_)
             | ExprKind::If(_, _, _)
             | ExprKind::While(_, _, _)
-            | ExprKind::ForLoop(_, _, _, _)
+            | ExprKind::ForLoop { .. }
             | ExprKind::Loop(_, _, _)
             | ExprKind::Match(_, _)
             | ExprKind::Closure(_)

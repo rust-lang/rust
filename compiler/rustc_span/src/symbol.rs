@@ -426,6 +426,7 @@ symbols! {
         async_closure,
         async_fn_in_trait,
         async_fn_track_caller,
+        async_for_loop,
         async_iterator,
         atomic,
         atomic_mod,

@@ -1409,7 +1409,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             | ExprKind::Unary(..)
                             | ExprKind::If(..)
                             | ExprKind::While(..)
-                            | ExprKind::ForLoop(..)
+                            | ExprKind::ForLoop { .. }
                             | ExprKind::Match(..),
                         ..
                     }),

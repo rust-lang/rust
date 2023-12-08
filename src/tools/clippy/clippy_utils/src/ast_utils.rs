@@ -169,9 +169,22 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Let(lp, le, _, _), Let(rp, re, _, _)) => eq_pat(lp, rp) && eq_expr(le, re),
         (If(lc, lt, le), If(rc, rt, re)) => eq_expr(lc, rc) && eq_block(lt, rt) && eq_expr_opt(le, re),
         (While(lc, lt, ll), While(rc, rt, rl)) => eq_label(ll, rl) && eq_expr(lc, rc) && eq_block(lt, rt),
-        (ForLoop(lp, li, lt, ll), ForLoop(rp, ri, rt, rl)) => {
-            eq_label(ll, rl) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt)
-        },
+        (
+            ForLoop {
+                pat: lp,
+                iter: li,
+                body: lt,
+                label: ll,
+                kind: lk,
+            },
+            ForLoop {
+                pat: rp,
+                iter: ri,
+                body: rt,
+                label: rl,
+                kind: rk,
+            },
+        ) => eq_label(ll, rl) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt) && lk == rk,
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll, rl) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll, rl) && eq_block(lb, rb),
         (TryBlock(l), TryBlock(r)) => eq_block(l, r),
