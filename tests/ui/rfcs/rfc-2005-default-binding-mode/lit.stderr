@@ -6,8 +6,8 @@ LL |     match &s {
 LL |             "abc" => true,
    |             ^^^^^ expected `&&str`, found `&str`
    |
-   = note: expected reference `&&str`
-              found reference `&'static str`
+   = note: expected reference `&&_`
+              found reference `&'static _`
 
 error[E0308]: mismatched types
   --> $DIR/lit.rs:16:9

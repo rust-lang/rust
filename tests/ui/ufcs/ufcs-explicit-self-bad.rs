@@ -39,12 +39,12 @@ impl<'a, T> SomeTrait for &'a Bar<T> {
     //~| ERROR has an incompatible type for trait
     fn dummy3(self: &&Bar<T>) {}
     //~^ ERROR mismatched `self` parameter type
-    //~| expected reference `&'a Bar<T>`
-    //~| found reference `&Bar<T>`
+    //~| expected reference `&'a Bar<_>`
+    //~| found reference `&Bar<_>`
     //~| lifetime mismatch
     //~| ERROR mismatched `self` parameter type
-    //~| expected reference `&'a Bar<T>`
-    //~| found reference `&Bar<T>`
+    //~| expected reference `&'a Bar<_>`
+    //~| found reference `&Bar<_>`
     //~| lifetime mismatch
 }
 

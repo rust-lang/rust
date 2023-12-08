@@ -1181,37 +1181,54 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind(), t2, t2.kind());
 
         // helper functions
-        fn equals<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-            match (a.kind(), b.kind()) {
-                (a, b) if *a == *b => true,
-                (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
-                | (
-                    &ty::Infer(ty::InferTy::IntVar(_)),
-                    &ty::Int(_) | &ty::Infer(ty::InferTy::IntVar(_)),
-                )
-                | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
-                | (
-                    &ty::Infer(ty::InferTy::FloatVar(_)),
-                    &ty::Float(_) | &ty::Infer(ty::InferTy::FloatVar(_)),
-                ) => true,
-                _ => false,
-            }
-        }
+        let recurse = |t1, t2, values: &mut (DiagnosticStyledString, DiagnosticStyledString)| {
+            let (x1, x2) = self.cmp(t1, t2);
+            (values.0).0.extend(x1.0);
+            (values.1).0.extend(x2.0);
+        };
 
-        fn push_ty_ref<'tcx>(
-            region: ty::Region<'tcx>,
-            ty: Ty<'tcx>,
-            mutbl: hir::Mutability,
-            s: &mut DiagnosticStyledString,
-        ) {
+        fn fmt_region<'tcx>(region: ty::Region<'tcx>) -> String {
             let mut r = region.to_string();
             if r == "'_" {
                 r.clear();
             } else {
                 r.push(' ');
             }
-            s.push_highlighted(format!("&{}{}", r, mutbl.prefix_str()));
-            s.push_normal(ty.to_string());
+            format!("&{r}")
+        }
+
+        fn push_ref<'tcx>(
+            region: ty::Region<'tcx>,
+            mutbl: hir::Mutability,
+            s: &mut DiagnosticStyledString,
+        ) {
+            s.push_highlighted(fmt_region(region));
+            s.push_highlighted(mutbl.prefix_str());
+        }
+
+        fn cmp_ty_refs<'tcx>(
+            r1: ty::Region<'tcx>,
+            mut1: hir::Mutability,
+            r2: ty::Region<'tcx>,
+            mut2: hir::Mutability,
+            ss: &mut (DiagnosticStyledString, DiagnosticStyledString),
+        ) {
+            let (r1, r2) = (fmt_region(r1), fmt_region(r2));
+            if r1 != r2 {
+                ss.0.push_highlighted(r1);
+                ss.1.push_highlighted(r2);
+            } else {
+                ss.0.push_normal(r1);
+                ss.1.push_normal(r2);
+            }
+
+            if mut1 != mut2 {
+                ss.0.push_highlighted(mut1.prefix_str());
+                ss.1.push_highlighted(mut2.prefix_str());
+            } else {
+                ss.0.push_normal(mut1.prefix_str());
+                ss.1.push_normal(mut2.prefix_str());
+            }
         }
 
         // process starts here
@@ -1310,9 +1327,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             values.0.push_normal("_");
                             values.1.push_normal("_");
                         } else {
-                            let (x1, x2) = self.cmp(ta1, ta2);
-                            (values.0).0.extend(x1.0);
-                            (values.1).0.extend(x2.0);
+                            recurse(ta1, ta2, &mut values);
                         }
                         self.push_comma(&mut values.0, &mut values.1, len, i);
                     }
@@ -1418,27 +1433,24 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            // When finding T != &T, highlight only the borrow
-            (&ty::Ref(r1, ref_ty1, mutbl1), _) if equals(ref_ty1, t2) => {
+            // When finding `&T != &T`, compare the references, then recurse into pointee type
+            (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                push_ty_ref(r1, ref_ty1, mutbl1, &mut values.0);
-                values.1.push_normal(t2.to_string());
+                cmp_ty_refs(r1, mutbl1, r2, mutbl2, &mut values);
+                recurse(ref_ty1, ref_ty2, &mut values);
                 values
             }
-            (_, &ty::Ref(r2, ref_ty2, mutbl2)) if equals(t1, ref_ty2) => {
+            // When finding T != &T, highlight the borrow
+            (&ty::Ref(r1, ref_ty1, mutbl1), _) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                values.0.push_normal(t1.to_string());
-                push_ty_ref(r2, ref_ty2, mutbl2, &mut values.1);
+                push_ref(r1, mutbl1, &mut values.0);
+                recurse(ref_ty1, t2, &mut values);
                 values
             }
-
-            // When encountering &T != &mut T, highlight only the borrow
-            (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2))
-                if equals(ref_ty1, ref_ty2) =>
-            {
+            (_, &ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                push_ty_ref(r1, ref_ty1, mutbl1, &mut values.0);
-                push_ty_ref(r2, ref_ty2, mutbl2, &mut values.1);
+                push_ref(r2, mutbl2, &mut values.1);
+                recurse(t1, ref_ty2, &mut values);
                 values
             }
 
@@ -1448,9 +1460,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (DiagnosticStyledString::normal("("), DiagnosticStyledString::normal("("));
                 let len = args1.len();
                 for (i, (left, right)) in args1.iter().zip(args2).enumerate() {
-                    let (x1, x2) = self.cmp(left, right);
-                    (values.0).0.extend(x1.0);
-                    (values.1).0.extend(x2.0);
+                    recurse(left, right, &mut values);
                     self.push_comma(&mut values.0, &mut values.1, len, i);
                 }
                 if len == 1 {
