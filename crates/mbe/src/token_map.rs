@@ -2,7 +2,7 @@
 
 use std::hash::Hash;
 
-use stdx::itertools::Itertools;
+use stdx::{always, itertools::Itertools};
 use syntax::{TextRange, TextSize};
 use tt::Span;
 
@@ -21,13 +21,23 @@ impl<S: Span> SpanMap<S> {
     /// Finalizes the [`SpanMap`], shrinking its backing storage and validating that the offsets are
     /// in order.
     pub fn finish(&mut self) {
-        assert!(self.spans.iter().tuple_windows().all(|(a, b)| a.0 < b.0));
+        always!(
+            self.spans.iter().tuple_windows().all(|(a, b)| a.0 < b.0),
+            "spans are not in order"
+        );
         self.spans.shrink_to_fit();
     }
 
     /// Pushes a new span onto the [`SpanMap`].
     pub fn push(&mut self, offset: TextSize, span: S) {
-        debug_assert!(self.spans.last().map_or(true, |&(last_offset, _)| last_offset < offset));
+        if cfg!(debug_assertions) {
+            if let Some(&(last_offset, _)) = self.spans.last() {
+                assert!(
+                    last_offset < offset,
+                    "last_offset({last_offset:?}) must be smaller than offset({offset:?})"
+                );
+            }
+        }
         self.spans.push((offset, span));
     }
 

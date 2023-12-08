@@ -6,6 +6,7 @@ use base_db::{
 };
 use cfg::CfgExpr;
 use either::Either;
+use itertools::Itertools;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
 use syntax::{
     ast::{self, AstToken},
@@ -491,8 +492,25 @@ fn concat_bytes_expand(
             }
         }
     }
-    let ident = tt::Ident { text: bytes.join(", ").into(), span };
-    ExpandResult { value: quote!(span =>[#ident]), err }
+    let value = tt::Subtree {
+        delimiter: tt::Delimiter { open: span, close: span, kind: tt::DelimiterKind::Bracket },
+        token_trees: {
+            Itertools::intersperse_with(
+                bytes.into_iter().map(|it| {
+                    tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { text: it.into(), span }))
+                }),
+                || {
+                    tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+                        char: ',',
+                        spacing: tt::Spacing::Alone,
+                        span,
+                    }))
+                },
+            )
+            .collect()
+        },
+    };
+    ExpandResult { value, err }
 }
 
 fn concat_bytes_expand_subtree(
