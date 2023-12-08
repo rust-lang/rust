@@ -97,7 +97,7 @@ Rustdoc
 - [Accept less invalid Rust in rustdoc.](https://github.com/rust-lang/rust/pull/117450/)
 - [Document lack of object safety on affected traits.](https://github.com/rust-lang/rust/pull/113241/)
 - [Hide `#[repr(transparent)]` if it isn't part of the public ABI.](https://github.com/rust-lang/rust/pull/115439/)
-- [Show enum discrimant if it is a C-like variant.](https://github.com/rust-lang/rust/pull/116142/)
+- [Show enum discriminant if it is a C-like variant.](https://github.com/rust-lang/rust/pull/116142/)
 
 <a id="1.75.0-Compatibility-Notes"></a>
 
