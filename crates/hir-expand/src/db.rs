@@ -313,9 +313,10 @@ fn parse_macro_expansion(
     let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
     let edition = loc.def.edition;
     let expand_to = loc.expand_to();
-    let mbe::ValueResult { value: tt, err } = macro_expand(db, macro_file.macro_call_id, loc);
+    let mbe::ValueResult { value: (tt, matched_arm), err } =
+        macro_expand(db, macro_file.macro_call_id, loc);
 
-    let (parse, rev_token_map) = token_tree_to_syntax_node(
+    let (parse, mut rev_token_map) = token_tree_to_syntax_node(
         match &tt {
             CowArc::Arc(it) => it,
             CowArc::Owned(it) => it,
@@ -323,6 +324,7 @@ fn parse_macro_expansion(
         expand_to,
         edition,
     );
+    rev_token_map.matched_arm = matched_arm;
 
     ExpandResult { value: (parse, Arc::new(rev_token_map)), err }
 }
@@ -544,11 +546,13 @@ fn macro_expand(
     db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
     loc: MacroCallLoc,
-) -> ExpandResult<CowArc<tt::Subtree>> {
+) -> ExpandResult<(CowArc<tt::Subtree>, Option<u32>)> {
     let _p = tracing::span!(tracing::Level::INFO, "macro_expand").entered();
 
-    let (ExpandResult { value: tt, err }, span) = match loc.def.kind {
-        MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
+    let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {
+        MacroDefKind::ProcMacro(..) => {
+            return db.expand_proc_macro(macro_call_id).map(CowArc::Arc).zip_val(None)
+        }
         _ => {
             let (macro_arg, undo_info, span) =
                 db.macro_arg_considering_derives(macro_call_id, &loc.kind);
@@ -560,10 +564,10 @@ fn macro_expand(
                         .decl_macro_expander(loc.def.krate, id)
                         .expand(db, arg.clone(), macro_call_id, span),
                     MacroDefKind::BuiltIn(it, _) => {
-                        it.expand(db, macro_call_id, arg, span).map_err(Into::into)
+                        it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
                     }
                     MacroDefKind::BuiltInDerive(it, _) => {
-                        it.expand(db, macro_call_id, arg, span).map_err(Into::into)
+                        it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
                     }
                     MacroDefKind::BuiltInEager(it, _) => {
                         // This might look a bit odd, but we do not expand the inputs to eager macros here.
@@ -574,7 +578,8 @@ fn macro_expand(
                         // As such we just return the input subtree here.
                         let eager = match &loc.kind {
                             MacroCallKind::FnLike { eager: None, .. } => {
-                                return ExpandResult::ok(CowArc::Arc(macro_arg.clone()));
+                                return ExpandResult::ok(CowArc::Arc(macro_arg.clone()))
+                                    .zip_val(None);
                             }
                             MacroCallKind::FnLike { eager: Some(eager), .. } => Some(&**eager),
                             _ => None,
@@ -586,12 +591,12 @@ fn macro_expand(
                             // FIXME: We should report both errors!
                             res.err = error.clone().or(res.err);
                         }
-                        res
+                        res.zip_val(None)
                     }
                     MacroDefKind::BuiltInAttr(it, _) => {
                         let mut res = it.expand(db, macro_call_id, arg, span);
                         fixup::reverse_fixups(&mut res.value, &undo_info);
-                        res
+                        res.zip_val(None)
                     }
                     _ => unreachable!(),
                 };
@@ -603,16 +608,18 @@ fn macro_expand(
     if !loc.def.is_include() {
         // Set a hard limit for the expanded tt
         if let Err(value) = check_tt_count(&tt) {
-            return value.map(|()| {
-                CowArc::Owned(tt::Subtree {
-                    delimiter: tt::Delimiter::invisible_spanned(span),
-                    token_trees: Box::new([]),
+            return value
+                .map(|()| {
+                    CowArc::Owned(tt::Subtree {
+                        delimiter: tt::Delimiter::invisible_spanned(span),
+                        token_trees: Box::new([]),
+                    })
                 })
-            });
+                .zip_val(matched_arm);
         }
     }
 
-    ExpandResult { value: CowArc::Owned(tt), err }
+    ExpandResult { value: (CowArc::Owned(tt), matched_arm), err }
 }
 
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {

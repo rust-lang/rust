@@ -48,7 +48,7 @@ fn benchmark_expand_macro_rules() {
             .map(|(id, tt)| {
                 let res = rules[&id].expand(&tt, |_| (), true, DUMMY, Edition::CURRENT);
                 assert!(res.err.is_none());
-                res.value.token_trees.len()
+                res.value.0.token_trees.len()
             })
             .sum()
     };

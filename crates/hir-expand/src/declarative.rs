@@ -3,6 +3,7 @@ use std::sync::OnceLock;
 
 use base_db::{CrateId, VersionReq};
 use span::{Edition, MacroCallId, Span, SyntaxContextId};
+use stdx::TupleExt;
 use syntax::{ast, AstNode};
 use triomphe::Arc;
 
@@ -30,7 +31,7 @@ impl DeclarativeMacroExpander {
         tt: tt::Subtree,
         call_id: MacroCallId,
         span: Span,
-    ) -> ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<(tt::Subtree, Option<u32>)> {
         let loc = db.lookup_intern_macro_call(call_id);
         let toolchain = db.toolchain(loc.def.krate);
         let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
@@ -46,7 +47,7 @@ impl DeclarativeMacroExpander {
         });
         match self.mac.err() {
             Some(_) => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: span, close: span }),
+                (tt::Subtree::empty(tt::DelimSpan { open: span, close: span }), None),
                 ExpandError::MacroDefinition,
             ),
             None => self
@@ -90,6 +91,7 @@ impl DeclarativeMacroExpander {
             None => self
                 .mac
                 .expand(&tt, |_| (), new_meta_vars, call_site, def_site_edition)
+                .map(TupleExt::head)
                 .map_err(Into::into),
         }
     }

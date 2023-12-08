@@ -251,7 +251,7 @@ impl DeclarativeMacro {
         new_meta_vars: bool,
         call_site: Span,
         def_site_edition: Edition,
-    ) -> ExpandResult<tt::Subtree<Span>> {
+    ) -> ExpandResult<(tt::Subtree<Span>, Option<u32>)> {
         expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site, def_site_edition)
     }
 }
@@ -328,6 +328,10 @@ impl<T, E> ValueResult<T, E> {
         T: Default,
     {
         Self { value: Default::default(), err: Some(err) }
+    }
+
+    pub fn zip_val<U>(self, other: U) -> ValueResult<(T, U), E> {
+        ValueResult { value: (self.value, other), err: self.err }
     }
 
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ValueResult<U, E> {
