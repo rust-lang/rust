@@ -177,7 +177,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             } else {
                 [sym::gen_future].into()
             },
-            // FIXME(gen_blocks): how does `closure_track_caller`
+            // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
+            // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
             generics_def_id_map: Default::default(),
             host_param_id: None,
