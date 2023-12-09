@@ -316,7 +316,7 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.fmt(f),
             GenericArgKind::Type(ty) => ty.fmt(f),
-            GenericArgKind::Const(ct) => ct.fmt(f),
+            GenericArgKind::Const(ct, _) => ct.fmt(f),
         }
     }
 }
@@ -327,7 +327,9 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for GenericArg<'tcx> {
     ) -> core::fmt::Result {
         match this.data.unpack() {
             GenericArgKind::Lifetime(lt) => write!(f, "{:?}", &this.wrap(lt)),
-            GenericArgKind::Const(ct) => write!(f, "{:?}", &this.wrap(ct)),
+            GenericArgKind::Const(ct, is_effect) => {
+                write!(f, "{:?}{}", &this.wrap(ct), if is_effect { " (effect arg)" } else { "" })
+            }
             GenericArgKind::Type(ty) => write!(f, "{:?}", &this.wrap(ty)),
         }
     }

@@ -320,7 +320,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
         // We can't unsize a lifetime
         ty::GenericArgKind::Lifetime(_) => None,
 
-        ty::GenericArgKind::Const(ct) => match ct.kind() {
+        ty::GenericArgKind::Const(ct, _) => match ct.kind() {
             ty::ConstKind::Param(p) => Some(p.index),
             _ => None,
         },

@@ -361,7 +361,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                             )
                             .into()
                         }
-                        ty::GenericParamDefKind::Const { .. } => {
+                        ty::GenericParamDefKind::Const { is_host_effect, .. } => {
                             if !emitted_bad_param_err {
                                 tcx.sess.emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Const {
@@ -375,13 +375,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                                 .type_of(param.def_id)
                                 .no_bound_vars()
                                 .expect("ct params cannot have early bound vars");
-                            ty::Const::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundVar::from_usize(num_bound_vars),
-                                ty,
+                            // FIXME(fee1-dead) this seems like something that's very commonly written
+                            ty::GenericArg::new_const(
+                                ty::Const::new_bound(
+                                    tcx,
+                                    ty::INNERMOST,
+                                    ty::BoundVar::from_usize(num_bound_vars),
+                                    ty,
+                                ),
+                                is_host_effect,
                             )
-                            .into()
                         }
                     };
                     num_bound_vars += 1;

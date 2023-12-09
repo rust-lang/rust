@@ -299,7 +299,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     parent: None,
                 }
             }
-            GenericArgKind::Const(ct) => {
+            GenericArgKind::Const(ct, _) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
                     let origin =
                         self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
@@ -511,15 +511,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                         kind: TypeVariableOriginKind::MiscVariable,
                                     })
                                     .into(),
-                                GenericArgKind::Const(arg) => self
-                                    .next_const_var(
+                                GenericArgKind::Const(arg, is_effect) => ty::GenericArg::new_const(
+                                    self.next_const_var(
                                         arg.ty(),
                                         ConstVariableOrigin {
                                             span: rustc_span::DUMMY_SP,
                                             kind: ConstVariableOriginKind::MiscVariable,
                                         },
-                                    )
-                                    .into(),
+                                    ),
+                                    is_effect,
+                                ),
                             }
                         }))
                         .unwrap();
@@ -744,7 +745,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 match arg.unpack() {
                     GenericArgKind::Lifetime(_) => 0, // erased
                     GenericArgKind::Type(ty) => self.ty_cost(ty),
-                    GenericArgKind::Const(_) => 3, // some non-zero value
+                    GenericArgKind::Const(_, _) => 3, // some non-zero value
                 }
             }
             fn ty_cost(self, ty: Ty<'tcx>) -> usize {
@@ -846,7 +847,10 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     _ => false,
                 }
             }
-            (GenericArgKind::Const(inner_ct), GenericArgKind::Const(target_ct)) => {
+            (
+                GenericArgKind::Const(inner_ct, is_effect_a),
+                GenericArgKind::Const(target_ct, is_effect_b),
+            ) if is_effect_a == is_effect_b => {
                 use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
                     (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => self
@@ -890,7 +894,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         walker.skip_current_subtree();
                     }
                 }
-                GenericArgKind::Const(ct) => {
+                GenericArgKind::Const(ct, _) => {
                     if matches!(ct.kind(), ty::ConstKind::Unevaluated(..)) {
                         // You can't write the generic arguments for
                         // unevaluated constants.

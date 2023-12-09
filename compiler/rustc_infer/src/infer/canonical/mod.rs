@@ -144,22 +144,29 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::Region::new_placeholder(self.tcx, placeholder_mapped).into()
             }
 
-            CanonicalVarKind::Const(ui, ty) => self
-                .next_const_var_in_universe(
+            CanonicalVarKind::Const(ui, ty) => {
+                ty::GenericArg::normal_const_arg(self.next_const_var_in_universe(
                     ty,
                     ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
                     universe_map(ui),
-                )
-                .into(),
+                ))
+            }
             CanonicalVarKind::Effect => {
                 let vid = self.inner.borrow_mut().effect_unification_table().new_key(None).vid;
-                ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(vid), self.tcx.types.bool)
-                    .into()
+                ty::GenericArg::effect_const_arg(ty::Const::new_infer(
+                    self.tcx,
+                    ty::InferConst::EffectVar(vid),
+                    self.tcx.types.bool,
+                ))
             }
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, bound }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, bound };
-                ty::Const::new_placeholder(self.tcx, placeholder_mapped, ty).into()
+                ty::GenericArg::normal_const_arg(ty::Const::new_placeholder(
+                    self.tcx,
+                    placeholder_mapped,
+                    ty,
+                ))
             }
         }
     }

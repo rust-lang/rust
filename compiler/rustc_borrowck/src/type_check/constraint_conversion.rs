@@ -162,7 +162,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 .type_must_outlive(origin, t1, r2, constraint_category);
             }
 
-            GenericArgKind::Const(_) => unreachable!(),
+            GenericArgKind::Const(_, _) => unreachable!(),
         }
     }
 

@@ -414,13 +414,13 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
             values: match (a.unpack(), b.unpack()) {
                 (Lifetime(a), Lifetime(b)) => Regions(ExpectedFound::new(a_is_expected, a, b)),
                 (Type(a), Type(b)) => Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
-                (Const(a), Const(b)) => {
+                (Const(a, _), Const(b, _)) => {
                     Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
                 }
 
-                (Lifetime(_), Type(_) | Const(_))
-                | (Type(_), Lifetime(_) | Const(_))
-                | (Const(_), Lifetime(_) | Type(_)) => {
+                (Lifetime(_), Type(_) | Const(_, _))
+                | (Type(_), Lifetime(_) | Const(_, _))
+                | (Const(_, _), Lifetime(_) | Type(_)) => {
                     bug!("relating different kinds: {a:?} {b:?}")
                 }
             },

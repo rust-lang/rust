@@ -644,7 +644,7 @@ fn push_generic_params_internal<'tcx>(
             GenericArgKind::Type(type_parameter) => {
                 push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
             }
-            GenericArgKind::Const(ct) => {
+            GenericArgKind::Const(ct, false) => {
                 push_const_param(tcx, ct, output);
             }
             other => bug!("Unexpected non-erasable generic: {:?}", other),

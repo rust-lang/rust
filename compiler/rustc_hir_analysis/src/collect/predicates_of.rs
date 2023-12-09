@@ -47,7 +47,7 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
                     def_id,
                     ty::GenericArgs::for_item(tcx, def_id, |param, _| {
                         if param.is_host_effect() {
-                            tcx.consts.true_.into()
+                            ty::GenericArg::effect_const_arg(tcx.consts.true_)
                         } else {
                             tcx.mk_param_from_def(param)
                         }

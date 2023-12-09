@@ -19,7 +19,6 @@ use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
-use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileNameDisplayPreference;
 use rustc_target::abi::Size;
@@ -2040,20 +2039,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
         let args: Vec<_> = if !tcx.sess.verbose() {
             // skip host param as those are printed as `~const`
-            args.filter(|arg| match arg.unpack() {
-                // FIXME(effects) there should be a better way than just matching the name
-                GenericArgKind::Const(c)
-                    if tcx.features().effects
-                        && matches!(
-                            c.kind(),
-                            ty::ConstKind::Param(ty::ParamConst { name: sym::host, .. })
-                        ) =>
-                {
-                    false
-                }
-                _ => true,
-            })
-            .collect()
+            args.filter(|arg| !matches!(arg.unpack(), GenericArgKind::Const(_, true))).collect()
         } else {
             // If -Zverbose is passed, we should print the host parameter instead
             // of eating it.
@@ -2983,7 +2969,8 @@ define_print_and_forward_display! {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => p!(print(lt)),
             GenericArgKind::Type(ty) => p!(print(ty)),
-            GenericArgKind::Const(ct) => p!(print(ct)),
+            // FIXME(effects)
+            GenericArgKind::Const(ct, _) => p!(print(ct)),
         }
     }
 }

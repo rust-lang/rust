@@ -83,7 +83,7 @@ where
                 r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
             },
             consts: &mut |bound_ct: ty::BoundVar, _| match var_values[bound_ct].unpack() {
-                GenericArgKind::Const(ct) => ct,
+                GenericArgKind::Const(ct, _) => ct,
                 c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
             },
         };

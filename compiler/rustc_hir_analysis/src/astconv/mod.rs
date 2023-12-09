@@ -449,33 +449,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 };
 
-                match (&param.kind, arg) {
+                match (param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                         self.astconv.ast_region_to_region(lt, Some(param)).into()
                     }
-                    (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
+                    (GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
                         handle_ty_args(has_default, ty)
                     }
-                    (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
+                    (GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
+                    (GenericParamDefKind::Const { is_host_effect, .. }, GenericArg::Const(ct)) => {
                         let did = ct.value.def_id;
                         tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
-                        ty::Const::from_anon_const(tcx, did).into()
+                        ty::GenericArg::new_const(
+                            ty::Const::from_anon_const(tcx, did),
+                            is_host_effect,
+                        )
                     }
-                    (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
+                    (
+                        GenericParamDefKind::Const { is_host_effect, .. },
+                        hir::GenericArg::Infer(inf),
+                    ) => {
                         let ty = tcx
                             .at(self.span)
                             .type_of(param.def_id)
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
-                        if self.astconv.allow_ty_infer() {
-                            self.astconv.ct_infer(ty, Some(param), inf.span).into()
+                        let ct = if self.astconv.allow_ty_infer() {
+                            self.astconv.ct_infer(ty, Some(param), inf.span)
                         } else {
                             self.inferred_params.push(inf.span);
-                            ty::Const::new_misc_error(tcx, ty).into()
-                        }
+                            ty::Const::new_misc_error(tcx, ty)
+                        };
+                        ty::GenericArg::new_const(ct, is_host_effect)
                     }
                     _ => unreachable!(),
                 }
@@ -522,28 +529,31 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Ty::new_misc_error(tcx).into()
                         }
                     }
-                    GenericParamDefKind::Const { has_default, .. } => {
+                    GenericParamDefKind::Const { has_default, is_host_effect } => {
                         let ty = tcx
                             .at(self.span)
                             .type_of(param.def_id)
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
                         if let Err(guar) = ty.error_reported() {
-                            return ty::Const::new_error(tcx, guar, ty).into();
+                            return ty::GenericArg::new_const(
+                                ty::Const::new_error(tcx, guar, ty),
+                                is_host_effect,
+                            );
                         }
                         // FIXME(effects) see if we should special case effect params here
-                        if !infer_args && has_default {
-                            tcx.const_param_default(param.def_id)
-                                .instantiate(tcx, args.unwrap())
-                                .into()
+                        let ct = if !infer_args && has_default {
+                            tcx.const_param_default(param.def_id).instantiate(tcx, args.unwrap())
                         } else {
                             if infer_args {
-                                self.astconv.ct_infer(ty, Some(param), self.span).into()
+                                self.astconv.ct_infer(ty, Some(param), self.span)
                             } else {
                                 // We've already errored above about the mismatch.
-                                ty::Const::new_misc_error(tcx, ty).into()
+                                ty::Const::new_misc_error(tcx, ty)
                             }
-                        }
+                        };
+
+                        ty::GenericArg::new_const(ct, is_host_effect)
                     }
                 }
             }
@@ -1131,12 +1141,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (bound, bound2) = (bound2, bound);
             }
 
-            let unconsted_args = bound
-                .skip_binder()
-                .args
-                .iter()
-                .enumerate()
-                .map(|(n, arg)| if host_index == n { tcx.consts.true_.into() } else { arg });
+            let unconsted_args = bound.skip_binder().args.iter().enumerate().map(|(n, arg)| {
+                if host_index == n {
+                    ty::GenericArg::effect_const_arg(tcx.consts.true_)
+                } else {
+                    arg
+                }
+            });
 
             if unconsted_args.eq(bound2.skip_binder().args.iter()) {
                 next_cand = matching_candidates.next();

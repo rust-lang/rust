@@ -808,6 +808,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         });
         let args = args.iter().cloned().filter(|arg| match arg.unpack() {
             GenericArgKind::Lifetime(_) => print_regions,
+            // don't print effect parameters
+            GenericArgKind::Const(_, true) => false,
             _ => true,
         });
 
@@ -825,7 +827,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 GenericArgKind::Type(ty) => {
                     ty.print(self)?;
                 }
-                GenericArgKind::Const(c) => {
+                GenericArgKind::Const(c, _) => {
                     self.push("K");
                     c.print(self)?;
                 }

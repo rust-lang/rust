@@ -265,7 +265,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         opt_values[br.var] = Some(*original_value);
                     }
                 }
-                GenericArgKind::Const(c) => {
+                GenericArgKind::Const(c, _) => {
                     if let ty::ConstKind::Bound(debruijn, b) = c.kind() {
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b] = Some(*original_value);
@@ -340,7 +340,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             match lhs.unpack() {
                 GenericArgKind::Lifetime(lhs) => self.register_region_outlives(lhs, rhs),
                 GenericArgKind::Type(lhs) => self.register_ty_outlives(lhs, rhs),
-                GenericArgKind::Const(_) => bug!("const outlives: {lhs:?}: {rhs:?}"),
+                GenericArgKind::Const(_, _) => bug!("const outlives: {lhs:?}: {rhs:?}"),
             }
         }
 

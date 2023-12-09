@@ -319,7 +319,7 @@ fn encode_args<'tcx>(
                 GenericArgKind::Type(ty) => {
                     s.push_str(&encode_ty(tcx, ty, dict, options));
                 }
-                GenericArgKind::Const(c) => {
+                GenericArgKind::Const(c, _) => {
                     s.push_str(&encode_const(tcx, c, dict, options));
                 }
             }

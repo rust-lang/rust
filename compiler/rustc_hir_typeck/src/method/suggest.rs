@@ -1562,15 +1562,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     kind: TypeVariableOriginKind::MiscVariable,
                                 })
                                 .into(),
-                            GenericArgKind::Const(arg) => self
-                                .next_const_var(
+                            GenericArgKind::Const(arg, is_effect) => ty::GenericArg::new_const(
+                                self.next_const_var(
                                     arg.ty(),
                                     ConstVariableOrigin {
                                         span: rustc_span::DUMMY_SP,
                                         kind: ConstVariableOriginKind::MiscVariable,
                                     },
-                                )
-                                .into(),
+                                ),
+                                is_effect,
+                            ),
                         }
                     } else {
                         arg

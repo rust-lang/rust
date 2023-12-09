@@ -205,7 +205,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
                 GenericArgKind::Type(ty) => self.add_constraints_from_ty(current, ty, variance_i),
-                GenericArgKind::Const(val) => {
+                GenericArgKind::Const(val, _) => {
                     self.add_constraints_from_const(current, val, variance_i)
                 }
             }
@@ -364,7 +364,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
                 GenericArgKind::Type(ty) => self.add_constraints_from_ty(current, ty, variance_i),
-                GenericArgKind::Const(val) => {
+                GenericArgKind::Const(val, _) => {
                     self.add_constraints_from_const(current, val, variance)
                 }
             }

@@ -1237,15 +1237,14 @@ impl<'tcx> InferCtxt<'tcx> {
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     })
                     .vid;
-                ty::Const::new_var(
+                ty::GenericArg::normal_const_arg(ty::Const::new_var(
                     self.tcx,
                     const_var_id,
                     self.tcx
                         .type_of(param.def_id)
                         .no_bound_vars()
                         .expect("const parameter types cannot be generic"),
-                )
-                .into()
+                ))
             }
         }
     }
@@ -1258,7 +1257,11 @@ impl<'tcx> InferCtxt<'tcx> {
             .no_bound_vars()
             .expect("const parameter types cannot be generic");
         debug_assert_eq!(self.tcx.types.bool, ty);
-        ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(effect_vid), ty).into()
+        ty::GenericArg::effect_const_arg(ty::Const::new_infer(
+            self.tcx,
+            ty::InferConst::EffectVar(effect_vid),
+            ty,
+        ))
     }
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
@@ -1528,15 +1531,13 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.map
                     .entry(bv)
                     .or_insert_with(|| {
-                        self.infcx
-                            .next_const_var(
-                                ty,
-                                ConstVariableOrigin {
-                                    kind: ConstVariableOriginKind::MiscVariable,
-                                    span: self.span,
-                                },
-                            )
-                            .into()
+                        ty::GenericArg::normal_const_arg(self.infcx.next_const_var(
+                            ty,
+                            ConstVariableOrigin {
+                                kind: ConstVariableOriginKind::MiscVariable,
+                                span: self.span,
+                            },
+                        ))
                     })
                     .expect_const()
             }
@@ -1830,7 +1831,7 @@ impl<'tcx> TyOrConstInferVar {
     pub fn maybe_from_generic_arg(arg: GenericArg<'tcx>) -> Option<Self> {
         match arg.unpack() {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
-            GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
+            GenericArgKind::Const(ct, _) => Self::maybe_from_const(ct),
             GenericArgKind::Lifetime(_) => None,
         }
     }

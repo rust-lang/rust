@@ -392,7 +392,7 @@ fn check_opaque_type_parameter_valid(
             // see that issue for more. We will also have to ignore unused lifetime
             // params for RPIT, but that's comparatively trivial ✨
             GenericArgKind::Lifetime(_) => continue,
-            GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
+            GenericArgKind::Const(ct, _) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };
 
         if arg_is_param {

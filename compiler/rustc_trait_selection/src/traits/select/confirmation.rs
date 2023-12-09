@@ -304,7 +304,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 ty::GenericArg::from(to_ty),
                                 ty::GenericArg::from(from_ty),
                                 ty::GenericArg::from(scope),
-                                ty::GenericArg::from(assume_const),
+                                ty::GenericArg::normal_const_arg(assume_const),
                             ],
                         );
                         Obligation::with_depth(
@@ -608,18 +608,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             )
                             .into()
                         }
-                        GenericParamDefKind::Const { .. } => {
+                        GenericParamDefKind::Const { is_host_effect, .. } => {
                             let bound_var = ty::BoundVariableKind::Const;
                             bound_vars.push(bound_var);
-                            ty::Const::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                tcx.type_of(param.def_id)
-                                    .no_bound_vars()
-                                    .expect("const parameter types cannot be generic"),
+                            ty::GenericArg::new_const(
+                                ty::Const::new_bound(
+                                    tcx,
+                                    ty::INNERMOST,
+                                    ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                    tcx.type_of(param.def_id)
+                                        .no_bound_vars()
+                                        .expect("const parameter types cannot be generic"),
+                                ),
+                                is_host_effect,
                             )
-                            .into()
                         }
                     });
                     let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);

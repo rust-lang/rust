@@ -124,7 +124,7 @@ impl<'tcx> ty::Const<'tcx> {
     /// [isize] => { [isize], isize }
     /// ```
     pub fn walk(self) -> TypeWalker<'tcx> {
-        TypeWalker::new(self.into())
+        TypeWalker::new(GenericArg::normal_const_arg(self))
     }
 }
 
@@ -152,7 +152,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::Foreign(..) => {}
 
             ty::Array(ty, len) => {
-                stack.push(len.into());
+                stack.push(GenericArg::normal_const_arg(len));
                 stack.push(ty.into());
             }
             ty::Slice(ty) => {
@@ -183,7 +183,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
 
                     args.iter().rev().chain(opt_ty.map(|term| match term.unpack() {
                         ty::TermKind::Ty(ty) => ty.into(),
-                        ty::TermKind::Const(ct) => ct.into(),
+                        ty::TermKind::Const(ct) => ty::GenericArg::normal_const_arg(ct),
                     }))
                 }));
             }
@@ -201,7 +201,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             }
         },
         GenericArgKind::Lifetime(_) => {}
-        GenericArgKind::Const(parent_ct) => {
+        GenericArgKind::Const(parent_ct, is_effect) => {
             stack.push(parent_ct.ty().into());
             match parent_ct.kind() {
                 ty::ConstKind::Infer(_)
@@ -212,20 +212,22 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Error(_) => {}
 
                 ty::ConstKind::Expr(expr) => match expr {
-                    ty::Expr::UnOp(_, v) => push_inner(stack, v.into()),
+                    ty::Expr::UnOp(_, v) => {
+                        push_inner(stack, ty::GenericArg::new_const(v, is_effect))
+                    }
                     ty::Expr::Binop(_, l, r) => {
-                        push_inner(stack, r.into());
-                        push_inner(stack, l.into())
+                        push_inner(stack, ty::GenericArg::new_const(r, is_effect));
+                        push_inner(stack, ty::GenericArg::new_const(l, is_effect))
                     }
                     ty::Expr::FunctionCall(func, args) => {
                         for a in args.iter().rev() {
-                            push_inner(stack, a.into());
+                            push_inner(stack, ty::GenericArg::new_const(a, is_effect));
                         }
-                        push_inner(stack, func.into());
+                        push_inner(stack, ty::GenericArg::new_const(func, is_effect));
                     }
                     ty::Expr::Cast(_, c, t) => {
                         push_inner(stack, t.into());
-                        push_inner(stack, c.into());
+                        push_inner(stack, ty::GenericArg::new_const(c, is_effect));
                     }
                 },
 

@@ -138,7 +138,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
             required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region)).or_insert(span);
         }
 
-        GenericArgKind::Const(_) => {
+        GenericArgKind::Const(_, _) => {
             // Generic consts don't impose any constraints.
         }
     }

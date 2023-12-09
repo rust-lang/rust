@@ -163,7 +163,7 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgKind<'tcx> {
         match self {
             ty::GenericArgKind::Lifetime(region) => GenericArgKind::Lifetime(region.stable(tables)),
             ty::GenericArgKind::Type(ty) => GenericArgKind::Type(ty.stable(tables)),
-            ty::GenericArgKind::Const(cnst) => GenericArgKind::Const(cnst.stable(tables)),
+            ty::GenericArgKind::Const(cnst, _) => GenericArgKind::Const(cnst.stable(tables)),
         }
     }
 }

@@ -47,7 +47,9 @@ impl<'tcx> RustcInternal<'tcx> for GenericArgKind {
         match self {
             GenericArgKind::Lifetime(reg) => reg.internal(tables).into(),
             GenericArgKind::Type(ty) => ty.internal(tables).into(),
-            GenericArgKind::Const(cnst) => ty_const(cnst, tables).into(),
+            GenericArgKind::Const(cnst) => {
+                rustc_ty::GenericArg::normal_const_arg(ty_const(cnst, tables))
+            }
         }
     }
 }

@@ -413,7 +413,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ArrayLen::Body(anon_const) => {
                 let span = self.tcx.def_span(anon_const.def_id);
                 let c = ty::Const::from_anon_const(self.tcx, anon_const.def_id);
-                self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
+                self.register_wf_obligation(
+                    ty::GenericArg::normal_const_arg(c),
+                    span,
+                    ObligationCauseCode::WellFormed(None),
+                );
                 self.normalize(span, c)
             }
         }
@@ -428,7 +432,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
         let c = ty::Const::from_anon_const(self.tcx, did);
         self.register_wf_obligation(
-            c.into(),
+            ty::GenericArg::normal_const_arg(c),
             self.tcx.hir().span(ast_c.hir_id),
             ObligationCauseCode::WellFormed(None),
         );
@@ -1296,37 +1300,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'_>,
             ) -> ty::GenericArg<'tcx> {
-                match (&param.kind, arg) {
+                match (param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                         self.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.fcx.to_ty(ty).raw.into()
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
+                    (GenericParamDefKind::Const { is_host_effect, .. }, GenericArg::Const(ct)) => {
+                        ty::GenericArg::new_const(
+                            self.fcx.const_arg_to_const(&ct.value, param.def_id),
+                            is_host_effect,
+                        )
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()
                     }
                     (
-                        &GenericParamDefKind::Const { has_default, is_host_effect },
+                        GenericParamDefKind::Const { has_default, is_host_effect },
                         GenericArg::Infer(inf),
                     ) => {
                         let tcx = self.fcx.tcx();
 
-                        if has_default && is_host_effect {
+                        if is_host_effect {
+                            assert!(has_default);
                             self.fcx.var_for_effect(param)
                         } else {
-                            self.fcx
-                                .ct_infer(
+                            ty::GenericArg::normal_const_arg(
+                                self.fcx.ct_infer(
                                     tcx.type_of(param.def_id)
                                         .no_bound_vars()
                                         .expect("const parameter types cannot be generic"),
                                     Some(param),
                                     inf.span,
-                                )
-                                .into()
+                                ),
+                            )
                         }
                     }
                     _ => unreachable!(),
@@ -1372,10 +1380,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if is_host_effect {
                                 return self.fcx.var_for_effect(param);
                             } else if !infer_args {
-                                return tcx
-                                    .const_param_default(param.def_id)
-                                    .instantiate(tcx, args.unwrap())
-                                    .into();
+                                return ty::GenericArg::normal_const_arg(
+                                    tcx.const_param_default(param.def_id)
+                                        .instantiate(tcx, args.unwrap()),
+                                );
                             }
                         }
 

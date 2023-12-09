@@ -375,7 +375,7 @@ impl FlagComputation {
             match kind.unpack() {
                 GenericArgKind::Type(ty) => self.add_ty(ty),
                 GenericArgKind::Lifetime(lt) => self.add_region(lt),
-                GenericArgKind::Const(ct) => self.add_const(ct),
+                GenericArgKind::Const(ct, _) => self.add_const(ct),
             }
         }
     }

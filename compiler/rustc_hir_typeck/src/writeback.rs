@@ -814,7 +814,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
             Ok(ct) => self.fcx.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
-                let e = self.report_error(ct);
+                let e = self.report_error(ty::GenericArg::normal_const_arg(ct));
                 self.replaced_with_error = Some(e);
                 ty::Const::new_error(self.fcx.tcx, e, ct.ty())
             }

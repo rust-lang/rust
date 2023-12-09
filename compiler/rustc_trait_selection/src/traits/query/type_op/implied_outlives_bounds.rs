@@ -184,7 +184,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 push_outlives_components(tcx, ty_a, &mut components);
                 implied_bounds.extend(implied_bounds_from_components(r_b, components))
             }
-            ty::GenericArgKind::Const(_) => unreachable!(),
+            ty::GenericArgKind::Const(_, _) => unreachable!(),
         }
     }
 

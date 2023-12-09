@@ -774,8 +774,11 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
             (GenericArgKind::Type(a_ty), GenericArgKind::Type(b_ty)) => {
                 Ok(relation.relate(a_ty, b_ty)?.into())
             }
-            (GenericArgKind::Const(a_ct), GenericArgKind::Const(b_ct)) => {
-                Ok(relation.relate(a_ct, b_ct)?.into())
+            (
+                GenericArgKind::Const(a_ct, is_effect_a),
+                GenericArgKind::Const(b_ct, is_effect_b),
+            ) if is_effect_a == is_effect_b => {
+                Ok(GenericArg::new_const(relation.relate(a_ct, b_ct)?, is_effect_a))
             }
             (GenericArgKind::Lifetime(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
@@ -783,7 +786,7 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
             (GenericArgKind::Type(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
-            (GenericArgKind::Const(unpacked), x) => {
+            (GenericArgKind::Const(unpacked, _), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
         }

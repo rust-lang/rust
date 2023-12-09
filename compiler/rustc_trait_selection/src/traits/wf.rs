@@ -39,20 +39,22 @@ pub fn obligations<'tcx>(
             }
             .into()
         }
-        GenericArgKind::Const(ct) => {
-            match ct.kind() {
-                ty::ConstKind::Infer(_) => {
-                    let resolved = infcx.shallow_resolve(ct);
-                    if resolved == ct {
-                        // No progress.
-                        return None;
-                    } else {
-                        resolved
+        GenericArgKind::Const(ct, is_effect) => {
+            ty::GenericArg::new_const(
+                match ct.kind() {
+                    ty::ConstKind::Infer(_) => {
+                        let resolved = infcx.shallow_resolve(ct);
+                        if resolved == ct {
+                            // No progress.
+                            return None;
+                        } else {
+                            resolved
+                        }
                     }
-                }
-                _ => ct,
-            }
-            .into()
+                    _ => ct,
+                },
+                is_effect,
+            )
         }
         // There is nothing we have to do for lifetimes.
         GenericArgKind::Lifetime(..) => return Some(Vec::new()),
@@ -165,11 +167,11 @@ pub fn clause_obligations<'tcx>(
             wf.compute_projection(t.projection_ty);
             wf.compute(match t.term.unpack() {
                 ty::TermKind::Ty(ty) => ty.into(),
-                ty::TermKind::Const(c) => c.into(),
+                ty::TermKind::Const(c) => ty::GenericArg::normal_const_arg(c),
             })
         }
         ty::ClauseKind::ConstArgHasType(ct, ty) => {
-            wf.compute(ct.into());
+            wf.compute(ty::GenericArg::normal_const_arg(ct));
             wf.compute(ty.into());
         }
         ty::ClauseKind::WellFormed(arg) => {
@@ -177,7 +179,7 @@ pub fn clause_obligations<'tcx>(
         }
 
         ty::ClauseKind::ConstEvaluatable(ct) => {
-            wf.compute(ct.into());
+            wf.compute(ty::GenericArg::normal_const_arg(ct));
         }
     }
 
@@ -522,7 +524,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 // obligations are handled by the parent (e.g. `ty::Ref`).
                 GenericArgKind::Lifetime(_) => continue,
 
-                GenericArgKind::Const(ct) => {
+                GenericArgKind::Const(ct, _) => {
                     match ct.kind() {
                         ty::ConstKind::Unevaluated(uv) => {
                             if !ct.has_escaping_bound_vars() {
@@ -551,7 +553,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 self.recursion_depth,
                                 self.param_env,
                                 ty::Binder::dummy(ty::PredicateKind::Clause(
-                                    ty::ClauseKind::WellFormed(ct.into()),
+                                    ty::ClauseKind::WellFormed(arg),
                                 )),
                             ));
                         }

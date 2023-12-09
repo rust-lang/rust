@@ -444,7 +444,7 @@ where
                 GenericArgKind::Type(ty) => {
                     self.type_must_outlive(origin.clone(), ty, region, constraint);
                 }
-                GenericArgKind::Const(_) => {
+                GenericArgKind::Const(_, _) => {
                     // Const parameters don't impose constraints.
                 }
             }

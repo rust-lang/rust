@@ -123,9 +123,13 @@ pub(crate) fn ty_args_to_args<'tcx>(
                 }),
             )))
         }
-        GenericArgKind::Const(ct) => {
+        GenericArgKind::Const(ct, is_effect) => {
             if let ty::GenericParamDefKind::Const { is_host_effect: true, .. } = params[index].kind
             {
+                return None;
+            }
+
+            if is_effect {
                 return None;
             }
 

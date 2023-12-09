@@ -72,7 +72,7 @@ impl CanonicalVarValues<'_> {
             ty::GenericArgKind::Type(ty) => {
                 matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
             }
-            ty::GenericArgKind::Const(ct) => {
+            ty::GenericArgKind::Const(ct, _) => {
                 matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.as_usize() == bv)
             }
         })
@@ -100,7 +100,7 @@ impl CanonicalVarValues<'_> {
                         return false;
                     }
                 }
-                ty::GenericArgKind::Const(ct) => {
+                ty::GenericArgKind::Const(ct, _) => {
                     if let ty::ConstKind::Bound(ty::INNERMOST, bc) = ct.kind()
                         && var == bc
                     {
@@ -242,21 +242,23 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                             };
                             ty::Region::new_bound(tcx, ty::INNERMOST, br).into()
                         }
-                        CanonicalVarKind::Effect => ty::Const::new_bound(
-                            tcx,
-                            ty::INNERMOST,
-                            ty::BoundVar::from_usize(i),
-                            tcx.types.bool,
-                        )
-                        .into(),
+                        CanonicalVarKind::Effect => {
+                            ty::GenericArg::effect_const_arg(ty::Const::new_bound(
+                                tcx,
+                                ty::INNERMOST,
+                                ty::BoundVar::from_usize(i),
+                                tcx.types.bool,
+                            ))
+                        }
                         CanonicalVarKind::Const(_, ty)
-                        | CanonicalVarKind::PlaceholderConst(_, ty) => ty::Const::new_bound(
-                            tcx,
-                            ty::INNERMOST,
-                            ty::BoundVar::from_usize(i),
-                            ty,
-                        )
-                        .into(),
+                        | CanonicalVarKind::PlaceholderConst(_, ty) => {
+                            ty::GenericArg::normal_const_arg(ty::Const::new_bound(
+                                tcx,
+                                ty::INNERMOST,
+                                ty::BoundVar::from_usize(i),
+                                ty,
+                            ))
+                        }
                     }
                 },
             )),

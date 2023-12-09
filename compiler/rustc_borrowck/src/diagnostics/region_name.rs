@@ -607,7 +607,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     search_stack.push((ty, hir_ty));
                 }
 
-                (GenericArgKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
+                (GenericArgKind::Const(_ct, _), hir::GenericArg::Const(_hir_ct)) => {
                     // Lifetimes cannot be found in consts, so we don't need
                     // to search anything here.
                 }
@@ -615,7 +615,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 (
                     GenericArgKind::Lifetime(_)
                     | GenericArgKind::Type(_)
-                    | GenericArgKind::Const(_),
+                    | GenericArgKind::Const(_, _),
                     _,
                 ) => {
                     // HIR lowering sometimes doesn't catch this in erroneous

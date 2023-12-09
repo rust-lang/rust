@@ -934,13 +934,6 @@ impl<'tcx> Term<'tcx> {
         if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
     }
 
-    pub fn into_arg(self) -> GenericArg<'tcx> {
-        match self.unpack() {
-            TermKind::Ty(ty) => ty.into(),
-            TermKind::Const(c) => c.into(),
-        }
-    }
-
     /// This function returns the inner `AliasTy` for a `ty::Alias` or `ConstKind::Unevaluated`.
     pub fn to_alias_ty(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
         match self.unpack() {

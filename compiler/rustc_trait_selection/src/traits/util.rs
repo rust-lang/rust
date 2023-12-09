@@ -354,10 +354,13 @@ pub fn check_args_compatible<'tcx>(
         }
 
         for (param, arg) in std::iter::zip(&generics.params, own_args) {
-            match (&param.kind, arg.unpack()) {
+            match (param.kind, arg.unpack()) {
                 (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
-                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
-                | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
+                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_)) => {}
+                (
+                    ty::GenericParamDefKind::Const { is_host_effect, .. },
+                    ty::GenericArgKind::Const(_, is_effect),
+                ) if is_host_effect == is_effect => {}
                 _ => return false,
             }
         }

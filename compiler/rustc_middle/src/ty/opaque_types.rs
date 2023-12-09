@@ -200,10 +200,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
         match ct.kind() {
             ty::ConstKind::Param(..) => {
                 // Look it up in the substitution list.
-                match self.map.get(&ct.into()).map(|k| k.unpack()) {
+                match self.map.get(&GenericArg::normal_const_arg(ct)).map(|k| k.unpack()) {
                     // Found it in the substitution list, replace with the parameter from the
                     // opaque type.
-                    Some(GenericArgKind::Const(c1)) => c1,
+                    Some(GenericArgKind::Const(c1, _)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {u:?}"),
                     None => {
                         let guar = self

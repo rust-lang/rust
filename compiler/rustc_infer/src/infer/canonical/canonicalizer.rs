@@ -807,7 +807,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         if bound_to != const_var {
             self.fold_const(bound_to)
         } else {
-            let var = self.canonical_var(info, const_var.into());
+            let var = self.canonical_var(info, ty::GenericArg::normal_const_arg(const_var));
             ty::Const::new_bound(self.tcx, self.binder_index, var, self.fold_ty(const_var.ty()))
         }
     }

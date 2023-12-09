@@ -2611,7 +2611,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .projection_ty
                     .args
                     .iter()
-                    .chain(Some(data.term.into_arg()))
+                    .chain(Some(match data.term.unpack() {
+                        ty::TermKind::Ty(ty) => ty.into(),
+                        // FIXME(effects) is this correct
+                        ty::TermKind::Const(ct) => ty::GenericArg::normal_const_arg(ct),
+                    }))
                     .find(|g| g.has_non_region_infer());
                 if let Some(subst) = subst {
                     let mut err = self.emit_inference_failure_err(

@@ -201,7 +201,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for NormalizeAfterErasingRegionsFolder<'tcx>
     }
 
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const()
+        self.normalize_generic_arg_after_erasing_regions(ty::GenericArg::normal_const_arg(c))
+            .expect_const()
     }
 }
 
@@ -242,7 +243,9 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for TryNormalizeAfterErasingRegionsF
     }
 
     fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
-        match self.try_normalize_generic_arg_after_erasing_regions(c.into()) {
+        match self
+            .try_normalize_generic_arg_after_erasing_regions(ty::GenericArg::normal_const_arg(c))
+        {
             Ok(t) => Ok(t.expect_const()),
             Err(_) => Err(NormalizationError::Const(c)),
         }

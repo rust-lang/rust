@@ -56,7 +56,11 @@ impl<'tcx> Bounds<'tcx> {
             let trait_ref = trait_ref.map_bound(|mut trait_ref| {
                 trait_ref.args =
                     tcx.mk_args_from_iter(trait_ref.args.iter().enumerate().map(|(n, arg)| {
-                        if host_index == n { tcx.consts.true_.into() } else { arg }
+                        if host_index == n {
+                            ty::GenericArg::effect_const_arg(tcx.consts.true_)
+                        } else {
+                            arg
+                        }
                     }));
                 trait_ref
             });

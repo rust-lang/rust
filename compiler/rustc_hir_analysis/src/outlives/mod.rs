@@ -115,7 +115,7 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                                 .to_predicate(tcx),
                                 span,
                             )),
-                            GenericArgKind::Const(_) => {
+                            GenericArgKind::Const(_, _) => {
                                 // Generic consts don't impose any constraints.
                                 None
                             }

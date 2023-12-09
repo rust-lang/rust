@@ -8,7 +8,7 @@ use rustc_span::Span;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
@@ -91,9 +91,10 @@ impl GenericParamDef {
             GenericParamDefKind::Type { has_default, .. } if has_default => {
                 Some(tcx.type_of(self.def_id).map_bound(|t| t.into()))
             }
-            GenericParamDefKind::Const { has_default, .. } if has_default => {
-                Some(tcx.const_param_default(self.def_id).map_bound(|c| c.into()))
-            }
+            GenericParamDefKind::Const { has_default, is_host_effect } if has_default => Some(
+                tcx.const_param_default(self.def_id)
+                    .map_bound(|c| ty::GenericArg::new_const(c, is_host_effect)),
+            ),
             _ => None,
         }
     }
@@ -106,11 +107,13 @@ impl GenericParamDef {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
             ty::GenericParamDefKind::Type { .. } => Ty::new_misc_error(tcx).into(),
-            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(
-                tcx,
-                tcx.type_of(self.def_id).instantiate(tcx, preceding_args),
-            )
-            .into(),
+            ty::GenericParamDefKind::Const { is_host_effect, .. } => ty::GenericArg::new_const(
+                ty::Const::new_misc_error(
+                    tcx,
+                    tcx.type_of(self.def_id).instantiate(tcx, preceding_args),
+                ),
+                *is_host_effect,
+            ),
         }
     }
 }

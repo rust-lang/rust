@@ -86,7 +86,7 @@ fn compute_components<'tcx>(
                             compute_components(tcx, ty, out, visited);
                         }
                         GenericArgKind::Lifetime(_) => {}
-                        GenericArgKind::Const(_) => {
+                        GenericArgKind::Const(_, _) => {
                             compute_components_recursive(tcx, child, out, visited);
                         }
                     }
@@ -222,7 +222,7 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
                     out.push(Component::Region(lt));
                 }
             }
-            GenericArgKind::Const(_) => {
+            GenericArgKind::Const(_, _) => {
                 compute_components_recursive(tcx, child, out, visited);
             }
         }
@@ -250,7 +250,7 @@ fn compute_components_recursive<'tcx>(
                     out.push(Component::Region(lt));
                 }
             }
-            GenericArgKind::Const(_) => {
+            GenericArgKind::Const(_, _) => {
                 compute_components_recursive(tcx, child, out, visited);
             }
         }

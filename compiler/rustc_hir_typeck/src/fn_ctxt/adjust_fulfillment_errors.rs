@@ -39,8 +39,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
                 }
                 ty::ClauseKind::Projection(pred) => (pred.projection_ty.args.to_vec(), None),
-                ty::ClauseKind::ConstArgHasType(arg, ty) => (vec![ty.into(), arg.into()], None),
-                ty::ClauseKind::ConstEvaluatable(e) => (vec![e.into()], None),
+                ty::ClauseKind::ConstArgHasType(arg, ty) => {
+                    (vec![ty.into(), ty::GenericArg::normal_const_arg(arg)], None)
+                }
+                ty::ClauseKind::ConstEvaluatable(e) => {
+                    (vec![ty::GenericArg::normal_const_arg(e)], None)
+                }
                 _ => return false,
             };
 
@@ -52,7 +56,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && matches(ty::ParamTerm::Ty(param_ty))
                     {
                         Some(arg)
-                    } else if let ty::GenericArgKind::Const(ct) = arg.unpack()
+                    } else if let ty::GenericArgKind::Const(ct, _) = arg.unpack()
                         && let ty::ConstKind::Param(param_ct) = ct.kind()
                         && matches(ty::ParamTerm::Const(param_ct))
                     {

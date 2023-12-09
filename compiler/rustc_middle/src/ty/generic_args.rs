@@ -45,12 +45,13 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
+const CONST_EFFECT_TAG: usize = 0b11;
 
 #[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
-    Const(ty::Const<'tcx>),
+    Const(ty::Const<'tcx>, /* is_effect */ bool),
 }
 
 impl<'tcx> GenericArgKind<'tcx> {
@@ -67,10 +68,18 @@ impl<'tcx> GenericArgKind<'tcx> {
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
                 (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
-            GenericArgKind::Const(ct) => {
+            GenericArgKind::Const(ct, false) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, ct.0.0 as *const WithCachedTypeInfo<ty::ConstData<'tcx>> as usize)
+            }
+            GenericArgKind::Const(ct, true) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                (
+                    CONST_EFFECT_TAG,
+                    ct.0.0 as *const WithCachedTypeInfo<ty::ConstData<'tcx>> as usize,
+                )
             }
         };
 
@@ -104,22 +113,6 @@ impl<'tcx> From<Ty<'tcx>> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
-    #[inline]
-    fn from(c: ty::Const<'tcx>) -> GenericArg<'tcx> {
-        GenericArgKind::Const(c).pack()
-    }
-}
-
-impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
-    fn from(value: ty::Term<'tcx>) -> Self {
-        match value.unpack() {
-            ty::TermKind::Ty(t) => t.into(),
-            ty::TermKind::Const(c) => c.into(),
-        }
-    }
-}
-
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
@@ -135,12 +128,33 @@ impl<'tcx> GenericArg<'tcx> {
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
-                CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
-                ))),
+                CONST_TAG => GenericArgKind::Const(
+                    ty::Const(Interned::new_unchecked(
+                        &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
+                    )),
+                    false,
+                ),
+                CONST_EFFECT_TAG => GenericArgKind::Const(
+                    ty::Const(Interned::new_unchecked(
+                        &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
+                    )),
+                    true,
+                ),
                 _ => intrinsics::unreachable(),
             }
         }
+    }
+
+    pub fn new_const(ct: ty::Const<'tcx>, is_effect: bool) -> GenericArg<'tcx> {
+        GenericArgKind::Const(ct, is_effect).pack()
+    }
+
+    pub fn normal_const_arg(ct: ty::Const<'tcx>) -> GenericArg<'tcx> {
+        Self::new_const(ct, false)
+    }
+
+    pub fn effect_const_arg(ct: ty::Const<'tcx>) -> GenericArg<'tcx> {
+        Self::new_const(ct, true)
     }
 
     #[inline]
@@ -162,7 +176,7 @@ impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn as_const(self) -> Option<ty::Const<'tcx>> {
         match self.unpack() {
-            GenericArgKind::Const(ct) => Some(ct),
+            GenericArgKind::Const(ct, _) => Some(ct),
             _ => None,
         }
     }
@@ -188,7 +202,7 @@ impl<'tcx> GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Lifetime(_) => false,
             GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
-            GenericArgKind::Const(ct) => ct.is_ct_infer(),
+            GenericArgKind::Const(ct, _) => ct.is_ct_infer(),
         }
     }
 }
@@ -200,7 +214,9 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => tcx.lift(lt).map(|lt| lt.into()),
             GenericArgKind::Type(ty) => tcx.lift(ty).map(|ty| ty.into()),
-            GenericArgKind::Const(ct) => tcx.lift(ct).map(|ct| ct.into()),
+            GenericArgKind::Const(ct, is_effect) => {
+                tcx.lift(ct).map(|ct| GenericArgKind::Const(ct, is_effect).pack())
+            }
         }
     }
 }
@@ -213,7 +229,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
+            GenericArgKind::Const(ct, is_effect) => {
+                ct.try_fold_with(folder).map(|ct| GenericArg::new_const(ct, is_effect))
+            }
         }
     }
 }
@@ -223,7 +241,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
-            GenericArgKind::Const(ct) => ct.visit_with(visitor),
+            GenericArgKind::Const(ct, _) => ct.visit_with(visitor),
         }
     }
 }
@@ -379,6 +397,7 @@ impl<'tcx> GenericArgs<'tcx> {
     }
 
     /// Returns generic arguments that are not lifetimes or host effect params.
+    // FIXME(effects) make this more efficient with the new `GenericArg` addition
     #[inline]
     pub fn non_erasable_generics(
         &'tcx self,
@@ -908,7 +927,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
         // Look up the const in the args. It really should be in there.
         let opt_ct = self.args.get(p.index as usize).map(|k| k.unpack());
         let ct = match opt_ct {
-            Some(GenericArgKind::Const(ct)) => ct,
+            Some(GenericArgKind::Const(ct, _)) => ct,
             Some(kind) => self.const_param_expected(p, source_ct, kind),
             None => self.const_param_out_of_range(p, source_ct),
         };

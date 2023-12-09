@@ -444,7 +444,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         // Error: not a type param
                         _ => false,
                     },
-                    GenericArgKind::Const(ct) => match ct.kind() {
+                    GenericArgKind::Const(ct, _) => match ct.kind() {
                         ty::ConstKind::Param(ref pc) => {
                             !impl_generics.const_param(pc, self).pure_wrt_drop
                         }
@@ -467,39 +467,39 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
         let mut seen_late = FxHashSet::default();
-        for arg in args {
+        for &arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
                     (CheckRegions::FromFunction, ty::ReBound(di, reg)) => {
                         if !seen_late.insert((di, reg)) {
-                            return Err(NotUniqueParam::DuplicateParam(lt.into()));
+                            return Err(NotUniqueParam::DuplicateParam(arg));
                         }
                     }
                     (CheckRegions::OnlyParam | CheckRegions::FromFunction, ty::ReEarlyParam(p)) => {
                         if !seen.insert(p.index) {
-                            return Err(NotUniqueParam::DuplicateParam(lt.into()));
+                            return Err(NotUniqueParam::DuplicateParam(arg));
                         }
                     }
                     (CheckRegions::OnlyParam | CheckRegions::FromFunction, _) => {
-                        return Err(NotUniqueParam::NotParam(lt.into()));
+                        return Err(NotUniqueParam::NotParam(arg));
                     }
                     (CheckRegions::No, _) => {}
                 },
                 GenericArgKind::Type(t) => match t.kind() {
                     ty::Param(p) => {
                         if !seen.insert(p.index) {
-                            return Err(NotUniqueParam::DuplicateParam(t.into()));
+                            return Err(NotUniqueParam::DuplicateParam(arg));
                         }
                     }
-                    _ => return Err(NotUniqueParam::NotParam(t.into())),
+                    _ => return Err(NotUniqueParam::NotParam(arg)),
                 },
-                GenericArgKind::Const(c) => match c.kind() {
+                GenericArgKind::Const(c, _) => match c.kind() {
                     ty::ConstKind::Param(p) => {
                         if !seen.insert(p.index) {
-                            return Err(NotUniqueParam::DuplicateParam(c.into()));
+                            return Err(NotUniqueParam::DuplicateParam(arg));
                         }
                     }
-                    _ => return Err(NotUniqueParam::NotParam(c.into())),
+                    _ => return Err(NotUniqueParam::NotParam(arg)),
                 },
             }
         }
@@ -524,18 +524,18 @@ impl<'tcx> TyCtxt<'tcx> {
                 GenericArgKind::Type(t) => match t.kind() {
                     ty::Placeholder(p) => {
                         if !seen.insert(p.bound.var) {
-                            return Err(NotUniqueParam::DuplicateParam(t.into()));
+                            return Err(NotUniqueParam::DuplicateParam(arg));
                         }
                     }
-                    _ => return Err(NotUniqueParam::NotParam(t.into())),
+                    _ => return Err(NotUniqueParam::NotParam(arg)),
                 },
-                GenericArgKind::Const(c) => match c.kind() {
+                GenericArgKind::Const(c, _) => match c.kind() {
                     ty::ConstKind::Placeholder(p) => {
                         if !seen.insert(p.bound) {
-                            return Err(NotUniqueParam::DuplicateParam(c.into()));
+                            return Err(NotUniqueParam::DuplicateParam(arg));
                         }
                     }
-                    _ => return Err(NotUniqueParam::NotParam(c.into())),
+                    _ => return Err(NotUniqueParam::NotParam(arg)),
                 },
             }
         }
@@ -827,7 +827,9 @@ impl<'tcx> TyCtxt<'tcx> {
         assert_eq!(generics.parent, None);
 
         let opt_const_param = generics.host_effect_index.is_some().then(|| {
-            ty::GenericArg::from(self.expected_const_effect_param_for_body(caller_def_id))
+            ty::GenericArg::effect_const_arg(
+                self.expected_const_effect_param_for_body(caller_def_id),
+            )
         });
 
         self.mk_args_from_iter(args.into_iter().map(|arg| arg.into()).chain(opt_const_param))

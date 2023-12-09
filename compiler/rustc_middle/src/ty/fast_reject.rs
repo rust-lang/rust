@@ -201,9 +201,10 @@ impl DeepRejectCtxt {
                 (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
                     self.types_may_unify(obl, imp)
                 }
-                (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
-                    self.consts_may_unify(obl, imp)
-                }
+                (
+                    GenericArgKind::Const(obl, is_effect_a),
+                    GenericArgKind::Const(imp, is_effect_b),
+                ) if is_effect_a == is_effect_b => self.consts_may_unify(obl, imp),
                 _ => bug!("kind mismatch: {obl} {imp}"),
             }
         })

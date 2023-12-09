@@ -301,7 +301,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .relate(v1, v2)?;
                 }
 
-                (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
+                (GenericArgKind::Const(v1, _), GenericArgKind::Const(v2, _)) => {
                     TypeRelating::new(
                         self,
                         QueryTypeRelatingDelegate {
@@ -468,7 +468,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         opt_values[br.var] = Some(*original_value);
                     }
                 }
-                GenericArgKind::Const(result_value) => {
+                GenericArgKind::Const(result_value, _) => {
                     if let ty::ConstKind::Bound(debruijn, b) = result_value.kind() {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
@@ -635,7 +635,7 @@ impl<'tcx> InferCtxt<'tcx> {
                                 .into_obligations(),
                         );
                     }
-                    (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
+                    (GenericArgKind::Const(v1, _), GenericArgKind::Const(v2, _)) => {
                         let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
                         obligations.extend(ok.into_obligations());
                     }

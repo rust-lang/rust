@@ -390,30 +390,34 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'_>,
             ) -> ty::GenericArg<'tcx> {
-                match (&param.kind, arg) {
+                match (param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                         self.cfcx.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.cfcx.to_ty(ty).raw.into()
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
+                    (GenericParamDefKind::Const { is_host_effect, .. }, GenericArg::Const(ct)) => {
+                        ty::GenericArg::new_const(
+                            self.cfcx.const_arg_to_const(&ct.value, param.def_id),
+                            is_host_effect,
+                        )
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ty_infer(Some(param), inf.span).into()
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                    (GenericParamDefKind::Const { is_host_effect, .. }, GenericArg::Infer(inf)) => {
                         let tcx = self.cfcx.tcx();
-                        self.cfcx
-                            .ct_infer(
+                        ty::GenericArg::new_const(
+                            self.cfcx.ct_infer(
                                 tcx.type_of(param.def_id)
                                     .no_bound_vars()
                                     .expect("const parameter types cannot be generic"),
                                 Some(param),
                                 inf.span,
-                            )
-                            .into()
+                            ),
+                            is_host_effect,
+                        )
                     }
                     _ => unreachable!(),
                 }

@@ -1328,7 +1328,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     }
                 }
             }
-            GenericParamDefKind::Const { .. } => {
+            GenericParamDefKind::Const { is_host_effect, .. } => {
                 if is_our_default(param) {
                     // FIXME(const_generics_defaults): This
                     // is incorrect when dealing with unused args, for example
@@ -1339,7 +1339,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                         wfcx.register_wf_obligation(
                             tcx.def_span(param.def_id),
                             None,
-                            default_ct.into(),
+                            ty::GenericArg::new_const(default_ct, is_host_effect),
                         );
                     }
                 }
@@ -1377,14 +1377,14 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
                 tcx.mk_param_from_def(param)
             }
-            GenericParamDefKind::Const { .. } => {
+            GenericParamDefKind::Const { is_host_effect, .. } => {
                 // If the param has a default, ...
                 if is_our_default(param) {
                     let default_ct = tcx.const_param_default(param.def_id).instantiate_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ct.has_param() {
                         // ... then substitute it with the default.
-                        return default_ct.into();
+                        return ty::GenericArg::new_const(default_ct, is_host_effect);
                     }
                 }
 

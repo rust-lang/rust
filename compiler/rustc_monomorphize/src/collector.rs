@@ -561,8 +561,8 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         .iter()
         .flat_map(|arg| arg.walk())
         .filter(|arg| match arg.unpack() {
-            GenericArgKind::Type(_) | GenericArgKind::Const(_) => true,
-            GenericArgKind::Lifetime(_) => false,
+            GenericArgKind::Type(_) | GenericArgKind::Const(_, false) => true,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_, true) => false,
         })
         .count();
     debug!(" => type length={}", type_length);
@@ -1305,7 +1305,9 @@ fn create_mono_items_for_default_impls<'tcx>(
     // it, to validate whether or not the impl is legal to instantiate at all.
     let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
         GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-        GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
+        GenericParamDefKind::Const { is_host_effect: true, .. } => {
+            ty::GenericArg::effect_const_arg(tcx.consts.true_)
+        }
         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
             unreachable!(
                 "`own_requires_monomorphization` check means that \
