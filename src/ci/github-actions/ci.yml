@@ -470,6 +470,9 @@ jobs:
           - name: x86_64-gnu-aux
             <<: *job-linux-4c
 
+          - name: x86_64-gnu-integration
+            <<: *job-linux-16c
+
           - name: x86_64-gnu-debug
             <<: *job-linux-8c
 
@@ -729,6 +732,7 @@ jobs:
             env:
               CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
+
 
   master:
     name: master
