@@ -529,12 +529,26 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                         resume_arg
                     };
 
+                let storage_liveness: GrowableBitSet<Local> =
+                    self.storage_liveness[block].clone().unwrap().into();
+
+                for i in 0..self.always_live_locals.domain_size() {
+                    let l = Local::new(i);
+                    let needs_storage_dead = storage_liveness.contains(l)
+                        && !self.remap.contains_key(&l)
+                        && !self.always_live_locals.contains(l);
+                    if needs_storage_dead {
+                        data.statements
+                            .push(Statement { source_info, kind: StatementKind::StorageDead(l) });
+                    }
+                }
+
                 self.suspension_points.push(SuspensionPoint {
                     state,
                     resume,
                     resume_arg,
                     drop,
-                    storage_liveness: self.storage_liveness[block].clone().unwrap().into(),
+                    storage_liveness,
                 });
 
                 VariantIdx::new(state)
