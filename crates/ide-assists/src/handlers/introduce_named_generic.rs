@@ -18,7 +18,7 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
-    let param = impl_trait_type.syntax().parent().and_then(ast::Param::cast)?;
+    let param = impl_trait_type.syntax().ancestors().find_map(|node| ast::Param::cast(node))?;
     let fn_ = param.syntax().ancestors().find_map(ast::Fn::cast)?;
 
     let type_bound_list = impl_trait_type.type_bound_list()?;
@@ -147,6 +147,24 @@ fn foo<
             introduce_named_generic,
             r#"fn foo(bar: $0impl Foo + Bar) {}"#,
             r#"fn foo<$0F: Foo + Bar>(bar: F) {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_with_mut() {
+        check_assist(
+            introduce_named_generic,
+            r#"fn f(iter: &mut $0impl Iterator<Item = i32>) {}"#,
+            r#"fn f<$0I: Iterator<Item = i32>>(iter: &mut I) {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_inside() {
+        check_assist(
+            introduce_named_generic,
+            r#"fn f(x: &mut Vec<$0impl Iterator<Item = i32>>) {}"#,
+            r#"fn f<$0I: Iterator<Item = i32>>(x: &mut Vec<I>) {}"#,
         );
     }
 }
