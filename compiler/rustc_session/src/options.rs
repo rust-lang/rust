@@ -1624,6 +1624,8 @@ options! {
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
         "use the given `fontname` in graphviz output; can be overridden by setting \
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
+    has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "explicitly enable the `cfg(target_thread_local)` directive"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],

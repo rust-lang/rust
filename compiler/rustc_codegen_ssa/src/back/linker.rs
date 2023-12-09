@@ -1748,7 +1748,9 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
         if info.level.is_below_threshold(export_threshold) {
-            symbols.push(symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum));
+            symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
+                tcx, symbol, cnum,
+            ));
         }
     });
 
