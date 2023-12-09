@@ -1,4 +1,5 @@
 use crate::alloc::{Allocator, Global};
+use crate::co_alloc::CoAllocPref;
 use core::ptr::{self};
 use core::slice::{self};
 
@@ -18,17 +19,26 @@ use super::{Drain, Vec};
 /// ```
 #[derive(Debug)]
 #[stable(feature = "vec_splice", since = "1.21.0")]
+#[allow(unused_braces)]
 pub struct Splice<
     'a,
     I: Iterator + 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
-> {
-    pub(super) drain: Drain<'a, I::Item, A>,
+    const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
+> where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+    pub(super) drain: Drain<'a, I::Item, A, CO_ALLOC_PREF>,
     pub(super) replace_with: I,
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
+#[allow(unused_braces)]
+impl<I: Iterator, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator
+    for Splice<'_, I, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -41,17 +51,33 @@ impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
+#[allow(unused_braces)]
+impl<I: Iterator, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator
+    for Splice<'_, I, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
+#[allow(unused_braces)]
+impl<I: Iterator, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator
+    for Splice<'_, I, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
+#[allow(unused_braces)]
+impl<I: Iterator, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+    for Splice<'_, I, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
         // At this point draining is done and the only remaining tasks are splicing
@@ -98,7 +124,11 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
 }
 
 /// Private helper methods for `Splice::drop`
-impl<T, A: Allocator> Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     /// The range from `self.vec.len` to `self.tail_start` contains elements
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.

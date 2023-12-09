@@ -457,8 +457,12 @@ fn make_token_stream(
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
+    use std::alloc::{Allocator, Global};
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
-    static_assert_size!(LazyAttrTokenStreamImpl, 104);
+    static_assert_size!(
+        LazyAttrTokenStreamImpl,
+        104 + std::mem::size_of::<<Global as Allocator>::CoAllocMeta>()
+    );
     // tidy-alphabetical-end
 }

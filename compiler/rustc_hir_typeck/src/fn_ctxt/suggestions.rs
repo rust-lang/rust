@@ -383,7 +383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return None; // do not suggest code that is already there (#53348)
                     }
 
-                    let method_call_list = [sym::to_vec, sym::to_string];
+                    let method_call_list = [sym::to_vec, sym::to_vec_co, sym::to_string];
                     let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
                         && receiver_method.ident.name == sym::clone
                         && method_call_list.contains(&conversion_method.name)

@@ -1,3 +1,5 @@
+use crate::alloc::Global;
+use crate::co_alloc::CoAllocPref;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 
@@ -25,16 +27,23 @@ pub(super) trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-impl<T, I> SpecFromIter<T, I> for Vec<T>
+#[allow(unused_braces)]
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
     }
 }
 
-impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
+#[allow(unused_braces)]
+impl<T, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, IntoIter<T>>
+    for Vec<T, Global, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter
@@ -51,11 +60,11 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
                 if has_advanced {
                     ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
                 }
-                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
+                return Vec::from_raw_parts_co(it.buf.as_ptr(), it.len(), it.cap);
             }
         }
 
-        let mut vec = Vec::new();
+        let mut vec = Vec::<T, Global, CO_ALLOC_PREF>::new_co();
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
         vec.spec_extend(iterator);

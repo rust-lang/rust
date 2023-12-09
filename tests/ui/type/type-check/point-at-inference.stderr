@@ -11,8 +11,8 @@ LL |     bar(foo);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Vec<i32>`
-              found struct `Vec<&{integer}>`
+   = note: expected struct `Vec<i32, _>`
+              found struct `Vec<&{integer}, _>`
 note: function defined here
   --> $DIR/point-at-inference.rs:2:4
    |

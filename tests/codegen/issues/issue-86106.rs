@@ -3,6 +3,8 @@
 
 // The below two functions ensure that both `String::new()` and `"".to_string()`
 // produce the identical code.
+//
+// FIXME CoAlloc
 
 #![crate_type = "lib"]
 
@@ -19,9 +21,9 @@ pub fn string_new() -> String {
 // CHECK-LABEL: define {{(dso_local )?}}void @empty_to_string
 #[no_mangle]
 pub fn empty_to_string() -> String {
-    // CHECK: store ptr inttoptr
-    // CHECK-NEXT: getelementptr
+    // CHECK: getelementptr
     // CHECK-NEXT: call void @llvm.memset
+    // CHECK-NEXT: store ptr inttoptr
     // CHECK-NEXT: ret void
     "".to_string()
 }

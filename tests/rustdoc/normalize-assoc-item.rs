@@ -77,6 +77,7 @@ extern crate inner;
 pub use inner::foo;
 
 // @has 'normalize_assoc_item/fn.h.html' '//pre[@class="rust item-decl"]' "pub fn h<T>() -> IntoIter<T>"
+// FIXME: This depends on co-allocation default being NO/ZERO META. ??
 pub fn h<T>() -> <Vec<T> as IntoIterator>::IntoIter {
     vec![].into_iter()
 }

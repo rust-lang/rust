@@ -1651,7 +1651,10 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 136);
+    static_assert_size!(
+        BasicBlockData<'_>,
+        136 + mem::size_of::<<std::alloc::Global as std::alloc::Allocator>::CoAllocMeta>()
+    );
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 72);
     static_assert_size!(Statement<'_>, 32);

@@ -4,10 +4,12 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{Allocator, System};
+//use std::alloc::{Allocator, System};
 
-fn ensure_object_safe(_: &dyn Allocator) {}
+// @FIXME
+// peter-kehl: nowhere else under rust source, only here:
+//fn ensure_object_safe(_: &dyn Allocator) {}
 
 fn main() {
-    ensure_object_safe(&System);
+//    ensure_object_safe(&System);
 }

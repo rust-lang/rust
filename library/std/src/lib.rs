@@ -240,6 +240,12 @@
 #![needs_panic_runtime]
 //
 // Lints:
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+#![feature(global_co_alloc)]
+#![feature(global_co_alloc_default)]
+#![feature(global_co_alloc_plvec)]
+#![feature(global_co_alloc_meta)]
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
@@ -359,6 +365,7 @@
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(vec_into_raw_parts)]
+#![feature(vec_new_co)]
 // tidy-alphabetical-end
 //
 // Library features (unwind):
@@ -463,6 +470,9 @@ pub mod prelude;
 pub use alloc_crate::borrow;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::boxed;
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub use alloc_crate::co_alloc;
+// @FIXME ugly - someone move this to a better place, please
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -477,6 +487,8 @@ pub use alloc_crate::str;
 pub use alloc_crate::string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::vec;
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub use alloc_crate::{CO_ALLOC_PREF_DEFAULT, SHORT_TERM_VEC_CO_ALLOC_PREF};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "core_array", since = "1.36.0")]

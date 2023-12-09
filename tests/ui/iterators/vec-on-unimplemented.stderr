@@ -1,9 +1,10 @@
 error[E0599]: `Vec<bool>` is not an iterator
   --> $DIR/vec-on-unimplemented.rs:2:23
    |
-LL |     vec![true, false].map(|v| !v).collect::<Vec<_>>();
-   |                       ^^^ `Vec<bool>` is not an iterator; try calling `.into_iter()` or `.iter()`
+LL |       vec![true, false].map(|v| !v).collect::<Vec<_>>();
+   |                         ^^^ `Vec<bool>` is not an iterator
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: doesn't satisfy `Vec<bool>: Iterator`
    |

@@ -34,6 +34,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(coroutines)]
 #![feature(get_mut_unchecked)]
+#![feature(global_co_alloc_meta)]
 #![feature(if_let_guard)]
 #![feature(inline_const)]
 #![feature(iter_from_coroutine)]

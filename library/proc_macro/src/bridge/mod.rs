@@ -9,6 +9,7 @@
 #![deny(unsafe_code)]
 
 use crate::{Delimiter, Level, Spacing};
+use std::alloc::Global;
 use std::fmt;
 use std::hash::Hash;
 use std::marker;
@@ -254,14 +255,14 @@ impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
     }
 }
 
-impl<T: Mark> Mark for Vec<T> {
+impl<T: Mark> Mark for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     type Unmarked = Vec<T::Unmarked>;
     fn mark(unmarked: Self::Unmarked) -> Self {
         // Should be a no-op due to std's in-place collect optimizations.
         unmarked.into_iter().map(T::mark).collect()
     }
 }
-impl<T: Unmark> Unmark for Vec<T> {
+impl<T: Unmark> Unmark for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     type Unmarked = Vec<T::Unmarked>;
     fn unmark(self) -> Self::Unmarked {
         // Should be a no-op due to std's in-place collect optimizations.

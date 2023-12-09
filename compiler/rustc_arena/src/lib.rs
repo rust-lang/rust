@@ -17,6 +17,8 @@
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
+#![feature(min_specialization)]
+// FIXME CoAlloc needs min_specialization at all!?
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]

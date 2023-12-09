@@ -24,8 +24,12 @@
 // to make it compile with rust-analyzer on stable.
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(staged_api)]
+#![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
+#![feature(global_co_alloc)]
+#![feature(global_co_alloc_default)]
+#![feature(global_co_alloc_meta)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]

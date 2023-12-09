@@ -1,4 +1,5 @@
 use crate::Span;
+use std::alloc::Global;
 
 /// An enum representing a diagnostic level.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -30,7 +31,7 @@ impl MultiSpan for Span {
 }
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl MultiSpan for Vec<Span> {
+impl MultiSpan for Vec<Span, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     fn into_spans(self) -> Vec<Span> {
         self
     }
