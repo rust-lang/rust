@@ -1,6 +1,7 @@
 // run-pass
 // compile-flags: -C debug_assertions=no
 
+#[allow(deprecated)]
 fn main() {
     let mut it = u8::MAX..;
     assert_eq!(it.next().unwrap(), 255);

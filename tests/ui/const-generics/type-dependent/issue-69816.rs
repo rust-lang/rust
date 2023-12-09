@@ -12,6 +12,6 @@ impl<T: Iterator> IterExt for T {}
 
 fn main(){
     const N: usize = 10;
-    let arr = (0u32..10).default_for_size::<N>();
+    let arr = (0u32..10).into_iter().default_for_size::<N>();
     assert_eq!(arr, [0; 10]);
 }

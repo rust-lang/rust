@@ -316,7 +316,7 @@ fn test_spaces() {
 /// Returns an iterator of dates in a given year.
 fn dates_in_year(year: i32) -> impl Iterator<Item=NaiveDate>+Clone {
     InGroup {
-        it: NaiveDate::from_ymd(year, 1, 1)..,
+        it: (NaiveDate::from_ymd(year, 1, 1)..).into_iter(),
         f: |d: &NaiveDate| d.year(),
         g: year
     }

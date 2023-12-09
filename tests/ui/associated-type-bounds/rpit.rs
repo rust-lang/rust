@@ -22,7 +22,7 @@ pub fn use_et1() { assert_copy(def_et1().mk()); }
 fn def_et2() -> impl Tr1<As1: 'static> { S1 }
 pub fn use_et2() { assert_static(def_et2().mk()); }
 
-fn def_et3() -> impl Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>> {
+fn def_et3() -> impl Tr1<As1: Clone + IntoIterator<Item: Add<u8, Output: Into<u8>>>> {
     struct A;
     impl Tr1 for A {
         type As1 = core::ops::Range<u8>;

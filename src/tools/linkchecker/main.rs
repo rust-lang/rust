@@ -58,6 +58,8 @@ const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // This is being used in the sense of 'inclusive range', not a markdown link
     ("core/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("std/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("core/ops/range/legacy/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("std/ops/range/legacy/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("core/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("alloc/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("std/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),

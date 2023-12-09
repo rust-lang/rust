@@ -46,7 +46,7 @@ pub fn use_et2() {
     assert_static(def_et2().mk());
 }
 
-type Et3 = impl Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>;
+type Et3 = impl Tr1<As1: Clone + IntoIterator<Item: Add<u8, Output: Into<u8>>>>;
 fn def_et3() -> Et3 {
     struct A;
     impl Tr1 for A {

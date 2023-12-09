@@ -40,14 +40,14 @@ help: give it a value of the expected type
 LL |     [(); loop { break 42 }];
    |                       ++
 
-error[E0015]: cannot convert `RangeFrom<usize>` into an iterator in constants
+error[E0015]: cannot convert `std::ops::RangeFrom<usize>` into an iterator in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];
    |                     ^^^^^^^^
    |
 note: impl defined here, but it is not `const`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
@@ -60,7 +60,7 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0015]: cannot call non-const fn `<RangeFrom<usize> as Iterator>::next` in constants
+error[E0015]: cannot call non-const fn `<iter::range::RangeFromIter<usize> as Iterator>::next` in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];

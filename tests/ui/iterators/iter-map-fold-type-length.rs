@@ -20,7 +20,7 @@ where
 }
 
 fn main() {
-    let c = Iter(0i32..10)
+    let c = Iter((0i32..10).into_iter())
         .map(|x| x)
         .map(|x| x)
         .map(|x| x)

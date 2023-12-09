@@ -5,7 +5,7 @@
 type A = impl Iterator;
 
 fn def_a() -> A {
-    0..1
+    (0..1).into_iter()
 }
 
 pub fn use_a() {

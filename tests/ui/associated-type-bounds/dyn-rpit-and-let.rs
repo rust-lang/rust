@@ -30,13 +30,13 @@ fn def_et2() -> Box<dyn Tr1<As1: Send + 'static>> {
 }
 pub fn use_et2() { assert_static(def_et2().mk()); }
 
-fn def_et3() -> Box<dyn Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>> {
+fn def_et3() -> Box<dyn Tr1<As1: Clone + IntoIterator<Item: Add<u8, Output: Into<u8>>>>> {
     struct A;
     impl Tr1 for A {
         type As1 = core::ops::Range<u8>;
         fn mk(&self) -> Self::As1 { 0..10 }
     }
-    let x /* : Box<dyn Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>> */
+    let x /* : Box<dyn Tr1<As1: Clone + IntoIterator<Item: Add<u8, Output: Into<u8>>>>> */
         = Box::new(A);
     x
 }

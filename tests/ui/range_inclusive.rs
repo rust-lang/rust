@@ -68,15 +68,15 @@ pub fn main() {
     assert_eq!(&stir[ ..=6], "hello w");
 
     // test the size hints and emptying
-    let mut long = 0..=255u8;
-    let mut short = 42..=42u8;
+    let mut long = (0..=255u8).into_iter();
+    let mut short = (42..=42u8).into_iter();
     assert_eq!(long.size_hint(), (256, Some(256)));
     assert_eq!(short.size_hint(), (1, Some(1)));
     long.next();
     short.next();
     assert_eq!(long.size_hint(), (255, Some(255)));
     assert_eq!(short.size_hint(), (0, Some(0)));
-    assert!(short.is_empty());
+    assert!(short.inner().is_empty());
 
     assert_eq!(long.len(), 255);
     assert_eq!(short.len(), 0);
@@ -91,25 +91,25 @@ pub fn main() {
     for i in 3..=251 {
         assert_eq!(long.next(), Some(i));
     }
-    assert!(long.is_empty());
+    assert!(long.inner().is_empty());
 
     // check underflow
-    let mut narrow = 1..=0;
+    let mut narrow = (1..=0).into_iter();
     assert_eq!(narrow.next_back(), None);
-    assert!(narrow.is_empty());
-    let mut zero = 0u8..=0;
+    assert!(narrow.inner().is_empty());
+    let mut zero = (0u8..=0).into_iter();
     assert_eq!(zero.next_back(), Some(0));
     assert_eq!(zero.next_back(), None);
-    assert!(zero.is_empty());
-    let mut high = 255u8..=255;
+    assert!(zero.inner().is_empty());
+    let mut high = (255u8..=255).into_iter();
     assert_eq!(high.next_back(), Some(255));
     assert_eq!(high.next_back(), None);
-    assert!(high.is_empty());
+    assert!(high.inner().is_empty());
 
     // what happens if you have a nonsense range?
-    let mut nonsense = 10..=5;
+    let mut nonsense = (10..=5).into_iter();
     assert_eq!(nonsense.next(), None);
-    assert!(nonsense.is_empty());
+    assert!(nonsense.inner().is_empty());
 
     // output
     assert_eq!(format!("{:?}", 0..=10), "0..=10");

@@ -3,7 +3,7 @@
 pub fn i_can_has_iterator() -> impl Iterator<Item = u32> {
     //~^ ERROR expected `Box<dyn Iterator>`
     //~| HELP consider constraining the associated type
-    Box::new(1..=10) as Box<dyn Iterator>
+    Box::new((1..=10).into_iter()) as Box<dyn Iterator>
     //~^ ERROR the value of the associated type `Item`
     //~| HELP specify the associated type
 }

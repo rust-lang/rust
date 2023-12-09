@@ -5,7 +5,7 @@
 // ignore-compare-mode-next-solver (hangs)
 
 fn main() {
-    let mut iter = 0u8..1;
+    let mut iter = (0u8..1).into_iter();
     func(&mut iter)
 }
 

@@ -1,11 +1,11 @@
-use std::ops::Range;
+use std::ops::range::legacy::Range;
 
 trait Itble<'r, T, I: Iterator<Item=T>> { fn iter(&'r self) -> I; }
 
 impl<'r> Itble<'r, usize, Range<usize>> for (usize, usize) {
     fn iter(&'r self) -> Range<usize> {
         let &(min, max) = self;
-        min..max
+        Range::from(min..max)
     }
 }
 

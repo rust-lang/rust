@@ -4,6 +4,7 @@
 
 use std::panic;
 
+#[allow(deprecated)]
 fn main() {
     let r = panic::catch_unwind(|| {
         let mut it = u8::MAX..;

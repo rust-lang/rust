@@ -4,19 +4,19 @@
   fn main() -> () {
       let mut _0: ();
       let mut _1: i32;
-      let mut _2: std::ops::Range<i32>;
+      let mut _2: std::iter::range::RangeIter<i32>;
       let mut _3: std::ops::Range<i32>;
       let mut _5: ();
       let _6: ();
       let mut _7: std::option::Option<i32>;
-      let mut _8: &mut std::ops::Range<i32>;
-      let mut _9: &mut std::ops::Range<i32>;
+      let mut _8: &mut std::iter::range::RangeIter<i32>;
+      let mut _9: &mut std::iter::range::RangeIter<i32>;
       let mut _10: isize;
       let mut _11: !;
       let mut _13: i32;
       scope 1 {
           debug sum => _1;
-          let mut _4: std::ops::Range<i32>;
+          let mut _4: std::iter::range::RangeIter<i32>;
           scope 2 {
               debug iter => _4;
               let _12: i32;
@@ -49,7 +49,7 @@
 -         StorageLive(_9);
           _9 = &mut _4;
           _8 = &mut (*_9);
-          _7 = <std::ops::Range<i32> as Iterator>::next(move _8) -> [return: bb3, unwind unreachable];
+          _7 = <iter::range::RangeIter<i32> as Iterator>::next(move _8) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {

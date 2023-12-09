@@ -7,7 +7,7 @@ use std::ops::Range;
 
 pub trait Three { type A; type B; type C; }
 pub fn assert_three<T: ?Sized + Three>() {}
-pub fn assert_iterator<T: Iterator>() {}
+pub fn assert_iterator<T: IntoIterator>() {}
 pub fn assert_copy<T: Copy>() {}
 pub fn assert_static<T: 'static>() {}
 pub fn assert_send<T: Send>() {}
@@ -19,11 +19,11 @@ impl Three for B { type A = Range<u8>; type B = Range<u8>; type C = Range<u8>; }
 
 trait Case1<A, B, C, D, E>
 where
-    A: Iterator<Item: Copy>,
-    B: Iterator<Item: 'static>,
-    C: Iterator<Item: 'static + Copy + Send>,
-    D: Iterator<Item: for<'a> Into<&'a u8>>,
-    E: Three<A: Iterator<Item: Copy>, B: Iterator<Item: Copy>, C: Iterator<Item: Copy>>,
+    A: IntoIterator<Item: Copy>,
+    B: IntoIterator<Item: 'static>,
+    C: IntoIterator<Item: 'static + Copy + Send>,
+    D: IntoIterator<Item: for<'a> Into<&'a u8>>,
+    E: Three<A: IntoIterator<Item: Copy>, B: IntoIterator<Item: Copy>, C: IntoIterator<Item: Copy>>,
     Self: Three<A: 'static, B: Copy, C: Send>,
 {
     fn _a() {
@@ -49,9 +49,9 @@ where
         assert_iterator::<E::A>();
         assert_iterator::<E::B>();
         assert_iterator::<E::C>();
-        assert_copy::<<E::A as Iterator>::Item>();
-        assert_copy::<<E::B as Iterator>::Item>();
-        assert_copy::<<E::C as Iterator>::Item>();
+        assert_copy::<<E::A as IntoIterator>::Item>();
+        assert_copy::<<E::B as IntoIterator>::Item>();
+        assert_copy::<<E::C as IntoIterator>::Item>();
     }
     fn _self() {
         assert_three::<Self>();
@@ -66,11 +66,11 @@ impl Three for DataCase1 { type A = u8; type B = u8; type C = u8; }
 impl Case1<Range<u8>, Range<u8>, Range<u8>, Once<A>, B> for DataCase1 {}
 
 trait Case2<
-    A: Iterator<Item: Copy>,
-    B: Iterator<Item: 'static>,
-    C: Iterator<Item: 'static + Copy + Send>,
-    D: Iterator<Item: for<'a> Into<&'a u8>>,
-    E: Three<A: Iterator<Item: Copy>, B: Iterator<Item: Copy>, C: Iterator<Item: Copy>>,
+    A: IntoIterator<Item: Copy>,
+    B: IntoIterator<Item: 'static>,
+    C: IntoIterator<Item: 'static + Copy + Send>,
+    D: IntoIterator<Item: for<'a> Into<&'a u8>>,
+    E: Three<A: IntoIterator<Item: Copy>, B: IntoIterator<Item: Copy>, C: IntoIterator<Item: Copy>>,
 >:
     Three<A: 'static, B: Copy, C: Send>
 {
@@ -97,9 +97,9 @@ trait Case2<
         assert_iterator::<E::A>();
         assert_iterator::<E::B>();
         assert_iterator::<E::C>();
-        assert_copy::<<E::A as Iterator>::Item>();
-        assert_copy::<<E::B as Iterator>::Item>();
-        assert_copy::<<E::C as Iterator>::Item>();
+        assert_copy::<<E::A as IntoIterator>::Item>();
+        assert_copy::<<E::B as IntoIterator>::Item>();
+        assert_copy::<<E::C as IntoIterator>::Item>();
     }
     fn _self() {
         assert_three::<Self>();

@@ -1943,7 +1943,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// #![feature(vec_push_within_capacity)]
     ///
     /// use std::collections::TryReserveError;
-    /// fn from_iter_fallible<T>(iter: impl Iterator<Item=T>) -> Result<Vec<T>, TryReserveError> {
+    /// fn from_iter_fallible<T>(iter: impl IntoIterator<Item=T>) -> Result<Vec<T>, TryReserveError> {
     ///     let mut vec = Vec::new();
     ///     for value in iter {
     ///         if let Err(value) = vec.push_within_capacity(value) {

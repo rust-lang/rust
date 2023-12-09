@@ -1,12 +1,12 @@
 error[E0618]: expected function, found `Foo`
-  --> $DIR/issue-46771.rs:3:23
+  --> $DIR/issue-46771.rs:3:35
    |
 LL |     struct Foo;
    |     ---------- `Foo` defined here
-LL |     (1 .. 2).find(|_| Foo(0) == 0);
-   |                       ^^^---
-   |                       |
-   |                       call expression requires function
+LL |     (1 .. 2).into_iter().find(|_| Foo(0) == 0);
+   |                                   ^^^---
+   |                                   |
+   |                                   call expression requires function
 
 error: aborting due to 1 previous error
 

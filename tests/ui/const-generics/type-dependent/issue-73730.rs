@@ -10,5 +10,5 @@ impl<'a, A, I: ?Sized> Foo<'a, A> for I where I: Iterator<Item=A>  {
 }
 
 fn main() {
-    (0_u8 .. 10).bar::<10_usize>();
+    (0_u8 .. 10).into_iter().bar::<10_usize>();
 }

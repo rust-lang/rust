@@ -18,7 +18,7 @@ trait Case1 {
     type A: Iterator<Item: Debug>;
     //~^ ERROR `<<Self as Case1>::A as Iterator>::Item` doesn't implement `Debug`
 
-    type B: Iterator<Item: 'static>;
+    type B: IntoIterator<Item: 'static>;
 }
 
 pub struct S1;

@@ -78,7 +78,7 @@ fn forgot_to_close_tags() {
 fn past_the_limit() {
     let mut buf = HtmlWithLimit::new(20);
     buf.open_tag("p");
-    (0..10).try_for_each(|n| {
+    (0..10).into_iter().try_for_each(|n| {
         buf.open_tag("strong");
         buf.push("word#")?;
         buf.push(&n.to_string())?;

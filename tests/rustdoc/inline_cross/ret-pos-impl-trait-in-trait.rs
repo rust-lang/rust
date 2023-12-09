@@ -8,13 +8,13 @@
 // This is more robust than checking for the absence of the associated type.
 
 // @has user/trait.Trait.html
-// @has - '//*[@id="method.create"]' 'fn create() -> impl Iterator<Item = u64>'
+// @has - '//*[@id="method.create"]' 'fn create() -> impl IntoIterator<Item = u64>'
 // The class "method" is used for all three kinds of associated items at the time of writing.
 // @count - '//*[@id="main-content"]//section[@class="method"]' 1
 pub use rpitit::Trait;
 
 // @has user/struct.Basic.html
-// @has - '//*[@id="method.create"]' 'fn create() -> impl Iterator<Item = u64>'
+// @has - '//*[@id="method.create"]' 'fn create() -> impl IntoIterator<Item = u64>'
 // @count - '//*[@id="trait-implementations-list"]//*[@class="impl-items"]' 1
 pub use rpitit::Basic;
 
@@ -24,7 +24,7 @@ pub use rpitit::Basic;
 pub use rpitit::Intermediate;
 
 // @has user/struct.Advanced.html
-// @has - '//*[@id="method.create"]' 'fn create() -> impl Iterator<Item = u64>'
+// @has - '//*[@id="method.create"]' 'fn create() -> impl IntoIterator<Item = u64>'
 // @count - '//*[@id="trait-implementations-list"]//*[@class="impl-items"]' 1
 pub use rpitit::Advanced;
 

@@ -1,5 +1,5 @@
 pub trait Trait {
-    fn create() -> impl Iterator<Item = u64> {
+    fn create() -> impl IntoIterator<Item = u64> {
         std::iter::empty()
     }
 }
@@ -19,7 +19,7 @@ impl Trait for Intermediate {
 }
 
 impl Trait for Advanced {
-    fn create() -> impl Iterator<Item = u64> { // opaque return type
+    fn create() -> impl IntoIterator<Item = u64> { // opaque return type
         std::iter::repeat(0)
     }
 }

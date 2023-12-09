@@ -20,5 +20,5 @@ where
 }
 
 fn main() {
-    let _ = new_format(0..32, " | ", |i, f| f(&format_args!("0x{:x}", i)));
+    let _ = new_format((0..32).into_iter(), " | ", |i, f| f(&format_args!("0x{:x}", i)));
 }

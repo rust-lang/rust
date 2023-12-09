@@ -819,32 +819,64 @@ impl<Idx: Step + Copy> IntoIterator for &ops::range::Range<Idx> {
     }
 }
 
+/// Mutating iterator for `ops::Range`.
 #[stable(feature = "new_range", since = "1.0.0")]
-impl<Idx: Step + Copy> IntoIterator for &mut ops::range::Range<Idx> {
-    type Item = Idx;
-    type IntoIter = RangeIter<Idx>;
+#[derive(Debug)]
+pub struct RangeIterMut<'a, Idx> {
+    range: &'a mut ops::range::Range<Idx>,
+}
 
-    fn into_iter(self) -> Self::IntoIter {
-        (*self).into_iter()
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> Iterator for RangeIterMut<'a, Idx> {
+    type Item = Idx;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut iter = self.range.clone().into_iter();
+        let out = iter.next();
+
+        self.range.start = iter.inner.start;
+        self.range.end = iter.inner.end;
+
+        out
+    }
+}
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> DoubleEndedIterator for RangeIterMut<'a, Idx> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let mut iter = self.range.clone().into_iter();
+        let out = iter.next_back();
+
+        self.range.start = iter.inner.start;
+        self.range.end = iter.inner.end;
+
+        out
     }
 }
 
 impl<Idx: Step> ops::range::Range<Idx> {
-    /// Returns and advances `start` unless the range is empty.
-    ///
-    /// This differs from `.into_iter().next()` because
-    /// that copies the range before advancing the iterator
-    /// but this modifies the range in place.
+    /// Returns an iterator which mutates this range in place,
+    /// rather than taking the range by value.
     #[stable(feature = "new_range", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
-    pub fn next(&mut self) -> Option<Idx> {
-        let mut iter = self.clone().into_iter();
-        let out = iter.next();
+    pub fn iter_mut(&mut self) -> RangeIterMut<'_, Idx> {
+        RangeIterMut { range: self }
+    }
 
-        self.start = iter.inner.start;
-        self.end = iter.inner.end;
+    /// Shorthand for `.iter_mut().next_back()`
+    ///
+    /// See [`DoubleEndedIterator::next_back`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn next_back(&mut self) -> Option<Idx> {
+        self.iter_mut().next_back()
+    }
+}
 
-        out
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> IntoIterator for &'a mut ops::range::Range<Idx> {
+    type Item = Idx;
+    type IntoIter = RangeIterMut<'a, Idx>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
     }
 }
 
@@ -910,31 +942,43 @@ impl<A: Step + Copy> IntoIterator for &ops::range::RangeFrom<A> {
     }
 }
 
+/// Mutating iterator for `ops::RangeFrom`.
 #[stable(feature = "new_range", since = "1.0.0")]
-impl<A: Step + Copy> IntoIterator for &mut ops::range::RangeFrom<A> {
-    type Item = A;
-    type IntoIter = RangeFromIter<A>;
+#[derive(Debug)]
+pub struct RangeFromIterMut<'a, Idx> {
+    range: &'a mut ops::range::RangeFrom<Idx>,
+}
 
-    fn into_iter(self) -> Self::IntoIter {
-        (*self).into_iter()
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> Iterator for RangeFromIterMut<'a, Idx> {
+    type Item = Idx;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut iter = self.range.clone().into_iter();
+        let out = iter.next();
+
+        self.range.start = iter.inner.start;
+
+        out
     }
 }
 
 impl<Idx: Step> ops::range::RangeFrom<Idx> {
-    /// Returns and advances `start` unless the range is empty.
-    ///
-    /// This differs from `.into_iter().next()` because
-    /// that copies the range before advancing the iterator
-    /// but this modifies the range in place.
+    /// Returns an iterator which mutates this range in place,
+    /// rather than taking the range by value.
     #[stable(feature = "new_range", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
-    pub fn next(&mut self) -> Option<Idx> {
-        let mut iter = self.clone().into_iter();
-        let out = iter.next();
+    pub fn iter_mut(&mut self) -> RangeFromIterMut<'_, Idx> {
+        RangeFromIterMut { range: self }
+    }
+}
 
-        self.start = iter.inner.start;
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> IntoIterator for &'a mut ops::range::RangeFrom<Idx> {
+    type Item = Idx;
+    type IntoIter = RangeFromIterMut<'a, Idx>;
 
-        out
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
     }
 }
 
@@ -1086,45 +1130,90 @@ impl<A: Step + Copy> IntoIterator for &ops::range::RangeInclusive<A> {
     }
 }
 
+/// Mutating iterator for `ops::RangeInclusive`.
 #[stable(feature = "new_range", since = "1.0.0")]
-impl<A: Step + Copy> IntoIterator for &mut ops::range::RangeInclusive<A> {
-    type Item = A;
-    type IntoIter = RangeInclusiveIter<A>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        (*self).into_iter()
-    }
+#[derive(Debug)]
+pub struct RangeInclusiveIterMut<'a, Idx> {
+    range: &'a mut ops::range::RangeInclusive<Idx>,
 }
 
-impl<Idx: Step> ops::range::RangeInclusive<Idx> {
-    /// Returns and advances `start` unless the range is empty.
-    ///
-    /// This differs from `.into_iter().next()` because
-    /// that copies the range before advancing the iterator
-    /// but this modifies the range in place.
-    #[stable(feature = "new_range", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
-    pub fn next(&mut self) -> Option<Idx> {
-        let mut iter = self.clone().into_iter();
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> Iterator for RangeInclusiveIterMut<'a, Idx> {
+    type Item = Idx;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut iter = self.range.clone().into_iter();
         let out = iter.next();
 
         if iter.inner.exhausted {
             // When exhausted, attempt to put end before start so the range is empty
             // If end is the minimum value (`start = end = 0`), set start past end
             if let Some(n) = Step::backward_checked(iter.inner.start.clone(), 1) {
-                self.end = n;
-                self.start = iter.inner.start;
+                self.range.end = n;
+                self.range.start = iter.inner.start;
             } else {
-                self.start = Step::forward(iter.inner.end.clone(), 1);
-                self.end = iter.inner.end;
+                self.range.start = Step::forward(iter.inner.end.clone(), 1);
+                self.range.end = iter.inner.end;
             }
         } else {
             // Not exhausted, so just set new start and end
-            self.start = iter.inner.start;
-            self.end = iter.inner.end;
+            self.range.start = iter.inner.start;
+            self.range.end = iter.inner.end;
         }
 
         out
+    }
+}
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> DoubleEndedIterator for RangeInclusiveIterMut<'a, Idx> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let mut iter = self.range.clone().into_iter();
+        let out = iter.next_back();
+
+        if iter.inner.exhausted {
+            // When exhausted, attempt to put end before start so the range is empty
+            // If end is the minimum value (`start = end = 0`), set start past end
+            if let Some(n) = Step::backward_checked(iter.inner.start.clone(), 1) {
+                self.range.end = n;
+                self.range.start = iter.inner.start;
+            } else {
+                self.range.start = Step::forward(iter.inner.end.clone(), 1);
+                self.range.end = iter.inner.end;
+            }
+        } else {
+            // Not exhausted, so just set new start and end
+            self.range.start = iter.inner.start;
+            self.range.end = iter.inner.end;
+        }
+
+        out
+    }
+}
+
+impl<Idx: Step> ops::range::RangeInclusive<Idx> {
+    /// Returns an iterator which mutates this range in place,
+    /// rather than taking the range by value.
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn iter_mut(&mut self) -> RangeInclusiveIterMut<'_, Idx> {
+        RangeInclusiveIterMut { range: self }
+    }
+
+    /// Shorthand for `.iter_mut().next_back()`
+    ///
+    /// See [`DoubleEndedIterator::next_back`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn next_back(&mut self) -> Option<Idx> {
+        self.iter_mut().next_back()
+    }
+}
+
+#[stable(feature = "new_range", since = "1.0.0")]
+impl<'a, Idx: Step> IntoIterator for &'a mut ops::range::RangeInclusive<Idx> {
+    type Item = Idx;
+    type IntoIter = RangeInclusiveIterMut<'a, Idx>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
     }
 }
 
@@ -1132,6 +1221,15 @@ macro_rules! iter_methods {
     ($($ty:ident),*) => {$(
 
 impl<Idx: Step> ops::range::$ty<Idx> {
+    /// Shorthand for `.iter_mut().next()`.
+    ///
+    /// See [`Iterator::next`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    pub fn next(&mut self) -> Option<Idx> {
+        self.iter_mut().next()
+    }
+
     /// Shorthand for `.into_iter().size_hint()`.
     ///
     /// See [`Iterator::size_hint`]
@@ -1162,6 +1260,14 @@ impl<Idx: Step> ops::range::$ty<Idx> {
     #[stable(feature = "new_range", since = "1.0.0")]
     pub fn step_by(self, step: usize) -> crate::iter::StepBy<<Self as IntoIterator>::IntoIter> {
         self.into_iter().step_by(step)
+    }
+
+    /// Shorthand for `.iter_mut().nth(...)`.
+    ///
+    /// See [`Iterator::nth`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn nth(&mut self, n: usize) -> Option<Idx> {
+        self.iter_mut().nth(n)
     }
 
     /// Shorthand for `.into_iter().chain(...)`
@@ -1379,6 +1485,18 @@ impl<Idx: Step> ops::range::$ty<Idx> {
         self.into_iter().partition(f)
     }
 
+    /// Shorthand for `.into_iter().try_fold(...)`
+    ///
+    /// See [`Iterator::try_fold`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Idx) -> R,
+        R: Try<Output = B>,
+    {
+        self.iter_mut().try_fold(init, f)
+    }
+
     /// Shorthand for `.into_iter().fold(...)`
     ///
     /// See [`Iterator::fold`]
@@ -1401,49 +1519,40 @@ impl<Idx: Step> ops::range::$ty<Idx> {
         self.into_iter().reduce(f)
     }
 
-    /// Shorthand for `.into_iter().all(...)`
-    ///
-    /// One noticeable difference is that this takes the
-    /// range by copy, rather than mutating it in place.
+    /// Shorthand for `.iter_mut().all(...)`
     ///
     /// See [`Iterator::all`]
     #[stable(feature = "new_range", since = "1.0.0")]
     #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
-    pub fn all<F>(self, f: F) -> bool
+    pub fn all<F>(&mut self, f: F) -> bool
     where
         F: FnMut(Idx) -> bool,
     {
-        self.into_iter().all(f)
+        self.iter_mut().all(f)
     }
 
-    /// Shorthand for `.into_iter().any(...)`
-    ///
-    /// One noticeable difference is that this takes the
-    /// range by copy, rather than mutating it in place.
+    /// Shorthand for `.iter_mut().any(...)`
     ///
     /// See [`Iterator::any`]
     #[stable(feature = "new_range", since = "1.0.0")]
     #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
-    pub fn any<F>(self, f: F) -> bool
+    pub fn any<F>(&mut self, f: F) -> bool
     where
         F: FnMut(Idx) -> bool,
     {
-        self.into_iter().any(f)
+        self.iter_mut().any(f)
     }
 
-    /// Shorthand for `.into_iter().find(...)`
-    ///
-    /// One noticeable difference is that this takes the
-    /// range by copy, rather than mutating it in place.
+    /// Shorthand for `.iter_mut().find(...)`
     ///
     /// See [`Iterator::find`]
     #[stable(feature = "new_range", since = "1.0.0")]
     #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
-    pub fn find<P>(self, predicate: P) -> Option<Idx>
+    pub fn find<P>(&mut self, predicate: P) -> Option<Idx>
     where
         P: FnMut(&Idx) -> bool,
     {
-        self.into_iter().find(predicate)
+        self.iter_mut().find(predicate)
     }
 
     /// Shorthand for `.into_iter().max()`

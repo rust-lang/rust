@@ -1,6 +1,9 @@
-use std::ops::*;
+use std::ops::range;
+
+#[derive(Copy, Clone)]
+struct R(range::Range<usize>);
 
 #[derive(Copy, Clone)] //~ ERROR Copy
-struct R(Range<usize>);
+struct S(range::legacy::Range<usize>);
 
 fn main() {}
