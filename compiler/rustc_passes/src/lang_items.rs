@@ -195,7 +195,15 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             // Some other types like Box and various functions like drop_in_place
             // have minimum requirements.
 
-            let actual_num = generics.params.len();
+            // FIXME: This still doesn't count, e.g., elided lifetimes and APITs.
+            let mut actual_num = generics.params.len();
+            if target.is_associated_item() {
+                actual_num += self
+                    .parent_item
+                    .unwrap()
+                    .opt_generics()
+                    .map_or(0, |generics| generics.params.len());
+            }
 
             let mut at_least = false;
             let required = match lang_item.required_generics() {
@@ -258,23 +266,23 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 
 impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_item(&mut self, i: &'ast ast::Item) {
-        let (target, generics) = match &i.kind {
-            ast::ItemKind::ExternCrate(_) => (Target::ExternCrate, None),
-            ast::ItemKind::Use(_) => (Target::Use, None),
-            ast::ItemKind::Static(_) => (Target::Static, None),
-            ast::ItemKind::Const(ct) => (Target::Const, Some(&ct.generics)),
-            ast::ItemKind::Fn(fun) => (Target::Fn, Some(&fun.generics)),
-            ast::ItemKind::Mod(_, _) => (Target::Mod, None),
-            ast::ItemKind::ForeignMod(_) => (Target::ForeignFn, None),
-            ast::ItemKind::GlobalAsm(_) => (Target::GlobalAsm, None),
-            ast::ItemKind::TyAlias(alias) => (Target::TyAlias, Some(&alias.generics)),
-            ast::ItemKind::Enum(_, generics) => (Target::Enum, Some(generics)),
-            ast::ItemKind::Struct(_, generics) => (Target::Struct, Some(generics)),
-            ast::ItemKind::Union(_, generics) => (Target::Union, Some(generics)),
-            ast::ItemKind::Trait(tr) => (Target::Trait, Some(&tr.generics)),
-            ast::ItemKind::TraitAlias(generics, _) => (Target::TraitAlias, Some(generics)),
-            ast::ItemKind::Impl(_) => (Target::Impl, None),
-            ast::ItemKind::MacroDef(_) => (Target::MacroDef, None),
+        let target = match &i.kind {
+            ast::ItemKind::ExternCrate(_) => Target::ExternCrate,
+            ast::ItemKind::Use(_) => Target::Use,
+            ast::ItemKind::Static(_) => Target::Static,
+            ast::ItemKind::Const(_) => Target::Const,
+            ast::ItemKind::Fn(_) => Target::Fn,
+            ast::ItemKind::Mod(_, _) => Target::Mod,
+            ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
+            ast::ItemKind::GlobalAsm(_) => Target::GlobalAsm,
+            ast::ItemKind::TyAlias(_) => Target::TyAlias,
+            ast::ItemKind::Enum(_, _) => Target::Enum,
+            ast::ItemKind::Struct(_, _) => Target::Struct,
+            ast::ItemKind::Union(_, _) => Target::Union,
+            ast::ItemKind::Trait(_) => Target::Trait,
+            ast::ItemKind::TraitAlias(_, _) => Target::TraitAlias,
+            ast::ItemKind::Impl(_) => Target::Impl,
+            ast::ItemKind::MacroDef(_) => Target::MacroDef,
             ast::ItemKind::MacCall(_) => unreachable!("macros should have been expanded"),
         };
 
@@ -283,7 +291,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             self.resolver.node_id_to_def_id[&i.id],
             &i.attrs,
             i.span,
-            generics,
+            i.opt_generics(),
         );
 
         let parent_item = self.parent_item.replace(i);
