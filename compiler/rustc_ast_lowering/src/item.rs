@@ -1035,10 +1035,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (Some(coroutine_kind), Some(body)) = (coroutine_kind, body) else {
             return self.lower_fn_body_block(span, decl, body);
         };
-        // FIXME(gen_blocks): Introduce `closure_id` method and remove ALL destructuring.
-        let (CoroutineKind::Async { closure_id, .. }
-        | CoroutineKind::Gen { closure_id, .. }
-        | CoroutineKind::AsyncGen { closure_id, .. }) = coroutine_kind;
+        let closure_id = coroutine_kind.closure_id();
 
         self.lower_body(|this| {
             let mut parameters: Vec<hir::Param<'_>> = Vec::new();
