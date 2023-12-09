@@ -33,7 +33,7 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             let fn_ = edit.make_mut(fn_);
             let fn_generic_param_list = fn_.get_or_create_generic_param_list();
             let type_param_name =
-                suggest_name::for_generic_parameter(&impl_trait_type, &fn_generic_param_list);
+                suggest_name::for_impl_trait_as_generic(&impl_trait_type, &fn_generic_param_list);
 
             let type_param = make::type_param(make::name(&type_param_name), Some(type_bound_list))
                 .clone_for_update();
