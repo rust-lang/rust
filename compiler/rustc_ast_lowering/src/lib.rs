@@ -1678,7 +1678,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     duplicated_lifetime_node_id,
                     lifetime.ident.name,
                     DefKind::LifetimeParam,
-                    lifetime.ident.span,
+                    self.lower_span(lifetime.ident.span),
                 );
                 captured_to_synthesized_mapping.insert(old_def_id, duplicated_lifetime_def_id);
                 // FIXME: Instead of doing this, we could move this whole loop
@@ -1687,7 +1687,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 synthesized_lifetime_definitions.push((
                     duplicated_lifetime_node_id,
                     duplicated_lifetime_def_id,
-                    lifetime.ident,
+                    self.lower_ident(lifetime.ident),
                 ));
 
                 // Now make an arg that we can use for the generic params of the opaque tykind.
@@ -2252,7 +2252,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer {
-                    hir::ArrayLen::Infer(self.lower_node_id(c.id), c.value.span)
+                    hir::ArrayLen::Infer(self.lower_node_id(c.id), self.lower_span(c.value.span))
                 } else {
                     feature_err(
                         &self.tcx.sess.parse_sess,
