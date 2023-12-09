@@ -7,8 +7,8 @@ LL |     fn mul(self, s: &f64) -> Vec1 {
    |                     expected `f64`, found `&f64`
    |                     help: change the parameter type to match the trait: `f64`
    |
-   = note: expected signature `fn(Vec1, f64) -> Vec1`
-              found signature `fn(Vec1, &f64) -> Vec1`
+   = note: expected signature `fn(Vec1, _) -> Vec1`
+              found signature `fn(Vec1, &_) -> Vec1`
 
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:33:21

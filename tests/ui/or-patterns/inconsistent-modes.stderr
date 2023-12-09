@@ -57,8 +57,8 @@ LL |     let (Ok(ref a) | Err(ref mut a)): Result<&u8, &mut u8> = Ok(&0);
    |             |            types differ in mutability
    |             first introduced with type `&&u8` here
    |
-   = note:      expected reference `&&u8`
-           found mutable reference `&mut &mut u8`
+   = note:      expected reference `&&_`
+           found mutable reference `&mut &mut _`
    = note: a binding must have the same type in all alternatives
 
 error[E0308]: mismatched types

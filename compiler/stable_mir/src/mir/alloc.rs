@@ -1,7 +1,9 @@
 //! This module provides methods to retrieve allocation information, such as static variables.
 use crate::mir::mono::{Instance, StaticDef};
+use crate::target::{Endian, MachineInfo};
 use crate::ty::{Allocation, Binder, ExistentialTraitRef, IndexedVal, Ty};
-use crate::with;
+use crate::{with, Error};
+use std::io::Read;
 
 /// An allocation in the SMIR global memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
@@ -38,7 +40,7 @@ impl GlobalAlloc {
 }
 
 /// A unique identification number for each provenance
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct AllocId(usize);
 
 impl IndexedVal for AllocId {
@@ -47,5 +49,35 @@ impl IndexedVal for AllocId {
     }
     fn to_index(&self) -> usize {
         self.0
+    }
+}
+
+/// Utility function used to read an allocation data into a unassigned integer.
+pub(crate) fn read_target_uint(mut bytes: &[u8]) -> Result<u128, Error> {
+    let mut buf = [0u8; std::mem::size_of::<u128>()];
+    match MachineInfo::target_endianess() {
+        Endian::Little => {
+            bytes.read(&mut buf)?;
+            Ok(u128::from_le_bytes(buf))
+        }
+        Endian::Big => {
+            bytes.read(&mut buf[16 - bytes.len()..])?;
+            Ok(u128::from_be_bytes(buf))
+        }
+    }
+}
+
+/// Utility function used to read an allocation data into an assigned integer.
+pub(crate) fn read_target_int(mut bytes: &[u8]) -> Result<i128, Error> {
+    let mut buf = [0u8; std::mem::size_of::<i128>()];
+    match MachineInfo::target_endianess() {
+        Endian::Little => {
+            bytes.read(&mut buf)?;
+            Ok(i128::from_le_bytes(buf))
+        }
+        Endian::Big => {
+            bytes.read(&mut buf[16 - bytes.len()..])?;
+            Ok(i128::from_be_bytes(buf))
+        }
     }
 }

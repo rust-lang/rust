@@ -1,0 +1,13 @@
+[package]
+name = "rustc_next_trait_solver"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+rustc_type_ir = { path = "../rustc_type_ir", default-features = false }
+
+[features]
+default = ["nightly"]
+nightly = [
+    "rustc_type_ir/nightly",
+]

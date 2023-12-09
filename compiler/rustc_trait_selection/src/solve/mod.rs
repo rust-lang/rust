@@ -30,7 +30,6 @@ use rustc_middle::ty::{
 
 mod alias_relate;
 mod assembly;
-mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
 pub mod inspect;

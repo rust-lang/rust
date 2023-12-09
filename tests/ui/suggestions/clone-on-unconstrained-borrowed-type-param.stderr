@@ -8,8 +8,8 @@ LL | fn wat<T>(t: &T) -> T {
 LL |     t.clone()
    |     ^^^^^^^^^ expected type parameter `T`, found `&T`
    |
-   = note: expected type parameter `T`
-                   found reference `&T`
+   = note: expected type parameter `_`
+                   found reference `&_`
 note: `T` does not implement `Clone`, so `&T` was cloned instead
   --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:3:5
    |

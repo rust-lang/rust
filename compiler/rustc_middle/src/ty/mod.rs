@@ -65,15 +65,10 @@ use std::ops::ControlFlow;
 use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
-pub use rustc_type_ir::AliasKind::*;
 pub use rustc_type_ir::ConstKind::{
     Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
     Placeholder as PlaceholderCt, Unevaluated, Value,
 };
-pub use rustc_type_ir::DynKind::*;
-pub use rustc_type_ir::InferTy::*;
-pub use rustc_type_ir::RegionKind::*;
-pub use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
@@ -473,6 +468,14 @@ pub struct CReaderCacheKey {
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
+
+impl<'tcx> IntoKind for Ty<'tcx> {
+    type Kind = TyKind<'tcx>;
+
+    fn kind(self) -> TyKind<'tcx> {
+        self.kind().clone()
+    }
+}
 
 impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
@@ -1545,33 +1548,41 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
-impl rustc_type_ir::Placeholder for PlaceholderRegion {
-    fn universe(&self) -> UniverseIndex {
+impl PlaceholderLike for PlaceholderRegion {
+    fn universe(self) -> UniverseIndex {
         self.universe
     }
 
-    fn var(&self) -> BoundVar {
+    fn var(self) -> BoundVar {
         self.bound.var
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
         Placeholder { universe: ui, ..self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::BrAnon } }
     }
 }
 
 pub type PlaceholderType = Placeholder<BoundTy>;
 
-impl rustc_type_ir::Placeholder for PlaceholderType {
-    fn universe(&self) -> UniverseIndex {
+impl PlaceholderLike for PlaceholderType {
+    fn universe(self) -> UniverseIndex {
         self.universe
     }
 
-    fn var(&self) -> BoundVar {
+    fn var(self) -> BoundVar {
         self.bound.var
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
         Placeholder { universe: ui, ..self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
     }
 }
 
@@ -1584,17 +1595,21 @@ pub struct BoundConst<'tcx> {
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
 
-impl rustc_type_ir::Placeholder for PlaceholderConst {
-    fn universe(&self) -> UniverseIndex {
+impl PlaceholderLike for PlaceholderConst {
+    fn universe(self) -> UniverseIndex {
         self.universe
     }
 
-    fn var(&self) -> BoundVar {
+    fn var(self) -> BoundVar {
         self.bound
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
         Placeholder { universe: ui, ..self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: var }
     }
 }
 

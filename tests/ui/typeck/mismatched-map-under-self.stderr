@@ -12,8 +12,8 @@ note: type in trait
    |
 LL |     fn values(&self) -> Self::Values;
    |               ^^^^^
-   = note: expected signature `fn(&Option<T>)`
-              found signature `fn(Option<T>)`
+   = note: expected signature `fn(&Option<_>)`
+              found signature `fn(Option<_>)`
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/mismatched-map-under-self.rs:12:18
