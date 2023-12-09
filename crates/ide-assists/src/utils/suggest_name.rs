@@ -58,38 +58,43 @@ const USELESS_METHODS: &[&str] = &[
     "into_future",
 ];
 
-pub(crate) fn for_unique_generic_name(
-    name: &str,
+pub(crate) fn for_generic_parameter(
+    ty: &ast::ImplTraitType,
     existing_params: &ast::GenericParamList,
 ) -> SmolStr {
-    let param_names = existing_params
-        .generic_params()
-        .map(|param| match param {
-            ast::GenericParam::TypeParam(t) => t.name().unwrap().to_string(),
-            p => p.to_string(),
-        })
-        .collect_vec();
-    let mut name = name.to_string();
-    let base_len = name.len();
-    // 4*len bytes for base, and 2 bytes for 2 digits
-    name.reserve(4 * base_len + 2);
-
-    let mut count = 0;
-    while param_names.contains(&name) {
-        name.truncate(base_len);
-        name.push_str(&count.to_string());
-        count += 1;
-    }
-
-    name.into()
-}
-
-pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
     let c = ty
         .type_bound_list()
         .and_then(|bounds| bounds.syntax().text().char_at(0.into()))
         .unwrap_or('T');
-    c.encode_utf8(&mut [0; 4]).into()
+
+    // let existing_params = existing_params.generic_params();
+    let conflict = existing_params
+        .generic_params()
+        .filter(|param| {
+            param.syntax().text_range().len() == 1.into()
+                && param.syntax().text().char_at(0.into()).unwrap() == c
+        })
+        .count()
+        > 0;
+
+    let buffer = &mut [0; 4];
+    if conflict {
+        let mut name = String::from(c.encode_utf8(buffer));
+        name.reserve(6); // 4B for c, and 2B for 2 digits
+        let base_len = name.len();
+        let mut count = 0;
+        loop {
+            name.truncate(base_len);
+            name.push_str(&count.to_string());
+            if existing_params.generic_params().all(|param| param.to_string() != name) {
+                break;
+            }
+            count += 1;
+        }
+        SmolStr::from(name)
+    } else {
+        c.encode_utf8(buffer).into()
+    }
 }
 
 /// Suggest name of variable for given expression
