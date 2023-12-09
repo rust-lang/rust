@@ -10,6 +10,7 @@
 //! precisely here.
 //!
 //!
+//!
 //! # Constructor grouping and splitting
 //!
 //! As explained in the corresponding section in [`super::usefulness`], to make usefulness tractable
@@ -49,6 +50,7 @@
 //! [`IntRange::split`]) and slice splitting (see [`Slice::split`]).
 //!
 //!
+//!
 //! # The `Missing` constructor
 //!
 //! We detail a special case of constructor splitting that is a bit subtle. Take the following:
@@ -77,6 +79,69 @@
 //!
 //!
 //!
+//! ## Empty types, empty constructors, and the `exhaustive_patterns` feature
+//!
+//! An empty type is a type that has no valid value, like `!`, `enum Void {}`, or `Result<!, !>`.
+//! They require careful handling.
+//!
+//! First, for soundness reasons related to the possible existence of invalid values, by default we
+//! don't treat empty types as empty. We force them to be matched with wildcards. Except if the
+//! `exhaustive_patterns` feature is turned on, in which case we do treat them as empty. And also
+//! except if the type has no constructors (like `enum Void {}` but not like `Result<!, !>`), we
+//! specifically allow `match void {}` to be exhaustive. There are additionally considerations of
+//! place validity that are handled in `super::usefulness`. Yes this is a bit tricky.
+//!
+//! The second thing is that regardless of the above, it is always allowed to use all the
+//! constructors of a type. For example, all the following is ok:
+//!
+//! ```rust,ignore(example)
+//! # #![feature(never_type)]
+//! # #![feature(exhaustive_patterns)]
+//! fn foo(x: Option<!>) {
+//!   match x {
+//!     None => {}
+//!     Some(_) => {}
+//!   }
+//! }
+//! fn bar(x: &[!]) -> u32 {
+//!   match x {
+//!     [] => 1,
+//!     [_] => 2,
+//!     [_, _] => 3,
+//!   }
+//! }
+//! ```
+//!
+//! Moreover, take the following:
+//!
+//! ```rust
+//! # #![feature(never_type)]
+//! # #![feature(exhaustive_patterns)]
+//! # let x = None::<!>;
+//! match x {
+//!   None => {}
+//! }
+//! ```
+//!
+//! On a normal type, we would identify `Some` as missing and tell the user. If `x: Option<!>`
+//! however (and `exhaustive_patterns` is on), it's ok to omit `Some`. When listing the constructors
+//! of a type, we must therefore track which can be omitted.
+//!
+//! Let's call "empty" a constructor that matches no valid value for the type, like `Some` for the
+//! type `Option<!>`. What this all means is that `ConstructorSet` must know which constructors are
+//! empty. The difference between empty and nonempty constructors is that empty constructors need
+//! not be present for the match to be exhaustive.
+//!
+//! A final remark: empty constructors of arity 0 break specialization, we must avoid them. The
+//! reason is that if we specialize by them, nothing remains to witness the emptiness; the rest of
+//! the algorithm can't distinguish them from a nonempty constructor. The only known case where this
+//! could happen is the `[..]` pattern on `[!; N]` with `N > 0` so we must take care to not emit it.
+//!
+//! This is all handled by [`ConstructorSet::for_ty`] and [`ConstructorSet::split`]. The invariants
+//! of [`SplitConstructorSet`] are also of interest.
+//!
+//!
+//!
 //! ## Opaque patterns
 //!
 //! Some patterns, such as constants that are not allowed to be matched structurally, cannot be
@@ -95,7 +160,7 @@ use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::RangeEnd;
-use rustc_index::Idx;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
@@ -482,8 +547,12 @@ pub(super) struct Slice {
 impl Slice {
     fn new(array_len: Option<usize>, kind: SliceKind) -> Self {
         let kind = match (array_len, kind) {
-            // If the middle `..` is empty, we effectively have a fixed-length pattern.
-            (Some(len), VarLen(prefix, suffix)) if prefix + suffix >= len => FixedLen(len),
+            // If the middle `..` has length 0, we effectively have a fixed-length pattern.
+            (Some(len), VarLen(prefix, suffix)) if prefix + suffix == len => FixedLen(len),
+            (Some(len), VarLen(prefix, suffix)) if prefix + suffix > len => bug!(
+                "Slice pattern of length {} longer than its array length {len}",
+                prefix + suffix
+            ),
             _ => kind,
         };
         Slice { array_len, kind }
@@ -583,17 +652,18 @@ impl Slice {
         let mut seen_fixed_lens = FxHashSet::default();
         match &mut max_slice {
             VarLen(max_prefix_len, max_suffix_len) => {
+                // A length larger than any fixed-length slice encountered.
+                // We start at 1 in case the subtype is empty because in that case the zero-length
+                // slice must be treated separately from the rest.
+                let mut fixed_len_upper_bound = 1;
                 // We grow `max_slice` to be larger than all slices encountered, as described above.
-                // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
-                // `L = max_prefix_len + max_suffix_len`.
-                let mut max_fixed_len = 0;
+                // `L` is `max_slice.arity()`. For diagnostics, we keep the prefix and suffix
+                // lengths separate.
                 for slice in column_slices {
                     match slice.kind {
                         FixedLen(len) => {
-                            max_fixed_len = cmp::max(max_fixed_len, len);
-                            if arity <= len {
-                                seen_fixed_lens.insert(len);
-                            }
+                            fixed_len_upper_bound = cmp::max(fixed_len_upper_bound, len + 1);
+                            seen_fixed_lens.insert(len);
                         }
                         VarLen(prefix, suffix) => {
                             *max_prefix_len = cmp::max(*max_prefix_len, prefix);
@@ -602,12 +672,11 @@ impl Slice {
                         }
                     }
                 }
-                // We want `L = max(L, max_fixed_len + 1)`, modulo the fact that we keep prefix and
-                // suffix separate.
-                if max_fixed_len + 1 >= *max_prefix_len + *max_suffix_len {
-                    // The subtraction can't overflow thanks to the above check.
-                    // The new `max_prefix_len` is larger than its previous value.
-                    *max_prefix_len = max_fixed_len + 1 - *max_suffix_len;
+                // If `fixed_len_upper_bound >= L`, we set `L` to `fixed_len_upper_bound`.
+                if let Some(delta) =
+                    fixed_len_upper_bound.checked_sub(*max_prefix_len + *max_suffix_len)
+                {
+                    *max_prefix_len += delta
                 }
 
                 // We cap the arity of `max_slice` at the array size.
@@ -718,9 +787,6 @@ pub(super) enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
-    pub(super) fn is_wildcard(&self) -> bool {
-        matches!(self, Wildcard)
-    }
     pub(super) fn is_non_exhaustive(&self) -> bool {
         matches!(self, NonExhaustive)
     }
@@ -856,34 +922,46 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
-/// Describes the set of all constructors for a type.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum VariantVisibility {
+    /// Variant that doesn't fit the other cases, i.e. most variants.
+    Visible,
+    /// Variant behind an unstable gate or with the `#[doc(hidden)]` attribute. It will not be
+    /// mentioned in diagnostics unless the user mentioned it first.
+    Hidden,
+    /// Variant that matches no value. E.g. `Some::<Option<!>>` if the `exhaustive_patterns` feature
+    /// is enabled. Like `Hidden`, it will not be mentioned in diagnostics unless the user mentioned
+    /// it first.
+    Empty,
+}
+
+/// Describes the set of all constructors for a type. For details, in particular about the emptiness
+/// of constructors, see the top of the file.
+///
+/// In terms of division of responsibility, [`ConstructorSet::split`] handles all of the
+/// `exhaustive_patterns` feature.
 #[derive(Debug)]
 pub(super) enum ConstructorSet {
-    /// The type has a single constructor, e.g. `&T` or a struct.
-    Single,
-    /// This type has the following list of constructors.
-    /// Some variants are hidden, which means they won't be mentioned in diagnostics unless the user
-    /// mentioned them first. We use this for variants behind an unstable gate as well as
-    /// `#[doc(hidden)]` ones.
-    Variants {
-        visible_variants: Vec<VariantIdx>,
-        hidden_variants: Vec<VariantIdx>,
-        non_exhaustive: bool,
-    },
+    /// The type has a single constructor, e.g. `&T` or a struct. `empty` tracks whether the
+    /// constructor is empty.
+    Single { empty: bool },
+    /// This type has the following list of constructors. If `variants` is empty and
+    /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
+    Variants { variants: IndexVec<VariantIdx, VariantVisibility>, non_exhaustive: bool },
     /// Booleans.
     Bool,
     /// The type is spanned by integer values. The range or ranges give the set of allowed values.
     /// The second range is only useful for `char`.
     Integers { range_1: IntRange, range_2: Option<IntRange> },
-    /// The type is matched by slices. The usize is the compile-time length of the array, if known.
-    Slice(Option<usize>),
-    /// The type is matched by slices whose elements are uninhabited.
-    SliceOfEmpty,
+    /// The type is matched by slices. `array_len` is the compile-time length of the array, if
+    /// known. If `subtype_is_empty`, all constructors are empty except possibly the zero-length
+    /// slice `[]`.
+    Slice { array_len: Option<usize>, subtype_is_empty: bool },
     /// The constructors cannot be listed, and the type cannot be matched exhaustively. E.g. `str`,
     /// floats.
     Unlistable,
-    /// The type has no inhabitants.
-    Uninhabited,
+    /// The type has no constructors (not even empty ones). This is `!` and empty enums.
+    NoConstructors,
 }
 
 /// Describes the result of analyzing the constructors in a column of a match.
@@ -892,15 +970,17 @@ pub(super) enum ConstructorSet {
 /// constructors that exist in the type but are not present in the column.
 ///
 /// More formally, if we discard wildcards from the column, this respects the following constraints:
-/// 1. the union of `present` and `missing` covers the whole type
+/// 1. the union of `present`, `missing` and `missing_empty` covers all the constructors of the type
 /// 2. each constructor in `present` is covered by something in the column
-/// 3. no constructor in `missing` is covered by anything in the column
+/// 3. no constructor in `missing` or `missing_empty` is covered by anything in the column
 /// 4. each constructor in the column is equal to the union of one or more constructors in `present`
 /// 5. `missing` does not contain empty constructors (see discussion about emptiness at the top of
 ///    the file);
-/// 6. constructors in `present` and `missing` are split for the column; in other words, they are
-///    either fully included in or fully disjoint from each constructor in the column. In other
-///    words, there are no non-trivial intersections like between `0..10` and `5..15`.
+/// 6. `missing_empty` contains only empty constructors
+/// 7. constructors in `present`, `missing` and `missing_empty` are split for the column; in other
+///    words, they are either fully included in or fully disjoint from each constructor in the
+///    column. In yet other words, there are no non-trivial intersections like between `0..10` and
+///    `5..15`.
 ///
 /// We must be particularly careful with weird constructors like `Opaque`: they're not formally part
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
@@ -909,10 +989,13 @@ pub(super) enum ConstructorSet {
 pub(super) struct SplitConstructorSet<'tcx> {
     pub(super) present: SmallVec<[Constructor<'tcx>; 1]>,
     pub(super) missing: Vec<Constructor<'tcx>>,
+    pub(super) missing_empty: Vec<Constructor<'tcx>>,
 }
 
 impl ConstructorSet {
     /// Creates a set that represents all the constructors of `ty`.
+    ///
+    /// See at the top of the file for considerations of emptiness.
     #[instrument(level = "debug", skip(cx), ret)]
     pub(super) fn for_ty<'p, 'tcx>(cx: &MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
         let make_range = |start, end| {
@@ -924,12 +1007,6 @@ impl ConstructorSet {
         };
         // This determines the set of all possible constructors for the type `ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
-        //
-        // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
-        // are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
-        // returned list of constructors.
-        // Invariant: this is `Uninhabited` if and only if the type is uninhabited (as determined by
-        // `cx.is_uninhabited()`).
         match ty.kind() {
             ty::Bool => Self::Bool,
             ty::Char => {
@@ -963,82 +1040,73 @@ impl ConstructorSet {
                 };
                 Self::Integers { range_1: range, range_2: None }
             }
-            ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
-                let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
-                if len != 0 && cx.is_uninhabited(*sub_ty) {
-                    Self::Uninhabited
-                } else {
-                    Self::Slice(Some(len))
-                }
+            ty::Slice(sub_ty) => {
+                Self::Slice { array_len: None, subtype_is_empty: cx.is_uninhabited(*sub_ty) }
             }
-            // Treat arrays of a constant but unknown length like slices.
-            ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-                if cx.is_uninhabited(*sub_ty) {
-                    Self::SliceOfEmpty
-                } else {
-                    Self::Slice(None)
+            ty::Array(sub_ty, len) => {
+                // We treat arrays of a constant but unknown length like slices.
+                Self::Slice {
+                    array_len: len.try_eval_target_usize(cx.tcx, cx.param_env).map(|l| l as usize),
+                    subtype_is_empty: cx.is_uninhabited(*sub_ty),
                 }
             }
             ty::Adt(def, args) if def.is_enum() => {
-                // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
-                // additional "unknown" constructor.
-                // There is no point in enumerating all possible variants, because the user can't
-                // actually match against them all themselves. So we always return only the fictitious
-                // constructor.
-                // E.g., in an example like:
-                //
-                // ```
-                //     let err: io::ErrorKind = ...;
-                //     match err {
-                //         io::ErrorKind::NotFound => {},
-                //     }
-                // ```
-                //
-                // we don't want to show every possible IO error, but instead have only `_` as the
-                // witness.
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-
                 if def.variants().is_empty() && !is_declared_nonexhaustive {
-                    Self::Uninhabited
+                    Self::NoConstructors
                 } else {
-                    let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
-                    let (hidden_variants, visible_variants) = def
-                        .variants()
-                        .iter_enumerated()
-                        .filter(|(_, v)| {
-                            // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                            // uninhabited.
-                            !is_exhaustive_pat_feature
-                                || v.inhabited_predicate(cx.tcx, *def)
-                                    .instantiate(cx.tcx, args)
-                                    .apply(cx.tcx, cx.param_env, cx.module)
-                        })
-                        .map(|(idx, _)| idx)
-                        .partition(|idx| {
-                            let variant_def_id = def.variant(*idx).def_id;
-                            // Filter variants that depend on a disabled unstable feature.
-                            let is_unstable = matches!(
-                                cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
-                                EvalResult::Deny { .. }
-                            );
-                            // Filter foreign `#[doc(hidden)]` variants.
-                            let is_doc_hidden =
-                                cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
-                            is_unstable || is_doc_hidden
-                        });
-
-                    Self::Variants {
-                        visible_variants,
-                        hidden_variants,
-                        non_exhaustive: is_declared_nonexhaustive,
+                    let mut variants =
+                        IndexVec::from_elem(VariantVisibility::Visible, def.variants());
+                    for (idx, v) in def.variants().iter_enumerated() {
+                        let variant_def_id = def.variant(idx).def_id;
+                        // Visibly uninhabited variants.
+                        let is_inhabited = v
+                            .inhabited_predicate(cx.tcx, *def)
+                            .instantiate(cx.tcx, args)
+                            .apply(cx.tcx, cx.param_env, cx.module);
+                        // Variants that depend on a disabled unstable feature.
+                        let is_unstable = matches!(
+                            cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
+                            EvalResult::Deny { .. }
+                        );
+                        // Foreign `#[doc(hidden)]` variants.
+                        let is_doc_hidden =
+                            cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
+                        let visibility = if !is_inhabited {
+                            // FIXME: handle empty+hidden
+                            VariantVisibility::Empty
+                        } else if is_unstable || is_doc_hidden {
+                            VariantVisibility::Hidden
+                        } else {
+                            VariantVisibility::Visible
+                        };
+                        variants[idx] = visibility;
                     }
+
+                    Self::Variants { variants, non_exhaustive: is_declared_nonexhaustive }
                 }
             }
-            ty::Never => Self::Uninhabited,
-            _ if cx.is_uninhabited(ty) => Self::Uninhabited,
-            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => Self::Single,
+            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => {
+                Self::Single { empty: cx.is_uninhabited(ty) }
+            }
+            ty::Never => Self::NoConstructors,
             // This type is one for which we cannot list constructors, like `str` or `f64`.
-            _ => Self::Unlistable,
+            // FIXME(Nadrieril): which of these are actually allowed?
+            ty::Float(_)
+            | ty::Str
+            | ty::Foreign(_)
+            | ty::RawPtr(_)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::Coroutine(_, _, _)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Error(_) => Self::Unlistable,
+            ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
+                bug!("Encountered unexpected type in `ConstructorSet::for_ty`: {ty:?}")
+            }
         }
     }
 
@@ -1056,50 +1124,51 @@ impl ConstructorSet {
         'tcx: 'a,
     {
         let mut present: SmallVec<[_; 1]> = SmallVec::new();
+        // Empty constructors found missing.
+        let mut missing_empty = Vec::new();
+        // Nonempty constructors found missing.
         let mut missing = Vec::new();
         // Constructors in `ctors`, except wildcards and opaques.
         let mut seen = Vec::new();
         for ctor in ctors.cloned() {
-            if let Constructor::Opaque(..) = ctor {
-                present.push(ctor);
-            } else if !ctor.is_wildcard() {
-                seen.push(ctor);
+            match ctor {
+                Opaque(..) => present.push(ctor),
+                Wildcard => {} // discard wildcards
+                _ => seen.push(ctor),
             }
         }
 
         match self {
-            ConstructorSet::Single => {
-                if seen.is_empty() {
-                    missing.push(Single);
-                } else {
+            ConstructorSet::Single { empty } => {
+                if !seen.is_empty() {
                     present.push(Single);
+                } else if *empty {
+                    missing_empty.push(Single);
+                } else {
+                    missing.push(Single);
                 }
             }
-            ConstructorSet::Variants { visible_variants, hidden_variants, non_exhaustive } => {
+            ConstructorSet::Variants { variants, non_exhaustive } => {
                 let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
                 let mut skipped_a_hidden_variant = false;
 
-                for variant in visible_variants {
-                    let ctor = Variant(*variant);
-                    if seen_set.contains(variant) {
+                for (idx, visibility) in variants.iter_enumerated() {
+                    let ctor = Variant(idx);
+                    if seen_set.contains(&idx) {
                         present.push(ctor);
                     } else {
-                        missing.push(ctor);
+                        // We only put visible variants directly into `missing`.
+                        match visibility {
+                            VariantVisibility::Visible => missing.push(ctor),
+                            VariantVisibility::Hidden => skipped_a_hidden_variant = true,
+                            VariantVisibility::Empty => missing_empty.push(ctor),
+                        }
                     }
                 }
 
-                for variant in hidden_variants {
-                    let ctor = Variant(*variant);
-                    if seen_set.contains(variant) {
-                        present.push(ctor);
-                    } else {
-                        skipped_a_hidden_variant = true;
-                    }
-                }
                 if skipped_a_hidden_variant {
                     missing.push(Hidden);
                 }
-
                 if *non_exhaustive {
                     missing.push(NonExhaustive);
                 }
@@ -1143,33 +1212,22 @@ impl ConstructorSet {
                     }
                 }
             }
-            &ConstructorSet::Slice(array_len) => {
+            ConstructorSet::Slice { array_len, subtype_is_empty } => {
                 let seen_slices = seen.iter().map(|c| c.as_slice().unwrap());
-                let base_slice = Slice::new(array_len, VarLen(0, 0));
-                for (seen, splitted_slice) in base_slice.split(seen_slices) {
-                    let ctor = Slice(splitted_slice);
-                    match seen {
-                        Presence::Unseen => missing.push(ctor),
-                        Presence::Seen => present.push(ctor),
-                    }
-                }
-            }
-            ConstructorSet::SliceOfEmpty => {
-                // This one is tricky because even though there's only one possible value of this
-                // type (namely `[]`), slice patterns of all lengths are allowed, they're just
-                // unreachable if length != 0.
-                // We still gather the seen constructors in `present`, but the only slice that can
-                // go in `missing` is `[]`.
-                let seen_slices = seen.iter().map(|c| c.as_slice().unwrap());
-                let base_slice = Slice::new(None, VarLen(0, 0));
+                let base_slice = Slice::new(*array_len, VarLen(0, 0));
                 for (seen, splitted_slice) in base_slice.split(seen_slices) {
                     let ctor = Slice(splitted_slice);
                     match seen {
                         Presence::Seen => present.push(ctor),
-                        Presence::Unseen if splitted_slice.arity() == 0 => {
-                            missing.push(Slice(Slice::new(None, FixedLen(0))))
+                        Presence::Unseen => {
+                            if *subtype_is_empty && splitted_slice.arity() != 0 {
+                                // We have subpatterns of an empty type, so the constructor is
+                                // empty.
+                                missing_empty.push(ctor);
+                            } else {
+                                missing.push(ctor);
+                            }
                         }
-                        Presence::Unseen => {}
                     }
                 }
             }
@@ -1179,18 +1237,25 @@ impl ConstructorSet {
                 present.extend(seen);
                 missing.push(NonExhaustive);
             }
-            // If `exhaustive_patterns` is disabled and our scrutinee is an empty type, we cannot
-            // expose its emptiness. The exception is if the pattern is at the top level, because we
-            // want empty matches to be considered exhaustive.
-            ConstructorSet::Uninhabited
-                if !pcx.cx.tcx.features().exhaustive_patterns && !pcx.is_top_level =>
-            {
-                missing.push(NonExhaustive);
+            ConstructorSet::NoConstructors => {
+                // In a `MaybeInvalid` place even an empty pattern may be reachable. We therefore
+                // add a dummy empty constructor here, which will be ignored if the place is
+                // `ValidOnly`.
+                missing_empty.push(NonExhaustive);
             }
-            ConstructorSet::Uninhabited => {}
         }
 
-        SplitConstructorSet { present, missing }
+        // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
+        // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
+        // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
+        if !pcx.cx.tcx.features().exhaustive_patterns
+            && !(pcx.is_top_level && matches!(self, Self::NoConstructors))
+        {
+            // Treat all missing constructors as nonempty.
+            missing.extend(missing_empty.drain(..));
+        }
+
+        SplitConstructorSet { present, missing, missing_empty }
     }
 }
 
@@ -1263,7 +1328,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             // `field.ty()` doesn't normalize after substituting.
             let ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
             let is_visible = adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-            let is_uninhabited = cx.is_uninhabited(ty);
+            let is_uninhabited = cx.tcx.features().exhaustive_patterns && cx.is_uninhabited(ty);
 
             if is_uninhabited && (!is_visible || is_non_exhaustive) {
                 None
@@ -1339,7 +1404,8 @@ pub(crate) struct DeconstructedPat<'p, 'tcx> {
     fields: Fields<'p, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
-    reachable: Cell<bool>,
+    /// Whether removing this arm would change the behavior of the match expression.
+    useful: Cell<bool>,
 }
 
 impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
@@ -1353,7 +1419,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
-        DeconstructedPat { ctor, fields, ty, span, reachable: Cell::new(false) }
+        DeconstructedPat { ctor, fields, ty, span, useful: Cell::new(false) }
     }
 
     /// Note: the input patterns must have been lowered through
@@ -1634,38 +1700,38 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         }
     }
 
-    /// We keep track for each pattern if it was ever reachable during the analysis. This is used
-    /// with `unreachable_spans` to report unreachable subpatterns arising from or patterns.
-    pub(super) fn set_reachable(&self) {
-        self.reachable.set(true)
+    /// We keep track for each pattern if it was ever useful during the analysis. This is used
+    /// with `redundant_spans` to report redundant subpatterns arising from or patterns.
+    pub(super) fn set_useful(&self) {
+        self.useful.set(true)
     }
-    pub(super) fn is_reachable(&self) -> bool {
-        if self.reachable.get() {
+    pub(super) fn is_useful(&self) -> bool {
+        if self.useful.get() {
             true
-        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_reachable()) {
+        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_useful()) {
             // We always expand or patterns in the matrix, so we will never see the actual
             // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
-            // marked as reachable itself, only its children will. We recover this information here.
-            self.set_reachable();
+            // marked as useful itself, only its children will. We recover this information here.
+            self.set_useful();
             true
         } else {
             false
         }
     }
 
-    /// Report the spans of subpatterns that were not reachable, if any.
-    pub(super) fn unreachable_spans(&self) -> Vec<Span> {
+    /// Report the spans of subpatterns that were not useful, if any.
+    pub(super) fn redundant_spans(&self) -> Vec<Span> {
         let mut spans = Vec::new();
-        self.collect_unreachable_spans(&mut spans);
+        self.collect_redundant_spans(&mut spans);
         spans
     }
-    fn collect_unreachable_spans(&self, spans: &mut Vec<Span>) {
-        // We don't look at subpatterns if we already reported the whole pattern as unreachable.
-        if !self.is_reachable() {
+    fn collect_redundant_spans(&self, spans: &mut Vec<Span>) {
+        // We don't look at subpatterns if we already reported the whole pattern as redundant.
+        if !self.is_useful() {
             spans.push(self.span);
         } else {
             for p in self.iter_fields() {
-                p.collect_unreachable_spans(spans);
+                p.collect_redundant_spans(spans);
             }
         }
     }

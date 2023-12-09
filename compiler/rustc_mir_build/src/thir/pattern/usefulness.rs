@@ -1,8 +1,8 @@
-//! # Match exhaustiveness and reachability algorithm
+//! # Match exhaustiveness and redundancy algorithm
 //!
-//! This file contains the logic for exhaustiveness and reachability checking for pattern-matching.
+//! This file contains the logic for exhaustiveness and usefulness checking for pattern-matching.
 //! Specifically, given a list of patterns in a match, we can tell whether:
-//! (a) a given pattern is reachable (reachability)
+//! (a) a given pattern is redundant
 //! (b) the patterns cover every possible value for the type (exhaustiveness)
 //!
 //! The algorithm implemented here is inspired from the one described in [this
@@ -19,15 +19,15 @@
 //! The algorithm is given as input a list of patterns, one for each arm of a match, and computes
 //! the following:
 //! - a set of values that match none of the patterns (if any),
-//! - for each subpattern (taking into account or-patterns), whether it would catch any value that
-//!     isn't caught by a pattern before it, i.e. whether it is reachable.
+//! - for each subpattern (taking into account or-patterns), whether removing it would change
+//!     anything about how the match executes, i.e. whether it is useful/not redundant.
 //!
 //! To a first approximation, the algorithm works by exploring all possible values for the type
 //! being matched on, and determining which arm(s) catch which value. To make this tractable we
 //! cleverly group together values, as we'll see below.
 //!
 //! The entrypoint of this file is the [`compute_match_usefulness`] function, which computes
-//! reachability for each subpattern and exhaustiveness for the whole match.
+//! usefulness for each subpattern and exhaustiveness for the whole match.
 //!
 //! In this page we explain the necessary concepts to understand how the algorithm works.
 //!
@@ -39,17 +39,17 @@
 //! none of the `p_i`. We write `usefulness(p_1 .. p_n, q)` for a function that returns a list of
 //! such values. The aim of this file is to compute it efficiently.
 //!
-//! This is enough to compute reachability: a pattern in a `match` expression is reachable iff it is
-//! useful w.r.t. the patterns above it:
+//! This is enough to compute usefulness: a pattern in a `match` expression is redundant iff it is
+//! not useful w.r.t. the patterns above it:
 //! ```compile_fail,E0004
 //! # #![feature(exclusive_range_pattern)]
 //! # fn foo() {
 //! match Some(0u32) {
 //!     Some(0..100) => {},
-//!     Some(90..190) => {}, // reachable: `Some(150)` is matched by this but not the branch above
-//!     Some(50..150) => {}, // unreachable: all the values this matches are already matched by
+//!     Some(90..190) => {}, // useful: `Some(150)` is matched by this but not the branch above
+//!     Some(50..150) => {}, // redundant: all the values this matches are already matched by
 //!                          //   the branches above
-//!     None => {},          // reachable: `None` is matched by this but not the branches above
+//!     None => {},          // useful: `None` is matched by this but not the branches above
 //! }
 //! # }
 //! ```
@@ -246,18 +246,17 @@
 //!
 //!
 //!
-//! # Computing reachability and exhaustiveness in one go
+//! # Computing usefulness and exhaustiveness in one go
 //!
-//! The algorithm we have described so far computes usefulness of each pattern in turn to check if
-//! it is reachable, and ends by checking if `_` is useful to determine exhaustiveness of the whole
-//! match. In practice, instead of doing "for each pattern { for each constructor { ... } }", we do
-//! "for each constructor { for each pattern { ... } }". This allows us to compute everything in one
-//! go.
+//! The algorithm we have described so far computes usefulness of each pattern in turn, and ends by
+//! checking if `_` is useful to determine exhaustiveness of the whole match. In practice, instead
+//! of doing "for each pattern { for each constructor { ... } }", we do "for each constructor { for
+//! each pattern { ... } }". This allows us to compute everything in one go.
 //!
-//! [`Matrix`] stores the set of pattern-tuples under consideration. We track reachability of each
+//! [`Matrix`] stores the set of pattern-tuples under consideration. We track usefulness of each
 //! row mutably in the matrix as we go along. We ignore witnesses of usefulness of the match rows.
 //! We gather witnesses of the usefulness of `_` in [`WitnessMatrix`]. The algorithm that computes
-//! all this is in [`compute_exhaustiveness_and_reachability`].
+//! all this is in [`compute_exhaustiveness_and_usefulness`].
 //!
 //! See the full example at the bottom of this documentation.
 //!
@@ -279,7 +278,7 @@
 //! ```
 //!
 //! In this example, trying any of `0`, `1`, .., `49` will give the same specialized matrix, and
-//! thus the same reachability/exhaustiveness results. We can thus accelerate the algorithm by
+//! thus the same usefulness/exhaustiveness results. We can thus accelerate the algorithm by
 //! trying them all at once. Here in fact, the only cases we need to consider are: `0..50`,
 //! `50..=100`, `101..=150`,`151..=200` and `201..`.
 //!
@@ -299,15 +298,16 @@
 //! This is done in [`ConstructorSet::split`] and explained in [`super::deconstruct_pat`].
 //!
 //!
+//!
 //! # Or-patterns
 //!
 //! What we have described so far works well if there are no or-patterns. To handle them, if the
 //! first pattern of a row in the matrix is an or-pattern, we expand it by duplicating the rest of
 //! the row as necessary. This is handled automatically in [`Matrix`].
 //!
-//! This makes reachability tracking subtle, because we also want to compute whether an alternative
-//! of an or-pattern is unreachable, e.g. in `Some(_) | Some(0)`. We track reachability of each
-//! subpattern by interior mutability in [`DeconstructedPat`] with `set_reachable`/`is_reachable`.
+//! This makes usefulness tracking subtle, because we also want to compute whether an alternative
+//! of an or-pattern is redundant, e.g. in `Some(_) | Some(0)`. We track usefulness of each
+//! subpattern by interior mutability in [`DeconstructedPat`] with `set_useful`/`is_useful`.
 //!
 //! It's unfortunate that we have to use interior mutability, but believe me (Nadrieril), I have
 //! tried [other](https://github.com/rust-lang/rust/pull/80104)
@@ -332,6 +332,69 @@
 //!
 //!
 //!
+//! # Usefulness vs reachability, validity, and empty patterns
+//!
+//! This is likely the subtlest aspect of the algorithm. To be fully precise, a match doesn't
+//! operate on a value, it operates on a place. In certain unsafe circumstances, it is possible for
+//! a place to not contain valid data for its type. This has subtle consequences for empty types.
+//! Take the following:
+//!
+//! ```rust
+//! enum Void {}
+//! let x: u8 = 0;
+//! let ptr: *const Void = &x as *const u8 as *const Void;
+//! unsafe {
+//!     match *ptr {
+//!         _ => println!("Reachable!"),
+//!     }
+//! }
+//! ```
+//!
+//! In this example, `ptr` is a valid pointer pointing to a place with invalid data. The `_` pattern
+//! does not look at the contents of `*ptr`, so this is ok and the arm is taken. In other words,
+//! despite the place we are inspecting being of type `Void`, there is a reachable arm. If the
+//! arm had a binding however:
+//!
+//! ```rust
+//! # #[derive(Copy, Clone)]
+//! # enum Void {}
+//! # let x: u8 = 0;
+//! # let ptr: *const Void = &x as *const u8 as *const Void;
+//! # unsafe {
+//! match *ptr {
+//!     _a => println!("Unreachable!"),
+//! }
+//! # }
+//! ```
+//!
+//! Here the binding loads the value of type `Void` from the `*ptr` place. In this example, this
+//! causes UB since the data is not valid. In the general case, this asserts validity of the data at
+//! `*ptr`. Either way, this arm will never be taken.
+//!
+//! Finally, let's consider the empty match `match *ptr {}`. If we consider this exhaustive, then
+//! having invalid data at `*ptr` is invalid. In other words, the empty match is semantically
+//! equivalent to the `_a => ...` match. In the interest of explicitness, we prefer the case with an
+//! arm, hence we won't tell the user to remove the `_a` arm. In other words, the `_a` arm is
+//! unreachable yet not redundant. This is why we lint on redundant arms rather than unreachable
+//! arms, despite the fact that the lint says "unreachable".
+//!
+//! These considerations only affects certain places, namely those that can contain non-valid data
+//! without UB. These are: pointer dereferences, reference dereferences, and union field accesses.
+//! We track in the algorithm whether a given place is known to contain valid data. This is done
+//! first by inspecting the scrutinee syntactically (which gives us `cx.known_valid_scrutinee`), and
+//! then by tracking validity of each column of the matrix (which correspond to places) as we
+//! recurse into subpatterns. That second part is done through [`ValidityConstraint`], most notably
+//! [`ValidityConstraint::specialize`].
+//!
+//! Having said all that, in practice we don't fully follow what's been presented in this section.
+//! Under `exhaustive_patterns`, we allow omitting empty arms even in `!known_valid` places, for
+//! backwards-compatibility until we have a better alternative. Without `exhaustive_patterns`, we
+//! mostly treat empty types as inhabited, except specifically a non-nested `!` or empty enum. In
+//! this specific case we also allow the empty match regardless of place validity, for
+//! backwards-compatibility. Hopefully we can eventually deprecate this.
+//!
+//!
+//!
 //! # Full example
 //!
 //! We illustrate a full run of the algorithm on the following match.
@@ -348,7 +411,7 @@
 //! ```
 //!
 //! We keep track of the original row for illustration purposes, this is not what the algorithm
-//! actually does (it tracks reachability as a boolean on each row).
+//! actually does (it tracks usefulness as a boolean on each row).
 //!
 //! ```text
 //!  ┐ Patterns:
@@ -377,7 +440,7 @@
 //!  │ │ │ ├─┐ Patterns:
 //!  │ │ │ │ │   1. `[]`
 //!  │ │ │ │ │
-//!  │ │ │ │ │ We note arm 1 is reachable (by `Pair(Some(0), true)`).
+//!  │ │ │ │ │ We note arm 1 is useful (by `Pair(Some(0), true)`).
 //!  │ │ │ ├─┘
 //!  │ │ │ │
 //!  │ │ │ │ Specialize with `false`:
@@ -385,7 +448,7 @@
 //!  │ │ │ │ │   1. `[]`
 //!  │ │ │ │ │   3. `[]`
 //!  │ │ │ │ │
-//!  │ │ │ │ │ We note arm 1 is reachable (by `Pair(Some(0), false)`).
+//!  │ │ │ │ │ We note arm 1 is useful (by `Pair(Some(0), false)`).
 //!  │ │ │ ├─┘
 //!  │ │ ├─┘
 //!  │ │ │
@@ -408,7 +471,7 @@
 //!  │ │ │ ├─┐ Patterns:
 //!  │ │ │ │ │   2. `[]`
 //!  │ │ │ │ │
-//!  │ │ │ │ │ We note arm 2 is reachable (by `Pair(Some(1..), false)`).
+//!  │ │ │ │ │ We note arm 2 is useful (by `Pair(Some(1..), false)`).
 //!  │ │ │ ├─┘
 //!  │ │ │ │
 //!  │ │ │ │ Total witnesses for `1..`:
@@ -442,7 +505,7 @@
 //!  │ │ ├─┐ Patterns:
 //!  │ │ │ │   2. `[]`
 //!  │ │ │ │
-//!  │ │ │ │ We note arm 2 is reachable (by `Pair(None, false)`).
+//!  │ │ │ │ We note arm 2 is useful (by `Pair(None, false)`).
 //!  │ │ ├─┘
 //!  │ │ │
 //!  │ │ │ Total witnesses for `None`:
@@ -466,7 +529,7 @@
 //! ```
 //!
 //! We conclude:
-//! - Arm 3 is unreachable (it was never marked as reachable);
+//! - Arm 3 is redundant (it was never marked as useful);
 //! - The match is not exhaustive;
 //! - Adding arms with `Pair(Some(1..), true)` and `Pair(None, true)` would make the match exhaustive.
 //!
@@ -488,6 +551,7 @@
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
+use self::ValidityConstraint::*;
 use super::deconstruct_pat::{
     Constructor, ConstructorSet, DeconstructedPat, IntRange, MaybeInfiniteInt, SplitConstructorSet,
     WitnessPat,
@@ -524,20 +588,19 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
     /// Lint level at the match.
     pub(crate) match_lint_level: HirId,
     /// The span of the whole match, if applicable.
-    pub(crate) match_span: Option<Span>,
+    pub(crate) whole_match_span: Option<Span>,
     /// Span of the scrutinee.
     pub(crate) scrut_span: Span,
     /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
     pub(crate) refutable: bool,
+    /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee comes
+    /// from a union field, a pointer deref, or a reference deref (pending opsem decisions).
+    pub(crate) known_valid_scrutinee: bool,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().exhaustive_patterns {
-            !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
-        } else {
-            false
-        }
+        !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
@@ -561,9 +624,84 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) is_top_level: bool,
 }
 
+impl<'a, 'p, 'tcx> PatCtxt<'a, 'p, 'tcx> {
+    /// A `PatCtxt` when code other than `is_useful` needs one.
+    fn new_dummy(cx: &'a MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
+        PatCtxt { cx, ty, is_top_level: false }
+    }
+}
+
 impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PatCtxt").field("ty", &self.ty).finish()
+    }
+}
+
+/// Serves two purposes:
+/// - in a wildcard, tracks whether the wildcard matches only valid values (i.e. is a binding `_a`)
+///     or also invalid values (i.e. is a true `_` pattern).
+/// - in the matrix, track whether a given place (aka column) is known to contain a valid value or
+///     not.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(super) enum ValidityConstraint {
+    ValidOnly,
+    MaybeInvalid,
+    /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
+    /// `useful && !reachable` arms anyway.
+    MaybeInvalidButAllowOmittingArms,
+}
+
+impl ValidityConstraint {
+    pub(super) fn from_bool(is_valid_only: bool) -> Self {
+        if is_valid_only { ValidOnly } else { MaybeInvalid }
+    }
+
+    fn allow_omitting_side_effecting_arms(self) -> Self {
+        match self {
+            MaybeInvalid | MaybeInvalidButAllowOmittingArms => MaybeInvalidButAllowOmittingArms,
+            // There are no side-effecting empty arms here, nothing to do.
+            ValidOnly => ValidOnly,
+        }
+    }
+
+    pub(super) fn is_known_valid(self) -> bool {
+        matches!(self, ValidOnly)
+    }
+    pub(super) fn allows_omitting_empty_arms(self) -> bool {
+        matches!(self, ValidOnly | MaybeInvalidButAllowOmittingArms)
+    }
+
+    /// If the place has validity given by `self` and we read that the value at the place has
+    /// constructor `ctor`, this computes what we can assume about the validity of the constructor
+    /// fields.
+    ///
+    /// Pending further opsem decisions, the current behavior is: validity is preserved, except
+    /// inside `&` and union fields where validity is reset to `MaybeInvalid`.
+    pub(super) fn specialize<'tcx>(
+        self,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
+        ctor: &Constructor<'tcx>,
+    ) -> Self {
+        // We preserve validity except when we go inside a reference or a union field.
+        if matches!(ctor, Constructor::Single)
+            && (matches!(pcx.ty.kind(), ty::Ref(..))
+                || matches!(pcx.ty.kind(), ty::Adt(def, ..) if def.is_union()))
+        {
+            // Validity of `x: &T` does not imply validity of `*x: T`.
+            MaybeInvalid
+        } else {
+            self
+        }
+    }
+}
+
+impl fmt::Display for ValidityConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ValidOnly => "✓",
+            MaybeInvalid | MaybeInvalidButAllowOmittingArms => "?",
+        };
+        write!(f, "{s}")
     }
 }
 
@@ -639,13 +777,13 @@ struct MatrixRow<'p, 'tcx> {
     /// Whether the original arm had a guard. This is inherited when specializing.
     is_under_guard: bool,
     /// When we specialize, we remember which row of the original matrix produced a given row of the
-    /// specialized matrix. When we unspecialize, we use this to propagate reachability back up the
+    /// specialized matrix. When we unspecialize, we use this to propagate usefulness back up the
     /// callstack.
     parent_row: usize,
     /// False when the matrix is just built. This is set to `true` by
-    /// [`compute_exhaustiveness_and_reachability`] if the arm is found to be reachable.
+    /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
     /// This is reset to `false` when specializing.
-    reachable: bool,
+    useful: bool,
 }
 
 impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
@@ -672,7 +810,7 @@ impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
             pats: patstack,
             parent_row: self.parent_row,
             is_under_guard: self.is_under_guard,
-            reachable: false,
+            useful: false,
         })
     }
 
@@ -688,7 +826,7 @@ impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
             pats: self.pats.pop_head_constructor(pcx, ctor),
             parent_row,
             is_under_guard: self.is_under_guard,
-            reachable: false,
+            useful: false,
         }
     }
 }
@@ -711,10 +849,15 @@ impl<'p, 'tcx> fmt::Debug for MatrixRow<'p, 'tcx> {
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
 struct Matrix<'p, 'tcx> {
+    /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
+    /// each column must have the same type. Each column corresponds to a place within the
+    /// scrutinee.
     rows: Vec<MatrixRow<'p, 'tcx>>,
     /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
     /// each column. This must obey the same invariants as the real rows.
     wildcard_row: PatStack<'p, 'tcx>,
+    /// Track for each column/place whether it contains a known valid value.
+    place_validity: SmallVec<[ValidityConstraint; 2]>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -732,16 +875,28 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new(cx: &MatchCheckCtxt<'p, 'tcx>, arms: &[MatchArm<'p, 'tcx>], scrut_ty: Ty<'tcx>) -> Self {
+    fn new<'a>(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        arms: &[MatchArm<'p, 'tcx>],
+        scrut_ty: Ty<'tcx>,
+        scrut_validity: ValidityConstraint,
+    ) -> Self
+    where
+        'p: 'a,
+    {
         let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
         let wildcard_row = PatStack::from_pattern(wild_pattern);
-        let mut matrix = Matrix { rows: Vec::with_capacity(arms.len()), wildcard_row };
+        let mut matrix = Matrix {
+            rows: Vec::with_capacity(arms.len()),
+            wildcard_row,
+            place_validity: smallvec![scrut_validity],
+        };
         for (row_id, arm) in arms.iter().enumerate() {
             let v = MatrixRow {
                 pats: PatStack::from_pattern(arm.pat),
                 parent_row: row_id, // dummy, we won't read it
                 is_under_guard: arm.has_guard,
-                reachable: false,
+                useful: false,
             };
             matrix.expand_and_push(v);
         }
@@ -799,7 +954,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
         let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
-        let mut matrix = Matrix { rows: Vec::new(), wildcard_row };
+        let new_validity = self.place_validity[0].specialize(pcx, ctor);
+        let new_place_validity = std::iter::repeat(new_validity)
+            .take(ctor.arity(pcx))
+            .chain(self.place_validity[1..].iter().copied())
+            .collect();
+        let mut matrix =
+            Matrix { rows: Vec::new(), wildcard_row, place_validity: new_place_validity };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
                 let new_row = row.pop_head_constructor(pcx, ctor, i);
@@ -818,27 +979,38 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// + true  + [Second(true)]    +
 /// + false + [_]               +
 /// + _     + [_, _, tail @ ..] +
+/// | ✓     | ?                 | // column validity
 /// ```
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
-        let Matrix { rows, .. } = self;
-        let pretty_printed_matrix: Vec<Vec<String>> =
-            rows.iter().map(|row| row.iter().map(|pat| format!("{pat:?}")).collect()).collect();
+        let mut pretty_printed_matrix: Vec<Vec<String>> = self
+            .rows
+            .iter()
+            .map(|row| row.iter().map(|pat| format!("{pat:?}")).collect())
+            .collect();
+        pretty_printed_matrix
+            .push(self.place_validity.iter().map(|validity| format!("{validity}")).collect());
 
-        let column_count = rows.iter().map(|row| row.len()).next().unwrap_or(0);
-        assert!(rows.iter().all(|row| row.len() == column_count));
+        let column_count = self.column_count();
+        assert!(self.rows.iter().all(|row| row.len() == column_count));
+        assert!(self.place_validity.len() == column_count);
         let column_widths: Vec<usize> = (0..column_count)
             .map(|col| pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0))
             .collect();
 
-        for row in pretty_printed_matrix {
-            write!(f, "+")?;
+        for (row_i, row) in pretty_printed_matrix.into_iter().enumerate() {
+            let is_validity_row = row_i == self.rows.len();
+            let sep = if is_validity_row { "|" } else { "+" };
+            write!(f, "{sep}")?;
             for (column, pat_str) in row.into_iter().enumerate() {
                 write!(f, " ")?;
                 write!(f, "{:1$}", pat_str, column_widths[column])?;
-                write!(f, " +")?;
+                write!(f, " {sep}")?;
+            }
+            if is_validity_row {
+                write!(f, " // column validity")?;
             }
             write!(f, "\n")?;
         }
@@ -940,7 +1112,7 @@ impl<'tcx> WitnessStack<'tcx> {
 /// Represents a set of pattern-tuples that are witnesses of non-exhaustiveness for error
 /// reporting. This has similar invariants as `Matrix` does.
 ///
-/// The `WitnessMatrix` returned by [`compute_exhaustiveness_and_reachability`] obeys the invariant
+/// The `WitnessMatrix` returned by [`compute_exhaustiveness_and_usefulness`] obeys the invariant
 /// that the union of the input `Matrix` and the output `WitnessMatrix` together matches the type
 /// exhaustively.
 ///
@@ -1029,7 +1201,7 @@ impl<'tcx> WitnessMatrix<'tcx> {
 /// The core of the algorithm.
 ///
 /// This recursively computes witnesses of the non-exhaustiveness of `matrix` (if any). Also tracks
-/// usefulness of each row in the matrix (in `row.reachable`). We track reachability of each
+/// usefulness of each row in the matrix (in `row.useful`). We track usefulness of each
 /// subpattern using interior mutability in `DeconstructedPat`.
 ///
 /// The input `Matrix` and the output `WitnessMatrix` together match the type exhaustively.
@@ -1038,10 +1210,10 @@ impl<'tcx> WitnessMatrix<'tcx> {
 /// - specialization, where we dig into the rows that have a specific constructor and call ourselves
 ///     recursively;
 /// - unspecialization, where we lift the results from the previous step into results for this step
-///     (using `apply_constructor` and by updating `row.reachable` for each parent row).
+///     (using `apply_constructor` and by updating `row.useful` for each parent row).
 /// This is all explained at the top of the file.
 #[instrument(level = "debug", skip(cx, is_top_level), ret)]
-fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
+fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
     is_top_level: bool,
@@ -1050,13 +1222,13 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
 
     let Some(ty) = matrix.head_ty() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
-        // A row is reachable iff it has no (unguarded) rows above it.
+        // A row is useful iff it has no (unguarded) rows above it.
         for row in matrix.rows_mut() {
-            // All rows are reachable until we find one without a guard.
-            row.reachable = true;
+            // All rows are useful until they're not.
+            row.useful = true;
+            // When there's an unguarded row, the match is exhaustive and any subsequent row is not
+            // useful.
             if !row.is_under_guard {
-                // There's an unguarded row, so the match is exhaustive, and any subsequent row is
-                // unreachable.
                 return WitnessMatrix::empty();
             }
         }
@@ -1067,26 +1239,37 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
     debug!("ty: {ty:?}");
     let pcx = &PatCtxt { cx, ty, is_top_level };
 
+    // Whether the place/column we are inspecting is known to contain valid data.
+    let place_validity = matrix.place_validity[0];
+    // For backwards compability we allow omitting some empty arms that we ideally shouldn't.
+    let place_validity = place_validity.allow_omitting_side_effecting_arms();
+
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let split_set = ConstructorSet::for_ty(pcx.cx, pcx.ty).split(pcx, ctors);
-
+    let split_set = ConstructorSet::for_ty(cx, ty).split(pcx, ctors);
     let all_missing = split_set.present.is_empty();
-    let always_report_all = is_top_level && !IntRange::is_integral(pcx.ty);
-    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
-    let report_individual_missing_ctors = always_report_all || !all_missing;
 
+    // Build the set of constructors we will specialize with. It must cover the whole type.
     let mut split_ctors = split_set.present;
-    let mut only_report_missing = false;
     if !split_set.missing.is_empty() {
         // We need to iterate over a full set of constructors, so we add `Missing` to represent the
         // missing ones. This is explained under "Constructor Splitting" at the top of this file.
         split_ctors.push(Constructor::Missing);
-        // For diagnostic purposes we choose to only report the constructors that are missing. Since
-        // `Missing` matches only the wildcard rows, it matches fewer rows than any normal
-        // constructor and is therefore guaranteed to result in more witnesses. So skipping the
-        // other constructors does not jeopardize correctness.
-        only_report_missing = true;
+    } else if !split_set.missing_empty.is_empty() && !place_validity.is_known_valid() {
+        // The missing empty constructors are reachable if the place can contain invalid data.
+        split_ctors.push(Constructor::Missing);
+    }
+
+    // Decide what constructors to report.
+    let always_report_all = is_top_level && !IntRange::is_integral(pcx.ty);
+    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
+    let report_individual_missing_ctors = always_report_all || !all_missing;
+    // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
+    // split_ctors.contains(Missing)`. The converse usually holds except in the
+    // `MaybeInvalidButAllowOmittingArms` backwards-compatibility case.
+    let mut missing_ctors = split_set.missing;
+    if !place_validity.allows_omitting_empty_arms() {
+        missing_ctors.extend(split_set.missing_empty);
     }
 
     let mut ret = WitnessMatrix::empty();
@@ -1095,14 +1278,22 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
         // Dig into rows that match `ctor`.
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_reachability(cx, &mut spec_matrix, false)
+            compute_exhaustiveness_and_usefulness(cx, &mut spec_matrix, false)
         });
 
-        if !only_report_missing || matches!(ctor, Constructor::Missing) {
+        let counts_for_exhaustiveness = match ctor {
+            Constructor::Missing => !missing_ctors.is_empty(),
+            // If there are missing constructors we'll report those instead. Since `Missing` matches
+            // only the wildcard rows, it matches fewer rows than this constructor, and is therefore
+            // guaranteed to result in the same or more witnesses. So skipping this does not
+            // jeopardize correctness.
+            _ => missing_ctors.is_empty(),
+        };
+        if counts_for_exhaustiveness {
             // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
             witnesses.apply_constructor(
                 pcx,
-                &split_set.missing,
+                &missing_ctors,
                 &ctor,
                 report_individual_missing_ctors,
             );
@@ -1113,14 +1304,14 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
         // A parent row is useful if any of its children is.
         for child_row in spec_matrix.rows() {
             let parent_row = &mut matrix.rows[child_row.parent_row];
-            parent_row.reachable = parent_row.reachable || child_row.reachable;
+            parent_row.useful = parent_row.useful || child_row.useful;
         }
     }
 
-    // Record that the subpattern is reachable.
+    // Record usefulness in the patterns.
     for row in matrix.rows() {
-        if row.reachable {
-            row.head().set_reachable();
+        if row.useful {
+            row.head().set_useful();
         }
     }
 
@@ -1130,8 +1321,8 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".
 /// This is used to traverse patterns column-by-column for lints. Despite similarities with
-/// [`compute_exhaustiveness_and_reachability`], this does a different traversal. Notably this is
-/// linear in the depth of patterns, whereas `compute_exhaustiveness_and_reachability` is worst-case
+/// [`compute_exhaustiveness_and_usefulness`], this does a different traversal. Notably this is
+/// linear in the depth of patterns, whereas `compute_exhaustiveness_and_usefulness` is worst-case
 /// exponential (exhaustiveness is NP-complete). The core difference is that we treat sub-columns
 /// separately.
 ///
@@ -1228,7 +1419,7 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return Vec::new();
     };
-    let pcx = &PatCtxt { cx, ty, is_top_level: false };
+    let pcx = &PatCtxt::new_dummy(cx, ty);
 
     let set = column.analyze_ctors(pcx);
     if set.present.is_empty() {
@@ -1277,7 +1468,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return;
     };
-    let pcx = &PatCtxt { cx, ty, is_top_level: false };
+    let pcx = &PatCtxt::new_dummy(cx, ty);
 
     let set = column.analyze_ctors(pcx);
 
@@ -1351,37 +1542,38 @@ pub(crate) struct MatchArm<'p, 'tcx> {
     pub(crate) has_guard: bool,
 }
 
-/// Indicates whether or not a given arm is reachable.
+/// Indicates whether or not a given arm is useful.
 #[derive(Clone, Debug)]
-pub(crate) enum Reachability {
-    /// The arm is reachable. This additionally carries a set of or-pattern branches that have been
-    /// found to be unreachable despite the overall arm being reachable. Used only in the presence
-    /// of or-patterns, otherwise it stays empty.
-    Reachable(Vec<Span>),
-    /// The arm is unreachable.
-    Unreachable,
+pub(crate) enum Usefulness {
+    /// The arm is useful. This additionally carries a set of or-pattern branches that have been
+    /// found to be redundant despite the overall arm being useful. Used only in the presence of
+    /// or-patterns, otherwise it stays empty.
+    Useful(Vec<Span>),
+    /// The arm is redundant and can be removed without changing the behavior of the match
+    /// expression.
+    Redundant,
 }
 
-/// The output of checking a match for exhaustiveness and arm reachability.
+/// The output of checking a match for exhaustiveness and arm usefulness.
 pub(crate) struct UsefulnessReport<'p, 'tcx> {
-    /// For each arm of the input, whether that arm is reachable after the arms above it.
-    pub(crate) arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
+    /// For each arm of the input, whether that arm is useful after the arms above it.
+    pub(crate) arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Usefulness)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     pub(crate) non_exhaustiveness_witnesses: Vec<WitnessPat<'tcx>>,
 }
 
 /// The entrypoint for this file. Computes whether a match is exhaustive and which of its arms are
-/// reachable.
+/// useful.
 #[instrument(skip(cx, arms), level = "debug")]
 pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::new(cx, arms, scrut_ty);
-    let non_exhaustiveness_witnesses =
-        compute_exhaustiveness_and_reachability(cx, &mut matrix, true);
+    let scrut_validity = ValidityConstraint::from_bool(cx.known_valid_scrutinee);
+    let mut matrix = Matrix::new(cx, arms, scrut_ty, scrut_validity);
+    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix, true);
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
@@ -1389,12 +1581,13 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
         .copied()
         .map(|arm| {
             debug!(?arm);
-            let reachability = if arm.pat.is_reachable() {
-                Reachability::Reachable(arm.pat.unreachable_spans())
+            // We warn when a pattern is not useful.
+            let usefulness = if arm.pat.is_useful() {
+                Usefulness::Useful(arm.pat.redundant_spans())
             } else {
-                Reachability::Unreachable
+                Usefulness::Redundant
             };
-            (arm, reachability)
+            (arm, usefulness)
         })
         .collect();
     let report = UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses };
@@ -1436,7 +1629,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
                 if !matches!(lint_level, rustc_session::lint::Level::Allow) {
                     let decorator = NonExhaustiveOmittedPatternLintOnArm {
                         lint_span: lint_level_source.span(),
-                        suggest_lint_on_match: cx.match_span.map(|span| span.shrink_to_lo()),
+                        suggest_lint_on_match: cx.whole_match_span.map(|span| span.shrink_to_lo()),
                         lint_level: lint_level.as_str(),
                         lint_name: "non_exhaustive_omitted_patterns",
                     };

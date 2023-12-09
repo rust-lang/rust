@@ -1,27 +1,3 @@
-error: unreachable pattern
-  --> $DIR/slice_of_empty.rs:14:9
-   |
-LL |         &[_] => (),
-   |         ^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/slice_of_empty.rs:3:9
-   |
-LL | #![deny(unreachable_patterns)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/slice_of_empty.rs:15:9
-   |
-LL |         &[_, _, ..] => (),
-   |         ^^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/slice_of_empty.rs:20:9
-   |
-LL |         &[_] => (),
-   |         ^^^^
-
 error[E0004]: non-exhaustive patterns: `&[]` not covered
   --> $DIR/slice_of_empty.rs:18:11
    |
@@ -31,9 +7,10 @@ LL |     match nevers {
    = note: the matched value is of type `&[!]`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         &[_] => (), &[] => todo!(),
-   |                   ++++++++++++++++
+LL ~         &[_] => (),
+LL ~         &[] => todo!(),
+   |
 
-error: aborting due to 4 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0004`.
