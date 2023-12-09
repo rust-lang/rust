@@ -83,6 +83,7 @@ pub trait Printer<'tcx>: Sized {
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
+        params: &[ty::GenericParamDef],
     ) -> Result<(), PrintError>;
 
     // Defaults (should not be overridden):
@@ -141,10 +142,12 @@ pub trait Printer<'tcx>: Sized {
                         // on top of the same path, but without its own generics.
                         _ => {
                             if !generics.params.is_empty() && args.len() >= generics.count() {
-                                let args = generics.own_args_no_defaults(self.tcx(), args);
+                                let (args, params) =
+                                    generics.own_args_no_defaults(self.tcx(), args);
                                 return self.path_generic_args(
                                     |cx| cx.print_def_path(def_id, parent_args),
                                     args,
+                                    params,
                                 );
                             }
                         }

@@ -641,6 +641,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
+                _params: &[ty::GenericParamDef],
             ) -> Result<(), PrintError> {
                 print_prefix(self)
             }
@@ -1236,9 +1237,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let did1 = def1.did();
                 let did2 = def2.did();
-                let sub_no_defaults_1 =
+                let (sub_no_defaults_1, _) =
                     self.tcx.generics_of(did1).own_args_no_defaults(self.tcx, sub1);
-                let sub_no_defaults_2 =
+                let (sub_no_defaults_2, _) =
                     self.tcx.generics_of(did2).own_args_no_defaults(self.tcx, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 let path1 = self.tcx.def_path_str(did1);

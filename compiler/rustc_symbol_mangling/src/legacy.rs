@@ -342,6 +342,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
+        _params: &[ty::GenericParamDef],
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
 
