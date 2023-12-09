@@ -76,6 +76,13 @@ impl Debug for CovTerm {
 
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum CoverageKind {
+    /// Marks a span that might otherwise not be represented in MIR, so that
+    /// coverage instrumentation can associate it with its enclosing block/BCB.
+    ///
+    /// Only used by the `InstrumentCoverage` pass, and has no effect during
+    /// codegen.
+    SpanMarker,
+
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
     /// This is eventually lowered to `llvm.instrprof.increment` in LLVM IR.
@@ -99,6 +106,7 @@ impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use CoverageKind::*;
         match self {
+            SpanMarker => write!(fmt, "SpanMarker"),
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
         }

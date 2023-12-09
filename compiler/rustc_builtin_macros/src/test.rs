@@ -541,8 +541,8 @@ fn check_test_signature(
         return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
     }
 
-    if let Some(coro_kind) = f.sig.header.coroutine_kind {
-        match coro_kind {
+    if let Some(coroutine_kind) = f.sig.header.coroutine_kind {
+        match coroutine_kind {
             ast::CoroutineKind::Async { span, .. } => {
                 return Err(sd.emit_err(errors::TestBadFn {
                     span: i.span,
