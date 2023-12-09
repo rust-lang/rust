@@ -2880,11 +2880,15 @@ define_print_and_forward_display! {
     }
 
     TraitPredPrintModifiersAndPath<'tcx> {
-        // FIXME(effects) print `~const` here
+        if let Some(idx) = cx.tcx().generics_of(self.0.trait_ref.def_id).host_effect_index
+        {
+            if self.0.trait_ref.args.const_at(idx) != cx.tcx().consts.true_ {
+                p!("~const ");
+            }
+        }
         if let ty::ImplPolarity::Negative = self.0.polarity {
             p!("!")
         }
-
         p!(print(self.0.trait_ref.print_only_trait_path()));
     }
 
@@ -2919,7 +2923,6 @@ define_print_and_forward_display! {
                 p!("~const ");
             }
         }
-        // FIXME(effects) print `~const` here
         if let ty::ImplPolarity::Negative = self.polarity {
             p!("!");
         }

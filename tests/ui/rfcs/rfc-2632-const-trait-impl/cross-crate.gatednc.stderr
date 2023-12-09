@@ -2,7 +2,7 @@ error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrai
   --> $DIR/cross-crate.rs:17:14
    |
 LL |     NonConst.func();
-   |              ^^^^ the trait `cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
+   |              ^^^^ the trait `~const cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
    |
    = help: the trait `cross_crate::MyTrait` is implemented for `cross_crate::NonConst`
 
