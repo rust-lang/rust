@@ -267,7 +267,7 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
                         return true;
                     }
                 },
-                (GenericArgKind::Const(_), GenericArgKind::Const(_)) => (),
+                (GenericArgKind::Const(..), GenericArgKind::Const(..)) => (),
                 _ => return true,
             }
         }

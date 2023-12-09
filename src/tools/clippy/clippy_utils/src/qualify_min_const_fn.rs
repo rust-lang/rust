@@ -55,7 +55,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
 
             // No constraints on lifetimes or constants, except potentially
             // constants' types, but `walk` will get to them as well.
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_, _) => continue,
         };
 
         match ty.kind() {

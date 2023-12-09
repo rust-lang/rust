@@ -65,7 +65,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_, _) => false,
     })
 }
 
@@ -127,7 +127,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
 
                 false
             },
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_, _) => false,
         })
     }
 
@@ -562,7 +562,7 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
                 .iter()
                 .zip(args_b.iter())
                 .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
-                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
+                    (GenericArgKind::Const(inner_a, _), GenericArgKind::Const(inner_b, _)) => inner_a == inner_b,
                     (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
                         same_type_and_consts(type_a, type_b)
                     },
@@ -1080,7 +1080,7 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
             .find(|(_, (param, arg))| match (param, arg) {
                 (GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
                 | (GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
-                | (GenericParamDefKind::Const { .. }, GenericArgKind::Const(_)) => false,
+                | (GenericParamDefKind::Const { .. }, GenericArgKind::Const(_, _)) => false,
                 (
                     GenericParamDefKind::Lifetime
                     | GenericParamDefKind::Type { .. }
