@@ -634,7 +634,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Resume argument type: `ResumeTy`
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::Async,
-            span,
+            self.lower_span(span),
             Some(self.allow_gen_future.clone()),
         );
         let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span);
@@ -766,7 +766,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Resume argument type: `ResumeTy`
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::Async,
-            span,
+            self.lower_span(span),
             Some(self.allow_gen_future.clone()),
         );
         let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span);
