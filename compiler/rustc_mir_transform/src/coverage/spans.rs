@@ -319,29 +319,16 @@ impl<'a> CoverageSpansGenerator<'a> {
             }
         }
 
-        let prev = self.take_prev();
-        debug!("    AT END, adding last prev={prev:?}");
-
         // Drain any remaining dups into the output.
         for dup in self.pending_dups.drain(..) {
             debug!("    ...adding at least one pending dup={:?}", dup);
             self.refined_spans.push(dup);
         }
 
-        // Async functions wrap a closure that implements the body to be executed. The enclosing
-        // function is called and returns an `impl Future` without initially executing any of the
-        // body. To avoid showing the return from the enclosing function as a "covered" return from
-        // the closure, the enclosing function's `TerminatorKind::Return`s `CoverageSpan` is
-        // excluded. The closure's `Return` is the only one that will be counted. This provides
-        // adequate coverage, and more intuitive counts. (Avoids double-counting the closing brace
-        // of the function body.)
-        let body_ends_with_closure = if let Some(last_covspan) = self.refined_spans.last() {
-            last_covspan.is_closure && last_covspan.span.hi() == self.body_span.hi()
-        } else {
-            false
-        };
-
-        if !body_ends_with_closure {
+        // There is usually a final span remaining in `prev` after the loop ends,
+        // so add it to the output as well.
+        if let Some(prev) = self.some_prev.take() {
+            debug!("    AT END, adding last prev={prev:?}");
             self.refined_spans.push(prev);
         }
 
@@ -398,38 +385,36 @@ impl<'a> CoverageSpansGenerator<'a> {
         self.refined_spans.push(macro_name_cov);
     }
 
+    #[track_caller]
     fn curr(&self) -> &CoverageSpan {
-        self.some_curr
-            .as_ref()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
+        self.some_curr.as_ref().unwrap_or_else(|| bug!("some_curr is None (curr)"))
     }
 
+    #[track_caller]
     fn curr_mut(&mut self) -> &mut CoverageSpan {
-        self.some_curr
-            .as_mut()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
+        self.some_curr.as_mut().unwrap_or_else(|| bug!("some_curr is None (curr_mut)"))
     }
 
     /// If called, then the next call to `next_coverage_span()` will *not* update `prev` with the
     /// `curr` coverage span.
+    #[track_caller]
     fn take_curr(&mut self) -> CoverageSpan {
-        self.some_curr.take().unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
+        self.some_curr.take().unwrap_or_else(|| bug!("some_curr is None (take_curr)"))
     }
 
+    #[track_caller]
     fn prev(&self) -> &CoverageSpan {
-        self.some_prev
-            .as_ref()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_prev"))
+        self.some_prev.as_ref().unwrap_or_else(|| bug!("some_prev is None (prev)"))
     }
 
+    #[track_caller]
     fn prev_mut(&mut self) -> &mut CoverageSpan {
-        self.some_prev
-            .as_mut()
-            .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_prev"))
+        self.some_prev.as_mut().unwrap_or_else(|| bug!("some_prev is None (prev_mut)"))
     }
 
+    #[track_caller]
     fn take_prev(&mut self) -> CoverageSpan {
-        self.some_prev.take().unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_prev"))
+        self.some_prev.take().unwrap_or_else(|| bug!("some_prev is None (take_prev)"))
     }
 
     /// If there are `pending_dups` but `prev` is not a matching dup (`prev.span` doesn't match the
