@@ -3010,9 +3010,9 @@ checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.63"
+version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b368fba921b0dce7e60f5e04ec15e565b3303972b42bcfde1d0713b881959eb"
+checksum = "39278fbbf5fb4f646ce651690877f89d1c5811a3d4acb27700c1cb3cdb78fd3b"
 dependencies = [
  "unicode-ident",
 ]
@@ -3068,9 +3068,8 @@ checksum = "07589615d719a60c8dd8a4622e7946465dfef20d1a428f969e3443e7386d5f45"
 
 [[package]]
 name = "quote"
-version = "1.0.29"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "573015e8ab27661678357f27dc26460738fd2b6c86e46f386fde94cb5d913105"
+version = "1.0.33"
+source = "git+https://github.com/pitaj/quote#44feebf0594b255a511ff20890a7acbf4d6aeed1"
 dependencies = [
  "proc-macro2",
 ]
@@ -3353,11 +3352,10 @@ dependencies = [
 [[package]]
 name = "rustc-rayon"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb81aadc8837ca6ecebe0fe1353f15df83b3b3cc2cf7a8afd571bc22aa121710"
+source = "git+https://github.com/pitaj/rustc-rayon#e76e554512ce25abb48f4118576ede5d7a457918"
 dependencies = [
  "either",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.5.0 (git+https://github.com/pitaj/rustc-rayon)",
 ]
 
 [[package]]
@@ -3365,6 +3363,17 @@ name = "rustc-rayon-core"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67668daaf00e359c126f6dcb40d652d89b458a008c8afa727a42a2d20fca0b7f"
+dependencies = [
+ "crossbeam-channel",
+ "crossbeam-deque",
+ "crossbeam-utils",
+ "num_cpus",
+]
+
+[[package]]
+name = "rustc-rayon-core"
+version = "0.5.0"
+source = "git+https://github.com/pitaj/rustc-rayon#e76e554512ce25abb48f4118576ede5d7a457918"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-deque",
@@ -3701,7 +3710,7 @@ dependencies = [
  "portable-atomic",
  "rustc-hash",
  "rustc-rayon",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_arena",
  "rustc_graphviz",
  "rustc_index",
@@ -4027,7 +4036,7 @@ version = "0.0.0"
 dependencies = [
  "libloading 0.7.4",
  "rustc-rayon",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_passes",
@@ -4192,7 +4201,7 @@ dependencies = [
  "measureme",
  "polonius-engine",
  "rustc-rayon",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4386,7 +4395,7 @@ version = "0.0.0"
 dependencies = [
  "field-offset",
  "measureme",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4405,7 +4414,7 @@ name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
  "parking_lot 0.12.1",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
