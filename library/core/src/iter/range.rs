@@ -599,6 +599,9 @@ macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl ExactSizeIterator for RangeIter<$t> { }
+
+        #[stable(feature = "new_range", since = "1.0.0")]
+        impl ExactSizeIterator for RangeIterMut<'_, $t> { }
     )*)
 }
 
@@ -622,6 +625,9 @@ macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "inclusive_range", since = "1.26.0")]
         impl ExactSizeIterator for RangeInclusiveIter<$t> { }
+
+        #[stable(feature = "new_range", since = "1.0.0")]
+        impl ExactSizeIterator for RangeInclusiveIterMut<'_, $t> { }
     )*)
 }
 
@@ -839,6 +845,10 @@ impl<'a, Idx: Step> Iterator for RangeIterMut<'a, Idx> {
 
         out
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
 }
 #[stable(feature = "new_range", since = "1.0.0")]
 impl<'a, Idx: Step> DoubleEndedIterator for RangeIterMut<'a, Idx> {
@@ -952,6 +962,10 @@ impl<'a, Idx: Step> Iterator for RangeFromIterMut<'a, Idx> {
         self.range.start = iter.inner.start;
 
         out
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
     }
 }
 
@@ -1154,6 +1168,10 @@ impl<'a, Idx: Step> Iterator for RangeInclusiveIterMut<'a, Idx> {
         }
 
         out
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
     }
 }
 #[stable(feature = "new_range", since = "1.0.0")]
@@ -1494,7 +1512,7 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 
     /// Alias for `.iter_mut()`
     ///
-    /// See [`Iterator::iter_mut`]
+    /// See [`iter_mut`](Self::iter_mut)
     #[stable(feature = "new_range", since = "1.0.0")]
     #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn by_ref(&mut self) -> <&mut Self as IntoIterator>::IntoIter {
@@ -1998,7 +2016,7 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 
     /// Shorthand for `.iter_mut().advance_back_by(...)`
     ///
-    /// See [`Iterator::advance_back_by`]
+    /// See [`DoubleEndedIterator::advance_back_by`]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
@@ -2007,7 +2025,7 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 
     /// Shorthand for `.iter_mut().nth_back(...)`
     ///
-    /// See [`Iterator::nth_back`]
+    /// See [`DoubleEndedIterator::nth_back`]
     #[stable(feature = "new_range", since = "1.0.0")]
     #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn nth_back(&mut self, n: usize) -> Option<Idx> {
@@ -2016,7 +2034,7 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 
     /// Shorthand for `.iter_mut().try_rfold(...)`
     ///
-    /// See [`Iterator::try_rfold`]
+    /// See [`DoubleEndedIterator::try_rfold`]
     #[stable(feature = "new_range", since = "1.0.0")]
     #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
@@ -2029,7 +2047,7 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 
     /// Shorthand for `.into_iter().rfold(...)`
     ///
-    /// See [`Iterator::rfold`]
+    /// See [`DoubleEndedIterator::rfold`]
     #[stable(feature = "new_range", since = "1.0.0")]
     pub fn rfold<B, F>(self, init: B, f: F) -> B
     where
@@ -2040,7 +2058,7 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 
     /// Shorthand for `.iter_mut().rfind(...)`
     ///
-    /// See [`Iterator::rfind`]
+    /// See [`DoubleEndedIterator::rfind`]
     #[stable(feature = "new_range", since = "1.0.0")]
     #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn rfind<P>(&mut self, predicate: P) -> Option<Idx>
