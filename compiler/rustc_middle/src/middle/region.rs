@@ -349,10 +349,6 @@ impl ScopeTree {
         }
     }
 
-    pub fn opt_destruction_scope(&self, n: hir::ItemLocalId) -> Option<Scope> {
-        self.destruction_scopes.get(&n).cloned()
-    }
-
     pub fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.item_local_id());

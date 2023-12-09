@@ -536,27 +536,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         (then_block, else_block)
     }
 
-    pub(crate) fn in_opt_scope<F, R>(
-        &mut self,
-        opt_scope: Option<(region::Scope, SourceInfo)>,
-        f: F,
-    ) -> BlockAnd<R>
-    where
-        F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
-    {
-        debug!("in_opt_scope(opt_scope={:?})", opt_scope);
-        if let Some(region_scope) = opt_scope {
-            self.push_scope(region_scope);
-        }
-        let mut block;
-        let rv = unpack!(block = f(self));
-        if let Some(region_scope) = opt_scope {
-            unpack!(block = self.pop_scope(region_scope, block));
-        }
-        debug!("in_scope: exiting opt_scope={:?} block={:?}", opt_scope, block);
-        block.and(rv)
-    }
-
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     #[instrument(skip(self, f), level = "debug")]

@@ -54,7 +54,7 @@ impl<'tcx> Cx<'tcx> {
 
         trace!(?expr.ty, "after adjustments");
 
-        // Next, wrap this up in the expr's scope.
+        // Finally, wrap this up in the expr's scope.
         expr = Expr {
             temp_lifetime: expr.temp_lifetime,
             ty: expr.ty,
@@ -65,22 +65,6 @@ impl<'tcx> Cx<'tcx> {
                 lint_level: LintLevel::Explicit(hir_expr.hir_id),
             },
         };
-
-        // Finally, create a destruction scope, if any.
-        if let Some(region_scope) =
-            self.region_scope_tree.opt_destruction_scope(hir_expr.hir_id.local_id)
-        {
-            expr = Expr {
-                temp_lifetime: expr.temp_lifetime,
-                ty: expr.ty,
-                span: hir_expr.span,
-                kind: ExprKind::Scope {
-                    region_scope,
-                    value: self.thir.exprs.push(expr),
-                    lint_level: LintLevel::Inherited,
-                },
-            };
-        }
 
         // OK, all done!
         self.thir.exprs.push(expr)
