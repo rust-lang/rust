@@ -22,7 +22,7 @@
 //[thin]compile-flags: -C lto=thin
 //[fat]compile-flags: -C lto=fat
 
-#![feature(core_panic)]
+#![feature(panic_internals)]
 
 // (For some reason, reproducing the LTO issue requires pulling in std
 // explicitly this way.)
