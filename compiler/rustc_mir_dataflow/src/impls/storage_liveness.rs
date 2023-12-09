@@ -72,7 +72,7 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
 
     fn call_return_effect(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
+        _trans: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
@@ -144,7 +144,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
 
     fn call_return_effect(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
+        _trans: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
@@ -238,7 +238,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 
     fn before_terminator_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         terminator: &Terminator<'tcx>,
         loc: Location,
     ) {
@@ -334,7 +334,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {

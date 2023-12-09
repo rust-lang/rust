@@ -11,101 +11,88 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::ResultsVisitable;
 use rustc_mir_dataflow::{self, fmt::DebugWithContext, GenKill};
-use rustc_mir_dataflow::{Analysis, Direction, Results};
+use rustc_mir_dataflow::{Analysis, AnalysisDomain, Results};
 use std::fmt;
 
 use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 
-/// A tuple with named fields that can hold either the results or the transient state of the
-/// dataflow analyses used by the borrow checker.
-#[derive(Debug)]
-pub struct BorrowckAnalyses<B, U, E> {
-    pub borrows: B,
-    pub uninits: U,
-    pub ever_inits: E,
-}
-
 /// The results of the dataflow analyses used by the borrow checker.
-pub type BorrowckResults<'mir, 'tcx> = BorrowckAnalyses<
-    Results<'tcx, Borrows<'mir, 'tcx>>,
-    Results<'tcx, MaybeUninitializedPlaces<'mir, 'tcx>>,
-    Results<'tcx, EverInitializedPlaces<'mir, 'tcx>>,
->;
+pub struct BorrowckResults<'mir, 'tcx> {
+    pub(crate) borrows: Results<'tcx, Borrows<'mir, 'tcx>>,
+    pub(crate) uninits: Results<'tcx, MaybeUninitializedPlaces<'mir, 'tcx>>,
+    pub(crate) ever_inits: Results<'tcx, EverInitializedPlaces<'mir, 'tcx>>,
+}
 
 /// The transient state of the dataflow analyses used by the borrow checker.
-pub type BorrowckFlowState<'mir, 'tcx> =
-    <BorrowckResults<'mir, 'tcx> as ResultsVisitable<'tcx>>::FlowState;
-
-macro_rules! impl_visitable {
-    ( $(
-        $T:ident { $( $field:ident : $A:ident ),* $(,)? }
-    )* ) => { $(
-        impl<'tcx, $($A),*, D: Direction> ResultsVisitable<'tcx> for $T<$( Results<'tcx, $A> ),*>
-        where
-            $( $A: Analysis<'tcx, Direction = D>, )*
-        {
-            type Direction = D;
-            type FlowState = $T<$( $A::Domain ),*>;
-
-            fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
-                $T {
-                    $( $field: self.$field.analysis.bottom_value(body) ),*
-                }
-            }
-
-            fn reset_to_block_entry(
-                &self,
-                state: &mut Self::FlowState,
-                block: BasicBlock,
-            ) {
-                $( state.$field.clone_from(&self.$field.entry_set_for_block(block)); )*
-            }
-
-            fn reconstruct_before_statement_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                stmt: &mir::Statement<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_before_statement_effect(&mut state.$field, stmt, loc); )*
-            }
-
-            fn reconstruct_statement_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                stmt: &mir::Statement<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_statement_effect(&mut state.$field, stmt, loc); )*
-            }
-
-            fn reconstruct_before_terminator_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                term: &mir::Terminator<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_before_terminator_effect(&mut state.$field, term, loc); )*
-            }
-
-            fn reconstruct_terminator_effect(
-                &mut self,
-                state: &mut Self::FlowState,
-                term: &mir::Terminator<'tcx>,
-                loc: Location,
-            ) {
-                $( self.$field.analysis
-                    .apply_terminator_effect(&mut state.$field, term, loc); )*
-            }
-        }
-    )* }
+#[derive(Debug)]
+pub struct BorrowckFlowState<'mir, 'tcx> {
+    pub(crate) borrows: <Borrows<'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
+    pub(crate) uninits: <MaybeUninitializedPlaces<'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
+    pub(crate) ever_inits: <EverInitializedPlaces<'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
 }
 
-impl_visitable! {
-    BorrowckAnalyses { borrows: B, uninits: U, ever_inits: E }
+impl<'mir, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'mir, 'tcx> {
+    // All three analyses are forward, but we have to use just one here.
+    type Direction = <Borrows<'mir, 'tcx> as AnalysisDomain<'tcx>>::Direction;
+    type FlowState = BorrowckFlowState<'mir, 'tcx>;
+
+    fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
+        BorrowckFlowState {
+            borrows: self.borrows.analysis.bottom_value(body),
+            uninits: self.uninits.analysis.bottom_value(body),
+            ever_inits: self.ever_inits.analysis.bottom_value(body),
+        }
+    }
+
+    fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock) {
+        state.borrows.clone_from(&self.borrows.entry_set_for_block(block));
+        state.uninits.clone_from(&self.uninits.entry_set_for_block(block));
+        state.ever_inits.clone_from(&self.ever_inits.entry_set_for_block(block));
+    }
+
+    fn reconstruct_before_statement_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        stmt: &mir::Statement<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_before_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.analysis.apply_before_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.analysis.apply_before_statement_effect(&mut state.ever_inits, stmt, loc);
+    }
+
+    fn reconstruct_statement_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        stmt: &mir::Statement<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.analysis.apply_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.analysis.apply_statement_effect(&mut state.ever_inits, stmt, loc);
+    }
+
+    fn reconstruct_before_terminator_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        term: &mir::Terminator<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_before_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.analysis.apply_before_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.analysis.apply_before_terminator_effect(&mut state.ever_inits, term, loc);
+    }
+
+    fn reconstruct_terminator_effect(
+        &mut self,
+        state: &mut Self::FlowState,
+        term: &mir::Terminator<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.analysis.apply_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.analysis.apply_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.analysis.apply_terminator_effect(&mut state.ever_inits, term, loc);
+    }
 }
 
 rustc_index::newtype_index! {
@@ -598,7 +585,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
 
     fn before_terminator_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
@@ -625,7 +612,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
 
     fn call_return_effect(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
+        _trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
