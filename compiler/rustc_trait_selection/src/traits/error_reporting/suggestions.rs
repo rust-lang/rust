@@ -3144,10 +3144,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
                     None
                     | Some(hir::CoroutineKind::Coroutine)
-                    | Some(hir::CoroutineKind::Gen(_))
-                    // FIXME(gen_blocks): This could be yield or await...
-                    | Some(hir::CoroutineKind::AsyncGen(_)) => "yield",
+                    | Some(hir::CoroutineKind::Gen(_)) => "yield",
                     Some(hir::CoroutineKind::Async(..)) => "await",
+                    Some(hir::CoroutineKind::AsyncGen(_)) => "yield`/`await",
                 };
                 err.note(format!(
                     "all values live across `{what}` must have a statically known size"

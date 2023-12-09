@@ -2450,6 +2450,14 @@ impl CoroutineKind {
         matches!(self, CoroutineKind::Gen { .. })
     }
 
+    pub fn closure_id(self) -> NodeId {
+        match self {
+            CoroutineKind::Async { closure_id, .. }
+            | CoroutineKind::Gen { closure_id, .. }
+            | CoroutineKind::AsyncGen { closure_id, .. } => closure_id,
+        }
+    }
+
     /// In this case this is an `async` or `gen` return, the `NodeId` for the generated `impl Trait`
     /// item.
     pub fn return_id(self) -> (NodeId, Span) {
