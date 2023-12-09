@@ -1,7 +1,7 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::{bin_op_folded, conditional_dot_product, round_all, round_first};
+use super::{conditional_dot_product, round_all, round_first, test_bits_masked};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -217,21 +217,18 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             // Used to implement the _mm_testz_si128, _mm_testc_si128
             // and _mm_testnzc_si128 functions.
-            // Tests `op & mask == 0`, `op & mask == mask` or
-            // `op & mask != 0 && op & mask != mask`
+            // Tests `(op & mask) == 0`, `(op & mask) == mask` or
+            // `(op & mask) != 0 && (op & mask) != mask`
             "ptestz" | "ptestc" | "ptestnzc" => {
                 let [op, mask] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let res = bin_op_folded(this, op, mask, true, |acc, op, mask| {
-                    let op = op.to_scalar().to_uint(op.layout.size)?;
-                    let mask = mask.to_scalar().to_uint(mask.layout.size)?;
-                    Ok(match unprefixed_name {
-                        "ptestz" => acc && (op & mask) == 0,
-                        "ptestc" => acc && (op & mask) == mask,
-                        "ptestnzc" => acc && (op & mask) != 0 && (op & mask) != mask,
-                        _ => unreachable!(),
-                    })
-                })?;
+                let (all_zero, masked_set) = test_bits_masked(this, op, mask)?;
+                let res = match unprefixed_name {
+                    "ptestz" => all_zero,
+                    "ptestc" => masked_set,
+                    "ptestnzc" => !all_zero && !masked_set,
+                    _ => unreachable!(),
+                };
 
                 this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
