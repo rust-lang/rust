@@ -860,14 +860,6 @@ impl<Idx: Step> ops::range::Range<Idx> {
     pub fn iter_mut(&mut self) -> RangeIterMut<'_, Idx> {
         RangeIterMut { range: self }
     }
-
-    /// Shorthand for `.iter_mut().next_back()`
-    ///
-    /// See [`DoubleEndedIterator::next_back`]
-    #[stable(feature = "new_range", since = "1.0.0")]
-    pub fn next_back(&mut self) -> Option<Idx> {
-        self.iter_mut().next_back()
-    }
 }
 
 #[stable(feature = "new_range", since = "1.0.0")]
@@ -1197,14 +1189,6 @@ impl<Idx: Step> ops::range::RangeInclusive<Idx> {
     pub fn iter_mut(&mut self) -> RangeInclusiveIterMut<'_, Idx> {
         RangeInclusiveIterMut { range: self }
     }
-
-    /// Shorthand for `.iter_mut().next_back()`
-    ///
-    /// See [`DoubleEndedIterator::next_back`]
-    #[stable(feature = "new_range", since = "1.0.0")]
-    pub fn next_back(&mut self) -> Option<Idx> {
-        self.iter_mut().next_back()
-    }
 }
 
 #[stable(feature = "new_range", since = "1.0.0")]
@@ -1225,9 +1209,20 @@ impl<Idx: Step> ops::range::$ty<Idx> {
     ///
     /// See [`Iterator::next`]
     #[stable(feature = "new_range", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn next(&mut self) -> Option<Idx> {
         self.iter_mut().next()
+    }
+
+    /// Shorthand for `.iter_mut().next_chunk::<N>()`.
+    ///
+    /// See [`Iterator::next_chunk`]
+    #[unstable(feature = "iter_next_chunk", reason = "recently added", issue = "98326")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn next_chunk<const N: usize>(
+        &mut self,
+    ) -> Result<[Idx; N], crate::array::IntoIter<Idx, N>> {
+        self.iter_mut().next_chunk()
     }
 
     /// Shorthand for `.into_iter().size_hint()`.
@@ -1254,20 +1249,30 @@ impl<Idx: Step> ops::range::$ty<Idx> {
         self.into_iter().last()
     }
 
-    /// Shorthand for `.into_iter().step_by(...)`.
+    /// Shorthand for `.iter_mut().advance_by(...)`.
     ///
-    /// See [`Iterator::step_by`]
-    #[stable(feature = "new_range", since = "1.0.0")]
-    pub fn step_by(self, step: usize) -> crate::iter::StepBy<<Self as IntoIterator>::IntoIter> {
-        self.into_iter().step_by(step)
+    /// See [`Iterator::advance_by`]
+    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        self.iter_mut().advance_by(n)
     }
 
     /// Shorthand for `.iter_mut().nth(...)`.
     ///
     /// See [`Iterator::nth`]
     #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn nth(&mut self, n: usize) -> Option<Idx> {
         self.iter_mut().nth(n)
+    }
+
+    /// Shorthand for `.into_iter().step_by(...)`.
+    ///
+    /// See [`Iterator::step_by`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn step_by(self, step: usize) -> crate::iter::StepBy<<Self as IntoIterator>::IntoIter> {
+        self.into_iter().step_by(step)
     }
 
     /// Shorthand for `.into_iter().chain(...)`
@@ -1446,6 +1451,28 @@ impl<Idx: Step> ops::range::$ty<Idx> {
         self.into_iter().flat_map(f)
     }
 
+    /// Shorthand for `.into_iter().flatten()`
+    ///
+    /// See [`Iterator::flatten`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn flatten(self) -> crate::iter::Flatten<<Self as IntoIterator>::IntoIter>
+    where
+        Idx: IntoIterator,
+    {
+        self.into_iter().flatten()
+    }
+
+    /// Shorthand for `.into_iter().map_windows()`
+    ///
+    /// See [`Iterator::map_windows`]
+    #[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+    pub fn map_windows<F, R, const N: usize>(self, f: F) -> crate::iter::MapWindows<<Self as IntoIterator>::IntoIter, F, N>
+    where
+        F: FnMut(&[Idx; N]) -> R,
+    {
+        self.into_iter().map_windows(f)
+    }
+
     /// Shorthand for `.into_iter().fuse()`
     ///
     /// See [`Iterator::fuse`]
@@ -1465,12 +1492,29 @@ impl<Idx: Step> ops::range::$ty<Idx> {
         self.into_iter().inspect(f)
     }
 
+    /// Alias for `.iter_mut()`
+    ///
+    /// See [`Iterator::iter_mut`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn by_ref(&mut self) -> <&mut Self as IntoIterator>::IntoIter {
+        self.iter_mut()
+    }
+
     /// Shorthand for `.into_iter().collect()`
     ///
     /// See [`Iterator::collect`]
     #[stable(feature = "new_range", since = "1.0.0")]
     pub fn collect<B: FromIterator<Idx>>(self) -> B {
         FromIterator::from_iter(self)
+    }
+
+    /// Shorthand for `.into_iter().collect_into(...)`
+    ///
+    /// See [`Iterator::collect_into`]
+    #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]
+    pub fn collect_into<E: Extend<Idx>>(self, collection: &mut E) -> &mut E {
+        self.into_iter().collect_into(collection)
     }
 
     /// Shorthand for `.into_iter().partition(...)`
@@ -1485,16 +1529,53 @@ impl<Idx: Step> ops::range::$ty<Idx> {
         self.into_iter().partition(f)
     }
 
+    /// Shorthand for `.into_iter().partition_in_place(...)`
+    ///
+    /// See [`Iterator::partition_in_place`]
+    #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "62543")]
+    pub fn partition_in_place<'a, T: 'a, P>(self, predicate: P) -> usize
+    where
+        <Self as IntoIterator>::IntoIter: DoubleEndedIterator<Item = &'a mut T>,
+        P: FnMut(&T) -> bool,
+    {
+        self.into_iter().partition_in_place(predicate)
+    }
+
+    /// Shorthand for `.into_iter().is_partitioned(...)`
+    ///
+    /// See [`Iterator::is_partitioned`]
+    #[unstable(feature = "iter_is_partitioned", reason = "new API", issue = "62544")]
+    pub fn is_partitioned<P>(self, predicate: P) -> bool
+    where
+        P: FnMut(Idx) -> bool,
+    {
+        self.into_iter().is_partitioned(predicate)
+    }
+
     /// Shorthand for `.into_iter().try_fold(...)`
     ///
     /// See [`Iterator::try_fold`]
     #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         F: FnMut(B, Idx) -> R,
         R: Try<Output = B>,
     {
         self.iter_mut().try_fold(init, f)
+    }
+
+    /// Shorthand for `.into_iter().try_for_each(...)`
+    ///
+    /// See [`Iterator::try_for_each`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn try_for_each<F, R>(&mut self, f: F) -> R
+    where
+        F: FnMut(Idx) -> R,
+        R: Try<Output = ()>,
+    {
+        self.iter_mut().try_for_each(f)
     }
 
     /// Shorthand for `.into_iter().fold(...)`
@@ -1519,11 +1600,25 @@ impl<Idx: Step> ops::range::$ty<Idx> {
         self.into_iter().reduce(f)
     }
 
+    /// Shorthand for `.into_iter().try_reduce(...)`
+    ///
+    /// See [`Iterator::try_reduce`]
+    #[unstable(feature = "iterator_try_reduce", reason = "new API", issue = "87053")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn try_reduce<F, R>(&mut self, f: F) -> ops::ChangeOutputType<R, Option<R::Output>>
+    where
+        F: FnMut(Idx, Idx) -> R,
+        R: Try<Output = Idx>,
+        R::Residual: ops::Residual<Option<Idx>>,
+    {
+        self.iter_mut().try_reduce(f)
+    }
+
     /// Shorthand for `.iter_mut().all(...)`
     ///
     /// See [`Iterator::all`]
     #[stable(feature = "new_range", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn all<F>(&mut self, f: F) -> bool
     where
         F: FnMut(Idx) -> bool,
@@ -1535,7 +1630,7 @@ impl<Idx: Step> ops::range::$ty<Idx> {
     ///
     /// See [`Iterator::any`]
     #[stable(feature = "new_range", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn any<F>(&mut self, f: F) -> bool
     where
         F: FnMut(Idx) -> bool,
@@ -1547,12 +1642,50 @@ impl<Idx: Step> ops::range::$ty<Idx> {
     ///
     /// See [`Iterator::find`]
     #[stable(feature = "new_range", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "can cause subtle bugs")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
     pub fn find<P>(&mut self, predicate: P) -> Option<Idx>
     where
         P: FnMut(&Idx) -> bool,
     {
         self.iter_mut().find(predicate)
+    }
+
+    /// Shorthand for `.into_iter().find_map(...)`
+    ///
+    /// See [`Iterator::find_map`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn find_map<B, F>(&mut self, f: F) -> Option<B>
+    where
+        F: FnMut(Idx) -> Option<B>,
+    {
+        self.iter_mut().find_map(f)
+    }
+
+    /// Shorthand for `.into_iter().try_find(...)`
+    ///
+    /// See [`Iterator::try_find`]
+    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn try_find<F, R>(&mut self, f: F) -> ops::ChangeOutputType<R, Option<Idx>>
+    where
+        F: FnMut(&Idx) -> R,
+        R: Try<Output = bool>,
+        R::Residual: ops::Residual<Option<Idx>>,
+    {
+        self.iter_mut().try_find(f)
+    }
+
+    /// Shorthand for `.into_iter().position(...)`
+    ///
+    /// See [`Iterator::position`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn position<P>(&mut self, predicate: P) -> Option<usize>
+    where
+        P: FnMut(Idx) -> bool,
+    {
+        self.iter_mut().position(predicate)
     }
 
     /// Shorthand for `.into_iter().max()`
@@ -1803,13 +1936,37 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 
     /// Shorthand for `.into_iter().is_sorted()`
     ///
-    /// See [`Iterator::ge`]
+    /// See [`Iterator::is_sorted`]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     pub fn is_sorted(self) -> bool
     where
         Idx: PartialOrd,
     {
         self.into_iter().is_sorted()
+    }
+
+    /// Shorthand for `.into_iter().is_sorted_by()`
+    ///
+    /// See [`Iterator::is_sorted_by`]
+    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    pub fn is_sorted_by<F>(self, compare: F) -> bool
+    where
+        F: FnMut(&Idx, &Idx) -> Option<Ordering>,
+    {
+        self.into_iter().is_sorted_by(compare)
+    }
+
+    /// Shorthand for `.into_iter().is_sorted()`
+    ///
+    /// See [`Iterator::ge`]
+    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[rustc_do_not_const_check]
+    pub fn is_sorted_by_key<F, K>(self, f: F) -> bool
+    where
+        F: FnMut(Idx) -> K,
+        K: PartialOrd,
+    {
+        self.into_iter().is_sorted_by_key(f)
     }
 
     /// Returns the length of the `Range`.
@@ -1825,3 +1982,89 @@ impl<Idx: Step> ops::range::$ty<Idx> {
 }
 
 iter_methods!(Range, RangeFrom, RangeInclusive);
+
+macro_rules! de_iter_methods {
+    ($($ty:ident => $iter_mut:ident),*) => {$(
+
+impl<Idx: Step> ops::range::$ty<Idx> {
+    /// Shorthand for `.iter_mut().next_back()`
+    ///
+    /// See [`DoubleEndedIterator::next_back`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn next_back(&mut self) -> Option<Idx> {
+        self.iter_mut().next_back()
+    }
+
+    /// Shorthand for `.iter_mut().advance_back_by(...)`
+    ///
+    /// See [`Iterator::advance_back_by`]
+    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        self.iter_mut().advance_back_by(n)
+    }
+
+    /// Shorthand for `.iter_mut().nth_back(...)`
+    ///
+    /// See [`Iterator::nth_back`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn nth_back(&mut self, n: usize) -> Option<Idx> {
+        self.iter_mut().nth_back(n)
+    }
+
+    /// Shorthand for `.iter_mut().try_rfold(...)`
+    ///
+    /// See [`Iterator::try_rfold`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Idx) -> R,
+        R: Try<Output = B>,
+    {
+        self.iter_mut().try_rfold(init, f)
+    }
+
+    /// Shorthand for `.into_iter().rfold(...)`
+    ///
+    /// See [`Iterator::rfold`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    pub fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Idx) -> B,
+    {
+        self.into_iter().rfold(init, f)
+    }
+
+    /// Shorthand for `.iter_mut().rfind(...)`
+    ///
+    /// See [`Iterator::rfind`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn rfind<P>(&mut self, predicate: P) -> Option<Idx>
+    where
+        P: FnMut(&Idx) -> bool,
+    {
+        self.iter_mut().rfind(predicate)
+    }
+
+    /// Shorthand for `.iter_mut().rposition(...)`
+    ///
+    /// See [`Iterator::rposition`]
+    #[stable(feature = "new_range", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", note = "range-experiment-mut-self")]
+    pub fn rposition<P>(&mut self, predicate: P) -> Option<usize>
+    where
+        P: FnMut(<$iter_mut<'_, Idx> as Iterator>::Item) -> bool,
+        for<'a> $iter_mut<'a, Idx>: ExactSizeIterator,
+    {
+        self.iter_mut().rposition(predicate)
+    }
+}
+
+    )*}
+}
+
+de_iter_methods!(Range => RangeIterMut, RangeInclusive => RangeInclusiveIterMut);
