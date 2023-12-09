@@ -56,6 +56,7 @@
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
     - [wasm32-wasi-preview1-threads](platform-support/wasm32-wasi-preview1-threads.md)
     - [wasm64-unknown-unknown](platform-support/wasm64-unknown-unknown.md)
+    - [\*-win7-windows-msvc](platform-support/win7-windows-msvc.md)
     - [x86_64-fortanix-unknown-sgx](platform-support/x86_64-fortanix-unknown-sgx.md)
     - [x86_64-unknown-none](platform-support/x86_64-unknown-none.md)
     - [x86_64h-apple-darwin](platform-support/x86_64h-apple-darwin.md)
