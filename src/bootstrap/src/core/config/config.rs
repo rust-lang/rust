@@ -1741,7 +1741,7 @@ impl Config {
         config
     }
 
-    pub(crate) fn dry_run(&self) -> bool {
+    pub fn dry_run(&self) -> bool {
         match self.dry_run {
             DryRun::Disabled => false,
             DryRun::SelfCheck | DryRun::UserSelected => true,
