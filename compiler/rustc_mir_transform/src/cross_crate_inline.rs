@@ -22,19 +22,24 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
+    // This just reproduces the logic from Instance::requires_inline.
+    match tcx.def_kind(def_id) {
+        DefKind::Ctor(..) | DefKind::Closure => return true,
+        DefKind::Fn | DefKind::AssocFn => {}
+        _ => return false,
+    }
+
+    // From this point on, it is valid to return true or false.
+    if tcx.sess.opts.unstable_opts.cross_crate_inline_threshold == InliningThreshold::Always {
+        return true;
+    }
+
     // Obey source annotations first; this is important because it means we can use
     // #[inline(never)] to force code generation.
     match codegen_fn_attrs.inline {
         InlineAttr::Never => return false,
         InlineAttr::Hint | InlineAttr::Always => return true,
         _ => {}
-    }
-
-    // This just reproduces the logic from Instance::requires_inline.
-    match tcx.def_kind(def_id) {
-        DefKind::Ctor(..) | DefKind::Closure => return true,
-        DefKind::Fn | DefKind::AssocFn => {}
-        _ => return false,
     }
 
     // Don't do any inference when incremental compilation is enabled; the additional inlining that
