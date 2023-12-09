@@ -196,7 +196,7 @@ impl Direction for Backward {
     {
         results.reset_to_block_entry(state, block);
 
-        vis.visit_block_end(results, state, block_data, block);
+        vis.visit_block_end(state);
 
         // Terminator
         let loc = Location { block, statement_index: block_data.statements.len() };
@@ -214,7 +214,7 @@ impl Direction for Backward {
             vis.visit_statement_after_primary_effect(results, state, stmt, loc);
         }
 
-        vis.visit_block_start(results, state, block_data, block);
+        vis.visit_block_start(state);
     }
 
     fn join_state_into_successors_of<'tcx, A>(
@@ -449,7 +449,7 @@ impl Direction for Forward {
     {
         results.reset_to_block_entry(state, block);
 
-        vis.visit_block_start(results, state, block_data, block);
+        vis.visit_block_start(state);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
@@ -466,7 +466,7 @@ impl Direction for Forward {
         results.reconstruct_terminator_effect(state, term, loc);
         vis.visit_terminator_after_primary_effect(results, state, term, loc);
 
-        vis.visit_block_end(results, state, block_data, block);
+        vis.visit_block_end(state);
     }
 
     fn join_state_into_successors_of<'tcx, A>(
