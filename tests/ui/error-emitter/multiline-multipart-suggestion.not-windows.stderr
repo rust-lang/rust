@@ -1,5 +1,5 @@
 [0m[1m[38;5;9merror[E0106][0m[0m[1m: missing lifetime specifier[0m
-[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:5:34[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:8:34[0m
 [0m   [0m[0m[1m[38;5;12m|[0m
 [0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mfn short(foo_bar: &Vec<&i32>) -> &i32 {[0m
 [0m   [0m[0m[1m[38;5;12m| [0m[0m                  [0m[0m[1m[38;5;12m----------[0m[0m     [0m[0m[1m[38;5;9m^[0m[0m [0m[0m[1m[38;5;9mexpected named lifetime parameter[0m
@@ -11,7 +11,7 @@
 [0m   [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[38;5;10m++++[0m[0m           [0m[0m[38;5;10m++[0m[0m      [0m[0m[38;5;10m++[0m[0m           [0m[0m[38;5;10m++[0m
 
 [0m[1m[38;5;9merror[E0106][0m[0m[1m: missing lifetime specifier[0m
-[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:12:6[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:15:6[0m
 [0m   [0m[0m[1m[38;5;12m|[0m
 [0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    foo_bar: &Vec<&i32>,[0m
 [0m   [0m[0m[1m[38;5;12m| [0m[0m             [0m[0m[1m[38;5;12m----------[0m
@@ -29,7 +29,7 @@
 [0m   [0m[0m[1m[38;5;12m|[0m
 
 [0m[1m[38;5;9merror[E0106][0m[0m[1m: missing lifetime specifier[0m
-[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:17:29[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/multiline-multipart-suggestion.rs:20:29[0m
 [0m   [0m[0m[1m[38;5;12m|[0m
 [0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    foo_bar: &Vec<&i32>) -> &i32 {[0m
 [0m   [0m[0m[1m[38;5;12m| [0m[0m             [0m[0m[1m[38;5;12m----------[0m[0m     [0m[0m[1m[38;5;9m^[0m[0m [0m[0m[1m[38;5;9mexpected named lifetime parameter[0m

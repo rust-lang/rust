@@ -4,6 +4,10 @@
 // error-pattern:[35mfor<'a> [0m
 // edition:2018
 
+// revisions: windows not-windows
+// [windows]only-windows
+// [not-windows]ignore-windows
+
 use core::pin::Pin;
 use core::future::Future;
 use core::any::Any;
