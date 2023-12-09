@@ -47,7 +47,6 @@ pub trait Interner: Sized {
         + DebugWithInfcx<Self>
         + Hash
         + Ord
-        + Into<Self::GenericArg>
         + IntoKind<Kind = ConstKind<Self>>
         + ConstTy<Self>;
     type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Ord;
@@ -89,6 +88,8 @@ pub trait Interner: Sized {
     fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
     fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
     fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
+
+    fn mk_const_arg(self, ct: Self::Const, is_effect: bool) -> Self::GenericArg;
 }
 
 /// Common capabilities of placeholder kinds

@@ -409,12 +409,16 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
         };
 
         let var = ty::BoundVar::from(
-            self.variables.iter().position(|&v| v.as_const() == Some(c)).unwrap_or_else(|| {
-                let var = self.variables.len();
-                self.variables.push(ty::GenericArg::new_const(c, kind == CanonicalVarKind::Effect));
-                self.primitive_var_infos.push(CanonicalVarInfo { kind });
-                var
-            }),
+            self.variables
+                .iter()
+                .position(|&v| self.interner().mk_const_arg(c, false) == v)
+                .unwrap_or_else(|| {
+                    let var = self.variables.len();
+                    self.variables
+                        .push(self.interner().mk_const_arg(c, kind == CanonicalVarKind::Effect));
+                    self.primitive_var_infos.push(CanonicalVarInfo { kind });
+                    var
+                }),
         );
 
         self.interner().mk_bound_const(self.binder_index, var, c.ty())

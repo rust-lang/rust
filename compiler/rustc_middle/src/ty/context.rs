@@ -158,6 +158,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::Const {
         Const::new_bound(self, debruijn, var, ty)
     }
+
+    fn mk_const_arg(self, ct: Self::Const, is_effect: bool) -> Self::GenericArg {
+        GenericArg::new_const(ct, is_effect)
+    }
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;

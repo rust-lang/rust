@@ -1213,8 +1213,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         else {
             bug!()
         };
-        let host_effect_param: ty::GenericArg<'tcx> =
-            obligation.predicate.skip_binder().trait_ref.args.const_at(host_effect_index).into();
+        let host_effect_param = ty::GenericArg::effect_const_arg(
+            obligation.predicate.skip_binder().trait_ref.args.const_at(host_effect_index),
+        );
 
         let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
 
