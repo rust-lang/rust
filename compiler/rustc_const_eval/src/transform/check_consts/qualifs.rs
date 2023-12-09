@@ -172,7 +172,7 @@ impl Qualif for NeedsNonConstDrop {
                 destruct_def_id,
                 [
                     ty::GenericArg::from(ty),
-                    ty::GenericArg::from(cx.tcx.expected_const_effect_param_for_body(cx.def_id())),
+                    ty::GenericArg::from(cx.tcx.expected_host_effect_param_for_body(cx.def_id())),
                 ],
             ),
         );
