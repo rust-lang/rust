@@ -1385,6 +1385,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let host_param_parts = if let Const::Yes(span) = constness
             && self.tcx.features().effects
         {
+            let span = self.lower_span(span);
             let param_node_id = self.next_node_id();
             let hir_id = self.next_id();
             let def_id = self.create_def(
