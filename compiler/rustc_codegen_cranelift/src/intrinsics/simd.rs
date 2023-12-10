@@ -1,8 +1,6 @@
 //! Codegen `extern "platform-intrinsic"` intrinsics.
 
 use cranelift_codegen::ir::immediates::Offset32;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_span::Symbol;
 use rustc_target::abi::Endian;
 
 use super::*;

@@ -1,7 +1,6 @@
 // run-pass
 
-use std::borrow::{Cow, ToOwned};
-use std::default::Default;
+use std::borrow::Cow;
 use std::iter::FromIterator;
 use std::ops::Add;
 use std::option::IntoIter as OptionIter;

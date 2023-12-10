@@ -2,19 +2,18 @@ use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar
 use crate::query::IntoQueryParam;
 use crate::query::Providers;
 use crate::traits::util::supertraits_for_pretty_printing;
+use crate::ty::GenericArgKind;
 use crate::ty::{
-    self, ConstInt, ParamConst, ScalarInt, Term, TermKind, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    ConstInt, ParamConst, ScalarInt, Term, TermKind, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
-use crate::ty::{GenericArg, GenericArgKind};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{DefId, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::def_id::{DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};

@@ -45,7 +45,6 @@ use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 
 use crate::cost_checker::CostChecker;
-use crate::MirPass;
 
 pub struct JumpThreading;
 

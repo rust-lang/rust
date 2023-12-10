@@ -10,8 +10,6 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::AssertKind;
-use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};

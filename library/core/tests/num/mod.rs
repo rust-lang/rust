@@ -1,11 +1,6 @@
-use core::cmp::PartialEq;
-use core::convert::{TryFrom, TryInto};
 use core::fmt::Debug;
-use core::marker::Copy;
 use core::num::{can_not_overflow, IntErrorKind, ParseIntError, TryFromIntError};
 use core::ops::{Add, Div, Mul, Rem, Sub};
-use core::option::Option;
-use core::option::Option::None;
 use core::str::FromStr;
 
 #[macro_use]

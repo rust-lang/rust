@@ -1,5 +1,4 @@
 use crate::deref_separator::deref_finder;
-use crate::MirPass;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;

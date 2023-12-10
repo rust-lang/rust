@@ -7,10 +7,10 @@
 //! a `MutVisitor` renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
+use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
-use crate::{ast::*, StaticItem};
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;

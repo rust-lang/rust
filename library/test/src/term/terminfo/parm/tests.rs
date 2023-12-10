@@ -1,7 +1,5 @@
 use super::*;
 
-use std::result::Result::Ok;
-
 #[test]
 fn test_basic_setabf() {
     let s = b"\\E[48;5;%p1%dm";

@@ -10,7 +10,7 @@ use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::ResultsVisitable;
-use rustc_mir_dataflow::{self, fmt::DebugWithContext, GenKill};
+use rustc_mir_dataflow::{fmt::DebugWithContext, GenKill};
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, Results};
 use std::fmt;
 

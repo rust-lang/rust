@@ -103,7 +103,6 @@ use std::borrow::Cow;
 
 use crate::dataflow_const_prop::DummyMachine;
 use crate::ssa::{AssignedValue, SsaLocals};
-use crate::MirPass;
 use either::Either;
 
 pub struct GVN;

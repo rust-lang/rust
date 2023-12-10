@@ -4,7 +4,6 @@
 //! (`-Zmir-enable-passes=+ReorderBasicBlocks,+ReorderLocals`)
 //! to make the MIR easier to read for humans.
 
-use crate::MirPass;
 use rustc_index::{bit_set::BitSet, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;

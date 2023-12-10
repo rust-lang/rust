@@ -4,7 +4,6 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
-use std::convert::TryInto;
 use std::ffi::CString;
 use std::fs::{canonicalize, remove_dir_all, remove_file, File};
 use std::io::{Error, ErrorKind, Write};

@@ -1,8 +1,8 @@
 use super::*;
 
-use rustc_ast::{LitKind, MetaItemLit, Path, StrStyle};
+use rustc_ast::{MetaItemLit, Path, StrStyle};
 use rustc_span::create_default_session_globals_then;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::DUMMY_SP;
 use thin_vec::thin_vec;
 

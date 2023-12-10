@@ -1,7 +1,6 @@
 use super::super::*;
 use core::num::flt2dec::strategy::dragon::*;
 use std::mem::MaybeUninit;
-use test::{black_box, Bencher};
 
 #[bench]
 fn bench_small_shortest(b: &mut Bencher) {

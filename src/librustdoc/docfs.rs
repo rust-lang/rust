@@ -12,7 +12,6 @@ use std::cmp::max;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::string::ToString;
 use std::sync::mpsc::Sender;
 use std::thread::available_parallelism;
 use threadpool::ThreadPool;

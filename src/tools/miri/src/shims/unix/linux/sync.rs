@@ -1,6 +1,6 @@
 use std::time::SystemTime;
 
-use crate::concurrency::thread::{MachineCallback, Time};
+use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 /// Implementation of the SYS_futex syscall.
