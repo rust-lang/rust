@@ -320,9 +320,11 @@ impl<'tcx> Generics {
         &'tcx self,
         tcx: TyCtxt<'tcx>,
         args: &'tcx [ty::GenericArg<'tcx>],
-    ) -> &'tcx [ty::GenericArg<'tcx>] {
-        let mut own_params = self.parent_count..self.count();
+    ) -> (&'tcx [ty::GenericArg<'tcx>], &'tcx [ty::GenericParamDef]) {
+        let mut own_args = self.parent_count..self.count();
+        let mut own_params = 0..self.params.len();
         if self.has_self && self.parent.is_none() {
+            own_args.start = 1;
             own_params.start = 1;
         }
 
@@ -332,7 +334,7 @@ impl<'tcx> Generics {
         // of semantic equivalence. While not ideal, that's
         // good enough for now as this should only be used
         // for diagnostics anyways.
-        own_params.end -= self
+        let num_default_params = self
             .params
             .iter()
             .rev()
@@ -342,8 +344,10 @@ impl<'tcx> Generics {
                 })
             })
             .count();
+        own_params.end -= num_default_params;
+        own_args.end -= num_default_params;
 
-        &args[own_params]
+        (&args[own_args], &self.params[own_params])
     }
 
     /// Returns the args corresponding to the generic parameters of this item, excluding `Self`.
