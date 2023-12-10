@@ -2,6 +2,7 @@
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-permissive-provenance
 #![feature(strict_provenance)]
 
+use std::io::Error;
 use std::{ptr, slice};
 
 fn test_mmap() {
@@ -32,6 +33,67 @@ fn test_mmap() {
     let just_an_address = ptr::invalid_mut(ptr.addr());
     let res = unsafe { libc::munmap(just_an_address, page_size) };
     assert_eq!(res, 0i32);
+
+    // Test all of our error conditions
+    let ptr = unsafe {
+        libc::mmap(
+            ptr::null_mut(),
+            page_size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_PRIVATE | libc::MAP_SHARED, // Can't be both private and shared
+            -1,
+            0,
+        )
+    };
+    assert_eq!(ptr, libc::MAP_FAILED);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
+
+    let ptr = unsafe {
+        libc::mmap(
+            ptr::null_mut(),
+            0, // Can't map no memory
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+            -1,
+            0,
+        )
+    };
+    assert_eq!(ptr, libc::MAP_FAILED);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
+
+    let ptr = unsafe {
+        libc::mmap(
+            ptr::invalid_mut(page_size * 64),
+            page_size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            // We don't support MAP_FIXED
+            libc::MAP_PRIVATE | libc::MAP_ANONYMOUS | libc::MAP_FIXED,
+            -1,
+            0,
+        )
+    };
+    assert_eq!(ptr, libc::MAP_FAILED);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::ENOTSUP);
+
+    // We don't support protections other than read+write
+    for prot in [libc::PROT_NONE, libc::PROT_EXEC, libc::PROT_READ, libc::PROT_WRITE] {
+        let ptr = unsafe {
+            libc::mmap(
+                ptr::null_mut(),
+                page_size,
+                prot,
+                libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+                -1,
+                0,
+            )
+        };
+        assert_eq!(ptr, libc::MAP_FAILED);
+        assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::ENOTSUP);
+    }
+
+    let res = unsafe { libc::munmap(ptr::invalid_mut(1), page_size) };
+    assert_eq!(res, -1);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 }
 
 #[cfg(target_os = "linux")]
@@ -61,6 +123,23 @@ fn test_mremap() {
 
     let res = unsafe { libc::munmap(ptr, page_size * 2) };
     assert_eq!(res, 0i32);
+
+    // Test all of our error conditions
+    // Not aligned
+    let ptr =
+        unsafe { libc::mremap(ptr::invalid_mut(1), page_size, page_size, libc::MREMAP_MAYMOVE) };
+    assert_eq!(ptr, libc::MAP_FAILED);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
+
+    // Zero size
+    let ptr = unsafe { libc::mremap(ptr::null_mut(), page_size, 0, libc::MREMAP_MAYMOVE) };
+    assert_eq!(ptr, libc::MAP_FAILED);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
+
+    // Not setting MREMAP_MAYMOVE
+    let ptr = unsafe { libc::mremap(ptr::null_mut(), page_size, page_size, 0) };
+    assert_eq!(ptr, libc::MAP_FAILED);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 }
 
 fn main() {

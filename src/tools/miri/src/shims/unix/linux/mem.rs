@@ -38,7 +38,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if flags & this.eval_libc_i32("MREMAP_MAYMOVE") == 0 {
             // We only support MREMAP_MAYMOVE, so not passing the flag is just a failure
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
-            return Ok(Scalar::from_maybe_pointer(Pointer::null(), this));
+            return Ok(this.eval_libc("MAP_FAILED"));
         }
 
         let old_address = Machine::ptr_from_addr_cast(this, old_address)?;
