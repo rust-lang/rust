@@ -1,7 +1,5 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // unit-test: ConstProp
-// compile-flags: -Z mir-opt-level=3
 
 // Due to a bug in propagating scalar pairs the assertion below used to fail. In the expected
 // outputs below, after ConstProp this is how _2 would look like with the bug:
@@ -16,5 +14,7 @@ fn encode(this: ((), u8, u8)) {
 
 // EMIT_MIR issue_66971.main.ConstProp.diff
 fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: = encode(const ((), 0_u8, 0_u8))
     encode(((), 0, 0));
 }

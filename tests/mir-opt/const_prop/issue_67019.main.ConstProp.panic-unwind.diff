@@ -8,6 +8,7 @@
       let mut _3: (u8, u8);
   
       bb0: {
+          StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
 -         _3 = (const 1_u8, const 2_u8);
@@ -21,6 +22,8 @@
   
       bb1: {
           StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
           return;
       }
 + }
