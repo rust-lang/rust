@@ -35,9 +35,6 @@ expand_explain_doc_comment_outer =
 expand_expr_repeat_no_syntax_vars =
     attempted to repeat an expression containing no syntax variables matched as repeating at this depth
 
-expand_feature_included_in_edition =
-    the feature `{$feature}` is included in the Rust {$edition} edition
-
 expand_feature_not_allowed =
     the feature `{$name}` is not in the list of allowed features
 
