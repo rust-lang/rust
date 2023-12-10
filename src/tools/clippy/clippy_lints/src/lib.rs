@@ -363,7 +363,6 @@ mod uninhabited_references;
 mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
-mod unnamed_address;
 mod unnecessary_box_returns;
 mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
@@ -786,7 +785,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
     store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(conf)));
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
-    store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
     store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());
     store.register_late_pass(|_| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|_| Box::new(future_not_send::FutureNotSend));
