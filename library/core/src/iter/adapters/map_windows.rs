@@ -49,8 +49,11 @@ struct Buffer<T, const N: usize> {
 }
 
 impl<I: Iterator, F, const N: usize> MapWindows<I, F, N> {
-    pub(in crate::iter) fn new(iter: I, f: F) -> Self {
+    const N_NOT_ZERO: () =
         assert!(N != 0, "array in `Iterator::map_windows` must contain more than 0 elements");
+
+    pub(in crate::iter) fn new(iter: I, f: F) -> Self {
+        let _ = Self::N_NOT_ZERO;
 
         // Only ZST arrays' length can be so large.
         if mem::size_of::<I::Item>() == 0 {

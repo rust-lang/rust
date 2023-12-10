@@ -1609,12 +1609,9 @@ pub trait Iterator {
     /// [`slice::windows()`]: slice::windows
     /// [`FusedIterator`]: crate::iter::FusedIterator
     ///
-    /// # Panics
+    /// If `N` is 0, then the code will not compile.
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a
-    /// compile time error before this method gets stabilized.
-    ///
-    /// ```should_panic
+    /// ```compile_fail
     /// #![feature(iter_map_windows)]
     ///
     /// let iter = std::iter::repeat(0).map_windows(|&[]| ());
