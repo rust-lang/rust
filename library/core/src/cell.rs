@@ -2159,7 +2159,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let m = MaybeUninit::<UnsafeCell<i32>>::uninit();
-    /// unsafe { UnsafeCell::raw_get(m.as_ptr()).write(5); }
+    /// unsafe { m.as_ptr().raw_get().write(5); }
     /// // avoid below which references to uninitialized data
     /// // unsafe { UnsafeCell::get(&*m.as_ptr()).write(5); }
     /// let uc = unsafe { m.assume_init() };
@@ -2170,11 +2170,11 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     #[rustc_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     #[rustc_diagnostic_item = "unsafe_cell_raw_get"]
-    pub const fn raw_get(this: *const Self) -> *mut T {
+    pub const fn raw_get(self: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits std's special status, there is
         // no guarantee for user code that this will work in future versions of the compiler!
-        this as *const T as *mut T
+        self as *const T as *mut T
     }
 }
 
@@ -2270,11 +2270,11 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
     ///
     /// See [`UnsafeCell::get`] for details.
     #[inline]
-    pub const fn raw_get(this: *const Self) -> *mut T {
+    pub const fn raw_get(self: *const Self) -> *mut T {
         // We can just cast the pointer from `SyncUnsafeCell<T>` to `T` because
         // of #[repr(transparent)] on both SyncUnsafeCell and UnsafeCell.
         // See UnsafeCell::raw_get.
-        this as *const T as *mut T
+        self as *const T as *mut T
     }
 }
 
