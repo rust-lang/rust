@@ -336,7 +336,8 @@ impl<'hir> Map<'hir> {
     /// Returns the `BodyOwnerKind` of this `LocalDefId`.
     ///
     /// Panics if `LocalDefId` does not have an associated body.
-    pub fn body_owner_kind(self, def_id: LocalDefId) -> BodyOwnerKind {
+    pub fn body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
+        let def_id = def_id.into();
         match self.tcx.def_kind(def_id) {
             DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
                 BodyOwnerKind::Const { inline: false }
@@ -356,20 +357,17 @@ impl<'hir> Map<'hir> {
     /// This should only be used for determining the context of a body, a return
     /// value of `Some` does not always suggest that the owner of the body is `const`,
     /// just that it has to be checked as if it were.
-    pub fn body_const_context(self, def_id: LocalDefId) -> Option<ConstContext> {
+    pub fn body_const_context(self, def_id: impl Into<DefId>) -> Option<ConstContext> {
+        let def_id = def_id.into();
         let ccx = match self.body_owner_kind(def_id) {
             BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
             BodyOwnerKind::Static(mt) => ConstContext::Static(mt),
 
-            BodyOwnerKind::Fn if self.tcx.is_constructor(def_id.to_def_id()) => return None,
-            BodyOwnerKind::Fn | BodyOwnerKind::Closure
-                if self.tcx.is_const_fn_raw(def_id.to_def_id()) =>
-            {
+            BodyOwnerKind::Fn if self.tcx.is_constructor(def_id) => return None,
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.tcx.is_const_fn_raw(def_id) => {
                 ConstContext::ConstFn
             }
-            BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id.to_def_id()) => {
-                ConstContext::ConstFn
-            }
+            BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
         };
 
