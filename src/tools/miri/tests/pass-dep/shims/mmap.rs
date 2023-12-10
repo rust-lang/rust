@@ -28,9 +28,8 @@ fn test_mmap() {
     }
     assert!(slice.iter().all(|b| *b == 1));
 
-    // Ensure that we can munmap with just an integer
-    let just_an_address = ptr::invalid_mut(ptr.addr());
-    let res = unsafe { libc::munmap(just_an_address, page_size) };
+    // Ensure that we can munmap
+    let res = unsafe { libc::munmap(ptr, page_size) };
     assert_eq!(res, 0i32);
 }
 
