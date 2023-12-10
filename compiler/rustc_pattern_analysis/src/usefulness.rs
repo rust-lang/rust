@@ -552,19 +552,17 @@
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
 use self::ValidityConstraint::*;
-use super::deconstruct_pat::{
-    Constructor, ConstructorSet, DeconstructedPat, IntRange, MaybeInfiniteInt, SplitConstructorSet,
-    WitnessPat,
+use crate::constructor::{
+    Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, SplitConstructorSet,
 };
 use crate::errors::{
     NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Overlap,
     OverlappingRangeEndpoints, Uncovered,
 };
-
-use rustc_data_structures::captures::Captures;
+use crate::pat::{DeconstructedPat, WitnessPat};
 
 use rustc_arena::TypedArena;
-use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::{captures::Captures, stack::ensure_sufficient_stack};
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -575,27 +573,27 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
-pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
-    pub(crate) tcx: TyCtxt<'tcx>,
+pub struct MatchCheckCtxt<'p, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
     /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside its module and should not be matchable with an empty match statement.
-    pub(crate) module: DefId,
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
-    pub(crate) pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    pub module: DefId,
+    pub param_env: ty::ParamEnv<'tcx>,
+    pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
     /// Lint level at the match.
-    pub(crate) match_lint_level: HirId,
+    pub match_lint_level: HirId,
     /// The span of the whole match, if applicable.
-    pub(crate) whole_match_span: Option<Span>,
+    pub whole_match_span: Option<Span>,
     /// Span of the scrutinee.
-    pub(crate) scrut_span: Span,
+    pub scrut_span: Span,
     /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
-    pub(crate) refutable: bool,
+    pub refutable: bool,
     /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee comes
     /// from a union field, a pointer deref, or a reference deref (pending opsem decisions).
-    pub(crate) known_valid_scrutinee: bool,
+    pub known_valid_scrutinee: bool,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -604,7 +602,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
-    pub(super) fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
+    pub fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Adt(def, ..) => {
                 def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
@@ -1535,16 +1533,16 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
 
 /// The arm of a match expression.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct MatchArm<'p, 'tcx> {
+pub struct MatchArm<'p, 'tcx> {
     /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
-    pub(crate) pat: &'p DeconstructedPat<'p, 'tcx>,
-    pub(crate) hir_id: HirId,
-    pub(crate) has_guard: bool,
+    pub pat: &'p DeconstructedPat<'p, 'tcx>,
+    pub hir_id: HirId,
+    pub has_guard: bool,
 }
 
 /// Indicates whether or not a given arm is useful.
 #[derive(Clone, Debug)]
-pub(crate) enum Usefulness {
+pub enum Usefulness {
     /// The arm is useful. This additionally carries a set of or-pattern branches that have been
     /// found to be redundant despite the overall arm being useful. Used only in the presence of
     /// or-patterns, otherwise it stays empty.
@@ -1555,18 +1553,18 @@ pub(crate) enum Usefulness {
 }
 
 /// The output of checking a match for exhaustiveness and arm usefulness.
-pub(crate) struct UsefulnessReport<'p, 'tcx> {
+pub struct UsefulnessReport<'p, 'tcx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
-    pub(crate) arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Usefulness)>,
+    pub arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Usefulness)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
-    pub(crate) non_exhaustiveness_witnesses: Vec<WitnessPat<'tcx>>,
+    pub non_exhaustiveness_witnesses: Vec<WitnessPat<'tcx>>,
 }
 
 /// The entrypoint for this file. Computes whether a match is exhaustive and which of its arms are
 /// useful.
 #[instrument(skip(cx, arms), level = "debug")]
-pub(crate) fn compute_match_usefulness<'p, 'tcx>(
+pub fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,

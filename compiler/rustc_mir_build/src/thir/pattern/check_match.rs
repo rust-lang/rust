@@ -1,5 +1,7 @@
-use super::deconstruct_pat::{Constructor, DeconstructedPat, WitnessPat};
-use super::usefulness::{
+use rustc_pattern_analysis::constructor::Constructor;
+use rustc_pattern_analysis::errors::Uncovered;
+use rustc_pattern_analysis::pat::{DeconstructedPat, WitnessPat};
+use rustc_pattern_analysis::usefulness::{
     compute_match_usefulness, MatchArm, MatchCheckCtxt, Usefulness, UsefulnessReport,
 };
 
