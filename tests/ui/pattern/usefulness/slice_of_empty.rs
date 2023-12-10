@@ -11,12 +11,12 @@ fn foo(nevers: &[!]) {
 
     match nevers {
         &[] => (),
-        &[_] => (),        //~ ERROR unreachable pattern
-        &[_, _, ..] => (), //~ ERROR unreachable pattern
+        &[_] => (),
+        &[_, _, ..] => (),
     };
 
     match nevers {
         //~^ ERROR non-exhaustive patterns: `&[]` not covered
-        &[_] => (), //~ ERROR unreachable pattern
+        &[_] => (),
     };
 }

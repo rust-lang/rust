@@ -136,7 +136,7 @@ fn cs_partial_cmp(
                     && let Some(last) = arms.last_mut()
                     && let PatKind::Wild = last.pat.kind
                 {
-                    last.body = expr2;
+                    last.body = Some(expr2);
                     expr1
                 } else {
                     let eq_arm = cx.arm(

@@ -35,20 +35,20 @@ fn main() {
     // suggest removing reference
     let c: fn(u32) -> u32 = &foo;
     //~^ ERROR mismatched types
-    //~| expected fn pointer `fn(u32) -> u32`
-    //~| found reference `&fn(u32) -> u32 {foo}`
+    //~| expected fn pointer `fn(_) -> _`
+    //~| found reference `&fn(_) -> _ {foo}`
 
     // suggest using reference
     let d: &fn(u32) -> u32 = foo;
     //~^ ERROR mismatched types
-    //~| expected reference `&fn(u32) -> u32`
-    //~| found fn item `fn(u32) -> u32 {foo}`
+    //~| expected reference `&fn(_) -> _`
+    //~| found fn item `fn(_) -> _ {foo}`
 
     // suggest casting with reference
     let e: &fn(u32) -> u32 = &foo;
     //~^ ERROR mismatched types
-    //~| expected reference `&fn(u32) -> u32`
-    //~| found reference `&fn(u32) -> u32 {foo}`
+    //~| expected reference `&fn(_) -> _`
+    //~| found reference `&fn(_) -> _ {foo}`
 
     // OK
     let mut z: fn(u32) -> u32 = foo as fn(u32) -> u32;

@@ -119,7 +119,7 @@ pub fn placeholder(
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),
-            body: expr_placeholder(),
+            body: Some(expr_placeholder()),
             guard: None,
             id,
             pat: pat(),

@@ -820,6 +820,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 // the `ParamEnv`.
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
+                | ty::PredicateKind::NormalizesTo(..)
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::Subtype(..)

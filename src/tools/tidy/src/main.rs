@@ -132,6 +132,7 @@ fn main() {
         check!(edition, &library_path);
 
         check!(alphabetical, &src_path);
+        check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
 

@@ -306,7 +306,9 @@ impl CodegenBackend for LlvmCodegenBackend {
             }
             PrintKind::TlsModels => {
                 writeln!(out, "Available TLS models:");
-                for name in &["global-dynamic", "local-dynamic", "initial-exec", "local-exec"] {
+                for name in
+                    &["global-dynamic", "local-dynamic", "initial-exec", "local-exec", "emulated"]
+                {
                     writeln!(out, "    {name}");
                 }
                 writeln!(out);

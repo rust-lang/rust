@@ -1,15 +1,12 @@
-use crate::{
-    fluent_generated as fluent,
-    thir::pattern::{deconstruct_pat::WitnessPat, MatchCheckCtxt},
-};
+use crate::fluent_generated as fluent;
 use rustc_errors::DiagnosticArgValue;
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::thir::Pat;
 use rustc_middle::ty::{self, Ty};
+use rustc_pattern_analysis::{cx::MatchCheckCtxt, errors::Uncovered};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -810,94 +807,6 @@ pub struct NontrivialStructuralMatch<'tcx> {
 #[diag(mir_build_non_partial_eq_match)]
 pub struct NonPartialEqMatch<'tcx> {
     pub non_peq_ty: Ty<'tcx>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_overlapping_range_endpoints)]
-#[note]
-pub struct OverlappingRangeEndpoints<'tcx> {
-    #[label(mir_build_range)]
-    pub range: Span,
-    #[subdiagnostic]
-    pub overlap: Vec<Overlap<'tcx>>,
-}
-
-pub struct Overlap<'tcx> {
-    pub span: Span,
-    pub range: Pat<'tcx>,
-}
-
-impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        let Overlap { span, range } = self;
-
-        // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
-        // does not support `#[subdiagnostic(eager)]`...
-        let message = format!("this range overlaps on `{range}`...");
-        diag.span_label(span, message);
-    }
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_non_exhaustive_omitted_pattern)]
-#[help]
-#[note]
-pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
-    pub scrut_ty: Ty<'tcx>,
-    #[subdiagnostic]
-    pub uncovered: Uncovered<'tcx>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_non_exhaustive_omitted_pattern_lint_on_arm)]
-#[help]
-pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {
-    #[label]
-    pub lint_span: Span,
-    #[suggestion(code = "#[{lint_level}({lint_name})]\n", applicability = "maybe-incorrect")]
-    pub suggest_lint_on_match: Option<Span>,
-    pub lint_level: &'static str,
-    pub lint_name: &'static str,
-}
-
-#[derive(Subdiagnostic)]
-#[label(mir_build_uncovered)]
-pub(crate) struct Uncovered<'tcx> {
-    #[primary_span]
-    span: Span,
-    count: usize,
-    witness_1: Pat<'tcx>,
-    witness_2: Pat<'tcx>,
-    witness_3: Pat<'tcx>,
-    remainder: usize,
-}
-
-impl<'tcx> Uncovered<'tcx> {
-    pub fn new<'p>(
-        span: Span,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        witnesses: Vec<WitnessPat<'tcx>>,
-    ) -> Self {
-        let witness_1 = witnesses.get(0).unwrap().to_diagnostic_pat(cx);
-        Self {
-            span,
-            count: witnesses.len(),
-            // Substitute dummy values if witnesses is smaller than 3. These will never be read.
-            witness_2: witnesses
-                .get(1)
-                .map(|w| w.to_diagnostic_pat(cx))
-                .unwrap_or_else(|| witness_1.clone()),
-            witness_3: witnesses
-                .get(2)
-                .map(|w| w.to_diagnostic_pat(cx))
-                .unwrap_or_else(|| witness_1.clone()),
-            witness_1,
-            remainder: witnesses.len().saturating_sub(3),
-        }
-    }
 }
 
 #[derive(Diagnostic)]

@@ -14,7 +14,7 @@ trait Trait {
 fn foo<T: Trait<m(): Send>>() {}
 //[cfg]~^ ERROR return type notation is experimental
 //[cfg]~| ERROR parenthesized generic arguments cannot be used in associated type constraints
-//[cfg]~| ERROR associated type `m` not found for `Trait`
+//[cfg]~| ERROR expected type, found function
 //[no]~^^^^ WARN return type notation is experimental
 //[no]~| WARN unstable syntax can change at any point in the future, causing a hard error!
 

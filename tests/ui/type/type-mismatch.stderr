@@ -382,8 +382,8 @@ LL |     want::<&Foo<foo>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<foo>`
-                 found struct `Foo<foo>`
+   = note: expected reference `&Foo<_>`
+                 found struct `Foo<_>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
@@ -402,8 +402,8 @@ LL |     want::<&Foo<foo, B>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<foo, B>`
-                 found struct `Foo<foo>`
+   = note: expected reference `&Foo<_, B>`
+                 found struct `Foo<_, A>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
@@ -546,8 +546,8 @@ LL |     want::<&Foo<foo>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<foo>`
-                 found struct `Foo<foo, B>`
+   = note: expected reference `&Foo<_, A>`
+                 found struct `Foo<_, B>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
@@ -562,8 +562,8 @@ LL |     want::<&Foo<foo, B>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<foo, B>`
-                 found struct `Foo<foo, B>`
+   = note: expected reference `&Foo<_, _>`
+                 found struct `Foo<_, _>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
@@ -726,8 +726,8 @@ LL |     want::<&Foo<foo>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<foo>`
-                 found struct `Foo<foo, B, A>`
+   = note: expected reference `&Foo<_, A, B>`
+                 found struct `Foo<_, B, A>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
@@ -742,8 +742,8 @@ LL |     want::<&Foo<foo, B>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<foo, B>`
-                 found struct `Foo<foo, B, A>`
+   = note: expected reference `&Foo<_, _, B>`
+                 found struct `Foo<_, _, A>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |

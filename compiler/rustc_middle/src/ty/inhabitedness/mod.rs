@@ -103,6 +103,7 @@ impl<'tcx> VariantDef {
 }
 
 impl<'tcx> Ty<'tcx> {
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
         match self.kind() {
             // For now, unions are always considered inhabited

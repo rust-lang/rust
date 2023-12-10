@@ -1283,7 +1283,7 @@ fn default_configuration(sess: &Session) -> Cfg {
         ret.insert((sym::relocation_model, Some(relocation_model)));
     }
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
-    if sess.target.has_thread_local {
+    if sess.opts.unstable_opts.has_thread_local.unwrap_or(sess.target.has_thread_local) {
         ret.insert((sym::target_thread_local, None));
     }
     let mut has_atomic = false;
@@ -1422,6 +1422,9 @@ impl CheckCfg {
         };
 
         // NOTE: This should be kept in sync with `default_configuration`
+        //
+        // When adding a new config here you should also update
+        // `tests/ui/check-cfg/well-known-values.rs`.
 
         let panic_values = &PanicStrategy::all();
 

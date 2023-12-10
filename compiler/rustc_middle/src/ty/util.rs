@@ -732,6 +732,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     rustc_hir::CoroutineKind::Async(..) => "async closure",
+                    rustc_hir::CoroutineKind::AsyncGen(..) => "async gen closure",
                     rustc_hir::CoroutineKind::Coroutine => "coroutine",
                     rustc_hir::CoroutineKind::Gen(..) => "gen closure",
                 }
@@ -752,6 +753,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     rustc_hir::CoroutineKind::Async(..) => "an",
+                    rustc_hir::CoroutineKind::AsyncGen(..) => "an",
                     rustc_hir::CoroutineKind::Coroutine => "a",
                     rustc_hir::CoroutineKind::Gen(..) => "a",
                 }
@@ -781,9 +783,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn expected_const_effect_param_for_body(self, def_id: LocalDefId) -> ty::Const<'tcx> {
-        // if the callee does have the param, we need to equate the param to some const
-        // value no matter whether the effects feature is enabled in the local crate,
-        // because inference will fail if we don't.
+        // FIXME(effects): This is suspicious and should probably not be done,
+        // especially now that we enforce host effects and then properly handle
+        // effect vars during fallback.
         let mut host_always_on =
             !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
 

@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
-use rustc_type_ir::{TypeFlags, WithCachedTypeInfo};
+use rustc_type_ir::{ConstTy, IntoKind, TypeFlags, WithCachedTypeInfo};
 
 mod int;
 mod kind;
@@ -25,6 +25,20 @@ use super::sty::ConstKind;
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>);
+
+impl<'tcx> IntoKind for Const<'tcx> {
+    type Kind = ConstKind<'tcx>;
+
+    fn kind(self) -> ConstKind<'tcx> {
+        self.kind().clone()
+    }
+}
+
+impl<'tcx> ConstTy<TyCtxt<'tcx>> for Const<'tcx> {
+    fn ty(self) -> Ty<'tcx> {
+        self.ty()
+    }
+}
 
 /// Typed constant value.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]

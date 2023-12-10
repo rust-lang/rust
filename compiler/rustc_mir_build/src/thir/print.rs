@@ -91,23 +91,11 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn print_block(&mut self, block_id: BlockId, depth_lvl: usize) {
-        let Block {
-            targeted_by_break,
-            opt_destruction_scope,
-            span,
-            region_scope,
-            stmts,
-            expr,
-            safety_mode,
-        } = &self.thir.blocks[block_id];
+        let Block { targeted_by_break, span, region_scope, stmts, expr, safety_mode } =
+            &self.thir.blocks[block_id];
 
         print_indented!(self, "Block {", depth_lvl);
         print_indented!(self, format!("targeted_by_break: {}", targeted_by_break), depth_lvl + 1);
-        print_indented!(
-            self,
-            format!("opt_destruction_scope: {:?}", opt_destruction_scope),
-            depth_lvl + 1
-        );
         print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
         print_indented!(self, format!("region_scope: {:?}", region_scope), depth_lvl + 1);
         print_indented!(self, format!("safety_mode: {:?}", safety_mode), depth_lvl + 1);
@@ -133,14 +121,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn print_stmt(&mut self, stmt_id: StmtId, depth_lvl: usize) {
-        let Stmt { kind, opt_destruction_scope } = &self.thir.stmts[stmt_id];
+        let Stmt { kind } = &self.thir.stmts[stmt_id];
 
         print_indented!(self, "Stmt {", depth_lvl);
-        print_indented!(
-            self,
-            format!("opt_destruction_scope: {:?}", opt_destruction_scope),
-            depth_lvl + 1
-        );
 
         match kind {
             StmtKind::Expr { scope, expr } => {

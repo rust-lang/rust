@@ -13,6 +13,7 @@ use crate::task::{Context, Poll};
 #[unstable(feature = "async_iterator", issue = "79024")]
 #[must_use = "async iterators do nothing unless polled"]
 #[doc(alias = "Stream")]
+#[cfg_attr(not(bootstrap), lang = "async_iterator")]
 pub trait AsyncIterator {
     /// The type of items yielded by the async iterator.
     type Item;
@@ -108,4 +109,28 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
+}
+
+#[unstable(feature = "async_gen_internals", issue = "none")]
+impl<T> Poll<Option<T>> {
+    /// A helper function for internal desugaring -- produces `Ready(Some(t))`,
+    /// which corresponds to the async iterator yielding a value.
+    #[unstable(feature = "async_gen_internals", issue = "none")]
+    #[cfg_attr(not(bootstrap), lang = "AsyncGenReady")]
+    pub fn async_gen_ready(t: T) -> Self {
+        Poll::Ready(Some(t))
+    }
+
+    /// A helper constant for internal desugaring -- produces `Pending`,
+    /// which corresponds to the async iterator pending on an `.await`.
+    #[unstable(feature = "async_gen_internals", issue = "none")]
+    #[cfg_attr(not(bootstrap), lang = "AsyncGenPending")]
+    // FIXME(gen_blocks): This probably could be deduplicated.
+    pub const PENDING: Self = Poll::Pending;
+
+    /// A helper constant for internal desugaring -- produces `Ready(None)`,
+    /// which corresponds to the async iterator finishing its iteration.
+    #[unstable(feature = "async_gen_internals", issue = "none")]
+    #[cfg_attr(not(bootstrap), lang = "AsyncGenFinished")]
+    pub const FINISHED: Self = Poll::Ready(None);
 }

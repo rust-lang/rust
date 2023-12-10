@@ -52,7 +52,7 @@ fn default_client() -> Client {
 
 static GLOBAL_CLIENT_CHECKED: OnceLock<Client> = OnceLock::new();
 
-pub fn check(report_warning: impl FnOnce(&'static str)) {
+pub fn initialize_checked(report_warning: impl FnOnce(&'static str)) {
     let client_checked = match &*GLOBAL_CLIENT {
         Ok(client) => client.clone(),
         Err(e) => {

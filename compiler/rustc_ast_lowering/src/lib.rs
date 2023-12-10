@@ -132,6 +132,7 @@ struct LoweringContext<'a, 'hir> {
 
     allow_try_trait: Lrc<[Symbol]>,
     allow_gen_future: Lrc<[Symbol]>,
+    allow_async_iterator: Lrc<[Symbol]>,
 
     /// Mapping from generics `def_id`s to TAIT generics `def_id`s.
     /// For each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
@@ -176,6 +177,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             } else {
                 [sym::gen_future].into()
             },
+            // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
+            // interact with `gen`/`async gen` blocks
+            allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
             generics_def_id_map: Default::default(),
             host_param_id: None,
         }
@@ -1675,7 +1679,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     duplicated_lifetime_node_id,
                     lifetime.ident.name,
                     DefKind::LifetimeParam,
-                    lifetime.ident.span,
+                    self.lower_span(lifetime.ident.span),
                 );
                 captured_to_synthesized_mapping.insert(old_def_id, duplicated_lifetime_def_id);
                 // FIXME: Instead of doing this, we could move this whole loop
@@ -1684,7 +1688,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 synthesized_lifetime_definitions.push((
                     duplicated_lifetime_node_id,
                     duplicated_lifetime_def_id,
-                    lifetime.ident,
+                    self.lower_ident(lifetime.ident),
                 ));
 
                 // Now make an arg that we can use for the generic params of the opaque tykind.
@@ -1900,12 +1904,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fn_span: Span,
     ) -> hir::FnRetTy<'hir> {
         let span = self.lower_span(fn_span);
-        let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_node_id = match coro {
-            CoroutineKind::Async { return_impl_trait_id, .. }
-            | CoroutineKind::Gen { return_impl_trait_id, .. } => return_impl_trait_id,
+        let (opaque_ty_node_id, allowed_features) = match coro {
+            CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
+            CoroutineKind::Gen { return_impl_trait_id, .. } => (return_impl_trait_id, None),
+            CoroutineKind::AsyncGen { return_impl_trait_id, .. } => {
+                (return_impl_trait_id, Some(self.allow_async_iterator.clone()))
+            }
         };
+
+        let opaque_ty_span =
+            self.mark_span_with_reason(DesugaringKind::Async, span, allowed_features);
 
         let captured_lifetimes: Vec<_> = self
             .resolver
@@ -1925,7 +1934,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let bound = this.lower_coroutine_fn_output_type_to_bound(
                     output,
                     coro,
-                    span,
+                    opaque_ty_span,
                     ImplTraitContext::ReturnPositionOpaqueTy {
                         origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                         fn_kind,
@@ -1944,7 +1953,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         output: &FnRetTy,
         coro: CoroutineKind,
-        span: Span,
+        opaque_ty_span: Span,
         nested_impl_trait_context: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
@@ -1960,20 +1969,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // "<$assoc_ty_name = T>"
         let (assoc_ty_name, trait_lang_item) = match coro {
-            CoroutineKind::Async { .. } => (hir::FN_OUTPUT_NAME, hir::LangItem::Future),
-            CoroutineKind::Gen { .. } => (hir::ITERATOR_ITEM_NAME, hir::LangItem::Iterator),
+            CoroutineKind::Async { .. } => (sym::Output, hir::LangItem::Future),
+            CoroutineKind::Gen { .. } => (sym::Item, hir::LangItem::Iterator),
+            CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncIterator),
         };
 
         let future_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
-            bindings: arena_vec![self; self.assoc_ty_binding(assoc_ty_name, span, output_ty)],
+            bindings: arena_vec![self; self.assoc_ty_binding(assoc_ty_name, opaque_ty_span, output_ty)],
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
 
         hir::GenericBound::LangItemTrait(
             trait_lang_item,
-            self.lower_span(span),
+            opaque_ty_span,
             self.next_id(),
             future_args,
         )
@@ -2243,7 +2253,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer {
-                    hir::ArrayLen::Infer(self.lower_node_id(c.id), c.value.span)
+                    hir::ArrayLen::Infer(self.lower_node_id(c.id), self.lower_span(c.value.span))
                 } else {
                     feature_err(
                         &self.tcx.sess.parse_sess,

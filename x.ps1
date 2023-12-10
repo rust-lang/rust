@@ -8,12 +8,7 @@ $ErrorActionPreference = "Stop"
 Get-Command -syntax ${PSCommandPath} >$null
 
 $xpy = Join-Path $PSScriptRoot x.py
-# Start-Process for some reason splits arguments on spaces. (Isn't powershell supposed to be simpler than bash?)
-# Double-quote all the arguments so it doesn't do that.
-$xpy_args = @("""$xpy""")
-foreach ($arg in $args) {
-    $xpy_args += """$arg"""
-}
+$xpy_args = @($xpy) + $args
 
 function Get-Application($app) {
     $cmd = Get-Command $app -ErrorAction SilentlyContinue -CommandType Application | Select-Object -First 1
@@ -21,16 +16,8 @@ function Get-Application($app) {
 }
 
 function Invoke-Application($application, $arguments) {
-    $process = Start-Process -NoNewWindow -PassThru $application $arguments
-    # WORKAROUND: Caching the handle is necessary to make ExitCode work.
-    # See https://stackoverflow.com/a/23797762
-    $handle = $process.Handle
-    $process.WaitForExit()
-    if ($null -eq $process.ExitCode) {
-        Write-Error "Unable to read the exit code"
-        Exit 1
-    }
-    Exit $process.ExitCode
+    & $application $arguments
+    Exit $LASTEXITCODE
 }
 
 foreach ($python in "py", "python3", "python", "python2") {

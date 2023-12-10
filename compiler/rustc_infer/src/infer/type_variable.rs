@@ -229,12 +229,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Precondition: `vid` must not have been previously instantiated.
     pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let vid = self.root_var(vid);
+        debug_assert!(!ty.is_ty_var(), "instantiating ty var with var: {vid:?} {ty:?}");
         debug_assert!(self.probe(vid).is_unknown());
         debug_assert!(
             self.eq_relations().probe_value(vid).is_unknown(),
-            "instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
-            vid,
-            ty,
+            "instantiating type variable `{vid:?}` twice: new-value = {ty:?}, old-value={:?}",
             self.eq_relations().probe_value(vid)
         );
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });

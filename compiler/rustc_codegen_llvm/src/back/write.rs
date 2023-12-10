@@ -33,7 +33,7 @@ use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, Switc
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
-use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 
 use crate::llvm::diagnostic::OptimizationDiagnosticKind;
 use libc::{c_char, c_int, c_uint, c_void, size_t};
@@ -223,7 +223,7 @@ pub fn target_machine_factory(
 
     let path_mapping = sess.source_map().path_mapping().clone();
 
-    let force_emulated_tls = sess.target.force_emulated_tls;
+    let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
     // copy the exe path, followed by path all into one buffer
     // null terminating them so we can use them as null terminated strings
@@ -297,7 +297,7 @@ pub fn target_machine_factory(
             &split_dwarf_file,
             &output_obj_file,
             &debuginfo_compression,
-            force_emulated_tls,
+            use_emulated_tls,
             &args_cstr_buff,
         )
     })

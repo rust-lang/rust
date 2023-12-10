@@ -1,7 +1,8 @@
 // revisions: old next
 //[old] check-pass
 
-// Need to emit an alias-relate instead of a `Projection` goal here.
+// Currently always fails to generalize the outer alias, even if it
+// is treated as rigid by `alias-relate`.
 //[next] compile-flags: -Ztrait-solver=next
 //[next] known-bug: trait-system-refactor-initiative#8
 #![crate_type = "lib"]

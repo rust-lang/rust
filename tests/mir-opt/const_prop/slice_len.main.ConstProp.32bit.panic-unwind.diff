@@ -12,6 +12,9 @@
       let mut _7: usize;
       let mut _8: bool;
       let mut _9: &[u32; 3];
+      scope 1 {
+          debug a => _1;
+      }
   
       bb0: {
           StorageLive(_1);
@@ -39,8 +42,8 @@
           StorageDead(_6);
           StorageDead(_4);
           StorageDead(_2);
-          StorageDead(_1);
           _0 = const ();
+          StorageDead(_1);
           return;
       }
   }

@@ -996,15 +996,14 @@ tool_doc!(
     in_tree = false,
     crates = [
         "cargo",
+        "cargo-credential",
         "cargo-platform",
-        "cargo-util",
-        "crates-io",
         "cargo-test-macro",
         "cargo-test-support",
-        "cargo-credential",
+        "cargo-util",
+        "crates-io",
         "mdman",
-        // FIXME: this trips a license check in tidy.
-        // "resolver-tests",
+        "rustfix",
     ]
 );
 tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);

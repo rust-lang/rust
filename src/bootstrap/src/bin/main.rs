@@ -26,35 +26,40 @@ fn main() {
     let mut build_lock;
     #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     let _build_lock_guard;
-    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
-    // Display PID of process holding the lock
-    // PID will be stored in a lock file
-    {
-        let path = config.out.join("lock");
-        let pid = match fs::read_to_string(&path) {
-            Ok(contents) => contents,
-            Err(_) => String::new(),
-        };
 
-        build_lock =
-            fd_lock::RwLock::new(t!(fs::OpenOptions::new().write(true).create(true).open(&path)));
-        _build_lock_guard = match build_lock.try_write() {
-            Ok(mut lock) => {
-                t!(lock.write(&process::id().to_string().as_ref()));
-                lock
-            }
-            err => {
-                drop(err);
-                println!("WARNING: build directory locked by process {pid}, waiting for lock");
-                let mut lock = t!(build_lock.write());
-                t!(lock.write(&process::id().to_string().as_ref()));
-                lock
-            }
-        };
+    if !config.bypass_bootstrap_lock {
+        // Display PID of process holding the lock
+        // PID will be stored in a lock file
+        #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
+        {
+            let path = config.out.join("lock");
+            let pid = match fs::read_to_string(&path) {
+                Ok(contents) => contents,
+                Err(_) => String::new(),
+            };
+
+            build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&path)));
+            _build_lock_guard = match build_lock.try_write() {
+                Ok(mut lock) => {
+                    t!(lock.write(&process::id().to_string().as_ref()));
+                    lock
+                }
+                err => {
+                    drop(err);
+                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                    let mut lock = t!(build_lock.write());
+                    t!(lock.write(&process::id().to_string().as_ref()));
+                    lock
+                }
+            };
+        }
+
+        #[cfg(any(not(any(unix, windows)), target_os = "solaris"))]
+        println!("WARNING: file locking not supported for target, not locking build directory");
     }
-
-    #[cfg(any(not(any(unix, windows)), target_os = "solaris"))]
-    println!("WARNING: file locking not supported for target, not locking build directory");
 
     // check_version warnings are not printed during setup
     let changelog_suggestion =

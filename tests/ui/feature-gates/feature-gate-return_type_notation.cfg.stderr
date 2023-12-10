@@ -15,13 +15,18 @@ LL | fn foo<T: Trait<m(): Send>>() {}
    |                  |
    |                  help: remove these parentheses
 
-error[E0220]: associated type `m` not found for `Trait`
+error: expected type, found function
   --> $DIR/feature-gate-return_type_notation.rs:14:17
    |
 LL | fn foo<T: Trait<m(): Send>>() {}
-   |                 ^ associated type `m` not found
+   |                 ^ unexpected function
+   |
+note: the associated function is defined here
+  --> $DIR/feature-gate-return_type_notation.rs:10:5
+   |
+LL |     async fn m();
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0220, E0658.
-For more information about an error, try `rustc --explain E0220`.
+For more information about this error, try `rustc --explain E0658`.

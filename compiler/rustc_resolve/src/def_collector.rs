@@ -156,29 +156,33 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
-            if let Some(
-                CoroutineKind::Async { closure_id, .. } | CoroutineKind::Gen { closure_id, .. },
-            ) = sig.header.coro_kind
-            {
-                self.visit_generics(generics);
+            match sig.header.coroutine_kind {
+                Some(coroutine_kind) => {
+                    self.visit_generics(generics);
 
-                // For async functions, we need to create their inner defs inside of a
-                // closure to match their desugared representation. Besides that,
-                // we must mirror everything that `visit::walk_fn` below does.
-                self.visit_fn_header(&sig.header);
-                for param in &sig.decl.inputs {
-                    self.visit_param(param);
+                    // For async functions, we need to create their inner defs inside of a
+                    // closure to match their desugared representation. Besides that,
+                    // we must mirror everything that `visit::walk_fn` below does.
+                    self.visit_fn_header(&sig.header);
+                    for param in &sig.decl.inputs {
+                        self.visit_param(param);
+                    }
+                    self.visit_fn_ret_ty(&sig.decl.output);
+                    // If this async fn has no body (i.e. it's an async fn signature in a trait)
+                    // then the closure_def will never be used, and we should avoid generating a
+                    // def-id for it.
+                    if let Some(body) = body {
+                        let closure_def = self.create_def(
+                            coroutine_kind.closure_id(),
+                            kw::Empty,
+                            DefKind::Closure,
+                            span,
+                        );
+                        self.with_parent(closure_def, |this| this.visit_block(body));
+                    }
+                    return;
                 }
-                self.visit_fn_ret_ty(&sig.decl.output);
-                // If this async fn has no body (i.e. it's an async fn signature in a trait)
-                // then the closure_def will never be used, and we should avoid generating a
-                // def-id for it.
-                if let Some(body) = body {
-                    let closure_def =
-                        self.create_def(closure_id, kw::Empty, DefKind::Closure, span);
-                    self.with_parent(closure_def, |this| this.visit_block(body));
-                }
-                return;
+                None => {}
             }
         }
 
@@ -284,11 +288,13 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
-                match closure.coro_kind {
-                    Some(
-                        CoroutineKind::Async { closure_id, .. }
-                        | CoroutineKind::Gen { closure_id, .. },
-                    ) => self.create_def(closure_id, kw::Empty, DefKind::Closure, expr.span),
+                match closure.coroutine_kind {
+                    Some(coroutine_kind) => self.create_def(
+                        coroutine_kind.closure_id(),
+                        kw::Empty,
+                        DefKind::Closure,
+                        expr.span,
+                    ),
                     None => closure_def,
                 }
             }

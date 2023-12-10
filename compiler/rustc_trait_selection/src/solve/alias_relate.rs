@@ -92,7 +92,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     self.add_goal(Goal::new(
                         self.tcx(),
                         param_env,
-                        ty::ProjectionPredicate { projection_ty: alias, term },
+                        ty::NormalizesTo { alias, term },
                     ));
                     self.try_evaluate_added_goals()?;
                     Ok(Some(self.resolve_vars_if_possible(term)))
@@ -109,11 +109,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         opaque: ty::AliasTy<'tcx>,
         term: ty::Term<'tcx>,
     ) -> QueryResult<'tcx> {
-        self.add_goal(Goal::new(
-            self.tcx(),
-            param_env,
-            ty::ProjectionPredicate { projection_ty: opaque, term },
-        ));
+        self.add_goal(Goal::new(self.tcx(), param_env, ty::NormalizesTo { alias: opaque, term }));
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 

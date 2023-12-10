@@ -916,8 +916,10 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             &sig.decl.output,
                         );
 
-                        if let Some((coro_node_id, _)) =
-                            sig.header.coro_kind.map(|coro_kind| coro_kind.return_id())
+                        if let Some((coro_node_id, _)) = sig
+                            .header
+                            .coroutine_kind
+                            .map(|coroutine_kind| coroutine_kind.return_id())
                         {
                             this.record_lifetime_params_for_impl_trait(coro_node_id);
                         }
@@ -942,8 +944,10 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         this.visit_generics(generics);
 
                         let declaration = &sig.decl;
-                        let coro_node_id =
-                            sig.header.coro_kind.map(|coro_kind| coro_kind.return_id());
+                        let coro_node_id = sig
+                            .header
+                            .coroutine_kind
+                            .map(|coroutine_kind| coroutine_kind.return_id());
 
                         this.with_lifetime_rib(
                             LifetimeRibKind::AnonymousCreateParameter {
@@ -3297,7 +3301,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         self.with_rib(ValueNS, RibKind::Normal, |this| {
             this.resolve_pattern_top(&arm.pat, PatternSource::Match);
             walk_list!(this, visit_expr, &arm.guard);
-            this.visit_expr(&arm.body);
+            walk_list!(this, visit_expr, &arm.body);
         });
     }
 
@@ -4294,7 +4298,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             //
             // Similarly, `gen |x| ...` gets desugared to `|x| gen {...}`, so we handle that too.
             ExprKind::Closure(box ast::Closure {
-                coro_kind: Some(_),
+                coroutine_kind: Some(_),
                 ref fn_decl,
                 ref body,
                 ..

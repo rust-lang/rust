@@ -22,8 +22,8 @@ error[E0308]: method not compatible with trait
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected signature `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'_>)`
-              found signature `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'_>)`
+   = note: expected signature `fn(&'a _, Inv<'c>, Inv<'c>, Inv<'_>)`
+              found signature `fn(&'a _, Inv<'_>, Inv<'c>, Inv<'_>)`
 note: the lifetime `'c` as defined here...
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
@@ -41,8 +41,8 @@ error[E0308]: method not compatible with trait
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected signature `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'_>)`
-              found signature `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'_>)`
+   = note: expected signature `fn(&'a _, Inv<'c>, Inv<'c>, Inv<'_>)`
+              found signature `fn(&'a _, Inv<'_>, Inv<'c>, Inv<'_>)`
 note: the lifetime `'c` as defined here...
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |

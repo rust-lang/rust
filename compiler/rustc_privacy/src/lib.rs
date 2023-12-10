@@ -218,20 +218,21 @@ where
                     return ControlFlow::Continue(());
                 }
 
-                let kind = match kind {
-                    ty::Inherent | ty::Projection => "associated type",
-                    ty::Weak => "type alias",
-                    ty::Opaque => unreachable!(),
-                };
                 self.def_id_visitor.visit_def_id(
                     data.def_id,
-                    kind,
+                    match kind {
+                        ty::Inherent | ty::Projection => "associated type",
+                        ty::Weak => "type alias",
+                        ty::Opaque => unreachable!(),
+                    },
                     &LazyDefPathStr { def_id: data.def_id, tcx },
                 )?;
 
                 // This will also visit args if necessary, so we don't need to recurse.
                 return if V::SHALLOW {
                     ControlFlow::Continue(())
+                } else if kind == ty::Projection {
+                    self.visit_projection_ty(data)
                 } else {
                     data.args.iter().try_for_each(|subst| subst.visit_with(self))
                 };

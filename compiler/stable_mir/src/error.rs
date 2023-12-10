@@ -6,11 +6,11 @@
 
 use std::convert::From;
 use std::fmt::{Debug, Display, Formatter};
-use std::{error, fmt};
+use std::{error, fmt, io};
 
 macro_rules! error {
      ($fmt: literal $(,)?) => { Error(format!($fmt)) };
-     ($fmt: literal, $($arg:tt)*) => { Error(format!($fmt, $($arg:tt)*)) };
+     ($fmt: literal, $($arg:tt)*) => { Error(format!($fmt, $($arg)*)) };
  }
 
 /// An error type used to represent an error that has already been reported by the compiler.
@@ -79,3 +79,9 @@ where
 
 impl error::Error for Error {}
 impl<T> error::Error for CompilerError<T> where T: Display + Debug {}
+
+impl From<io::Error> for Error {
+    fn from(value: io::Error) -> Self {
+        Error(value.to_string())
+    }
+}

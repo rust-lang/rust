@@ -1000,8 +1000,10 @@ impl EarlyLintPass for UnusedDocComment {
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        let arm_span = arm.pat.span.with_hi(arm.body.span.hi());
-        warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
+        if let Some(body) = &arm.body {
+            let arm_span = arm.pat.span.with_hi(body.span.hi());
+            warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
+        }
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &ast::Pat) {

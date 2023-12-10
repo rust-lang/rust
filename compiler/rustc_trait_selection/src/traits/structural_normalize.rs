@@ -25,8 +25,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
             // FIXME(-Ztrait-solver=next): correctly handle
             // overflow here.
             for _ in 0..256 {
-                let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, projection_ty) = *ty.kind()
-                else {
+                let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, alias) = *ty.kind() else {
                     break;
                 };
 
@@ -38,10 +37,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
                     self.infcx.tcx,
                     self.cause.clone(),
                     self.param_env,
-                    ty::Binder::dummy(ty::ProjectionPredicate {
-                        projection_ty,
-                        term: new_infer_ty.into(),
-                    }),
+                    ty::NormalizesTo { alias, term: new_infer_ty.into() },
                 );
                 if self.infcx.predicate_may_hold(&obligation) {
                     fulfill_cx.register_predicate_obligation(self.infcx, obligation);

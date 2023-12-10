@@ -32,7 +32,9 @@ where
     I: Iter,
     I::Item: 'static;
 
-pub fn test<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
+pub fn test_wfcheck<'x>(_: Map<Vec<&'x ()>>) {}
+
+pub fn test_borrowck<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
     s
 }
 

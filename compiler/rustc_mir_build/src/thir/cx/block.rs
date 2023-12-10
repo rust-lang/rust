@@ -13,15 +13,12 @@ impl<'tcx> Cx<'tcx> {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
-        let opt_destruction_scope =
-            self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id);
         let block = Block {
             targeted_by_break: block.targeted_by_break,
             region_scope: region::Scope {
                 id: block.hir_id.local_id,
                 data: region::ScopeData::Node,
             },
-            opt_destruction_scope,
             span: block.span,
             stmts,
             expr: block.expr.map(|expr| self.mirror_expr(expr)),
@@ -49,7 +46,6 @@ impl<'tcx> Cx<'tcx> {
             .enumerate()
             .filter_map(|(index, stmt)| {
                 let hir_id = stmt.hir_id;
-                let opt_dxn_ext = self.region_scope_tree.opt_destruction_scope(hir_id.local_id);
                 match stmt.kind {
                     hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => {
                         let stmt = Stmt {
@@ -60,7 +56,6 @@ impl<'tcx> Cx<'tcx> {
                                 },
                                 expr: self.mirror_expr(expr),
                             },
-                            opt_destruction_scope: opt_dxn_ext,
                         };
                         Some(self.thir.stmts.push(stmt))
                     }
@@ -122,7 +117,6 @@ impl<'tcx> Cx<'tcx> {
                                 lint_level: LintLevel::Explicit(local.hir_id),
                                 span,
                             },
-                            opt_destruction_scope: opt_dxn_ext,
                         };
                         Some(self.thir.stmts.push(stmt))
                     }
