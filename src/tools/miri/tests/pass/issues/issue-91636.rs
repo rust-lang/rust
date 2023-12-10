@@ -1,3 +1,5 @@
+#![allow(unpredictable_function_pointer_comparisons)]
+
 type BuiltIn = for<'a> fn(&str);
 
 struct Function {
