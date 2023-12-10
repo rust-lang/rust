@@ -116,7 +116,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             // FIXME: extract this logic for use in other diagnostics.
                             let (trait_ref, assoc_args) = proj.trait_ref_and_own_args(tcx);
                             let item_name = tcx.item_name(proj.def_id);
-                            let item_args = self.format_generic_args(proj.def_id, assoc_args);
+                            let item_args = self.format_generic_args(assoc_args);
 
                             // Here, we try to see if there's an existing
                             // trait implementation that matches the one that
@@ -775,7 +775,7 @@ fn foo(&self) -> Self::T { String::new() }
                 let span = Span::new(pos, pos, span.ctxt(), span.parent());
                 (span, format!(", {} = {}", assoc.ident(tcx), ty))
             } else {
-                let item_args = self.format_generic_args(assoc.def_id, assoc_args);
+                let item_args = self.format_generic_args(assoc_args);
                 (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident(tcx), item_args, ty))
             };
             diag.span_suggestion_verbose(span, msg(), sugg, MaybeIncorrect);
@@ -784,13 +784,9 @@ fn foo(&self) -> Self::T { String::new() }
         false
     }
 
-    pub fn format_generic_args(
-        &self,
-        assoc_def_id: DefId,
-        args: &[ty::GenericArg<'tcx>],
-    ) -> String {
+    pub fn format_generic_args(&self, args: &[ty::GenericArg<'tcx>]) -> String {
         FmtPrinter::print_string(self.tcx, hir::def::Namespace::TypeNS, |cx| {
-            cx.path_generic_args(|_| Ok(()), args, &self.infcx.tcx.generics_of(assoc_def_id).params)
+            cx.path_generic_args(|_| Ok(()), args)
         })
         .expect("could not write to `String`.")
     }
