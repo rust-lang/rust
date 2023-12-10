@@ -551,66 +551,27 @@
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
-use self::ValidityConstraint::*;
+use smallvec::{smallvec, SmallVec};
+use std::fmt;
+
+use rustc_data_structures::{captures::Captures, stack::ensure_sufficient_stack};
+use rustc_hir::HirId;
+use rustc_middle::ty::{self, Ty};
+use rustc_session::lint;
+use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
+use rustc_span::{Span, DUMMY_SP};
+
 use crate::constructor::{
     Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, SplitConstructorSet,
 };
+use crate::cx::MatchCheckCtxt;
 use crate::errors::{
     NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Overlap,
     OverlappingRangeEndpoints, Uncovered,
 };
 use crate::pat::{DeconstructedPat, WitnessPat};
 
-use rustc_arena::TypedArena;
-use rustc_data_structures::{captures::Captures, stack::ensure_sufficient_stack};
-use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint;
-use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
-use rustc_span::{Span, DUMMY_SP};
-
-use smallvec::{smallvec, SmallVec};
-use std::fmt;
-
-pub struct MatchCheckCtxt<'p, 'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    /// The module in which the match occurs. This is necessary for
-    /// checking inhabited-ness of types because whether a type is (visibly)
-    /// inhabited can depend on whether it was defined in the current module or
-    /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
-    /// outside its module and should not be matchable with an empty match statement.
-    pub module: DefId,
-    pub param_env: ty::ParamEnv<'tcx>,
-    pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
-    /// Lint level at the match.
-    pub match_lint_level: HirId,
-    /// The span of the whole match, if applicable.
-    pub whole_match_span: Option<Span>,
-    /// Span of the scrutinee.
-    pub scrut_span: Span,
-    /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
-    pub refutable: bool,
-    /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee comes
-    /// from a union field, a pointer deref, or a reference deref (pending opsem decisions).
-    pub known_valid_scrutinee: bool,
-}
-
-impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
-    pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
-    }
-
-    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
-    pub fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
-        match ty.kind() {
-            ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
-            }
-            _ => false,
-        }
-    }
-}
+use self::ValidityConstraint::*;
 
 #[derive(Copy, Clone)]
 pub(super) struct PatCtxt<'a, 'p, 'tcx> {
@@ -1244,7 +1205,9 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let split_set = ConstructorSet::for_ty(cx, ty).split(pcx, ctors);
+    let ctors_for_ty = &cx.ctors_for_ty(ty);
+    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. }); // For diagnostics.
+    let split_set = ctors_for_ty.split(pcx, ctors);
     let all_missing = split_set.present.is_empty();
 
     // Build the set of constructors we will specialize with. It must cover the whole type.
@@ -1259,7 +1222,7 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
     }
 
     // Decide what constructors to report.
-    let always_report_all = is_top_level && !IntRange::is_integral(pcx.ty);
+    let always_report_all = is_top_level && !is_integers;
     // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
     let report_individual_missing_ctors = always_report_all || !all_missing;
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
@@ -1362,7 +1325,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     /// Do constructor splitting on the constructors of the column.
     fn analyze_ctors(&self, pcx: &PatCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'tcx> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
-        ConstructorSet::for_ty(pcx.cx, pcx.ty).split(pcx, column_ctors)
+        pcx.cx.ctors_for_ty(pcx.ty).split(pcx, column_ctors)
     }
 
     fn iter<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'a> {
@@ -1470,9 +1433,9 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
 
     let set = column.analyze_ctors(pcx);
 
-    if IntRange::is_integral(ty) {
+    if matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_)) {
         let emit_lint = |overlap: &IntRange, this_span: Span, overlapped_spans: &[Span]| {
-            let overlap_as_pat = overlap.to_diagnostic_pat(ty, cx.tcx);
+            let overlap_as_pat = cx.hoist_pat_range(overlap, ty);
             let overlaps: Vec<_> = overlapped_spans
                 .iter()
                 .copied()

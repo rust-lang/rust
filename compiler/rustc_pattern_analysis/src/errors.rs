@@ -1,4 +1,4 @@
-use crate::{pat::WitnessPat, usefulness::MatchCheckCtxt};
+use crate::{cx::MatchCheckCtxt, pat::WitnessPat};
 
 use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -24,18 +24,18 @@ impl<'tcx> Uncovered<'tcx> {
         cx: &MatchCheckCtxt<'p, 'tcx>,
         witnesses: Vec<WitnessPat<'tcx>>,
     ) -> Self {
-        let witness_1 = witnesses.get(0).unwrap().to_diagnostic_pat(cx);
+        let witness_1 = cx.hoist_witness_pat(witnesses.get(0).unwrap());
         Self {
             span,
             count: witnesses.len(),
             // Substitute dummy values if witnesses is smaller than 3. These will never be read.
             witness_2: witnesses
                 .get(1)
-                .map(|w| w.to_diagnostic_pat(cx))
+                .map(|w| cx.hoist_witness_pat(w))
                 .unwrap_or_else(|| witness_1.clone()),
             witness_3: witnesses
                 .get(2)
-                .map(|w| w.to_diagnostic_pat(cx))
+                .map(|w| cx.hoist_witness_pat(w))
                 .unwrap_or_else(|| witness_1.clone()),
             witness_1,
             remainder: witnesses.len().saturating_sub(3),

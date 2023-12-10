@@ -1,6 +1,7 @@
 //! Analysis of patterns, notably match exhaustiveness checking.
 
 pub mod constructor;
+pub mod cx;
 pub mod errors;
 pub mod pat;
 pub mod usefulness;

@@ -6,7 +6,7 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
-use rustc_pattern_analysis::{errors::Uncovered, usefulness::MatchCheckCtxt};
+use rustc_pattern_analysis::{cx::MatchCheckCtxt, errors::Uncovered};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 

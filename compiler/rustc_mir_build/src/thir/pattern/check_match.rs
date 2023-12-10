@@ -1,8 +1,9 @@
 use rustc_pattern_analysis::constructor::Constructor;
+use rustc_pattern_analysis::cx::MatchCheckCtxt;
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::pat::{DeconstructedPat, WitnessPat};
 use rustc_pattern_analysis::usefulness::{
-    compute_match_usefulness, MatchArm, MatchCheckCtxt, Usefulness, UsefulnessReport,
+    compute_match_usefulness, MatchArm, Usefulness, UsefulnessReport,
 };
 
 use crate::errors::*;
@@ -286,7 +287,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
                 check_borrow_conflicts_in_at_patterns(self, pat);
                 check_for_bindings_named_same_as_variants(self, pat, refutable);
             });
-            Ok(cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, pat)))
+            Ok(cx.pattern_arena.alloc(cx.lower_pat(pat)))
         }
     }
 
@@ -926,7 +927,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         pattern = if witnesses.len() < 4 {
             witnesses
                 .iter()
-                .map(|witness| witness.to_diagnostic_pat(cx).to_string())
+                .map(|witness| cx.hoist_witness_pat(witness).to_string())
                 .collect::<Vec<String>>()
                 .join(" | ")
         } else {
@@ -950,7 +951,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     if !is_empty_match {
         let mut non_exhaustive_tys = FxHashSet::default();
         // Look at the first witness.
-        collect_non_exhaustive_tys(cx.tcx, &witnesses[0], &mut non_exhaustive_tys);
+        collect_non_exhaustive_tys(cx, &witnesses[0], &mut non_exhaustive_tys);
 
         for ty in non_exhaustive_tys {
             if ty.is_ptr_sized_integral() {
@@ -1085,13 +1086,13 @@ fn joined_uncovered_patterns<'p, 'tcx>(
     witnesses: &[WitnessPat<'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &WitnessPat<'tcx>| pat.to_diagnostic_pat(cx).to_string();
+    let pat_to_str = |pat: &WitnessPat<'tcx>| cx.hoist_witness_pat(pat).to_string();
     match witnesses {
         [] => bug!(),
-        [witness] => format!("`{}`", witness.to_diagnostic_pat(cx)),
+        [witness] => format!("`{}`", cx.hoist_witness_pat(witness)),
         [head @ .., tail] if head.len() < LIMIT => {
             let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), tail.to_diagnostic_pat(cx))
+            format!("`{}` and `{}`", head.join("`, `"), cx.hoist_witness_pat(tail))
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);
@@ -1102,7 +1103,7 @@ fn joined_uncovered_patterns<'p, 'tcx>(
 }
 
 fn collect_non_exhaustive_tys<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    cx: &MatchCheckCtxt<'_, 'tcx>,
     pat: &WitnessPat<'tcx>,
     non_exhaustive_tys: &mut FxHashSet<Ty<'tcx>>,
 ) {
@@ -1110,13 +1111,13 @@ fn collect_non_exhaustive_tys<'tcx>(
         non_exhaustive_tys.insert(pat.ty());
     }
     if let Constructor::IntRange(range) = pat.ctor() {
-        if range.is_beyond_boundaries(pat.ty(), tcx) {
+        if cx.is_range_beyond_boundaries(range, pat.ty()) {
             // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
             non_exhaustive_tys.insert(pat.ty());
         }
     }
     pat.iter_fields()
-        .for_each(|field_pat| collect_non_exhaustive_tys(tcx, field_pat, non_exhaustive_tys))
+        .for_each(|field_pat| collect_non_exhaustive_tys(cx, field_pat, non_exhaustive_tys))
 }
 
 fn report_adt_defined_here<'tcx>(

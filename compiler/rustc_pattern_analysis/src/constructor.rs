@@ -158,21 +158,16 @@ use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::RangeEnd;
 use rustc_index::IndexVec;
-use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::mir;
-use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::thir::{Pat, PatKind, PatRange, PatRangeBoundary};
+use rustc_middle::mir::Const;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
-use rustc_target::abi::{Integer, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{Integer, VariantIdx};
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
-use crate::pat::Fields;
-use crate::usefulness::{MatchCheckCtxt, PatCtxt};
+use crate::usefulness::PatCtxt;
 
 /// Whether we have seen a constructor in the column or not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -196,7 +191,7 @@ pub enum MaybeInfiniteInt {
 
 impl MaybeInfiniteInt {
     // The return value of `signed_bias` should be XORed with a value to encode/decode it.
-    fn signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u128 {
+    pub(crate) fn signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u128 {
         match *ty.kind() {
             ty::Int(ity) => {
                 let bits = Integer::from_int_ty(&tcx, ity).size().bits() as u128;
@@ -206,57 +201,12 @@ impl MaybeInfiniteInt {
         }
     }
 
-    fn new_finite(tcx: TyCtxt<'_>, ty: Ty<'_>, bits: u128) -> Self {
+    pub fn new_finite(tcx: TyCtxt<'_>, ty: Ty<'_>, bits: u128) -> Self {
         let bias = Self::signed_bias(tcx, ty);
         // Perform a shift if the underlying types are signed, which makes the interval arithmetic
         // type-independent.
         let x = bits ^ bias;
         Finite(x)
-    }
-    pub(crate) fn from_pat_range_bdy<'tcx>(
-        bdy: PatRangeBoundary<'tcx>,
-        ty: Ty<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
-        match bdy {
-            PatRangeBoundary::NegInfinity => NegInfinity,
-            PatRangeBoundary::Finite(value) => {
-                let bits = value.eval_bits(tcx, param_env);
-                Self::new_finite(tcx, ty, bits)
-            }
-            PatRangeBoundary::PosInfinity => PosInfinity,
-        }
-    }
-
-    /// Used only for diagnostics.
-    /// Note: it is possible to get `isize/usize::MAX+1` here, as explained in the doc for
-    /// [`IntRange::split`]. This cannot be represented as a `Const`, so we represent it with
-    /// `PosInfinity`.
-    fn to_diagnostic_pat_range_bdy<'tcx>(
-        self,
-        ty: Ty<'tcx>,
-        tcx: TyCtxt<'tcx>,
-    ) -> PatRangeBoundary<'tcx> {
-        match self {
-            NegInfinity => PatRangeBoundary::NegInfinity,
-            Finite(x) => {
-                let bias = Self::signed_bias(tcx, ty);
-                let bits = x ^ bias;
-                let size = ty.primitive_size(tcx);
-                match Scalar::try_from_uint(bits, size) {
-                    Some(scalar) => {
-                        let value = mir::Const::from_scalar(tcx, scalar, ty);
-                        PatRangeBoundary::Finite(value)
-                    }
-                    // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value
-                    // for a type, the problem isn't that the value is too small. So it must be too
-                    // large.
-                    None => PatRangeBoundary::PosInfinity,
-                }
-            }
-            JustAfterMax | PosInfinity => PatRangeBoundary::PosInfinity,
-        }
     }
 
     /// Note: this will not turn a finite value into an infinite one or vice-versa.
@@ -290,16 +240,11 @@ impl MaybeInfiniteInt {
 /// space: i.e., `range.lo < range.hi`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct IntRange {
-    pub(crate) lo: MaybeInfiniteInt, // Must not be `PosInfinity`.
-    pub(crate) hi: MaybeInfiniteInt, // Must not be `NegInfinity`.
+    pub lo: MaybeInfiniteInt, // Must not be `PosInfinity`.
+    pub hi: MaybeInfiniteInt, // Must not be `NegInfinity`.
 }
 
 impl IntRange {
-    #[inline]
-    pub(super) fn is_integral(ty: Ty<'_>) -> bool {
-        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_))
-    }
-
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
     pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
@@ -420,55 +365,6 @@ impl IntRange {
                 let range = IntRange { lo: prev_bdy, hi: bdy };
                 (presence, range)
             })
-    }
-
-    /// Whether the range denotes the fictitious values before `isize::MIN` or after
-    /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
-    pub fn is_beyond_boundaries<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-        ty.is_ptr_sized_integral() && {
-            // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
-            // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `to_diagnostic_pat_range_bdy`
-            // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `self.lo`
-            // otherwise.
-            let lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
-            matches!(lo, PatRangeBoundary::PosInfinity)
-                || matches!(self.hi, MaybeInfiniteInt::Finite(0))
-        }
-    }
-    /// Only used for displaying the range.
-    pub(super) fn to_diagnostic_pat<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
-        let kind = if matches!((self.lo, self.hi), (NegInfinity, PosInfinity)) {
-            PatKind::Wild
-        } else if self.is_singleton() {
-            let lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
-            let value = lo.as_finite().unwrap();
-            PatKind::Constant { value }
-        } else {
-            // We convert to an inclusive range for diagnostics.
-            let mut end = RangeEnd::Included;
-            let mut lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
-            if matches!(lo, PatRangeBoundary::PosInfinity) {
-                // The only reason to get `PosInfinity` here is the special case where
-                // `to_diagnostic_pat_range_bdy` found `{u,i}size::MAX+1`. So the range denotes the
-                // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
-                // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
-                // probably clear enough.
-                let c = ty.numeric_max_val(tcx).unwrap();
-                let value = mir::Const::from_ty_const(c, tcx);
-                lo = PatRangeBoundary::Finite(value);
-            }
-            let hi = if matches!(self.hi, MaybeInfiniteInt::Finite(0)) {
-                // The range encodes `..ty::MIN`, so we can't convert it to an inclusive range.
-                end = RangeEnd::Excluded;
-                self.hi
-            } else {
-                self.hi.minus_one()
-            };
-            let hi = hi.to_diagnostic_pat_range_bdy(ty, tcx);
-            PatKind::Range(Box::new(PatRange { lo, hi, end, ty }))
-        };
-
-        Pat { ty, span: DUMMY_SP, kind }
     }
 }
 
@@ -742,7 +638,7 @@ pub enum Constructor<'tcx> {
     F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
     F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
-    Str(mir::Const<'tcx>),
+    Str(Const<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
     /// Constants that must not be matched structurally. They are treated as black boxes for the
@@ -797,49 +693,10 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    pub(crate) fn variant_index_for_adt(&self, adt: ty::AdtDef<'tcx>) -> VariantIdx {
-        match *self {
-            Variant(idx) => idx,
-            Single => {
-                assert!(!adt.is_enum());
-                FIRST_VARIANT
-            }
-            _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
-        }
-    }
-
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
     pub(crate) fn arity(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> usize {
-        match self {
-            Single | Variant(_) => match pcx.ty.kind() {
-                ty::Tuple(fs) => fs.len(),
-                ty::Ref(..) => 1,
-                ty::Adt(adt, ..) => {
-                    if adt.is_box() {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        1
-                    } else {
-                        let variant = &adt.variant(self.variant_index_for_adt(*adt));
-                        Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
-                    }
-                }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx.ty),
-            },
-            Slice(slice) => slice.arity(),
-            Bool(..)
-            | IntRange(..)
-            | F32Range(..)
-            | F64Range(..)
-            | Str(..)
-            | Opaque(..)
-            | NonExhaustive
-            | Hidden
-            | Missing { .. }
-            | Wildcard => 0,
-            Or => bug!("The `Or` constructor doesn't have a fixed arity"),
-        }
+        pcx.cx.ctor_arity(self, pcx.ty)
     }
 
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
@@ -974,123 +831,6 @@ pub(super) struct SplitConstructorSet<'tcx> {
 }
 
 impl ConstructorSet {
-    /// Creates a set that represents all the constructors of `ty`.
-    ///
-    /// See at the top of the file for considerations of emptiness.
-    #[instrument(level = "debug", skip(cx), ret)]
-    pub fn for_ty<'p, 'tcx>(cx: &MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
-        let make_range = |start, end| {
-            IntRange::from_range(
-                MaybeInfiniteInt::new_finite(cx.tcx, ty, start),
-                MaybeInfiniteInt::new_finite(cx.tcx, ty, end),
-                RangeEnd::Included,
-            )
-        };
-        // This determines the set of all possible constructors for the type `ty`. For numbers,
-        // arrays and slices we use ranges and variable-length slices when appropriate.
-        match ty.kind() {
-            ty::Bool => Self::Bool,
-            ty::Char => {
-                // The valid Unicode Scalar Value ranges.
-                Self::Integers {
-                    range_1: make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                    range_2: Some(make_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
-                }
-            }
-            &ty::Int(ity) => {
-                let range = if ty.is_ptr_sized_integral() {
-                    // The min/max values of `isize` are not allowed to be observed.
-                    IntRange { lo: NegInfinity, hi: PosInfinity }
-                } else {
-                    let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
-                    let min = 1u128 << (bits - 1);
-                    let max = min - 1;
-                    make_range(min, max)
-                };
-                Self::Integers { range_1: range, range_2: None }
-            }
-            &ty::Uint(uty) => {
-                let range = if ty.is_ptr_sized_integral() {
-                    // The max value of `usize` is not allowed to be observed.
-                    let lo = MaybeInfiniteInt::new_finite(cx.tcx, ty, 0);
-                    IntRange { lo, hi: PosInfinity }
-                } else {
-                    let size = Integer::from_uint_ty(&cx.tcx, uty).size();
-                    let max = size.truncate(u128::MAX);
-                    make_range(0, max)
-                };
-                Self::Integers { range_1: range, range_2: None }
-            }
-            ty::Slice(sub_ty) => {
-                Self::Slice { array_len: None, subtype_is_empty: cx.is_uninhabited(*sub_ty) }
-            }
-            ty::Array(sub_ty, len) => {
-                // We treat arrays of a constant but unknown length like slices.
-                Self::Slice {
-                    array_len: len.try_eval_target_usize(cx.tcx, cx.param_env).map(|l| l as usize),
-                    subtype_is_empty: cx.is_uninhabited(*sub_ty),
-                }
-            }
-            ty::Adt(def, args) if def.is_enum() => {
-                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-                if def.variants().is_empty() && !is_declared_nonexhaustive {
-                    Self::NoConstructors
-                } else {
-                    let mut variants =
-                        IndexVec::from_elem(VariantVisibility::Visible, def.variants());
-                    for (idx, v) in def.variants().iter_enumerated() {
-                        let variant_def_id = def.variant(idx).def_id;
-                        // Visibly uninhabited variants.
-                        let is_inhabited = v
-                            .inhabited_predicate(cx.tcx, *def)
-                            .instantiate(cx.tcx, args)
-                            .apply(cx.tcx, cx.param_env, cx.module);
-                        // Variants that depend on a disabled unstable feature.
-                        let is_unstable = matches!(
-                            cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
-                            EvalResult::Deny { .. }
-                        );
-                        // Foreign `#[doc(hidden)]` variants.
-                        let is_doc_hidden =
-                            cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
-                        let visibility = if !is_inhabited {
-                            // FIXME: handle empty+hidden
-                            VariantVisibility::Empty
-                        } else if is_unstable || is_doc_hidden {
-                            VariantVisibility::Hidden
-                        } else {
-                            VariantVisibility::Visible
-                        };
-                        variants[idx] = visibility;
-                    }
-
-                    Self::Variants { variants, non_exhaustive: is_declared_nonexhaustive }
-                }
-            }
-            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => {
-                Self::Single { empty: cx.is_uninhabited(ty) }
-            }
-            ty::Never => Self::NoConstructors,
-            // This type is one for which we cannot list constructors, like `str` or `f64`.
-            // FIXME(Nadrieril): which of these are actually allowed?
-            ty::Float(_)
-            | ty::Str
-            | ty::Foreign(_)
-            | ty::RawPtr(_)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(_)
-            | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
-            | ty::Alias(_, _)
-            | ty::Param(_)
-            | ty::Error(_) => Self::Unlistable,
-            ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
-                bug!("Encountered unexpected type in `ConstructorSet::for_ty`: {ty:?}")
-            }
-        }
-    }
-
     /// This analyzes a column of constructors to 1/ determine which constructors of the type (if
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
