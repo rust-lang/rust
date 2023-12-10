@@ -2307,7 +2307,7 @@ fn test_is_sorted() {
 
     // Tests for is_sorted_by
     assert!(![6, 2, 8, 5, 1, -60, 1337].is_sorted());
-    assert!([6, 2, 8, 5, 1, -60, 1337].is_sorted_by(|_, _| Some(Ordering::Less)));
+    assert!([6, 2, 8, 5, 1, -60, 1337].is_sorted_by(|_, _| true));
 
     // Tests for is_sorted_by_key
     assert!([-2, -1, 0, 3].is_sorted());

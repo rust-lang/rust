@@ -4,7 +4,6 @@
 mod macros;
 
 use crate::cmp;
-use crate::cmp::Ordering;
 use crate::fmt;
 use crate::intrinsics::assume;
 use crate::iter::{
@@ -133,7 +132,7 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, as_ref, {
     fn is_sorted_by<F>(self, mut compare: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
+        F: FnMut(&Self::Item, &Self::Item) -> bool,
     {
         self.as_slice().is_sorted_by(|a, b| compare(&a, &b))
     }
