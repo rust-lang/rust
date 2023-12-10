@@ -20,7 +20,7 @@ fn body_hir(db: &RootDatabase, position: FilePosition) -> Option<String> {
     let source_file = sema.parse(position.file_id);
 
     let item = ancestors_at_offset(source_file.syntax(), position.offset)
-        .filter(|it| ast::MacroCall::can_cast(it.kind()))
+        .filter(|it| !ast::MacroCall::can_cast(it.kind()))
         .find_map(ast::Item::cast)?;
     let def: DefWithBody = match item {
         ast::Item::Fn(it) => sema.to_def(&it)?.into(),
