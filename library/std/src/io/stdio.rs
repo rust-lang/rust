@@ -8,7 +8,10 @@ use crate::io::prelude::*;
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
 use crate::fs::File;
-use crate::io::{self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
+use crate::io::{
+    self, BorrowedBuf, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines,
+};
+use crate::mem::MaybeUninit;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantMutex, ReentrantMutexGuard};
 use crate::sys::stdio;
@@ -1008,8 +1011,12 @@ pub fn set_output_capture(sink: Option<LocalStream>) -> Option<LocalStream> {
 ///
 /// Writing to non-blocking stdout/stderr can cause an error, which will lead
 /// this function to panic.
-fn print_to<T>(args: fmt::Arguments<'_>, global_s: fn() -> T, label: &str)
-where
+fn print_to<T>(
+    args: fmt::Arguments<'_>,
+    global_s: impl FnOnce() -> T,
+    finalizer: impl FnOnce(T) -> io::Result<()>,
+    label: &str,
+) where
     T: Write,
 {
     if print_to_buffer_if_capture_used(args) {
@@ -1017,7 +1024,8 @@ where
         return;
     }
 
-    if let Err(e) = global_s().write_fmt(args) {
+    let mut out = global_s();
+    if let Err(e) = out.write_fmt(args).and_then(|()| finalizer(out)) {
         panic!("failed printing to {label}: {e}");
     }
 }
@@ -1094,7 +1102,7 @@ impl_is_terminal!(File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, St
 #[doc(hidden)]
 #[cfg(not(test))]
 pub fn _print(args: fmt::Arguments<'_>) {
-    print_to(args, stdout, "stdout");
+    print_to(args, stdout, |_| Ok(()), "stdout");
 }
 
 #[unstable(
@@ -1105,7 +1113,56 @@ pub fn _print(args: fmt::Arguments<'_>) {
 #[doc(hidden)]
 #[cfg(not(test))]
 pub fn _eprint(args: fmt::Arguments<'_>) {
-    print_to(args, stderr, "stderr");
+    #[cfg(not(miri))]
+    {
+        struct StackBuf<'a, W> {
+            buf: BorrowedBuf<'a>,
+            stack_offset: usize,
+            inner: W,
+        }
+
+        impl<W: Write> Write for StackBuf<'_, W> {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                if buf.len() >= self.buf.capacity() || buf.len() > self.buf.unfilled().capacity() {
+                    self.inner
+                        .write_vectored(&[
+                            IoSlice::new(&self.buf.filled()[self.stack_offset..]),
+                            IoSlice::new(buf),
+                        ])
+                        .map(|written| {
+                            let offset_written = written + self.stack_offset;
+                            let stack_stored = self.buf.filled().len();
+                            if offset_written >= stack_stored {
+                                self.stack_offset = 0;
+                                self.buf.clear();
+                                offset_written - stack_stored // Num passthrough bytes written
+                            } else {
+                                self.stack_offset += written;
+                                0
+                            }
+                        })
+                } else {
+                    self.buf.unfilled().write(buf)
+                }
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                self.inner.write_all(self.buf.filled())?;
+                self.buf.clear();
+                self.inner.flush()
+            }
+        }
+
+        let mut buf = [MaybeUninit::uninit(); 256];
+        let out = StackBuf {
+            buf: BorrowedBuf::from(buf.as_mut_slice()),
+            stack_offset: 0,
+            inner: stderr().lock(),
+        };
+        print_to(args, || out, |mut out| out.inner.write_all(out.buf.filled()), "stderr");
+    }
+    #[cfg(miri)]
+    print_to(args, stderr, |_| Ok(()), "stderr");
 }
 
 #[cfg(test)]
