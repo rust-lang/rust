@@ -339,6 +339,25 @@ jobs:
               ENABLE_GCC_CODEGEN: "1"
             <<: *job-linux-16c
 
+          - name: x86_64-gnu-llvm-16
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-8c
+
+          - name: x86_64-gnu-llvm-17
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-8c
+
+          - name: x86_64-gnu-aux
+            <<: *job-linux-4c
+
+          - name: x86_64-gnu-debug
+            <<: *job-linux-8c
+
+          - name: x86_64-gnu-distcheck
+            <<: *job-linux-8c
+
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
 
@@ -721,7 +740,7 @@ jobs:
     <<: *base-ci-job
     name: try - ${{ matrix.name }}
     env:
-      DIST_TRY_BUILD: 1
+      # DIST_TRY_BUILD: 1
       <<: [*shared-ci-variables, *prod-variables]
     if: github.event_name == 'push' && (((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust') || ((github.ref == 'refs/heads/automation/bors/try') && github.repository == 'rust-lang/rust'))
     strategy:

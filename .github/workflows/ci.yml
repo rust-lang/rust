@@ -60,6 +60,23 @@ jobs:
             env:
               ENABLE_GCC_CODEGEN: "1"
             os: ubuntu-20.04-16core-64gb
+          - name: x86_64-gnu-llvm-16
+            env:
+              RUST_BACKTRACE: 1
+            os: ubuntu-20.04-8core-32gb
+          - name: x86_64-gnu-llvm-17
+            env:
+              RUST_BACKTRACE: 1
+            os: ubuntu-20.04-8core-32gb
+          - name: x86_64-gnu-aux
+            os: ubuntu-20.04-4core-16gb
+            env: {}
+          - name: x86_64-gnu-debug
+            os: ubuntu-20.04-8core-32gb
+            env: {}
+          - name: x86_64-gnu-distcheck
+            os: ubuntu-20.04-8core-32gb
+            env: {}
           - name: x86_64-gnu-tools
             os: ubuntu-20.04-16core-64gb
             env: {}
@@ -561,7 +578,6 @@ jobs:
   try:
     name: "try - ${{ matrix.name }}"
     env:
-      DIST_TRY_BUILD: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
