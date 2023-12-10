@@ -3,8 +3,12 @@
 // Proving `W<?0>: Trait` instantiates `?0` with `(W<?1>, W<?2>)` and then
 // proves `W<?1>: Trait` and `W<?2>: Trait`, resulting in a coinductive cycle.
 //
-// Proving coinductive cycles runs until we reach a fixpoint. This fixpoint is
-// never reached here and each step doubles the amount of nested obligations.
+// Proving coinductive cycles runs until we reach a fixpoint. However, after
+// computing `try_evaluate_added_goals` in the second fixpoint iteration, the
+// self type already has a depth equal to the number of steps. This results
+// in enormous constraints, causing the canonicalizer to hang without ever
+// reaching the recursion limit. We currently avoid that by erasing the constraints
+// from overflow.
 //
 // This previously caused a hang in the trait solver, see
 // https://github.com/rust-lang/trait-system-refactor-initiative/issues/13.

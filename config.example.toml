@@ -600,6 +600,16 @@ change-id = 117813
 # desired in distributions, for example.
 #rpath = true
 
+# Indicates whether symbols should be stripped using `-Cstrip=symbols`.
+#strip = false
+
+# Indicates whether stack protectors should be used
+# via the unstable option `-Zstack-protector`.
+#
+# Valid options are : `none`(default),`basic`,`strong`, or `all`.
+# `strong` and `basic` options may be buggy and are not recommended, see rust-lang/rust#114903.
+#stack-protector = "none"
+
 # Prints each test name as it is executed, to help debug issues in the test harness itself.
 #verbose-tests = false
 
