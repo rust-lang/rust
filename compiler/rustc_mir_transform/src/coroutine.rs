@@ -1512,13 +1512,6 @@ fn create_cases<'tcx>(
 
                 // Create StorageLive instructions for locals with live storage
                 for i in 0..(body.local_decls.len()) {
-                    if i == 2 {
-                        // The resume argument is live on function entry. Don't insert a
-                        // `StorageLive`, or the following `Assign` will read from uninitialized
-                        // memory.
-                        continue;
-                    }
-
                     let l = Local::new(i);
                     let needs_storage_live = point.storage_liveness.contains(l)
                         && !transform.remap.contains_key(&l)
