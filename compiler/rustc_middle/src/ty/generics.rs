@@ -342,6 +342,8 @@ impl<'tcx> Generics {
                 param.default_value(tcx).is_some_and(|default| {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
+                // filter out trailing effect params
+                || matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. })
             })
             .count();
         own_params.end -= num_default_params;
