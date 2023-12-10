@@ -13,6 +13,16 @@ use thin_vec::thin_vec;
 
 use crate::errors;
 
+fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Option<Symbol> {
+    let var = var.as_str();
+    if let Some(value) = cx.sess.opts.logical_env.get(var) {
+        return Some(Symbol::intern(value));
+    }
+    // If the environment variable was not defined with the `--env` option, we try to retrieve it
+    // from rustc's environment.
+    env::var(var).ok().as_deref().map(Symbol::intern)
+}
+
 pub fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -23,7 +33,7 @@ pub fn expand_option_env<'cx>(
     };
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
+    let value = lookup_env(cx, var);
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
@@ -77,7 +87,7 @@ pub fn expand_env<'cx>(
     };
 
     let span = cx.with_def_site_ctxt(sp);
-    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
+    let value = lookup_env(cx, var);
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {

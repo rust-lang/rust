@@ -8,7 +8,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
@@ -1114,6 +1114,7 @@ impl Default for Options {
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
             color: ColorConfig::Auto,
+            logical_env: FxIndexMap::default(),
         }
     }
 }
@@ -1813,6 +1814,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
+        opt::multi("", "env", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
@@ -2592,6 +2594,23 @@ fn parse_remap_path_prefix(
     mapping
 }
 
+fn parse_logical_env(
+    handler: &mut EarlyErrorHandler,
+    matches: &getopts::Matches,
+) -> FxIndexMap<String, String> {
+    let mut vars = FxIndexMap::default();
+
+    for arg in matches.opt_strs("env") {
+        if let Some((name, val)) = arg.split_once('=') {
+            vars.insert(name.to_string(), val.to_string());
+        } else {
+            handler.early_error(format!("`--env`: specify value for variable `{arg}`"));
+        }
+    }
+
+    vars
+}
+
 // JUSTIFICATION: before wrapper fn is available
 #[allow(rustc::bad_opt_access)]
 pub fn build_session_options(
@@ -2830,6 +2849,8 @@ pub fn build_session_options(
         handler.early_error("can't dump dependency graph without `-Z query-dep-graph`");
     }
 
+    let logical_env = parse_logical_env(handler, matches);
+
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.
     let tmp_buf;
@@ -2910,6 +2931,7 @@ pub fn build_session_options(
         pretty,
         working_dir,
         color,
+        logical_env,
     }
 }
 
@@ -3184,6 +3206,7 @@ pub(crate) mod dep_tracking {
     };
     use crate::lint;
     use crate::utils::NativeLib;
+    use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
@@ -3338,6 +3361,21 @@ pub(crate) mod dep_tracking {
             for (index, elem) in self.iter().enumerate() {
                 Hash::hash(&index, hasher);
                 DepTrackingHash::hash(elem, hasher, error_format, for_crate_hash);
+            }
+        }
+    }
+
+    impl<T: DepTrackingHash, V: DepTrackingHash> DepTrackingHash for FxIndexMap<T, V> {
+        fn hash(
+            &self,
+            hasher: &mut DefaultHasher,
+            error_format: ErrorOutputType,
+            for_crate_hash: bool,
+        ) {
+            Hash::hash(&self.len(), hasher);
+            for (key, value) in self.iter() {
+                DepTrackingHash::hash(key, hasher, error_format, for_crate_hash);
+                DepTrackingHash::hash(value, hasher, error_format, for_crate_hash);
             }
         }
     }
