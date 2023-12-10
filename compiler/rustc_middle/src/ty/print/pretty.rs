@@ -2896,7 +2896,8 @@ define_print_and_forward_display! {
     TraitPredPrintModifiersAndPath<'tcx> {
         if let Some(idx) = cx.tcx().generics_of(self.0.trait_ref.def_id).host_effect_index
         {
-            if self.0.trait_ref.args.const_at(idx) != cx.tcx().consts.true_ {
+            let arg = self.0.trait_ref.args.const_at(idx);
+            if arg != cx.tcx().consts.true_ && !arg.has_infer() {
                 p!("~const ");
             }
         }
