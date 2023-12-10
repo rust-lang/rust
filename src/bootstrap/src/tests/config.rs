@@ -1,5 +1,5 @@
-use crate::core::config::TomlConfig;
 use super::{Config, Flags};
+use crate::core::config::{LldMode, TomlConfig};
 
 use clap::CommandFactory;
 use serde::Deserialize;
@@ -216,4 +216,13 @@ fn verify_file_integrity() {
     );
 
     remove_file(tempfile).unwrap();
+}
+
+#[test]
+fn rust_lld() {
+    assert!(matches!(parse("").lld_mode, LldMode::Unused));
+    assert!(matches!(parse("rust.use-lld = \"self-contained\"").lld_mode, LldMode::SelfContained));
+    assert!(matches!(parse("rust.use-lld = \"external\"").lld_mode, LldMode::External));
+    assert!(matches!(parse("rust.use-lld = true").lld_mode, LldMode::External));
+    assert!(matches!(parse("rust.use-lld = false").lld_mode, LldMode::Unused));
 }

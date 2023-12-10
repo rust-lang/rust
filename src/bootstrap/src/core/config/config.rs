@@ -105,6 +105,39 @@ impl Display for DebuginfoLevel {
     }
 }
 
+/// LLD in bootstrap works like this:
+/// - Self-contained lld: use `rust-lld` from the compiler's sysroot
+/// - External: use an external `lld` binary
+///
+/// It is configured depending on the target:
+/// 1) Everything except MSVC
+/// - Self-contained: `-Clinker-flavor=gnu-lld-cc -Clink-self-contained=+linker`
+/// - External: `-Clinker-flavor=gnu-lld-cc`
+/// 2) MSVC
+/// - Self-contained: `-Clinker=<path to rust-lld>`
+/// - External: `-Clinker=lld`
+#[derive(Default, Copy, Clone)]
+pub enum LldMode {
+    /// Do not use LLD
+    #[default]
+    Unused,
+    /// Use `rust-lld` from the compiler's sysroot
+    SelfContained,
+    /// Use an externally provided `lld` binary.
+    /// Note that the linker name cannot be overridden, the binary has to be named `lld` and it has
+    /// to be in $PATH.
+    External,
+}
+
+impl LldMode {
+    pub fn is_used(&self) -> bool {
+        match self {
+            LldMode::SelfContained | LldMode::External => true,
+            LldMode::Unused => false,
+        }
+    }
+}
+
 /// Global configuration for the entire build and/or bootstrap.
 ///
 /// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
@@ -199,7 +232,7 @@ pub struct Config {
     pub llvm_from_ci: bool,
     pub llvm_build_config: HashMap<String, String>,
 
-    pub use_lld: bool,
+    pub lld_mode: LldMode,
     pub lld_enabled: bool,
     pub llvm_tools_enabled: bool,
 
@@ -488,6 +521,10 @@ impl TargetSelection {
     // See src/bootstrap/synthetic_targets.rs
     pub fn is_synthetic(&self) -> bool {
         self.synthetic
+    }
+
+    pub fn is_msvc(&self) -> bool {
+        self.contains("msvc")
     }
 }
 
@@ -977,6 +1014,44 @@ enum StringOrInt<'a> {
     String(&'a str),
     Int(i64),
 }
+
+impl<'de> Deserialize<'de> for LldMode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct LldModeVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for LldModeVisitor {
+            type Value = LldMode;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("one of true, 'self-contained' or 'external'")
+            }
+
+            fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(if v { LldMode::External } else { LldMode::Unused })
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match v {
+                    "external" => Ok(LldMode::External),
+                    "self-contained" => Ok(LldMode::SelfContained),
+                    _ => Err(E::custom("unknown mode {v}")),
+                }
+            }
+        }
+
+        deserializer.deserialize_any(LldModeVisitor)
+    }
+}
+
 define_config! {
     /// TOML representation of how the Rust build is configured.
     struct Rust {
@@ -1014,7 +1089,7 @@ define_config! {
         save_toolstates: Option<String> = "save-toolstates",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         lld: Option<bool> = "lld",
-        use_lld: Option<bool> = "use-lld",
+        lld_mode: Option<LldMode> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
         deny_warnings: Option<bool> = "deny-warnings",
         backtrace_on_ice: Option<bool> = "backtrace-on-ice",
@@ -1442,8 +1517,18 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
-            set(&mut config.use_lld, rust.use_lld);
+            set(&mut config.lld_mode, rust.lld_mode);
             set(&mut config.lld_enabled, rust.lld);
+
+            if matches!(config.lld_mode, LldMode::SelfContained)
+                && !config.lld_enabled
+                && flags.stage.unwrap_or(0) > 0
+            {
+                panic!(
+                    "Trying to use self-contained lld as a linker, but LLD is not being added to the sysroot. Enable it with rust.lld = true."
+                );
+            }
+
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel = rust
                 .parallel_compiler
