@@ -990,8 +990,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
+                ty::PredicateKind::NormalizesTo(..) => {
+                    bug!("NormalizesTo is only used by the new solver")
+                }
                 ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                    bug!("AliasRelate is only used by the new solver")
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
@@ -1872,6 +1875,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1901,6 +1905,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1936,6 +1941,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1951,6 +1957,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2058,6 +2065,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2069,6 +2077,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
+                | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate

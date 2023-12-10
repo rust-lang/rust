@@ -684,7 +684,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
                 let mir_description = match hir.body(body).coroutine_kind {
-                    Some(hir::CoroutineKind::Async(gen)) => match gen {
+                    Some(hir::CoroutineKind::Async(src)) => match src {
                         hir::CoroutineSource::Block => " of async block",
                         hir::CoroutineSource::Closure => " of async closure",
                         hir::CoroutineSource::Fn => {
@@ -701,7 +701,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             " of async function"
                         }
                     },
-                    Some(hir::CoroutineKind::Gen(gen)) => match gen {
+                    Some(hir::CoroutineKind::Gen(src)) => match src {
                         hir::CoroutineSource::Block => " of gen block",
                         hir::CoroutineSource::Closure => " of gen closure",
                         hir::CoroutineSource::Fn => {
@@ -713,6 +713,21 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                                 .output;
                             span = output.span();
                             " of gen function"
+                        }
+                    },
+
+                    Some(hir::CoroutineKind::AsyncGen(src)) => match src {
+                        hir::CoroutineSource::Block => " of async gen block",
+                        hir::CoroutineSource::Closure => " of async gen closure",
+                        hir::CoroutineSource::Fn => {
+                            let parent_item =
+                                hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            let output = &parent_item
+                                .fn_decl()
+                                .expect("coroutine lowered from async gen fn should be in fn")
+                                .output;
+                            span = output.span();
+                            " of async gen function"
                         }
                     },
                     Some(hir::CoroutineKind::Coroutine) => " of coroutine",

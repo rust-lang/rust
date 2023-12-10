@@ -90,7 +90,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{Expr, LintLevel};
-use rustc_middle::ty::Ty;
 use rustc_session::lint::Level;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -537,27 +536,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         (then_block, else_block)
     }
 
-    pub(crate) fn in_opt_scope<F, R>(
-        &mut self,
-        opt_scope: Option<(region::Scope, SourceInfo)>,
-        f: F,
-    ) -> BlockAnd<R>
-    where
-        F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
-    {
-        debug!("in_opt_scope(opt_scope={:?})", opt_scope);
-        if let Some(region_scope) = opt_scope {
-            self.push_scope(region_scope);
-        }
-        let mut block;
-        let rv = unpack!(block = f(self));
-        if let Some(region_scope) = opt_scope {
-            unpack!(block = self.pop_scope(region_scope, block));
-        }
-        debug!("in_scope: exiting opt_scope={:?} block={:?}", opt_scope, block);
-        block.and(rv)
-    }
-
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     #[instrument(skip(self, f), level = "debug")]
@@ -660,14 +638,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (None, Some(_)) => {
                 panic!("`return`, `become` and `break` with value and must have a destination")
             }
-            (None, None) if self.tcx.sess.instrument_coverage() => {
-                // Unlike `break` and `return`, which push an `Assign` statement to MIR, from which
-                // a Coverage code region can be generated, `continue` needs no `Assign`; but
-                // without one, the `InstrumentCoverage` MIR pass cannot generate a code region for
-                // `continue`. Coverage will be missing unless we add a dummy `Assign` to MIR.
-                self.add_dummy_assignment(span, block, source_info);
+            (None, None) => {
+                if self.tcx.sess.instrument_coverage() {
+                    // Normally we wouldn't build any MIR in this case, but that makes it
+                    // harder for coverage instrumentation to extract a relevant span for
+                    // `continue` expressions. So here we inject a dummy statement with the
+                    // desired span.
+                    self.cfg.push_coverage_span_marker(block, source_info);
+                }
             }
-            (None, None) => {}
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
@@ -721,14 +700,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
-    }
-
-    // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
-    // statement.
-    fn add_dummy_assignment(&mut self, span: Span, block: BasicBlock, source_info: SourceInfo) {
-        let local_decl = LocalDecl::new(Ty::new_unit(self.tcx), span);
-        let temp_place = Place::from(self.local_decls.push(local_decl));
-        self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
     }
 
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {

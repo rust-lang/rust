@@ -4,6 +4,7 @@
 )]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
 #[cfg(feature = "nightly")]
@@ -35,6 +36,7 @@ mod canonical;
 mod const_kind;
 mod debug;
 mod flags;
+mod infcx;
 mod interner;
 mod predicate_kind;
 mod region_kind;
@@ -43,13 +45,19 @@ pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
-pub use debug::{DebugWithInfcx, InferCtxtLike, WithInfcx};
+pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
+pub use infcx::InferCtxtLike;
 pub use interner::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
+pub use AliasKind::*;
+pub use DynKind::*;
+pub use InferTy::*;
+pub use RegionKind::*;
+pub use TyKind::*;
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
@@ -334,6 +342,12 @@ impl UniverseIndex {
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
         self.private < other.private
+    }
+}
+
+impl Default for UniverseIndex {
+    fn default() -> Self {
+        Self::ROOT
     }
 }
 

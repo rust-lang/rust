@@ -27,8 +27,3 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
-
-[dev-dependencies]
-# tidy-alphabetical-start
-coverage_test_macros = { path = "src/coverage/test_macros" }
-# tidy-alphabetical-end

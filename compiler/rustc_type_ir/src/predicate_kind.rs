@@ -120,7 +120,7 @@ where
 }
 
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
@@ -153,6 +153,15 @@ pub enum PredicateKind<I: Interner> {
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
     Ambiguous,
 
+    /// The alias normalizes to `term`. Unlike `Projection`, this always fails if the alias
+    /// cannot be normalized in the current context.
+    ///
+    /// `Projection(<T as Trait>::Assoc, ?x)` results in `?x == <T as Trait>::Assoc` while
+    /// `NormalizesTo(<T as Trait>::Assoc, ?x)` results in `NoSolution`.
+    ///
+    /// Only used in the new solver.
+    NormalizesTo(I::NormalizesTo),
+
     /// Separate from `ClauseKind::Projection` which is used for normalization in new solver.
     /// This predicate requires two terms to be equal to eachother.
     ///
@@ -168,27 +177,10 @@ where
     I::Term: Copy,
     I::CoercePredicate: Copy,
     I::SubtypePredicate: Copy,
+    I::NormalizesTo: Copy,
     ClauseKind<I>: Copy,
 {
 }
-
-impl<I: Interner> PartialEq for PredicateKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Clause(l0), Self::Clause(r0)) => l0 == r0,
-            (Self::ObjectSafe(l0), Self::ObjectSafe(r0)) => l0 == r0,
-            (Self::Subtype(l0), Self::Subtype(r0)) => l0 == r0,
-            (Self::Coerce(l0), Self::Coerce(r0)) => l0 == r0,
-            (Self::ConstEquate(l0, l1), Self::ConstEquate(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::AliasRelate(l0, l1, l2), Self::AliasRelate(r0, r1, r2)) => {
-                l0 == r0 && l1 == r1 && l2 == r2
-            }
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
-}
-
-impl<I: Interner> Eq for PredicateKind<I> {}
 
 impl<I: Interner> TypeFoldable<I> for PredicateKind<I>
 where
@@ -198,6 +190,7 @@ where
     I::Term: TypeFoldable<I>,
     I::CoercePredicate: TypeFoldable<I>,
     I::SubtypePredicate: TypeFoldable<I>,
+    I::NormalizesTo: TypeFoldable<I>,
     ClauseKind<I>: TypeFoldable<I>,
 {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
@@ -210,6 +203,7 @@ where
                 PredicateKind::ConstEquate(a.try_fold_with(folder)?, b.try_fold_with(folder)?)
             }
             PredicateKind::Ambiguous => PredicateKind::Ambiguous,
+            PredicateKind::NormalizesTo(p) => PredicateKind::NormalizesTo(p.try_fold_with(folder)?),
             PredicateKind::AliasRelate(a, b, d) => PredicateKind::AliasRelate(
                 a.try_fold_with(folder)?,
                 b.try_fold_with(folder)?,
@@ -227,6 +221,7 @@ where
     I::Term: TypeVisitable<I>,
     I::CoercePredicate: TypeVisitable<I>,
     I::SubtypePredicate: TypeVisitable<I>,
+    I::NormalizesTo: TypeVisitable<I>,
     ClauseKind<I>: TypeVisitable<I>,
 {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
@@ -240,6 +235,7 @@ where
                 b.visit_with(visitor)
             }
             PredicateKind::Ambiguous => ControlFlow::Continue(()),
+            PredicateKind::NormalizesTo(p) => p.visit_with(visitor),
             PredicateKind::AliasRelate(a, b, d) => {
                 a.visit_with(visitor)?;
                 b.visit_with(visitor)?;
@@ -294,6 +290,7 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             }
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),
+            PredicateKind::NormalizesTo(p) => p.fmt(f),
             PredicateKind::AliasRelate(t1, t2, dir) => {
                 write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")
             }

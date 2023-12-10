@@ -1,8 +1,9 @@
 use super::errors::{
     AsyncCoroutinesNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, CoroutineTooManyParameters,
-    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
-    NotSupportedForLifetimeBinderAsyncClosure, UnderscoreExprLhsAssign,
+    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
+    NeverPatternWithBody, NeverPatternWithGuard, NotSupportedForLifetimeBinderAsyncClosure,
+    UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -13,6 +14,7 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::span_bug;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -195,22 +197,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     binder,
                     capture_clause,
                     constness,
-                    coro_kind,
+                    coroutine_kind,
                     movability,
                     fn_decl,
                     body,
                     fn_decl_span,
                     fn_arg_span,
-                }) => match coro_kind {
-                    Some(
-                        CoroutineKind::Async { closure_id, .. }
-                        | CoroutineKind::Gen { closure_id, .. },
-                    ) => self.lower_expr_async_closure(
+                }) => match coroutine_kind {
+                    Some(coroutine_kind) => self.lower_expr_coroutine_closure(
                         binder,
                         *capture_clause,
                         e.id,
                         hir_id,
-                        *closure_id,
+                        *coroutine_kind,
                         fn_decl,
                         body,
                         *fn_decl_span,
@@ -324,6 +323,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::CoroutineSource::Block,
                     |this| this.with_new_scopes(e.span, |this| this.lower_block_expr(block)),
                 ),
+                ExprKind::Gen(capture_clause, block, GenBlockKind::AsyncGen) => self
+                    .make_async_gen_expr(
+                        *capture_clause,
+                        e.id,
+                        None,
+                        e.span,
+                        hir::CoroutineSource::Block,
+                        |this| this.with_new_scopes(e.span, |this| this.lower_block_expr(block)),
+                    ),
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err(
                     self.tcx.sess.span_delayed_bug(e.span, "lowered ExprKind::Err"),
@@ -549,7 +557,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
-        let guard = arm.guard.as_ref().map(|cond| {
+        let mut guard = arm.guard.as_ref().map(|cond| {
             if let ExprKind::Let(pat, scrutinee, span, is_recovered) = &cond.kind {
                 hir::Guard::IfLet(self.arena.alloc(hir::Let {
                     hir_id: self.next_id(),
@@ -564,14 +572,43 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         });
         let hir_id = self.next_id();
+        let span = self.lower_span(arm.span);
         self.lower_attrs(hir_id, &arm.attrs);
-        hir::Arm {
-            hir_id,
-            pat,
-            guard,
-            body: self.lower_expr(&arm.body),
-            span: self.lower_span(arm.span),
-        }
+        let is_never_pattern = pat.is_never_pattern();
+        let body = if let Some(body) = &arm.body
+            && !is_never_pattern
+        {
+            self.lower_expr(body)
+        } else {
+            // Either `body.is_none()` or `is_never_pattern` here.
+            if !is_never_pattern {
+                let suggestion = span.shrink_to_hi();
+                self.tcx.sess.emit_err(MatchArmWithNoBody { span, suggestion });
+            } else if let Some(body) = &arm.body {
+                self.tcx.sess.emit_err(NeverPatternWithBody { span: body.span });
+                guard = None;
+            } else if let Some(g) = &arm.guard {
+                self.tcx.sess.emit_err(NeverPatternWithGuard { span: g.span });
+                guard = None;
+            }
+
+            // We add a fake `loop {}` arm body so that it typecks to `!`.
+            // FIXME(never_patterns): Desugar into a call to `unreachable_unchecked`.
+            let block = self.arena.alloc(hir::Block {
+                stmts: &[],
+                expr: None,
+                hir_id: self.next_id(),
+                rules: hir::BlockCheckMode::DefaultBlock,
+                span,
+                targeted_by_break: false,
+            });
+            self.arena.alloc(hir::Expr {
+                hir_id: self.next_id(),
+                kind: hir::ExprKind::Loop(block, None, hir::LoopSource::Loop, span),
+                span,
+            })
+        };
+        hir::Arm { hir_id, pat, guard, body, span }
     }
 
     /// Lower an `async` construct to a coroutine that implements `Future`.
@@ -597,7 +634,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Resume argument type: `ResumeTy`
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::Async,
-            span,
+            self.lower_span(span),
             Some(self.allow_gen_future.clone()),
         );
         let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span);
@@ -706,6 +743,87 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }))
     }
 
+    /// Lower a `async gen` construct to a generator that implements `AsyncIterator`.
+    ///
+    /// This results in:
+    ///
+    /// ```text
+    /// static move? |_task_context| -> () {
+    ///     <body>
+    /// }
+    /// ```
+    pub(super) fn make_async_gen_expr(
+        &mut self,
+        capture_clause: CaptureBy,
+        closure_node_id: NodeId,
+        _yield_ty: Option<hir::FnRetTy<'hir>>,
+        span: Span,
+        async_coroutine_source: hir::CoroutineSource,
+        body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
+    ) -> hir::ExprKind<'hir> {
+        let output = hir::FnRetTy::DefaultReturn(self.lower_span(span));
+
+        // Resume argument type: `ResumeTy`
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::Async,
+            self.lower_span(span),
+            Some(self.allow_gen_future.clone()),
+        );
+        let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span);
+        let input_ty = hir::Ty {
+            hir_id: self.next_id(),
+            kind: hir::TyKind::Path(resume_ty),
+            span: unstable_span,
+        };
+
+        // The closure/coroutine `FnDecl` takes a single (resume) argument of type `input_ty`.
+        let fn_decl = self.arena.alloc(hir::FnDecl {
+            inputs: arena_vec![self; input_ty],
+            output,
+            c_variadic: false,
+            implicit_self: hir::ImplicitSelfKind::None,
+            lifetime_elision_allowed: false,
+        });
+
+        // Lower the argument pattern/ident. The ident is used again in the `.await` lowering.
+        let (pat, task_context_hid) = self.pat_ident_binding_mode(
+            span,
+            Ident::with_dummy_span(sym::_task_context),
+            hir::BindingAnnotation::MUT,
+        );
+        let param = hir::Param {
+            hir_id: self.next_id(),
+            pat,
+            ty_span: self.lower_span(span),
+            span: self.lower_span(span),
+        };
+        let params = arena_vec![self; param];
+
+        let body = self.lower_body(move |this| {
+            this.coroutine_kind = Some(hir::CoroutineKind::AsyncGen(async_coroutine_source));
+
+            let old_ctx = this.task_context;
+            this.task_context = Some(task_context_hid);
+            let res = body(this);
+            this.task_context = old_ctx;
+            (params, res)
+        });
+
+        // `static |_task_context| -> <ret_ty> { body }`:
+        hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_node_id),
+            binder: hir::ClosureBinder::Default,
+            capture_clause,
+            bound_generic_params: &[],
+            fn_decl,
+            body,
+            fn_decl_span: self.lower_span(span),
+            fn_arg_span: None,
+            movability: Some(hir::Movability::Static),
+            constness: hir::Constness::NotConst,
+        }))
+    }
+
     /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
     /// `inner_hir_id` in case the `async_fn_track_caller` feature is enabled.
     pub(super) fn maybe_forward_track_caller(
@@ -755,15 +873,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// ```
     fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
         let full_span = expr.span.to(await_kw_span);
-        match self.coroutine_kind {
-            Some(hir::CoroutineKind::Async(_)) => {}
+
+        let is_async_gen = match self.coroutine_kind {
+            Some(hir::CoroutineKind::Async(_)) => false,
+            Some(hir::CoroutineKind::AsyncGen(_)) => true,
             Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) | None => {
                 return hir::ExprKind::Err(self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
                 }));
             }
-        }
+        };
+
         let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
@@ -852,12 +973,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.stmt_expr(span, match_expr)
         };
 
-        // task_context = yield ();
+        // Depending on `async` of `async gen`:
+        // async     - task_context = yield ();
+        // async gen - task_context = yield ASYNC_GEN_PENDING;
         let yield_stmt = {
-            let unit = self.expr_unit(span);
+            let yielded = if is_async_gen {
+                self.arena.alloc(self.expr_lang_item_path(span, hir::LangItem::AsyncGenPending))
+            } else {
+                self.expr_unit(span)
+            };
+
             let yield_expr = self.expr(
                 span,
-                hir::ExprKind::Yield(unit, hir::YieldSource::Await { expr: Some(expr_hir_id) }),
+                hir::ExprKind::Yield(yielded, hir::YieldSource::Await { expr: Some(expr_hir_id) }),
             );
             let yield_expr = self.arena.alloc(yield_expr);
 
@@ -967,7 +1095,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 Some(movability)
             }
-            Some(hir::CoroutineKind::Gen(_)) | Some(hir::CoroutineKind::Async(_)) => {
+            Some(
+                hir::CoroutineKind::Gen(_)
+                | hir::CoroutineKind::Async(_)
+                | hir::CoroutineKind::AsyncGen(_),
+            ) => {
                 panic!("non-`async`/`gen` closure body turned `async`/`gen` during lowering");
             }
             None => {
@@ -994,18 +1126,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (binder, params)
     }
 
-    fn lower_expr_async_closure(
+    fn lower_expr_coroutine_closure(
         &mut self,
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
         closure_hir_id: hir::HirId,
-        inner_closure_id: NodeId,
+        coroutine_kind: CoroutineKind,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
+        let CoroutineKind::Async { closure_id: inner_closure_id, .. } = coroutine_kind else {
+            span_bug!(fn_decl_span, "`async gen` and `gen` closures are not supported, yet");
+        };
+
         if let &ClosureBinder::For { span, .. } = binder {
             self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }
@@ -1474,8 +1610,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
-        match self.coroutine_kind {
-            Some(hir::CoroutineKind::Gen(_)) => {}
+        let is_async_gen = match self.coroutine_kind {
+            Some(hir::CoroutineKind::Gen(_)) => false,
+            Some(hir::CoroutineKind::AsyncGen(_)) => true,
             Some(hir::CoroutineKind::Async(_)) => {
                 return hir::ExprKind::Err(
                     self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span }),
@@ -1491,14 +1628,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                     .emit();
                 }
-                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine)
+                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine);
+                false
             }
-        }
+        };
 
-        let expr =
+        let mut yielded =
             opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| self.expr_unit(span));
 
-        hir::ExprKind::Yield(expr, hir::YieldSource::Yield)
+        if is_async_gen {
+            // yield async_gen_ready($expr);
+            yielded = self.expr_call_lang_item_fn(
+                span,
+                hir::LangItem::AsyncGenReady,
+                std::slice::from_ref(yielded),
+            );
+        }
+
+        hir::ExprKind::Yield(yielded, hir::YieldSource::Yield)
     }
 
     /// Desugar `ExprForLoop` from: `[opt_ident]: for <pat> in <head> <body>` into:

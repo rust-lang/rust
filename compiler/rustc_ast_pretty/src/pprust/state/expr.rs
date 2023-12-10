@@ -413,7 +413,7 @@ impl<'a> State<'a> {
                 binder,
                 capture_clause,
                 constness,
-                coro_kind,
+                coroutine_kind,
                 movability,
                 fn_decl,
                 body,
@@ -423,7 +423,7 @@ impl<'a> State<'a> {
                 self.print_closure_binder(binder);
                 self.print_constness(*constness);
                 self.print_movability(*movability);
-                coro_kind.map(|coro_kind| self.print_coro_kind(coro_kind));
+                coroutine_kind.map(|coroutine_kind| self.print_coroutine_kind(coroutine_kind));
                 self.print_capture_clause(*capture_clause);
 
                 self.print_fn_params_and_ret(fn_decl, true);
@@ -631,28 +631,33 @@ impl<'a> State<'a> {
             self.print_expr(e);
             self.space();
         }
-        self.word_space("=>");
 
-        match &arm.body.kind {
-            ast::ExprKind::Block(blk, opt_label) => {
-                if let Some(label) = opt_label {
-                    self.print_ident(label.ident);
-                    self.word_space(":");
+        if let Some(body) = &arm.body {
+            self.word_space("=>");
+
+            match &body.kind {
+                ast::ExprKind::Block(blk, opt_label) => {
+                    if let Some(label) = opt_label {
+                        self.print_ident(label.ident);
+                        self.word_space(":");
+                    }
+
+                    // The block will close the pattern's ibox.
+                    self.print_block_unclosed_indent(blk);
+
+                    // If it is a user-provided unsafe block, print a comma after it.
+                    if let BlockCheckMode::Unsafe(ast::UserProvided) = blk.rules {
+                        self.word(",");
+                    }
                 }
-
-                // The block will close the pattern's ibox.
-                self.print_block_unclosed_indent(blk);
-
-                // If it is a user-provided unsafe block, print a comma after it.
-                if let BlockCheckMode::Unsafe(ast::UserProvided) = blk.rules {
+                _ => {
+                    self.end(); // Close the ibox for the pattern.
+                    self.print_expr(body);
                     self.word(",");
                 }
             }
-            _ => {
-                self.end(); // Close the ibox for the pattern.
-                self.print_expr(&arm.body);
-                self.word(",");
-            }
+        } else {
+            self.word(",");
         }
         self.end(); // Close enclosing cbox.
     }

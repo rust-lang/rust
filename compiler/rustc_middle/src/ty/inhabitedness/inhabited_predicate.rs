@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, DefId, ParamEnv, Ty};
 
@@ -31,27 +33,31 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     /// Returns true if the corresponding type is inhabited in the given
     /// `ParamEnv` and module
     pub fn apply(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, module_def_id: DefId) -> bool {
-        let Ok(result) = self
-            .apply_inner::<!>(tcx, param_env, &|id| Ok(tcx.is_descendant_of(module_def_id, id)));
+        let Ok(result) = self.apply_inner::<!>(tcx, param_env, &mut Default::default(), &|id| {
+            Ok(tcx.is_descendant_of(module_def_id, id))
+        });
         result
     }
 
     /// Same as `apply`, but returns `None` if self contains a module predicate
     pub fn apply_any_module(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.apply_inner(tcx, param_env, &|_| Err(())).ok()
+        self.apply_inner(tcx, param_env, &mut Default::default(), &|_| Err(())).ok()
     }
 
     /// Same as `apply`, but `NotInModule(_)` predicates yield `false`. That is,
     /// privately uninhabited types are considered always uninhabited.
     pub fn apply_ignore_module(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> bool {
-        let Ok(result) = self.apply_inner::<!>(tcx, param_env, &|_| Ok(true));
+        let Ok(result) =
+            self.apply_inner::<!>(tcx, param_env, &mut Default::default(), &|_| Ok(true));
         result
     }
 
-    fn apply_inner<E>(
+    #[instrument(level = "debug", skip(tcx, param_env, in_module), ret)]
+    fn apply_inner<E: std::fmt::Debug>(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
+        eval_stack: &mut SmallVec<[Ty<'tcx>; 1]>, // for cycle detection
         in_module: &impl Fn(DefId) -> Result<bool, E>,
     ) -> Result<bool, E> {
         match self {
@@ -71,11 +77,25 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 match normalized_pred {
                     // We don't have more information than we started with, so consider inhabited.
                     Self::GenericType(_) => Ok(true),
-                    pred => pred.apply_inner(tcx, param_env, in_module),
+                    pred => {
+                        // A type which is cyclic when monomorphized can happen here since the
+                        // layout error would only trigger later. See e.g. `tests/ui/sized/recursive-type-2.rs`.
+                        if eval_stack.contains(&t) {
+                            return Ok(true); // Recover; this will error later.
+                        }
+                        eval_stack.push(t);
+                        let ret = pred.apply_inner(tcx, param_env, eval_stack, in_module);
+                        eval_stack.pop();
+                        ret
+                    }
                 }
             }
-            Self::And([a, b]) => try_and(a, b, |x| x.apply_inner(tcx, param_env, in_module)),
-            Self::Or([a, b]) => try_or(a, b, |x| x.apply_inner(tcx, param_env, in_module)),
+            Self::And([a, b]) => {
+                try_and(a, b, |x| x.apply_inner(tcx, param_env, eval_stack, in_module))
+            }
+            Self::Or([a, b]) => {
+                try_or(a, b, |x| x.apply_inner(tcx, param_env, eval_stack, in_module))
+            }
         }
     }
 
@@ -197,7 +217,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
 
 // this is basically like `f(a)? && f(b)?` but different in the case of
 // `Ok(false) && Err(_) -> Ok(false)`
-fn try_and<T, E>(a: T, b: T, f: impl Fn(T) -> Result<bool, E>) -> Result<bool, E> {
+fn try_and<T, E>(a: T, b: T, mut f: impl FnMut(T) -> Result<bool, E>) -> Result<bool, E> {
     let a = f(a);
     if matches!(a, Ok(false)) {
         return Ok(false);
@@ -209,7 +229,7 @@ fn try_and<T, E>(a: T, b: T, f: impl Fn(T) -> Result<bool, E>) -> Result<bool, E
     }
 }
 
-fn try_or<T, E>(a: T, b: T, f: impl Fn(T) -> Result<bool, E>) -> Result<bool, E> {
+fn try_or<T, E>(a: T, b: T, mut f: impl FnMut(T) -> Result<bool, E>) -> Result<bool, E> {
     let a = f(a);
     if matches!(a, Ok(true)) {
         return Ok(true);

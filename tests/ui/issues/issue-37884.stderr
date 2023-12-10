@@ -4,8 +4,8 @@ error[E0308]: method not compatible with trait
 LL |     fn next(&'a mut self) -> Option<Self::Item>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected signature `fn(&mut RepeatMut<'a, T>) -> Option<_>`
-              found signature `fn(&'a mut RepeatMut<'a, T>) -> Option<_>`
+   = note: expected signature `fn(&mut RepeatMut<'_, _>) -> Option<_>`
+              found signature `fn(&'a mut RepeatMut<'_, _>) -> Option<_>`
 note: the anonymous lifetime as defined here...
   --> $DIR/issue-37884.rs:6:5
    |

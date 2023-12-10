@@ -207,6 +207,11 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    fn consider_builtin_async_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
     /// A coroutine (that doesn't come from an `async` or `gen` desugaring) is known to
     /// implement `Coroutine<R, Yield = Y, Return = O>`, given the resume, yield,
     /// and return types of the coroutine computed during type-checking.
@@ -352,15 +357,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         num_steps: usize,
     ) {
         let tcx = self.tcx();
-        let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else { return };
+        let &ty::Alias(_, alias) = goal.predicate.self_ty().kind() else { return };
 
         candidates.extend(self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
             if tcx.recursion_limit().value_within_limit(num_steps) {
                 let normalized_ty = ecx.next_ty_infer();
-                let normalizes_to_goal = goal.with(
-                    tcx,
-                    ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
-                );
+                let normalizes_to_goal =
+                    goal.with(tcx, ty::NormalizesTo { alias, term: normalized_ty.into() });
                 ecx.add_goal(normalizes_to_goal);
                 if let Err(NoSolution) = ecx.try_evaluate_added_goals() {
                     debug!("self type normalization failed");
@@ -567,6 +570,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.iterator_trait() == Some(trait_def_id) {
             G::consider_builtin_iterator_candidate(self, goal)
+        } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
+            G::consider_builtin_async_iterator_candidate(self, goal)
         } else if lang_items.coroutine_trait() == Some(trait_def_id) {
             G::consider_builtin_coroutine_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {

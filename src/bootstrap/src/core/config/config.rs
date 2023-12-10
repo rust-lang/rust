@@ -117,6 +117,7 @@ impl Display for DebuginfoLevel {
 pub struct Config {
     pub changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
     pub change_id: Option<usize>,
+    pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
@@ -222,6 +223,8 @@ pub struct Config {
     pub rust_debuginfo_level_tests: DebuginfoLevel,
     pub rust_split_debuginfo: SplitDebuginfo,
     pub rust_rpath: bool,
+    pub rust_strip: bool,
+    pub rust_stack_protector: Option<String>,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
@@ -1001,6 +1004,8 @@ define_config! {
         description: Option<String> = "description",
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
+        strip: Option<bool> = "strip",
+        stack_protector: Option<String> = "stack-protector",
         verbose_tests: Option<bool> = "verbose-tests",
         optimize_tests: Option<bool> = "optimize-tests",
         codegen_tests: Option<bool> = "codegen-tests",
@@ -1059,6 +1064,7 @@ define_config! {
 impl Config {
     pub fn default_opts() -> Config {
         let mut config = Config::default();
+        config.bypass_bootstrap_lock = false;
         config.llvm_optimize = true;
         config.ninja_in_file = true;
         config.llvm_static_stdcpp = false;
@@ -1069,6 +1075,7 @@ impl Config {
         config.docs = true;
         config.docs_minification = true;
         config.rust_rpath = true;
+        config.rust_strip = false;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
         config.rust_dist_src = true;
@@ -1137,6 +1144,7 @@ impl Config {
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
         config.enable_bolt_settings = flags.enable_bolt_settings;
+        config.bypass_bootstrap_lock = flags.bypass_bootstrap_lock;
 
         // Infer the rest of the configuration.
 
@@ -1422,6 +1430,8 @@ impl Config {
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
+            set(&mut config.rust_strip, rust.strip);
+            config.rust_stack_protector = rust.stack_protector;
             set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
             set(&mut config.backtrace, rust.backtrace);

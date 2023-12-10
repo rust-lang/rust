@@ -29,7 +29,7 @@ pub(crate) fn rewrite_closure(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    coro_kind: &Option<ast::CoroutineKind>,
+    coroutine_kind: &Option<ast::CoroutineKind>,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -40,7 +40,16 @@ pub(crate) fn rewrite_closure(
     debug!("rewrite_closure {:?}", body);
 
     let (prefix, extra_offset) = rewrite_closure_fn_decl(
-        binder, constness, capture, coro_kind, movability, fn_decl, body, span, context, shape,
+        binder,
+        constness,
+        capture,
+        coroutine_kind,
+        movability,
+        fn_decl,
+        body,
+        span,
+        context,
+        shape,
     )?;
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
@@ -233,7 +242,7 @@ fn rewrite_closure_fn_decl(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    coro_kind: &Option<ast::CoroutineKind>,
+    coroutine_kind: &Option<ast::CoroutineKind>,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -263,9 +272,10 @@ fn rewrite_closure_fn_decl(
     } else {
         ""
     };
-    let coro = match coro_kind {
+    let coro = match coroutine_kind {
         Some(ast::CoroutineKind::Async { .. }) => "async ",
         Some(ast::CoroutineKind::Gen { .. }) => "gen ",
+        Some(ast::CoroutineKind::AsyncGen { .. }) => "async gen ",
         None => "",
     };
     let mover = if matches!(capture, ast::CaptureBy::Value { .. }) {
@@ -343,7 +353,7 @@ pub(crate) fn rewrite_last_closure(
             ref binder,
             constness,
             capture_clause,
-            ref coro_kind,
+            ref coroutine_kind,
             movability,
             ref fn_decl,
             ref body,
@@ -364,7 +374,7 @@ pub(crate) fn rewrite_last_closure(
             binder,
             constness,
             capture_clause,
-            coro_kind,
+            coroutine_kind,
             movability,
             fn_decl,
             body,

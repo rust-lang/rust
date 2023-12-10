@@ -1,7 +1,0 @@
-[package]
-name = "coverage_test_macros"
-version = "0.0.0"
-edition = "2021"
-
-[lib]
-proc-macro = true

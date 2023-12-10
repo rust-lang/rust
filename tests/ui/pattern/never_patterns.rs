@@ -20,58 +20,58 @@ fn never_pattern_location(void: Void) {
     // FIXME(never_patterns): Don't accept on a non-empty type.
     match Some(0) {
         None => {}
-        Some(!) => {}
+        Some(!),
     }
     // FIXME(never_patterns): Don't accept on an arbitrary type, even if there are no more branches.
     match () {
         () => {}
-        ! => {}
+        !,
     }
     // FIXME(never_patterns): Don't accept even on an empty branch.
     match None::<Void> {
         None => {}
-        ! => {}
+        !,
     }
     // FIXME(never_patterns): Let alone if the emptiness is behind a reference.
     match None::<&Void> {
         None => {}
-        ! => {}
+        !,
     }
     // Participate in match ergonomics.
     match &void {
-        ! => {}
+        !
     }
     match &&void {
-        ! => {}
+        !
     }
     match &&void {
-        &! => {}
+        &!
     }
     match &None::<Void> {
         None => {}
-        Some(!) => {}
+        Some(!)
     }
     match None::<&Void> {
         None => {}
-        Some(!) => {}
+        Some(!),
     }
     // Accept on a composite empty type.
     match None::<&(u32, Void)> {
         None => {}
-        Some(&!) => {}
+        Some(&!),
     }
     // Accept on an simple empty type.
     match None::<Void> {
         None => {}
-        Some(!) => {}
+        Some(!),
     }
     match None::<&Void> {
         None => {}
-        Some(&!) => {}
+        Some(&!),
     }
     match None::<&(u32, Void)> {
         None => {}
-        Some(&(_, !)) => {}
+        Some(&(_, !)),
     }
 }
 
@@ -84,12 +84,12 @@ fn never_and_bindings() {
         //~^ ERROR: is not bound in all patterns
     }
     let (Ok(_x) | Err(&!)) = x;
-        //~^ ERROR: is not bound in all patterns
+    //~^ ERROR: is not bound in all patterns
 
     // FIXME(never_patterns): A never pattern mustn't have bindings.
     match x {
         Ok(_) => {}
-        Err(&(_b, !)) => {}
+        Err(&(_b, !)),
     }
     match x {
         Ok(_a) | Err(&(_b, !)) => {}

@@ -23,8 +23,6 @@ parse_async_block_in_2015 = `async` blocks are only allowed in Rust 2018 or late
 parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
     .label = to use `async fn`, switch to Rust 2018 or later
 
-parse_async_gen_fn = `async gen` functions are not supported
-
 parse_async_move_block_in_2015 = `async move` blocks are only allowed in Rust 2018 or later
 
 parse_async_move_order_incorrect = the order of `move` and `async` is incorrect
@@ -457,8 +455,6 @@ parse_loop_else = `{$loop_kind}...else` loops are not supported
 parse_macro_expands_to_adt_field = macros cannot expand to {$adt_ty} fields
 
 parse_macro_expands_to_enum_variant = macros cannot expand to enum variants
-
-parse_macro_expands_to_match_arm = macros cannot expand to match arms
 
 parse_macro_invocation_visibility = can't qualify macro invocation with `pub`
     .suggestion = remove the visibility

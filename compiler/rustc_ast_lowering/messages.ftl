@@ -91,6 +91,10 @@ ast_lowering_invalid_register =
 ast_lowering_invalid_register_class =
     invalid register class `{$reg_class}`: {$error}
 
+ast_lowering_match_arm_with_no_body =
+    `match` arm with no body
+    .suggestion = add a body after the pattern
+
 ast_lowering_misplaced_assoc_ty_binding =
     associated type bounds are only allowed in where clauses and function signatures, not in {$position}
 
@@ -103,6 +107,15 @@ ast_lowering_misplaced_impl_trait =
 
 ast_lowering_misplaced_relax_trait_bound =
     `?Trait` bounds are only permitted at the point where a type parameter is declared
+
+ast_lowering_never_pattern_with_body =
+    a never pattern is always unreachable
+    .label = this will never be executed
+    .suggestion = remove this expression
+
+ast_lowering_never_pattern_with_guard =
+    a guard on a never pattern will never be run
+    .suggestion = remove this guard
 
 ast_lowering_not_supported_for_lifetime_binder_async_closure =
     `for<...>` binders on `async` closures are not currently supported

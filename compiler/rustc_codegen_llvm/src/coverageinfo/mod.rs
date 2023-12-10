@@ -100,6 +100,9 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 
         let Coverage { kind } = coverage;
         match *kind {
+            // Span markers are only meaningful during MIR instrumentation,
+            // and have no effect during codegen.
+            CoverageKind::SpanMarker => {}
             CoverageKind::CounterIncrement { id } => {
                 func_coverage.mark_counter_id_seen(id);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,

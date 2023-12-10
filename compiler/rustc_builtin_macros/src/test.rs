@@ -541,12 +541,30 @@ fn check_test_signature(
         return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
     }
 
-    if let Some(ast::CoroutineKind::Async { span, .. }) = f.sig.header.coro_kind {
-        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" }));
-    }
-
-    if let Some(ast::CoroutineKind::Gen { span, .. }) = f.sig.header.coro_kind {
-        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "gen" }));
+    if let Some(coroutine_kind) = f.sig.header.coroutine_kind {
+        match coroutine_kind {
+            ast::CoroutineKind::Async { span, .. } => {
+                return Err(sd.emit_err(errors::TestBadFn {
+                    span: i.span,
+                    cause: span,
+                    kind: "async",
+                }));
+            }
+            ast::CoroutineKind::Gen { span, .. } => {
+                return Err(sd.emit_err(errors::TestBadFn {
+                    span: i.span,
+                    cause: span,
+                    kind: "gen",
+                }));
+            }
+            ast::CoroutineKind::AsyncGen { span, .. } => {
+                return Err(sd.emit_err(errors::TestBadFn {
+                    span: i.span,
+                    cause: span,
+                    kind: "async gen",
+                }));
+            }
+        }
     }
 
     // If the termination trait is active, the compiler will check that the output

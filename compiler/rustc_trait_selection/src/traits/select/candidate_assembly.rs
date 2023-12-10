@@ -112,6 +112,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_future_candidates(obligation, &mut candidates);
                 } else if lang_items.iterator_trait() == Some(def_id) {
                     self.assemble_iterator_candidates(obligation, &mut candidates);
+                } else if lang_items.async_iterator_trait() == Some(def_id) {
+                    self.assemble_async_iterator_candidates(obligation, &mut candidates);
                 }
 
                 self.assemble_closure_candidates(obligation, &mut candidates);
@@ -254,6 +256,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
 
                 candidates.vec.push(IteratorCandidate);
+            }
+        }
+    }
+
+    fn assemble_async_iterator_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = obligation.self_ty().skip_binder();
+        if let ty::Coroutine(did, args, _) = *self_ty.kind() {
+            // gen constructs get lowered to a special kind of coroutine that
+            // should directly `impl AsyncIterator`.
+            if self.tcx().coroutine_is_async_gen(did) {
+                debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
+
+                // Can only confirm this candidate if we have constrained
+                // the `Yield` type to at least `Poll<Option<?0>>`..
+                let ty::Adt(_poll_def, args) = *args.as_coroutine().yield_ty().kind() else {
+                    candidates.ambiguous = true;
+                    return;
+                };
+                let ty::Adt(_option_def, _) = *args.type_at(0).kind() else {
+                    candidates.ambiguous = true;
+                    return;
+                };
+
+                candidates.vec.push(AsyncIteratorCandidate);
             }
         }
     }
@@ -872,9 +902,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         // If the predicate is `~const Destruct` in a non-const environment, we don't actually need
         // to check anything. We'll short-circuit checking any obligations in confirmation, too.
-        // FIXME(effects)
-        if true {
-            candidates.vec.push(ConstDestructCandidate(None));
+        let Some(host_effect_index) =
+            self.tcx().generics_of(obligation.predicate.def_id()).host_effect_index
+        else {
+            candidates.vec.push(BuiltinCandidate { has_nested: false });
+            return;
+        };
+        // If the obligation has `host = true`, then the obligation is non-const and it's always
+        // trivially implemented.
+        if obligation.predicate.skip_binder().trait_ref.args.const_at(host_effect_index)
+            == self.tcx().consts.true_
+        {
+            candidates.vec.push(BuiltinCandidate { has_nested: false });
             return;
         }
 

@@ -1442,20 +1442,21 @@ impl<'a> Parser<'a> {
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
                 // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 if this.check_keyword(kw::Async) {
-                    if this.is_gen_block(kw::Async) {
-                        // Check for `async {` and `async move {`.
+                    // FIXME(gen_blocks): Parse `gen async` and suggest swap
+                    if this.is_gen_block(kw::Async, 0) {
+                        // Check for `async {` and `async move {`,
+                        // or `async gen {` and `async gen move {`.
                         this.parse_gen_block()
                     } else {
                         this.parse_expr_closure()
                     }
-                } else if this.eat_keyword(kw::Await) {
+                } else if this.token.uninterpolated_span().at_least_rust_2024()
+                    && (this.is_gen_block(kw::Gen, 0)
+                        || (this.check_keyword(kw::Async) && this.is_gen_block(kw::Gen, 1)))
+                {
+                    this.parse_gen_block()
+                } else if this.eat_keyword_noexpect(kw::Await) {
                     this.recover_incorrect_await_syntax(lo, this.prev_token.span)
-                } else if this.token.uninterpolated_span().at_least_rust_2024() {
-                    if this.is_gen_block(kw::Gen) {
-                        this.parse_gen_block()
-                    } else {
-                        this.parse_expr_lit()
-                    }
                 } else {
                     this.parse_expr_lit()
                 }
@@ -2234,8 +2235,8 @@ impl<'a> Parser<'a> {
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
-        let asyncness = if self.token.uninterpolated_span().at_least_rust_2018() {
-            self.parse_asyncness(Case::Sensitive)
+        let coroutine_kind = if self.token.uninterpolated_span().at_least_rust_2018() {
+            self.parse_coroutine_kind(Case::Sensitive)
         } else {
             None
         };
@@ -2261,9 +2262,17 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if let Some(CoroutineKind::Async { span, .. }) = asyncness {
-            // Feature-gate `async ||` closures.
-            self.sess.gated_spans.gate(sym::async_closure, span);
+        match coroutine_kind {
+            Some(CoroutineKind::Async { span, .. }) => {
+                // Feature-gate `async ||` closures.
+                self.sess.gated_spans.gate(sym::async_closure, span);
+            }
+            Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
+                // Feature-gate `gen ||` and `async gen ||` closures.
+                // FIXME(gen_blocks): This perhaps should be a different gate.
+                self.sess.gated_spans.gate(sym::gen_blocks, span);
+            }
+            None => {}
         }
 
         if self.token.kind == TokenKind::Semi
@@ -2284,7 +2293,7 @@ impl<'a> Parser<'a> {
                 binder,
                 capture_clause,
                 constness,
-                coro_kind: asyncness,
+                coroutine_kind,
                 movability,
                 fn_decl,
                 body,
@@ -2899,127 +2908,155 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
-            let arrow_span = this.token.span;
-            if let Err(mut err) = this.expect(&token::FatArrow) {
-                // We might have a `=>` -> `=` or `->` typo (issue #89396).
-                if TokenKind::FatArrow
-                    .similar_tokens()
-                    .is_some_and(|similar_tokens| similar_tokens.contains(&this.token.kind))
-                {
-                    err.span_suggestion(
-                        this.token.span,
-                        "use a fat arrow to start a match arm",
-                        "=>",
-                        Applicability::MachineApplicable,
-                    );
-                    if matches!(
-                        (&this.prev_token.kind, &this.token.kind),
-                        (token::DotDotEq, token::Gt)
-                    ) {
-                        // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
-                        // so we suppress the error here
-                        err.delay_as_bug();
-                    } else {
-                        err.emit();
-                    }
-                    this.bump();
-                } else {
-                    return Err(err);
-                }
-            }
-            let arm_start_span = this.token.span;
 
-            let expr = this.parse_expr_res(Restrictions::STMT_EXPR, None).map_err(|mut err| {
-                err.span_label(arrow_span, "while parsing the `match` arm starting here");
-                err
-            })?;
-
-            let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
-                && this.token != token::CloseDelim(Delimiter::Brace);
-
-            let hi = this.prev_token.span;
-
-            if require_comma {
-                let sm = this.sess.source_map();
-                if let Some(body) = this.parse_arm_body_missing_braces(&expr, arrow_span) {
-                    let span = body.span;
-                    return Ok((
-                        ast::Arm {
-                            attrs,
-                            pat,
-                            guard,
-                            body,
-                            span,
-                            id: DUMMY_NODE_ID,
-                            is_placeholder: false,
-                        },
-                        TrailingToken::None,
-                    ));
-                }
+            let span_before_body = this.prev_token.span;
+            let arm_body;
+            let is_fat_arrow = this.check(&token::FatArrow);
+            let is_almost_fat_arrow = TokenKind::FatArrow
+                .similar_tokens()
+                .is_some_and(|similar_tokens| similar_tokens.contains(&this.token.kind));
+            let mut result = if !is_fat_arrow && !is_almost_fat_arrow {
+                // A pattern without a body, allowed for never patterns.
+                arm_body = None;
                 this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)])
-                    .or_else(|mut err| {
-                        if this.token == token::FatArrow {
-                            if let Ok(expr_lines) = sm.span_to_lines(expr.span)
-                                && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
-                                && arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
-                                && expr_lines.lines.len() == 2
-                            {
-                                // We check whether there's any trailing code in the parse span,
-                                // if there isn't, we very likely have the following:
-                                //
-                                // X |     &Y => "y"
-                                //   |        --    - missing comma
-                                //   |        |
-                                //   |        arrow_span
-                                // X |     &X => "x"
-                                //   |      - ^^ self.token.span
-                                //   |      |
-                                //   |      parsed until here as `"y" & X`
-                                err.span_suggestion_short(
-                                    arm_start_span.shrink_to_hi(),
-                                    "missing a comma here to end this `match` arm",
-                                    ",",
-                                    Applicability::MachineApplicable,
-                                );
-                                return Err(err);
-                            }
-                        } else {
-                            // FIXME(compiler-errors): We could also recover `; PAT =>` here
-
-                            // Try to parse a following `PAT =>`, if successful
-                            // then we should recover.
-                            let mut snapshot = this.create_snapshot_for_diagnostic();
-                            let pattern_follows = snapshot
-                                .parse_pat_allow_top_alt(
-                                    None,
-                                    RecoverComma::Yes,
-                                    RecoverColon::Yes,
-                                    CommaRecoveryMode::EitherTupleOrPipe,
-                                )
-                                .map_err(|err| err.cancel())
-                                .is_ok();
-                            if pattern_follows && snapshot.check(&TokenKind::FatArrow) {
-                                err.cancel();
-                                this.sess.emit_err(errors::MissingCommaAfterMatchArm {
-                                    span: hi.shrink_to_hi(),
-                                });
-                                return Ok(true);
-                            }
-                        }
-                        err.span_label(arrow_span, "while parsing the `match` arm starting here");
-                        Err(err)
-                    })?;
             } else {
-                this.eat(&token::Comma);
+                if let Err(mut err) = this.expect(&token::FatArrow) {
+                    // We might have a `=>` -> `=` or `->` typo (issue #89396).
+                    if is_almost_fat_arrow {
+                        err.span_suggestion(
+                            this.token.span,
+                            "use a fat arrow to start a match arm",
+                            "=>",
+                            Applicability::MachineApplicable,
+                        );
+                        if matches!(
+                            (&this.prev_token.kind, &this.token.kind),
+                            (token::DotDotEq, token::Gt)
+                        ) {
+                            // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
+                            // so we suppress the error here
+                            err.delay_as_bug();
+                        } else {
+                            err.emit();
+                        }
+                        this.bump();
+                    } else {
+                        return Err(err);
+                    }
+                }
+                let arrow_span = this.prev_token.span;
+                let arm_start_span = this.token.span;
+
+                let expr =
+                    this.parse_expr_res(Restrictions::STMT_EXPR, None).map_err(|mut err| {
+                        err.span_label(arrow_span, "while parsing the `match` arm starting here");
+                        err
+                    })?;
+
+                let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
+                    && this.token != token::CloseDelim(Delimiter::Brace);
+
+                if !require_comma {
+                    arm_body = Some(expr);
+                    this.eat(&token::Comma);
+                    Ok(false)
+                } else if let Some(body) = this.parse_arm_body_missing_braces(&expr, arrow_span) {
+                    arm_body = Some(body);
+                    Ok(true)
+                } else {
+                    let expr_span = expr.span;
+                    arm_body = Some(expr);
+                    this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)])
+                        .map_err(|mut err| {
+                            if this.token == token::FatArrow {
+                                let sm = this.sess.source_map();
+                                if let Ok(expr_lines) = sm.span_to_lines(expr_span)
+                                    && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
+                                    && arm_start_lines.lines[0].end_col
+                                        == expr_lines.lines[0].end_col
+                                    && expr_lines.lines.len() == 2
+                                {
+                                    // We check whether there's any trailing code in the parse span,
+                                    // if there isn't, we very likely have the following:
+                                    //
+                                    // X |     &Y => "y"
+                                    //   |        --    - missing comma
+                                    //   |        |
+                                    //   |        arrow_span
+                                    // X |     &X => "x"
+                                    //   |      - ^^ self.token.span
+                                    //   |      |
+                                    //   |      parsed until here as `"y" & X`
+                                    err.span_suggestion_short(
+                                        arm_start_span.shrink_to_hi(),
+                                        "missing a comma here to end this `match` arm",
+                                        ",",
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                            } else {
+                                err.span_label(
+                                    arrow_span,
+                                    "while parsing the `match` arm starting here",
+                                );
+                            }
+                            err
+                        })
+                }
+            };
+
+            let hi_span = arm_body.as_ref().map_or(span_before_body, |body| body.span);
+            let arm_span = lo.to(hi_span);
+
+            // We want to recover:
+            // X |     Some(_) => foo()
+            //   |                     - missing comma
+            // X |     None => "x"
+            //   |     ^^^^ self.token.span
+            // as well as:
+            // X |     Some(!)
+            //   |            - missing comma
+            // X |     None => "x"
+            //   |     ^^^^ self.token.span
+            // But we musn't recover
+            // X |     pat[0] => {}
+            //   |        ^ self.token.span
+            let recover_missing_comma = arm_body.is_some() || pat.could_be_never_pattern();
+            if recover_missing_comma {
+                result = result.or_else(|err| {
+                    // FIXME(compiler-errors): We could also recover `; PAT =>` here
+
+                    // Try to parse a following `PAT =>`, if successful
+                    // then we should recover.
+                    let mut snapshot = this.create_snapshot_for_diagnostic();
+                    let pattern_follows = snapshot
+                        .parse_pat_allow_top_alt(
+                            None,
+                            RecoverComma::Yes,
+                            RecoverColon::Yes,
+                            CommaRecoveryMode::EitherTupleOrPipe,
+                        )
+                        .map_err(|err| err.cancel())
+                        .is_ok();
+                    if pattern_follows && snapshot.check(&TokenKind::FatArrow) {
+                        err.cancel();
+                        this.sess.emit_err(errors::MissingCommaAfterMatchArm {
+                            span: arm_span.shrink_to_hi(),
+                        });
+                        return Ok(true);
+                    }
+                    Err(err)
+                });
             }
+            result?;
 
             Ok((
                 ast::Arm {
                     attrs,
                     pat,
                     guard,
-                    body: expr,
-                    span: lo.to(hi),
+                    body: arm_body,
+                    span: arm_span,
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
@@ -3179,7 +3216,7 @@ impl<'a> Parser<'a> {
     fn parse_gen_block(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         let kind = if self.eat_keyword(kw::Async) {
-            GenBlockKind::Async
+            if self.eat_keyword(kw::Gen) { GenBlockKind::AsyncGen } else { GenBlockKind::Async }
         } else {
             assert!(self.eat_keyword(kw::Gen));
             self.sess.gated_spans.gate(sym::gen_blocks, lo.to(self.token.span));
@@ -3191,20 +3228,24 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 
-    fn is_gen_block(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw)
+    fn is_gen_block(&self, kw: Symbol, lookahead: usize) -> bool {
+        self.is_keyword_ahead(lookahead, &[kw])
             && ((
                 // `async move {`
-                self.is_keyword_ahead(1, &[kw::Move])
-                    && self.look_ahead(2, |t| {
+                self.is_keyword_ahead(lookahead + 1, &[kw::Move])
+                    && self.look_ahead(lookahead + 2, |t| {
                         *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                     })
             ) || (
                 // `async {`
-                self.look_ahead(1, |t| {
+                self.look_ahead(lookahead + 1, |t| {
                     *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                 })
             ))
+    }
+
+    pub(super) fn is_async_gen_block(&self) -> bool {
+        self.token.is_keyword(kw::Async) && self.is_gen_block(kw::Gen, 1)
     }
 
     fn is_certainly_not_a_block(&self) -> bool {

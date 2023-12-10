@@ -27,6 +27,8 @@ use std::sync::Arc;
 
 fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
     let mut early_handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    early_handler.initialize_checked_jobserver();
+
     let registry = registry::Registry::new(&[]);
     let sessopts = build_session_options(&mut early_handler, &matches);
     let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);

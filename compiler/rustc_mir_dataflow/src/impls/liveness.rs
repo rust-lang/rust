@@ -69,7 +69,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
 
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {

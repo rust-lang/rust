@@ -44,6 +44,16 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
             .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
     });
 
+    // The desugaring of an async function includes a closure containing the
+    // original function body, and a terminator that returns the `impl Future`.
+    // That terminator will cause a confusing coverage count for the function's
+    // closing brace, so discard everything after the body closure span.
+    if let Some(body_closure_index) =
+        initial_spans.iter().rposition(|covspan| covspan.is_closure && covspan.span == body_span)
+    {
+        initial_spans.truncate(body_closure_index + 1);
+    }
+
     initial_spans
 }
 
@@ -92,13 +102,13 @@ fn is_closure(statement: &Statement<'_>) -> bool {
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
 fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
+    use mir::coverage::CoverageKind;
+
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
-        // Coverage should not be encountered, but don't inject coverage coverage
-        | StatementKind::Coverage(_)
         // Ignore `ConstEvalCounter`s
         | StatementKind::ConstEvalCounter
         // Ignore `Nop`s
@@ -122,9 +132,13 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         // If and when the Issue is resolved, remove this special case match pattern:
         StatementKind::FakeRead(box (FakeReadCause::ForGuardBinding, _)) => None,
 
-        // Retain spans from all other statements
+        // Retain spans from most other statements.
         StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
         | StatementKind::Intrinsic(..)
+        | StatementKind::Coverage(box mir::Coverage {
+            // The purpose of `SpanMarker` is to be matched and accepted here.
+            kind: CoverageKind::SpanMarker
+        })
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)
@@ -133,6 +147,11 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         | StatementKind::AscribeUserType(_, _) => {
             Some(statement.source_info.span)
         }
+
+        StatementKind::Coverage(box mir::Coverage {
+            // These coverage statements should not exist prior to coverage instrumentation.
+            kind: CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. }
+        }) => bug!("Unexpected coverage statement found during coverage instrumentation: {statement:?}"),
     }
 }
 

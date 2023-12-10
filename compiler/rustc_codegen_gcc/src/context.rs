@@ -569,5 +569,6 @@ fn to_gcc_tls_mode(tls_model: TlsModel) -> gccjit::TlsModel {
         TlsModel::LocalDynamic => gccjit::TlsModel::LocalDynamic,
         TlsModel::InitialExec => gccjit::TlsModel::InitialExec,
         TlsModel::LocalExec => gccjit::TlsModel::LocalExec,
+        TlsModel::Emulated => gccjit::TlsModel::GlobalDynamic,
     }
 }

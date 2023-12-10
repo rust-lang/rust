@@ -12,7 +12,13 @@
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
 #[allow(unexpected_cfgs)]
-#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox", target_os = "hurd"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "fuchsia",
+    target_os = "redox",
+    target_os = "hurd"
+))]
 // FIXME: The Rust compiler currently omits weakly function definitions (i.e.,
 // __cxa_thread_atexit_impl) and its metadata from LLVM IR.
 #[no_sanitize(cfi, kcfi)]

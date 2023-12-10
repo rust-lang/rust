@@ -1081,15 +1081,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .item-info .stab {
-	/* This min-height is needed to unify the height of the stab elements because some of them
-	   have emojis.
-	*/
-	min-height: 36px;
-	display: flex;
+	display: block;
 	padding: 3px;
 	margin-bottom: 5px;
-	align-items: center;
-	vertical-align: text-bottom;
 }
 .item-name .stab {
 	margin-left: 0.3125em;
@@ -1112,9 +1106,18 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--stab-code-color);
 }
 
-.stab .emoji {
+.stab .emoji, .item-info .stab::before {
 	font-size: 1.25rem;
+}
+.stab .emoji {
 	margin-right: 0.3rem;
+}
+.item-info .stab::before {
+	/* ensure badges with emoji and without it have same height */
+	content: "\0";
+	width: 0;
+	display: inline-block;
+	color: transparent;
 }
 
 /* Black one-pixel outline around emoji shapes */
@@ -1122,7 +1125,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	text-shadow:
 		1px 0 0 black,
 		-1px 0 0 black,
-		0  1px 0 black,
+		0 1px 0 black,
 		0 -1px 0 black;
 }
 

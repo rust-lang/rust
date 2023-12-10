@@ -658,6 +658,24 @@ impl Pat {
     pub fn is_rest(&self) -> bool {
         matches!(self.kind, PatKind::Rest)
     }
+
+    /// Whether this could be a never pattern, taking into account that a macro invocation can
+    /// return a never pattern. Used to inform errors during parsing.
+    pub fn could_be_never_pattern(&self) -> bool {
+        let mut could_be_never_pattern = false;
+        self.walk(&mut |pat| match &pat.kind {
+            PatKind::Never | PatKind::MacCall(_) => {
+                could_be_never_pattern = true;
+                false
+            }
+            PatKind::Or(s) => {
+                could_be_never_pattern = s.iter().all(|p| p.could_be_never_pattern());
+                false
+            }
+            _ => true,
+        });
+        could_be_never_pattern
+    }
 }
 
 /// A single field in a struct pattern.
@@ -1080,8 +1098,8 @@ pub struct Arm {
     pub pat: P<Pat>,
     /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`
     pub guard: Option<P<Expr>>,
-    /// Match arm body.
-    pub body: P<Expr>,
+    /// Match arm body. Omitted if the pattern is a never pattern.
+    pub body: Option<P<Expr>>,
     pub span: Span,
     pub id: NodeId,
     pub is_placeholder: bool,
@@ -1311,7 +1329,7 @@ pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub constness: Const,
-    pub coro_kind: Option<CoroutineKind>,
+    pub coroutine_kind: Option<CoroutineKind>,
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,
     pub body: P<Expr>,
@@ -1516,6 +1534,7 @@ pub enum ExprKind {
 pub enum GenBlockKind {
     Async,
     Gen,
+    AsyncGen,
 }
 
 impl fmt::Display for GenBlockKind {
@@ -1529,6 +1548,7 @@ impl GenBlockKind {
         match self {
             GenBlockKind::Async => "async",
             GenBlockKind::Gen => "gen",
+            GenBlockKind::AsyncGen => "async gen",
         }
     }
 }
@@ -2413,10 +2433,12 @@ pub enum Unsafe {
 /// Iterator`.
 #[derive(Copy, Clone, Encodable, Decodable, Debug)]
 pub enum CoroutineKind {
-    /// `async`, which evaluates to `impl Future`
+    /// `async`, which returns an `impl Future`
     Async { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    /// `gen`, which evaluates to `impl Iterator`
+    /// `gen`, which returns an `impl Iterator`
     Gen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    /// `async gen`, which returns an `impl AsyncIterator`
+    AsyncGen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
 }
 
 impl CoroutineKind {
@@ -2428,12 +2450,23 @@ impl CoroutineKind {
         matches!(self, CoroutineKind::Gen { .. })
     }
 
+    pub fn closure_id(self) -> NodeId {
+        match self {
+            CoroutineKind::Async { closure_id, .. }
+            | CoroutineKind::Gen { closure_id, .. }
+            | CoroutineKind::AsyncGen { closure_id, .. } => closure_id,
+        }
+    }
+
     /// In this case this is an `async` or `gen` return, the `NodeId` for the generated `impl Trait`
     /// item.
     pub fn return_id(self) -> (NodeId, Span) {
         match self {
             CoroutineKind::Async { return_impl_trait_id, span, .. }
-            | CoroutineKind::Gen { return_impl_trait_id, span, .. } => (return_impl_trait_id, span),
+            | CoroutineKind::Gen { return_impl_trait_id, span, .. }
+            | CoroutineKind::AsyncGen { return_impl_trait_id, span, .. } => {
+                (return_impl_trait_id, span)
+            }
         }
     }
 }
@@ -2838,7 +2871,7 @@ pub struct FnHeader {
     /// The `unsafe` keyword, if any
     pub unsafety: Unsafe,
     /// Whether this is `async`, `gen`, or nothing.
-    pub coro_kind: Option<CoroutineKind>,
+    pub coroutine_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
     pub constness: Const,
     /// The `extern` keyword and corresponding ABI string, if any
@@ -2848,9 +2881,9 @@ pub struct FnHeader {
 impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
-        let Self { unsafety, coro_kind, constness, ext } = self;
+        let Self { unsafety, coroutine_kind, constness, ext } = self;
         matches!(unsafety, Unsafe::Yes(_))
-            || coro_kind.is_some()
+            || coroutine_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
@@ -2858,7 +2891,12 @@ impl FnHeader {
 
 impl Default for FnHeader {
     fn default() -> FnHeader {
-        FnHeader { unsafety: Unsafe::No, coro_kind: None, constness: Const::No, ext: Extern::None }
+        FnHeader {
+            unsafety: Unsafe::No,
+            coroutine_kind: None,
+            constness: Const::No,
+            ext: Extern::None,
+        }
     }
 }
 

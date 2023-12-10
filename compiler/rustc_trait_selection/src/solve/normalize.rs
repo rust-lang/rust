@@ -76,7 +76,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::ProjectionPredicate { projection_ty: alias, term: new_infer_ty.into() },
+            ty::NormalizesTo { alias, term: new_infer_ty.into() },
         );
 
         // Do not emit an error if normalization is known to fail but instead
@@ -129,8 +129,8 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::ProjectionPredicate {
-                projection_ty: AliasTy::new(tcx, uv.def, uv.args),
+            ty::NormalizesTo {
+                alias: AliasTy::new(tcx, uv.def, uv.args),
                 term: new_infer_ct.into(),
             },
         );

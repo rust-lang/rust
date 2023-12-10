@@ -308,6 +308,17 @@ pub fn iterator_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.yield_ty)
 }
 
+pub fn async_iterator_trait_ref_and_outputs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    async_iterator_def_id: DefId,
+    self_ty: Ty<'tcx>,
+    sig: ty::GenSig<'tcx>,
+) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
+    assert!(!self_ty.has_escaping_bound_vars());
+    let trait_ref = ty::TraitRef::new(tcx, async_iterator_def_id, [self_ty]);
+    (trait_ref, sig.yield_ty)
+}
+
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
     assoc_item.defaultness(tcx).is_final()
         && tcx.defaultness(assoc_item.container_id(tcx)).is_final()

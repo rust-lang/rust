@@ -212,6 +212,7 @@ language_item_table! {
 
     Iterator,                sym::iterator,            iterator_trait,             Target::Trait,          GenericRequirement::Exact(0);
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
+    AsyncIterator,           sym::async_iterator,      async_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
     CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
     Coroutine,               sym::coroutine,           coroutine_trait,            Target::Trait,          GenericRequirement::Minimum(1);
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
@@ -293,6 +294,10 @@ language_item_table! {
     Poll,                    sym::Poll,                poll,                       Target::Enum,           GenericRequirement::None;
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;
+
+    AsyncGenReady,           sym::AsyncGenReady,       async_gen_ready,            Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
+    AsyncGenPending,         sym::AsyncGenPending,     async_gen_pending,          Target::AssocConst,     GenericRequirement::Exact(1);
+    AsyncGenFinished,        sym::AsyncGenFinished,    async_gen_finished,         Target::AssocConst,     GenericRequirement::Exact(1);
 
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.

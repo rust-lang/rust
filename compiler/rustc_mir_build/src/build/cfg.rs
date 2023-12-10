@@ -101,6 +101,19 @@ impl<'tcx> CFG<'tcx> {
         self.push(block, stmt);
     }
 
+    /// Adds a dummy statement whose only role is to associate a span with its
+    /// enclosing block for the purposes of coverage instrumentation.
+    ///
+    /// This results in more accurate coverage reports for certain kinds of
+    /// syntax (e.g. `continue` or `if !`) that would otherwise not appear in MIR.
+    pub(crate) fn push_coverage_span_marker(&mut self, block: BasicBlock, source_info: SourceInfo) {
+        let kind = StatementKind::Coverage(Box::new(Coverage {
+            kind: coverage::CoverageKind::SpanMarker,
+        }));
+        let stmt = Statement { source_info, kind };
+        self.push(block, stmt);
+    }
+
     pub(crate) fn terminate(
         &mut self,
         block: BasicBlock,

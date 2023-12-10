@@ -376,7 +376,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
@@ -499,7 +499,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
@@ -617,7 +617,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
 
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
@@ -712,7 +712,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {

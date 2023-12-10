@@ -98,6 +98,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_iterator)
             }
 
+            AsyncIteratorCandidate => {
+                let vtable_iterator = self.confirm_async_iterator_candidate(obligation)?;
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_iterator)
+            }
+
             FnPointerCandidate { is_const } => {
                 let data = self.confirm_fn_pointer_candidate(obligation, is_const)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
@@ -813,6 +818,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(nested)
     }
 
+    fn confirm_async_iterator_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // Okay to skip binder because the args on coroutine types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters.
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+            bug!("closure candidate for non-closure {:?}", obligation);
+        };
+
+        debug!(?obligation, ?coroutine_def_id, ?args, "confirm_async_iterator_candidate");
+
+        let gen_sig = args.as_coroutine().sig();
+
+        let (trait_ref, _) = super::util::async_iterator_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.no_bound_vars().expect("iterator has no bound vars").self_ty(),
+            gen_sig,
+        );
+
+        let nested = self.confirm_poly_trait_refs(obligation, ty::Binder::dummy(trait_ref))?;
+        debug!(?trait_ref, ?nested, "iterator candidate obligations");
+
+        Ok(nested)
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn confirm_closure_candidate(
         &mut self,
@@ -1172,11 +1206,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         impl_def_id: Option<DefId>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
-        // FIXME(effects)
-        if true {
-            return Ok(vec![]);
-        }
+        let Some(host_effect_index) =
+            self.tcx().generics_of(obligation.predicate.def_id()).host_effect_index
+        else {
+            bug!()
+        };
+        let host_effect_param: ty::GenericArg<'tcx> =
+            obligation.predicate.skip_binder().trait_ref.args.const_at(host_effect_index).into();
 
         let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
 
@@ -1284,7 +1320,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 self.tcx(),
                                 LangItem::Destruct,
                                 cause.span,
-                                [nested_ty],
+                                [nested_ty.into(), host_effect_param],
                             ),
                             polarity: ty::ImplPolarity::Positive,
                         }),
@@ -1310,7 +1346,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.tcx(),
                             LangItem::Destruct,
                             cause.span,
-                            [nested_ty],
+                            [nested_ty.into(), host_effect_param],
                         ),
                         polarity: ty::ImplPolarity::Positive,
                     });

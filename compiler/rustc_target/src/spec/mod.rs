@@ -929,6 +929,7 @@ pub enum TlsModel {
     LocalDynamic,
     InitialExec,
     LocalExec,
+    Emulated,
 }
 
 impl FromStr for TlsModel {
@@ -942,6 +943,7 @@ impl FromStr for TlsModel {
             "local-dynamic" => TlsModel::LocalDynamic,
             "initial-exec" => TlsModel::InitialExec,
             "local-exec" => TlsModel::LocalExec,
+            "emulated" => TlsModel::Emulated,
             _ => return Err(()),
         })
     }
@@ -954,6 +956,7 @@ impl ToJson for TlsModel {
             TlsModel::LocalDynamic => "local-dynamic",
             TlsModel::InitialExec => "initial-exec",
             TlsModel::LocalExec => "local-exec",
+            TlsModel::Emulated => "emulated",
         }
         .to_json()
     }
@@ -1600,8 +1603,10 @@ supported_targets! {
     ("aarch64-uwp-windows-msvc", aarch64_uwp_windows_msvc),
     ("x86_64-pc-windows-msvc", x86_64_pc_windows_msvc),
     ("x86_64-uwp-windows-msvc", x86_64_uwp_windows_msvc),
+    ("x86_64-win7-windows-msvc", x86_64_win7_windows_msvc),
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
+    ("i686-win7-windows-msvc", i686_win7_windows_msvc),
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
@@ -2191,9 +2196,6 @@ pub struct TargetOptions {
 
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
-
-    /// Forces the use of emulated TLS (__emutls_get_address)
-    pub force_emulated_tls: bool,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -2409,7 +2411,6 @@ impl Default for TargetOptions {
             entry_name: "main".into(),
             entry_abi: Conv::C,
             supports_xray: false,
-            force_emulated_tls: false,
         }
     }
 }
@@ -3113,7 +3114,6 @@ impl Target {
         key!(entry_name);
         key!(entry_abi, Conv)?;
         key!(supports_xray, bool);
-        key!(force_emulated_tls, bool);
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -3369,7 +3369,6 @@ impl ToJson for Target {
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
         target_option_val!(supports_xray);
-        target_option_val!(force_emulated_tls);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());

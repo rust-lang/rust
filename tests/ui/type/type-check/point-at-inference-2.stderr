@@ -25,8 +25,8 @@ LL |     bar(v);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Vec<i32>`
-              found struct `Vec<&i32>`
+   = note: expected struct `Vec<_>`
+              found struct `Vec<&_>`
 note: function defined here
   --> $DIR/point-at-inference-2.rs:1:4
    |
@@ -43,8 +43,8 @@ LL |     bar(v);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Vec<i32>`
-              found struct `Vec<&i32>`
+   = note: expected struct `Vec<_>`
+              found struct `Vec<&_>`
 note: function defined here
   --> $DIR/point-at-inference-2.rs:1:4
    |

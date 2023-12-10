@@ -861,7 +861,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Closure(box Closure {
             binder,
             capture_clause,
-            coro_kind: _,
+            coroutine_kind: _,
             constness: _,
             movability: _,
             fn_decl,
@@ -951,7 +951,7 @@ pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) {
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
     visitor.visit_pat(&arm.pat);
     walk_list!(visitor, visit_expr, &arm.guard);
-    visitor.visit_expr(&arm.body);
+    walk_list!(visitor, visit_expr, &arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
 }
 

@@ -173,6 +173,12 @@ impl<'tcx> fmt::Debug for ty::ProjectionPredicate<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::NormalizesTo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
+    }
+}
+
 impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.kind())

@@ -75,10 +75,11 @@ pub(crate) fn format_visibility(
 }
 
 #[inline]
-pub(crate) fn format_coro(coro_kind: &ast::CoroutineKind) -> &'static str {
-    match coro_kind {
+pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
+    match coroutine_kind {
         ast::CoroutineKind::Async { .. } => "async ",
         ast::CoroutineKind::Gen { .. } => "gen ",
+        ast::CoroutineKind::AsyncGen { .. } => "async gen ",
     }
 }
 

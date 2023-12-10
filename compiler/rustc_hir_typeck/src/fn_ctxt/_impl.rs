@@ -657,19 +657,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
                 | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::NormalizesTo(..)
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
-                // N.B., this predicate is created by breaking down a
-                // `ClosureType: FnFoo()` predicate, where
-                // `ClosureType` represents some `Closure`. It can't
-                // possibly be referring to the current closure,
-                // because we haven't produced the `Closure` for
-                // this closure yet; this is exactly why the other
-                // code is looking for a self type of an unresolved
-                // inference variable.
-                | ty::PredicateKind::Ambiguous
-                 => None,
+                | ty::PredicateKind::Ambiguous => None,
             },
         )
     }
@@ -771,6 +763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let args = self.fresh_args_for_item(span, def_id);
         let ty = item_ty.instantiate(self.tcx, args);
 
+        self.write_args(hir_id, args);
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
 
         let code = match lang_item {

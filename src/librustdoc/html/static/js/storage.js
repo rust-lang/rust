@@ -51,22 +51,11 @@ function removeClass(elem, className) {
  * Run a callback for every element of an Array.
  * @param {Array<?>}    arr        - The array to iterate over
  * @param {function(?)} func       - The callback
- * @param {boolean}     [reversed] - Whether to iterate in reverse
  */
-function onEach(arr, func, reversed) {
-    if (arr && arr.length > 0) {
-        if (reversed) {
-            for (let i = arr.length - 1; i >= 0; --i) {
-                if (func(arr[i])) {
-                    return true;
-                }
-            }
-        } else {
-            for (const elem of arr) {
-                if (func(elem)) {
-                    return true;
-                }
-            }
+function onEach(arr, func) {
+    for (const elem of arr) {
+        if (func(elem)) {
+            return true;
         }
     }
     return false;
@@ -80,14 +69,12 @@ function onEach(arr, func, reversed) {
  * https://developer.mozilla.org/en-US/docs/Web/API/NodeList
  * @param {NodeList<?>|HTMLCollection<?>} lazyArray  - An array to iterate over
  * @param {function(?)}                   func       - The callback
- * @param {boolean}                       [reversed] - Whether to iterate in reverse
  */
 // eslint-disable-next-line no-unused-vars
-function onEachLazy(lazyArray, func, reversed) {
+function onEachLazy(lazyArray, func) {
     return onEach(
         Array.prototype.slice.call(lazyArray),
-        func,
-        reversed);
+        func);
 }
 
 function updateLocalStorage(name, value) {

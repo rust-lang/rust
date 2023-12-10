@@ -1,4 +1,4 @@
-use crate::spec::{cvs, FramePointer, RelroLevel, TargetOptions};
+use crate::spec::{cvs, FramePointer, RelroLevel, TargetOptions, TlsModel};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
@@ -11,6 +11,7 @@ pub fn opts() -> TargetOptions {
         frame_pointer: FramePointer::Always, // FIXME 43575: should be MayOmit...
         relro_level: RelroLevel::Full,
         default_dwarf_version: 2,
+        tls_model: TlsModel::Emulated,
         ..Default::default()
     }
 }

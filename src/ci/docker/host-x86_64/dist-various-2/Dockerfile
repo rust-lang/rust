@@ -76,8 +76,8 @@ RUN env \
     rm -rf /build/*
 
 WORKDIR /tmp
-COPY host-x86_64/dist-various-2/shared.sh /tmp/
-COPY host-x86_64/dist-various-2/build-fuchsia-toolchain.sh /tmp/
+COPY scripts/shared.sh /tmp/
+COPY scripts/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
 COPY host-x86_64/dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386  pc

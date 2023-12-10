@@ -2839,7 +2839,6 @@ impl<'a> Parser<'a> {
     pub(crate) fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
-        is_mac_invoc: bool,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, ()> {
         if self.token != token::Comma {
@@ -2860,28 +2859,24 @@ impl<'a> Parser<'a> {
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-            if is_mac_invoc {
-                err.note(fluent::parse_macro_expands_to_match_arm);
-            } else {
-                err.multipart_suggestion(
-                    format!(
-                        "try adding parentheses to match on a tuple{}",
-                        if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
-                    ),
-                    vec![
-                        (seq_span.shrink_to_lo(), "(".to_string()),
-                        (seq_span.shrink_to_hi(), ")".to_string()),
-                    ],
+            err.multipart_suggestion(
+                format!(
+                    "try adding parentheses to match on a tuple{}",
+                    if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
+                ),
+                vec![
+                    (seq_span.shrink_to_lo(), "(".to_string()),
+                    (seq_span.shrink_to_hi(), ")".to_string()),
+                ],
+                Applicability::MachineApplicable,
+            );
+            if let CommaRecoveryMode::EitherTupleOrPipe = rt {
+                err.span_suggestion(
+                    seq_span,
+                    "...or a vertical bar to match on multiple alternatives",
+                    seq_snippet.replace(',', " |"),
                     Applicability::MachineApplicable,
                 );
-                if let CommaRecoveryMode::EitherTupleOrPipe = rt {
-                    err.span_suggestion(
-                        seq_span,
-                        "...or a vertical bar to match on multiple alternatives",
-                        seq_snippet.replace(',', " |"),
-                        Applicability::MachineApplicable,
-                    );
-                }
             }
         }
         Err(err)

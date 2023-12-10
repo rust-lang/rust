@@ -6,8 +6,120 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{self, print::TraitRefPrintOnlyTraitPath, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_ambiguous_assoc_item)]
+pub struct AmbiguousAssocItem<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub assoc_kind: &'static str,
+    pub assoc_name: Ident,
+    pub ty_param_name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_assoc_kind_mismatch)]
+pub struct AssocKindMismatch {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub expected: &'static str,
+    pub got: &'static str,
+    #[label(hir_analysis_expected_because_label)]
+    pub expected_because_label: Option<Span>,
+    pub assoc_kind: &'static str,
+    #[note]
+    pub def_span: Span,
+    #[label(hir_analysis_bound_on_assoc_const_label)]
+    pub bound_on_assoc_const_label: Option<Span>,
+    #[subdiagnostic]
+    pub wrap_in_braces_sugg: Option<AssocKindMismatchWrapInBracesSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg,
+    applicability = "maybe-incorrect"
+)]
+pub struct AssocKindMismatchWrapInBracesSugg {
+    #[suggestion_part(code = "{{ ")]
+    pub lo: Span,
+    #[suggestion_part(code = " }}")]
+    pub hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_assoc_item_not_found, code = "E0220")]
+pub struct AssocItemNotFound<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub assoc_name: Ident,
+    pub assoc_kind: &'static str,
+    pub ty_param_name: &'a str,
+    #[subdiagnostic]
+    pub label: Option<AssocItemNotFoundLabel<'a>>,
+    #[subdiagnostic]
+    pub sugg: Option<AssocItemNotFoundSugg<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum AssocItemNotFoundLabel<'a> {
+    #[label(hir_analysis_assoc_item_not_found_label)]
+    NotFound {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(hir_analysis_assoc_item_not_found_found_in_other_trait_label)]
+    FoundInOtherTrait {
+        #[primary_span]
+        span: Span,
+        assoc_kind: &'static str,
+        trait_name: &'a str,
+        suggested_name: Symbol,
+        identically_named: bool,
+    },
+}
+
+#[derive(Subdiagnostic)]
+
+pub enum AssocItemNotFoundSugg<'a> {
+    #[suggestion(
+        hir_analysis_assoc_item_not_found_similar_sugg,
+        code = "{suggested_name}",
+        applicability = "maybe-incorrect"
+    )]
+    Similar {
+        #[primary_span]
+        span: Span,
+        assoc_kind: &'static str,
+        suggested_name: Symbol,
+    },
+    #[suggestion(
+        hir_analysis_assoc_item_not_found_similar_in_other_trait_sugg,
+        code = "{suggested_name}",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    SimilarInOtherTrait {
+        #[primary_span]
+        span: Span,
+        assoc_kind: &'static str,
+        suggested_name: Symbol,
+    },
+    #[suggestion(hir_analysis_assoc_item_not_found_other_sugg, code = "{suggested_name}")]
+    Other {
+        #[primary_span]
+        span: Span,
+        #[applicability]
+        applicability: Applicability,
+        ty_param_name: &'a str,
+        assoc_kind: &'static str,
+        suggested_name: Symbol,
+    },
+}
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_unrecognized_atomic_operation, code = "E0092")]
@@ -538,27 +650,6 @@ pub(crate) struct ReturnTypeNotationEqualityBound {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_return_type_notation_missing_method)]
-pub(crate) struct ReturnTypeNotationMissingMethod {
-    #[primary_span]
-    pub span: Span,
-    pub ty_name: String,
-    pub assoc_name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_return_type_notation_conflicting_bound)]
-#[note]
-pub(crate) struct ReturnTypeNotationConflictingBound<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub ty_name: String,
-    pub assoc_name: Symbol,
-    pub first_bound: ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
-    pub second_bound: ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_placeholder_not_allowed_item_signatures, code = "E0121")]
 pub(crate) struct PlaceholderNotAllowedItemSignatures {
     #[primary_span]
@@ -952,15 +1043,6 @@ pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
     pub pre: &'static str,
     pub post: &'static str,
     pub return_ty: Ty<'tcx>,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_assoc_bound_on_const)]
-#[note]
-pub struct AssocBoundOnConst {
-    #[primary_span]
-    pub span: Span,
-    pub descr: &'static str,
 }
 
 #[derive(Diagnostic)]

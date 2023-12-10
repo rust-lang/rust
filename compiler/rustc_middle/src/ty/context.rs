@@ -39,7 +39,9 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, Lock, WorkerLocal};
+use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
@@ -121,6 +123,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
     type TypeOutlivesPredicate = ty::TypeOutlivesPredicate<'tcx>;
     type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
+    type NormalizesTo = ty::NormalizesTo<'tcx>;
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
@@ -129,6 +132,31 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
     ) -> (Self::Ty, ty::Mutability) {
         (ty, mutbl)
+    }
+
+    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
+        self.mk_canonical_var_infos(infos)
+    }
+
+    fn mk_bound_ty(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Ty {
+        Ty::new_bound(self, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
+    }
+
+    fn mk_bound_region(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Region {
+        Region::new_bound(
+            self,
+            debruijn,
+            ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon },
+        )
+    }
+
+    fn mk_bound_const(
+        self,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+        ty: Self::Ty,
+    ) -> Self::Const {
+        Const::new_bound(self, debruijn, var, ty)
     }
 }
 
@@ -552,6 +580,16 @@ pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
 
+// Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution.
+#[cfg(parallel_compiler)]
+unsafe impl DynSend for TyCtxt<'_> {}
+#[cfg(parallel_compiler)]
+unsafe impl DynSync for TyCtxt<'_> {}
+fn _assert_tcx_fields() {
+    sync::assert_dyn_sync::<&'_ GlobalCtxt<'_>>();
+    sync::assert_dyn_send::<&'_ GlobalCtxt<'_>>();
+}
+
 impl<'tcx> Deref for TyCtxt<'tcx> {
     type Target = &'tcx GlobalCtxt<'tcx>;
     #[inline(always)]
@@ -824,9 +862,14 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine))
     }
 
-    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a gen construct.
+    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `gen` construct.
     pub fn coroutine_is_gen(self, def_id: DefId) -> bool {
         matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Gen(_)))
+    }
+
+    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `async gen` construct.
+    pub fn coroutine_is_async_gen(self, def_id: DefId) -> bool {
+        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::AsyncGen(_)))
     }
 
     pub fn stability(self) -> &'tcx stability::Index {

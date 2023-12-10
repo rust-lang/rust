@@ -1474,17 +1474,6 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
-    // Check jobserver before getting `jobserver::client`.
-    jobserver::check(|err| {
-        #[allow(rustc::untranslatable_diagnostic)]
-        #[allow(rustc::diagnostic_outside_of_impl)]
-        parse_sess
-            .span_diagnostic
-            .struct_warn(err)
-            .note("the build environment is likely misconfigured")
-            .emit()
-    });
-
     let sess = Session {
         target: target_cfg,
         host,
@@ -1791,6 +1780,18 @@ impl EarlyErrorHandler {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.handler.struct_warn(msg).emit()
+    }
+
+    pub fn initialize_checked_jobserver(&self) {
+        // initialize jobserver before getting `jobserver::client` and `build_session`.
+        jobserver::initialize_checked(|err| {
+            #[allow(rustc::untranslatable_diagnostic)]
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            self.handler
+                .struct_warn(err)
+                .note("the build environment is likely misconfigured")
+                .emit()
+        });
     }
 }
 

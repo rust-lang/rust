@@ -545,25 +545,13 @@ where
 {
     type FlowState = A::Domain;
 
-    fn visit_block_start(
-        &mut self,
-        _results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
-        _block_data: &mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
+    fn visit_block_start(&mut self, state: &Self::FlowState) {
         if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
 
-    fn visit_block_end(
-        &mut self,
-        _results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
-        _block_data: &mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
+    fn visit_block_end(&mut self, state: &Self::FlowState) {
         if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }

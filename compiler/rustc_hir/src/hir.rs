@@ -1056,6 +1056,23 @@ impl<'hir> Pat<'hir> {
             true
         })
     }
+
+    /// Whether this a never pattern.
+    pub fn is_never_pattern(&self) -> bool {
+        let mut is_never_pattern = false;
+        self.walk(|pat| match &pat.kind {
+            PatKind::Never => {
+                is_never_pattern = true;
+                false
+            }
+            PatKind::Or(s) => {
+                is_never_pattern = s.iter().all(|p| p.is_never_pattern());
+                false
+            }
+            _ => true,
+        });
+        is_never_pattern
+    }
 }
 
 /// A single field in a struct pattern.
@@ -1339,11 +1356,15 @@ impl<'hir> Body<'hir> {
 /// The type of source expression that caused this coroutine to be created.
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
 pub enum CoroutineKind {
-    /// An explicit `async` block or the body of an async function.
+    /// An explicit `async` block or the body of an `async` function.
     Async(CoroutineSource),
 
     /// An explicit `gen` block or the body of a `gen` function.
     Gen(CoroutineSource),
+
+    /// An explicit `async gen` block or the body of an `async gen` function,
+    /// which is able to both `yield` and `.await`.
+    AsyncGen(CoroutineSource),
 
     /// A coroutine literal created via a `yield` inside a closure.
     Coroutine,
@@ -1366,6 +1387,14 @@ impl fmt::Display for CoroutineKind {
                     f.write_str("`gen` ")?;
                 } else {
                     f.write_str("gen ")?
+                }
+                k.fmt(f)
+            }
+            CoroutineKind::AsyncGen(k) => {
+                if f.alternate() {
+                    f.write_str("`async gen` ")?;
+                } else {
+                    f.write_str("async gen ")?
                 }
                 k.fmt(f)
             }
@@ -2064,17 +2093,6 @@ impl fmt::Display for YieldSource {
     }
 }
 
-impl From<CoroutineKind> for YieldSource {
-    fn from(kind: CoroutineKind) -> Self {
-        match kind {
-            // Guess based on the kind of the current coroutine.
-            CoroutineKind::Coroutine => Self::Yield,
-            CoroutineKind::Async(_) => Self::Await { expr: None },
-            CoroutineKind::Gen(_) => Self::Yield,
-        }
-    }
-}
-
 // N.B., if you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -2253,11 +2271,6 @@ pub enum ImplItemKind<'hir> {
     /// An associated type.
     Type(&'hir Ty<'hir>),
 }
-
-/// The name of the associated type for `Fn` return types.
-pub const FN_OUTPUT_NAME: Symbol = sym::Output;
-/// The name of the associated type for `Iterator` item types.
-pub const ITERATOR_ITEM_NAME: Symbol = sym::Item;
 
 /// Bind a type to an associated type (i.e., `A = Foo`).
 ///
