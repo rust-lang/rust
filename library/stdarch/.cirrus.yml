@@ -1,7 +1,7 @@
 task:
   name: x86_64-unknown-freebsd
   freebsd_instance:
-    image_family: freebsd-12-4
+    image_family: freebsd-13-2
   setup_script:
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh --default-toolchain nightly -y
