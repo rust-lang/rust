@@ -12,8 +12,8 @@ use anyhow::Context;
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
-    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, RangeLimit,
+    ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -1409,7 +1409,7 @@ pub(crate) fn handle_inlay_hints(
     let inlay_hints_config = snap.config.inlay_hints();
     Ok(Some(
         snap.analysis
-            .inlay_hints(&inlay_hints_config, file_id, Some(range))?
+            .inlay_hints(&inlay_hints_config, file_id, Some(RangeLimit::Fixed(range)))?
             .into_iter()
             .map(|it| {
                 to_proto::inlay_hint(
@@ -1440,22 +1440,13 @@ pub(crate) fn handle_inlay_hints_resolve(
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
-    let range = from_proto::text_range(
-        &line_index,
-        lsp_types::Range { start: original_hint.position, end: original_hint.position },
-    )?;
-    let range_start = range.start();
-    let range_end = range.end();
-    let large_range = TextRange::new(
-        range_start.checked_sub(1.into()).unwrap_or(range_start),
-        range_end.checked_add(1.into()).unwrap_or(range_end),
-    );
+    let hint_position = from_proto::offset(&line_index, original_hint.position)?;
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints(
         &forced_resolve_inlay_hints_config,
         file_id,
-        Some(large_range),
+        Some(RangeLimit::NearestParentBlock(hint_position)),
     )?;
 
     let mut resolved_hints = resolve_hints
