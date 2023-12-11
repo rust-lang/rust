@@ -41,7 +41,8 @@ impl<'tcx> ConstTy<TyCtxt<'tcx>> for Const<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct ConstData<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: ConstKind<'tcx>,
