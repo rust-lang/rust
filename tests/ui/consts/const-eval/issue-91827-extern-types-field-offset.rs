@@ -13,7 +13,8 @@ struct Newtype(Opaque);
 
 struct S {
     i: i32,
-    a: Opaque,
+    j: i32,
+    a: Newtype,
 }
 
 const NEWTYPE: () = unsafe {
@@ -27,6 +28,10 @@ const NEWTYPE: () = unsafe {
 const OFFSET: () = unsafe {
     let buf = [0i32; 4];
     let x: &S = &*(&buf as *const _ as *const S);
+
+    // Accessing sized fields is perfectly fine, even at non-zero offsets.
+    let field = &x.i;
+    let field = &x.j;
 
     // This needs to compute the field offset, but we don't know the type's alignment, so this
     // fails.
