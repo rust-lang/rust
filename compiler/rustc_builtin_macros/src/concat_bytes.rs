@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::{ptr::P, tokenstream::TokenStream};
 use rustc_expand::base::{self, DummyResult};
-use rustc_parse::parser::report_lit_error;
+use rustc_parse::parser::token_lit_to_lit_kind_and_report_errs;
 use rustc_span::Span;
 
 use crate::errors;
@@ -17,7 +17,7 @@ fn invalid_type_err(
         ConcatBytesInvalid, ConcatBytesInvalidSuggestion, ConcatBytesNonU8, ConcatBytesOob,
     };
     let snippet = cx.sess.source_map().span_to_snippet(span).ok();
-    match ast::LitKind::from_token_lit(token_lit) {
+    match token_lit_to_lit_kind_and_report_errs(&cx.sess.parse_sess, token_lit, span) {
         Ok(ast::LitKind::CStr(_, _)) => {
             // Avoid ambiguity in handling of terminal `NUL` by refusing to
             // concatenate C string literals as bytes.
@@ -60,9 +60,7 @@ fn invalid_type_err(
             cx.emit_err(ConcatBytesNonU8 { span });
         }
         Ok(ast::LitKind::ByteStr(..) | ast::LitKind::Byte(_)) => unreachable!(),
-        Err(err) => {
-            report_lit_error(&cx.sess.parse_sess, err, token_lit, span);
-        }
+        Err(()) => {}
     }
 }
 

@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use crate::errors;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use crate::make_unclosed_delims_error;
@@ -8,7 +6,6 @@ use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey};
-use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
 use rustc_session::lint::builtin::{
@@ -21,10 +18,10 @@ use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
 mod diagnostics;
 mod tokentrees;
-mod unescape_error_reporting;
+pub(crate) mod unescape_error_reporting;
 mod unicode_chars;
 
-use unescape_error_reporting::{emit_unescape_error, escaped_char};
+use unescape_error_reporting::escaped_char;
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 //
@@ -409,7 +406,7 @@ impl<'a> StringReader<'a> {
                         error_code!(E0762),
                     )
                 }
-                self.cook_quoted(token::Char, Mode::Char, start, end, 1, 1) // ' '
+                self.cook_quoted(token::Char, start, end, 1, 1) // ' '
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
@@ -419,7 +416,7 @@ impl<'a> StringReader<'a> {
                         error_code!(E0763),
                     )
                 }
-                self.cook_quoted(token::Byte, Mode::Byte, start, end, 2, 1) // b' '
+                self.cook_quoted(token::Byte, start, end, 2, 1) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
@@ -429,7 +426,7 @@ impl<'a> StringReader<'a> {
                         error_code!(E0765),
                     )
                 }
-                self.cook_quoted(token::Str, Mode::Str, start, end, 1, 1) // " "
+                self.cook_quoted(token::Str, start, end, 1, 1) // " "
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
@@ -439,7 +436,7 @@ impl<'a> StringReader<'a> {
                         error_code!(E0766),
                     )
                 }
-                self.cook_quoted(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
+                self.cook_quoted(token::ByteStr, start, end, 2, 1) // b" "
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
@@ -449,13 +446,13 @@ impl<'a> StringReader<'a> {
                         error_code!(E0767),
                     )
                 }
-                self.cook_c_string(token::CStr, Mode::CStr, start, end, 2, 1) // c" "
+                self.cook_quoted(token::CStr, start, end, 2, 1) // c" "
             }
             rustc_lexer::LiteralKind::RawStr { n_hashes } => {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
                     let kind = token::StrRaw(n_hashes);
-                    self.cook_quoted(kind, Mode::RawStr, start, end, 2 + n, 1 + n) // r##" "##
+                    self.cook_quoted(kind, start, end, 2 + n, 1 + n) // r##" "##
                 } else {
                     self.report_raw_str_error(start, 1);
                 }
@@ -464,7 +461,7 @@ impl<'a> StringReader<'a> {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
                     let kind = token::ByteStrRaw(n_hashes);
-                    self.cook_quoted(kind, Mode::RawByteStr, start, end, 3 + n, 1 + n) // br##" "##
+                    self.cook_quoted(kind, start, end, 3 + n, 1 + n) // br##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
                 }
@@ -473,7 +470,7 @@ impl<'a> StringReader<'a> {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
                     let kind = token::CStrRaw(n_hashes);
-                    self.cook_c_string(kind, Mode::RawCStr, start, end, 3 + n, 1 + n) // cr##" "##
+                    self.cook_quoted(kind, start, end, 3 + n, 1 + n) // cr##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
                 }
@@ -693,82 +690,18 @@ impl<'a> StringReader<'a> {
         self.sess.emit_fatal(errors::TooManyHashes { span: self.mk_sp(start, self.pos), num });
     }
 
-    fn cook_common(
-        &self,
-        kind: token::LitKind,
-        mode: Mode,
-        start: BytePos,
-        end: BytePos,
-        prefix_len: u32,
-        postfix_len: u32,
-        unescape: fn(&str, Mode, &mut dyn FnMut(Range<usize>, Result<(), EscapeError>)),
-    ) -> (token::LitKind, Symbol) {
-        let mut has_fatal_err = false;
-        let content_start = start + BytePos(prefix_len);
-        let content_end = end - BytePos(postfix_len);
-        let lit_content = self.str_from_to(content_start, content_end);
-        unescape(lit_content, mode, &mut |range, result| {
-            // Here we only check for errors. The actual unescaping is done later.
-            if let Err(err) = result {
-                let span_with_quotes = self.mk_sp(start, end);
-                let (start, end) = (range.start as u32, range.end as u32);
-                let lo = content_start + BytePos(start);
-                let hi = lo + BytePos(end - start);
-                let span = self.mk_sp(lo, hi);
-                if err.is_fatal() {
-                    has_fatal_err = true;
-                }
-                emit_unescape_error(
-                    &self.sess.dcx,
-                    lit_content,
-                    span_with_quotes,
-                    span,
-                    mode,
-                    range,
-                    err,
-                );
-            }
-        });
-
-        // We normally exclude the quotes for the symbol, but for errors we
-        // include it because it results in clearer error messages.
-        if !has_fatal_err {
-            (kind, Symbol::intern(lit_content))
-        } else {
-            (token::Err, self.symbol_from_to(start, end))
-        }
-    }
-
     fn cook_quoted(
         &self,
         kind: token::LitKind,
-        mode: Mode,
         start: BytePos,
         end: BytePos,
         prefix_len: u32,
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
-        self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
-            unescape::unescape_literal(src, mode, &mut |span, result| {
-                callback(span, result.map(drop))
-            })
-        })
-    }
-
-    fn cook_c_string(
-        &self,
-        kind: token::LitKind,
-        mode: Mode,
-        start: BytePos,
-        end: BytePos,
-        prefix_len: u32,
-        postfix_len: u32,
-    ) -> (token::LitKind, Symbol) {
-        self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
-            unescape::unescape_c_string(src, mode, &mut |span, result| {
-                callback(span, result.map(drop))
-            })
-        })
+        let content_start = start + BytePos(prefix_len);
+        let content_end = end - BytePos(postfix_len);
+        let lit_content = self.str_from_to(content_start, content_end);
+        (kind, Symbol::intern(lit_content))
     }
 }
 

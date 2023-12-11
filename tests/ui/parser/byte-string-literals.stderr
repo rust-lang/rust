@@ -37,14 +37,5 @@ error: non-ASCII character in raw byte string literal
 LL |     br##"é"##;
    |          ^ must be ASCII
 
-error[E0766]: unterminated double quote byte string
-  --> $DIR/byte-string-literals.rs:8:6
-   |
-LL |       b"a
-   |  ______^
-LL | | }
-   | |__^
+error: aborting due to 5 previous errors
 
-error: aborting due to 6 previous errors
-
-For more information about this error, try `rustc --explain E0766`.

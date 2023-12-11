@@ -10,11 +10,5 @@ error: non-ASCII character in raw byte string literal
 LL |     br"é";
    |        ^ must be ASCII
 
-error: found invalid character; only `#` is allowed in raw string delimitation: ~
-  --> $DIR/raw-byte-string-literals.rs:6:5
-   |
-LL |     br##~"a"~##;
-   |     ^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

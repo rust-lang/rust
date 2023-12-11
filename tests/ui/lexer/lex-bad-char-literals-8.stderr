@@ -1,0 +1,9 @@
+error[E0762]: unterminated character literal
+  --> $DIR/lex-bad-char-literals-8.rs:2:13
+   |
+LL |     let _ = ' hello // here's a comment
+   |             ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0762`.

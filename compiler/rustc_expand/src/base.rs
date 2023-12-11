@@ -1235,26 +1235,30 @@ pub fn expr_to_spanned_string<'a>(
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
     Err(match expr.kind {
-        ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
-            Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
-            Ok(ast::LitKind::ByteStr(..)) => {
-                let mut err = cx.struct_span_err(expr.span, err_msg);
-                let span = expr.span.shrink_to_lo();
-                err.span_suggestion(
-                    span.with_hi(span.lo() + BytePos(1)),
-                    "consider removing the leading `b`",
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
-                Some((err, true))
-            }
-            Ok(ast::LitKind::Err) => None,
-            Err(err) => {
-                parser::report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
-                None
-            }
-            _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
-        },
+        ast::ExprKind::Lit(token_lit) => {
+            let res = match parser::token_lit_to_lit_kind_and_report_errs(
+                &cx.sess.parse_sess,
+                token_lit,
+                expr.span,
+            ) {
+                Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
+                Ok(ast::LitKind::ByteStr(..)) => {
+                    let mut err = cx.struct_span_err(expr.span, err_msg);
+                    let span = expr.span.shrink_to_lo();
+                    err.span_suggestion(
+                        span.with_hi(span.lo() + BytePos(1)),
+                        "consider removing the leading `b`",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                    Some((err, true))
+                }
+                Ok(ast::LitKind::Err) => None,
+                Err(()) => None,
+                _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
+            };
+            res
+        }
         ast::ExprKind::Err => None,
         _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
     })

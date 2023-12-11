@@ -348,7 +348,7 @@ where
     // them in the range computation.
     while let Some(c) = chars.next() {
         let start = src.len() - chars.as_str().len() - c.len_utf8();
-        let res = match c {
+        let res: Result<T, EscapeError> = match c {
             '\\' => {
                 match chars.clone().next() {
                     Some('\n') => {

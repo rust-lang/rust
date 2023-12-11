@@ -1,3 +1,5 @@
+// edition:2021
+
 // This test is about the treatment of invalid literals. In particular, some
 // literals are only considered invalid if they survive to HIR lowering.
 //
@@ -41,6 +43,11 @@
 // https://doc.rust-lang.org/reference/tokens.html#integer-literals says that
 // literals like `128_i8` and `256_u8` "are too big for their type, but are
 // still valid tokens".
+//
+// String literals, etc.
+// ---------------------
+// There are various ways that char, byte, and string literals can be invalid,
+// mostly involving invalid escape sequences.
 
 macro_rules! sink {
     ($($x:tt;)*) => {()}
@@ -48,7 +55,7 @@ macro_rules! sink {
 
 // The invalid literals are ignored because the macro consumes them. Except for
 // `0b10.0f32` because it's a lexer error.
-const _: () = sink! {
+const c1: () = sink! {
     "string"any_suffix; // OK
     10u123; // OK
     10.0f123; // OK
@@ -60,7 +67,7 @@ const _: () = sink! {
 // The invalid literals used to cause errors, but this was changed by #102944.
 // Except for `0b010.0f32`, because it's a lexer error.
 #[cfg(FALSE)]
-fn configured_out() {
+fn configured_out1() {
     "string"any_suffix; // OK
     10u123; // OK
     10.0f123; // OK
@@ -70,7 +77,7 @@ fn configured_out() {
 }
 
 // All the invalid literals cause errors.
-fn main() {
+fn f1() {
     "string"any_suffix; //~ ERROR suffixes on string literals are invalid
     10u123; //~ ERROR invalid width `123` for integer literal
     10.0f123; //~ ERROR invalid width `123` for float literal
@@ -78,3 +85,36 @@ fn main() {
     0b10.0f32; //~ ERROR binary float literal is not supported
     999340282366920938463463374607431768211455999; //~ ERROR integer literal is too large
 }
+
+// These invalid literals used to cause errors, but this was changed by #118699.
+const c2: () = sink! {
+    '';
+    b'ab';
+    "\a";
+    b"\xzz";
+    "\u20";
+    c"\u{999999}";
+};
+
+// These invalid literals used to cause errors, but this was changed by #118699.
+#[cfg(FALSE)]
+fn configured_out2() {
+    '';
+    b'ab';
+    "\a";
+    b"\xzz";
+    "\u20";
+    c"\u{999999}";
+}
+
+// These invalid literals cause errors.
+fn f2() {
+    '';            //~ ERROR empty character literal
+    b'ab';         //~ ERROR character literal may only contain one codepoint
+    "\a";          //~ ERROR unknown character escape: `a`
+    b"\xzz";       //~ ERROR invalid character in numeric character escape
+    "\u20";        //~ ERROR incorrect unicode escape sequence
+    c"\u{999999}"; //~ ERROR invalid unicode character escape
+}
+
+fn main() {}

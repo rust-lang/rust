@@ -15,22 +15,28 @@ pub(crate) fn emit_unescape_error(
     lit: &str,
     // full span of the literal, including quotes and any prefix
     full_lit_span: Span,
-    // span of the error part of the literal
-    err_span: Span,
     mode: Mode,
+    prefix_len: u32,
     // range of the error inside `lit`
     range: Range<usize>,
     error: EscapeError,
 ) {
+    let (start, end) = (range.start as u32, range.end as u32);
+    let lo = full_lit_span.lo() + BytePos(prefix_len) + BytePos(start);
+    let hi = lo + BytePos(end - start);
+    let err_span = full_lit_span.with_lo(lo).with_hi(hi);
+
     debug!(
-        "emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}",
-        lit, full_lit_span, mode, range, error
+        "emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
+        lit, full_lit_span, err_span, mode, range, error
     );
+
     let last_char = || {
         let c = lit[range.clone()].chars().next_back().unwrap();
         let span = err_span.with_lo(err_span.hi() - BytePos(c.len_utf8() as u32));
         (c, span)
     };
+
     match error {
         EscapeError::LoneSurrogateUnicodeEscape => {
             dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: true });

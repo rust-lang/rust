@@ -1,29 +1,29 @@
 error: binary float literal is not supported
-  --> $DIR/error-stage.rs:56:5
+  --> $DIR/error-stage.rs:63:5
    |
 LL |     0b10.0f32;
    |     ^^^^^^
 
 error: binary float literal is not supported
-  --> $DIR/error-stage.rs:68:5
+  --> $DIR/error-stage.rs:75:5
    |
 LL |     0b10.0f32;
    |     ^^^^^^
 
 error: binary float literal is not supported
-  --> $DIR/error-stage.rs:78:5
+  --> $DIR/error-stage.rs:85:5
    |
 LL |     0b10.0f32;
    |     ^^^^^^
 
 error: suffixes on string literals are invalid
-  --> $DIR/error-stage.rs:74:5
+  --> $DIR/error-stage.rs:81:5
    |
 LL |     "string"any_suffix;
    |     ^^^^^^^^^^^^^^^^^^ invalid suffix `any_suffix`
 
 error: invalid width `123` for integer literal
-  --> $DIR/error-stage.rs:75:5
+  --> $DIR/error-stage.rs:82:5
    |
 LL |     10u123;
    |     ^^^^^^
@@ -31,7 +31,7 @@ LL |     10u123;
    = help: valid widths are 8, 16, 32, 64 and 128
 
 error: invalid width `123` for float literal
-  --> $DIR/error-stage.rs:76:5
+  --> $DIR/error-stage.rs:83:5
    |
 LL |     10.0f123;
    |     ^^^^^^^^
@@ -39,18 +39,69 @@ LL |     10.0f123;
    = help: valid widths are 32 and 64
 
 error: binary float literal is not supported
-  --> $DIR/error-stage.rs:77:5
+  --> $DIR/error-stage.rs:84:5
    |
 LL |     0b10f32;
    |     ^^^^^^^ not supported
 
 error: integer literal is too large
-  --> $DIR/error-stage.rs:79:5
+  --> $DIR/error-stage.rs:86:5
    |
 LL |     999340282366920938463463374607431768211455999;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: value exceeds limit of `340282366920938463463374607431768211455`
 
-error: aborting due to 8 previous errors
+error: empty character literal
+  --> $DIR/error-stage.rs:112:6
+   |
+LL |     '';
+   |      ^ empty character literal
+
+error: character literal may only contain one codepoint
+  --> $DIR/error-stage.rs:113:5
+   |
+LL |     b'ab';
+   |     ^^^^^
+   |
+help: if you meant to write a byte string literal, use double quotes
+   |
+LL |     b"ab";
+   |     ~~~~~
+
+error: unknown character escape: `a`
+  --> $DIR/error-stage.rs:114:7
+   |
+LL |     "\a";
+   |       ^ unknown character escape
+   |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
+   |
+LL |     r"\a";
+   |     ~~~~~
+
+error: invalid character in numeric character escape: `z`
+  --> $DIR/error-stage.rs:115:9
+   |
+LL |     b"\xzz";
+   |         ^ invalid character in numeric character escape
+
+error: incorrect unicode escape sequence
+  --> $DIR/error-stage.rs:116:6
+   |
+LL |     "\u20";
+   |      ^^^-
+   |      |
+   |      help: format of unicode escape sequences uses braces: `\u{20}`
+
+error: invalid unicode character escape
+  --> $DIR/error-stage.rs:117:7
+   |
+LL |     c"\u{999999}";
+   |       ^^^^^^^^^^ invalid escape
+   |
+   = help: unicode escape must be at most 10FFFF
+
+error: aborting due to 14 previous errors
 

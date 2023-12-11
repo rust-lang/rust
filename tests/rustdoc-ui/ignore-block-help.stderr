@@ -3,7 +3,7 @@ warning: could not parse code block as Rust code
    |
 LL |   /// ```ignore (to-prevent-tidy-error)
    |  _____^
-LL | | /// let heart = '❤️';
+LL | | /// let unterminated = '
 LL | | /// ```
    | |_______^
    |
@@ -12,7 +12,7 @@ help: `ignore` code blocks require valid Rust code for syntax highlighting; mark
    |
 LL | /// ```ignore (to-prevent-tidy-error)
    |     ^^^
-   = note: error from rustc: character literal may only contain one codepoint
+   = note: error from rustc: unterminated character literal
    = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
 
 warning: 1 warning emitted

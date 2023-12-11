@@ -3,11 +3,11 @@
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{
-    byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit,
-    Mode,
+    byte_from_char, unescape_c_string, unescape_literal, CStrUnit, EscapeError, Mode,
 };
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use std::ops::Range;
 use std::{ascii, fmt, str};
 
 // Escapes a string, represented as a symbol. Reuses the original symbol,
@@ -33,6 +33,14 @@ pub fn escape_byte_str_symbol(bytes: &[u8]) -> Symbol {
 #[derive(Debug)]
 pub enum LitError {
     LexerError,
+    EscapeError {
+        mode: Mode,
+        // Length before the string content, e.g. 1 for "a", 5 for br##"a"##
+        prefix_len: u32,
+        // The range is the byte range of the bad character, using a zero index.
+        range: Range<usize>,
+        err: EscapeError,
+    },
     InvalidSuffix,
     InvalidIntSuffix,
     InvalidFloatSuffix,
@@ -41,154 +49,252 @@ pub enum LitError {
 }
 
 impl LitKind {
-    /// Converts literal token into a semantic literal.
-    pub fn from_token_lit(lit: token::Lit) -> Result<LitKind, LitError> {
+    /// Converts literal token into a semantic literal. The return value has
+    /// two parts:
+    /// - The `Result` indicates success or failure.
+    /// - The `Vec` contains all found errors and warnings.
+    ///
+    /// If we only had to deal with errors, we could use the more obvious
+    /// `Result<LitKind, Vec<LitError>>`; on failure the caller would just
+    /// (optionally) print errors and take the error path and stop early. But
+    /// it's possible to succeed with zero errors and one or more warnings, and
+    /// in that case the caller should (optionally) print the warnings, but
+    /// also proceed with a valid `LitKind`. This return type facilitates that.
+    pub fn from_token_lit_with_errs(lit: token::Lit) -> (Result<LitKind, ()>, Vec<LitError>) {
         let token::Lit { kind, symbol, suffix } = lit;
         if suffix.is_some() && !kind.may_have_suffix() {
-            return Err(LitError::InvalidSuffix);
+            // Note: we return a single error here. We could instead continue
+            // processing, possibly returning multiple errors.
+            return (Err(()), vec![LitError::InvalidSuffix]);
         }
 
-        Ok(match kind {
+        let mut errs = vec![];
+        let mut has_fatal = false;
+
+        let res = match kind {
             token::Bool => {
                 assert!(symbol.is_bool_lit());
-                LitKind::Bool(symbol == kw::True)
+                Ok(LitKind::Bool(symbol == kw::True))
             }
             token::Byte => {
-                return unescape_byte(symbol.as_str())
-                    .map(LitKind::Byte)
-                    .map_err(|_| LitError::LexerError);
+                let mode = Mode::Byte;
+                let mut res = None;
+                unescape_literal(symbol.as_str(), mode, &mut |range, unescaped_char| {
+                    match unescaped_char {
+                        Ok(c) => res = Some(c),
+                        Err(err) => {
+                            has_fatal |= err.is_fatal();
+                            errs.push(LitError::EscapeError {
+                                mode,
+                                prefix_len: 2, // b'
+                                range,
+                                err,
+                            });
+                        }
+                    }
+                });
+                if !has_fatal { Ok(LitKind::Byte(byte_from_char(res.unwrap()))) } else { Err(()) }
             }
             token::Char => {
-                return unescape_char(symbol.as_str())
-                    .map(LitKind::Char)
-                    .map_err(|_| LitError::LexerError);
+                let mode = Mode::Char;
+                let mut res = None;
+                unescape_literal(symbol.as_str(), mode, &mut |range, unescaped_char| {
+                    match unescaped_char {
+                        Ok(c) => res = Some(c),
+                        Err(err) => {
+                            has_fatal |= err.is_fatal();
+                            errs.push(LitError::EscapeError {
+                                mode,
+                                prefix_len: 1, // '
+                                range,
+                                err,
+                            });
+                        }
+                    }
+                });
+                if !has_fatal { Ok(LitKind::Char(res.unwrap())) } else { Err(()) }
             }
 
             // There are some valid suffixes for integer and float literals,
             // so all the handling is done internally.
-            token::Integer => return integer_lit(symbol, suffix),
-            token::Float => return float_lit(symbol, suffix),
+            token::Integer => {
+                return match integer_lit(symbol, suffix) {
+                    Ok(lit_kind) => (Ok(lit_kind), vec![]),
+                    Err(err) => (Err(()), vec![err]),
+                };
+            }
+            token::Float => {
+                return match float_lit(symbol, suffix) {
+                    Ok(lit_kind) => (Ok(lit_kind), vec![]),
+                    Err(err) => (Err(()), vec![err]),
+                };
+            }
 
             token::Str => {
                 // If there are no characters requiring special treatment we can
                 // reuse the symbol from the token. Otherwise, we must generate a
                 // new symbol because the string in the LitKind is different to the
                 // string in the token.
+                let mode = Mode::Str;
                 let s = symbol.as_str();
                 // Vanilla strings are so common we optimize for the common case where no chars
                 // requiring special behaviour are present.
-                let symbol = if s.contains(['\\', '\r']) {
+                if s.contains(['\\', '\r']) {
                     let mut buf = String::with_capacity(s.len());
-                    let mut error = Ok(());
                     // Force-inlining here is aggressive but the closure is
                     // called on every char in the string, so it can be
                     // hot in programs with many long strings.
                     unescape_literal(
                         s,
-                        Mode::Str,
+                        mode,
                         &mut #[inline(always)]
-                        |_, unescaped_char| match unescaped_char {
+                        |range, unescaped_char| match unescaped_char {
                             Ok(c) => buf.push(c),
                             Err(err) => {
-                                if err.is_fatal() {
-                                    error = Err(LitError::LexerError);
-                                }
+                                has_fatal |= err.is_fatal();
+                                errs.push(LitError::EscapeError {
+                                    mode,
+                                    prefix_len: 1, // "
+                                    range,
+                                    err,
+                                });
                             }
                         },
                     );
-                    error?;
-                    Symbol::intern(&buf)
+                    if !has_fatal {
+                        Ok(LitKind::Str(Symbol::intern(&buf), ast::StrStyle::Cooked))
+                    } else {
+                        Err(())
+                    }
                 } else {
-                    symbol
-                };
-                LitKind::Str(symbol, ast::StrStyle::Cooked)
+                    Ok(LitKind::Str(symbol, ast::StrStyle::Cooked))
+                }
             }
             token::StrRaw(n) => {
                 // Raw strings have no escapes, so we only need to check for invalid chars, and we
                 // can reuse the symbol on success.
-                let mut error = Ok(());
-                unescape_literal(symbol.as_str(), Mode::RawStr, &mut |_, unescaped_char| {
-                    match unescaped_char {
-                        Ok(_) => {}
-                        Err(err) => {
-                            if err.is_fatal() {
-                                error = Err(LitError::LexerError);
-                            }
-                        }
+                let mode = Mode::RawStr;
+                let s = symbol.as_str();
+                unescape_literal(s, mode, &mut |range, unescaped_char| match unescaped_char {
+                    Ok(_) => {}
+                    Err(err) => {
+                        has_fatal |= err.is_fatal();
+                        errs.push(LitError::EscapeError {
+                            mode,
+                            prefix_len: 2 + n as u32, // r", r#", r##", etc.
+                            range,
+                            err,
+                        });
                     }
                 });
-                error?;
-                LitKind::Str(symbol, ast::StrStyle::Raw(n))
+                if !has_fatal { Ok(LitKind::Str(symbol, ast::StrStyle::Raw(n))) } else { Err(()) }
             }
             token::ByteStr => {
+                let mode = Mode::ByteStr;
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                let mut error = Ok(());
-                unescape_literal(s, Mode::ByteStr, &mut |_, c| match c {
+                unescape_literal(s, mode, &mut |range, c| match c {
                     Ok(c) => buf.push(byte_from_char(c)),
                     Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
+                        has_fatal |= err.is_fatal();
+                        errs.push(LitError::EscapeError {
+                            mode,
+                            prefix_len: 2, // b"
+                            range,
+                            err,
+                        });
                     }
                 });
-                error?;
-                LitKind::ByteStr(buf.into(), StrStyle::Cooked)
+                if !has_fatal {
+                    Ok(LitKind::ByteStr(buf.into(), StrStyle::Cooked))
+                } else {
+                    Err(())
+                }
             }
             token::ByteStrRaw(n) => {
                 // Raw strings have no escapes, so we only need to check for invalid chars, and we
                 // can convert the symbol directly to a `Lrc<u8>` on success.
+                let mode = Mode::RawByteStr;
                 let s = symbol.as_str();
-                let mut error = Ok(());
-                unescape_literal(s, Mode::RawByteStr, &mut |_, c| match c {
+                unescape_literal(s, mode, &mut |range, c| match c {
                     Ok(_) => {}
                     Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
+                        has_fatal |= err.is_fatal();
+                        errs.push(LitError::EscapeError {
+                            mode,
+                            prefix_len: 3 + n as u32, // br", br#", br##", etc.
+                            range,
+                            err,
+                        });
                     }
                 });
-                LitKind::ByteStr(s.to_owned().into_bytes().into(), StrStyle::Raw(n))
+                if !has_fatal {
+                    Ok(LitKind::ByteStr(s.to_owned().into_bytes().into(), StrStyle::Raw(n)))
+                } else {
+                    Err(())
+                }
             }
             token::CStr => {
+                let mode = Mode::CStr;
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                let mut error = Ok(());
-                unescape_c_string(s, Mode::CStr, &mut |_span, c| match c {
+                unescape_c_string(s, mode, &mut |range, c| match c {
                     Ok(CStrUnit::Byte(b)) => buf.push(b),
                     Ok(CStrUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }
                     Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
+                        has_fatal |= err.is_fatal();
+                        errs.push(LitError::EscapeError {
+                            mode,
+                            prefix_len: 2, // c"
+                            range,
+                            err,
+                        });
                     }
                 });
-                error?;
-                buf.push(0);
-                LitKind::CStr(buf.into(), StrStyle::Cooked)
+                if !has_fatal {
+                    buf.push(0);
+                    Ok(LitKind::CStr(buf.into(), StrStyle::Cooked))
+                } else {
+                    Err(())
+                }
             }
             token::CStrRaw(n) => {
                 // Raw strings have no escapes, so we only need to check for invalid chars, and we
-                // can convert the symbol directly to a `Lrc<u8>` on success.
+                // can convert the symbol directly to a `Lrc<u8>` (after appending a nul char) on
+                // success.
+                let mode = Mode::RawCStr;
                 let s = symbol.as_str();
-                let mut error = Ok(());
-                unescape_c_string(s, Mode::RawCStr, &mut |_, c| match c {
+                unescape_c_string(s, mode, &mut |range, c| match c {
                     Ok(_) => {}
                     Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
+                        has_fatal |= err.is_fatal();
+                        errs.push(LitError::EscapeError {
+                            mode,
+                            prefix_len: 3 + n as u32, // cr", cr#", cr##", etc.
+                            range,
+                            err,
+                        });
                     }
                 });
-                error?;
-                let mut buf = s.to_owned().into_bytes();
-                buf.push(0);
-                LitKind::CStr(buf.into(), StrStyle::Raw(n))
+                if !has_fatal {
+                    let mut buf = s.to_owned().into_bytes();
+                    buf.push(0);
+                    Ok(LitKind::CStr(buf.into(), StrStyle::Raw(n)))
+                } else {
+                    Err(())
+                }
             }
-            token::Err => LitKind::Err,
-        })
+            token::Err => Ok(LitKind::Err),
+        };
+        (res, errs)
+    }
+
+    // Use this one for call sites where we don't need to print error messages
+    // about invalid literals.
+    pub fn from_token_lit(lit: token::Lit) -> Result<LitKind, ()> {
+        LitKind::from_token_lit_with_errs(lit).0
     }
 }
 
@@ -256,14 +362,26 @@ impl fmt::Display for LitKind {
 }
 
 impl MetaItemLit {
-    /// Converts a token literal into a meta item literal.
-    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<MetaItemLit, LitError> {
-        Ok(MetaItemLit {
+    /// Converts a token literal into a meta item literal. See
+    /// `LitKind::from_token_lit` for an explanation of the return type.
+    pub fn from_token_lit_with_errs(
+        token_lit: token::Lit,
+        span: Span,
+    ) -> (Result<MetaItemLit, ()>, Vec<LitError>) {
+        let (lit, errs) = LitKind::from_token_lit_with_errs(token_lit);
+        let lit = lit.map(|kind| MetaItemLit {
             symbol: token_lit.symbol,
             suffix: token_lit.suffix,
-            kind: LitKind::from_token_lit(token_lit)?,
+            kind,
             span,
-        })
+        });
+        (lit, errs)
+    }
+
+    // Use this one for call sites where we don't need to print error messages
+    // about invalid literals.
+    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<MetaItemLit, ()> {
+        MetaItemLit::from_token_lit_with_errs(token_lit, span).0
     }
 
     /// Cheaply converts a meta item literal into a token literal.

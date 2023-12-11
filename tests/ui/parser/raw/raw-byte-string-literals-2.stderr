@@ -1,0 +1,8 @@
+error: found invalid character; only `#` is allowed in raw string delimitation: ~
+  --> $DIR/raw-byte-string-literals-2.rs:2:5
+   |
+LL |     br##~"a"~##;
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+

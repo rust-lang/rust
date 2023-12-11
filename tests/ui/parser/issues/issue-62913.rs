@@ -1,4 +1,5 @@
-"\u\\"
-//~^ ERROR incorrect unicode escape sequence
-//~| ERROR invalid trailing slash in literal
-//~| ERROR expected item, found `"\u\"`
+fn main() {
+    _ = "\u\\";
+    //~^ ERROR incorrect unicode escape sequence
+    //~| ERROR invalid trailing slash in literal
+}

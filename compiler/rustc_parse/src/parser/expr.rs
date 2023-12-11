@@ -8,6 +8,7 @@ use super::{
 };
 
 use crate::errors;
+use crate::lexer::unescape_error_reporting::emit_unescape_error;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
 use ast::{CoroutineKind, GenBlockKind, Pat, Path, PathSegment};
@@ -2048,27 +2049,30 @@ impl<'a> Parser<'a> {
         let recovered = self.recover_after_dot();
         let token = recovered.as_ref().unwrap_or(&self.token);
         match token::Lit::from_token(token) {
-            Some(lit) => {
-                match MetaItemLit::from_token_lit(lit, token.span) {
+            Some(token_lit) => {
+                let err_span = token.uninterpolated_span();
+                let lit = token_lit_to_meta_item_lit_and_report_errs(
+                    self.sess, token_lit, token.span, err_span,
+                );
+
+                let res = match lit {
                     Ok(lit) => {
                         self.bump();
-                        Some(lit)
+                        lit
                     }
-                    Err(err) => {
-                        let span = token.uninterpolated_span();
+                    Err(()) => {
                         self.bump();
-                        report_lit_error(self.sess, err, lit, span);
                         // Pack possible quotes and prefixes from the original literal into
                         // the error literal's symbol so they can be pretty-printed faithfully.
-                        let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
+                        let suffixless_lit =
+                            token::Lit::new(token_lit.kind, token_lit.symbol, None);
                         let symbol = Symbol::intern(&suffixless_lit.to_string());
-                        let lit = token::Lit::new(token::Err, symbol, lit.suffix);
-                        Some(
-                            MetaItemLit::from_token_lit(lit, span)
-                                .unwrap_or_else(|_| unreachable!()),
-                        )
+                        let lit = token::Lit::new(token::Err, symbol, token_lit.suffix);
+                        MetaItemLit::from_token_lit(lit, err_span)
+                            .unwrap_or_else(|_| unreachable!())
                     }
-                }
+                };
+                Some(res)
             }
             None => None,
         }
@@ -3674,7 +3678,34 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
+// Use this for call sites where we need to print errors about invalid literals.
+pub fn token_lit_to_lit_kind_and_report_errs(
+    sess: &ParseSess,
+    token_lit: token::Lit,
+    span: Span,
+) -> Result<ast::LitKind, ()> {
+    let (lit, errs) = ast::LitKind::from_token_lit_with_errs(token_lit);
+    for err in errs {
+        report_lit_error(sess, err, token_lit, span);
+    }
+    lit
+}
+
+// Use this for call sites where we need to print errors about invalid literals.
+pub fn token_lit_to_meta_item_lit_and_report_errs(
+    sess: &ParseSess,
+    token_lit: token::Lit,
+    lit_span: Span,
+    err_span: Span,
+) -> Result<ast::MetaItemLit, ()> {
+    let (lit, errs) = ast::MetaItemLit::from_token_lit_with_errs(token_lit, lit_span);
+    for err in errs {
+        report_lit_error(sess, err, token_lit, err_span);
+    }
+    lit
+}
+
+fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
     // Checks if `s` looks like i32 or u1234 etc.
     fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
         s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
@@ -3707,6 +3738,9 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
         // `LexerError` is an error, but it was already reported
         // by lexer, so here we don't report it the second time.
         LitError::LexerError => {}
+        LitError::EscapeError { mode, prefix_len, range, err } => {
+            emit_unescape_error(&sess.dcx, symbol.as_str(), span, mode, prefix_len, range, err);
+        }
         LitError::InvalidSuffix => {
             if let Some(suffix) = suffix {
                 sess.emit_err(errors::InvalidLiteralSuffix { span, kind: kind.descr(), suffix });

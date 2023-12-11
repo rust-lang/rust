@@ -1,14 +1,13 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use crate::{errors, parse_in};
+use crate::{errors, parse_in, parser};
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::MetaItemKind;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem};
+use rustc_ast::{LitKind, MetaItemKind, MetaItemLit};
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
-use rustc_session::errors::report_lit_error;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, Symbol};
@@ -52,8 +51,10 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
             }
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
-                    let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
-                    let res = match res {
+                    let lit = parser::token_lit_to_meta_item_lit_and_report_errs(
+                        sess, token_lit, expr.span, expr.span,
+                    );
+                    match lit {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
                                 let mut err = sess.dcx.struct_span_err(
@@ -69,18 +70,16 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                                 MetaItemKind::NameValue(lit)
                             }
                         }
-                        Err(err) => {
-                            report_lit_error(sess, err, token_lit, expr.span);
-                            let lit = ast::MetaItemLit {
+                        Err(()) => {
+                            let lit = MetaItemLit {
                                 symbol: token_lit.symbol,
                                 suffix: token_lit.suffix,
-                                kind: ast::LitKind::Err,
+                                kind: LitKind::Err,
                                 span: expr.span,
                             };
                             MetaItemKind::NameValue(lit)
                         }
-                    };
-                    res
+                    }
                 } else {
                     // Example cases:
                     // - `#[foo = 1+1]`: results in `ast::ExprKind::BinOp`.
