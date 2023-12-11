@@ -319,15 +319,11 @@ impl<'a> GccLinker<'a> {
 
             // Apple clang 15 does not seem to tell the linker about -mcpu. Unlike -O3 etc,
             // ld64 does not accept -mcpu or GNU-style -plugin-opt=mcpu=.
-            // But it surely can't hurt to tell cc about -mcpu anyway.
             //
             // It's possible this has something to do with platform minimum versions AKA
             // deployment targets; Apple drops support for CPU subfamilies at defined iOS
             // versions, for example. Either that or ld64 is meant to infer a target CPU
             // from the object files.
-            if !self.is_ld {
-                self.cmd.args(&[&format!("-mcpu={}", self.target_cpu)]);
-            }
         } else {
             if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
                 self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
