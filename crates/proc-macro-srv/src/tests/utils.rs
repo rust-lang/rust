@@ -10,14 +10,20 @@ use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
 
-fn parse_string<S: tt::Span>(code: &str, call_site: S) -> Option<crate::server::TokenStream<S>> {
-    // This is a bit strange. We need to parse a string into a token stream into
-    // order to create a tt::SubTree from it in fixtures. `into_subtree` is
-    // implemented by all the ABIs we have so we arbitrarily choose one ABI to
-    // write a `parse_string` function for and use that. The tests don't really
-    // care which ABI we're using as the `into_subtree` function isn't part of
-    // the ABI and shouldn't change between ABI versions.
-    crate::server::TokenStream::from_str(code, call_site).ok()
+fn parse_string(call_site: TokenId, src: &str) -> crate::server::TokenStream<TokenId> {
+    crate::server::TokenStream::with_subtree(
+        mbe::parse_to_token_tree_static_span(call_site, src).unwrap(),
+    )
+}
+
+fn parse_string_spanned(
+    anchor: SpanAnchor,
+    call_site: SyntaxContextId,
+    src: &str,
+) -> crate::server::TokenStream<SpanData> {
+    crate::server::TokenStream::with_subtree(
+        mbe::parse_to_token_tree(anchor, call_site, src).unwrap(),
+    )
 }
 
 pub fn assert_expand(macro_name: &str, ra_fixture: &str, expect: Expect, expect_s: Expect) {
@@ -47,8 +53,8 @@ fn assert_expand_impl(
     let def_site = TokenId(0);
     let call_site = TokenId(1);
     let mixed_site = TokenId(2);
-    let input_ts = parse_string(input, call_site).unwrap();
-    let attr_ts = attr.map(|attr| parse_string(attr, call_site).unwrap().into_subtree(call_site));
+    let input_ts = parse_string(call_site, input);
+    let attr_ts = attr.map(|attr| parse_string(call_site, attr).into_subtree(call_site));
 
     let res = expander
         .expand(
@@ -71,7 +77,7 @@ fn assert_expand_impl(
         ctx: SyntaxContextId::ROOT,
     };
     let call_site = SpanData {
-        range: TextRange::new(52.into(), 77.into()),
+        range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
             file_id: FileId::from_raw(42),
             ast_id: ErasedFileAstId::from_raw(From::from(2)),
@@ -80,8 +86,10 @@ fn assert_expand_impl(
     };
     let mixed_site = call_site;
 
-    let fixture = parse_string(input, call_site).unwrap();
-    let attr = attr.map(|attr| parse_string(attr, call_site).unwrap().into_subtree(call_site));
+    let fixture = parse_string_spanned(call_site.anchor, call_site.ctx, input);
+    let attr = attr.map(|attr| {
+        parse_string_spanned(call_site.anchor, call_site.ctx, attr).into_subtree(call_site)
+    });
 
     let res = expander
         .expand(macro_name, fixture.into_subtree(call_site), attr, def_site, call_site, mixed_site)

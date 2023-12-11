@@ -1,6 +1,7 @@
 //! Exports a few trivial procedural macros for testing.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![feature(proc_macro_span)]
 
 use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 
@@ -47,6 +48,17 @@ pub fn fn_like_mk_idents(_args: TokenStream) -> TokenStream {
         TokenTree::from(Ident::new_raw("raw", Span::call_site())),
     ];
     TokenStream::from_iter(trees)
+}
+
+#[proc_macro]
+pub fn fn_like_span_join(args: TokenStream) -> TokenStream {
+    let args = &mut args.into_iter();
+    let first = args.next().unwrap();
+    let second = args.next().unwrap();
+    TokenStream::from(TokenTree::from(Ident::new_raw(
+        "joined",
+        first.span().join(second.span()).unwrap(),
+    )))
 }
 
 #[proc_macro_attribute]

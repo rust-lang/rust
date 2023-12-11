@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, HashSet},
     iter,
     ops::{Bound, Range},
 };
@@ -35,6 +36,10 @@ pub struct FreeFunctions;
 
 pub struct RaSpanServer {
     pub(crate) interner: SymbolInternerRef,
+    // FIXME: Report this back to the caller to track as dependencies
+    pub tracked_env_vars: HashMap<Box<str>, Option<Box<str>>>,
+    // FIXME: Report this back to the caller to track as dependencies
+    pub tracked_paths: HashSet<Box<str>>,
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
@@ -49,11 +54,12 @@ impl server::Types for RaSpanServer {
 }
 
 impl server::FreeFunctions for RaSpanServer {
-    fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {
-        // FIXME: track env var accesses
-        // https://github.com/rust-lang/rust/pull/71858
+    fn track_env_var(&mut self, var: &str, value: Option<&str>) {
+        self.tracked_env_vars.insert(var.into(), value.map(Into::into));
     }
-    fn track_path(&mut self, _path: &str) {}
+    fn track_path(&mut self, path: &str) {
+        self.tracked_paths.insert(path.into());
+    }
 
     fn literal_from_str(
         &mut self,
@@ -247,24 +253,38 @@ impl server::Span for RaSpanServer {
     /// See PR:
     /// https://github.com/rust-lang/rust/pull/55780
     fn source_text(&mut self, _span: Self::Span) -> Option<String> {
+        // FIXME requires db
         None
     }
 
     fn parent(&mut self, _span: Self::Span) -> Option<Self::Span> {
-        // FIXME handle span
+        // FIXME requires db, looks up the parent call site
         None
     }
     fn source(&mut self, span: Self::Span) -> Self::Span {
-        // FIXME handle span
+        // FIXME requires db, returns the top level call site
         span
     }
-    fn byte_range(&mut self, _span: Self::Span) -> Range<usize> {
-        // FIXME handle span
-        Range { start: 0, end: 0 }
+    fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
+        // FIXME requires db to resolve the ast id, THIS IS NOT INCREMENTAL
+        Range { start: span.range.start().into(), end: span.range.end().into() }
     }
-    fn join(&mut self, first: Self::Span, _second: Self::Span) -> Option<Self::Span> {
-        // Just return the first span again, because some macros will unwrap the result.
-        Some(first)
+    fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
+        if first.anchor != second.anchor {
+            return None;
+        }
+        if first.ctx != second.ctx {
+            if first.ctx.is_root() {
+                return Some(second);
+            } else if second.ctx.is_root() {
+                return Some(first);
+            }
+        }
+        Some(Span {
+            range: first.range.cover(second.range),
+            anchor: second.anchor,
+            ctx: second.ctx,
+        })
     }
     fn subspan(
         &mut self,
