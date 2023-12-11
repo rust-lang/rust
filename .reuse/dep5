@@ -79,7 +79,7 @@ Copyright: Nicolas Gallagher and Jonathan Neal
 License: MIT
 
 Files: src/librustdoc/html/static/css/rustdoc.css
-Copyright: 2016 Ike Ku
+Copyright: 2016 Ike Ku, Jessica Stokes and Leon Guan
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT OR Apache-2.0
 
