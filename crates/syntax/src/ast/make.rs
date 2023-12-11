@@ -236,20 +236,14 @@ fn merge_where_clause(
 
 pub fn impl_(
     generic_params: Option<ast::GenericParamList>,
-    generic_args: Option<ast::GenericParamList>,
+    generic_args: Option<ast::GenericArgList>,
     path_type: ast::Type,
     where_clause: Option<ast::WhereClause>,
     body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
 ) -> ast::Impl {
-    let (gen_params, tr_gen_args) = match (generic_params, generic_args) {
-        (None, None) => (String::new(), String::new()),
-        (None, Some(args)) => (String::new(), args.to_generic_args().to_string()),
-        (Some(params), None) => (params.to_string(), params.to_generic_args().to_string()),
-        (Some(params), Some(args)) => match merge_gen_params(Some(params.clone()), Some(args)) {
-            Some(merged) => (params.to_string(), merged.to_generic_args().to_string()),
-            None => (params.to_string(), String::new()),
-        },
-    };
+    let gen_args = generic_args.map_or_else(String::new, |it| it.to_string());
+
+    let gen_params = generic_params.map_or_else(String::new, |it| it.to_string());
 
     let where_clause = match where_clause {
         Some(pr) => pr.to_string(),
@@ -261,7 +255,7 @@ pub fn impl_(
         None => String::new(),
     };
 
-    ast_from_text(&format!("impl{gen_params} {path_type}{tr_gen_args}{where_clause}{{{}}}", body))
+    ast_from_text(&format!("impl{gen_params} {path_type}{gen_args}{where_clause}{{{body}}}"))
 }
 
 pub fn impl_trait(
@@ -282,10 +276,8 @@ pub fn impl_trait(
     let trait_gen_args = trait_gen_args.map(|args| args.to_string()).unwrap_or_default();
     let type_gen_args = type_gen_args.map(|args| args.to_string()).unwrap_or_default();
 
-    let gen_params = match merge_gen_params(trait_gen_params, type_gen_params) {
-        Some(pars) => pars.to_string(),
-        None => String::new(),
-    };
+    let gen_params = merge_gen_params(trait_gen_params, type_gen_params)
+        .map_or_else(String::new, |it| it.to_string());
 
     let is_negative = if is_negative { "! " } else { "" };
 
@@ -297,7 +289,7 @@ pub fn impl_trait(
         None => String::new(),
     };
 
-    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{}}}" , body))
+    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body}}}"))
 }
 
 pub fn impl_trait_type(bounds: ast::TypeBoundList) -> ast::ImplTraitType {
