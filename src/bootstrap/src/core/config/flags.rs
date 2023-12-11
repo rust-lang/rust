@@ -85,6 +85,9 @@ pub struct Flags {
     #[arg(global(true), long)]
     /// dry run; don't build anything
     pub dry_run: bool,
+    /// Indicates whether to dump the work done from bootstrap shims
+    #[arg(global(true), long)]
+    pub dump_bootstrap_shims: bool,
     #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "N")]
     /// stage to build (indicates compiler to use/test, e.g., stage 0 uses the
     /// bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)
