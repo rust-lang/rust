@@ -1,6 +1,7 @@
 #![feature(dyn_star)]
 #![allow(incomplete_features)]
 #![feature(custom_inner_attributes)]
+#![feature(noop_waker)]
 // rustfmt destroys `dyn* Trait` syntax
 #![rustfmt::skip]
 
@@ -89,25 +90,10 @@ fn dispatch_on_pin_mut() {
     use std::pin::Pin;
     use std::task::*;
 
-    pub fn noop_waker() -> Waker {
-        let raw = RawWaker::new(std::ptr::null(), &NOOP_WAKER_VTABLE);
-
-        // SAFETY: the contracts for RawWaker and RawWakerVTable are upheld
-        unsafe { Waker::from_raw(raw) }
-    }
-
-    const NOOP_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(noop_clone, noop, noop, noop);
-
-    unsafe fn noop_clone(_p: *const ()) -> RawWaker {
-        RawWaker::new(std::ptr::null(), &NOOP_WAKER_VTABLE)
-    }
-
-    unsafe fn noop(_p: *const ()) {}
-
     let mut fut = async_main();
 
     // Poll loop, just to test the future...
-    let waker = noop_waker();
+    let waker = Waker::noop();
     let ctx = &mut Context::from_waker(&waker);
 
     loop {
