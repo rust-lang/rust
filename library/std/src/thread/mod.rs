@@ -880,8 +880,34 @@ pub fn sleep(dur: Duration) {
 ///
 /// # Platform-specific behavior
 ///
-/// This function uses [`sleep`] internally, see its platform-specific behaviour.
+/// In most cases this function will an call OS specific function. Where that
+/// is not supported [`sleep`] is used. Those platforms are referred to as other
+/// in the table below.
 ///
+/// # Underlying System calls
+///
+/// The following system calls are [currently] being used:
+///
+///
+/// |  Platform |               System call                                            |
+/// |-----------|----------------------------------------------------------------------|
+/// | Linux     | [clock_nanosleep] (Monotonic clock)                                  |
+/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)]                        |
+/// | Android   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Solaris   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Darwin    | [mach_wait_until]                                                    |
+/// | WASI      | [subscription_clock]                                                 |
+/// | Windows   | [SetWaitableTimer]                                                   |
+/// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
+///
+/// [currently]: crate::io#platform-specific-behavior
+/// [clock_nanosleep]: https://linux.die.net/man/3/clock_nanosleep
+/// [subscription_clock]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#-subscription_clock-record
+/// [mach_wait_until]: https://developer.apple.com/library/archive/technotes/tn2169/_index.html
+/// [SetWaitableTimer]: https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-setwaitabletimer
+///
+/// **Disclaimer:** These system calls might change over time.
 ///
 /// # Examples
 ///
