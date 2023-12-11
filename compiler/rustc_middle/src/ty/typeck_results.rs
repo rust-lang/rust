@@ -632,7 +632,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
-                                assert_eq!(*debruijn, ty::INNERMOST);
+                                assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == b.var
                             }
                             _ => false,

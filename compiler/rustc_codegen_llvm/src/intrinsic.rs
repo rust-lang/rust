@@ -90,7 +90,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
+        let ty::FnDef(def_id, fn_args) = callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
@@ -1282,14 +1282,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
 
         let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
-            let elem_ty = bx.cx.type_float_from_ty(*f);
+            let elem_ty = bx.cx.type_float_from_ty(f);
             match f.bit_width() {
                 32 => ("f32", elem_ty),
                 64 => ("f64", elem_ty),
                 _ => return_error!(InvalidMonomorphization::FloatingPointVector {
                     span,
                     name,
-                    f_ty: *f,
+                    f_ty: f,
                     in_ty,
                 }),
             }
@@ -1357,7 +1357,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
     fn llvm_vector_str(bx: &Builder<'_, '_, '_>, elem_ty: Ty<'_>, vec_len: u64) -> String {
-        match *elem_ty.kind() {
+        match elem_ty.kind() {
             ty::Int(v) => format!(
                 "v{}i{}",
                 vec_len,
@@ -1377,7 +1377,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     fn llvm_vector_ty<'ll>(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64) -> &'ll Type {
-        let elem_ty = match *elem_ty.kind() {
+        let elem_ty = match elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
@@ -2203,7 +2203,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     // Unary integer intrinsics
     if matches!(name, sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctlz | sym::simd_cttz) {
         let vec_ty = bx.cx.type_vector(
-            match *in_elem.kind() {
+            match in_elem.kind() {
                 ty::Int(i) => bx.cx.type_int_from_ty(i),
                 ty::Uint(i) => bx.cx.type_uint_from_ty(i),
                 _ => return_error!(InvalidMonomorphization::UnsupportedOperation {
@@ -2272,7 +2272,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
+        let (signed, elem_width, elem_ty) = match in_elem.kind() {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_uint_from_ty(i)),
             _ => {

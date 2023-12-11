@@ -864,13 +864,13 @@ where
             // See librustc_body/transform/coroutine.rs for more details.
             ty::Coroutine(_, args, _) => self.open_drop_for_tuple(args.as_coroutine().upvar_tys()),
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
-            ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
+            ty::Adt(def, args) => self.open_drop_for_adt(def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_eval_target_usize(self.tcx(), self.elaborator.param_env());
-                self.open_drop_for_array(*ety, size)
+                self.open_drop_for_array(ety, size)
             }
-            ty::Slice(ety) => self.drop_loop_pair(*ety),
+            ty::Slice(ety) => self.drop_loop_pair(ety),
 
             _ => span_bug!(self.source_info.span, "open drop from non-ADT `{:?}`", ty),
         }

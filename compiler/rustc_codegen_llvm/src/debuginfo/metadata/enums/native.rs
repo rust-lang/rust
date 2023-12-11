@@ -55,7 +55,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let enum_type = unique_type_id.expect_ty();
-    let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
+    let ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
     };
 
@@ -132,7 +132,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let coroutine_type = unique_type_id.expect_ty();
-    let &ty::Coroutine(coroutine_def_id, _, _) = coroutine_type.kind() else {
+    let ty::Coroutine(coroutine_def_id, _, _) = coroutine_type.kind() else {
         bug!("build_coroutine_di_node() called with non-coroutine type: `{:?}`", coroutine_type)
     };
 

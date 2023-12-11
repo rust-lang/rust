@@ -252,7 +252,7 @@ where
                     CallData { locations: Vec::new(), url, display_name, edition, is_bin }
                 };
 
-                let fn_key = tcx.def_path_hash(*def_id);
+                let fn_key = tcx.def_path_hash(def_id);
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
                 trace!("Including expr: {call_span:?}");

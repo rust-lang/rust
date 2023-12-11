@@ -91,7 +91,7 @@ pub(super) trait GoalKind<'tcx>:
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             let tcx = ecx.tcx();
-            let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
+            let ty::Dynamic(bounds, _, _) = goal.predicate.self_ty().kind() else {
                 bug!("expected object type in `consider_object_bound_candidate`");
             };
             ecx.add_goals(structural_traits::predicates_for_object_candidate(
@@ -357,7 +357,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         num_steps: usize,
     ) {
         let tcx = self.tcx();
-        let &ty::Alias(_, alias) = goal.predicate.self_ty().kind() else { return };
+        let ty::Alias(_, alias) = goal.predicate.self_ty().kind() else { return };
 
         candidates.extend(self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
             if tcx.recursion_limit().value_within_limit(num_steps) {
@@ -683,7 +683,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> QueryResult<'tcx> {
-        match *goal.predicate.self_ty().kind() {
+        match goal.predicate.self_ty().kind() {
             ty::Alias(ty::Projection, projection_ty) => {
                 let mut param_env_candidates = vec![];
                 let self_trait_ref = projection_ty.trait_ref(self.tcx());
@@ -779,7 +779,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
 
         let self_ty = goal.predicate.self_ty();
-        let bounds = match *self_ty.kind() {
+        let bounds = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)

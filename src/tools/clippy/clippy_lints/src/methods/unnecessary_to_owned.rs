@@ -322,7 +322,7 @@ fn get_callee_generic_args_and_args<'tcx>(
         && let ty::FnDef(callee_def_id, _) = callee_ty.kind()
     {
         let generic_args = cx.typeck_results().node_args(callee.hir_id);
-        return Some((*callee_def_id, generic_args, None, args));
+        return Some((callee_def_id, generic_args, None, args));
     }
     if let ExprKind::MethodCall(_, recv, args, _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
@@ -395,7 +395,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         && let Some(param_ty) = fn_sig.inputs().get(arg_index)
                         && let ty::Param(ParamTy { index: param_index , ..}) = param_ty.kind()
                         // https://github.com/rust-lang/rust-clippy/issues/9504 and https://github.com/rust-lang/rust-clippy/issues/10021
-                        && (*param_index as usize) < call_generic_args.len()
+                        && (param_index as usize) < call_generic_args.len()
                     {
                         if fn_sig
                             .inputs()
@@ -425,7 +425,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         let new_subst = cx
                             .tcx
                             .mk_args_from_iter(call_generic_args.iter().enumerate().map(|(i, t)| {
-                                if i == (*param_index as usize) {
+                                if i == (param_index as usize) {
                                     GenericArg::from(ty)
                                 } else {
                                     t

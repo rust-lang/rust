@@ -87,7 +87,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 
         let fn_def_id = match ty.kind() {
             ty::FnPtr(_) => None,
-            &ty::FnDef(def_id, _) => {
+            ty::FnDef(def_id, _) => {
                 // Rust calls cannot themselves create foreign unwinds.
                 if !tcx.is_foreign_item(def_id) {
                     continue;

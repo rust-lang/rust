@@ -613,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let self_ty = self.shallow_resolve(self_ty);
         debug!(?self_ty);
 
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => {
                 let found_vid = self.root_var(found_vid);
                 debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
@@ -714,7 +714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if formal_ret.has_infer_types() {
             for ty in ret_ty.walk() {
                 if let ty::GenericArgKind::Type(ty) = ty.unpack()
-                    && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind()
+                    && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind()
                     && let Some(def_id) = def_id.as_local()
                     && self.opaque_type_origin(def_id).is_some()
                 {

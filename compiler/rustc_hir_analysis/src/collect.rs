@@ -1282,7 +1282,7 @@ fn suggest_impl_trait<'tcx>(
          item_ty: Ty<'tcx>| {
             let trait_name = tcx.item_name(trait_def_id);
             let args_tuple = args.type_at(1);
-            let ty::Tuple(types) = *args_tuple.kind() else {
+            let ty::Tuple(types) = args_tuple.kind() else {
                 return None;
             };
             let types = types.make_suggestable(tcx, false)?;

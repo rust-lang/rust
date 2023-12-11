@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     if let Ref(_, ref_type, _) = collect_output_adjusted_type.kind()
         // the turbofish for collect is ::<Vec<String>>
         && let Slice(slice) = ref_type.kind()
-        && is_type_lang_item(cx, *slice, LangItem::String)
+        && is_type_lang_item(cx, slice, LangItem::String)
         // the argument for join is ""
         && let ExprKind::Lit(spanned) = &join_arg.kind
         && let LitKind::Str(symbol, _) = spanned.node

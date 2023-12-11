@@ -708,7 +708,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
+                    ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                         self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
                     }
                     kind => kind,
@@ -738,7 +738,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Coroutine(def_id, args, _) => {
+                    ty::Coroutine(def_id, args, _) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
                                 self.body

@@ -226,7 +226,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
                 .intern(kind, |kind| {
-                    let flags = super::flags::FlagComputation::for_kind(&kind);
+                    let flags = super::flags::FlagComputation::for_kind(kind);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
@@ -252,7 +252,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Const(Interned::new_unchecked(
             self.const_
                 .intern(data, |data: ConstData<'_>| {
-                    let flags = super::flags::FlagComputation::for_const(&data.kind, data.ty);
+                    let flags = super::flags::FlagComputation::for_const(data.kind, data.ty);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &data);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
@@ -1743,7 +1743,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> PolyFnSig<'tcx> {
         sig.map_bound(|s| {
             let params = match s.inputs()[0].kind() {
-                ty::Tuple(params) => *params,
+                ty::Tuple(params) => params,
                 _ => bug!(),
             };
             self.mk_fn_sig(params, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)

@@ -4747,7 +4747,7 @@ impl SelfKind {
         }
 
         fn matches_ref<'a>(cx: &LateContext<'a>, mutability: hir::Mutability, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            if let ty::Ref(_, t, m) = *ty.kind() {
+            if let ty::Ref(_, t, m) = ty.kind() {
                 return m == mutability && t == parent_ty;
             }
 

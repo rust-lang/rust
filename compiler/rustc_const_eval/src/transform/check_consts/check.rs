@@ -714,7 +714,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 let fn_ty = func.ty(body, tcx);
 
-                let (mut callee, mut fn_args) = match *fn_ty.kind() {
+                let (mut callee, mut fn_args) = match fn_ty.kind() {
                     ty::FnDef(def_id, fn_args) => (def_id, fn_args),
 
                     ty::FnPtr(_) => {
@@ -791,7 +791,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             if trait_ref.self_ty().is_closure()
                                 && tcx.fn_trait_kind_from_def_id(trait_id).is_some() =>
                         {
-                            let ty::Closure(closure_def_id, fn_args) = *trait_ref.self_ty().kind()
+                            let ty::Closure(closure_def_id, fn_args) = trait_ref.self_ty().kind()
                             else {
                                 unreachable!()
                             };

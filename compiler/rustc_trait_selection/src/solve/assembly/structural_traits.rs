@@ -20,7 +20,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
     let tcx = ecx.tcx();
-    match *ty.kind() {
+    match ty.kind() {
         ty::Uint(_)
         | ty::Int(_)
         | ty::Bool
@@ -113,7 +113,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -159,7 +159,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
 
         // Implementations are provided in core
@@ -222,7 +222,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     self_ty: Ty<'tcx>,
     goal_kind: ty::ClosureKind,
 ) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
-    match *self_ty.kind() {
+    match self_ty.kind() {
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnDef(def_id, args) => {
             let sig = tcx.fn_sig(def_id);
@@ -401,7 +401,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
+        if let ty::Alias(ty::Projection, alias_ty) = ty.kind()
             && let Some(replacement) = self.mapping.get(&alias_ty.def_id)
         {
             // We may have a case where our object type's projection bound is higher-ranked,

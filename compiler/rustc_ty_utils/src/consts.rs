@@ -35,7 +35,7 @@ fn destructure_const<'tcx>(
             // construct the consts for the elements of the array/slice
             let field_consts = branches
                 .iter()
-                .map(|b| ty::Const::new_value(tcx, *b, *inner_ty))
+                .map(|b| ty::Const::new_value(tcx, *b, inner_ty))
                 .collect::<Vec<_>>();
             debug!(?field_consts);
 
@@ -62,7 +62,7 @@ fn destructure_const<'tcx>(
             (field_consts, Some(variant_idx))
         }
         ty::Tuple(elem_tys) => {
-            let fields = iter::zip(*elem_tys, branches)
+            let fields = iter::zip(elem_tys, branches)
                 .map(|(elem_ty, elem_valtree)| ty::Const::new_value(tcx, *elem_valtree, elem_ty))
                 .collect::<Vec<_>>();
 

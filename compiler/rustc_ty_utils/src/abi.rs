@@ -42,7 +42,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     }
 
     let ty = instance.ty(tcx, param_env);
-    match *ty.kind() {
+    match ty.kind() {
         ty::FnDef(..) => {
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
             // parameters unused if they show up in the signature, but not in the `mir::Body`
@@ -51,7 +51,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
             // We normalize the `fn_sig` again after substituting at a later point.
-            let mut sig = match *ty.kind() {
+            let mut sig = match ty.kind() {
                 ty::FnDef(def_id, args) => tcx
                     .fn_sig(def_id)
                     .map_bound(|fn_sig| {
@@ -147,7 +147,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
                             let expected_adt =
                                 tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
-                            assert_eq!(*resume_ty_adt, expected_adt);
+                            assert_eq!(resume_ty_adt, expected_adt);
                         } else {
                             panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
                         };
@@ -183,7 +183,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
                             let expected_adt =
                                 tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
-                            assert_eq!(*resume_ty_adt, expected_adt);
+                            assert_eq!(resume_ty_adt, expected_adt);
                         } else {
                             panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
                         };
@@ -536,7 +536,7 @@ fn fn_abi_new_uncached<'tcx>(
         let is_return = arg_idx.is_none();
         let is_drop_target = is_drop_in_place && arg_idx == Some(0);
         let drop_target_pointee = is_drop_target.then(|| match ty.kind() {
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) => *ty,
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) => ty,
             _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
         });
 

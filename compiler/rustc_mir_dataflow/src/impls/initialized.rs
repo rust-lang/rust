@@ -751,7 +751,7 @@ fn switch_on_enum_discriminant<'mir, 'tcx>(
                 if *lhs == switch_on =>
             {
                 match discriminated.ty(body, tcx).ty.kind() {
-                    ty::Adt(def, _) => return Some((*discriminated, *def)),
+                    ty::Adt(def, _) => return Some((*discriminated, def)),
 
                     // `Rvalue::Discriminant` is also used to get the active yield point for a
                     // coroutine, but we do not need edge-specific effects in that case. This may

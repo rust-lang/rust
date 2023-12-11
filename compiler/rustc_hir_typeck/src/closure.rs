@@ -172,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
-        match *expected_ty.kind() {
+        match expected_ty.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
@@ -322,7 +322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!(?arg_param_ty);
 
             match arg_param_ty.kind() {
-                &ty::Tuple(tys) => tys,
+                ty::Tuple(tys) => tys,
                 _ => return None,
             }
         } else {
@@ -717,7 +717,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let output_ty = match *ret_ty.kind() {
+        let output_ty = match ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => {
                 self.obligations_for_self_ty(ret_vid).find_map(|obligation| {
                     get_future_output(obligation.predicate, obligation.cause.span)

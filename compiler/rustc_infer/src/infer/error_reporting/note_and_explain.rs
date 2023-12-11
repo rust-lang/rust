@@ -324,7 +324,7 @@ impl<T> Trait<T> for X {
                     }
                     (ty::FnPtr(sig), ty::FnDef(def_id, _))
                     | (ty::FnDef(def_id, _), ty::FnPtr(sig)) => {
-                        if tcx.fn_sig(*def_id).skip_binder().unsafety() < sig.unsafety() {
+                        if tcx.fn_sig(def_id).skip_binder().unsafety() < sig.unsafety() {
                             diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
                             );
@@ -367,7 +367,7 @@ impl<T> Trait<T> for X {
         diag: &mut Diagnostic,
         msg: impl Fn() -> String,
         body_owner_def_id: DefId,
-        proj_ty: &ty::AliasTy<'tcx>,
+        proj_ty: ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
@@ -438,7 +438,7 @@ impl<T> Trait<T> for X {
     fn expected_projection(
         &self,
         diag: &mut Diagnostic,
-        proj_ty: &ty::AliasTy<'tcx>,
+        proj_ty: ty::AliasTy<'tcx>,
         values: ExpectedFound<Ty<'tcx>>,
         body_owner_def_id: DefId,
         cause_code: &ObligationCauseCode<'_>,
@@ -549,13 +549,13 @@ fn foo(&self) -> Self::T { String::new() }
         &self,
         diag: &mut Diagnostic,
         msg: impl Fn() -> String,
-        proj_ty: &ty::AliasTy<'tcx>,
+        proj_ty: ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
 
         let assoc = tcx.associated_item(proj_ty.def_id);
-        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *proj_ty.self_ty().kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
                 tcx.hir().expect_item(opaque_local_def_id).expect_opaque_ty()
@@ -603,7 +603,7 @@ fn foo(&self) -> Self::T { String::new() }
             })
             .filter_map(|item| {
                 let method = tcx.fn_sig(item.def_id).instantiate_identity();
-                match *method.output().skip_binder().kind() {
+                match method.output().skip_binder().kind() {
                     ty::Alias(ty::Projection, ty::AliasTy { def_id: item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
                     {

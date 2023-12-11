@@ -125,7 +125,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         match ctor {
             Single | Variant(_) => match ty.kind() {
                 ty::Tuple(fs) => cx.alloc_wildcard_slice(fs.iter()),
-                ty::Ref(_, rty, _) => cx.alloc_wildcard_slice(once(*rty)),
+                ty::Ref(_, rty, _) => cx.alloc_wildcard_slice(once(rty)),
                 ty::Adt(adt, args) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
@@ -133,14 +133,14 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         cx.alloc_wildcard_slice(once(args.type_at(0)))
                     } else {
                         let variant =
-                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, adt));
                         let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
                         cx.alloc_wildcard_slice(tys)
                     }
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
             },
-            Slice(slice) => match *ty.kind() {
+            Slice(slice) => match ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
                     cx.alloc_wildcard_slice((0..arity).map(|_| ty))
@@ -177,7 +177,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         1
                     } else {
                         let variant =
-                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, adt));
                         self.list_variant_nonhidden_fields(ty, variant).count()
                     }
                 }
@@ -222,7 +222,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     range_2: Some(make_uint_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
                 }
             }
-            &ty::Int(ity) => {
+            ty::Int(ity) => {
                 let range = if ty.is_ptr_sized_integral() {
                     // The min/max values of `isize` are not allowed to be observed.
                     IntRange {
@@ -239,7 +239,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                 };
                 ConstructorSet::Integers { range_1: range, range_2: None }
             }
-            &ty::Uint(uty) => {
+            ty::Uint(uty) => {
                 let range = if ty.is_ptr_sized_integral() {
                     // The max value of `usize` is not allowed to be observed.
                     let lo = MaybeInfiniteInt::new_finite_uint(0);
@@ -253,13 +253,13 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             }
             ty::Slice(sub_ty) => ConstructorSet::Slice {
                 array_len: None,
-                subtype_is_empty: cx.is_uninhabited(*sub_ty),
+                subtype_is_empty: cx.is_uninhabited(sub_ty),
             },
             ty::Array(sub_ty, len) => {
                 // We treat arrays of a constant but unknown length like slices.
                 ConstructorSet::Slice {
                     array_len: len.try_eval_target_usize(cx.tcx, cx.param_env).map(|l| l as usize),
-                    subtype_is_empty: cx.is_uninhabited(*sub_ty),
+                    subtype_is_empty: cx.is_uninhabited(sub_ty),
                 }
             }
             ty::Adt(def, args) if def.is_enum() => {
@@ -273,7 +273,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         let variant_def_id = def.variant(idx).def_id;
                         // Visibly uninhabited variants.
                         let is_inhabited = v
-                            .inhabited_predicate(cx.tcx, *def)
+                            .inhabited_predicate(cx.tcx, def)
                             .instantiate(cx.tcx, args)
                             .apply(cx.tcx, cx.param_env, cx.module);
                         // Variants that depend on a disabled unstable feature.
@@ -331,7 +331,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
             PatRangeBoundary::Finite(value) => {
                 let bits = value.eval_bits(self.tcx, self.param_env);
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Int(ity) => {
                         let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
                         MaybeInfiniteInt::new_finite_int(bits, size)
@@ -402,7 +402,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                             _ => bug!(),
                         };
                         let variant =
-                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, adt));
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
@@ -437,7 +437,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
                             Some(bits) => {
-                                let x = match *pat.ty.kind() {
+                                let x = match pat.ty.kind() {
                                     ty::Int(ity) => {
                                         let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
                                         MaybeInfiniteInt::new_finite_int(bits, size)
@@ -480,7 +480,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         // `Single`), and has one field. That field has constructor `Str(value)` and no
                         // fields.
                         // Note: `t` is `str`, not `&str`.
-                        let subpattern = DeconstructedPat::new(Str(*value), &[], *t, pat.span);
+                        let subpattern = DeconstructedPat::new(Str(*value), &[], t, pat.span);
                         ctor = Single;
                         fields = singleton(subpattern)
                     }
@@ -578,7 +578,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             NegInfinity => PatRangeBoundary::NegInfinity,
             Finite(_) => {
                 let size = ty.primitive_size(tcx);
-                let bits = match *ty.kind() {
+                let bits = match ty.kind() {
                     ty::Int(_) => miint.as_finite_int(size.bits()).unwrap(),
                     _ => miint.as_finite_uint().unwrap(),
                 };
@@ -671,8 +671,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
                 ty::Adt(adt_def, args) => {
-                    let variant_index =
-                        MatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
+                    let variant_index = MatchCheckCtxt::variant_index_for_adt(&pat.ctor(), adt_def);
                     let variant = &adt_def.variant(variant_index);
                     let subpatterns = cx
                         .list_variant_nonhidden_fields(pat.ty(), variant)
@@ -681,7 +680,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         .collect();
 
                     if adt_def.is_enum() {
-                        PatKind::Variant { adt_def: *adt_def, args, variant_index, subpatterns }
+                        PatKind::Variant { adt_def, args, variant_index, subpatterns }
                     } else {
                         PatKind::Leaf { subpatterns }
                     }
@@ -769,7 +768,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                 ty::Adt(..) | ty::Tuple(..) => {
                     let variant = match pat.ty().kind() {
                         ty::Adt(adt, _) => Some(
-                            adt.variant(MatchCheckCtxt::variant_index_for_adt(pat.ctor(), *adt)),
+                            adt.variant(MatchCheckCtxt::variant_index_for_adt(pat.ctor(), adt)),
                         ),
                         ty::Tuple(_) => None,
                         _ => unreachable!(),

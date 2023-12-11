@@ -124,16 +124,16 @@ fn detect_extreme_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
     let cv = constant(cx, cx.typeck_results(), expr)?;
 
     let which = match (ty.kind(), cv) {
-        (&ty::Bool, Constant::Bool(false)) | (&ty::Uint(_), Constant::Int(0)) => ExtremeType::Minimum,
-        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MIN >> (128 - int_bits(cx.tcx, ity)), ity) => {
+        (ty::Bool, Constant::Bool(false)) | (ty::Uint(_), Constant::Int(0)) => ExtremeType::Minimum,
+        (ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MIN >> (128 - int_bits(cx.tcx, ity)), ity) => {
             ExtremeType::Minimum
         },
 
-        (&ty::Bool, Constant::Bool(true)) => ExtremeType::Maximum,
-        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MAX >> (128 - int_bits(cx.tcx, ity)), ity) => {
+        (ty::Bool, Constant::Bool(true)) => ExtremeType::Maximum,
+        (ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MAX >> (128 - int_bits(cx.tcx, ity)), ity) => {
             ExtremeType::Maximum
         },
-        (&ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::MAX, uty) == i => ExtremeType::Maximum,
+        (ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::MAX, uty) == i => ExtremeType::Maximum,
 
         _ => return None,
     };

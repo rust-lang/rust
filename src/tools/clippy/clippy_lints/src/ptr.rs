@@ -426,8 +426,8 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
         .zip(hir_tys.iter())
         .enumerate()
         .filter_map(move |(i, (ty, hir_ty))| {
-            if let ty::Ref(_, ty, mutability) = *ty.kind()
-                && let  ty::Adt(adt, args) = *ty.kind()
+            if let ty::Ref(_, ty, mutability) = ty.kind()
+                && let  ty::Adt(adt, args) = ty.kind()
                 && let TyKind::Ref(lt, ref ty) = hir_ty.kind
                 && let TyKind::Path(QPath::Resolved(None, path)) = ty.ty.kind
                 // Check that the name as typed matches the actual name of the type.
@@ -616,7 +616,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                     ExprKind::Call(f, expr_args) => {
                         let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
                         if expr_sig(self.cx, f).and_then(|sig| sig.input(i)).map_or(true, |ty| {
-                            match *ty.skip_binder().peel_refs().kind() {
+                            match ty.skip_binder().peel_refs().kind() {
                                 ty::Dynamic(preds, _, _) => !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds),
                                 ty::Param(_) => true,
                                 ty::Adt(def, _) => def.did() == args.ty_did,
@@ -650,7 +650,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             return;
                         };
 
-                        match *self.cx.tcx.fn_sig(id).instantiate_identity().skip_binder().inputs()[i]
+                        match self.cx.tcx.fn_sig(id).instantiate_identity().skip_binder().inputs()[i]
                             .peel_refs()
                             .kind()
                         {

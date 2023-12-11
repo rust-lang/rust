@@ -221,7 +221,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 self.tcx().sess.span_delayed_bug(e.span, format!("bad base: `{base:?}`"));
             }
             if let Some(base_ty) = base_ty
-                && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
+                && let ty::Ref(_, base_ty_inner, _) = base_ty.kind()
             {
                 let index_ty =
                     self.typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {

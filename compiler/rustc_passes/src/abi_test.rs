@@ -133,7 +133,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                     );
                 };
                 let abi = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(param_env.and((*sig, /* extra_args */ ty::List::empty()))),
+                    tcx.fn_abi_of_fn_ptr(param_env.and((sig, /* extra_args */ ty::List::empty()))),
                     tcx,
                     item_def_id,
                 );
@@ -148,7 +148,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
                     );
                 };
-                let [field1, field2] = ***fields else {
+                let [field1, field2] = **fields else {
                     span_bug!(
                         meta_item.span(),
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
@@ -161,9 +161,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                     );
                 };
                 let abi1 = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(
-                        param_env.and((*sig1, /* extra_args */ ty::List::empty())),
-                    ),
+                    tcx.fn_abi_of_fn_ptr(param_env.and((sig1, /* extra_args */ ty::List::empty()))),
                     tcx,
                     item_def_id,
                 );
@@ -174,9 +172,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                     );
                 };
                 let abi2 = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(
-                        param_env.and((*sig2, /* extra_args */ ty::List::empty())),
-                    ),
+                    tcx.fn_abi_of_fn_ptr(param_env.and((sig2, /* extra_args */ ty::List::empty()))),
                     tcx,
                     item_def_id,
                 );

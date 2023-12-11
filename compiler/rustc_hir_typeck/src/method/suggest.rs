@@ -218,8 +218,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if needs_mut {
                         let trait_type = Ty::new_ref(
                             self.tcx,
-                            *region,
-                            ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
+                            region,
+                            ty::TypeAndMut { ty: t_type, mutbl: mutability.invert() },
                         );
                         let msg = format!("you need `{trait_type}` instead of `{rcvr_ty}`");
                         let mut kind = &self_expr.kind;
@@ -992,7 +992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             )),
                             _ => arg,
                         }));
-                    let rcvr_ty = Ty::new_adt(tcx, *def, new_args);
+                    let rcvr_ty = Ty::new_adt(tcx, def, new_args);
                     if let Ok(method) = self.lookup_method_for_diagnostic(
                         rcvr_ty,
                         &item_segment,
@@ -2159,7 +2159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Target wrapper types - types that wrap or pretend to wrap another type,
             // perhaps this inner type is meant to be called?
             ty::AdtKind::Struct | ty::AdtKind::Union => {
-                let [first] = ***args else {
+                let [first] = **args else {
                     return;
                 };
                 let ty::GenericArgKind::Type(ty) = first.unpack() else {
@@ -3118,7 +3118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 param_type.map_or_else(
                                     || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
-                                    ToString::to_string,
+                                    |ty| ty.to_string(),
                                 )
                             },
                         });

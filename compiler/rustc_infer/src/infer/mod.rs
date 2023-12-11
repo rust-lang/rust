@@ -781,7 +781,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// No attempt is made to resolve `ty`.
     pub fn type_var_origin(&self, ty: Ty<'tcx>) -> Option<TypeVariableOrigin> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Infer(ty::TyVar(vid)) => {
                 Some(*self.inner.borrow_mut().type_variables().var_origin(vid))
             }
@@ -1028,7 +1028,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_a = self.shallow_resolve(predicate.skip_binder().a);
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
-            (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+            (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
                 self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
                 return Err((a_vid, b_vid));
             }
@@ -1838,7 +1838,7 @@ impl<'tcx> TyOrConstInferVar {
     /// Tries to extract an inference variable from a type, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
     fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
             ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
@@ -1891,7 +1891,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
     /// not a type variable, just return it unmodified.
     #[inline]
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Infer(v) = ty.kind() { self.fold_infer_ty(*v).unwrap_or(ty) } else { ty }
+        if let ty::Infer(v) = ty.kind() { self.fold_infer_ty(v).unwrap_or(ty) } else { ty }
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {

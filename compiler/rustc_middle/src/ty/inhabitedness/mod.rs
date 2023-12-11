@@ -189,7 +189,7 @@ impl<'tcx> Ty<'tcx> {
 
 /// N.B. this query should only be called through `Ty::inhabited_predicate`
 fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedPredicate<'tcx> {
-    match *ty.kind() {
+    match ty.kind() {
         Adt(adt, args) => tcx.inhabited_predicate_adt(adt.did()).instantiate(tcx, args),
 
         Tuple(tys) => {

@@ -130,7 +130,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
         if !t.has_infer() && !t.has_erasable_regions() {
             t
         } else {
-            match *t.kind() {
+            match t.kind() {
                 ty::Infer(v) => self.fold_infer_ty(v).unwrap_or(t),
 
                 // This code is hot enough that a non-debug assertion here makes a noticeable

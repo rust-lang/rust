@@ -72,16 +72,16 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
         match (a.kind(), b.kind()) {
             (
                 _,
-                &ty::Infer(ty::FreshTy(_))
-                | &ty::Infer(ty::FreshIntTy(_))
-                | &ty::Infer(ty::FreshFloatTy(_)),
+                ty::Infer(ty::FreshTy(_))
+                | ty::Infer(ty::FreshIntTy(_))
+                | ty::Infer(ty::FreshFloatTy(_)),
             ) => Ok(a),
 
-            (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
+            (ty::Infer(_), _) | (_, ty::Infer(_)) => {
                 Err(TypeError::Sorts(relate::expected_found(self, a, b)))
             }
 
-            (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.tcx(), guar)),
+            (ty::Error(guar), _) | (_, ty::Error(guar)) => Ok(Ty::new_error(self.tcx(), guar)),
 
             _ => relate::structurally_relate_tys(self, a, b),
         }

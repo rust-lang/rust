@@ -164,11 +164,11 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     // even if they do not carry that attribute.
     use rustc_type_ir::TyKind::*;
     match (source.kind(), target.kind()) {
-        (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, *r_b).is_ok()
-                && mutbl_a == *mutbl_b => {}
-        (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
-        (&Adt(def_a, args_a), &Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
+        (Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
+            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, r_b).is_ok()
+                && mutbl_a == mutbl_b => {}
+        (RawPtr(tm_a), RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
+        (Adt(def_a, args_a), Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
@@ -315,23 +315,23 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
         (mt_a.ty, mt_b.ty, unsize_trait, None)
     };
     let (source, target, trait_def_id, kind) = match (source.kind(), target.kind()) {
-        (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
+        (ty::Ref(r_a, ty_a, mutbl_a), ty::Ref(r_b, ty_b, mutbl_b)) => {
             infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
             let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
         }
 
-        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(mt_b)) => {
+        (ty::Ref(_, ty_a, mutbl_a), ty::RawPtr(mt_b)) => {
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
         }
 
-        (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => {
+        (ty::RawPtr(mt_a), ty::RawPtr(mt_b)) => {
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
         }
 
-        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+        (ty::Adt(def_a, args_a), ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
             if def_a != def_b {

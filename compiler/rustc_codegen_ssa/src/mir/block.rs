@@ -755,7 +755,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
         let callee = self.codegen_operand(bx, func);
 
-        let (instance, mut llfn) = match *callee.layout.ty.kind() {
+        let (instance, mut llfn) = match callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
                 Some(
                     ty::Instance::expect_resolve(
@@ -1094,7 +1094,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);
-                    if let ty::FnDef(def_id, args) = *const_.ty().kind() {
+                    if let ty::FnDef(def_id, args) = const_.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
                             ty::ParamEnv::reveal_all(),

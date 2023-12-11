@@ -189,7 +189,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
                         return true;
                     }
                 }
-                for generic_arg in *b {
+                for generic_arg in b {
                     if let GenericArgKind::Type(ty) = generic_arg.unpack() {
                         if self.has_sig_drop_attr(ty) {
                             return true;
@@ -201,7 +201,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
             rustc_middle::ty::Array(ty, _)
             | rustc_middle::ty::RawPtr(TypeAndMut { ty, .. })
             | rustc_middle::ty::Ref(_, ty, _)
-            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(*ty),
+            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(ty),
             _ => false,
         }
     }

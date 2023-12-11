@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
         return;
     }
 
-    let name = match *ty.kind() {
+    let name = match ty.kind() {
         ty::Adt(base, _substs) => cx.tcx.def_path_str(base.did()),
         _ => return,
     };

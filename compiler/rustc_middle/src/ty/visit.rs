@@ -307,7 +307,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
         {
             return ControlFlow::Break(());
         }
-        match *t.kind() {
+        match t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 if self.bound_vars.len() <= bound_ty.var.as_usize() {
                     bug!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);

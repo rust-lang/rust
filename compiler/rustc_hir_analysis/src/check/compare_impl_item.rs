@@ -1058,7 +1058,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
     }
 
     fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = *t.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = t.kind() {
             let mut mapped_args = Vec::with_capacity(args.len());
             for (arg, v) in std::iter::zip(args, self.tcx.variances_of(def_id)) {
                 mapped_args.push(match (arg.unpack(), v) {

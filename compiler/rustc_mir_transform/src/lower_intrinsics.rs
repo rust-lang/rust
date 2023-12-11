@@ -13,7 +13,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
             let terminator = block.terminator.as_mut().unwrap();
             if let TerminatorKind::Call { func, args, destination, target, .. } =
                 &mut terminator.kind
-                && let ty::FnDef(def_id, generic_args) = *func.ty(local_decls, tcx).kind()
+                && let ty::FnDef(def_id, generic_args) = func.ty(local_decls, tcx).kind()
                 && tcx.is_intrinsic(def_id)
             {
                 let intrinsic_name = tcx.item_name(def_id);

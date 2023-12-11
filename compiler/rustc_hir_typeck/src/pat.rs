@@ -356,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+        while let ty::Ref(_, inner_ty, inner_mutability) = expected.kind() {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
@@ -404,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut pat_ty = ty;
         if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(..), .. }) = lt.kind {
             let expected = self.structurally_resolve_type(span, expected);
-            if let ty::Ref(_, inner_ty, _) = *expected.kind()
+            if let ty::Ref(_, inner_ty, _) = expected.kind()
                 && self.try_structurally_resolve_type(span, inner_ty).is_slice()
             {
                 let tcx = self.tcx;
@@ -690,7 +690,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         match (expected.kind(), actual.kind(), ba) {
             (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::NONE)
-                if self.can_eq(self.param_env, *inner_ty, actual) =>
+                if self.can_eq(self.param_env, inner_ty, actual) =>
             {
                 err.span_suggestion_verbose(
                     span.shrink_to_lo(),
@@ -700,7 +700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
             (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::REF)
-                if self.can_eq(self.param_env, expected, *inner_ty) =>
+                if self.can_eq(self.param_env, expected, inner_ty) =>
             {
                 err.span_suggestion_verbose(
                     span.with_hi(span.lo() + BytePos(4)),
@@ -1989,7 +1989,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to avoid creating needless variables. This also helps with
                 // the bad interactions of the given hack detailed in (note_1).
                 debug!("check_pat_ref: expected={:?}", expected);
-                match *expected.kind() {
+                match expected.kind() {
                     ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                     _ => {
                         let inner_ty = self.next_ty_var(TypeVariableOrigin {
@@ -2122,7 +2122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected = self.structurally_resolve_type(span, expected);
         debug!(?expected);
 
-        let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
+        let (element_ty, opt_slice_ty, inferred) = match expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
@@ -2330,7 +2330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(adt_def, _) if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did()) => {
                 (true, ty)
             }
-            ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(*ty),
+            ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(ty),
             ty::Slice(..) | ty::Array(..) => (true, ty),
             _ => (false, ty),
         }

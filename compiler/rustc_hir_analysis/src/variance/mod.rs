@@ -116,9 +116,9 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
                 ty::Alias(_, ty::AliasTy { def_id, args, .. })
-                    if matches!(self.tcx.def_kind(*def_id), DefKind::OpaqueTy) =>
+                    if matches!(self.tcx.def_kind(def_id), DefKind::OpaqueTy) =>
                 {
-                    self.visit_opaque(*def_id, args)
+                    self.visit_opaque(def_id, args)
                 }
                 _ => t.super_visit_with(self),
             }

@@ -179,7 +179,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
 
         // We don't normalize opaque types unless we have
         // `Reveal::All`, even if we're in the defining scope.
-        let data = match *ty.kind() {
+        let data = match ty.kind() {
             ty::Alias(kind, alias_ty) if kind != ty::Opaque || reveal == Reveal::All => alias_ty,
             _ => return ty.try_super_fold_with(self),
         };

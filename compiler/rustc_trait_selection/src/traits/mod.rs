@@ -485,7 +485,7 @@ fn is_impossible_associated_item(
         }
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::ReEarlyParam(param) = r.kind()
-                && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
+                && let param_def_id = self.generics.region_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
                 return ControlFlow::Break(());
@@ -494,7 +494,7 @@ fn is_impossible_associated_item(
         }
         fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::ConstKind::Param(param) = ct.kind()
-                && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
+                && let param_def_id = self.generics.const_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
                 return ControlFlow::Break(());

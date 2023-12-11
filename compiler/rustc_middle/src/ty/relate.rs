@@ -414,7 +414,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, Ty<'tcx>> {
     let tcx = relation.tcx();
     match (a.kind(), b.kind()) {
-        (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
+        (ty::Infer(_), _) | (_, ty::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in structurally_relate_tys")
         }
@@ -423,15 +423,15 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             bug!("bound types encountered in structurally_relate_tys")
         }
 
-        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(tcx, guar)),
+        (ty::Error(guar), _) | (_, ty::Error(guar)) => Ok(Ty::new_error(tcx, guar)),
 
-        (&ty::Never, _)
-        | (&ty::Char, _)
-        | (&ty::Bool, _)
-        | (&ty::Int(_), _)
-        | (&ty::Uint(_), _)
-        | (&ty::Float(_), _)
-        | (&ty::Str, _)
+        (ty::Never, _)
+        | (ty::Char, _)
+        | (ty::Bool, _)
+        | (ty::Int(_), _)
+        | (ty::Uint(_), _)
+        | (ty::Float(_), _)
+        | (ty::Str, _)
             if a == b =>
         {
             Ok(a)
@@ -441,14 +441,14 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => Ok(a),
 
-        (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args)) if a_def == b_def => {
+        (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args)) if a_def == b_def => {
             let args = relation.relate_item_args(a_def.did(), a_args, b_args)?;
             Ok(Ty::new_adt(tcx, a_def, args))
         }
 
-        (&ty::Foreign(a_id), &ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(tcx, a_id)),
+        (ty::Foreign(a_id), ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(tcx, a_id)),
 
-        (&ty::Dynamic(a_obj, a_region, a_repr), &ty::Dynamic(b_obj, b_region, b_repr))
+        (ty::Dynamic(a_obj, a_region, a_repr), ty::Dynamic(b_obj, b_region, b_repr))
             if a_repr == b_repr =>
         {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
@@ -457,7 +457,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
-        (&ty::Coroutine(a_id, a_args, movability), &ty::Coroutine(b_id, b_args, _))
+        (ty::Coroutine(a_id, a_args, movability), ty::Coroutine(b_id, b_args, _))
             if a_id == b_id =>
         {
             // All Coroutine types with the same id represent
@@ -467,7 +467,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_coroutine(tcx, a_id, args, movability))
         }
 
-        (&ty::CoroutineWitness(a_id, a_args), &ty::CoroutineWitness(b_id, b_args))
+        (ty::CoroutineWitness(a_id, a_args), ty::CoroutineWitness(b_id, b_args))
             if a_id == b_id =>
         {
             // All CoroutineWitness types with the same id represent
@@ -477,7 +477,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_coroutine_witness(tcx, a_id, args))
         }
 
-        (&ty::Closure(a_id, a_args), &ty::Closure(b_id, b_args)) if a_id == b_id => {
+        (ty::Closure(a_id, a_args), ty::Closure(b_id, b_args)) if a_id == b_id => {
             // All Closure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
@@ -485,12 +485,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_closure(tcx, a_id, args))
         }
 
-        (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
+        (ty::RawPtr(a_mt), ty::RawPtr(b_mt)) => {
             let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
             Ok(Ty::new_ptr(tcx, mt))
         }
 
-        (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
+        (ty::Ref(a_r, a_ty, a_mutbl), ty::Ref(b_r, b_ty, b_mutbl)) => {
             let r = relation.relate(a_r, b_r)?;
             let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
             let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
@@ -498,7 +498,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_ref(tcx, r, mt))
         }
 
-        (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
+        (ty::Array(a_t, sz_a), ty::Array(b_t, sz_b)) => {
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
                 Ok(sz) => Ok(Ty::new_array_with_const_len(tcx, t, sz)),
@@ -522,12 +522,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             }
         }
 
-        (&ty::Slice(a_t), &ty::Slice(b_t)) => {
+        (ty::Slice(a_t), ty::Slice(b_t)) => {
             let t = relation.relate(a_t, b_t)?;
             Ok(Ty::new_slice(tcx, t))
         }
 
-        (&ty::Tuple(as_), &ty::Tuple(bs)) => {
+        (ty::Tuple(as_), ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
                 Ok(Ty::new_tup_from_iter(
                     tcx,
@@ -540,18 +540,18 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             }
         }
 
-        (&ty::FnDef(a_def_id, a_args), &ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
+        (ty::FnDef(a_def_id, a_args), ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
             let args = relation.relate_item_args(a_def_id, a_args, b_args)?;
             Ok(Ty::new_fn_def(tcx, a_def_id, args))
         }
 
-        (&ty::FnPtr(a_fty), &ty::FnPtr(b_fty)) => {
+        (ty::FnPtr(a_fty), ty::FnPtr(b_fty)) => {
             let fty = relation.relate(a_fty, b_fty)?;
             Ok(Ty::new_fn_ptr(tcx, fty))
         }
 
         // Alias tend to mostly already be handled downstream due to normalization.
-        (&ty::Alias(a_kind, a_data), &ty::Alias(b_kind, b_data)) => {
+        (ty::Alias(a_kind, a_data), ty::Alias(b_kind, b_data)) => {
             let alias_ty = relation.relate(a_data, b_data)?;
             assert_eq!(a_kind, b_kind);
             Ok(Ty::new_alias(tcx, a_kind, alias_ty))

@@ -310,7 +310,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return None;
         }
 
-        let ty::Alias(kind, alias) = *ty.kind() else {
+        let ty::Alias(kind, alias) = ty.kind() else {
             return Some(ty);
         };
 

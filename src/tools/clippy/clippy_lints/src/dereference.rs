@@ -366,7 +366,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let arg_ty = cx
                                         .tcx
                                         .erase_regions(use_cx.adjustments.last().map_or(expr_ty, |a| a.target))
-                                    && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
+                                    && let ty::Ref(_, sub_ty, _) = arg_ty.kind()
                                     && let args =
                                         typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
                                     && let impl_ty =
@@ -622,9 +622,9 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
             }
 
             if !pat.span.from_expansion()
-                && let ty::Ref(_, tam, _) = *cx.typeck_results().pat_ty(pat).kind()
+                && let ty::Ref(_, tam, _) = cx.typeck_results().pat_ty(pat).kind()
                 // only lint immutable refs, because borrowed `&mut T` cannot be moved out
-                && let ty::Ref(_, _, Mutability::Not) = *tam.kind()
+                && let ty::Ref(_, _, Mutability::Not) = tam.kind()
             {
                 let mut app = Applicability::MachineApplicable;
                 let snip = snippet_with_context(cx, name.span, pat.span.ctxt(), "..", &mut app).0;
@@ -836,13 +836,13 @@ impl TyCoercionStability {
     }
 
     fn for_mir_ty<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>, for_return: bool) -> Self {
-        let ty::Ref(_, mut ty, _) = *ty.kind() else {
+        let ty::Ref(_, mut ty, _) = ty.kind() else {
             return Self::None;
         };
 
         ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
         loop {
-            break match *ty.kind() {
+            break match ty.kind() {
                 ty::Ref(_, ref_ty, _) => {
                     ty = ref_ty;
                     continue;
@@ -920,7 +920,7 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
 }
 
 fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
-    if let ty::Adt(adt, _) = *ty.kind() {
+    if let ty::Adt(adt, _) = ty.kind() {
         adt.is_struct() && adt.all_fields().any(|f| f.name == name)
     } else {
         false

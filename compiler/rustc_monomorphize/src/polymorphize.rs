@@ -318,7 +318,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
             return ControlFlow::Continue(());
         }
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Closure(def_id, args) | ty::Coroutine(def_id, args, ..) => {
                 debug!(?def_id);
                 // Avoid cycle errors with coroutines.

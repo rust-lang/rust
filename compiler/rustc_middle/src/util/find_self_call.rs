@@ -18,7 +18,7 @@ pub fn find_self_call<'tcx>(
     {
         debug!("find_self_call: func={:?}", func);
         if let Operand::Constant(box ConstOperand { const_, .. }) = func {
-            if let ty::FnDef(def_id, fn_args) = *const_.ty().kind() {
+            if let ty::FnDef(def_id, fn_args) = const_.ty().kind() {
                 if let Some(ty::AssocItem { fn_has_self_parameter: true, .. }) =
                     tcx.opt_associated_item(def_id)
                 {

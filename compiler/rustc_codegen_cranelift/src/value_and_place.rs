@@ -803,7 +803,7 @@ impl<'tcx> CPlace<'tcx> {
     ) -> CPlace<'tcx> {
         let (elem_layout, ptr) = match self.layout().ty.kind() {
             ty::Array(elem_ty, _) => {
-                let elem_layout = fx.layout_of(*elem_ty);
+                let elem_layout = fx.layout_of(elem_ty);
                 match self.inner {
                     CPlaceInner::Addr(addr, None) => (elem_layout, addr),
                     CPlaceInner::Var(_, _)
@@ -811,7 +811,7 @@ impl<'tcx> CPlace<'tcx> {
                     | CPlaceInner::VarPair(_, _, _) => bug!("Can't index into {self:?}"),
                 }
             }
-            ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_unsized().0),
+            ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_ptr_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
 
@@ -873,11 +873,11 @@ pub(crate) fn assert_assignable<'tcx>(
             ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
             ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
         ) => {
-            assert_assignable(fx, *a, *b, limit - 1);
+            assert_assignable(fx, a, b, limit - 1);
         }
         (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
         | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
-            assert_assignable(fx, *a, *b, limit - 1);
+            assert_assignable(fx, a, b, limit - 1);
         }
         (ty::FnPtr(_), ty::FnPtr(_)) => {
             let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
@@ -925,7 +925,7 @@ pub(crate) fn assert_assignable<'tcx>(
             );
             // fn(&T) -> for<'l> fn(&'l T) is allowed
         }
-        (&ty::Dynamic(from_traits, _, _from_kind), &ty::Dynamic(to_traits, _, _to_kind)) => {
+        (ty::Dynamic(from_traits, _, _from_kind), ty::Dynamic(to_traits, _, _to_kind)) => {
             // FIXME(dyn-star): Do the right thing with DynKinds
             for (from, to) in from_traits.iter().zip(to_traits) {
                 let from =
@@ -939,7 +939,7 @@ pub(crate) fn assert_assignable<'tcx>(
             }
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
-        (&ty::Tuple(types_a), &ty::Tuple(types_b)) => {
+        (ty::Tuple(types_a), ty::Tuple(types_b)) => {
             let mut types_a = types_a.iter();
             let mut types_b = types_b.iter();
             loop {
@@ -950,7 +950,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::Adt(adt_def_a, args_a), &ty::Adt(adt_def_b, args_b))
+        (ty::Adt(adt_def_a, args_a), ty::Adt(adt_def_b, args_b))
             if adt_def_a.did() == adt_def_b.did() =>
         {
             let mut types_a = args_a.types();
@@ -963,10 +963,8 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b, limit - 1),
-        (&ty::Closure(def_id_a, args_a), &ty::Closure(def_id_b, args_b))
-            if def_id_a == def_id_b =>
-        {
+        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, a, b, limit - 1),
+        (ty::Closure(def_id_a, args_a), ty::Closure(def_id_b, args_b)) if def_id_a == def_id_b => {
             let mut types_a = args_a.types();
             let mut types_b = args_b.types();
             loop {
@@ -977,7 +975,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::Coroutine(def_id_a, args_a, mov_a), &ty::Coroutine(def_id_b, args_b, mov_b))
+        (ty::Coroutine(def_id_a, args_a, mov_a), ty::Coroutine(def_id_b, args_b, mov_b))
             if def_id_a == def_id_b && mov_a == mov_b =>
         {
             let mut types_a = args_a.types();
@@ -990,7 +988,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::CoroutineWitness(def_id_a, args_a), &ty::CoroutineWitness(def_id_b, args_b))
+        (ty::CoroutineWitness(def_id_a, args_a), ty::CoroutineWitness(def_id_b, args_b))
             if def_id_a == def_id_b =>
         {
             let mut types_a = args_a.types();

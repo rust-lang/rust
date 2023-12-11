@@ -87,7 +87,7 @@ where
         // is (e.g.) `Box<i32>`. A more obvious solution might be to
         // iterate on the subtype obligations that are returned, but I
         // think this suffices. -nmatsakis
-        (&ty::Infer(TyVar(..)), _) => {
+        (ty::Infer(TyVar(..)), _) => {
             let v = infcx.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::LatticeVariable,
                 span: this.cause().span,
@@ -95,7 +95,7 @@ where
             this.relate_bound(v, b, a)?;
             Ok(v)
         }
-        (_, &ty::Infer(TyVar(..))) => {
+        (_, ty::Infer(TyVar(..))) => {
             let v = infcx.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::LatticeVariable,
                 span: this.cause().span,
@@ -105,12 +105,12 @@ where
         }
 
         (
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
         ) if a_def_id == b_def_id => infcx.super_combine_tys(this, a, b),
 
-        (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
-        | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+        (ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+        | (_, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
             if this.define_opaque_types() == DefineOpaqueTypes::Yes
                 && def_id.is_local()
                 && !this.infcx().next_trait_solver() =>

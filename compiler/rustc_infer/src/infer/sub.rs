@@ -85,7 +85,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
 
         match (a.kind(), b.kind()) {
-            (&ty::Infer(TyVar(_)), &ty::Infer(TyVar(_))) => {
+            (ty::Infer(TyVar(_)), ty::Infer(TyVar(_))) => {
                 // Shouldn't have any LBR here, so we can safely put
                 // this under a binder below without fear of accidental
                 // capture.
@@ -107,29 +107,29 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 
                 Ok(a)
             }
-            (&ty::Infer(TyVar(a_id)), _) => {
+            (ty::Infer(TyVar(a_id)), _) => {
                 self.fields.instantiate(b, ty::Contravariant, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
-            (_, &ty::Infer(TyVar(b_id))) => {
+            (_, ty::Infer(TyVar(b_id))) => {
                 self.fields.instantiate(a, ty::Covariant, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
-            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
+            (ty::Error(e), _) | (_, ty::Error(e)) => {
                 infcx.set_tainted_by_errors(e);
                 Ok(Ty::new_error(self.tcx(), e))
             }
 
             (
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;
                 Ok(a)
             }
-            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
-            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+            (ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
                     && def_id.is_local()
                     && !self.fields.infcx.next_trait_solver() =>

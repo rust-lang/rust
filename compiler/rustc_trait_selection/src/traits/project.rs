@@ -514,7 +514,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             return ty;
         }
 
-        let (kind, data) = match *ty.kind() {
+        let (kind, data) = match ty.kind() {
             ty::Alias(kind, alias_ty) => (kind, alias_ty),
             _ => return ty.super_fold_with(self),
         };
@@ -914,7 +914,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match t.kind() {
             ty::Bound(debruijn, _)
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
@@ -1049,7 +1049,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.infcx.shallow_resolve(ty);
-        match *ty.kind() {
+        match ty.kind() {
             ty::Placeholder(p) => {
                 let replace_var = self.mapped_types.get(&p);
                 match replace_var {
@@ -1617,7 +1617,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     let tcx = selcx.tcx();
     // Check whether the self-type is itself a projection.
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let bounds = match *obligation.predicate.self_ty().kind() {
+    let bounds = match obligation.predicate.self_ty().kind() {
         // Excluding IATs and type aliases here as they don't have meaningful item bounds.
         ty::Alias(ty::Projection | ty::Opaque, ref data) => {
             tcx.item_bounds(data.def_id).instantiate(tcx, data.args)
@@ -2245,10 +2245,10 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
 
     debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
 
-    let ty::Adt(_poll_adt, args) = *yield_ty.kind() else {
+    let ty::Adt(_poll_adt, args) = yield_ty.kind() else {
         bug!();
     };
-    let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else {
+    let ty::Adt(_option_adt, args) = args.type_at(0).kind() else {
         bug!();
     };
     let item_ty = args.type_at(0);

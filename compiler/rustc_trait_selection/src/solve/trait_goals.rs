@@ -330,7 +330,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+        let ty::Coroutine(def_id, _, _) = goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
 
@@ -354,7 +354,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+        let ty::Coroutine(def_id, _, _) = goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
 
@@ -378,7 +378,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+        let ty::Coroutine(def_id, _, _) = goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
 
@@ -403,7 +403,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -496,7 +496,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
             };
 
-            let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+            let ty::Dynamic(b_data, b_region, ty::Dyn) = b_ty.kind() else {
                 return Err(NoSolution);
             };
 
@@ -569,23 +569,23 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
                 // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`.
                 (
-                    &ty::Dynamic(a_data, a_region, ty::Dyn),
-                    &ty::Dynamic(b_data, b_region, ty::Dyn),
+                    ty::Dynamic(a_data, a_region, ty::Dyn),
+                    ty::Dynamic(b_data, b_region, ty::Dyn),
                 ) => ecx.consider_builtin_dyn_upcast_candidates(
                     goal, a_data, a_region, b_data, b_region,
                 ),
 
                 // `T` -> `dyn Trait` unsizing is handled separately in `consider_unsize_to_dyn_candidate`
-                (_, &ty::Dynamic(..)) => vec![],
+                (_, ty::Dynamic(..)) => vec![],
 
                 // `[T; N]` -> `[T]` unsizing
-                (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => result_to_single(
+                (ty::Array(a_elem_ty, ..), ty::Slice(b_elem_ty)) => result_to_single(
                     ecx.consider_builtin_array_unsize(goal, a_elem_ty, b_elem_ty),
                     BuiltinImplSource::Misc,
                 ),
 
                 // `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
-                (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
+                (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args))
                     if a_def.is_struct() && a_def == b_def =>
                 {
                     result_to_single(
@@ -595,7 +595,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 }
 
                 //  `(A, B, T)` -> `(A, B, U)` where `T: Unsize<U>`
-                (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
+                (ty::Tuple(a_tys), ty::Tuple(b_tys))
                     if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
                 {
                     result_to_single(
@@ -882,7 +882,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
     ) -> Option<QueryResult<'tcx>> {
         let self_ty = goal.predicate.self_ty();
-        match *self_ty.kind() {
+        match self_ty.kind() {
             // Stall int and float vars until they are resolved to a concrete
             // numerical type. That's because the check for impls below treats
             // int vars as matching any impl. Even if we filtered such impls,

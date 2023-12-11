@@ -244,7 +244,7 @@ fn rematch_unsize<'tcx>(
             _ => Ok(None),
         },
         // `T` -> `dyn Trait` upcasting
-        (_, &ty::Dynamic(data, region, ty::Dyn)) => {
+        (_, ty::Dynamic(data, region, ty::Dyn)) => {
             // Check that the type implements all of the predicates of the def-id.
             // (i.e. the principal, all of the associated types match, and any auto traits)
             nested.extend(data.iter().map(|pred| {
@@ -274,7 +274,7 @@ fn rematch_unsize<'tcx>(
             Ok(Some(ImplSource::Builtin(source, nested)))
         }
         // `[T; n]` -> `[T]` unsizing
-        (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
+        (ty::Array(a_elem_ty, ..), ty::Slice(b_elem_ty)) => {
             nested.extend(
                 infcx
                     .at(&ObligationCause::dummy(), goal.param_env)
@@ -286,7 +286,7 @@ fn rematch_unsize<'tcx>(
             Ok(Some(ImplSource::Builtin(source, nested)))
         }
         // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
-        (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
+        (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args))
             if a_def.is_struct() && a_def.did() == b_def.did() =>
         {
             let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
@@ -338,9 +338,7 @@ fn rematch_unsize<'tcx>(
             Ok(Some(ImplSource::Builtin(source, nested)))
         }
         // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
-        (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
-            if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
-        {
+        (ty::Tuple(a_tys), ty::Tuple(b_tys)) if a_tys.len() == b_tys.len() && !a_tys.is_empty() => {
             let (a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
             let b_last_ty = b_tys.last().unwrap();
 

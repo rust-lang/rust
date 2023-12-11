@@ -101,7 +101,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 match self_slice.kind {
                     FixedLen(_) => bug!("{:?} doesn't cover {:?}", self_slice, other_slice),
                     VarLen(prefix, suffix) => {
-                        let (ty::Slice(inner_ty) | ty::Array(inner_ty, _)) = *self.ty.kind() else {
+                        let (ty::Slice(inner_ty) | ty::Array(inner_ty, _)) = self.ty.kind() else {
                             bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty);
                         };
                         let prefix = &self.fields[..prefix];

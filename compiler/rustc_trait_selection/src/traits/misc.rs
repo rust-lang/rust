@@ -56,7 +56,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         | ty::Ref(_, _, hir::Mutability::Not)
         | ty::Array(..) => return Ok(()),
 
-        &ty::Adt(adt, args) => (adt, args),
+        ty::Adt(adt, args) => (adt, args),
 
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
@@ -103,7 +103,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         | ty::Ref(.., hir::Mutability::Not)
         | ty::Tuple(_) => return Ok(()),
 
-        &ty::Adt(adt, args) => (adt, args),
+        ty::Adt(adt, args) => (adt, args),
 
         _ => return Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed),
     };

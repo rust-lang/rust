@@ -457,7 +457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .probe_instantiate_query_response(span, &orig_values, ty)
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.resolve_vars_if_possible(ty.value);
-                let guar = match *ty.kind() {
+                let guar = match ty.kind() {
                     ty::Infer(ty::TyVar(_)) => self
                         .err_ctxt()
                         .emit_inference_failure_err(self.body_id, span, ty.into(), E0282, true)
@@ -551,7 +551,7 @@ fn method_autoderef_steps<'tcx>(
             steps.push(CandidateStep {
                 self_ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
-                    Ty::new_slice(infcx.tcx, *elem_ty),
+                    Ty::new_slice(infcx.tcx, elem_ty),
                 ),
                 autoderefs: dereferences,
                 // this could be from an unsafe deref if we had
@@ -647,7 +647,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn assemble_probe(&mut self, self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>) {
         debug!("assemble_probe: self_ty={:?}", self_ty);
         let raw_self_ty = self_ty.value.value;
-        match *raw_self_ty.kind() {
+        match raw_self_ty.kind() {
             ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
                 // Subtle: we can't use `instantiate_query_response` here: using it will
                 // commit to all of the type equalities assumed by inference going through
@@ -834,7 +834,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(trait_predicate) => {
-                    match *trait_predicate.trait_ref.self_ty().kind() {
+                    match trait_predicate.trait_ref.self_ty().kind() {
                         ty::Param(p) if p == param_ty => {
                             Some(bound_predicate.rebind(trait_predicate.trait_ref))
                         }
@@ -1189,7 +1189,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::Ref(_, _, mutbl) = *step.self_ty.value.value.kind() {
+                if let ty::Ref(_, _, mutbl) = step.self_ty.value.value.kind() {
                     pick.autoderefs += 1;
                     pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
                         mutbl,
@@ -1239,7 +1239,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return None;
         }
 
-        let &ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) = self_ty.kind() else {
+        let ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) = self_ty.kind() else {
             return None;
         };
 

@@ -717,7 +717,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         // If it's a frozen shared reference that's not already immutable, make it immutable.
         // (Do nothing on `None` provenance, that cannot store immutability anyway.)
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
-            && *mutbl == Mutability::Not
+            && mutbl == Mutability::Not
             && val.to_scalar_and_meta().0.to_pointer(ecx)?.provenance.is_some_and(|p| !p.immutable())
             // That next check is expensive, that's why we have all the guards above.
             && ty.is_freeze(*ecx.tcx, ecx.param_env)

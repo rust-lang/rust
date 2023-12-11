@@ -64,7 +64,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                                     .typeck_body(anon_const.body)
                                     .node_type(anon_const.hir_id);
                                 let instance = match ty.kind() {
-                                    &ty::FnDef(def_id, args) => Instance::new(def_id, args),
+                                    ty::FnDef(def_id, args) => Instance::new(def_id, args),
                                     _ => span_bug!(*op_sp, "asm sym is not a function"),
                                 };
 

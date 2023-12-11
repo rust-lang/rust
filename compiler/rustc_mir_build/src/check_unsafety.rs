@@ -386,12 +386,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
                 if self.thir[fun].ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
                     let func_id = if let ty::FnDef(func_id, _) = self.thir[fun].ty.kind() {
-                        Some(*func_id)
+                        Some(func_id)
                     } else {
                         None
                     };
                     self.requires_unsafe(expr.span, CallToUnsafeFunction(func_id));
-                } else if let &ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
+                } else if let ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
                     // If the called function has target features the calling function hasn't,
                     // the call requires `unsafe`. Don't check this on wasm
                     // targets, though. For more information on wasm see the

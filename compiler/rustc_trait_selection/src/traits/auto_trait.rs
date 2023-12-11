@@ -572,7 +572,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
         if let Some(ty) = p.term().skip_binder().ty() {
-            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_ty)
+            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == p.skip_binder().projection_ty)
         } else {
             false
         }

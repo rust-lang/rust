@@ -146,11 +146,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
         let (min, max): (i128, u128) = match ty.kind() {
             ty::Int(ity) => {
-                let size = Integer::from_int_ty(&self.tcx, *ity).size();
+                let size = Integer::from_int_ty(&self.tcx, ity).size();
                 (size.signed_int_min(), size.signed_int_max() as u128)
             }
             ty::Uint(uty) => {
-                let size = Integer::from_uint_ty(&self.tcx, *uty).size();
+                let size = Integer::from_uint_ty(&self.tcx, uty).size();
                 (0, size.unsigned_int_max())
             }
             _ => {
@@ -304,7 +304,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let var_ty = ty;
                 if let ty::BindByReference(_) = bm {
                     if let ty::Ref(_, rty, _) = ty.kind() {
-                        ty = *rty;
+                        ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
                     }
@@ -425,7 +425,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                         ty::Adt(_, args) | ty::FnDef(_, args) => args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
-                            return PatKind::Error(*e);
+                            return PatKind::Error(e);
                         }
                         _ => bug!("inappropriate type for def: {:?}", ty),
                     };

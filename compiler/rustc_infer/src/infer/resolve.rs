@@ -125,7 +125,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for UnresolvedTypeOrConstFinder<'a, 'tc
     type BreakTy = (ty::Term<'tcx>, Option<Span>);
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let t = self.infcx.shallow_resolve(t);
-        if let ty::Infer(infer_ty) = *t.kind() {
+        if let ty::Infer(infer_ty) = t.kind() {
             // Since we called `shallow_resolve` above, this must
             // be an (as yet...) unresolved inference variable.
             let ty_var_span = if let ty::TyVar(ty_vid) = infer_ty {
@@ -217,7 +217,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
             Ok(t) // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t = self.infcx.shallow_resolve(t);
-            match *t.kind() {
+            match t.kind() {
                 ty::Infer(ty::TyVar(vid)) => Err(FixupError::UnresolvedTy(vid)),
                 ty::Infer(ty::IntVar(vid)) => Err(FixupError::UnresolvedIntTy(vid)),
                 ty::Infer(ty::FloatVar(vid)) => Err(FixupError::UnresolvedFloatTy(vid)),
@@ -281,7 +281,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerResolver<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match t.kind() {
             ty::Infer(ty::TyVar(vid)) => match self.infcx.probe_ty_var(vid) {
                 Ok(t) => t.fold_with(self),
                 Err(_) => Ty::new_var(self.infcx.tcx, self.infcx.root_var(vid)),

@@ -184,7 +184,7 @@ where
         // This only presently applies to chalk integration, as NLL
         // doesn't permit type variables to appear on both sides (and
         // doesn't use lazy norm).
-        match *value_ty.kind() {
+        match value_ty.kind() {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
                 self.infcx.inner.borrow_mut().type_variables().equate(vid, value_vid);
@@ -245,8 +245,8 @@ where
             }
         };
         let (a, b) = match (a.kind(), b.kind()) {
-            (&ty::Alias(ty::Opaque, ..), _) => (a, generalize(b, false)?),
-            (_, &ty::Alias(ty::Opaque, ..)) => (generalize(a, true)?, b),
+            (ty::Alias(ty::Opaque, ..), _) => (a, generalize(b, false)?),
+            (_, ty::Alias(ty::Opaque, ..)) => (generalize(a, true)?, b),
             _ => unreachable!(),
         };
         let cause = ObligationCause::dummy_with_span(self.delegate.span());
@@ -478,7 +478,7 @@ where
         }
 
         match (a.kind(), b.kind()) {
-            (_, &ty::Infer(ty::TyVar(vid))) => {
+            (_, ty::Infer(ty::TyVar(vid))) => {
                 if D::forbid_inference_vars() {
                     // Forbid inference variables in the RHS.
                     bug!("unexpected inference var {:?}", b)
@@ -487,11 +487,11 @@ where
                 }
             }
 
-            (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
+            (ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
                 infcx.super_combine_tys(self, a, b).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
@@ -505,8 +505,8 @@ where
                     if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
                 })
             }
-            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
-            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+            (ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if def_id.is_local() && !self.infcx.next_trait_solver() =>
             {
                 self.relate_opaques(a, b)

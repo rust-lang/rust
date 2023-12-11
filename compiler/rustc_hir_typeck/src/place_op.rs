@@ -30,7 +30,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.apply_adjustments(
                 oprnd_expr,
                 vec![Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
                     target: method.sig.inputs()[0],
                 }],
             );
@@ -138,7 +138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if unsize {
                 // We only unsize arrays here.
                 if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = Ty::new_slice(self.tcx, *element_ty);
+                    self_ty = Ty::new_slice(self.tcx, element_ty);
                 } else {
                     continue;
                 }
@@ -161,10 +161,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut adjustments = self.adjust_steps(autoderef);
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
                         target: Ty::new_ref(
                             self.tcx,
-                            *region,
+                            region,
                             ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: adjusted_ty },
                         ),
                     });
@@ -324,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                     {
                         let method = self.register_infer_ok_obligations(ok);
-                        if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
+                        if let ty::Ref(region, _, mutbl) = method.sig.output().kind() {
                             *deref = OverloadedDeref { region, mutbl, span: deref.span };
                         }
                         // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
@@ -427,10 +427,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // not the case today.
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
-                    adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(*region, mutbl));
+                    adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(region, mutbl));
                     adjustment.target = Ty::new_ref(
                         self.tcx,
-                        *region,
+                        region,
                         ty::TypeAndMut { ty: source, mutbl: mutbl.into() },
                     );
                 }

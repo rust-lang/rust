@@ -680,7 +680,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         }
 
         // Allow large moves into container types that themselves are cheap to move
-        let ty::FnDef(def_id, _) = *callee_ty.kind() else {
+        let ty::FnDef(def_id, _) = callee_ty.kind() else {
             return;
         };
         if self
@@ -749,7 +749,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             ) => {
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
-                match *source_ty.kind() {
+                match source_ty.kind() {
                     ty::Closure(def_id, args) => {
                         let instance = Instance::resolve_closure(
                             self.tcx,
@@ -898,7 +898,7 @@ fn visit_fn_use<'tcx>(
     source: Span,
     output: &mut MonoItems<'tcx>,
 ) {
-    if let ty::FnDef(def_id, args) = *ty.kind() {
+    if let ty::FnDef(def_id, args) = ty.kind() {
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
         } else {
@@ -1056,19 +1056,19 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
     };
 
-    match (&source_ty.kind(), &target_ty.kind()) {
-        (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
-        | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            ptr_vtable(*a, *b)
+    match (source_ty.kind(), target_ty.kind()) {
+        (ty::Ref(_, a, _), ty::Ref(_, b, _) | ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
+        | (ty::RawPtr(ty::TypeAndMut { ty: a, .. }), ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
+            ptr_vtable(a, b)
         }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
         }
 
         // T as dyn* Trait
-        (_, &ty::Dynamic(_, _, ty::DynStar)) => ptr_vtable(source_ty, target_ty),
+        (_, ty::Dynamic(_, _, ty::DynStar)) => ptr_vtable(source_ty, target_ty),
 
-        (&ty::Adt(source_adt_def, source_args), &ty::Adt(target_adt_def, target_args)) => {
+        (ty::Adt(source_adt_def, source_args), ty::Adt(target_adt_def, target_args)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
             let CustomCoerceUnsized::Struct(coerce_index) =

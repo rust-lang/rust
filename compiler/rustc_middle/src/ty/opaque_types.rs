@@ -147,7 +147,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Closure(def_id, args) => {
                 let args = self.fold_closure_args(def_id, args);
                 Ty::new_closure(self.tcx, def_id, args)

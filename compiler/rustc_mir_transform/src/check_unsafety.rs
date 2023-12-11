@@ -79,7 +79,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                 }
 
                 if let Some(func_id) = func_id {
-                    self.check_target_features(*func_id);
+                    self.check_target_features(func_id);
                 }
             }
 

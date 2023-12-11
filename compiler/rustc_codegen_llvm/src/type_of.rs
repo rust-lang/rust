@@ -47,14 +47,14 @@ fn uncached_llvm_type<'a, 'tcx>(
             if !cx.sess().fewer_names() =>
         {
             let mut name = with_no_visible_paths!(with_no_trimmed_paths!(layout.ty.to_string()));
-            if let (&ty::Adt(def, _), &Variants::Single { index }) =
+            if let (ty::Adt(def, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
                 if def.is_enum() && !def.variants().is_empty() {
                     write!(&mut name, "::{}", def.variant(index).name).unwrap();
                 }
             }
-            if let (&ty::Coroutine(_, _, _), &Variants::Single { index }) =
+            if let (ty::Coroutine(_, _, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
                 write!(&mut name, "::{}", ty::CoroutineArgs::variant_name(index)).unwrap();

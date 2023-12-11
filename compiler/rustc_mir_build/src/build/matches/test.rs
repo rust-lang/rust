@@ -211,7 +211,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestKind::SwitchInt { switch_ty, ref options } => {
                 let target_blocks = make_target_blocks(self);
-                let terminator = if *switch_ty.kind() == ty::Bool {
+                let terminator = if switch_ty.kind() == ty::Bool {
                     assert!(!options.is_empty() && options.len() <= 2);
                     let [first_bb, second_bb] = *target_blocks else {
                         bug!("`TestKind::SwitchInt` on `bool` should have two targets")
@@ -435,7 +435,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.tcx;
                 // make both a slice
-                ty = Ty::new_imm_ref(tcx, *region, Ty::new_slice(tcx, *elem_ty));
+                ty = Ty::new_imm_ref(tcx, region, Ty::new_slice(tcx, elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
@@ -467,7 +467,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Ref(_, deref_ty, _) => ty = deref_ty,
             _ => {
                 // non_scalar_compare called on non-reference type

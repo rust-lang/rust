@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
         && cx.tcx.trait_of_item(method_id) == Some(iter_id)
         && let cloned_recv_ty = typeck.expr_ty_adjusted(cloned_recv)
         && let Some(iter_assoc_ty) = cx.get_associated_type(cloned_recv_ty, iter_id, "Item")
-        && matches!(*iter_assoc_ty.kind(), ty::Ref(_, ty, _) if !is_copy(cx, ty))
+        && matches!(iter_assoc_ty.kind(), ty::Ref(_, ty, _) if !is_copy(cx, ty))
     {
         if needs_into_iter
             && let Some(into_iter_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)

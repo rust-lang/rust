@@ -153,7 +153,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx.instantiate_binder_with_placeholders(trait_predicate).trait_ref;
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
-        let (def_id, args) = match *placeholder_self_ty.kind() {
+        let (def_id, args) = match placeholder_self_ty.kind() {
             // Excluding IATs and type aliases here as they don't have meaningful item bounds.
             ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 (def_id, args)
@@ -487,7 +487,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
-        let ty::Dynamic(data, ..) = *self_ty.kind() else {
+        let ty::Dynamic(data, ..) = self_ty.kind() else {
             span_bug!(obligation.cause.span, "object candidate with non-object");
         };
 
@@ -730,7 +730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args, _) = self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -768,7 +768,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args, _) = self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -797,7 +797,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args, _) = self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -826,7 +826,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args, _) = self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -856,7 +856,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Closure(closure_def_id, args) = *self_ty.kind() else {
+        let ty::Closure(closure_def_id, args) = self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -942,8 +942,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let a_ty = self.infcx.shallow_resolve(predicate.self_ty());
         let b_ty = self.infcx.shallow_resolve(predicate.trait_ref.args.type_at(1));
 
-        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else { bug!() };
-        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else { bug!() };
+        let ty::Dynamic(a_data, a_region, ty::Dyn) = a_ty.kind() else { bug!() };
+        let ty::Dynamic(b_data, b_region, ty::Dyn) = b_ty.kind() else { bug!() };
 
         let source_principal = a_data.principal().unwrap().with_self_ty(tcx, a_ty);
         let unnormalized_upcast_principal =
@@ -1007,7 +1007,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         Ok(match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
-            (&ty::Dynamic(data_a, r_a, dyn_a), &ty::Dynamic(data_b, r_b, dyn_b))
+            (ty::Dynamic(data_a, r_a, dyn_a), ty::Dynamic(data_b, r_b, dyn_b))
                 if dyn_a == dyn_b =>
             {
                 // See `assemble_candidates_for_unsizing` for more info.
@@ -1052,7 +1052,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(data, r, ty::Dyn)) => {
+            (_, ty::Dynamic(data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
@@ -1099,7 +1099,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `[T; n]` -> `[T]`
-            (&ty::Array(a, _), &ty::Slice(b)) => {
+            (ty::Array(a, _), ty::Slice(b)) => {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
@@ -1110,7 +1110,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `Struct<T>` -> `Struct<U>`
-            (&ty::Adt(def, args_a), &ty::Adt(_, args_b)) => {
+            (ty::Adt(def, args_a), ty::Adt(_, args_b)) => {
                 let unsizing_params = tcx.unsizing_params_for_adt(def.did());
                 if unsizing_params.is_empty() {
                     return Err(Unimplemented);
@@ -1170,7 +1170,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
+            (ty::Tuple(tys_a), ty::Tuple(tys_b)) => {
                 assert_eq!(tys_a.len(), tys_b.len());
 
                 // The last field of the tuple has to exist.
@@ -1256,13 +1256,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // We want to confirm the ADT's fields if we have an ADT
-        let mut stack = match *self_ty.skip_binder().kind() {
+        let mut stack = match self_ty.skip_binder().kind() {
             ty::Adt(def, args) => def.all_fields().map(|f| f.ty(tcx, args)).collect(),
             _ => vec![self_ty.skip_binder()],
         };
 
         while let Some(nested_ty) = stack.pop() {
-            match *nested_ty.kind() {
+            match nested_ty.kind() {
                 // We know these types are trivially drop
                 ty::Bool
                 | ty::Char

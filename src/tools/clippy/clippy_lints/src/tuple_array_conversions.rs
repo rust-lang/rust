@@ -83,7 +83,7 @@ fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
             ExprKind::Path(_) => Some(elements.iter().collect()),
             _ => None,
         })
-        && all_bindings_are_for_conv(cx, &[*ty], expr, elements, &locals, ToType::Array)
+        && all_bindings_are_for_conv(cx, &[ty], expr, elements, &locals, ToType::Array)
         && !is_from_proc_macro(cx, expr)
     {
         span_lint_and_help(
@@ -190,7 +190,7 @@ fn all_bindings_are_for_conv<'tcx>(
                 },
                 (ToType::Tuple, ty::Array(ty, len)) => {
                     let Some(len) = len.try_eval_target_usize(cx.tcx, cx.param_env) else { return false };
-                    len as usize == elements.len() && final_tys.iter().chain(once(ty)).all_equal()
+                    len as usize == elements.len() && final_tys.iter().copied().chain(once(ty)).all_equal()
                 },
                 _ => false,
             }

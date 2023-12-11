@@ -560,7 +560,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let defining_ty =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, defining_ty);
 
-                match *defining_ty.kind() {
+                match defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
                     ty::Coroutine(def_id, args, movability) => {
                         DefiningTy::Coroutine(def_id, args, movability)
@@ -673,7 +673,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let (&output, tuplized_inputs) =
                     inputs_and_output.skip_binder().split_last().unwrap();
                 assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                let &ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
+                let ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
                     bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]);
                 };
 

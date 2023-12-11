@@ -345,7 +345,7 @@ where
             // will be invoked with `['b => ^1]` and so we will get `^1` returned.
             let bound = bound_outlives.skip_binder();
             let ty::Alias(_, alias_ty) = bound.0.kind() else { bug!("expected AliasTy") };
-            self.verify_bound.declared_bounds_from_definition(*alias_ty).all(|r| r != bound.1)
+            self.verify_bound.declared_bounds_from_definition(alias_ty).all(|r| r != bound.1)
         });
 
         // If declared bounds list is empty, the only applicable rule is

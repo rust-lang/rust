@@ -54,7 +54,7 @@ impl<'a, 'tcx> MatchExprVisitor<'a, 'tcx> {
         if let Some(case_method) = get_case_method(segment_ident) {
             let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();
 
-            if is_type_lang_item(self.cx, ty, LangItem::String) || ty.kind() == &ty::Str {
+            if is_type_lang_item(self.cx, ty, LangItem::String) || ty.kind() == ty::Str {
                 self.case_method = Some(case_method);
                 return true;
             }

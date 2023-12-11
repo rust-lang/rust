@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
         && from_ty == to_ty
     {
         let sugg = Sugg::hir(cx, cast_expr, "_");
-        let constness = match *to_mutbl {
+        let constness = match to_mutbl {
             Mutability::Not => "const",
             Mutability::Mut => "mut",
         };

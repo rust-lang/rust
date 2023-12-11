@@ -206,7 +206,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
             return Ok(*ty);
         }
 
-        let (kind, data) = match *ty.kind() {
+        let (kind, data) = match ty.kind() {
             ty::Alias(kind, data) => (kind, data),
             _ => {
                 let res = ty.try_super_fold_with(self)?;

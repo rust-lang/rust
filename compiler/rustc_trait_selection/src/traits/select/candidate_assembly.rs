@@ -213,7 +213,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self_ty.kind() {
             // `async`/`gen` constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
-            ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(*did) => {
+            ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(did) => {
                 debug!(?self_ty, ?obligation, "assemble_coroutine_candidates",);
 
                 candidates.vec.push(CoroutineCandidate);
@@ -235,7 +235,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let ty::Coroutine(did, ..) = self_ty.kind() {
             // async constructs get lowered to a special kind of coroutine that
             // should directly `impl Future`.
-            if self.tcx().coroutine_is_async(*did) {
+            if self.tcx().coroutine_is_async(did) {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates",);
 
                 candidates.vec.push(FutureCandidate);
@@ -252,7 +252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let ty::Coroutine(did, ..) = self_ty.kind() {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl Iterator`.
-            if self.tcx().coroutine_is_gen(*did) {
+            if self.tcx().coroutine_is_gen(did) {
                 debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
 
                 candidates.vec.push(IteratorCandidate);
@@ -266,7 +266,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, args, _) = *self_ty.kind() {
+        if let ty::Coroutine(did, args, _) = self_ty.kind() {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
             if self.tcx().coroutine_is_async_gen(did) {
@@ -274,11 +274,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Can only confirm this candidate if we have constrained
                 // the `Yield` type to at least `Poll<Option<?0>>`..
-                let ty::Adt(_poll_def, args) = *args.as_coroutine().yield_ty().kind() else {
+                let ty::Adt(_poll_def, args) = args.as_coroutine().yield_ty().kind() else {
                     candidates.ambiguous = true;
                     return;
                 };
-                let ty::Adt(_option_def, _) = *args.type_at(0).kind() else {
+                let ty::Adt(_option_def, _) = args.type_at(0).kind() else {
                     candidates.ambiguous = true;
                     return;
                 };
@@ -306,7 +306,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        match *obligation.self_ty().skip_binder().kind() {
+        match obligation.self_ty().skip_binder().kind() {
             ty::Closure(def_id, closure_args) => {
                 let is_const = self.tcx().is_const_fn_raw(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
@@ -350,7 +350,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // Could wind up being a fn() type.
@@ -750,7 +750,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(a_data, a_region, ty::Dyn), &ty::Dynamic(b_data, b_region, ty::Dyn)) => {
+            (ty::Dynamic(a_data, a_region, ty::Dyn), ty::Dynamic(b_data, b_region, ty::Dyn)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -804,32 +804,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
+            (_, ty::Dynamic(_, _, ty::Dyn)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
             // Ambiguous handling is below `T` -> `Trait`, because inference
             // variables can still implement `Unsize<Trait>` and nested
             // obligations will have the final say (likely deferred).
-            (&ty::Infer(ty::TyVar(_)), _) | (_, &ty::Infer(ty::TyVar(_))) => {
+            (ty::Infer(ty::TyVar(_)), _) | (_, ty::Infer(ty::TyVar(_))) => {
                 debug!("assemble_candidates_for_unsizing: ambiguous");
                 candidates.ambiguous = true;
             }
 
             // `[T; n]` -> `[T]`
-            (&ty::Array(..), &ty::Slice(_)) => {
+            (ty::Array(..), ty::Slice(_)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
             // `Struct<T>` -> `Struct<U>`
-            (&ty::Adt(def_id_a, _), &ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
+            (ty::Adt(def_id_a, _), ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
                 if def_id_a == def_id_b {
                     candidates.vec.push(BuiltinUnsizeCandidate);
                 }
             }
 
             // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
+            (ty::Tuple(tys_a), ty::Tuple(tys_b)) => {
                 if tys_a.len() == tys_b.len() {
                     candidates.vec.push(BuiltinUnsizeCandidate);
                 }

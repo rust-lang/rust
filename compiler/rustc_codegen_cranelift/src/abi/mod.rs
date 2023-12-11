@@ -248,7 +248,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
                 // individual function arguments.
 
                 let tupled_arg_tys = match arg_ty.kind() {
-                    ty::Tuple(ref tys) => tys,
+                    ty::Tuple(tys) => tys,
                     _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
                 };
 
@@ -370,7 +370,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let ret_place = codegen_place(fx, destination);
 
     // Handle special calls like intrinsics and empty drop glue.
-    let instance = if let ty::FnDef(def_id, fn_args) = *func.layout().ty.kind() {
+    let instance = if let ty::FnDef(def_id, fn_args) = func.layout().ty.kind() {
         let instance =
             ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, fn_args)
                 .polymorphize(fx.tcx);
@@ -449,7 +449,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         };
 
         let tupled_arguments = match pack_arg.value.layout().ty.kind() {
-            ty::Tuple(ref tupled_arguments) => tupled_arguments,
+            ty::Tuple(tupled_arguments) => tupled_arguments,
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         };
 

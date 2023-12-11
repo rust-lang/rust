@@ -70,7 +70,7 @@ impl CanonicalVarValues<'_> {
                 matches!(*r, ty::ReBound(ty::INNERMOST, br) if br.var.as_usize() == bv)
             }
             ty::GenericArgKind::Type(ty) => {
-                matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
+                matches!(ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
             }
             ty::GenericArgKind::Const(ct) => {
                 matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.as_usize() == bv)
@@ -92,7 +92,7 @@ impl CanonicalVarValues<'_> {
                     }
                 }
                 ty::GenericArgKind::Type(ty) => {
-                    if let ty::Bound(ty::INNERMOST, bt) = *ty.kind()
+                    if let ty::Bound(ty::INNERMOST, bt) = ty.kind()
                         && var == bt.var
                     {
                         var = var + 1;

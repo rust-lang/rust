@@ -197,8 +197,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             CallKind::FnCall { fn_trait_id, self_ty } => {
                 let note = match self_ty.kind() {
                     FnDef(def_id, ..) => {
-                        let span = tcx.def_span(*def_id);
-                        if ccx.tcx.is_const_fn_raw(*def_id) {
+                        let span = tcx.def_span(def_id);
+                        if ccx.tcx.is_const_fn_raw(def_id) {
                             span_bug!(span, "calling const FnDef errored when it shouldn't");
                         }
 
@@ -239,7 +239,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                                 let mut tmp_ty = self_ty;
                                 while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
                                     num_refs += 1;
-                                    tmp_ty = *inner_ty;
+                                    tmp_ty = inner_ty;
                                 }
                                 let deref = "*".repeat(num_refs);
 

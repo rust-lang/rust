@@ -478,7 +478,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match *t.kind() {
+        match t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => {}
 
             FnDef(..)
@@ -497,7 +497,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
                 let parent_ty = self.tcx.type_of(parent).instantiate_identity();
                 if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) =
-                        *parent_ty.kind()
+                        parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
                     // Okay
@@ -559,7 +559,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
     }
 
     fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        let t = match *t.kind() {
+        let t = match t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
 
             FnDef(def_id, args) => {
@@ -583,7 +583,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy =
                     self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) =
-                        *parent_ty.kind()
+                        parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
                     t

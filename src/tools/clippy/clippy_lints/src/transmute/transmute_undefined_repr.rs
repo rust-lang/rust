@@ -198,21 +198,21 @@ fn reduce_refs<'tcx>(cx: &LateContext<'tcx>, mut from_ty: Ty<'tcx>, mut to_ty: T
     let (from_fat_ptr, to_fat_ptr) = loop {
         break match (from_ty.kind(), to_ty.kind()) {
             (
-                &(ty::Ref(_, from_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: from_sub_ty, .. })),
-                &(ty::Ref(_, to_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: to_sub_ty, .. })),
+                ty::Ref(_, from_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: from_sub_ty, .. }),
+                ty::Ref(_, to_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: to_sub_ty, .. }),
             ) => {
-                from_raw_ptr = matches!(*from_ty.kind(), ty::RawPtr(_));
+                from_raw_ptr = matches!(from_ty.kind(), ty::RawPtr(_));
                 from_ty = from_sub_ty;
-                to_raw_ptr = matches!(*to_ty.kind(), ty::RawPtr(_));
+                to_raw_ptr = matches!(to_ty.kind(), ty::RawPtr(_));
                 to_ty = to_sub_ty;
                 continue;
             },
-            (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })), _)
+            (ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }), _)
                 if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (true, false)
             },
-            (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })))
+            (_, ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }))
                 if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (false, true)
@@ -247,7 +247,7 @@ enum ReducedTy<'tcx> {
 fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> {
     loop {
         ty = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty).unwrap_or(ty);
-        return match *ty.kind() {
+        return match ty.kind() {
             ty::Array(sub_ty, _) if matches!(sub_ty.kind(), ty::Int(_) | ty::Uint(_)) => {
                 ReducedTy::TypeErasure { raw_ptr_only: false }
             },
@@ -309,7 +309,7 @@ fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 fn is_size_pair(ty: Ty<'_>) -> bool {
-    if let ty::Tuple(tys) = *ty.kind()
+    if let ty::Tuple(tys) = ty.kind()
         && let [ty1, ty2] = &**tys
     {
         matches!(ty1.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))

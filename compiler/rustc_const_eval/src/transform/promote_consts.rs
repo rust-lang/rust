@@ -649,7 +649,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { inline: false })
         );
         if !promote_all_const_fn {
-            if let ty::FnDef(def_id, _) = *fn_ty.kind() {
+            if let ty::FnDef(def_id, _) = fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
                 if !self.tcx.is_promotable_const_fn(def_id) {
@@ -658,7 +658,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
         }
 
-        let is_const_fn = match *fn_ty.kind() {
+        let is_const_fn = match fn_ty.kind() {
             ty::FnDef(def_id, _) => self.tcx.is_const_fn_raw(def_id),
             _ => false,
         };

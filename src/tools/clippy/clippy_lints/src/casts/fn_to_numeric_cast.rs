@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
             let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
-            if (to_nbits >= cx.tcx.data_layout.pointer_size.bits()) && (*cast_to.kind() != ty::Uint(UintTy::Usize)) {
+            if (to_nbits >= cx.tcx.data_layout.pointer_size.bits()) && (cast_to.kind() != ty::Uint(UintTy::Usize)) {
                 span_lint_and_sugg(
                     cx,
                     FN_TO_NUMERIC_CAST,

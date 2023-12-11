@@ -203,8 +203,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Ref(region, t_type, mutability) = self_ty.kind() {
                 let trait_type = Ty::new_ref(
                     self.tcx,
-                    *region,
-                    ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
+                    region,
+                    ty::TypeAndMut { ty: t_type, mutbl: mutability.invert() },
                 );
                 // We probe again to see if there might be a borrow mutability discrepancy.
                 match self.lookup_probe(

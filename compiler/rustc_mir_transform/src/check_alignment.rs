@@ -116,7 +116,7 @@ impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
         // Try to detect types we are sure have an alignment of 1 and skip the check
         // We don't need to look for str and slices, we already rejected unsized types above
         let element_ty = match pointee_ty.kind() {
-            ty::Array(ty, _) => *ty,
+            ty::Array(ty, _) => ty,
             _ => pointee_ty,
         };
         if [self.tcx.types.bool, self.tcx.types.i8, self.tcx.types.u8].contains(&element_ty) {

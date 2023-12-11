@@ -133,7 +133,7 @@ impl<'tcx> Cx<'tcx> {
             DefKind::Closure => {
                 let closure_ty = self.typeck_results.node_type(owner_id);
 
-                let ty::Closure(closure_def_id, closure_args) = *closure_ty.kind() else {
+                let ty::Closure(closure_def_id, closure_args) = closure_ty.kind() else {
                     bug!("closure expr does not have closure type: {:?}", closure_ty);
                 };
 

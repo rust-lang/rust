@@ -687,7 +687,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
         // These types seem reasonably opaque enough that they could be substituted with their
         // borrowed variants in a function body when we see a move error.
-        let borrow_level = match *ty.kind() {
+        let borrow_level = match ty.kind() {
             ty::Param(_) => tcx
                 .explicit_predicates_of(self.mir_def_id().to_def_id())
                 .predicates

@@ -391,7 +391,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 | ty::Never
                 | ty::Foreign(..) => tcx.types.unit,
 
-                ty::Error(e) => Ty::new_error(tcx, *e),
+                ty::Error(e) => Ty::new_error(tcx, e),
 
                 ty::Str | ty::Slice(_) => tcx.types.usize,
 
@@ -453,7 +453,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -484,7 +484,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -515,7 +515,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -549,7 +549,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -607,7 +607,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let discriminant_ty = match *self_ty.kind() {
+        let discriminant_ty = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)

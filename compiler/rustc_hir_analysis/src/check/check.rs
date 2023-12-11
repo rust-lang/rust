@@ -110,7 +110,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 }
                 ty::Array(elem, _len) => {
                     // Like `Copy`, we do *not* special-case length 0.
-                    allowed_union_field(*elem, tcx, param_env)
+                    allowed_union_field(elem, tcx, param_env)
                 }
                 _ => {
                     // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
@@ -432,7 +432,7 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
         if match tcx.type_of(def_id).instantiate_identity().kind() {
             ty::RawPtr(_) => false,
-            ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *args),
+            ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, adt_def, args),
             _ => true,
         } {
             tcx.sess.emit_err(LinkageType { span: tcx.def_span(def_id) });
@@ -1027,7 +1027,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
             match t.kind() {
                 ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
-                ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
+                ty::Array(ty, _) => check_non_exhaustive(tcx, ty),
                 ty::Adt(def, subst) => {
                     if !def.did().is_local() {
                         let non_exhaustive = def.is_variant_list_non_exhaustive()
@@ -1388,7 +1388,7 @@ fn opaque_type_cycle_error(
                 }
                 impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                        match *t.kind() {
+                        match t.kind() {
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
                                 self.opaques.push(def);
                                 ControlFlow::Continue(())
@@ -1426,7 +1426,7 @@ fn opaque_type_cycle_error(
                                 && let ty::Alias(
                                     ty::Opaque,
                                     ty::AliasTy { def_id: captured_def_id, .. },
-                                ) = *ty.kind()
+                                ) = ty.kind()
                                 && captured_def_id == opaque_def_id.to_def_id()
                             {
                                 err.span_label(

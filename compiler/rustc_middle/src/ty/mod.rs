@@ -473,7 +473,7 @@ impl<'tcx> IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
     fn kind(self) -> TyKind<'tcx> {
-        self.kind().clone()
+        self.kind()
     }
 }
 
@@ -944,7 +944,7 @@ impl<'tcx> Term<'tcx> {
     /// This function returns the inner `AliasTy` for a `ty::Alias` or `ConstKind::Unevaluated`.
     pub fn to_alias_ty(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
         match self.unpack() {
-            TermKind::Ty(ty) => match *ty.kind() {
+            TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(_kind, alias_ty) => Some(alias_ty),
                 _ => None,
             },

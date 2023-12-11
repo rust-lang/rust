@@ -557,7 +557,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
                 let outerdef = match impl_ty.kind() {
                     ty::Adt(def, _) => Some(def.did()),
-                    ty::Foreign(def_id) => Some(*def_id),
+                    ty::Foreign(def_id) => Some(def_id),
                     _ => None,
                 };
                 let is_hidden = match outerdef {
@@ -1197,7 +1197,7 @@ declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if let Some((&ty::Ref(_, _, from_mutbl), &ty::Ref(_, _, to_mutbl))) =
+        if let Some((ty::Ref(_, _, from_mutbl), ty::Ref(_, _, to_mutbl))) =
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if from_mutbl < to_mutbl {
@@ -2517,7 +2517,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let span = cx.tcx.def_span(adt_def.did());
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
-                            .inhabited_predicate(cx.tcx, *adt_def)
+                            .inhabited_predicate(cx.tcx, adt_def)
                             .instantiate(cx.tcx, args)
                             .apply_any_module(cx.tcx, cx.param_env)
                         {
@@ -2573,7 +2573,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 Array(ty, len) => {
                     if matches!(len.try_eval_target_usize(cx.tcx, cx.param_env), Some(v) if v > 0) {
                         // Array length known at array non-empty -- recurse.
-                        ty_find_init_error(cx, *ty, init)
+                        ty_find_init_error(cx, ty, init)
                     } else {
                         // Empty array or size unknown.
                         None

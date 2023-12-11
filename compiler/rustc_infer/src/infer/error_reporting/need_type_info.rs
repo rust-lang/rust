@@ -265,7 +265,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> InferenceDiagnosticsData {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
-                if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
+                if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind() {
                     let mut inner = self.inner.borrow_mut();
                     let ty_vars = &inner.type_variables();
                     let var_origin = ty_vars.var_origin(ty_vid);
@@ -748,7 +748,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             fn ty_cost(self, ty: Ty<'tcx>) -> usize {
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Closure(..) => 1000,
                     ty::FnDef(..) => 150,
                     ty::FnPtr(..) => 30,
@@ -840,7 +840,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
-                    (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
+                    (Infer(TyVar(a_vid)), Infer(TyVar(b_vid))) => {
                         self.infcx.inner.borrow_mut().type_variables().sub_unified(a_vid, b_vid)
                     }
                     _ => false,

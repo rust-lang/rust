@@ -37,7 +37,7 @@ fn filter_array_elements<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> impl Fn(&Result<Ty<'tcx>, AlwaysRequiresDrop>) -> bool {
     move |ty| match ty {
-        Ok(ty) => match *ty.kind() {
+        Ok(ty) => match ty.kind() {
             ty::Array(elem, _) => tcx.needs_drop_raw(param_env.and(elem)),
             _ => true,
         },
@@ -133,7 +133,7 @@ where
             };
 
             for component in components {
-                match *component.kind() {
+                match component.kind() {
                     // The information required to determine whether a coroutine has drop is
                     // computed on MIR, while this very method is used to build MIR.
                     // To avoid cycles, we consider that coroutines always require drop.

@@ -190,7 +190,7 @@ where
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
                 let ty = self.delegate.replace_ty(bound_ty);
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
@@ -461,7 +461,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
                 Ty::new_bound(self.tcx, debruijn, bound_ty)

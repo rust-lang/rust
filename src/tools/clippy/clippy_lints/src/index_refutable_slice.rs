@@ -115,7 +115,7 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir
                 // The values need to use the `ref` keyword if they can't be copied.
                 // This will need to be adjusted if the lint want to support mutable access in the future
                 let src_is_ref = bound_ty.is_ref() && by_ref != hir::ByRef::Yes;
-                let needs_ref = !(src_is_ref || is_copy(cx, *inner_ty));
+                let needs_ref = !(src_is_ref || is_copy(cx, inner_ty));
 
                 let slice_info = slices
                     .entry(value_hir_id)

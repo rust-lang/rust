@@ -389,7 +389,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     //// method of a private type is used, but the type itself is never
                     //// called directly.
                     let self_ty = self.tcx.type_of(item).instantiate_identity();
-                    match *self_ty.kind() {
+                    match self_ty.kind() {
                         ty::Adt(def, _) => self.check_def_id(def.did()),
                         ty::Foreign(did) => self.check_def_id(did),
                         ty::Dynamic(data, ..) => {
@@ -465,7 +465,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                 self.handle_res(res);
                 if let ty::Adt(adt, _) = self.typeck_results().expr_ty(expr).kind() {
-                    self.mark_as_used_if_union(*adt, fields);
+                    self.mark_as_used_if_union(adt, fields);
                 }
             }
             hir::ExprKind::Closure(cls) => {

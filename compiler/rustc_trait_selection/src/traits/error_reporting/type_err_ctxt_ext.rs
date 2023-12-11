@@ -691,7 +691,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         let is_fn_trait = tcx.is_fn_trait(trait_ref.def_id());
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
-                            *trait_ref.skip_binder().self_ty().kind()
+                            trait_ref.skip_binder().self_ty().kind()
                         {
                             !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                         } else {
@@ -954,7 +954,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Option<ErrorGuaranteed> {
-        if let ty::Closure(closure_def_id, closure_args) = *trait_ref.self_ty().skip_binder().kind()
+        if let ty::Closure(closure_def_id, closure_args) = trait_ref.self_ty().skip_binder().kind()
             && let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id())
             && let Some(found_kind) = self.closure_kind(closure_args)
             && !found_kind.extends(expected_kind)
@@ -1812,7 +1812,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if Some(pred.projection_ty.def_id) == self.tcx.lang_items().fn_once_output() {
                 let fn_kind = self_ty.prefix_string(self.tcx);
                 let item = match self_ty.kind() {
-                    ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
+                    ty::FnDef(def, _) => self.tcx.item_name(def).to_string(),
                     _ => self_ty.to_string(),
                 };
                 Some(format!(
@@ -1877,7 +1877,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             loop {
                 match t.kind() {
                     ty::Ref(_, inner, _) | ty::RawPtr(ty::TypeAndMut { ty: inner, .. }) => {
-                        t = *inner
+                        t = inner;
                     }
                     _ => break t,
                 }
@@ -2800,7 +2800,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Param(_) = *ty.kind() {
+                if let ty::Param(_) = ty.kind() {
                     let infcx = self.infcx;
                     *self.var_map.entry(ty).or_insert_with(|| {
                         infcx.next_ty_var(TypeVariableOrigin {
@@ -3413,7 +3413,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return None;
         };
 
-        let found_did = match *found_trait_ty.kind() {
+        let found_did = match found_trait_ty.kind() {
             ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => {
                 Some(did)
             }

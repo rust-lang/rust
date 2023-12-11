@@ -253,7 +253,7 @@ pub fn valtree_to_const_value<'tcx>(
         }
         ty::Ref(_, inner_ty, _) => {
             let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
-            let imm = valtree_to_ref(&mut ecx, valtree, *inner_ty);
+            let imm = valtree_to_ref(&mut ecx, valtree, inner_ty);
             let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
         }
@@ -347,7 +347,7 @@ fn valtree_into_mplace<'tcx>(
             ecx.write_immediate(Immediate::Scalar(scalar_int.into()), place).unwrap();
         }
         ty::Ref(_, inner_ty, _) => {
-            let imm = valtree_to_ref(ecx, valtree, *inner_ty);
+            let imm = valtree_to_ref(ecx, valtree, inner_ty);
             debug!(?imm);
             ecx.write_immediate(imm, place).unwrap();
         }

@@ -242,7 +242,7 @@ impl<'tcx> Inliner<'tcx> {
                 self_arg.map(|self_arg| self_arg.ty(&caller_body.local_decls, self.tcx));
 
             let arg_tuple_ty = arg_tuple.ty(&caller_body.local_decls, self.tcx);
-            let ty::Tuple(arg_tuple_tys) = *arg_tuple_ty.kind() else {
+            let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
                 bug!("Closure arguments are not passed as a tuple");
             };
 
@@ -367,7 +367,7 @@ impl<'tcx> Inliner<'tcx> {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
             let func_ty = func.ty(caller_body, self.tcx);
-            if let ty::FnDef(def_id, args) = *func_ty.kind() {
+            if let ty::FnDef(def_id, args) = func_ty.kind() {
                 // To resolve an instance its args have to be fully normalized.
                 let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
                 let callee =

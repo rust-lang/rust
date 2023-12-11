@@ -394,7 +394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::UnOp::Not => {
                     let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                     // If it's builtin, we can reuse the type, this helps inference.
-                    if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
+                    if !(oprnd_t.is_integral() || oprnd_t.is_bool()) {
                         oprnd_t = result;
                     }
                 }
@@ -425,9 +425,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Places may legitimately have unsized types.
                         // For example, dereferences of a fat pointer and
                         // the last field of a struct can be unsized.
-                        ExpectHasType(*ty)
+                        ExpectHasType(ty)
                     } else {
-                        Expectation::rvalue_hint(self, *ty)
+                        Expectation::rvalue_hint(self, ty)
                     }
                 }
                 _ => NoExpectation,
@@ -525,7 +525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
 
-        if let ty::FnDef(did, _) = *ty.kind() {
+        if let ty::FnDef(did, _) = ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
 
             if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
@@ -1391,7 +1391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_ty = if !args.is_empty() {
             let coerce_to = expected
                 .to_option(self)
-                .and_then(|uty| match *uty.kind() {
+                .and_then(|uty| match uty.kind() {
                     ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                     _ => None,
                 })
@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let uty = match expected {
-            ExpectHasType(uty) => match *uty.kind() {
+            ExpectHasType(uty) => match uty.kind() {
                 ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                 _ => None,
             },
@@ -1549,7 +1549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // out into a separate constant (or a const block in the future), so we check that
         // to tell them that in the diagnostic. Does not affect typeck.
         let is_constable = match element.kind {
-            hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
+            hir::ExprKind::Call(func, _args) => match self.node_ty(func.hir_id).kind() {
                 ty::FnDef(def_id, _) if tcx.is_const_fn(def_id) => traits::IsConstable::Fn,
                 _ => traits::IsConstable::No,
             },
@@ -1836,7 +1836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `MyStruct<'a, _, F2, C>`, as opposed to just `_`...
                     // This is important to allow coercions to happen in
                     // `other_struct` itself. See `coerce-in-base-expr.rs`.
-                    let fresh_base_ty = Ty::new_adt(self.tcx, *adt, fresh_args);
+                    let fresh_base_ty = Ty::new_adt(self.tcx, adt, fresh_args);
                     self.check_expr_has_type_or_error(
                         base_expr,
                         self.resolve_vars_if_possible(fresh_base_ty),
@@ -2533,7 +2533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let mut err = self.no_such_field_err(ident, base_ty, base.hir_id);
 
-        match *base_ty.peel_refs().kind() {
+        match base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
                 self.maybe_suggest_array_indexing(&mut err, expr, base, ident, len);
             }
@@ -2687,7 +2687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn point_at_param_definition(&self, err: &mut Diagnostic, param: ty::ParamTy) {
         let generics = self.tcx.generics_of(self.body_id);
-        let generic_param = generics.type_param(&param, self.tcx);
+        let generic_param = generics.type_param(param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
             return;
         }
@@ -2878,7 +2878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // For compile-time reasons put a limit on number of fields we search
                                 .take(100)
                                 .collect::<Vec<_>>(),
-                            *args,
+                            args,
                         ));
                     }
                     _ => None,
@@ -3208,7 +3208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function.
         if is_input {
             let ty = self.structurally_resolve_type(expr.span, ty);
-            match *ty.kind() {
+            match ty.kind() {
                 ty::FnDef(..) => {
                     let fnptr_ty = Ty::new_fn_ptr(self.tcx, ty.fn_sig(self.tcx));
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);

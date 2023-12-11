@@ -344,7 +344,7 @@ impl<'tcx> ClosureArgs<'tcx> {
     pub fn sig(self) -> ty::PolyFnSig<'tcx> {
         let ty = self.sig_as_fn_ptr_ty();
         match ty.kind() {
-            ty::FnPtr(sig) => *sig,
+            ty::FnPtr(sig) => sig,
             _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind()),
         }
     }
@@ -1448,7 +1448,7 @@ impl<'tcx> ParamTy {
         Ty::new_param(tcx, self.index, self.name)
     }
 
-    pub fn span_from_generics(&self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {
+    pub fn span_from_generics(self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {
         let generics = tcx.generics_of(item_with_generics);
         let type_param = generics.type_param(self, tcx);
         tcx.def_span(type_param.def_id)
@@ -2262,8 +2262,8 @@ impl<'tcx> Ty<'tcx> {
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
-    pub fn kind(self) -> &'tcx TyKind<'tcx> {
-        self.0.0
+    pub fn kind(self) -> TyKind<'tcx> {
+        **self.0.0
     }
 
     #[inline(always)]
@@ -2307,7 +2307,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ty_vid(self) -> Option<ty::TyVid> {
         match self.kind() {
-            &Infer(TyVar(vid)) => Some(vid),
+            Infer(TyVar(vid)) => Some(vid),
             _ => None,
         }
     }
@@ -2324,13 +2324,13 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_bool(self) -> bool {
-        *self.kind() == Bool
+        matches!(self.kind(), Bool)
     }
 
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(self) -> bool {
-        *self.kind() == Str
+        matches!(self.kind(), Str)
     }
 
     #[inline]
@@ -2370,7 +2370,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
-            Array(ty, _) | Slice(ty) => *ty,
+            Array(ty, _) | Slice(ty) => ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
@@ -2391,7 +2391,7 @@ impl<'tcx> Ty<'tcx> {
                         // The way we evaluate the `N` in `[T; N]` here only works since we use
                         // `simd_size_and_type` post-monomorphization. It will probably start to ICE
                         // if we use it in generic code. See the `simd-array-trait` ui test.
-                        (f0_len.eval_target_usize(tcx, ParamEnv::empty()), *f0_elem_ty)
+                        (f0_len.eval_target_usize(tcx, ParamEnv::empty()), f0_elem_ty)
                     }
                     // Otherwise, the fields of this Adt are the SIMD components (and we assume they
                     // all have the same type).
@@ -2415,7 +2415,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ref_mutability(self) -> Option<hir::Mutability> {
         match self.kind() {
-            Ref(_, _, mutability) => Some(*mutability),
+            Ref(_, _, mutability) => Some(mutability),
             _ => None,
         }
     }
@@ -2590,8 +2590,8 @@ impl<'tcx> Ty<'tcx> {
             Adt(def, _) if def.is_box() => {
                 Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
             }
-            Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
-            RawPtr(mt) if explicit => Some(*mt),
+            Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl }),
+            RawPtr(mt) if explicit => Some(mt),
             _ => None,
         }
     }
@@ -2599,15 +2599,15 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of `ty[i]`.
     pub fn builtin_index(self) -> Option<Ty<'tcx>> {
         match self.kind() {
-            Array(ty, _) | Slice(ty) => Some(*ty),
+            Array(ty, _) | Slice(ty) => Some(ty),
             _ => None,
         }
     }
 
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
-            FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(f) => *f,
+            FnDef(def_id, args) => tcx.fn_sig(def_id).instantiate(tcx, args),
+            FnPtr(f) => f,
             Error(_) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
@@ -2637,7 +2637,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {
-            Adt(adt, _) => Some(*adt),
+            Adt(adt, _) => Some(adt),
             _ => None,
         }
     }
@@ -2660,7 +2660,7 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
             TyKind::Coroutine(def_id, args, _) => {
-                Some(args.as_coroutine().variant_range(*def_id, tcx))
+                Some(args.as_coroutine().variant_range(def_id, tcx))
             }
             _ => None,
         }
@@ -2681,7 +2681,7 @@ impl<'tcx> Ty<'tcx> {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
             TyKind::Coroutine(def_id, args, _) => {
-                Some(args.as_coroutine().discriminant_for_variant(*def_id, tcx, variant_index))
+                Some(args.as_coroutine().discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
         }

@@ -90,12 +90,12 @@ impl<'tcx> ValTree<'tcx> {
                 // `&str` can be interpreted as raw bytes
                 ty::Str => {}
                 // `&[u8]` can be interpreted as raw bytes
-                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
+                ty::Slice(slice_ty) if slice_ty == tcx.types.u8 => {}
                 // other `&_` can't be interpreted as raw bytes
                 _ => return None,
             },
             // `[u8; N]` can be interpreted as raw bytes
-            ty::Array(array_ty, _) if *array_ty == tcx.types.u8 => {}
+            ty::Array(array_ty, _) if array_ty == tcx.types.u8 => {}
             // Otherwise, type cannot be interpreted as raw bytes
             _ => return None,
         }

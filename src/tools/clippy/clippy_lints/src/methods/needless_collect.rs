@@ -225,7 +225,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let sig = cx.tcx.fn_sig(id).instantiate_identity()
         && sig.skip_binder().output().is_bool()
         && let [_, search_ty] = *sig.skip_binder().inputs()
-        && let ty::Ref(_, search_ty, Mutability::Not) = *cx
+        && let ty::Ref(_, search_ty, Mutability::Not) = cx
             .tcx
             .instantiate_bound_regions_with_erased(sig.rebind(search_ty))
             .kind()
@@ -488,14 +488,14 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
     fn get_captured_ids_recursive(cx: &LateContext<'_>, ty: Ty<'_>, set: &mut HirIdSet) {
         match ty.kind() {
             ty::Adt(_, generics) => {
-                for generic in *generics {
+                for generic in generics {
                     if let GenericArgKind::Type(ty) = generic.unpack() {
                         get_captured_ids_recursive(cx, ty, set);
                     }
                 }
             },
             ty::Closure(def_id, _) => {
-                let closure_hir_node = cx.tcx.hir().get_if_local(*def_id).unwrap();
+                let closure_hir_node = cx.tcx.hir().get_if_local(def_id).unwrap();
                 if let Node::Expr(closure_expr) = closure_hir_node {
                     can_move_expr_to_closure(cx, closure_expr)
                         .unwrap()

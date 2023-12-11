@@ -43,7 +43,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Error(_) => true,
 
         // [T; N] and [T] have same properties as T.
-        ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, ty),
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.
@@ -221,7 +221,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, *ety, constraints)
+                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, ety, constraints)
             })?;
         }
 

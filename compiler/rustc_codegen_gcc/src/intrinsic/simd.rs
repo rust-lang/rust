@@ -395,7 +395,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }};
         }
         let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
-            let elem_ty = bx.cx.type_float_from_ty(*f);
+            let elem_ty = bx.cx.type_float_from_ty(f);
             match f.bit_width() {
                 32 => ("f", elem_ty),
                 64 => ("", elem_ty),
@@ -403,7 +403,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     return_error!(InvalidMonomorphization::FloatingPointVector {
                         span,
                         name,
-                        f_ty: *f,
+                        f_ty: f,
                         in_ty
                     });
                 }
@@ -490,7 +490,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         vec_len: u64,
     ) -> Type<'gcc> {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
-        let elem_ty = match *elem_ty.kind() {
+        let elem_ty = match elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),

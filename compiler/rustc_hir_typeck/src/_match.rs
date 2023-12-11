@@ -557,7 +557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let args = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = *ty.kind()
+                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = ty.kind()
                         && def_id == rpit_def_id
                     {
                         Some(args)
@@ -579,7 +579,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let pred = clause.kind().rebind(match clause.kind().skip_binder() {
                             ty::ClauseKind::Trait(trait_pred) => {
                                 assert!(matches!(
-                                    *trait_pred.trait_ref.self_ty().kind(),
+                                    trait_pred.trait_ref.self_ty().kind(),
                                     ty::Alias(ty::Opaque, ty::AliasTy { def_id, args: alias_args, .. })
                                     if def_id == rpit_def_id && args == alias_args
                                 ));
@@ -587,7 +587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             ty::ClauseKind::Projection(mut proj_pred) => {
                                 assert!(matches!(
-                                    *proj_pred.projection_ty.self_ty().kind(),
+                                    proj_pred.projection_ty.self_ty().kind(),
                                     ty::Alias(ty::Opaque, ty::AliasTy { def_id, args: alias_args, .. })
                                     if def_id == rpit_def_id && args == alias_args
                                 ));

@@ -52,7 +52,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                             let obj_ty = cx.typeck_results().expr_ty(obj);
                             if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
                                 if matches!(mutability, Mutability::Not) {
-                                    let copy = is_copy(cx, *ty);
+                                    let copy = is_copy(cx, ty);
                                     lint_explicit_closure(cx, e.span, recv.span, copy, msrv);
                                 }
                             } else {

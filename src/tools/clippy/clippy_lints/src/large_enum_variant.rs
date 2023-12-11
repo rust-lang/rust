@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
             if adt.variants().len() <= 1 {
                 return;
             }
-            let variants_size = AdtVariantInfo::new(cx, *adt, subst);
+            let variants_size = AdtVariantInfo::new(cx, adt, subst);
 
             let mut difference = variants_size[0].size - variants_size[1].size;
             if difference > self.maximum_size_difference_allowed {

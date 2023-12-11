@@ -1,6 +1,5 @@
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -373,7 +372,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match *ty.kind() {
+        match ty.kind() {
             // Basic types, handled above.
             ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
                 unreachable!()
@@ -422,9 +421,12 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 self.push("E");
             }
 
+            ty::Adt(def, args) => {
+                self.print_def_path(def.did(), args)?;
+            }
+
             // Mangle all nominal types as paths.
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
-            | ty::FnDef(def_id, args)
+            ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
             | ty::Coroutine(def_id, args, _) => {
@@ -590,8 +592,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
                 if let ty::Int(ity) = ty.kind() {
-                    let val =
-                        Integer::from_int_ty(&self.tcx, *ity).size().sign_extend(bits) as i128;
+                    let val = Integer::from_int_ty(&self.tcx, ity).size().sign_extend(bits) as i128;
                     if val < 0 {
                         self.push("n");
                     }
@@ -663,7 +664,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     Ok(())
                 };
 
-                match *ct.ty().kind() {
+                match ct.ty().kind() {
                     ty::Array(..) | ty::Slice(_) => {
                         self.push("A");
                         print_field_list(self)?;

@@ -323,7 +323,7 @@ fn emit_orphan_check_error<'tcx>(
                     // That way if we had `Vec<MyType>`, we will properly attribute the
                     // problem to `Vec<T>` and avoid confusing the user if they were to see
                     // `MyType` in the error.
-                    ty::Adt(def, _) => Ty::new_adt(tcx, *def, ty::List::empty()),
+                    ty::Adt(def, _) => Ty::new_adt(tcx, def, ty::List::empty()),
                     _ => ty,
                 };
 
@@ -574,7 +574,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
     }
 
     let self_ty_root = match self_ty.kind() {
-        ty::Adt(def, _) => Ty::new_adt(tcx, *def, GenericArgs::identity_for_item(tcx, def.did())),
+        ty::Adt(def, _) => Ty::new_adt(tcx, def, GenericArgs::identity_for_item(tcx, def.did())),
         _ => unimplemented!("unexpected self ty {:?}", self_ty),
     };
 

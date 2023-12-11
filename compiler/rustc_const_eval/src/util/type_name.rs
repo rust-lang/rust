@@ -1,4 +1,3 @@
-use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::ty::{
@@ -23,7 +22,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
-        match *ty.kind() {
+        match ty.kind() {
             // Types without identity.
             ty::Bool
             | ty::Char
@@ -46,9 +45,10 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
                 Ok(())
             }
 
+            ty::Adt(def, args) => self.print_def_path(def.did(), args),
+
             // Types with identity (print the module path).
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
-            | ty::FnDef(def_id, args)
+            ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
             | ty::Coroutine(def_id, args, _) => self.print_def_path(def_id, args),

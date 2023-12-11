@@ -109,7 +109,7 @@ pub fn simplify_type<'tcx>(
     ty: Ty<'tcx>,
     treat_params: TreatParams,
 ) -> Option<SimplifiedType> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Bool => Some(SimplifiedType::Bool),
         ty::Char => Some(SimplifiedType::Char),
         ty::Int(int_type) => Some(SimplifiedType::Int(int_type)),
@@ -242,7 +242,7 @@ impl DeepRejectCtxt {
         }
 
         let k = impl_ty.kind();
-        match *obligation_ty.kind() {
+        match obligation_ty.kind() {
             // Purely rigid types, use structural equivalence.
             ty::Bool
             | ty::Char
@@ -253,29 +253,29 @@ impl DeepRejectCtxt {
             | ty::Never
             | ty::Foreign(_) => obligation_ty == impl_ty,
             ty::Ref(_, obl_ty, obl_mutbl) => match k {
-                &ty::Ref(_, impl_ty, impl_mutbl) => {
+                ty::Ref(_, impl_ty, impl_mutbl) => {
                     obl_mutbl == impl_mutbl && self.types_may_unify(obl_ty, impl_ty)
                 }
                 _ => false,
             },
             ty::Adt(obl_def, obl_args) => match k {
-                &ty::Adt(impl_def, impl_args) => {
+                ty::Adt(impl_def, impl_args) => {
                     obl_def == impl_def && self.args_may_unify(obl_args, impl_args)
                 }
                 _ => false,
             },
             ty::Slice(obl_ty) => {
-                matches!(k, &ty::Slice(impl_ty) if self.types_may_unify(obl_ty, impl_ty))
+                matches!(k, ty::Slice(impl_ty) if self.types_may_unify(obl_ty, impl_ty))
             }
             ty::Array(obl_ty, obl_len) => match k {
-                &ty::Array(impl_ty, impl_len) => {
+                ty::Array(impl_ty, impl_len) => {
                     self.types_may_unify(obl_ty, impl_ty)
                         && self.consts_may_unify(obl_len, impl_len)
                 }
                 _ => false,
             },
             ty::Tuple(obl) => match k {
-                &ty::Tuple(imp) => {
+                ty::Tuple(imp) => {
                     obl.len() == imp.len()
                         && iter::zip(obl, imp).all(|(obl, imp)| self.types_may_unify(obl, imp))
                 }

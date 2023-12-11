@@ -1370,7 +1370,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 let self_arg_ty = sig.input(0).skip_binder();
                 if self_arg_ty == self_ty {
                     decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
-                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
+                } else if let ty::Ref(_, ty, _) = self_arg_ty.kind() {
                     if ty == self_ty {
                         match decl.inputs.values[0].type_ {
                             BorrowedRef { ref mut type_, .. } => **type_ = Generic(kw::SelfUpper),
@@ -2064,7 +2064,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
     container: Option<ContainerTy<'tcx>>,
 ) -> Type {
     let bound_ty = normalize(cx, bound_ty).unwrap_or(bound_ty);
-    match *bound_ty.skip_binder().kind() {
+    match bound_ty.skip_binder().kind() {
         ty::Never => Primitive(PrimitiveType::Never),
         ty::Bool => Primitive(PrimitiveType::Bool),
         ty::Char => Primitive(PrimitiveType::Char),
@@ -2243,7 +2243,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
-        ty::Param(ref p) => {
+        ty::Param(p) => {
             if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
                 ImplTrait(bounds)
             } else {
@@ -2251,7 +2251,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
-        ty::Bound(_, ref ty) => match ty.kind {
+        ty::Bound(_, ty) => match ty.kind {
             ty::BoundTyKind::Param(_, name) => Generic(name),
             ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
         },
@@ -2411,7 +2411,7 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
 
 pub(crate) fn clean_variant_def_with_args<'tcx>(
     variant: &ty::VariantDef,
-    args: &GenericArgsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Item {
     let discriminant = match variant.discr {

@@ -21,7 +21,7 @@ pub(crate) fn unsized_info<'tcx>(
     let (source, target) =
         fx.tcx.struct_lockstep_tails_erasing_lifetimes(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
-        (&ty::Array(_, len), &ty::Slice(_)) => fx
+        (ty::Array(_, len), ty::Slice(_)) => fx
             .bcx
             .ins()
             .iconst(fx.pointer_type, len.eval_target_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
@@ -67,16 +67,16 @@ fn unsize_ptr<'tcx>(
     old_info: Option<Value>,
 ) -> (Value, Value) {
     match (&src_layout.ty.kind(), &dst_layout.ty.kind()) {
-        (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
-        | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
-        | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
+        (ty::Ref(_, a, _), ty::Ref(_, b, _))
+        | (ty::Ref(_, a, _), ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
+        | (ty::RawPtr(ty::TypeAndMut { ty: a, .. }), ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             (src, unsized_info(fx, *a, *b, old_info))
         }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_layout.ty.boxed_ty(), dst_layout.ty.boxed_ty());
             (src, unsized_info(fx, a, b, old_info))
         }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             if src_layout == dst_layout {
@@ -141,10 +141,10 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         dst.write_cvalue(fx, CValue::by_val_pair(base, info, dst.layout()));
     };
     match (&src_ty.kind(), &dst_ty.kind()) {
-        (&ty::Ref(..), &ty::Ref(..))
-        | (&ty::Ref(..), &ty::RawPtr(..))
-        | (&ty::RawPtr(..), &ty::RawPtr(..)) => coerce_ptr(),
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+        (ty::Ref(..), ty::Ref(..))
+        | (ty::Ref(..), ty::RawPtr(..))
+        | (ty::RawPtr(..), ty::RawPtr(..)) => coerce_ptr(),
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {

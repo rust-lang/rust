@@ -254,7 +254,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for (original_value, result_value) in iter::zip(original_values, var_values.var_values) {
             match result_value.unpack() {
                 GenericArgKind::Type(t) => {
-                    if let &ty::Bound(debruijn, b) = t.kind() {
+                    if let ty::Bound(debruijn, b) = t.kind() {
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.var] = Some(*original_value);
                     }

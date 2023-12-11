@@ -247,7 +247,7 @@ where
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
-        let g = match *t.kind() {
+        let g = match t.kind() {
             ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
                 if D::forbid_inference_vars() =>
             {

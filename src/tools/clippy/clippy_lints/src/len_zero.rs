@@ -349,7 +349,7 @@ fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<Le
         return None;
     }
 
-    match *sig.output().kind() {
+    match sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
         ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) => {
             subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did()))
@@ -373,9 +373,9 @@ impl LenOutput {
         }
 
         match (self, ty.kind()) {
-            (_, &ty::Bool) => true,
-            (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
-            (Self::Result(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
+            (_, ty::Bool) => true,
+            (Self::Option(id), ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
+            (Self::Result(id), ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
             _ => false,
         }
     }

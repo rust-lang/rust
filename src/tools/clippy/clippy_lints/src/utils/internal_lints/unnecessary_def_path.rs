@@ -244,7 +244,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
 }
 
 fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation, ty: Ty<'_>) -> Option<Vec<String>> {
-    let (alloc, ty) = if let ty::Ref(_, ty, Mutability::Not) = *ty.kind() {
+    let (alloc, ty) = if let ty::Ref(_, ty, Mutability::Not) = ty.kind() {
         let &alloc = alloc.provenance().ptrs().values().next()?;
         if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc) {
             (alloc.inner(), ty)
@@ -255,8 +255,8 @@ fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation
         (alloc, ty)
     };
 
-    if let ty::Array(ty, _) | ty::Slice(ty) = *ty.kind()
-        && let ty::Ref(_, ty, Mutability::Not) = *ty.kind()
+    if let ty::Array(ty, _) | ty::Slice(ty) = ty.kind()
+        && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
         && ty.is_str()
     {
         alloc

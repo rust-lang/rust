@@ -53,7 +53,7 @@ pub enum NotUniqueParam<'tcx> {
 
 impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self.ty.kind() {
+        match self.ty.kind() {
             ty::Int(ity) => {
                 let size = ty::tls::with(|tcx| Integer::from_int_ty(&tcx, ity).size());
                 let x = self.val;
@@ -227,7 +227,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     self.sess.emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
                 return Ty::new_error(self, reported);
             }
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Adt(def, args) => {
                     if !def.is_struct() {
                         break;
@@ -303,7 +303,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let (mut a, mut b) = (source, target);
         loop {
             match (&a.kind(), &b.kind()) {
-                (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
+                (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args))
                     if a_def == b_def && a_def.is_struct() =>
                 {
                     if let Some(f) = a_def.non_enum_variant().tail_opt() {
@@ -313,7 +313,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         break;
                     }
                 }
-                (&ty::Tuple(a_tys), &ty::Tuple(b_tys)) if a_tys.len() == b_tys.len() => {
+                (ty::Tuple(a_tys), ty::Tuple(b_tys)) if a_tys.len() == b_tys.len() => {
                     if let Some(&a_last) = a_tys.last() {
                         a = a_last;
                         b = *b_tys.last().unwrap();
@@ -419,12 +419,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // <P1, P2, P0>, and then look up which of the impl args refer to
         // parameters marked as pure.
 
-        let impl_args = match *self.type_of(impl_def_id).instantiate_identity().kind() {
+        let impl_args = match self.type_of(impl_def_id).instantiate_identity().kind() {
             ty::Adt(def_, args) if def_ == def => args,
             _ => bug!(),
         };
 
-        let item_args = match *self.type_of(def.did()).instantiate_identity().kind() {
+        let item_args = match self.type_of(def.did()).instantiate_identity().kind() {
             ty::Adt(def_, args) if def_ == def => args,
             _ => bug!(),
         };
@@ -433,19 +433,19 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
-                        ty::ReEarlyParam(ref ebr) => {
+                        ty::ReEarlyParam(ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
                         }
                         // Error: not a region param
                         _ => false,
                     },
                     GenericArgKind::Type(ty) => match ty.kind() {
-                        ty::Param(ref pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
+                        ty::Param(pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
                         // Error: not a type param
                         _ => false,
                     },
                     GenericArgKind::Const(ct) => match ct.kind() {
-                        ty::ConstKind::Param(ref pc) => {
+                        ty::ConstKind::Param(pc) => {
                             !impl_generics.const_param(pc, self).pure_wrt_drop
                         }
                         // Error: not a const param
@@ -924,7 +924,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        let mut t = if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = *t.kind() {
+        let mut t = if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = t.kind() {
             self.expand_opaque_ty(def_id, args).unwrap_or(t)
         } else if t.has_opaque_types() || t.has_coroutines() {
             t.super_fold_with(self)
@@ -932,7 +932,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
             t
         };
         if self.expand_coroutines {
-            if let ty::CoroutineWitness(def_id, args) = *t.kind() {
+            if let ty::CoroutineWitness(def_id, args) = t.kind() {
                 t = self.expand_coroutine(def_id, args).unwrap_or(t);
             }
         }
@@ -963,7 +963,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 impl<'tcx> Ty<'tcx> {
     /// Returns the `Size` for primitive types (bool, uint, int, char, float).
     pub fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
-        match *self.kind() {
+        match self.kind() {
             ty::Bool => Size::from_bytes(1),
             ty::Char => Size::from_bytes(4),
             ty::Int(ity) => Integer::from_int_ty(&tcx, ity).size(),
@@ -975,7 +975,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     pub fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
-        match *self.kind() {
+        match self.kind() {
             ty::Int(ity) => (Integer::from_int_ty(&tcx, ity).size(), true),
             ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty).size(), false),
             _ => bug!("non integer discriminant"),
@@ -1263,7 +1263,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn peel_refs(self) -> Ty<'tcx> {
         let mut ty = self;
         while let ty::Ref(_, inner_ty, _) = ty.kind() {
-            ty = *inner_ty;
+            ty = inner_ty;
         }
         ty
     }
@@ -1313,7 +1313,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     {
         use self::ExplicitSelf::*;
 
-        match *self_arg_ty.kind() {
+        match self_arg_ty.kind() {
             _ if is_self_ty(self_arg_ty) => ByValue,
             ty::Ref(region, ty, mutbl) if is_self_ty(ty) => ByReference(region, mutbl),
             ty::RawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => ByRawPointer(mutbl),
@@ -1330,7 +1330,7 @@ pub fn needs_drop_components<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
         | ty::Bool
@@ -1386,7 +1386,7 @@ pub fn needs_drop_components<'tcx>(
 }
 
 pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Bool
         | ty::Char
         | ty::Int(_)

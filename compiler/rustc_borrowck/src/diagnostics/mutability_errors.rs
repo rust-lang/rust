@@ -375,7 +375,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if suggest {
                     self.construct_mut_suggestion_for_local_binding_patterns(&mut err, local);
                     let tcx = self.infcx.tcx;
-                    if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
+                    if let ty::Closure(id, _) = the_place_err.ty(self.body, tcx).ty.kind() {
                         self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                     }
                 }
@@ -429,7 +429,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let tcx = self.infcx.tcx;
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
-                    && let ty::Closure(id, _) = *ty.kind()
+                    && let ty::Closure(id, _) = ty.kind()
                 {
                     self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                 }
@@ -958,7 +958,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if let Some(ty::FnDef(def_id, _)) =
                 tables.node_type_opt(func.hir_id).as_ref().map(|ty| ty.kind())
             {
-                let arg = match hir.get_if_local(*def_id) {
+                let arg = match hir.get_if_local(def_id) {
                     Some(
                         hir::Node::Item(hir::Item {
                             ident, kind: hir::ItemKind::Fn(sig, ..), ..

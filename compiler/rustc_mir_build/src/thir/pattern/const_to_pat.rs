@@ -370,7 +370,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let variant_index =
                     VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
                 PatKind::Variant {
-                    adt_def: *adt_def,
+                    adt_def,
                     args,
                     variant_index,
                     subpatterns: self.field_pats(
@@ -404,7 +404,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.recur(*val, *elem_ty, false))
+                    .map(|val| self.recur(*val, elem_ty, false))
                     .collect::<Result<_, _>>()?,
                 slice: None,
                 suffix: Box::new([]),
@@ -413,12 +413,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.recur(*val, *elem_ty, false))
+                    .map(|val| self.recur(*val, elem_ty, false))
                     .collect::<Result<_, _>>()?,
                 slice: None,
                 suffix: Box::new([]),
             },
-            ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
+            ty::Ref(_, pointee_ty, ..) => match pointee_ty.kind() {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
                 ty::Str => {
@@ -429,7 +429,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // the fallback code path below, but that would allow *more* of this fishy
                 // code to compile, as then it only goes through the future incompat lint
                 // instead of a hard error.
-                ty::Adt(_, _) if !self.type_marked_structural(*pointee_ty) => {
+                ty::Adt(_, _) if !self.type_marked_structural(pointee_ty) => {
                     if self.behind_reference.get() {
                         if self.saw_const_match_error.get().is_none()
                             && !self.saw_const_match_lint.get()
@@ -439,7 +439,7 @@ impl<'tcx> ConstToPat<'tcx> {
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
                                 span,
-                                IndirectStructuralMatch { non_sm_ty: *pointee_ty },
+                                IndirectStructuralMatch { non_sm_ty: pointee_ty },
                             );
                         }
                         return Err(FallbackToOpaqueConst);
@@ -448,7 +448,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             // We already errored. Signal that in the pattern, so that follow up errors can be silenced.
                             PatKind::Error(e)
                         } else {
-                            let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
+                            let err = TypeNotStructural { span, non_sm_ty: pointee_ty };
                             let e = tcx.sess.emit_err(err);
                             self.saw_const_match_error.set(Some(e));
                             // We errored. Signal that in the pattern, so that follow up errors can be silenced.
@@ -461,7 +461,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // deref pattern.
                 _ => {
                     if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
-                        let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
+                        let err = UnsizedPattern { span, non_sm_ty: pointee_ty };
                         let e = tcx.sess.emit_err(err);
                         // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                         PatKind::Error(e)
@@ -473,11 +473,11 @@ impl<'tcx> ConstToPat<'tcx> {
                         // as slices. This means we turn `&[T; N]` constants into slice patterns, which
                         // has no negative effects on pattern matching, even if we're actually matching on
                         // arrays.
-                        let pointee_ty = match *pointee_ty.kind() {
+                        let pointee_ty = match pointee_ty.kind() {
                             ty::Array(elem_ty, _) if self.treat_byte_string_as_slice => {
                                 Ty::new_slice(tcx, elem_ty)
                             }
-                            _ => *pointee_ty,
+                            _ => pointee_ty,
                         };
                         // References have the same valtree representation as their pointee.
                         let subpattern = self.recur(cv, pointee_ty, false)?;

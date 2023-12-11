@@ -65,7 +65,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         match (a.kind(), b.kind()) {
             // Relate integral variables to other types
-            (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
+            (ty::Infer(ty::IntVar(a_id)), ty::Infer(ty::IntVar(b_id))) => {
                 self.inner
                     .borrow_mut()
                     .int_unification_table()
@@ -73,21 +73,21 @@ impl<'tcx> InferCtxt<'tcx> {
                     .map_err(|e| int_unification_error(a_is_expected, e))?;
                 Ok(a)
             }
-            (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
+            (ty::Infer(ty::IntVar(v_id)), ty::Int(v)) => {
                 self.unify_integral_variable(a_is_expected, v_id, IntType(v))
             }
-            (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
+            (ty::Int(v), ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(!a_is_expected, v_id, IntType(v))
             }
-            (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
+            (ty::Infer(ty::IntVar(v_id)), ty::Uint(v)) => {
                 self.unify_integral_variable(a_is_expected, v_id, UintType(v))
             }
-            (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
+            (ty::Uint(v), ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(!a_is_expected, v_id, UintType(v))
             }
 
             // Relate floating-point variables to other types
-            (&ty::Infer(ty::FloatVar(a_id)), &ty::Infer(ty::FloatVar(b_id))) => {
+            (ty::Infer(ty::FloatVar(a_id)), ty::Infer(ty::FloatVar(b_id))) => {
                 self.inner
                     .borrow_mut()
                     .float_unification_table()
@@ -95,10 +95,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     .map_err(|e| float_unification_error(a_is_expected, e))?;
                 Ok(a)
             }
-            (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
+            (ty::Infer(ty::FloatVar(v_id)), ty::Float(v)) => {
                 self.unify_float_variable(a_is_expected, v_id, v)
             }
-            (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
+            (ty::Float(v), ty::Infer(ty::FloatVar(v_id))) => {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 
@@ -120,7 +120,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             // All other cases of inference are errors
-            (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
+            (ty::Infer(_), _) | (_, ty::Infer(_)) => {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
             }
 
@@ -128,7 +128,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // equal to any other type (except for possibly itself). This is an
             // extremely heavy hammer, but can be relaxed in a fowards-compatible
             // way later.
-            (&ty::Alias(ty::Opaque, _), _) | (_, &ty::Alias(ty::Opaque, _)) if self.intercrate => {
+            (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) if self.intercrate => {
                 relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                 Ok(a)
             }
@@ -461,7 +461,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         )?;
 
         // Constrain `b_vid` to the generalized type `b_ty`.
-        if let &ty::Infer(TyVar(b_ty_vid)) = b_ty.kind() {
+        if let ty::Infer(TyVar(b_ty_vid)) = b_ty.kind() {
             self.infcx.inner.borrow_mut().type_variables().equate(b_vid, b_ty_vid);
         } else {
             self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
@@ -511,7 +511,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                 ));
             } else {
                 match a_ty.kind() {
-                    &ty::Alias(ty::AliasKind::Projection, data) => {
+                    ty::Alias(ty::AliasKind::Projection, data) => {
                         // FIXME: This does not handle subtyping correctly, we could
                         // instead create a new inference variable for `a_ty`, emitting
                         // `Projection(a_ty, a_infer)` and `a_infer <: b_ty`.

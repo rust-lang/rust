@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             && let ty = cx.typeck_results().expr_ty(await_expr)
             && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: future_def_id, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
-            && let async_fn_def_id = cx.tcx.parent(*future_def_id)
+            && let async_fn_def_id = cx.tcx.parent(future_def_id)
             && matches!(cx.tcx.def_kind(async_fn_def_id), DefKind::Fn | DefKind::AssocFn)
             // Check that this `impl Future` actually comes from an `async fn`
             && cx.tcx.asyncness(async_fn_def_id).is_async()
@@ -279,7 +279,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 return Some(MustUsePath::Suppressed);
             }
 
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Adt(..) if ty.is_box() => {
                     let boxed_ty = ty.boxed_ty();
                     is_ty_must_use(cx, boxed_ty, expr, span)

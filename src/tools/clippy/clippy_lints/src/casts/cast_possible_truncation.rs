@@ -122,10 +122,10 @@ pub(super) fn check(
             {
                 let i = def.variant_index_with_ctor_id(id);
                 let variant = def.variant(i);
-                let nbits = utils::enum_value_nbits(get_discriminant_value(cx.tcx, *def, i));
+                let nbits = utils::enum_value_nbits(get_discriminant_value(cx.tcx, def, i));
                 (nbits, Some(variant))
             } else {
-                (utils::enum_ty_to_nbits(*def, cx.tcx), None)
+                (utils::enum_ty_to_nbits(def, cx.tcx), None)
             };
             let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
@@ -157,7 +157,7 @@ pub(super) fn check(
             format!("casting `{cast_from}` to `{cast_to}` may truncate the value")
         },
 
-        (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {
+        (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), ty::Float(FloatTy::F32)) => {
             "casting `f64` to `f32` may truncate the value".to_string()
         },
 

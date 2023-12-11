@@ -321,7 +321,7 @@ where
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
             ty::Array(inner, _) => {
-                (MemPlaceMeta::None, Ty::new_array(self.tcx.tcx, *inner, inner_len))
+                (MemPlaceMeta::None, Ty::new_array(self.tcx.tcx, inner, inner_len))
             }
             ty::Slice(..) => {
                 let len = Scalar::from_target_usize(inner_len, self);

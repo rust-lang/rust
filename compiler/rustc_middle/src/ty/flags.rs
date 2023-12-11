@@ -16,7 +16,7 @@ impl FlagComputation {
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
-    pub fn for_kind(kind: &ty::TyKind<'_>) -> FlagComputation {
+    pub fn for_kind(kind: ty::TyKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_kind(kind);
         result
@@ -28,7 +28,7 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_const(c: &ty::ConstKind<'_>, t: Ty<'_>) -> FlagComputation {
+    pub fn for_const(c: ty::ConstKind<'_>, t: Ty<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_const_kind(c);
         result.add_ty(t);
@@ -78,20 +78,20 @@ impl FlagComputation {
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
-    fn add_kind(&mut self, kind: &ty::TyKind<'_>) {
+    fn add_kind(&mut self, kind: ty::TyKind<'_>) {
         match kind {
-            &ty::Bool
-            | &ty::Char
-            | &ty::Int(_)
-            | &ty::Float(_)
-            | &ty::Uint(_)
-            | &ty::Never
-            | &ty::Str
-            | &ty::Foreign(..) => {}
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Float(_)
+            | ty::Uint(_)
+            | ty::Never
+            | ty::Str
+            | ty::Foreign(..) => {}
 
-            &ty::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
+            ty::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
 
-            &ty::Param(_) => {
+            ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
@@ -122,7 +122,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_TY_COROUTINE);
             }
 
-            &ty::Closure(_, args) => {
+            ty::Closure(_, args) => {
                 let args = args.as_closure();
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
@@ -136,17 +136,17 @@ impl FlagComputation {
                 self.add_ty(args.tupled_upvars_ty());
             }
 
-            &ty::Bound(debruijn, _) => {
+            ty::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
                 self.add_flags(TypeFlags::HAS_TY_BOUND);
             }
 
-            &ty::Placeholder(..) => {
+            ty::Placeholder(..) => {
                 self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            &ty::Infer(infer) => {
+            ty::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
@@ -159,11 +159,11 @@ impl FlagComputation {
                 }
             }
 
-            &ty::Adt(_, args) => {
+            ty::Adt(_, args) => {
                 self.add_args(args);
             }
 
-            &ty::Alias(kind, data) => {
+            ty::Alias(kind, data) => {
                 self.add_flags(match kind {
                     ty::Weak | ty::Projection => TypeFlags::HAS_TY_PROJECTION,
                     ty::Inherent => TypeFlags::HAS_TY_INHERENT,
@@ -173,7 +173,7 @@ impl FlagComputation {
                 self.add_alias_ty(data);
             }
 
-            &ty::Dynamic(obj, r, _) => {
+            ty::Dynamic(obj, r, _) => {
                 for predicate in obj.iter() {
                     self.bound_computation(predicate, |computation, predicate| match predicate {
                         ty::ExistentialPredicate::Trait(tr) => computation.add_args(tr.args),
@@ -187,31 +187,31 @@ impl FlagComputation {
                 self.add_region(r);
             }
 
-            &ty::Array(tt, len) => {
+            ty::Array(tt, len) => {
                 self.add_ty(tt);
                 self.add_const(len);
             }
 
-            &ty::Slice(tt) => self.add_ty(tt),
+            ty::Slice(tt) => self.add_ty(tt),
 
             ty::RawPtr(m) => {
                 self.add_ty(m.ty);
             }
 
-            &ty::Ref(r, ty, _) => {
+            ty::Ref(r, ty, _) => {
                 self.add_region(r);
                 self.add_ty(ty);
             }
 
-            &ty::Tuple(types) => {
+            ty::Tuple(types) => {
                 self.add_tys(types);
             }
 
-            &ty::FnDef(_, args) => {
+            ty::FnDef(_, args) => {
                 self.add_args(args);
             }
 
-            &ty::FnPtr(fn_sig) => self.bound_computation(fn_sig, |computation, fn_sig| {
+            ty::FnPtr(fn_sig) => self.bound_computation(fn_sig, |computation, fn_sig| {
                 computation.add_tys(fn_sig.inputs());
                 computation.add_ty(fn_sig.output());
             }),
@@ -306,8 +306,8 @@ impl FlagComputation {
         self.add_exclusive_binder(c.outer_exclusive_binder());
     }
 
-    fn add_const_kind(&mut self, c: &ty::ConstKind<'_>) {
-        match *c {
+    fn add_const_kind(&mut self, c: ty::ConstKind<'_>) {
+        match c {
             ty::ConstKind::Unevaluated(uv) => {
                 self.add_args(uv.args);
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);

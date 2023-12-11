@@ -37,7 +37,7 @@ fn representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
 }
 
 fn representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(..) => tcx.representability_adt_ty(ty),
         // FIXME(#11924) allow zero-length arrays?
         ty::Array(ty, _) => representability_ty(tcx, ty),
@@ -102,7 +102,7 @@ fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BitSet<u32> {
 }
 
 fn params_in_repr_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, params_in_repr: &mut BitSet<u32>) {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(adt, args) => {
             let inner_params_in_repr = tcx.params_in_repr(adt.did());
             for (i, subst) in args.iter().enumerate() {

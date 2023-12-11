@@ -594,7 +594,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> bool {
         let term_is_infer = match goal.predicate.term.unpack() {
             ty::TermKind::Ty(ty) => {
-                if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
+                if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
                     match self.infcx.probe_ty_var(vid) {
                         Ok(value) => bug!("resolved var in query: {goal:?} {value:?}"),
                         Err(universe) => universe == self.infcx.universe(),

@@ -861,7 +861,7 @@ where
             Err(err) => return ControlFlow::Break(OrphanCheckEarlyExit::NormalizationFailure(err)),
         };
 
-        let result = match *ty.kind() {
+        let result = match ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)

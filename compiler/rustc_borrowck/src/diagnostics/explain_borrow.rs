@@ -314,7 +314,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
             let mut has_dyn = false;
             let mut failed = false;
 
-            let elaborated_args = std::iter::zip(*args, &generics.params).map(|(arg, param)| {
+            let elaborated_args = std::iter::zip(args, &generics.params).map(|(arg, param)| {
                 if let Some(ty::Dynamic(obj, _, ty::DynKind::Dyn)) = arg.as_type().map(Ty::kind) {
                     let default = tcx.object_lifetime_default(param.def_id);
 
@@ -344,7 +344,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     arg
                 }
             });
-            let elaborated_ty = Ty::new_adt(tcx, *def, tcx.mk_args_from_iter(elaborated_args));
+            let elaborated_ty = Ty::new_adt(tcx, def, tcx.mk_args_from_iter(elaborated_args));
 
             if has_dyn && !failed {
                 err.note(format!(

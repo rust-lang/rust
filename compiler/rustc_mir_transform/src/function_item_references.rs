@@ -40,7 +40,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
         {
             let source_info = *self.body.source_info(location);
             let func_ty = func.ty(self.body, self.tcx);
-            if let ty::FnDef(def_id, args_ref) = *func_ty.kind() {
+            if let ty::FnDef(def_id, args_ref) = func_ty.kind() {
                 // Handle calls to `transmute`
                 if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
                     let arg_ty = args[0].ty(self.body, self.tcx);
@@ -120,12 +120,12 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     fn is_fn_ref(ty: Ty<'tcx>) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let referent_ty = match ty.kind() {
             ty::Ref(_, referent_ty, _) => Some(referent_ty),
-            ty::RawPtr(ty_and_mut) => Some(&ty_and_mut.ty),
+            ty::RawPtr(ty_and_mut) => Some(ty_and_mut.ty),
             _ => None,
         };
         referent_ty
             .map(|ref_ty| {
-                if let ty::FnDef(def_id, args_ref) = *ref_ty.kind() {
+                if let ty::FnDef(def_id, args_ref) = ref_ty.kind() {
                     Some((def_id, args_ref))
                 } else {
                     None

@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             }
 
             // Emit lint diagnostic.
-            let target = match *target.kind() {
+            let target = match target.kind() {
                 ty::Ref(_, inner_ty, _) if inner_ty.is_array() => "[T; N]",
                 ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Slice(..)) => "[T]",
                 // We know the original first argument type is an array type,

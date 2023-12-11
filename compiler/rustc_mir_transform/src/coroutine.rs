@@ -272,8 +272,8 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
             // `async gen` continues to return `Poll::Ready(None)`
             CoroutineKind::AsyncGen(_) => {
-                let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
-                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                let ty::Adt(_poll_adt, args) = self.old_yield_ty.kind() else { bug!() };
+                let ty::Adt(_option_adt, args) = args.type_at(0).kind() else { bug!() };
                 let yield_ty = args.type_at(0);
                 Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                     span: source_info.span,
@@ -376,8 +376,8 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
             CoroutineKind::AsyncGen(_) => {
                 if is_return {
-                    let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
-                    let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                    let ty::Adt(_poll_adt, args) = self.old_yield_ty.kind() else { bug!() };
+                    let ty::Adt(_option_adt, args) = args.type_at(0).kind() else { bug!() };
                     let yield_ty = args.type_at(0);
                     Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                         span: source_info.span,
@@ -638,7 +638,7 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         match &bb_data.terminator().kind {
             TerminatorKind::Call { func, .. } => {
                 let func_ty = func.ty(body, tcx);
-                if let ty::FnDef(def_id, _) = *func_ty.kind() {
+                if let ty::FnDef(def_id, _) = func_ty.kind() {
                     if def_id == get_context_def_id {
                         let local = eliminate_get_context_call(&mut body[bb]);
                         replace_resume_ty_local(tcx, body, local, context_mut_ref);
@@ -691,7 +691,7 @@ fn replace_resume_ty_local<'tcx>(
     {
         if let ty::Adt(resume_ty_adt, _) = local_ty.kind() {
             let expected_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
-            assert_eq!(*resume_ty_adt, expected_adt);
+            assert_eq!(resume_ty_adt, expected_adt);
         } else {
             panic!("expected `ResumeTy`, found `{:?}`", local_ty);
         };
@@ -1553,7 +1553,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // The first argument is the coroutine type passed by value
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    let movable = match *coroutine_ty.kind() {
+    let movable = match coroutine_ty.kind() {
         ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
@@ -1588,7 +1588,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let coroutine_ty = body.local_decls.raw[1].ty;
 
         // Get the discriminant type and args which typeck computed
-        let (discr_ty, movable) = match *coroutine_ty.kind() {
+        let (discr_ty, movable) = match coroutine_ty.kind() {
             ty::Coroutine(_, args, movability) => {
                 let args = args.as_coroutine();
                 (args.discr_ty(tcx), movability == hir::Movability::Movable)
@@ -1949,7 +1949,7 @@ fn check_must_not_suspend_ty<'tcx>(
 
     debug!("Checking must_not_suspend for {}", ty);
 
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(..) if ty.is_box() => {
             let boxed_ty = ty.boxed_ty();
             let descr_pre = &format!("{}boxed ", data.descr_pre);

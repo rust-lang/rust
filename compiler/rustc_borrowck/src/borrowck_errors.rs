@@ -285,8 +285,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         is_index: Option<bool>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         let type_name = match (&ty.kind(), is_index) {
-            (&ty::Array(_, _), Some(true)) | (&ty::Array(_, _), None) => "array",
-            (&ty::Slice(_), _) => "slice",
+            (ty::Array(_, _), Some(true)) | (ty::Array(_, _), None) => "array",
+            (ty::Slice(_), _) => "slice",
             _ => span_bug!(move_from_span, "this path should not cause illegal move"),
         };
         let mut err = struct_span_err!(

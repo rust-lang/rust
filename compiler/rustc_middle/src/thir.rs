@@ -835,7 +835,7 @@ impl<'tcx> PatRange<'tcx> {
     /// Whether this range covers the full extent of possible values (best-effort, we ignore floats).
     #[inline]
     pub fn is_full_range(&self, tcx: TyCtxt<'tcx>) -> Option<bool> {
-        let (min, max, size, bias) = match *self.ty.kind() {
+        let (min, max, size, bias) = match self.ty.kind() {
             ty::Char => (0, std::char::MAX as u128, Size::from_bits(32), 0),
             ty::Int(ity) => {
                 let size = Integer::from_int_ty(&tcx, ity).size();
@@ -1048,7 +1048,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             }
             ty::Int(ity) => {
                 use rustc_middle::ty::layout::IntegerExt;
-                let size = rustc_target::abi::Integer::from_int_ty(&tcx, *ity).size();
+                let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
                 let a = size.sign_extend(a) as i128;
                 let b = size.sign_extend(b) as i128;
                 Some(a.cmp(&b))

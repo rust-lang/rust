@@ -83,26 +83,26 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
 
         match (a.kind(), b.kind()) {
-            (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
+            (ty::Infer(TyVar(a_id)), ty::Infer(TyVar(b_id))) => {
                 infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
             }
 
-            (&ty::Infer(TyVar(a_id)), _) => {
+            (ty::Infer(TyVar(a_id)), _) => {
                 self.fields.instantiate(b, ty::Invariant, a_id, self.a_is_expected)?;
             }
 
-            (_, &ty::Infer(TyVar(b_id))) => {
+            (_, ty::Infer(TyVar(b_id))) => {
                 self.fields.instantiate(a, ty::Invariant, b_id, self.a_is_expected)?;
             }
 
             (
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;
             }
-            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
-            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+            (ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
                     && def_id.is_local()
                     && !self.fields.infcx.next_trait_solver() =>

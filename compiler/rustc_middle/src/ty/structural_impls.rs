@@ -144,7 +144,7 @@ impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
 }
 impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Debug::fmt(self.kind(), f))
+        with_no_trimmed_paths!(fmt::Debug::fmt(&self.kind(), f))
     }
 }
 
@@ -563,7 +563,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let kind = match *self.kind() {
+        let kind = match self.kind() {
             ty::RawPtr(tm) => ty::RawPtr(tm.try_fold_with(folder)?),
             ty::Array(typ, sz) => ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?),
             ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
@@ -603,7 +603,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Foreign(..) => return Ok(self),
         };
 
-        Ok(if *self.kind() == kind { self } else { folder.interner().mk_ty_from_kind(kind) })
+        Ok(if self.kind() == kind { self } else { folder.interner().mk_ty_from_kind(kind) })
     }
 }
 

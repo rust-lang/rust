@@ -31,7 +31,7 @@ where
                 return ControlFlow::Continue(());
             }
 
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Param(_) => ControlFlow::Break(FoundParam),
                 ty::Closure(def_id, args)
                 | ty::Coroutine(def_id, args, ..)

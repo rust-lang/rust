@@ -31,7 +31,7 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         // Compound types: recurse
         ty::Array(ty, _) | ty::Slice(ty) => {
             // This does not branch so we keep the depth the same.
-            may_contain_reference(*ty, depth, tcx)
+            may_contain_reference(ty, depth, tcx)
         }
         ty::Tuple(tys) => {
             depth == 0 || tys.iter().any(|ty| may_contain_reference(ty, depth - 1, tcx))

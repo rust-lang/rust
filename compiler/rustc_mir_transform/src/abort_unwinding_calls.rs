@@ -63,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     let sig = ty.fn_sig(tcx);
                     let fn_def_id = match ty.kind() {
                         ty::FnPtr(_) => None,
-                        &ty::FnDef(def_id, _) => Some(def_id),
+                        ty::FnDef(def_id, _) => Some(def_id),
                         _ => span_bug!(span, "invalid callee of type {:?}", ty),
                     };
                     layout::fn_can_unwind(tcx, fn_def_id, sig.abi())

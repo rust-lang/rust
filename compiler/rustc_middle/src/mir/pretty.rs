@@ -1216,7 +1216,7 @@ impl<'tcx> ExtraComments<'tcx> {
 }
 
 fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
@@ -1682,13 +1682,13 @@ fn pretty_print_const_value_tcx<'tcx>(
                 return Ok(());
             }
         }
-        (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Slice(t) if *t == u8_type) => {
+        (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Slice(t) if t == u8_type) => {
             if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
                 pretty_print_byte_str(fmt, data)?;
                 return Ok(());
             }
         }
-        (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if *t == u8_type => {
+        (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if t == u8_type => {
             let n = n.try_to_target_usize(tcx).unwrap();
             let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
             // cast is ok because we already checked for pointer size (32 or 64 bit) above
@@ -1710,7 +1710,7 @@ fn pretty_print_const_value_tcx<'tcx>(
             let ty = tcx.lift(ty).unwrap();
             if let Some(contents) = tcx.try_destructure_mir_constant_for_user_output(ct, ty) {
                 let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Array(..) => {
                         fmt.write_str("[")?;
                         comma_sep(tcx, fmt, fields)?;
@@ -1777,7 +1777,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
             cx.print_alloc_ids = true;
-            cx.print_value_path(*d, s)?;
+            cx.print_value_path(d, s)?;
             fmt.write_str(&cx.into_buffer())?;
             return Ok(());
         }

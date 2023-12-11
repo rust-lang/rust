@@ -391,7 +391,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             // Next, we need to check that the return-type notation is being used on
             // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
             let output = tcx.fn_sig(assoc_item.def_id).skip_binder().output();
-            let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
+            let output = if let ty::Alias(ty::Projection, alias_ty) = output.skip_binder().kind()
                 && tcx.is_impl_trait_in_trait(alias_ty.def_id)
             {
                 alias_ty

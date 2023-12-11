@@ -509,7 +509,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((*referent_ty, &referent_hir_ty.ty));
+                    search_stack.push((referent_ty, &referent_hir_ty.ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -538,13 +538,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // The following cases don't have lifetimes, so we
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
-                (&ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
+                (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
                     search_stack.extend(iter::zip(elem_tys, *elem_hir_tys));
                 }
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
                 | (ty::Array(elem_ty, _), hir::TyKind::Array(elem_hir_ty, _)) => {
-                    search_stack.push((*elem_ty, elem_hir_ty));
+                    search_stack.push((elem_ty, elem_hir_ty));
                 }
 
                 (ty::RawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {

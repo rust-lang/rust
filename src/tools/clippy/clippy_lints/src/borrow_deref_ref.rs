@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                     // has deref trait -> give 2 help
                     // doesn't have deref trait -> give 1 help
                     if let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait() {
-                        if !implements_trait(cx, *inner_ty, deref_trait_id, &[]) {
+                        if !implements_trait(cx, inner_ty, deref_trait_id, &[]) {
                             return;
                         }
                     }

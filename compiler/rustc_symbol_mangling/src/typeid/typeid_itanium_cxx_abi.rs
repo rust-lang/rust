@@ -119,7 +119,7 @@ fn encode_const<'tcx>(
             match c.ty().kind() {
                 ty::Int(ity) => {
                     let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
-                    let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                    let val = Integer::from_int_ty(&tcx, ity).size().sign_extend(bits) as i128;
                     if val < 0 {
                         s.push('n');
                     }
@@ -529,7 +529,7 @@ fn encode_ty<'tcx>(
                     .to_u64()
                     .unwrap_or_else(|_| panic!("failed to convert length to u64"))
             );
-            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            s.push_str(&encode_ty(tcx, ty0, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -537,7 +537,7 @@ fn encode_ty<'tcx>(
         ty::Slice(ty0) => {
             // u5sliceI<element-type>E as vendor extended type
             let mut s = String::from("u5sliceI");
-            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            s.push_str(&encode_ty(tcx, ty0, dict, options));
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -599,7 +599,7 @@ fn encode_ty<'tcx>(
         ty::Foreign(def_id) => {
             // <length><name>, where <name> is <unscoped-name>
             let mut s = String::new();
-            if let Some(cfi_encoding) = tcx.get_attr(*def_id, sym::cfi_encoding) {
+            if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
                     if !value_str.to_string().trim().is_empty() {
@@ -620,7 +620,7 @@ fn encode_ty<'tcx>(
                     bug!("encode_ty: invalid `cfi_encoding` for `{:?}`", ty.kind());
                 }
             } else {
-                let name = tcx.item_name(*def_id).to_string();
+                let name = tcx.item_name(def_id).to_string();
                 let _ = write!(s, "{}{}", name.len(), &name);
             }
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
@@ -632,7 +632,7 @@ fn encode_ty<'tcx>(
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
-            let name = encode_ty_name(tcx, *def_id);
+            let name = encode_ty_name(tcx, def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             s.push_str(&encode_args(tcx, args, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
@@ -643,7 +643,7 @@ fn encode_ty<'tcx>(
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
-            let name = encode_ty_name(tcx, *def_id);
+            let name = encode_ty_name(tcx, def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             // Encode parent args only
             s.push_str(&encode_args(
@@ -661,9 +661,9 @@ fn encode_ty<'tcx>(
             // [U3mut]u3refI<element-type>E as vendor extended type qualifier and type
             let mut s = String::new();
             s.push_str("u3refI");
-            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            s.push_str(&encode_ty(tcx, ty0, dict, options));
             s.push('E');
-            compress(dict, DictKey::Ty(Ty::new_imm_ref(tcx, *region, *ty0), TyQ::None), &mut s);
+            compress(dict, DictKey::Ty(Ty::new_imm_ref(tcx, region, ty0), TyQ::None), &mut s);
             if ty.is_mutable_ptr() {
                 s = format!("{}{}", "U3mut", &s);
                 compress(dict, DictKey::Ty(ty, TyQ::Mut), &mut s);
@@ -701,7 +701,7 @@ fn encode_ty<'tcx>(
                 ty::DynStar => "u7dynstarI",
             });
             s.push_str(&encode_predicates(tcx, predicates, dict, options));
-            s.push_str(&encode_region(tcx, *region, dict, options));
+            s.push_str(&encode_region(tcx, region, dict, options));
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -837,11 +837,11 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         ty::Array(ty0, len) => {
             let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
 
-            ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, options), len);
+            ty = Ty::new_array(tcx, transform_ty(tcx, ty0, options), len);
         }
 
         ty::Slice(ty0) => {
-            ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, options));
+            ty = Ty::new_slice(tcx, transform_ty(tcx, ty0, options));
         }
 
         ty::Adt(adt_def, args) => {
@@ -849,7 +849,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 ty = Ty::new_unit(tcx);
             } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
             {
-                ty = Ty::new_adt(tcx, *adt_def, ty::List::empty());
+                ty = Ty::new_adt(tcx, adt_def, ty::List::empty());
             } else if adt_def.repr().transparent() && adt_def.is_struct() {
                 // Don't transform repr(transparent) types with an user-defined CFI encoding to
                 // preserve the user-defined CFI encoding.
@@ -883,20 +883,20 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     ty = Ty::new_unit(tcx);
                 }
             } else {
-                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, options));
+                ty = Ty::new_adt(tcx, adt_def, transform_args(tcx, args, options));
             }
         }
 
         ty::FnDef(def_id, args) => {
-            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_fn_def(tcx, def_id, transform_args(tcx, args, options));
         }
 
         ty::Closure(def_id, args) => {
-            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_closure(tcx, def_id, transform_args(tcx, args, options));
         }
 
         ty::Coroutine(def_id, args, movability) => {
-            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options), *movability);
+            ty = Ty::new_coroutine(tcx, def_id, transform_args(tcx, args, options), movability);
         }
 
         ty::Ref(region, ty0, ..) => {
@@ -908,9 +908,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_mut_ref(tcx, region, transform_ty(tcx, ty0, options));
                 } else {
-                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_imm_ref(tcx, region, transform_ty(tcx, ty0, options));
                 }
             }
         }
@@ -963,7 +963,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 tcx,
                 transform_predicates(tcx, predicates, options),
                 tcx.lifetimes.re_erased,
-                *kind,
+                kind,
             );
         }
 

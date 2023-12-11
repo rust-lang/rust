@@ -25,7 +25,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
             // FIXME(-Ztrait-solver=next): correctly handle
             // overflow here.
             for _ in 0..256 {
-                let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, alias) = *ty.kind() else {
+                let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, alias) = ty.kind() else {
                     break;
                 };
 

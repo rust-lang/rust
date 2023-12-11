@@ -635,7 +635,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Bool => p!("bool"),
             ty::Char => p!("char"),
             ty::Int(t) => p!(write("{}", t.name_str())),
@@ -759,7 +759,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
                         // `type_of` on a type alias or assoc type should never cause a cycle.
                         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: d, .. }) =
-                            *self.tcx().type_of(parent).instantiate_identity().kind()
+                            self.tcx().type_of(parent).instantiate_identity().kind()
                         {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
@@ -1563,7 +1563,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let u8_type = self.tcx().types.u8;
         match (valtree, ty.kind()) {
             (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
-                ty::Slice(t) if *t == u8_type => {
+                ty::Slice(t) if t == u8_type => {
                     let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
                         bug!(
                             "expected to convert valtree {:?} to raw bytes for type {:?}",
@@ -1582,11 +1582,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 _ => {
                     p!("&");
-                    p!(pretty_print_const_valtree(valtree, *inner_ty, print_ty));
+                    p!(pretty_print_const_valtree(valtree, inner_ty, print_ty));
                     return Ok(());
                 }
             },
-            (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
+            (ty::ValTree::Branch(_), ty::Array(t, _)) if t == u8_type => {
                 let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
                     bug!("expected to convert valtree to raw bytes for type {:?}", t)
                 });
@@ -1599,7 +1599,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 let contents =
                     self.tcx().destructure_const(ty::Const::new_value(self.tcx(), valtree, ty));
                 let fields = contents.fields.iter().copied();
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Array(..) => {
                         p!("[", comma_sep(fields), "]");
                     }
@@ -1650,7 +1650,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             (ty::ValTree::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
                 p!(write("&"));
-                return self.pretty_print_const_scalar_int(leaf, *inner_ty, print_ty);
+                return self.pretty_print_const_scalar_int(leaf, inner_ty, print_ty);
             }
             (ty::ValTree::Leaf(leaf), _) => {
                 return self.pretty_print_const_scalar_int(leaf, ty, print_ty);
@@ -2278,7 +2278,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match t.kind() {
             _ if t.has_vars_bound_at_or_above(self.current_index) || t.has_placeholders() => {
                 return t.super_fold_with(self);
             }

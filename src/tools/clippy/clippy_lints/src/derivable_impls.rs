@@ -78,7 +78,7 @@ fn is_path_self(e: &Expr<'_>) -> bool {
 
 fn contains_trait_object(ty: Ty<'_>) -> bool {
     match ty.kind() {
-        ty::Ref(_, ty, _) => contains_trait_object(*ty),
+        ty::Ref(_, ty, _) => contains_trait_object(ty),
         ty::Adt(def, args) => def.is_box() && args[0].as_type().map_or(false, contains_trait_object),
         ty::Dynamic(..) => true,
         _ => false,
@@ -198,7 +198,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             && let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir)
             && let ImplItemKind::Fn(_, b) = &impl_item.kind
             && let Body { value: func_expr, .. } = cx.tcx.hir().body(*b)
-            && let &Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
+            && let Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let attrs = cx.tcx.hir().attrs(item.hir_id())
             && !attrs.iter().any(|attr| attr.doc_str().is_some())
             && cx.tcx.hir().attrs(impl_item_hir).is_empty()

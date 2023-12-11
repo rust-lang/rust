@@ -294,7 +294,7 @@ pub(crate) mod rustc {
                     let len = len
                         .try_eval_target_usize(tcx, ParamEnv::reveal_all())
                         .ok_or(Err::Unspecified)?;
-                    let elt = Tree::from_ty(*ty, tcx)?;
+                    let elt = Tree::from_ty(ty, tcx)?;
                     Ok(std::iter::repeat(elt)
                         .take(len as usize)
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
@@ -312,13 +312,13 @@ pub(crate) mod rustc {
                     let layout_summary = LayoutSummary::from_ty(ty, tcx)?;
 
                     // The layout begins with this adt's visibility.
-                    let vis = Self::def(Def::Adt(*adt_def));
+                    let vis = Self::def(Def::Adt(adt_def));
 
                     // And is followed the layout(s) of its variants
                     Ok(vis.then(match adt_def.adt_kind() {
                         AdtKind::Struct => Self::from_repr_c_variant(
                             ty,
-                            *adt_def,
+                            adt_def,
                             args_ref,
                             &layout_summary,
                             None,
@@ -332,7 +332,7 @@ pub(crate) mod rustc {
                             for (idx, discr) in adt_def.discriminants(tcx) {
                                 tree = tree.or(Self::from_repr_c_variant(
                                     ty,
-                                    *adt_def,
+                                    adt_def,
                                     args_ref,
                                     &layout_summary,
                                     Some(discr),
@@ -370,13 +370,8 @@ pub(crate) mod rustc {
                 }
 
                 ty::Ref(lifetime, ty, mutability) => {
-                    let align = layout_of(tcx, *ty)?.align();
-                    Ok(Tree::Ref(Ref {
-                        lifetime: *lifetime,
-                        ty: *ty,
-                        mutability: *mutability,
-                        align,
-                    }))
+                    let align = layout_of(tcx, ty)?.align();
+                    Ok(Tree::Ref(Ref { lifetime, ty, mutability, align }))
                 }
 
                 _ => Err(Err::Unspecified),

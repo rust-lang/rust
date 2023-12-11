@@ -71,7 +71,7 @@ fn compute_components<'tcx>(
     // with `collect()` because of the need to sometimes skip subtrees
     // in the `subtys` iterator (e.g., when encountering a
     // projection).
-    match *ty.kind() {
+    match ty.kind() {
             ty::FnDef(_, args) => {
                 // HACK(eddyb) ignore lifetimes found shallowly in `args`.
                 // This is inconsistent with `ty::Adt` (including all args)
@@ -204,7 +204,7 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
     visited: &mut SsoHashSet<GenericArg<'tcx>>,
 ) {
     let ty::Alias(kind, alias_ty) = alias_ty.kind() else { bug!() };
-    let opt_variances = if *kind == ty::Opaque { tcx.variances_of(alias_ty.def_id) } else { &[] };
+    let opt_variances = if kind == ty::Opaque { tcx.variances_of(alias_ty.def_id) } else { &[] };
     for (index, child) in alias_ty.args.iter().enumerate() {
         if opt_variances.get(index) == Some(&ty::Bivariant) {
             continue;

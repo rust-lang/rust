@@ -422,7 +422,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
                 if let ty::Adt(adt_def, _) = lhs.ty.kind() {
                     if adt_def.is_enum() {
-                        place_builder = place_builder.downcast(*adt_def, variant_index);
+                        place_builder = place_builder.downcast(adt_def, variant_index);
                     }
                 }
                 block.and(place_builder.field(name, expr.ty))

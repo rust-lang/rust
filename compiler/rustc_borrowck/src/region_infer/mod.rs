@@ -1139,7 +1139,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
                 use ty::TypeSuperFoldable as _;
                 let tcx = self.tcx;
-                let &ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = t.kind() else {
+                let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = t.kind() else {
                     return t.super_fold_with(self);
                 };
                 let args = std::iter::zip(args, tcx.variances_of(def_id)).map(|(arg, v)| {

@@ -52,7 +52,7 @@ fn lower_slice_len_call<'tcx>(
         && let [arg] = &args[..]
         && let Some(arg) = arg.place()
         && let ty::FnDef(fn_def_id, _) = func.ty(local_decls, tcx).kind()
-        && *fn_def_id == slice_len_fn_item_def_id
+        && fn_def_id == slice_len_fn_item_def_id
     {
         // perform modifications from something like:
         //     _5 = core::slice::<impl [u8]>::len(move _6) -> bb1

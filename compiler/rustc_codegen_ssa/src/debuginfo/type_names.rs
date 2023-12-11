@@ -56,7 +56,7 @@ fn push_debuginfo_type_name<'tcx>(
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
 
-    match *t.kind() {
+    match t.kind() {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
         ty::Str => {
@@ -666,7 +666,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         _ => match ct.ty().kind() {
             ty::Int(ity) => {
                 let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
-                let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                let val = Integer::from_int_ty(&tcx, ity).size().sign_extend(bits) as i128;
                 write!(output, "{val}")
             }
             ty::Uint(_) => {

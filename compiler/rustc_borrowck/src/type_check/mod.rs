@@ -399,7 +399,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
 
-            if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
+            if let ty::FnDef(def_id, args) = constant.const_.ty().kind() {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     def_id,
@@ -427,7 +427,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     // then remove the outermost reference so we can check the
                     // type annotation for the remaining type.
                     if let ty::Ref(_, rty, _) = local_decl.ty.kind() {
-                        *rty
+                        rty
                     } else {
                         bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
                     }
@@ -636,7 +636,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 PlaceTy::from_ty(match base_ty.kind() {
                     ty::Array(inner, _) => {
                         assert!(!from_end, "array subslices should not use from_end");
-                        Ty::new_array(tcx, *inner, to - from)
+                        Ty::new_array(tcx, inner, to - from)
                     }
                     ty::Slice(..) => {
                         assert!(from_end, "slice subslices should use from_end");
@@ -760,7 +760,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let tcx = self.tcx();
 
         let (variant, args) = match base_ty {
-            PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
+            PlaceTy { ty, variant_index: Some(variant_index) } => match ty.kind() {
                 ty::Adt(adt_def, args) => (adt_def.variant(variant_index), args),
                 ty::Coroutine(def_id, args, _) => {
                     let mut variants = args.as_coroutine().state_tys(def_id, tcx);
@@ -778,7 +778,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
                 _ => bug!("can't have downcast of non-adt non-coroutine type"),
             },
-            PlaceTy { ty, variant_index: None } => match *ty.kind() {
+            PlaceTy { ty, variant_index: None } => match ty.kind() {
                 ty::Adt(adt_def, args) if !adt_def.is_enum() => {
                     (adt_def.variant(FIRST_VARIANT), args)
                 }
@@ -1567,7 +1567,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         let func_ty = func.ty(body, self.infcx.tcx);
-        if let ty::FnDef(def_id, _) = *func_ty.kind() {
+        if let ty::FnDef(def_id, _) = func_ty.kind() {
             if self.tcx().is_intrinsic(def_id) {
                 match self.tcx().item_name(def_id) {
                     sym::simd_shuffle => {
@@ -2031,7 +2031,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let outlives_predicate = tcx.mk_predicate(Binder::dummy(
                             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                                ty::OutlivesPredicate(self_ty, *region),
+                                ty::OutlivesPredicate(self_ty, region),
                             )),
                         ));
                         self.prove_predicate(
@@ -2055,8 +2055,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             return;
                         };
                         if let Err(terr) = self.sub_types(
-                            *ty_from,
-                            *ty_to,
+                            ty_from,
+                            ty_to,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2077,7 +2077,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let opt_ty_elem_mut = match ty_from.kind() {
                             ty::RawPtr(ty::TypeAndMut { mutbl: array_mut, ty: array_ty }) => {
                                 match array_ty.kind() {
-                                    ty::Array(ty_elem, _) => Some((ty_elem, *array_mut)),
+                                    ty::Array(ty_elem, _) => Some((ty_elem, array_mut)),
                                     _ => None,
                                 }
                             }
@@ -2096,7 +2096,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let (ty_to, ty_to_mut) = match ty.kind() {
                             ty::RawPtr(ty::TypeAndMut { mutbl: ty_to_mut, ty: ty_to }) => {
-                                (ty_to, *ty_to_mut)
+                                (ty_to, ty_to_mut)
                             }
                             _ => {
                                 span_mirbug!(
@@ -2121,8 +2121,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
 
                         if let Err(terr) = self.sub_types(
-                            *ty_elem,
-                            *ty_to,
+                            ty_elem,
+                            ty_to,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {

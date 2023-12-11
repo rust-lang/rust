@@ -28,7 +28,7 @@ fn should_lint(cx: &LateContext<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast
             // Don't lint for positive constants.
             let const_val = constant(cx, cx.typeck_results(), cast_op);
             if let Some(Constant::Int(n)) = const_val
-                && let ty::Int(ity) = *cast_from.kind()
+                && let ty::Int(ity) = cast_from.kind()
                 && sext(cx.tcx, n, ity) >= 0
             {
                 return false;

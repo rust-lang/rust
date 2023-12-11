@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
     let mut triggered = false;
 
     if let (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) = (&from_ty.kind(), &to_ty.kind()) {
-        if let ty::Slice(slice_ty) = *ty_from.kind()
+        if let ty::Slice(slice_ty) = ty_from.kind()
             && ty_to.is_str()
             && let ty::Uint(ty::UintTy::U8) = slice_ty.kind()
             && from_mutbl == to_mutbl

@@ -1620,7 +1620,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?placeholder_trait_predicate);
 
         let tcx = self.infcx.tcx;
-        let (def_id, args) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
+        let (def_id, args) = match placeholder_trait_predicate.trait_ref.self_ty().kind() {
             ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 (def_id, args)
             }
@@ -2158,7 +2158,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
 
             ty::Uint(_)
@@ -2268,7 +2268,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         t: ty::Binder<'tcx, Ty<'tcx>>,
     ) -> Result<ty::Binder<'tcx, Vec<Ty<'tcx>>>, SelectionError<'tcx>> {
-        Ok(match *t.skip_binder().kind() {
+        Ok(match t.skip_binder().kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool

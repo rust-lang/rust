@@ -638,7 +638,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             && let Constructor::Variant(variant_index) = witness_1.ctor()
         {
             let variant = adt.variant(*variant_index);
-            let inhabited = variant.inhabited_predicate(self.tcx, *adt).instantiate(self.tcx, args);
+            let inhabited = variant.inhabited_predicate(self.tcx, adt).instantiate(self.tcx, args);
             assert!(inhabited.apply(self.tcx, cx.param_env, cx.module));
             !inhabited.apply_ignore_module(self.tcx, cx.param_env)
         } else {
@@ -1138,7 +1138,7 @@ fn report_adt_defined_here<'tcx>(
     };
 
     let mut variants = vec![];
-    for span in maybe_point_at_variant(tcx, *def, witnesses.iter().take(5)) {
+    for span in maybe_point_at_variant(tcx, def, witnesses.iter().take(5)) {
         variants.push(Variant { span });
     }
     Some(AdtDefinedHere { adt_def_span, ty, variants })

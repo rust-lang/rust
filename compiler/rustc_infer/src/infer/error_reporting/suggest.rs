@@ -403,8 +403,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if let (ty::Adt(exp_def, exp_args), ty::Ref(_, found_ty, _)) =
             (expected.kind(), found.kind())
         {
-            if let ty::Adt(found_def, found_args) = *found_ty.kind() {
-                if exp_def == &found_def {
+            if let ty::Adt(found_def, found_args) = found_ty.kind() {
+                if exp_def == found_def {
                     let have_as_ref = &[
                         (sym::Option, SuggestAsRefKind::Option),
                         (sym::Result, SuggestAsRefKind::Result),
@@ -416,7 +416,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         for (exp_ty, found_ty) in
                             std::iter::zip(exp_args.types(), found_args.types())
                         {
-                            match *exp_ty.kind() {
+                            match exp_ty.kind() {
                                 ty::Ref(_, exp_ty, _) => {
                                     match (exp_ty.kind(), found_ty.kind()) {
                                         (_, ty::Param(_))

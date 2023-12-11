@@ -94,7 +94,7 @@ fn is_child_of_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 fn get_raw_slice_ty_mut(ty: Ty<'_>) -> Option<TypeAndMut<'_>> {
     match ty.kind() {
         ty::RawPtr(TypeAndMut { ty: slice_ty, mutbl }) => match slice_ty.kind() {
-            ty::Slice(ty) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
+            ty::Slice(ty) => Some(TypeAndMut { ty, mutbl }),
             _ => None,
         },
         _ => None,
