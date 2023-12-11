@@ -37,11 +37,11 @@ pub struct DeconstructedPat<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
-    pub(super) fn wildcard(ty: Ty<'tcx>, span: Span) -> Self {
+    pub fn wildcard(ty: Ty<'tcx>, span: Span) -> Self {
         Self::new(Wildcard, &[], ty, span)
     }
 
-    pub(super) fn new(
+    pub fn new(
         ctor: Constructor<'tcx>,
         fields: &'p [DeconstructedPat<'p, 'tcx>],
         ty: Ty<'tcx>,
@@ -50,11 +50,11 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         DeconstructedPat { ctor, fields, ty, span, useful: Cell::new(false) }
     }
 
-    pub(super) fn is_or_pat(&self) -> bool {
+    pub(crate) fn is_or_pat(&self) -> bool {
         matches!(self.ctor, Or)
     }
     /// Expand this (possibly-nested) or-pattern into its alternatives.
-    pub(super) fn flatten_or_pat(&'p self) -> SmallVec<[&'p Self; 1]> {
+    pub(crate) fn flatten_or_pat(&'p self) -> SmallVec<[&'p Self; 1]> {
         if self.is_or_pat() {
             self.iter_fields().flat_map(|p| p.flatten_or_pat()).collect()
         } else {
@@ -80,7 +80,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
 
     /// Specialize this pattern with a constructor.
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
-    pub(super) fn specialize<'a>(
+    pub(crate) fn specialize<'a>(
         &'a self,
         pcx: &PatCtxt<'_, 'p, 'tcx>,
         other_ctor: &Constructor<'tcx>,
@@ -122,10 +122,10 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
 
     /// We keep track for each pattern if it was ever useful during the analysis. This is used
     /// with `redundant_spans` to report redundant subpatterns arising from or patterns.
-    pub(super) fn set_useful(&self) {
+    pub(crate) fn set_useful(&self) {
         self.useful.set(true)
     }
-    pub(super) fn is_useful(&self) -> bool {
+    pub(crate) fn is_useful(&self) -> bool {
         if self.useful.get() {
             true
         } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_useful()) {
@@ -140,7 +140,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     }
 
     /// Report the spans of subpatterns that were not useful, if any.
-    pub(super) fn redundant_spans(&self) -> Vec<Span> {
+    pub(crate) fn redundant_spans(&self) -> Vec<Span> {
         let mut spans = Vec::new();
         self.collect_redundant_spans(&mut spans);
         spans
@@ -175,17 +175,17 @@ pub struct WitnessPat<'tcx> {
 }
 
 impl<'tcx> WitnessPat<'tcx> {
-    pub(super) fn new(ctor: Constructor<'tcx>, fields: Vec<Self>, ty: Ty<'tcx>) -> Self {
+    pub(crate) fn new(ctor: Constructor<'tcx>, fields: Vec<Self>, ty: Ty<'tcx>) -> Self {
         Self { ctor, fields, ty }
     }
-    pub(super) fn wildcard(ty: Ty<'tcx>) -> Self {
+    pub(crate) fn wildcard(ty: Ty<'tcx>) -> Self {
         Self::new(Wildcard, Vec::new(), ty)
     }
 
     /// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
-    pub(super) fn wild_from_ctor(pcx: &PatCtxt<'_, '_, 'tcx>, ctor: Constructor<'tcx>) -> Self {
+    pub(crate) fn wild_from_ctor(pcx: &PatCtxt<'_, '_, 'tcx>, ctor: Constructor<'tcx>) -> Self {
         let field_tys =
             pcx.cx.ctor_wildcard_fields(&ctor, pcx.ty).iter().map(|deco_pat| deco_pat.ty());
         let fields = field_tys.map(|ty| Self::wildcard(ty)).collect();

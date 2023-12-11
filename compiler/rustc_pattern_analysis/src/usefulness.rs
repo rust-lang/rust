@@ -594,7 +594,7 @@ impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
 /// - in the matrix, track whether a given place (aka column) is known to contain a valid value or
 ///     not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(super) enum ValidityConstraint {
+enum ValidityConstraint {
     ValidOnly,
     MaybeInvalid,
     /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
@@ -603,7 +603,7 @@ pub(super) enum ValidityConstraint {
 }
 
 impl ValidityConstraint {
-    pub(super) fn from_bool(is_valid_only: bool) -> Self {
+    fn from_bool(is_valid_only: bool) -> Self {
         if is_valid_only { ValidOnly } else { MaybeInvalid }
     }
 
@@ -615,10 +615,10 @@ impl ValidityConstraint {
         }
     }
 
-    pub(super) fn is_known_valid(self) -> bool {
+    fn is_known_valid(self) -> bool {
         matches!(self, ValidOnly)
     }
-    pub(super) fn allows_omitting_empty_arms(self) -> bool {
+    fn allows_omitting_empty_arms(self) -> bool {
         matches!(self, ValidOnly | MaybeInvalidButAllowOmittingArms)
     }
 
@@ -628,11 +628,7 @@ impl ValidityConstraint {
     ///
     /// Pending further opsem decisions, the current behavior is: validity is preserved, except
     /// inside `&` and union fields where validity is reset to `MaybeInvalid`.
-    pub(super) fn specialize<'tcx>(
-        self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> Self {
+    fn specialize<'tcx>(self, pcx: &PatCtxt<'_, '_, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
         // We preserve validity except when we go inside a reference or a union field.
         if matches!(ctor, Constructor::Single)
             && (matches!(pcx.ty.kind(), ty::Ref(..))
@@ -1023,7 +1019,7 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 ///
 /// See the top of the file for more detailed explanations and examples.
 #[derive(Debug, Clone)]
-pub(crate) struct WitnessStack<'tcx>(Vec<WitnessPat<'tcx>>);
+struct WitnessStack<'tcx>(Vec<WitnessPat<'tcx>>);
 
 impl<'tcx> WitnessStack<'tcx> {
     /// Asserts that the witness contains a single pattern, and returns it.
@@ -1070,7 +1066,7 @@ impl<'tcx> WitnessStack<'tcx> {
 /// Just as the `Matrix` starts with a single column, by the end of the algorithm, this has a single
 /// column, which contains the patterns that are missing for the match to be exhaustive.
 #[derive(Debug, Clone)]
-pub struct WitnessMatrix<'tcx>(Vec<WitnessStack<'tcx>>);
+struct WitnessMatrix<'tcx>(Vec<WitnessStack<'tcx>>);
 
 impl<'tcx> WitnessMatrix<'tcx> {
     /// New matrix with no witnesses.

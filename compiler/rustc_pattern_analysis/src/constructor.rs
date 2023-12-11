@@ -253,7 +253,7 @@ pub struct IntRange {
 
 impl IntRange {
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
-    pub fn is_singleton(&self) -> bool {
+    pub(crate) fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
         // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
         self.lo.plus_one() == self.hi
@@ -670,11 +670,11 @@ pub enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
-    pub(super) fn is_non_exhaustive(&self) -> bool {
+    pub(crate) fn is_non_exhaustive(&self) -> bool {
         matches!(self, NonExhaustive)
     }
 
-    pub(super) fn as_variant(&self) -> Option<VariantIdx> {
+    pub(crate) fn as_variant(&self) -> Option<VariantIdx> {
         match self {
             Variant(i) => Some(*i),
             _ => None,
@@ -686,7 +686,7 @@ impl<'tcx> Constructor<'tcx> {
             _ => None,
         }
     }
-    pub(super) fn as_int_range(&self) -> Option<&IntRange> {
+    pub(crate) fn as_int_range(&self) -> Option<&IntRange> {
         match self {
             IntRange(range) => Some(range),
             _ => None,
@@ -830,10 +830,10 @@ pub enum ConstructorSet {
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
-pub(super) struct SplitConstructorSet<'tcx> {
-    pub(super) present: SmallVec<[Constructor<'tcx>; 1]>,
-    pub(super) missing: Vec<Constructor<'tcx>>,
-    pub(super) missing_empty: Vec<Constructor<'tcx>>,
+pub(crate) struct SplitConstructorSet<'tcx> {
+    pub(crate) present: SmallVec<[Constructor<'tcx>; 1]>,
+    pub(crate) missing: Vec<Constructor<'tcx>>,
+    pub(crate) missing_empty: Vec<Constructor<'tcx>>,
 }
 
 impl ConstructorSet {
@@ -842,7 +842,7 @@ impl ConstructorSet {
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
     #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
-    pub(super) fn split<'a, 'tcx>(
+    pub(crate) fn split<'a, 'tcx>(
         &self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
