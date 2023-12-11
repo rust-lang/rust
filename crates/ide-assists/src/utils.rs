@@ -470,6 +470,7 @@ pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Opti
 
 /// Generates the surrounding `impl Type { <code> }` including type and lifetime
 /// parameters.
+// FIXME: migrate remaining uses to `generate_impl`
 pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
     generate_impl_text_inner(adt, None, true, code)
 }
@@ -478,6 +479,7 @@ pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
 /// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
+// FIXME: migrate remaining uses to `generate_trait_impl`
 pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
     generate_impl_text_inner(adt, Some(trait_text), true, code)
 }
@@ -486,6 +488,7 @@ pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &
 /// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
+// FIXME: migrate remaining uses to `generate_trait_impl_intransitive`
 pub(crate) fn generate_trait_impl_text_intransitive(
     adt: &ast::Adt,
     trait_text: &str,
@@ -516,7 +519,7 @@ fn generate_impl_text_inner(
                         // Add the current trait to `bounds` if the trait is transitive,
                         // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
                         if trait_is_transitive {
-                            bounds.push(make::type_bound(trait_));
+                            bounds.push(make::type_bound_text(trait_));
                         }
                     };
                     // `{ty_param}: {bounds}`
@@ -572,6 +575,101 @@ fn generate_impl_text_inner(
     }
 
     buf
+}
+
+/// Generates the corresponding `impl Type {}` including type and lifetime
+/// parameters.
+pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
+    generate_impl_inner(adt, None, true)
+}
+
+/// Generates the corresponding `impl <trait> for Type {}` including type
+/// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
+///
+/// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
+pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
+    generate_impl_inner(adt, Some(trait_), true)
+}
+
+/// Generates the corresponding `impl <trait> for Type {}` including type
+/// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
+///
+/// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
+pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
+    generate_impl_inner(adt, Some(trait_), false)
+}
+
+fn generate_impl_inner(
+    adt: &ast::Adt,
+    trait_: Option<ast::Type>,
+    trait_is_transitive: bool,
+) -> ast::Impl {
+    // Ensure lifetime params are before type & const params
+    let generic_params = adt.generic_param_list().map(|generic_params| {
+        let lifetime_params =
+            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
+        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
+            match param {
+                ast::TypeOrConstParam::Type(param) => {
+                    let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
+                    param.remove_default();
+                    let mut bounds =
+                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
+                    if let Some(trait_) = &trait_ {
+                        // Add the current trait to `bounds` if the trait is transitive,
+                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
+                        if trait_is_transitive {
+                            bounds.push(make::type_bound(trait_.clone()));
+                        }
+                    };
+                    // `{ty_param}: {bounds}`
+                    let param =
+                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    ast::GenericParam::TypeParam(param)
+                }
+                ast::TypeOrConstParam::Const(param) => {
+                    let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
+                    param.remove_default();
+                    ast::GenericParam::ConstParam(param)
+                }
+            }
+        });
+
+        make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
+    });
+    let generic_args =
+        generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
+    let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
+
+    let impl_ = match trait_ {
+        Some(trait_) => make::impl_trait(
+            false,
+            None,
+            None,
+            generic_params,
+            generic_args,
+            false,
+            trait_,
+            ty,
+            None,
+            adt.where_clause(),
+            None,
+        ),
+        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), None),
+    }
+    .clone_for_update();
+
+    // Copy any cfg attrs from the original adt
+    let cfg_attrs = adt
+        .attrs()
+        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
+    for attr in cfg_attrs {
+        impl_.add_attr(attr.clone_for_update());
+    }
+
+    impl_
 }
 
 pub(crate) fn add_method_to_adt(

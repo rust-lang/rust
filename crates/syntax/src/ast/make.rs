@@ -895,7 +895,12 @@ pub fn trait_(
     ast_from_text(&text)
 }
 
-pub fn type_bound(bound: &str) -> ast::TypeBound {
+// FIXME: remove when no one depends on `generate_impl_text_inner`
+pub fn type_bound_text(bound: &str) -> ast::TypeBound {
+    ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
+}
+
+pub fn type_bound(bound: ast::Type) -> ast::TypeBound {
     ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
 }
 
