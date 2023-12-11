@@ -18,11 +18,10 @@ use crate::MatchArm;
 
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".
-/// This is used to traverse patterns column-by-column for lints. Despite similarities with
-/// [`compute_exhaustiveness_and_usefulness`], this does a different traversal. Notably this is
-/// linear in the depth of patterns, whereas `compute_exhaustiveness_and_usefulness` is worst-case
-/// exponential (exhaustiveness is NP-complete). The core difference is that we treat sub-columns
-/// separately.
+/// This is used to traverse patterns column-by-column for lints. Despite similarities with the
+/// algorithm in [`crate::usefulness`], this does a different traversal. Notably this is linear in
+/// the depth of patterns, whereas `compute_exhaustiveness_and_usefulness` is worst-case exponential
+/// (exhaustiveness is NP-complete). The core difference is that we treat sub-columns separately.
 ///
 /// This must not contain an or-pattern. `specialize` takes care to expand them.
 ///

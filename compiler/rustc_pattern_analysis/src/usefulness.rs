@@ -97,8 +97,9 @@
 //! - `matches!([v0], [p0, .., p1]) := false` (incompatible lengths)
 //! - `matches!([v0, v1, v2], [p0, .., p1]) := matches!(v0, p0) && matches!(v2, p1)`
 //!
-//! Constructors, fields and relevant operations are defined in the [`super::deconstruct_pat`]
-//! module. The question of whether a constructor is matched by another one is answered by
+//! Constructors and relevant operations are defined in the [`crate::constructor`] module. A
+//! representation of patterns that uses constructors is available in [`crate::pat`]. The question
+//! of whether a constructor is matched by another one is answered by
 //! [`Constructor::is_covered_by`].
 //!
 //! Note 1: variable bindings (like the `x` in `Some(x)`) match anything, so we treat them as wildcards.
@@ -241,8 +242,8 @@
 //! Therefore `usefulness(tp_1, tp_2, tq)` returns the single witness-tuple `[Variant2(Some(true), 0)]`.
 //!
 //!
-//! Computing the set of constructors for a type is done in [`ConstructorSet::for_ty`]. See the
-//! following sections for more accurate versions of the algorithm and corresponding links.
+//! Computing the set of constructors for a type is done in [`MatchCheckCtxt::ctors_for_ty`]. See
+//! the following sections for more accurate versions of the algorithm and corresponding links.
 //!
 //!
 //!
@@ -295,7 +296,7 @@
 //! the same reasoning, we only need to try two cases: `North`, and "everything else".
 //!
 //! We call _constructor splitting_ the operation that computes such a minimal set of cases to try.
-//! This is done in [`ConstructorSet::split`] and explained in [`super::deconstruct_pat`].
+//! This is done in [`ConstructorSet::split`] and explained in [`crate::constructor`].
 //!
 //!
 //!

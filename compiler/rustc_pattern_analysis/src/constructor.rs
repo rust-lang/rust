@@ -1,18 +1,18 @@
-//! As explained in [`super::usefulness`], values and patterns are made from constructors applied to
+//! As explained in [`crate::usefulness`], values and patterns are made from constructors applied to
 //! fields. This file defines a `Constructor` enum and various operations to manipulate them.
 //!
 //! There are two important bits of core logic in this file: constructor inclusion and constructor
 //! splitting. Constructor inclusion, i.e. whether a constructor is included in/covered by another,
 //! is straightforward and defined in [`Constructor::is_covered_by`].
 //!
-//! Constructor splitting is mentioned in [`super::usefulness`] but not detailed. We describe it
+//! Constructor splitting is mentioned in [`crate::usefulness`] but not detailed. We describe it
 //! precisely here.
 //!
 //!
 //!
 //! # Constructor grouping and splitting
 //!
-//! As explained in the corresponding section in [`super::usefulness`], to make usefulness tractable
+//! As explained in the corresponding section in [`crate::usefulness`], to make usefulness tractable
 //! we need to group together constructors that have the same effect when they are used to
 //! specialize the matrix.
 //!
@@ -28,7 +28,7 @@
 //! In this example we can restrict specialization to 5 cases: `0..50`, `50..=100`, `101..=150`,
 //! `151..=200` and `200..`.
 //!
-//! In [`super::usefulness`], we had said that `specialize` only takes value-only constructors. We
+//! In [`crate::usefulness`], we had said that `specialize` only takes value-only constructors. We
 //! now relax this restriction: we allow `specialize` to take constructors like `0..50` as long as
 //! we're careful to only do that with constructors that make sense. For example, `specialize(0..50,
 //! (0..=100, true))` is sensible, but `specialize(50..=200, (0..=100, true))` is not.
@@ -40,9 +40,9 @@
 //! - That have no non-trivial intersection with any of the constructors in the column (i.e. they're
 //!     each either disjoint with or covered by any given column constructor).
 //!
-//! We compute this in two steps: first [`ConstructorSet::for_ty`] determines the set of all
-//! possible constructors for the type. Then [`ConstructorSet::split`] looks at the column of
-//! constructors and splits the set into groups accordingly. The precise invariants of
+//! We compute this in two steps: first [`crate::cx::MatchCheckCtxt::ctors_for_ty`] determines the
+//! set of all possible constructors for the type. Then [`ConstructorSet::split`] looks at the
+//! column of constructors and splits the set into groups accordingly. The precise invariants of
 //! [`ConstructorSet::split`] is described in [`SplitConstructorSet`].
 //!
 //! Constructor splitting has two interesting special cases: integer range splitting (see
@@ -71,10 +71,10 @@
 //! `Wildcard`.
 //!
 //! The only place where we care about which constructors `Missing` represents is in diagnostics
-//! (see `super::usefulness::WitnessMatrix::apply_constructor`).
+//! (see `crate::usefulness::WitnessMatrix::apply_constructor`).
 //!
 //! We choose whether to specialize with `Missing` in
-//! `super::usefulness::compute_exhaustiveness_and_reachability`.
+//! `crate::usefulness::compute_exhaustiveness_and_usefulness`.
 //!
 //!
 //!
@@ -88,7 +88,7 @@
 //! `exhaustive_patterns` feature is turned on, in which case we do treat them as empty. And also
 //! except if the type has no constructors (like `enum Void {}` but not like `Result<!, !>`), we
 //! specifically allow `match void {}` to be exhaustive. There are additionally considerations of
-//! place validity that are handled in `super::usefulness`. Yes this is a bit tricky.
+//! place validity that are handled in `crate::usefulness`. Yes this is a bit tricky.
 //!
 //! The second thing is that regardless of the above, it is always allowed to use all the
 //! constructors of a type. For example, all the following is ok:
@@ -136,8 +136,8 @@
 //! the algorithm can't distinguish them from a nonempty constructor. The only known case where this
 //! could happen is the `[..]` pattern on `[!; N]` with `N > 0` so we must take care to not emit it.
 //!
-//! This is all handled by [`ConstructorSet::for_ty`] and [`ConstructorSet::split`]. The invariants
-//! of [`SplitConstructorSet`] are also of interest.
+//! This is all handled by [`crate::cx::MatchCheckCtxt::ctors_for_ty`] and
+//! [`ConstructorSet::split`]. The invariants of [`SplitConstructorSet`] are also of interest.
 //!
 //!
 //!
