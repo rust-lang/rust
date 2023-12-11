@@ -1433,7 +1433,7 @@ function initSearch(rawSearchIndex) {
                             return true;
                         }
                     } else if (unifyFunctionTypes(
-                        fnType.generics,
+                        [...fnType.generics, ...Array.from(fnType.bindings.values()).flat() ],
                         queryElems,
                         whereClause,
                         mgens ? new Map(mgens) : null,
