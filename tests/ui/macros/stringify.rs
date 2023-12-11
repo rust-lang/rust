@@ -10,6 +10,8 @@
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(explicit_tail_calls)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(raw_ref_op)]
@@ -47,7 +49,7 @@ macro_rules! c1 {
 // easy to find the cases where the two pretty-printing approaches give
 // different results.
 macro_rules! c2 {
-    ($frag:ident, [$($tt:tt)*], $s1:literal, $s2:literal) => {
+    ($frag:ident, [$($tt:tt)*], $s1:literal, $s2:literal $(,)?) => {
         assert_ne!($s1, $s2, "should use `c1!` instead");
         assert_eq!($frag!($($tt)*), $s1);
         assert_eq!(stringify!($($tt)*), $s2);
@@ -127,6 +129,23 @@ fn test_expr() {
 
     // ExprKind::Let
     c1!(expr, [ if let Some(a) = b { c } else { d } ], "if let Some(a) = b { c } else { d }");
+    c1!(expr, [ if let _ = true && false {} ], "if let _ = true && false {}");
+    c1!(expr, [ if let _ = (true && false) {} ], "if let _ = (true && false) {}");
+    macro_rules! c2_if_let {
+        ($expr:expr, $expr_expected:expr, $tokens_expected:expr $(,)?) => {
+            c2!(expr, [ if let _ = $expr {} ], $expr_expected, $tokens_expected);
+        };
+    }
+    c2_if_let!(
+        true && false,
+        "if let _ = (true && false) {}",
+        "if let _ = true && false {}",
+    );
+    c2!(expr,
+        [ match () { _ if let _ = Struct {} => {} } ],
+        "match () { _ if let _ = Struct {} => {} }",
+        "match() { _ if let _ = Struct {} => {} }",
+    );
 
     // ExprKind::If
     c1!(expr, [ if true {} ], "if true {}");
