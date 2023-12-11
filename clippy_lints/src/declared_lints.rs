@@ -679,6 +679,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::unicode::INVISIBLE_CHARACTERS_INFO,
     crate::unicode::NON_ASCII_LITERAL_INFO,
     crate::unicode::UNICODE_NOT_NFC_INFO,
+    crate::uninhabited_references::UNINHABITED_REFERENCES_INFO,
     crate::uninit_vec::UNINIT_VEC_INFO,
     crate::unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD_INFO,
     crate::unit_types::LET_UNIT_VALUE_INFO,
