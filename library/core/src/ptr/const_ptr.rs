@@ -1772,6 +1772,7 @@ impl<T> *const [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
     fn eq(&self, other: &*const T) -> bool {
         *self == *other
     }
@@ -1784,6 +1785,7 @@ impl<T: ?Sized> Eq for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Ord for *const T {
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
     fn cmp(&self, other: &*const T) -> Ordering {
         if self < other {
             Less
@@ -1803,21 +1805,25 @@ impl<T: ?Sized> PartialOrd for *const T {
     }
 
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
     fn lt(&self, other: &*const T) -> bool {
         *self < *other
     }
 
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
     fn le(&self, other: &*const T) -> bool {
         *self <= *other
     }
 
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
     fn gt(&self, other: &*const T) -> bool {
         *self > *other
     }
 
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
     fn ge(&self, other: &*const T) -> bool {
         *self >= *other
     }

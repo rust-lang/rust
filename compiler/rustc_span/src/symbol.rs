@@ -520,6 +520,8 @@ symbols! {
         cmp,
         cmp_max,
         cmp_min,
+        cmp_partialeq_eq,
+        cmp_partialeq_ne,
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
         coerce_unsized,

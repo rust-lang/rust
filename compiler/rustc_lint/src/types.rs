@@ -1,12 +1,13 @@
 use crate::{
     fluent_generated as fluent,
     lints::{
-        AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
-        InvalidAtomicOrderingDiag, InvalidNanComparisons, InvalidNanComparisonsSuggestion,
-        OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
-        OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
-        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange,
-        VariantSizeDifferencesDiag,
+        AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
+        AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
+        AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
+        InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex,
+        OverflowingBinHexSign, OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt,
+        OverflowingIntHelp, OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange,
+        UnusedComparisons, UseInclusiveRange, VariantSizeDifferencesDiag,
     },
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -17,10 +18,10 @@ use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
-use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
     self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
+use rustc_middle::ty::{GenericArgsRef, TypeAndMut};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -28,6 +29,7 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
+use rustc_type_ir::DynKind;
 
 use std::iter;
 use std::ops::ControlFlow;
@@ -136,6 +138,37 @@ declare_lint! {
     "detects invalid floating point NaN comparisons"
 }
 
+declare_lint! {
+    /// The `ambiguous_wide_pointer_comparisons` lint checks comparison
+    /// of `*const/*mut ?Sized` as the operands.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # struct A;
+    /// # struct B;
+    ///
+    /// # trait T {}
+    /// # impl T for A {}
+    /// # impl T for B {}
+    ///
+    /// let ab = (A, B);
+    /// let a = &ab.0 as *const dyn T;
+    /// let b = &ab.1 as *const dyn T;
+    ///
+    /// let _ = a == b;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The comparison includes metadata which may not be expected.
+    AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+    Warn,
+    "detects ambiguous wide pointer comparisons"
+}
+
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
@@ -144,7 +177,12 @@ pub struct TypeLimits {
     negated_expr_span: Option<Span>,
 }
 
-impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS, INVALID_NAN_COMPARISONS]);
+impl_lint_pass!(TypeLimits => [
+    UNUSED_COMPARISONS,
+    OVERFLOWING_LITERALS,
+    INVALID_NAN_COMPARISONS,
+    AMBIGUOUS_WIDE_POINTER_COMPARISONS
+]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
@@ -620,6 +658,106 @@ fn lint_nan<'tcx>(
     cx.emit_spanned_lint(INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
+fn lint_wide_pointer<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    binop: hir::BinOpKind,
+    l: &'tcx hir::Expr<'tcx>,
+    r: &'tcx hir::Expr<'tcx>,
+) {
+    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(usize, bool)> {
+        let mut refs = 0;
+        // here we remove any "implicit" references and count the number
+        // of them to correctly suggest the right number of deref
+        while let ty::Ref(_, inner_ty, _) = ty.kind() {
+            ty = *inner_ty;
+            refs += 1;
+        }
+        match ty.kind() {
+            ty::RawPtr(TypeAndMut { mutbl: _, ty }) => (!ty.is_sized(cx.tcx, cx.param_env))
+                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, DynKind::Dyn)))),
+            _ => None,
+        }
+    };
+
+    // PartialEq::{eq,ne} takes references, remove any explicit references
+    let l = l.peel_borrows();
+    let r = r.peel_borrows();
+
+    let Some(l_ty) = cx.typeck_results().expr_ty_opt(l) else {
+        return;
+    };
+    let Some(r_ty) = cx.typeck_results().expr_ty_opt(r) else {
+        return;
+    };
+
+    let Some((l_ty_refs, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
+        return;
+    };
+    let Some((r_ty_refs, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
+        return;
+    };
+
+    let (Some(l_span), Some(r_span)) =
+        (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
+    else {
+        return cx.emit_spanned_lint(
+            AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+            e.span,
+            AmbiguousWidePointerComparisons::Spanless,
+        );
+    };
+
+    let ne = if binop == hir::BinOpKind::Ne { "!" } else { "" };
+    let is_eq_ne = matches!(binop, hir::BinOpKind::Eq | hir::BinOpKind::Ne);
+    let is_dyn_comparison = l_inner_ty_is_dyn && r_inner_ty_is_dyn;
+
+    let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
+    let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
+    let right = r_span.shrink_to_hi().until(e.span.shrink_to_hi());
+
+    let deref_left = &*"*".repeat(l_ty_refs);
+    let deref_right = &*"*".repeat(r_ty_refs);
+
+    cx.emit_spanned_lint(
+        AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+        e.span,
+        AmbiguousWidePointerComparisons::Spanful {
+            addr_metadata_suggestion: (is_eq_ne && !is_dyn_comparison).then(|| {
+                AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                    ne,
+                    deref_left,
+                    deref_right,
+                    left,
+                    middle,
+                    right,
+                }
+            }),
+            addr_suggestion: if is_eq_ne {
+                AmbiguousWidePointerComparisonsAddrSuggestion::AddrEq {
+                    ne,
+                    deref_left,
+                    deref_right,
+                    left,
+                    middle,
+                    right,
+                }
+            } else {
+                AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
+                    deref_left,
+                    deref_right,
+                    // those two Options are required for correctness as having
+                    // an empty span and an empty suggestion is not permitted
+                    left_before: (l_ty_refs != 0).then_some(left),
+                    right_before: (r_ty_refs != 0).then(|| r_span.shrink_to_lo()),
+                    left: l_span.shrink_to_hi(),
+                    right,
+                }
+            },
+        },
+    );
+}
+
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
@@ -636,10 +774,26 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         cx.emit_spanned_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
+                        lint_wide_pointer(cx, e, binop.node, l, r);
                     }
                 }
             }
             hir::ExprKind::Lit(lit) => lint_literal(cx, self, e, lit),
+            hir::ExprKind::Call(path, [l, r])
+                if let ExprKind::Path(ref qpath) = path.kind
+                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+                    && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
+                    && let Some(binop) = partialeq_binop(diag_item) =>
+            {
+                lint_wide_pointer(cx, e, binop, l, r);
+            }
+            hir::ExprKind::MethodCall(_, l, [r], _)
+                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+                    && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
+                    && let Some(binop) = partialeq_binop(diag_item) =>
+            {
+                lint_wide_pointer(cx, e, binop, l, r);
+            }
             _ => {}
         };
 
@@ -721,6 +875,16 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     | hir::BinOpKind::Ge
                     | hir::BinOpKind::Gt
             )
+        }
+
+        fn partialeq_binop(diag_item: Symbol) -> Option<hir::BinOpKind> {
+            if diag_item == sym::cmp_partialeq_eq {
+                Some(hir::BinOpKind::Eq)
+            } else if diag_item == sym::cmp_partialeq_ne {
+                Some(hir::BinOpKind::Ne)
+            } else {
+                None
+            }
         }
     }
 }
