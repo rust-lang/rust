@@ -22,6 +22,7 @@ pub mod span;
 pub mod files;
 mod fixup;
 
+use attrs::collect_attrs;
 use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
@@ -32,7 +33,7 @@ use base_db::{
 };
 use either::Either;
 use syntax::{
-    ast::{self, AstNode, HasDocComments},
+    ast::{self, AstNode},
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
@@ -438,9 +439,9 @@ impl MacroCallLoc {
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: handle `cfg_attr`
                 ast_id.with_value(ast_id.to_node(db)).map(|it| {
-                    it.doc_comments_and_attrs()
+                    collect_attrs(&it)
                         .nth(derive_attr_index.ast_index())
-                        .and_then(|it| match it {
+                        .and_then(|it| match it.1 {
                             Either::Left(attr) => Some(attr.syntax().clone()),
                             Either::Right(_) => None,
                         })
@@ -451,9 +452,9 @@ impl MacroCallLoc {
                 if self.def.is_attribute_derive() {
                     // FIXME: handle `cfg_attr`
                     ast_id.with_value(ast_id.to_node(db)).map(|it| {
-                        it.doc_comments_and_attrs()
+                        collect_attrs(&it)
                             .nth(invoc_attr_index.ast_index())
-                            .and_then(|it| match it {
+                            .and_then(|it| match it.1 {
                                 Either::Left(attr) => Some(attr.syntax().clone()),
                                 Either::Right(_) => None,
                             })
@@ -549,24 +550,24 @@ impl MacroCallKind {
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: should be the range of the macro name, not the whole derive
                 // FIXME: handle `cfg_attr`
-                ast_id
-                    .to_node(db)
-                    .doc_comments_and_attrs()
+                collect_attrs(&ast_id.to_node(db))
                     .nth(derive_attr_index.ast_index())
                     .expect("missing derive")
+                    .1
                     .expect_left("derive is a doc comment?")
                     .syntax()
                     .text_range()
             }
             // FIXME: handle `cfg_attr`
-            MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => ast_id
-                .to_node(db)
-                .doc_comments_and_attrs()
-                .nth(invoc_attr_index.ast_index())
-                .expect("missing attribute")
-                .expect_left("attribute macro is a doc comment?")
-                .syntax()
-                .text_range(),
+            MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
+                collect_attrs(&ast_id.to_node(db))
+                    .nth(invoc_attr_index.ast_index())
+                    .expect("missing attribute")
+                    .1
+                    .expect_left("attribute macro is a doc comment?")
+                    .syntax()
+                    .text_range()
+            }
         };
 
         FileRange { range, file_id }
@@ -737,11 +738,9 @@ impl ExpansionInfo {
         let attr_input_or_mac_def = def.or_else(|| match loc.kind {
             MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
                 // FIXME: handle `cfg_attr`
-                let tt = ast_id
-                    .to_node(db)
-                    .doc_comments_and_attrs()
+                let tt = collect_attrs(&ast_id.to_node(db))
                     .nth(invoc_attr_index.ast_index())
-                    .and_then(Either::left)?
+                    .and_then(|x| Either::left(x.1))?
                     .token_tree()?;
                 Some(InFile::new(ast_id.file_id, tt))
             }
