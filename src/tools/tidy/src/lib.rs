@@ -70,6 +70,7 @@ pub mod pal;
 pub mod rustdoc_css_themes;
 pub mod rustdoc_gui_tests;
 pub mod style;
+pub mod target_policy;
 pub mod target_specific_tests;
 pub mod tests_placement;
 pub mod ui_tests;
