@@ -136,6 +136,7 @@ able to get around this problem by setting `-Clinker=lld-link` in RUSTFLAGS
 ```python
 from collections import defaultdict
 import subprocess
+import sys
 
 def minor_version(version):
     return int(version.split('.')[1])
@@ -143,7 +144,7 @@ def minor_version(version):
 INSTALL_TOOLCHAIN = ["rustup", "toolchain", "install", "--profile", "minimal"]
 subprocess.run(INSTALL_TOOLCHAIN + ["nightly"])
 
-LOWER_BOUND = 65
+LOWER_BOUND = 73
 NIGHTLY_VERSION = minor_version(subprocess.run(
     ["rustc", "+nightly", "--version"],
     capture_output=True,
@@ -159,6 +160,7 @@ def llvm_version(toolchain):
 version_map = defaultdict(lambda: [])
 for version in range(LOWER_BOUND, NIGHTLY_VERSION - 1):
     toolchain = "1.{}.0".format(version)
+    print("Checking", toolchain, file=sys.stderr)
     subprocess.run(
         INSTALL_TOOLCHAIN + ["--no-self-update", toolchain],
         capture_output=True)
@@ -196,6 +198,8 @@ The following table shows known good combinations of toolchain versions.
 | 1.52 - 1.55  |      12       |
 | 1.56 - 1.59  |      13       |
 | 1.60 - 1.64  |      14       |
-| 1.65         |      15       |
+| 1.65 - 1.69  |      15       |
+| 1.70 - 1.72  |      16       |
+| 1.73 - 1.74  |      17       |
 
 Note that the compatibility policy for this feature might change in the future.

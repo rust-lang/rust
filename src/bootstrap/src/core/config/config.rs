@@ -193,6 +193,7 @@ pub struct Config {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub dry_run: DryRun,
+    pub dump_bootstrap_shims: bool,
     /// Arguments appearing after `--` to be forwarded to tools,
     /// e.g. `--fix-broken` or test arguments.
     pub free_args: Vec<String>,
@@ -1210,6 +1211,7 @@ impl Config {
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
         config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
+        config.dump_bootstrap_shims = flags.dump_bootstrap_shims;
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;

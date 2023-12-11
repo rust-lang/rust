@@ -480,6 +480,10 @@ cc = ["@GuillaumeGomez"]
 message = "Some changes might have occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
+[mentions."compiler/rustc_pattern_analysis"]
+message = "Some changes might have occurred in exhaustiveness checking"
+cc = ["@Nadrieril"]
+
 [mentions."library/portable-simd"]
 message = """
 Portable SIMD is developed in its own repository. If possible, consider \
