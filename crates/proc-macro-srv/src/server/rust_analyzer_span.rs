@@ -4,6 +4,7 @@ use std::{
     ops::{Bound, Range},
 };
 
+use ::tt::{TextRange, TextSize};
 use proc_macro::bridge::{self, server};
 use span::Span;
 
@@ -241,11 +242,11 @@ impl server::Span for RaSpanServer {
         SourceFile {}
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
-        // FIXME stub
+        // FIXME stub, requires builtin quote! implementation
         0
     }
     fn recover_proc_macro_span(&mut self, _id: usize) -> Self::Span {
-        // FIXME stub
+        // FIXME stub, requires builtin quote! implementation
         self.call_site
     }
     /// Recent feature, not yet in the proc_macro
@@ -289,32 +290,64 @@ impl server::Span for RaSpanServer {
     fn subspan(
         &mut self,
         span: Self::Span,
-        _start: Bound<usize>,
-        _end: Bound<usize>,
+        start: Bound<usize>,
+        end: Bound<usize>,
     ) -> Option<Self::Span> {
-        // Just return the span again, because some macros will unwrap the result.
-        Some(span)
-    }
-    fn resolved_at(&mut self, _span: Self::Span, _at: Self::Span) -> Self::Span {
-        // FIXME handle span
-        self.call_site
+        // FIXME requires db to resolve the ast id, THIS IS NOT INCREMENTAL as it works on absolute
+        // ranges
+        let length = span.range.len().into();
+
+        let start: u32 = match start {
+            Bound::Included(lo) => lo,
+            Bound::Excluded(lo) => lo.checked_add(1)?,
+            Bound::Unbounded => 0,
+        }
+        .try_into()
+        .ok()?;
+
+        let end: u32 = match end {
+            Bound::Included(hi) => hi.checked_add(1)?,
+            Bound::Excluded(hi) => hi,
+            Bound::Unbounded => span.range.len().into(),
+        }
+        .try_into()
+        .ok()?;
+
+        // Bounds check the values, preventing addition overflow and OOB spans.
+        let span_start = span.range.start().into();
+        if (u32::MAX - start) < span_start
+            || (u32::MAX - end) < span_start
+            || start >= end
+            || end > length
+        {
+            return None;
+        }
+
+        Some(Span {
+            range: TextRange::new(TextSize::from(start), TextSize::from(end)) + span.range.start(),
+            ..span
+        })
     }
 
-    fn end(&mut self, _self_: Self::Span) -> Self::Span {
-        self.call_site
+    fn resolved_at(&mut self, span: Self::Span, at: Self::Span) -> Self::Span {
+        Span { ctx: at.ctx, ..span }
     }
 
-    fn start(&mut self, _self_: Self::Span) -> Self::Span {
-        self.call_site
+    fn end(&mut self, span: Self::Span) -> Self::Span {
+        Span { range: TextRange::empty(span.range.end()), ..span }
+    }
+
+    fn start(&mut self, span: Self::Span) -> Self::Span {
+        Span { range: TextRange::empty(span.range.start()), ..span }
     }
 
     fn line(&mut self, _span: Self::Span) -> usize {
-        // FIXME handle line
+        // FIXME requires db to resolve line index, THIS IS NOT INCREMENTAL
         0
     }
 
     fn column(&mut self, _span: Self::Span) -> usize {
-        // FIXME handle column
+        // FIXME requires db to resolve line index, THIS IS NOT INCREMENTAL
         0
     }
 }

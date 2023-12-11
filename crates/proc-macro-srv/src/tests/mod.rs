@@ -106,6 +106,24 @@ fn test_fn_like_fn_like_span_join() {
 }
 
 #[test]
+fn test_fn_like_fn_like_span_ops() {
+    assert_expand(
+        "fn_like_span_ops",
+        "set_def_site resolved_at_def_site start_span",
+        expect![[r#"
+            SUBTREE $$ 1 1
+              IDENT   set_def_site 0
+              IDENT   resolved_at_def_site 1
+              IDENT   start_span 1"#]],
+        expect![[r#"
+            SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
+              IDENT   set_def_site SpanData { range: 0..150, anchor: SpanAnchor(FileId(41), 1), ctx: SyntaxContextId(0) }
+              IDENT   resolved_at_def_site SpanData { range: 13..33, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
+              IDENT   start_span SpanData { range: 34..34, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+    );
+}
+
+#[test]
 fn test_fn_like_mk_literals() {
     assert_expand(
         "fn_like_mk_literals",
@@ -218,6 +236,7 @@ fn list_test_macros() {
         fn_like_mk_literals [FuncLike]
         fn_like_mk_idents [FuncLike]
         fn_like_span_join [FuncLike]
+        fn_like_span_ops [FuncLike]
         attr_noop [Attr]
         attr_panic [Attr]
         attr_error [Attr]
