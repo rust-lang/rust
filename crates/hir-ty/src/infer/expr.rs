@@ -744,7 +744,7 @@ impl InferenceContext<'_> {
                     (RangeOp::Inclusive, _, None) => self.err_ty(),
                 }
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, is_assignee_expr } => {
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let index_ty = self.infer_expr(*index, &Expectation::none());
 
@@ -772,11 +772,24 @@ impl InferenceContext<'_> {
                             .build();
                         self.write_method_resolution(tgt_expr, func, substs);
                     }
-                    self.resolve_associated_type_with_params(
-                        self_ty,
-                        self.resolve_ops_index_output(),
-                        &[index_ty.cast(Interner)],
-                    )
+                    let assoc = self.resolve_ops_index_output();
+                    let res = self.resolve_associated_type_with_params(
+                        self_ty.clone(),
+                        assoc,
+                        &[index_ty.clone().cast(Interner)],
+                    );
+
+                    if *is_assignee_expr {
+                        if let Some(index_trait) = self.resolve_lang_trait(LangItem::IndexMut) {
+                            let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
+                                .push(self_ty)
+                                .fill(|_| index_ty.clone().cast(Interner))
+                                .build();
+                            self.push_obligation(trait_ref.cast(Interner));
+                        }
+                    }
+
+                    res
                 } else {
                     self.err_ty()
                 }
