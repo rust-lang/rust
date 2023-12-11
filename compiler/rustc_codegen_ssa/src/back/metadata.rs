@@ -158,12 +158,12 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
         file.symbols().find(|sym| sym.name() == Ok(AIX_METADATA_SYMBOL_NAME))
     {
         let offset = metadata_symbol.address() as usize;
-        if offset < 4 {
+        if offset < 8 {
             return Err(format!("Invalid metadata symbol offset: {offset}"));
         }
         // The offset specifies the location of rustc metadata in the comment section.
-        // The metadata is preceded by a 4-byte length field.
-        let len = u32::from_be_bytes(info_data[(offset - 4)..offset].try_into().unwrap()) as usize;
+        // The metadata is preceded by a 8-byte length field.
+        let len = u64::from_le_bytes(info_data[(offset - 8)..offset].try_into().unwrap()) as usize;
         if offset + len > (info_data.len() as usize) {
             return Err(format!(
                 "Metadata at offset {offset} with size {len} is beyond .info section"
@@ -479,8 +479,8 @@ pub fn create_wrapper_file(
             file.section_mut(section).flags =
                 SectionFlags::Xcoff { s_flags: xcoff::STYP_INFO as u32 };
 
-            let len = data.len() as u32;
-            let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
+            let len = data.len() as u64;
+            let offset = file.append_section_data(section, &len.to_le_bytes(), 1);
             // Add a symbol referring to the data in .info section.
             file.add_symbol(Symbol {
                 name: AIX_METADATA_SYMBOL_NAME.into(),
@@ -524,7 +524,7 @@ pub fn create_compressed_metadata_file(
     symbol_name: &str,
 ) -> Vec<u8> {
     let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
-    packed_metadata.write_all(&(metadata.raw_data().len() as u32).to_be_bytes()).unwrap();
+    packed_metadata.write_all(&(metadata.raw_data().len() as u64).to_le_bytes()).unwrap();
     packed_metadata.extend(metadata.raw_data());
 
     let Some(mut file) = create_object_file(sess) else {
@@ -599,12 +599,12 @@ pub fn create_compressed_metadata_file_for_xcoff(
         section: SymbolSection::Section(data_section),
         flags: SymbolFlags::None,
     });
-    let len = data.len() as u32;
-    let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
+    let len = data.len() as u64;
+    let offset = file.append_section_data(section, &len.to_le_bytes(), 1);
     // Add a symbol referring to the rustc metadata.
     file.add_symbol(Symbol {
         name: AIX_METADATA_SYMBOL_NAME.into(),
-        value: offset + 4, // The metadata is preceded by a 4-byte length field.
+        value: offset + 8, // The metadata is preceded by a 8-byte length field.
         size: 0,
         kind: SymbolKind::Unknown,
         scope: SymbolScope::Dynamic,

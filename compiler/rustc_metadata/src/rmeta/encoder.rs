@@ -2190,7 +2190,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
-    encoder.emit_raw_bytes(&[0, 0, 0, 0]);
+    encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);
@@ -2246,7 +2246,7 @@ fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Erro
     // Encode the root position.
     let header = METADATA_HEADER.len();
     file.seek(std::io::SeekFrom::Start(header as u64))?;
-    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])?;
+    file.write_all(&pos.to_le_bytes())?;
 
     // Return to the position where we are before writing the root position.
     file.seek(std::io::SeekFrom::Start(pos_before_seek))?;

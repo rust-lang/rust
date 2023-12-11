@@ -690,28 +690,25 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 8).unwrap())
             .decode(self)
     }
 
-    pub(crate) fn get_header(&self) -> CrateHeader {
-        let slice = &self.blob()[..];
+    fn root_pos(&self) -> NonZeroUsize {
         let offset = METADATA_HEADER.len();
+        let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
+        let pos = u64::from_le_bytes(pos_bytes);
+        NonZeroUsize::new(pos as usize).unwrap()
+    }
 
-        let pos_bytes = slice[offset..][..4].try_into().unwrap();
-        let pos = u32::from_be_bytes(pos_bytes) as usize;
-
-        LazyValue::<CrateHeader>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+    pub(crate) fn get_header(&self) -> CrateHeader {
+        let pos = self.root_pos();
+        LazyValue::<CrateHeader>::from_position(pos).decode(self)
     }
 
     pub(crate) fn get_root(&self) -> CrateRoot {
-        let slice = &self.blob()[..];
-        let offset = METADATA_HEADER.len();
-
-        let pos_bytes = slice[offset..][..4].try_into().unwrap();
-        let pos = u32::from_be_bytes(pos_bytes) as usize;
-
-        LazyValue::<CrateRoot>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+        let pos = self.root_pos();
+        LazyValue::<CrateRoot>::from_position(pos).decode(self)
     }
 
     pub(crate) fn list_crate_metadata(
