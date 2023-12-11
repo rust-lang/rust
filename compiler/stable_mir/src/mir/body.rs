@@ -228,7 +228,7 @@ pub struct InlineAsmOperand {
     pub raw_rpr: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum UnwindAction {
     Continue,
     Unreachable,
@@ -248,7 +248,7 @@ pub enum AssertMessage {
     MisalignedPointerDereference { required: Operand, found: Operand },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BinOp {
     Add,
     AddUnchecked,
@@ -278,8 +278,10 @@ impl BinOp {
     /// Return the type of this operation for the given input Ty.
     /// This function does not perform type checking, and it currently doesn't handle SIMD.
     pub fn ty(&self, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
-        assert!(lhs_ty.kind().is_primitive());
-        assert!(rhs_ty.kind().is_primitive());
+        let lhs_kind = lhs_ty.kind();
+        let rhs_kind = rhs_ty.kind();
+        assert!(lhs_kind.is_primitive() || lhs_kind.is_any_ptr());
+        assert!(rhs_kind.is_primitive() || rhs_kind.is_any_ptr());
         match self {
             BinOp::Add
             | BinOp::AddUnchecked
@@ -306,7 +308,7 @@ impl BinOp {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum UnOp {
     Not,
     Neg,
@@ -319,7 +321,7 @@ pub enum CoroutineKind {
     Gen(CoroutineSource),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CoroutineSource {
     Block,
     Closure,
@@ -343,7 +345,7 @@ pub enum FakeReadCause {
 }
 
 /// Describes what kind of retag is to be performed
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum RetagKind {
     FnEntry,
     TwoPhase,
@@ -351,7 +353,7 @@ pub enum RetagKind {
     Default,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Variance {
     Covariant,
     Invariant,
@@ -862,7 +864,7 @@ pub enum Safety {
     Normal,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
@@ -889,7 +891,7 @@ pub enum PointerCoercion {
     Unsize,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CastKind {
     PointerExposeAddress,
     PointerFromExposedAddress,
