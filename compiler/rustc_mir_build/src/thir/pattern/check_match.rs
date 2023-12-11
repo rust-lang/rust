@@ -2,9 +2,8 @@ use rustc_pattern_analysis::constructor::Constructor;
 use rustc_pattern_analysis::cx::MatchCheckCtxt;
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::pat::{DeconstructedPat, WitnessPat};
-use rustc_pattern_analysis::usefulness::{
-    compute_match_usefulness, MatchArm, Usefulness, UsefulnessReport,
-};
+use rustc_pattern_analysis::usefulness::{Usefulness, UsefulnessReport};
+use rustc_pattern_analysis::{analyze_match, MatchArm};
 
 use crate::errors::*;
 
@@ -436,7 +435,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         }
 
         let scrut_ty = scrut.ty;
-        let report = compute_match_usefulness(&cx, &tarms, scrut_ty);
+        let report = analyze_match(&cx, &tarms, scrut_ty);
 
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
@@ -550,7 +549,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, hir_id: self.lint_level, has_guard: false }];
-        let report = compute_match_usefulness(&cx, &arms, pat.ty());
+        let report = analyze_match(&cx, &arms, pat.ty());
         Ok((cx, report))
     }
 
