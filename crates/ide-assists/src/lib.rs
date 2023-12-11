@@ -210,6 +210,7 @@ mod handlers {
     mod replace_turbofish_with_explicit_type;
     mod sort_items;
     mod split_import;
+    mod term_search;
     mod toggle_ignore;
     mod unmerge_match_arm;
     mod unmerge_use;
@@ -332,6 +333,7 @@ mod handlers {
             replace_arith_op::replace_arith_with_saturating,
             sort_items::sort_items,
             split_import::split_import,
+            term_search::term_search,
             toggle_ignore::toggle_ignore,
             unmerge_match_arm::unmerge_match_arm,
             unmerge_use::unmerge_use,

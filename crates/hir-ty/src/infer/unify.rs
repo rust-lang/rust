@@ -82,6 +82,37 @@ pub fn could_unify(
     unify(db, env, tys).is_some()
 }
 
+pub fn could_unify_deeply(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    tys: &Canonical<(Ty, Ty)>,
+) -> bool {
+    let mut table = InferenceTable::new(db, env);
+    let vars = Substitution::from_iter(
+        Interner,
+        tys.binders.iter(Interner).map(|it| match &it.kind {
+            chalk_ir::VariableKind::Ty(_) => {
+                GenericArgData::Ty(table.new_type_var()).intern(Interner)
+            }
+            chalk_ir::VariableKind::Lifetime => {
+                GenericArgData::Ty(table.new_type_var()).intern(Interner)
+            } // FIXME: maybe wrong?
+            chalk_ir::VariableKind::Const(ty) => {
+                GenericArgData::Const(table.new_const_var(ty.clone())).intern(Interner)
+            }
+        }),
+    );
+    let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner);
+    let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner);
+    let ty1_with_vars = table.normalize_associated_types_in(ty1_with_vars);
+    let ty2_with_vars = table.normalize_associated_types_in(ty2_with_vars);
+    // table.resolve_obligations_as_possible();
+    // table.propagate_diverging_flag();
+    // let ty1_with_vars = table.resolve_completely(ty1_with_vars);
+    // let ty2_with_vars = table.resolve_completely(ty2_with_vars);
+    table.unify_deeply(&ty1_with_vars, &ty2_with_vars)
+}
+
 pub(crate) fn unify(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
@@ -431,6 +462,18 @@ impl<'a> InferenceTable<'a> {
         true
     }
 
+    /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
+    pub(crate) fn unify_deeply<T: ?Sized + Zip<Interner>>(&mut self, ty1: &T, ty2: &T) -> bool {
+        let result = match self.try_unify(ty1, ty2) {
+            Ok(r) => r,
+            Err(_) => return false,
+        };
+        result.goals.iter().all(|goal| {
+            let canonicalized = self.canonicalize(goal.clone());
+            self.try_fulfill_obligation(&canonicalized)
+        })
+    }
+
     /// Unify two relatable values (e.g. `Ty`) and return new trait goals arising from it, so the
     /// caller needs to deal with them.
     pub(crate) fn try_unify<T: ?Sized + Zip<Interner>>(
@@ -658,6 +701,38 @@ impl<'a> InferenceTable<'a> {
                 // FIXME obligation cannot be fulfilled => diagnostic
                 true
             }
+        }
+    }
+
+    fn try_fulfill_obligation(
+        &mut self,
+        canonicalized: &Canonicalized<InEnvironment<Goal>>,
+    ) -> bool {
+        let solution = self.db.trait_solve(
+            self.trait_env.krate,
+            self.trait_env.block,
+            canonicalized.value.clone(),
+        );
+
+        // FIXME: Does just returning `solution.is_some()` work?
+        match solution {
+            Some(Solution::Unique(canonical_subst)) => {
+                canonicalized.apply_solution(
+                    self,
+                    Canonical {
+                        binders: canonical_subst.binders,
+                        // FIXME: handle constraints
+                        value: canonical_subst.value.subst,
+                    },
+                );
+                true
+            }
+            Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                canonicalized.apply_solution(self, substs);
+                true
+            }
+            Some(_) => true,
+            None => false,
         }
     }
 
