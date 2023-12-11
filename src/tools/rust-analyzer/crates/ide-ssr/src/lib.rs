@@ -3,7 +3,7 @@
 //! Allows searching the AST for code that matches one or more patterns and then replacing that code
 //! based on a template.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 // Feature: Structural Search and Replace
 //

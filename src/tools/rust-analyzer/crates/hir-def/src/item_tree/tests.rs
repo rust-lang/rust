@@ -370,3 +370,15 @@ struct S<#[cfg(never)] T>;
         "#]],
     )
 }
+
+#[test]
+fn pub_self() {
+    check(
+        r#"
+pub(self) struct S;
+        "#,
+        expect![[r#"
+            pub(self) struct S;
+        "#]],
+    )
+}

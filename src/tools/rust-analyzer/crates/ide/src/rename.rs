@@ -4,16 +4,18 @@
 //! tests. This module also implements a couple of magic tricks, like renaming
 //! `self` and to `self` (to switch between associated function and method).
 
-use hir::{AsAssocItem, InFile, Semantics};
+use hir::{AsAssocItem, HirFileIdExt, InFile, Semantics};
 use ide_db::{
-    base_db::FileId,
+    base_db::{FileId, FileRange},
     defs::{Definition, NameClass, NameRefClass},
     rename::{bail, format_err, source_edit_from_references, IdentifierKind},
     RootDatabase,
 };
 use itertools::Itertools;
 use stdx::{always, never};
-use syntax::{ast, utils::is_raw_identifier, AstNode, SmolStr, SyntaxNode, TextRange, TextSize};
+use syntax::{
+    ast, utils::is_raw_identifier, AstNode, SmolStr, SyntaxKind, SyntaxNode, TextRange, TextSize,
+};
 
 use text_edit::TextEdit;
 
@@ -34,23 +36,20 @@ pub(crate) fn prepare_rename(
     let syntax = source_file.syntax();
 
     let res = find_definitions(&sema, syntax, position)?
-        .map(|(name_like, def)| {
+        .map(|(frange, kind, def)| {
             // ensure all ranges are valid
 
             if def.range_for_rename(&sema).is_none() {
                 bail!("No references found at position")
             }
-            let Some(frange) = sema.original_range_opt(name_like.syntax()) else {
-                bail!("No references found at position");
-            };
 
             always!(
                 frange.range.contains_inclusive(position.offset)
                     && frange.file_id == position.file_id
             );
 
-            Ok(match name_like {
-                ast::NameLike::Lifetime(_) => {
+            Ok(match kind {
+                SyntaxKind::LIFETIME => {
                     TextRange::new(frange.range.start() + TextSize::from(1), frange.range.end())
                 }
                 _ => frange.range,
@@ -93,7 +92,7 @@ pub(crate) fn rename(
     let defs = find_definitions(&sema, syntax, position)?;
 
     let ops: RenameResult<Vec<SourceChange>> = defs
-        .map(|(_namelike, def)| {
+        .map(|(.., def)| {
             if let Definition::Local(local) = def {
                 if let Some(self_param) = local.as_self_param(sema.db) {
                     cov_mark::hit!(rename_self_to_param);
@@ -134,11 +133,27 @@ pub(crate) fn will_rename_file(
 fn find_definitions(
     sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
-    position: FilePosition,
-) -> RenameResult<impl Iterator<Item = (ast::NameLike, Definition)>> {
-    let symbols = sema
-        .find_nodes_at_offset_with_descend::<ast::NameLike>(syntax, position.offset)
-        .map(|name_like| {
+    FilePosition { file_id, offset }: FilePosition,
+) -> RenameResult<impl Iterator<Item = (FileRange, SyntaxKind, Definition)>> {
+    let token = syntax.token_at_offset(offset).find(|t| matches!(t.kind(), SyntaxKind::STRING));
+
+    if let Some((range, Some(resolution))) =
+        token.and_then(|token| sema.check_for_format_args_template(token, offset))
+    {
+        return Ok(vec![(
+            FileRange { file_id, range },
+            SyntaxKind::STRING,
+            Definition::from(resolution),
+        )]
+        .into_iter());
+    }
+
+    let symbols =
+        sema.find_nodes_at_offset_with_descend::<ast::NameLike>(syntax, offset).map(|name_like| {
+            let kind = name_like.syntax().kind();
+            let range = sema
+                .original_range_opt(name_like.syntax())
+                .ok_or_else(|| format_err!("No references found at position"))?;
             let res = match &name_like {
                 // renaming aliases would rename the item being aliased as the HIR doesn't track aliases yet
                 ast::NameLike::Name(name)
@@ -163,7 +178,6 @@ fn find_definitions(
                             Definition::Local(local_def)
                         }
                     })
-                    .map(|def| (name_like.clone(), def))
                     .ok_or_else(|| format_err!("No references found at position")),
                 ast::NameLike::NameRef(name_ref) => {
                     NameRefClass::classify(sema, name_ref)
@@ -187,7 +201,7 @@ fn find_definitions(
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {
-                                Ok((name_like.clone(), def))
+                                Ok(def)
                             }
                         })
                 }
@@ -203,11 +217,10 @@ fn find_definitions(
                                 _ => None,
                             })
                         })
-                        .map(|def| (name_like, def))
                         .ok_or_else(|| format_err!("No references found at position"))
                 }
             };
-            res
+            res.map(|def| (range, kind, def))
         });
 
     let res: RenameResult<Vec<_>> = symbols.collect();
@@ -218,7 +231,7 @@ fn find_definitions(
                 Err(format_err!("No references found at position"))
             } else {
                 // remove duplicates, comparing `Definition`s
-                Ok(v.into_iter().unique_by(|t| t.1))
+                Ok(v.into_iter().unique_by(|&(.., def)| def).collect::<Vec<_>>().into_iter())
             }
         }
         Err(e) => Err(e),
@@ -2662,5 +2675,45 @@ struct A;
             "#,
             "error: Cannot rename a non-local definition.",
         )
+    }
+
+    #[test]
+    fn implicit_format_args() {
+        check(
+            "fbar",
+            r#"
+//- minicore: fmt
+fn test() {
+    let foo = "foo";
+    format_args!("hello {foo} {foo$0} {}", foo);
+}
+"#,
+            r#"
+fn test() {
+    let fbar = "foo";
+    format_args!("hello {fbar} {fbar} {}", fbar);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn implicit_format_args2() {
+        check(
+            "fo",
+            r#"
+//- minicore: fmt
+fn test() {
+    let foo = "foo";
+    format_args!("hello {foo} {foo$0} {}", foo);
+}
+"#,
+            r#"
+fn test() {
+    let fo = "foo";
+    format_args!("hello {fo} {fo} {}", fo);
+}
+"#,
+        );
     }
 }

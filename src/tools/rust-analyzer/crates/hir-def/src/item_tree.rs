@@ -42,12 +42,11 @@ use std::{
 };
 
 use ast::{AstNode, HasName, StructKind};
-use base_db::CrateId;
+use base_db::{span::SyntaxContextId, CrateId};
 use either::Either;
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     attrs::RawAttrs,
-    hygiene::Hygiene,
     name::{name, AsName, Name},
     ExpandTo, HirFileId, InFile,
 };
@@ -118,7 +117,7 @@ impl ItemTree {
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.hygiene()));
+                    top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.span_map()));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {
@@ -749,6 +748,7 @@ pub struct MacroCall {
     pub path: Interned<ModPath>,
     pub ast_id: FileAstId<ast::MacroCall>,
     pub expand_to: ExpandTo,
+    pub call_site: SyntaxContextId,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -778,9 +778,9 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let hygiene = Hygiene::new(db.upcast(), file_id);
-        let (_, source_map) =
-            lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree");
+        let span_map = db.span_map(file_id);
+        let (_, source_map) = lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
+            .expect("failed to lower use tree");
         source_map[index].clone()
     }
     /// Maps a `UseTree` contained in this import back to its AST node.
@@ -793,8 +793,10 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let hygiene = Hygiene::new(db.upcast(), file_id);
-        lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree").1
+        let span_map = db.span_map(file_id);
+        lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
+            .expect("failed to lower use tree")
+            .1
     }
 }
 

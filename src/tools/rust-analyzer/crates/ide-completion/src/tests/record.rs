@@ -186,10 +186,10 @@ fn main() {
             lc foo                  Foo
             lc thing                i32
             md core
-            st Foo
+            st Foo                  Foo
             st Foo {…}              Foo { foo1: u32, foo2: u32 }
             tt Default
-            bt u32
+            bt u32                  u32
             kw crate::
             kw self::
         "#]],

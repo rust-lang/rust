@@ -1,111 +1,124 @@
 //! To make attribute macros work reliably when typing, we need to take care to
 //! fix up syntax errors in the code we're passing to them.
-use std::mem;
 
-use mbe::{SyntheticToken, SyntheticTokenId, TokenMap};
-use rustc_hash::FxHashMap;
+use base_db::{
+    span::{ErasedFileAstId, SpanAnchor, SpanData},
+    FileId,
+};
+use la_arena::RawIdx;
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
-    match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
+    match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
-use tt::token_id::Subtree;
+use triomphe::Arc;
+use tt::Spacing;
+
+use crate::{
+    span::SpanMapRef,
+    tt::{Ident, Leaf, Punct, Subtree},
+};
 
 /// The result of calculating fixes for a syntax node -- a bunch of changes
 /// (appending to and replacing nodes), the information that is needed to
 /// reverse those changes afterwards, and a token map.
 #[derive(Debug, Default)]
 pub(crate) struct SyntaxFixups {
-    pub(crate) append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
-    pub(crate) replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+    pub(crate) append: FxHashMap<SyntaxElement, Vec<Leaf>>,
+    pub(crate) remove: FxHashSet<SyntaxNode>,
     pub(crate) undo_info: SyntaxFixupUndoInfo,
-    pub(crate) token_map: TokenMap,
-    pub(crate) next_id: u32,
 }
 
 /// This is the information needed to reverse the fixups.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SyntaxFixupUndoInfo {
-    original: Box<[Subtree]>,
+    // FIXME: ThinArc<[Subtree]>
+    original: Option<Arc<Box<[Subtree]>>>,
 }
 
-const EMPTY_ID: SyntheticTokenId = SyntheticTokenId(!0);
+impl SyntaxFixupUndoInfo {
+    pub(crate) const NONE: Self = SyntaxFixupUndoInfo { original: None };
+}
 
-pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
+// censoring -> just don't convert the node
+// replacement -> censor + append
+// append -> insert a fake node, here we need to assemble some dummy span that we can figure out how
+// to remove later
+
+pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> SyntaxFixups {
     let mut append = FxHashMap::<SyntaxElement, _>::default();
-    let mut replace = FxHashMap::<SyntaxElement, _>::default();
+    let mut remove = FxHashSet::<SyntaxNode>::default();
     let mut preorder = node.preorder();
     let mut original = Vec::new();
-    let mut token_map = TokenMap::default();
-    let mut next_id = 0;
+    let dummy_range = TextRange::empty(TextSize::new(0));
+    // we use a file id of `FileId(!0)` to signal a fake node, and the text range's start offset as
+    // the index into the replacement vec but only if the end points to !0
+    let dummy_anchor = SpanAnchor {
+        file_id: FileId::from_raw(!0),
+        ast_id: ErasedFileAstId::from_raw(RawIdx::from(!0)),
+    };
+    let fake_span = |range| SpanData {
+        range: dummy_range,
+        anchor: dummy_anchor,
+        ctx: span_map.span_for_range(range).ctx,
+    };
     while let Some(event) = preorder.next() {
-        let node = match event {
-            syntax::WalkEvent::Enter(node) => node,
-            syntax::WalkEvent::Leave(_) => continue,
-        };
+        let syntax::WalkEvent::Enter(node) = event else { continue };
 
+        let node_range = node.text_range();
         if can_handle_error(&node) && has_error_to_handle(&node) {
+            remove.insert(node.clone().into());
             // the node contains an error node, we have to completely replace it by something valid
-            let (original_tree, new_tmap, new_next_id) =
-                mbe::syntax_node_to_token_tree_with_modifications(
-                    &node,
-                    mem::take(&mut token_map),
-                    next_id,
-                    Default::default(),
-                    Default::default(),
-                );
-            token_map = new_tmap;
-            next_id = new_next_id;
+            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map);
             let idx = original.len() as u32;
             original.push(original_tree);
-            let replacement = SyntheticToken {
-                kind: SyntaxKind::IDENT,
+            let replacement = Leaf::Ident(Ident {
                 text: "__ra_fixup".into(),
-                range: node.text_range(),
-                id: SyntheticTokenId(idx),
-            };
-            replace.insert(node.clone().into(), vec![replacement]);
+                span: SpanData {
+                    range: TextRange::new(TextSize::new(idx), TextSize::new(!0)),
+                    anchor: dummy_anchor,
+                    ctx: span_map.span_for_range(node_range).ctx,
+                },
+            });
+            append.insert(node.clone().into(), vec![replacement]);
             preorder.skip_subtree();
             continue;
         }
+
         // In some other situations, we can fix things by just appending some tokens.
-        let end_range = TextRange::empty(node.text_range().end());
         match_ast! {
             match node {
                 ast::FieldExpr(it) => {
                     if it.name_ref().is_none() {
                         // incomplete field access: some_expr.|
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::IDENT,
+                            Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                                span: fake_span(node_range),
+                            }),
                         ]);
                     }
                 },
                 ast::ExprStmt(it) => {
                     if it.semicolon_token().is_none() {
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::SEMICOLON,
-                                text: ";".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                            Leaf::Punct(Punct {
+                                char: ';',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range),
+                            }),
                         ]);
                     }
                 },
                 ast::LetStmt(it) => {
                     if it.semicolon_token().is_none() {
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::SEMICOLON,
-                                text: ";".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                            Leaf::Punct(Punct {
+                                char: ';',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                 },
@@ -117,28 +130,25 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                             None => continue,
                         };
                         append.insert(if_token.into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::IDENT,
+                            Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                     if it.then_branch().is_none() {
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::L_CURLY,
-                                text: "{".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::R_CURLY,
-                                text: "}".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                            // FIXME: THis should be a subtree no?
+                            Leaf::Punct(Punct {
+                                char: '{',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
+                            Leaf::Punct(Punct {
+                                char: '}',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                 },
@@ -150,46 +160,42 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                             None => continue,
                         };
                         append.insert(while_token.into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::IDENT,
+                            Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::L_CURLY,
-                                text: "{".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::R_CURLY,
-                                text: "}".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                            // FIXME: THis should be a subtree no?
+                            Leaf::Punct(Punct {
+                                char: '{',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
+                            Leaf::Punct(Punct {
+                                char: '}',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                 },
                 ast::LoopExpr(it) => {
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::L_CURLY,
-                                text: "{".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::R_CURLY,
-                                text: "}".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                            // FIXME: THis should be a subtree no?
+                            Leaf::Punct(Punct {
+                                char: '{',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
+                            Leaf::Punct(Punct {
+                                char: '}',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                 },
@@ -201,29 +207,26 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                             None => continue
                         };
                         append.insert(match_token.into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::IDENT,
+                            Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                range: end_range,
-                                id: EMPTY_ID
-                            },
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                     if it.match_arm_list().is_none() {
                         // No match arms
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::L_CURLY,
-                                text: "{".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::R_CURLY,
-                                text: "}".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                            // FIXME: THis should be a subtree no?
+                            Leaf::Punct(Punct {
+                                char: '{',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
+                            Leaf::Punct(Punct {
+                                char: '}',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                 },
@@ -234,10 +237,15 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                     };
 
                     let [pat, in_token, iter] = [
-                        (SyntaxKind::UNDERSCORE, "_"),
-                        (SyntaxKind::IN_KW, "in"),
-                        (SyntaxKind::IDENT, "__ra_fixup")
-                    ].map(|(kind, text)| SyntheticToken { kind, text: text.into(), range: end_range, id: EMPTY_ID});
+                         "_",
+                         "in",
+                         "__ra_fixup"
+                    ].map(|text|
+                        Leaf::Ident(Ident {
+                            text: text.into(),
+                            span: fake_span(node_range)
+                        }),
+                    );
 
                     if it.pat().is_none() && it.in_token().is_none() && it.iterable().is_none() {
                         append.insert(for_token.into(), vec![pat, in_token, iter]);
@@ -248,18 +256,17 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
 
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            SyntheticToken {
-                                kind: SyntaxKind::L_CURLY,
-                                text: "{".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::R_CURLY,
-                                text: "}".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
+                            // FIXME: THis should be a subtree no?
+                            Leaf::Punct(Punct {
+                                char: '{',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
+                            Leaf::Punct(Punct {
+                                char: '}',
+                                spacing: Spacing::Alone,
+                                span: fake_span(node_range)
+                            }),
                         ]);
                     }
                 },
@@ -267,12 +274,13 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
             }
         }
     }
+    let needs_fixups = !append.is_empty() || !original.is_empty();
     SyntaxFixups {
         append,
-        replace,
-        token_map,
-        next_id,
-        undo_info: SyntaxFixupUndoInfo { original: original.into_boxed_slice() },
+        remove,
+        undo_info: SyntaxFixupUndoInfo {
+            original: needs_fixups.then(|| Arc::new(original.into_boxed_slice())),
+        },
     }
 }
 
@@ -288,30 +296,32 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
     has_error(node) || node.children().any(|c| !can_handle_error(&c) && has_error_to_handle(&c))
 }
 
-pub(crate) fn reverse_fixups(
-    tt: &mut Subtree,
-    token_map: &TokenMap,
-    undo_info: &SyntaxFixupUndoInfo,
-) {
+pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) {
+    let Some(undo_info) = undo_info.original.as_deref() else { return };
+    let undo_info = &**undo_info;
+    reverse_fixups_(tt, undo_info);
+}
+
+fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
     let tts = std::mem::take(&mut tt.token_trees);
     tt.token_trees = tts
         .into_iter()
+        // delete all fake nodes
         .filter(|tt| match tt {
             tt::TokenTree::Leaf(leaf) => {
-                token_map.synthetic_token_id(*leaf.span()) != Some(EMPTY_ID)
+                let span = leaf.span();
+                span.anchor.file_id != FileId::from_raw(!0) || span.range.end() == TextSize::new(!0)
             }
-            tt::TokenTree::Subtree(st) => {
-                token_map.synthetic_token_id(st.delimiter.open) != Some(EMPTY_ID)
-            }
+            tt::TokenTree::Subtree(_) => true,
         })
         .flat_map(|tt| match tt {
             tt::TokenTree::Subtree(mut tt) => {
-                reverse_fixups(&mut tt, token_map, undo_info);
+                reverse_fixups_(&mut tt, undo_info);
                 SmallVec::from_const([tt.into()])
             }
             tt::TokenTree::Leaf(leaf) => {
-                if let Some(id) = token_map.synthetic_token_id(*leaf.span()) {
-                    let original = undo_info.original[id.0 as usize].clone();
+                if leaf.span().anchor.file_id == FileId::from_raw(!0) {
+                    let original = undo_info[u32::from(leaf.span().range.start()) as usize].clone();
                     if original.delimiter.kind == tt::DelimiterKind::Invisible {
                         original.token_trees.into()
                     } else {
@@ -327,11 +337,15 @@ pub(crate) fn reverse_fixups(
 
 #[cfg(test)]
 mod tests {
+    use base_db::FileId;
     use expect_test::{expect, Expect};
+    use triomphe::Arc;
 
-    use crate::tt;
-
-    use super::reverse_fixups;
+    use crate::{
+        fixup::reverse_fixups,
+        span::{RealSpanMap, SpanMap},
+        tt,
+    };
 
     // The following three functions are only meant to check partial structural equivalence of
     // `TokenTree`s, see the last assertion in `check()`.
@@ -361,13 +375,13 @@ mod tests {
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture);
-        let fixups = super::fixup_syntax(&parsed.syntax_node());
-        let (mut tt, tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
+        let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
+        let fixups = super::fixup_syntax(span_map.as_ref(), &parsed.syntax_node());
+        let mut tt = mbe::syntax_node_to_token_tree_modified(
             &parsed.syntax_node(),
-            fixups.token_map,
-            fixups.next_id,
-            fixups.replace,
+            span_map.as_ref(),
             fixups.append,
+            fixups.remove,
         );
 
         let actual = format!("{tt}\n");
@@ -383,14 +397,15 @@ mod tests {
             parse.syntax_node()
         );
 
-        reverse_fixups(&mut tt, &tmap, &fixups.undo_info);
+        reverse_fixups(&mut tt, &fixups.undo_info);
 
         // the fixed-up + reversed version should be equivalent to the original input
         // modulo token IDs and `Punct`s' spacing.
-        let (original_as_tt, _) = mbe::syntax_node_to_token_tree(&parsed.syntax_node());
+        let original_as_tt =
+            mbe::syntax_node_to_token_tree(&parsed.syntax_node(), span_map.as_ref());
         assert!(
             check_subtree_eq(&tt, &original_as_tt),
-            "different token tree: {tt:?},\n{original_as_tt:?}"
+            "different token tree:\n{tt:?}\n\n{original_as_tt:?}"
         );
     }
 
@@ -403,7 +418,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {for _ in __ra_fixup {}}
+fn foo () {for _ in __ra_fixup { }}
 "#]],
         )
     }
@@ -431,7 +446,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {for bar in qux {}}
+fn foo () {for bar in qux { }}
 "#]],
         )
     }
@@ -462,7 +477,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup {}}
+fn foo () {match __ra_fixup { }}
 "#]],
         )
     }
@@ -494,7 +509,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup {}}
+fn foo () {match __ra_fixup { }}
 "#]],
         )
     }
@@ -609,7 +624,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if a {}}
+fn foo () {if a { }}
 "#]],
         )
     }
@@ -623,7 +638,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if __ra_fixup {}}
+fn foo () {if __ra_fixup { }}
 "#]],
         )
     }
@@ -637,7 +652,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if __ra_fixup {} {}}
+fn foo () {if __ra_fixup {} { }}
 "#]],
         )
     }
@@ -651,7 +666,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {while __ra_fixup {}}
+fn foo () {while __ra_fixup { }}
 "#]],
         )
     }
@@ -665,7 +680,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {while foo {}}
+fn foo () {while foo { }}
 "#]],
         )
     }
@@ -692,7 +707,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {loop {}}
+fn foo () {loop { }}
 "#]],
         )
     }

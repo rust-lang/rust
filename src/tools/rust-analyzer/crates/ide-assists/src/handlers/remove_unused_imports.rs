@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use hir::{InFile, Module, ModuleSource};
+use hir::{HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
 use ide_db::{
     base_db::FileRange,
     defs::Definition,
@@ -167,7 +167,7 @@ fn used_once_in_scope(ctx: &AssistContext<'_>, def: Definition, scopes: &Vec<Sea
 fn module_search_scope(db: &RootDatabase, module: hir::Module) -> Vec<SearchScope> {
     let (file_id, range) = {
         let InFile { file_id, value } = module.definition_source(db);
-        if let Some((file_id, call_source)) = file_id.original_call_node(db) {
+        if let Some(InRealFile { file_id, value: call_source }) = file_id.original_call_node(db) {
             (file_id, Some(call_source.text_range()))
         } else {
             (

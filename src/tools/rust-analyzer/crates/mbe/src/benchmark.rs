@@ -9,7 +9,7 @@ use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, tt, DeclarativeMacro,
+    syntax_node_to_token_tree, DeclarativeMacro, DummyTestSpanData, DummyTestSpanMap, DUMMY,
 };
 
 #[test]
@@ -38,7 +38,7 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(tt);
+                let res = rules[&id].expand(&tt, |_| ());
                 assert!(res.err.is_none());
                 res.value.token_trees.len()
             })
@@ -47,14 +47,14 @@ fn benchmark_expand_macro_rules() {
     assert_eq!(hash, 69413);
 }
 
-fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
+fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro<DummyTestSpanData>> {
     macro_rules_fixtures_tt()
         .into_iter()
         .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true)))
         .collect()
 }
 
-fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree> {
+fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<DummyTestSpanData>> {
     let fixture = bench_fixture::numerous_macro_rules();
     let source_file = ast::SourceFile::parse(&fixture).ok().unwrap();
 
@@ -64,14 +64,17 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree> {
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let (def_tt, _) = syntax_node_to_token_tree(rule.token_tree().unwrap().syntax());
+            let def_tt =
+                syntax_node_to_token_tree(rule.token_tree().unwrap().syntax(), DummyTestSpanMap);
             (id, def_tt)
         })
         .collect()
 }
 
 /// Generate random invocation fixtures from rules
-fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(String, tt::Subtree)> {
+fn invocation_fixtures(
+    rules: &FxHashMap<String, DeclarativeMacro<DummyTestSpanData>>,
+) -> Vec<(String, tt::Subtree<DummyTestSpanData>)> {
     let mut seed = 123456789;
     let mut res = Vec::new();
 
@@ -93,8 +96,8 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                 loop {
                     let mut subtree = tt::Subtree {
                         delimiter: tt::Delimiter {
-                            open: tt::TokenId::UNSPECIFIED,
-                            close: tt::TokenId::UNSPECIFIED,
+                            open: DUMMY,
+                            close: DUMMY,
                             kind: tt::DelimiterKind::Invisible,
                         },
                         token_trees: vec![],
@@ -102,7 +105,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                     for op in rule.lhs.iter() {
                         collect_from_op(op, &mut subtree, &mut seed);
                     }
-                    if it.expand(subtree.clone()).err.is_none() {
+                    if it.expand(&subtree, |_| ()).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }
@@ -116,7 +119,11 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
     }
     return res;
 
-    fn collect_from_op(op: &Op, parent: &mut tt::Subtree, seed: &mut usize) {
+    fn collect_from_op(
+        op: &Op<DummyTestSpanData>,
+        parent: &mut tt::Subtree<DummyTestSpanData>,
+        seed: &mut usize,
+    ) {
         return match op {
             Op::Var { kind, .. } => match kind.as_ref() {
                 Some(MetaVarKind::Ident) => parent.token_trees.push(make_ident("foo")),
@@ -202,38 +209,21 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
             *seed = usize::wrapping_add(usize::wrapping_mul(*seed, a), c);
             *seed
         }
-        fn make_ident(ident: &str) -> tt::TokenTree {
-            tt::Leaf::Ident(tt::Ident {
-                span: tt::TokenId::unspecified(),
-                text: SmolStr::new(ident),
-            })
-            .into()
+        fn make_ident(ident: &str) -> tt::TokenTree<DummyTestSpanData> {
+            tt::Leaf::Ident(tt::Ident { span: DUMMY, text: SmolStr::new(ident) }).into()
         }
-        fn make_punct(char: char) -> tt::TokenTree {
-            tt::Leaf::Punct(tt::Punct {
-                span: tt::TokenId::unspecified(),
-                char,
-                spacing: tt::Spacing::Alone,
-            })
-            .into()
+        fn make_punct(char: char) -> tt::TokenTree<DummyTestSpanData> {
+            tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone }).into()
         }
-        fn make_literal(lit: &str) -> tt::TokenTree {
-            tt::Leaf::Literal(tt::Literal {
-                span: tt::TokenId::unspecified(),
-                text: SmolStr::new(lit),
-            })
-            .into()
+        fn make_literal(lit: &str) -> tt::TokenTree<DummyTestSpanData> {
+            tt::Leaf::Literal(tt::Literal { span: DUMMY, text: SmolStr::new(lit) }).into()
         }
         fn make_subtree(
             kind: tt::DelimiterKind,
-            token_trees: Option<Vec<tt::TokenTree>>,
-        ) -> tt::TokenTree {
+            token_trees: Option<Vec<tt::TokenTree<DummyTestSpanData>>>,
+        ) -> tt::TokenTree<DummyTestSpanData> {
             tt::Subtree {
-                delimiter: tt::Delimiter {
-                    open: tt::TokenId::unspecified(),
-                    close: tt::TokenId::unspecified(),
-                    kind,
-                },
+                delimiter: tt::Delimiter { open: DUMMY, close: DUMMY, kind },
                 token_trees: token_trees.unwrap_or_default(),
             }
             .into()

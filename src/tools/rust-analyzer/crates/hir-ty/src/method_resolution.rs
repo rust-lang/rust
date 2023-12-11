@@ -168,12 +168,9 @@ impl TraitImpls {
     ) -> Arc<[Arc<Self>]> {
         let _p = profile::span("trait_impls_in_deps_query").detail(|| format!("{krate:?}"));
         let crate_graph = db.crate_graph();
-        // FIXME: use `Arc::from_iter` when it becomes available
-        Arc::from(
-            crate_graph
-                .transitive_deps(krate)
-                .map(|krate| db.trait_impls_in_crate(krate))
-                .collect::<Vec<_>>(),
+
+        Arc::from_iter(
+            crate_graph.transitive_deps(krate).map(|krate| db.trait_impls_in_crate(krate)),
         )
     }
 

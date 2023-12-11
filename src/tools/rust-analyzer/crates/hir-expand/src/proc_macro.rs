@@ -1,6 +1,6 @@
 //! Proc Macro Expander stub
 
-use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
+use base_db::{span::SpanData, CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
 use stdx::never;
 
 use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
@@ -33,11 +33,15 @@ impl ProcMacroExpander {
         calling_crate: CrateId,
         tt: &tt::Subtree,
         attr_arg: Option<&tt::Subtree>,
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
     ) -> ExpandResult<tt::Subtree> {
         match self.proc_macro_id {
-            ProcMacroId(DUMMY_ID) => {
-                ExpandResult::new(tt::Subtree::empty(), ExpandError::UnresolvedProcMacro(def_crate))
-            }
+            ProcMacroId(DUMMY_ID) => ExpandResult::new(
+                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                ExpandError::UnresolvedProcMacro(def_crate),
+            ),
             ProcMacroId(id) => {
                 let proc_macros = db.proc_macros();
                 let proc_macros = match proc_macros.get(&def_crate) {
@@ -45,7 +49,7 @@ impl ProcMacroExpander {
                     Some(Err(_)) | None => {
                         never!("Non-dummy expander even though there are no proc macros");
                         return ExpandResult::new(
-                            tt::Subtree::empty(),
+                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                             ExpandError::other("Internal error"),
                         );
                     }
@@ -59,7 +63,7 @@ impl ProcMacroExpander {
                             id
                         );
                         return ExpandResult::new(
-                            tt::Subtree::empty(),
+                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                             ExpandError::other("Internal error"),
                         );
                     }
@@ -68,7 +72,8 @@ impl ProcMacroExpander {
                 let krate_graph = db.crate_graph();
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
-                match proc_macro.expander.expand(tt, attr_arg, env) {
+                match proc_macro.expander.expand(tt, attr_arg, env, def_site, call_site, mixed_site)
+                {
                     Ok(t) => ExpandResult::ok(t),
                     Err(err) => match err {
                         // Don't discard the item in case something unexpected happened while expanding attributes
@@ -78,9 +83,10 @@ impl ProcMacroExpander {
                             ExpandResult { value: tt.clone(), err: Some(ExpandError::other(text)) }
                         }
                         ProcMacroExpansionError::System(text)
-                        | ProcMacroExpansionError::Panic(text) => {
-                            ExpandResult::new(tt::Subtree::empty(), ExpandError::other(text))
-                        }
+                        | ProcMacroExpansionError::Panic(text) => ExpandResult::new(
+                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                            ExpandError::ProcMacroPanic(Box::new(text.into_boxed_str())),
+                        ),
                     },
                 }
             }

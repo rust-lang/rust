@@ -1,4 +1,4 @@
-use hir::db::ExpandDatabase;
+use hir::{db::ExpandDatabase, HirFileIdExt};
 use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use itertools::Itertools;
 use syntax::AstNode;
@@ -87,7 +87,12 @@ mod baz {}
                             "E0583",
                         ),
                         message: "unresolved module, can't find module file: foo.rs, or foo/mod.rs",
-                        range: 0..8,
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 0..8,
+                        },
                         severity: Error,
                         unused: false,
                         experimental: false,
@@ -150,11 +155,9 @@ mod baz {}
                             ],
                         ),
                         main_node: Some(
-                            InFile {
+                            InFileWrapper {
                                 file_id: FileId(
-                                    FileId(
-                                        0,
-                                    ),
+                                    0,
                                 ),
                                 value: MODULE@0..8
                                   MOD_KW@0..3 "mod"

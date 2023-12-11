@@ -40,7 +40,6 @@ pub use monomorphization::{
 use rustc_hash::FxHashMap;
 use smallvec::{smallvec, SmallVec};
 use stdx::{impl_from, never};
-use triomphe::Arc;
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 
@@ -147,7 +146,7 @@ impl<V, T> ProjectionElem<V, T> {
             base = normalize(
                 db,
                 // FIXME: we should get this from caller
-                Arc::new(TraitEnvironment::empty(krate)),
+                TraitEnvironment::empty(krate),
                 base,
             );
         }

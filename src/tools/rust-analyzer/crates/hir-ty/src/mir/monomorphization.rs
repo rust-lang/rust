@@ -9,6 +9,7 @@
 
 use std::mem;
 
+use base_db::salsa::Cycle;
 use chalk_ir::{
     fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
     ConstData, DebruijnIndex,
@@ -300,7 +301,7 @@ pub fn monomorphized_mir_body_query(
 
 pub fn monomorphized_mir_body_recover(
     _: &dyn HirDatabase,
-    _: &[String],
+    _: &Cycle,
     _: &DefWithBodyId,
     _: &Substitution,
     _: &Arc<crate::TraitEnvironment>,

@@ -7,6 +7,7 @@ use ide_db::{
     base_db::{fixture::WithFixture, SourceDatabaseExt},
     LineIndexDatabase, RootDatabase,
 };
+use itertools::Itertools;
 use stdx::trim_indent;
 use test_utils::{assert_eq_text, extract_annotations, MiniCore};
 
@@ -103,33 +104,39 @@ pub(crate) fn check_diagnostics(ra_fixture: &str) {
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixture: &str) {
     let (db, files) = RootDatabase::with_many_files(ra_fixture);
+    let mut annotations = files
+        .iter()
+        .copied()
+        .flat_map(|file_id| {
+            super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_id).into_iter().map(
+                |d| {
+                    let mut annotation = String::new();
+                    if let Some(fixes) = &d.fixes {
+                        assert!(!fixes.is_empty());
+                        annotation.push_str("💡 ")
+                    }
+                    annotation.push_str(match d.severity {
+                        Severity::Error => "error",
+                        Severity::WeakWarning => "weak",
+                        Severity::Warning => "warn",
+                        Severity::Allow => "allow",
+                    });
+                    annotation.push_str(": ");
+                    annotation.push_str(&d.message);
+                    (d.range, annotation)
+                },
+            )
+        })
+        .map(|(diagnostic, annotation)| (diagnostic.file_id, (diagnostic.range, annotation)))
+        .into_group_map();
     for file_id in files {
         let line_index = db.line_index(file_id);
-        let diagnostics = super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
 
+        let mut actual = annotations.remove(&file_id).unwrap_or_default();
         let expected = extract_annotations(&db.file_text(file_id));
-        let mut actual = diagnostics
-            .into_iter()
-            .map(|d| {
-                let mut annotation = String::new();
-                if let Some(fixes) = &d.fixes {
-                    assert!(!fixes.is_empty());
-                    annotation.push_str("💡 ")
-                }
-                annotation.push_str(match d.severity {
-                    Severity::Error => "error",
-                    Severity::WeakWarning => "weak",
-                    Severity::Warning => "warn",
-                    Severity::Allow => "allow",
-                });
-                annotation.push_str(": ");
-                annotation.push_str(&d.message);
-                (d.range, annotation)
-            })
-            .collect::<Vec<_>>();
         actual.sort_by_key(|(range, _)| range.start());
         if expected.is_empty() {
-            // makes minicore smoke test debugable
+            // makes minicore smoke test debuggable
             for (e, _) in &actual {
                 eprintln!(
                     "Code in range {e:?} = {}",

@@ -2,6 +2,7 @@
 
 use std::{cmp, ops::Bound};
 
+use base_db::salsa::Cycle;
 use hir_def::{
     data::adt::VariantData,
     layout::{Integer, LayoutCalculator, ReprOptions, TargetDataLayout},
@@ -140,7 +141,7 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
 
 pub fn layout_of_adt_recover(
     _: &dyn HirDatabase,
-    _: &[String],
+    _: &Cycle,
     _: &AdtId,
     _: &Substitution,
     _: &Arc<TraitEnvironment>,
