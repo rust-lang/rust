@@ -2261,6 +2261,22 @@ function initSearch(rawSearchIndex) {
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {
+                // Sort input and output so that generic type variables go first and
+                // types with generic parameters go last.
+                // That's because of the way unification is structured: it eats off
+                // the end, and hits a fast path if the last item is a simple atom.
+                const sortQ = (a, b) => {
+                    const ag = a.generics.length === 0 && a.bindings.size === 0;
+                    const bg = b.generics.length === 0 && b.bindings.size === 0;
+                    if (ag !== bg) {
+                        return ag - bg;
+                    }
+                    const ai = a.id > 0;
+                    const bi = b.id > 0;
+                    return ai - bi;
+                };
+                parsedQuery.elems.sort(sortQ);
+                parsedQuery.returned.sort(sortQ);
                 for (let i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                     handleArgs(searchIndex[i], i, results_others);
                 }
@@ -2823,7 +2839,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * @param {Set<number>} fps - Set of distinct items
      */
     function buildFunctionTypeFingerprint(type, output, fps) {
-
         let input = type.id;
         // All forms of `[]` get collapsed down to one thing in the bloom filter.
         // Differentiating between arrays and slices, if the user asks for it, is
@@ -2831,15 +2846,37 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         if (input === typeNameIdOfArray || input === typeNameIdOfSlice) {
             input = typeNameIdOfArrayOrSlice;
         }
+        // http://burtleburtle.net/bob/hash/integer.html
+        // ~~ is toInt32. It's used before adding, so
+        // the number stays in safe integer range.
+        const hashint1 = k => {
+            k = (~~k + 0x7ed55d16) + (k << 12);
+            k = (k ^ 0xc761c23c) ^ (k >>> 19);
+            k = (~~k + 0x165667b1) + (k << 5);
+            k = (~~k + 0xd3a2646c) ^ (k << 9);
+            k = (~~k + 0xfd7046c5) + (k << 3);
+            return (k ^ 0xb55a4f09) ^ (k >>> 16);
+        };
+        const hashint2 = k => {
+            k = ~k + (k << 15);
+            k ^= k >>> 12;
+            k += k << 2;
+            k ^= k >>> 4;
+            k = Math.imul(k, 2057);
+            return k ^ (k >> 16);
+        };
         if (input !== null) {
-            // https://docs.rs/rustc-hash/1.1.0/src/rustc_hash/lib.rs.html#60
-            // Rotate is skipped because we're only doing one cycle anyway.
-            const h0 = Math.imul(input, 0x9e3779b9);
-            const h1 = Math.imul(479001599 ^ input, 0x9e3779b9);
-            const h2 = Math.imul(433494437 ^ input, 0x9e3779b9);
-            output[0] |= 1 << (h0 % 32);
-            output[1] |= 1 << (h1 % 32);
-            output[2] |= 1 << (h2 % 32);
+            const h0a = hashint1(input);
+            const h0b = hashint2(input);
+            // Less Hashing, Same Performance: Building a Better Bloom Filter
+            // doi=10.1.1.72.2442
+            const h1a = ~~(h0a + Math.imul(h0b, 2));
+            const h1b = ~~(h0a + Math.imul(h0b, 3));
+            const h2a = ~~(h0a + Math.imul(h0b, 4));
+            const h2b = ~~(h0a + Math.imul(h0b, 5));
+            output[0] |= (1 << (h0a % 32)) | (1 << (h1b % 32));
+            output[1] |= (1 << (h1a % 32)) | (1 << (h2b % 32));
+            output[2] |= (1 << (h2a % 32)) | (1 << (h0b % 32));
             fps.add(input);
         }
         for (const g of type.generics) {
@@ -2868,7 +2905,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      *                          This function might return 0!
      */
     function compareTypeFingerprints(fullId, queryFingerprint) {
-
         const fh0 = functionTypeFingerprint[fullId * 4];
         const fh1 = functionTypeFingerprint[(fullId * 4) + 1];
         const fh2 = functionTypeFingerprint[(fullId * 4) + 2];
