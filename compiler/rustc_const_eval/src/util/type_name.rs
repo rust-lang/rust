@@ -120,7 +120,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
-        _params: &[ty::GenericParamDef],
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
         let args =

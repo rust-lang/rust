@@ -757,7 +757,6 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             .tcx
                             .generics_of(def.did())
                             .own_args_no_defaults(self.tcx, args)
-                            .0
                             .iter()
                             .map(|&arg| self.arg_cost(arg))
                             .sum::<usize>()
@@ -1186,7 +1185,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 }
                 let args = self.infcx.resolve_vars_if_possible(args);
                 let generic_args =
-                    &generics.own_args_no_defaults(tcx, args).0[generics.own_counts().lifetimes..];
+                    &generics.own_args_no_defaults(tcx, args)[generics.own_counts().lifetimes..];
                 let span = match expr.kind {
                     ExprKind::MethodCall(path, ..) => path.ident.span,
                     _ => expr.span,

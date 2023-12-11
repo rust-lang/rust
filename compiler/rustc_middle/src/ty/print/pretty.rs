@@ -965,7 +965,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 define_scoped_cx!(cx);
                 // Get the (single) generic ty (the args) of this FnOnce trait ref.
                 let generics = tcx.generics_of(trait_ref.def_id);
-                let (own_args, _) = generics.own_args_no_defaults(tcx, trait_ref.args);
+                let own_args = generics.own_args_no_defaults(tcx, trait_ref.args);
 
                 match (entry.return_ty, own_args[0].expect_ty()) {
                     // We can only print `impl Fn() -> ()` if we have a tuple of args and we recorded
@@ -1031,7 +1031,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(print(trait_ref.print_only_trait_name()));
 
                 let generics = tcx.generics_of(trait_ref.def_id);
-                let (own_args, _) = generics.own_args_no_defaults(tcx, trait_ref.args);
+                let own_args = generics.own_args_no_defaults(tcx, trait_ref.args);
 
                 if !own_args.is_empty() || !assoc_items.is_empty() {
                     let mut first = true;
@@ -1183,7 +1183,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 )
             },
             &alias_ty.args[1..],
-            &self.tcx().generics_of(alias_ty.def_id).params,
         )
     }
 
@@ -1232,7 +1231,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     let dummy_cx = Ty::new_fresh(cx.tcx(), 0);
                     let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
 
-                    let (args, _) = cx
+                    let args = cx
                         .tcx()
                         .generics_of(principal.def_id)
                         .own_args_no_defaults(cx.tcx(), principal.args);
@@ -2030,26 +2029,14 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
-        params: &[ty::GenericParamDef],
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
 
-        let tcx = self.tcx;
-        let verbose = tcx.sess.verbose();
-        let mut args = args
-            .iter()
-            .copied()
-            .zip(params)
-            // If -Zverbose is passed, we should print the host parameter instead
-            // of eating it.
-            .filter(|(_, param)| verbose || !param.is_host_effect())
-            .peekable();
-
-        if args.peek().is_some() {
+        if !args.is_empty() {
             if self.in_value {
                 write!(self, "::")?;
             }
-            self.generic_delimiters(|cx| cx.comma_sep(args.map(|(arg, _)| arg)))
+            self.generic_delimiters(|cx| cx.comma_sep(args.iter().copied()))
         } else {
             Ok(())
         }
@@ -2881,7 +2868,8 @@ define_print_and_forward_display! {
     TraitPredPrintModifiersAndPath<'tcx> {
         if let Some(idx) = cx.tcx().generics_of(self.0.trait_ref.def_id).host_effect_index
         {
-            if self.0.trait_ref.args.const_at(idx) != cx.tcx().consts.true_ {
+            let arg = self.0.trait_ref.args.const_at(idx);
+            if arg != cx.tcx().consts.true_ && !arg.has_infer() {
                 p!("~const ");
             }
         }
