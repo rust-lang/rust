@@ -1,6 +1,7 @@
 // run-fail
 // check-run-results
-// normalize-stderr-test "panicking\.rs:\d+:\d+:" -> "panicking.rs:"
+// exec-env:RUST_BACKTRACE=0
+// normalize-stderr-test: "(core/src/panicking\.rs):[0-9]+:[0-9]+" -> "$1:$$LINE:$$COL"
 #![feature(extern_types)]
 
 extern "C" {
