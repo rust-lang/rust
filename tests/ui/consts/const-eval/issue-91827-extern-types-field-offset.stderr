@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-91827-extern-types-field-offset.rs:28:17
+  --> $DIR/issue-91827-extern-types-field-offset.rs:33:17
    |
 LL |     let field = &x.a;
    |                 ^^^^ `extern type` does not have a known offset
