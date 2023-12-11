@@ -17,15 +17,21 @@ struct S {
 }
 
 const NEWTYPE: () = unsafe {
+    let buf = [0i32; 4];
+    let x: &Newtype = &*(&buf as *const _ as *const Newtype);
+
     // Projecting to the newtype works, because it is always at offset 0.
-    let x: &Newtype = unsafe { &*(1usize as *const Newtype) };
     let field = &x.0;
 };
 
 const OFFSET: () = unsafe {
-    // This needs to compute the field offset, but we don't know the type's alignment, so this fail.
-    let x: &S = unsafe { &*(1usize as *const S) };
-    let field = &x.a; //~ERROR: evaluation of constant value failed
+    let buf = [0i32; 4];
+    let x: &S = &*(&buf as *const _ as *const S);
+
+    // This needs to compute the field offset, but we don't know the type's alignment, so this
+    // fails.
+    let field = &x.a;
+    //~^ ERROR: evaluation of constant value failed
     //~| does not have a known offset
 };
 
