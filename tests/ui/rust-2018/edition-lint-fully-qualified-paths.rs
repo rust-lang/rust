@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(rust_2018_preview)]
 #![deny(absolute_paths_not_starting_with_crate)]
 
 mod foo {

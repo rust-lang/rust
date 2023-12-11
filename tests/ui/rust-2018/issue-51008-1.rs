@@ -4,8 +4,6 @@
 //
 // run-pass
 
-#![feature(rust_2018_preview)]
-
 trait A {
 
 }
