@@ -961,6 +961,14 @@ impl Session {
             termize::dimensions().map_or(default_column_width, |(w, _)| w)
         }
     }
+
+    /// Whether the default visibility of symbols should be "hidden" rather than "default".
+    pub fn default_hidden_visibility(&self) -> bool {
+        self.opts
+            .unstable_opts
+            .default_hidden_visibility
+            .unwrap_or(self.target.options.default_hidden_visibility)
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns
