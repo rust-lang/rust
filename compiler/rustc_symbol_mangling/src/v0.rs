@@ -298,7 +298,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     )
                 },
                 args,
-                &self.tcx.generics_of(impl_def_id).params,
             )?;
         } else {
             self.push_disambiguator(key.disambiguated_data.disambiguator as u64);
@@ -801,7 +800,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
-        _params: &[ty::GenericParamDef],
     ) -> Result<(), PrintError> {
         // Don't print any regions if they're all erased.
         let print_regions = args.iter().any(|arg| match arg.unpack() {
