@@ -6,7 +6,7 @@ One-sentence description of the target (e.g. CPU, OS)
 
 ## Target maintainers
 
-- Some Person, `email@example.org`, https://github.com/...
+- Some Person, https://github.com/...
 
 ## Requirements
 
