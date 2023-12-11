@@ -1,31 +1,40 @@
 //! Analysis of patterns, notably match exhaustiveness checking.
 
 pub mod constructor;
+#[cfg(feature = "rustc")]
 pub mod errors;
+#[cfg(feature = "rustc")]
 pub(crate) mod lints;
 pub mod pat;
+#[cfg(feature = "rustc")]
 pub mod rustc;
 pub mod usefulness;
 
 #[macro_use]
 extern crate tracing;
+#[cfg(feature = "rustc")]
 #[macro_use]
 extern crate rustc_middle;
 
+#[cfg(feature = "rustc")]
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 use std::fmt;
 
-use constructor::{Constructor, ConstructorSet};
-use lints::PatternColumn;
-use rustc_hir::HirId;
 use rustc_index::Idx;
+#[cfg(feature = "rustc")]
 use rustc_middle::ty::Ty;
-use usefulness::{compute_match_usefulness, ValidityConstraint};
 
-use crate::lints::{lint_nonexhaustive_missing_variants, lint_overlapping_range_endpoints};
+use crate::constructor::{Constructor, ConstructorSet};
+#[cfg(feature = "rustc")]
+use crate::lints::{
+    lint_nonexhaustive_missing_variants, lint_overlapping_range_endpoints, PatternColumn,
+};
 use crate::pat::DeconstructedPat;
+#[cfg(feature = "rustc")]
 use crate::rustc::RustcCtxt;
+#[cfg(feature = "rustc")]
+use crate::usefulness::{compute_match_usefulness, ValidityConstraint};
 
 pub trait MatchCx: Sized + Clone + fmt::Debug {
     type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
@@ -72,6 +81,7 @@ impl<'p, Cx: MatchCx> Copy for MatchArm<'p, Cx> {}
 
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.
+#[cfg(feature = "rustc")]
 pub fn analyze_match<'p, 'tcx>(
     cx: &RustcCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],

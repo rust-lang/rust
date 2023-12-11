@@ -578,6 +578,7 @@ pub(crate) struct PatCtxt<'a, 'p, Cx: MatchCx> {
 
 impl<'a, 'p, Cx: MatchCx> PatCtxt<'a, 'p, Cx> {
     /// A `PatCtxt` when code other than `is_useful` needs one.
+    #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
     pub(crate) fn new_dummy(
         cx: &'a Cx,
         ty: Cx::Ty,
@@ -601,7 +602,7 @@ impl<'a, 'p, Cx: MatchCx> fmt::Debug for PatCtxt<'a, 'p, Cx> {
 /// - in the matrix, track whether a given place (aka column) is known to contain a valid value or
 ///     not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum ValidityConstraint {
+pub enum ValidityConstraint {
     ValidOnly,
     MaybeInvalid,
     /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
@@ -610,7 +611,7 @@ pub(crate) enum ValidityConstraint {
 }
 
 impl ValidityConstraint {
-    pub(crate) fn from_bool(is_valid_only: bool) -> Self {
+    pub fn from_bool(is_valid_only: bool) -> Self {
         if is_valid_only { ValidOnly } else { MaybeInvalid }
     }
 
@@ -1296,7 +1297,7 @@ pub struct UsefulnessReport<'p, Cx: MatchCx> {
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
 #[instrument(skip(cx, arms, wildcard_arena), level = "debug")]
-pub(crate) fn compute_match_usefulness<'p, Cx: MatchCx>(
+pub fn compute_match_usefulness<'p, Cx: MatchCx>(
     cx: &Cx,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
