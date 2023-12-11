@@ -168,9 +168,7 @@ impl<'a> Line<'a> {
 // then reallocate to remove it; which would make us return a String.
 fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
-    if trimmed.starts_with("##") {
-        Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
-    } else if let Some(stripped) = trimmed.strip_prefix("# ") {
+    if let Some(stripped) = trimmed.strip_prefix("# ") {
         // # text
         Line::Hidden(stripped)
     } else if trimmed == "#" {
