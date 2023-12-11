@@ -782,7 +782,8 @@ impl<'tcx> TyCtxt<'tcx> {
             || self.extern_crate(key.as_def_id()).is_some_and(|e| e.is_direct())
     }
 
-    pub fn expected_host_effect_param_for_body(self, def_id: LocalDefId) -> ty::Const<'tcx> {
+    pub fn expected_host_effect_param_for_body(self, def_id: impl Into<DefId>) -> ty::Const<'tcx> {
+        let def_id = def_id.into();
         // FIXME(effects): This is suspicious and should probably not be done,
         // especially now that we enforce host effects and then properly handle
         // effect vars during fallback.
