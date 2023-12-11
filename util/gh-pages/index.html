@@ -594,29 +594,19 @@ Otherwise, have a great day =^.^=
             ></path>
         </svg>
         <style>
+            :root {
+                --theme-background-color: black;
+                --theme-foreground-color: white;
+            }
             @media (prefers-color-scheme: dark) {
-                .github-corner svg {
-                    fill: #fff;
-                    color: #fff;
-                }
-                .octo-arm {
-                    fill: #151513;
-                }
-                .octo-body {
-                    fill: #151513;
+                :root {
+                    --theme-background-color: white;
+                    --theme-foreground-color: black;
                 }
             }
-            @media (prefers-color-scheme: light) {
-                .github-corner svg {
-                    fill: #151513;
-                    color: #fff;
-                }
-                .octo-arm {
-                    fill: #fff;
-                }
-                .octo-body {
-                    fill: #fff;
-                }
+            .github-corner svg {
+                fill: var(--theme-background-color);
+                color: var(--theme-foreground-color);
             }
             .github-corner:hover .octo-arm {
                 animation: octocat-wave 560ms ease-in-out;
