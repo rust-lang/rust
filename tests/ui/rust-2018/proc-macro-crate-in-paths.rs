@@ -4,7 +4,6 @@
 
 #![crate_type = "proc-macro"]
 #![deny(rust_2018_compatibility)]
-#![feature(rust_2018_preview)]
 
 extern crate proc_macro;
 
