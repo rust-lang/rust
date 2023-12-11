@@ -158,7 +158,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     }
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, impl_m.def_id.expect_local(), implied_wf_types),
+        infcx.implied_bounds_tys_compat(param_env, impl_m.def_id.expect_local(), &implied_wf_types),
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {

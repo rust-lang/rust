@@ -15,6 +15,7 @@ use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
@@ -112,8 +113,6 @@ where
 
     let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
 
-    let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, assumed_wf_types);
-
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         let err = infcx.err_ctxt().report_fulfillment_errors(errors);
@@ -128,10 +127,58 @@ where
         }
     }
 
+    let infcx_compat = infcx.fork();
+
+    debug!(?assumed_wf_types);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, &assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
-    wfcx.ocx.resolve_regions_and_report_errors(body_def_id, &outlives_env)?;
-    infcx.tainted_by_errors().error_reported()
+    let errors = infcx.resolve_regions(&outlives_env);
+    if errors.is_empty() {
+        return Ok(());
+    }
+
+    let is_bevy = 'is_bevy: {
+        // We don't want to emit this for dependents of Bevy, for now.
+        // See #119956
+        let is_bevy_paramset = |def: ty::AdtDef<'_>| {
+            let adt_did = with_no_trimmed_paths!(infcx.tcx.def_path_str(def.0.did));
+            adt_did.contains("ParamSet")
+        };
+        for ty in assumed_wf_types.iter() {
+            match ty.kind() {
+                ty::Adt(def, _) => {
+                    if is_bevy_paramset(*def) {
+                        break 'is_bevy true;
+                    }
+                }
+                ty::Ref(_, ty, _) => match ty.kind() {
+                    ty::Adt(def, _) => {
+                        if is_bevy_paramset(*def) {
+                            break 'is_bevy true;
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+        false
+    };
+
+    if is_bevy {
+        let implied_bounds =
+            infcx_compat.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types);
+        let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+        let errors_compat = infcx_compat.resolve_regions(&outlives_env);
+        if errors_compat.is_empty() {
+            Ok(())
+        } else {
+            Err(infcx_compat.err_ctxt().report_region_errors(body_def_id, &errors_compat))
+        }
+    } else {
+        Err(infcx.err_ctxt().report_region_errors(body_def_id, &errors))
+    }
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Result<(), ErrorGuaranteed> {
@@ -723,7 +770,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
+        infcx.implied_bounds_tys_compat(param_env, id, wf_tys),
     );
     let region_bound_pairs = outlives_environment.region_bound_pairs();
 

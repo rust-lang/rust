@@ -191,10 +191,10 @@ pub fn all_fields_implement_trait<'tcx>(
             // Check regions assuming the self type of the impl is WF
             let outlives_env = OutlivesEnvironment::with_bounds(
                 param_env,
-                infcx.implied_bounds_tys(
+                infcx.implied_bounds_tys_compat(
                     param_env,
                     parent_cause.body_id,
-                    FxIndexSet::from_iter([self_type]),
+                    &FxIndexSet::from_iter([self_type]),
                 ),
             );
             let errors = infcx.resolve_regions(&outlives_env);

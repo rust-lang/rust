@@ -1,6 +1,3 @@
-// check-pass
-// known-bug: #109628
-
 trait Trait {
     type Assoc;
 }
@@ -14,11 +11,13 @@ where
     T::Assoc: Clone; // any predicate using `T::Assoc` works here
 
 fn func1(foo: Foo<(&str,)>) {
+    //~^ ERROR `&str` does not fulfill the required lifetime
     let _: &'static str = foo.0.0;
 }
 
 trait TestTrait {}
 
 impl<X> TestTrait for [Foo<(X,)>; 1] {}
+//~^ ERROR `X` may not live long enough
 
 fn main() {}
