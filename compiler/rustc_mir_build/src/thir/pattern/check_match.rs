@@ -429,7 +429,8 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             let arm = &self.thir.arms[arm];
             let got_error = self.with_lint_level(arm.lint_level, |this| {
                 let Ok(pat) = this.lower_pattern(&cx, &arm.pattern) else { return true };
-                let arm = MatchArm { pat, hir_id: this.lint_level, has_guard: arm.guard.is_some() };
+                let arm =
+                    MatchArm { pat, arm_data: this.lint_level, has_guard: arm.guard.is_some() };
                 tarms.push(arm);
                 false
             });
@@ -552,7 +553,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
     ) -> Result<(MatchCheckCtxt<'p, 'tcx>, UsefulnessReport<'p, 'tcx>), ErrorGuaranteed> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
-        let arms = [MatchArm { pat, hir_id: self.lint_level, has_guard: false }];
+        let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
         let report = analyze_match(&cx, &arms, pat.ty());
         Ok((cx, report))
     }
@@ -855,7 +856,7 @@ fn report_arm_reachability<'p, 'tcx>(
     for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
             Usefulness::Redundant => {
-                report_unreachable_pattern(*arm.pat.span(), arm.hir_id, catchall)
+                report_unreachable_pattern(*arm.pat.span(), arm.arm_data, catchall)
             }
             Usefulness::Useful(redundant_spans) if redundant_spans.is_empty() => {}
             // The arm is reachable, but contains redundant subpatterns (from or-patterns).
@@ -864,7 +865,7 @@ fn report_arm_reachability<'p, 'tcx>(
                 // Emit lints in the order in which they occur in the file.
                 redundant_spans.sort_unstable();
                 for span in redundant_spans {
-                    report_unreachable_pattern(span, arm.hir_id, None);
+                    report_unreachable_pattern(span, arm.arm_data, None);
                 }
             }
         }

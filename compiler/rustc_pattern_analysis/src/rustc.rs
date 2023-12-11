@@ -4,7 +4,7 @@ use std::iter::once;
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, RangeEnd};
+use rustc_hir::HirId;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
 use rustc_middle::middle::stability::EvalResult;
@@ -18,12 +18,13 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
 
 use crate::constructor::{
-    IntRange, MaybeInfiniteInt, OpaqueId, Slice, SliceKind, VariantVisibility,
+    IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
 use crate::MatchCx;
 
 use crate::constructor::Constructor::*;
 
+// Re-export rustc-specific versions of all these types.
 pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcCtxt<'p, 'tcx>>;
 pub type ConstructorSet<'p, 'tcx> = crate::constructor::ConstructorSet<RustcCtxt<'p, 'tcx>>;
 pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<'p, RustcCtxt<'p, 'tcx>>;
@@ -520,12 +521,16 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
             }
             PatKind::Range(patrange) => {
                 let PatRange { lo, hi, end, .. } = patrange.as_ref();
+                let end = match end {
+                    rustc_hir::RangeEnd::Included => RangeEnd::Included,
+                    rustc_hir::RangeEnd::Excluded => RangeEnd::Excluded,
+                };
                 let ty = pat.ty;
                 ctor = match ty.kind() {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         let lo = cx.lower_pat_range_bdy(*lo, ty);
                         let hi = cx.lower_pat_range_bdy(*hi, ty);
-                        IntRange(IntRange::from_range(lo, hi, *end))
+                        IntRange(IntRange::from_range(lo, hi, end))
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
@@ -536,13 +541,13 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
                                 use rustc_apfloat::ieee::Single;
                                 let lo = lo.map(Single::from_bits).unwrap_or(-Single::INFINITY);
                                 let hi = hi.map(Single::from_bits).unwrap_or(Single::INFINITY);
-                                F32Range(lo, hi, *end)
+                                F32Range(lo, hi, end)
                             }
                             ty::FloatTy::F64 => {
                                 use rustc_apfloat::ieee::Double;
                                 let lo = lo.map(Double::from_bits).unwrap_or(-Double::INFINITY);
                                 let hi = hi.map(Double::from_bits).unwrap_or(Double::INFINITY);
-                                F64Range(lo, hi, *end)
+                                F64Range(lo, hi, end)
                             }
                         }
                     }
@@ -634,7 +639,7 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
             PatKind::Constant { value }
         } else {
             // We convert to an inclusive range for diagnostics.
-            let mut end = RangeEnd::Included;
+            let mut end = rustc_hir::RangeEnd::Included;
             let mut lo = cx.hoist_pat_range_bdy(range.lo, ty);
             if matches!(lo, PatRangeBoundary::PosInfinity) {
                 // The only reason to get `PosInfinity` here is the special case where
@@ -648,7 +653,7 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
             }
             let hi = if matches!(range.hi, Finite(0)) {
                 // The range encodes `..ty::MIN`, so we can't convert it to an inclusive range.
-                end = RangeEnd::Excluded;
+                end = rustc_hir::RangeEnd::Excluded;
                 range.hi
             } else {
                 range.hi.minus_one()
@@ -853,6 +858,7 @@ impl<'p, 'tcx> MatchCx for RustcCtxt<'p, 'tcx> {
     type Span = Span;
     type VariantIdx = VariantIdx;
     type StrLit = Const<'tcx>;
+    type ArmData = HirId;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.tcx.features().exhaustive_patterns

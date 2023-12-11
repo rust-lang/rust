@@ -156,7 +156,6 @@ use smallvec::SmallVec;
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::RangeEnd;
 use rustc_index::IndexVec;
 
 use self::Constructor::*;
@@ -171,6 +170,21 @@ use crate::MatchCx;
 enum Presence {
     Unseen,
     Seen,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum RangeEnd {
+    Included,
+    Excluded,
+}
+
+impl fmt::Display for RangeEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            RangeEnd::Included => "..=",
+            RangeEnd::Excluded => "..",
+        })
+    }
 }
 
 /// A possibly infinite integer. Values are encoded such that the ordering on `u128` matches the
@@ -220,7 +234,7 @@ impl MaybeInfiniteInt {
         match self {
             Finite(n) => match n.checked_sub(1) {
                 Some(m) => Finite(m),
-                None => bug!(),
+                None => panic!("Called `MaybeInfiniteInt::minus_one` on 0"),
             },
             JustAfterMax => Finite(u128::MAX),
             x => x,
@@ -233,7 +247,7 @@ impl MaybeInfiniteInt {
                 Some(m) => Finite(m),
                 None => JustAfterMax,
             },
-            JustAfterMax => bug!(),
+            JustAfterMax => panic!("Called `MaybeInfiniteInt::plus_one` on u128::MAX+1"),
             x => x,
         }
     }
@@ -270,7 +284,7 @@ impl IntRange {
         }
         if lo >= hi {
             // This should have been caught earlier by E0030.
-            bug!("malformed range pattern: {lo:?}..{hi:?}");
+            panic!("malformed range pattern: {lo:?}..{hi:?}");
         }
         IntRange { lo, hi }
     }
@@ -431,7 +445,7 @@ impl Slice {
         let kind = match (array_len, kind) {
             // If the middle `..` has length 0, we effectively have a fixed-length pattern.
             (Some(len), VarLen(prefix, suffix)) if prefix + suffix == len => FixedLen(len),
-            (Some(len), VarLen(prefix, suffix)) if prefix + suffix > len => bug!(
+            (Some(len), VarLen(prefix, suffix)) if prefix + suffix > len => panic!(
                 "Slice pattern of length {} longer than its array length {len}",
                 prefix + suffix
             ),

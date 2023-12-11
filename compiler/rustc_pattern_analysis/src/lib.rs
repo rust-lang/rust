@@ -30,8 +30,12 @@ use crate::rustc::RustcCtxt;
 pub trait MatchCx: Sized + Clone + fmt::Debug {
     type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
     type Span: Clone + Default;
+    /// The index of an enum variant.
     type VariantIdx: Clone + Idx;
+    /// A string literal
     type StrLit: Clone + PartialEq + fmt::Debug;
+    /// Extra data to store on a match arm.
+    type ArmData: Copy + Clone + fmt::Debug;
 
     fn is_opaque_ty(ty: Self::Ty) -> bool;
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
@@ -60,8 +64,8 @@ pub trait MatchCx: Sized + Clone + fmt::Debug {
 pub struct MatchArm<'p, Cx: MatchCx> {
     /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
     pub pat: &'p DeconstructedPat<'p, Cx>,
-    pub hir_id: HirId,
     pub has_guard: bool,
+    pub arm_data: Cx::ArmData,
 }
 
 impl<'p, Cx: MatchCx> Copy for MatchArm<'p, Cx> {}

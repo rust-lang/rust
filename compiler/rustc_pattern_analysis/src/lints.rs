@@ -205,7 +205,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
         // usage of the lint.
         for arm in arms {
             let (lint_level, lint_level_source) =
-                cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.hir_id);
+                cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.arm_data);
             if !matches!(lint_level, rustc_session::lint::Level::Allow) {
                 let decorator = NonExhaustiveOmittedPatternLintOnArm {
                     lint_span: lint_level_source.span(),
