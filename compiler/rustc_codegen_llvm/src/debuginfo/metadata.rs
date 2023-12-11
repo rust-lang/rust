@@ -39,6 +39,7 @@ use rustc_span::FileName;
 use rustc_span::{FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
+use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
 
 use libc::{c_char, c_longlong, c_uint};
@@ -881,9 +882,14 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
 
     let dwarf_version =
         tcx.sess.opts.unstable_opts.dwarf_version.unwrap_or(tcx.sess.target.default_dwarf_version);
+    let is_dwarf_kind =
+        matches!(tcx.sess.target.debuginfo_kind, DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym);
     // Don't emit `.debug_pubnames` and `.debug_pubtypes` on DWARFv4 or lower.
-    let debug_name_table_kind =
-        if dwarf_version > 4 { DebugNameTableKind::Default } else { DebugNameTableKind::None };
+    let debug_name_table_kind = if is_dwarf_kind && dwarf_version <= 4 {
+        DebugNameTableKind::None
+    } else {
+        DebugNameTableKind::Default
+    };
 
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
