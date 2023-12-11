@@ -1,4 +1,4 @@
-use crate::ffi::OsString;
+use crate::ffi::{CStr, OsString};
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
@@ -13,6 +13,60 @@ pub struct FileAttr(!);
 pub struct ReadDir(!);
 
 pub struct DirEntry(!);
+
+#[allow(unused_variables)]
+pub(crate) mod fs_imp {
+    use super::unsupported;
+    pub(crate) use super::{
+        DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
+        ReadDir,
+    };
+    use crate::io;
+    use crate::path::{AsPath, PathBuf};
+
+    pub(crate) fn remove_file<P: AsPath>(path: P) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn symlink_metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        unsupported()
+    }
+    pub(crate) fn metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        unsupported()
+    }
+    pub(crate) fn rename<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn hard_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn soft_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn remove_dir<P: AsPath>(path: P) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn read_dir<P: AsPath>(path: P) -> io::Result<ReadDir> {
+        unsupported()
+    }
+    pub(crate) fn set_permissions<P: AsPath>(path: P, perms: FilePermissions) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn copy<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<u64> {
+        unsupported()
+    }
+    pub(crate) fn canonicalize<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        unsupported()
+    }
+    pub(crate) fn remove_dir_all<P: AsPath>(path: P) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn read_link<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        unsupported()
+    }
+    pub(crate) fn try_exists<P: AsPath>(path: P) -> io::Result<bool> {
+        unsupported()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {}
@@ -182,7 +236,7 @@ impl OpenOptions {
 }
 
 impl File {
-    pub fn open(_path: &Path, _opts: &OpenOptions) -> io::Result<File> {
+    pub fn open_native(_path: &CStr, _opts: &OpenOptions) -> io::Result<File> {
         unsupported()
     }
 
@@ -265,60 +319,4 @@ impl fmt::Debug for File {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0
     }
-}
-
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    unsupported()
-}
-
-pub fn unlink(_p: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
-    match perm.0 {}
-}
-
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn try_exists(_path: &Path) -> io::Result<bool> {
-    unsupported()
-}
-
-pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
-}
-
-pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
-}
-
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
-}
-
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
-}
-
-pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
-    unsupported()
 }

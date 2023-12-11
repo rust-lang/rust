@@ -14,6 +14,58 @@ use crate::{
 
 pub use crate::sys_common::fs::try_exists;
 
+pub(crate) mod fs_imp {
+    pub(crate) use super::{
+        DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
+        ReadDir,
+    };
+    use crate::io;
+    use crate::path::{AsPath, PathBuf};
+
+    pub(crate) fn remove_file<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_path(super::unlink)
+    }
+    pub(crate) fn symlink_metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        path.with_path(|path| super::lstat(path))
+    }
+    pub(crate) fn metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        path.with_path(|path| super::stat(path))
+    }
+    pub(crate) fn rename<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<()> {
+        from.with_path(|from| to.with_path(|to| super::rename(from, to)))
+    }
+    pub(crate) fn hard_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        original.with_path(|original| link.with_path(|link| super::link(original, link)))
+    }
+    pub(crate) fn soft_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        original.with_path(|original| link.with_path(|link| super::symlink(original, link)))
+    }
+    pub(crate) fn remove_dir<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_path(super::rmdir)
+    }
+    pub(crate) fn read_dir<P: AsPath>(path: P) -> io::Result<ReadDir> {
+        path.with_path(super::readdir)
+    }
+    pub(crate) fn set_permissions<P: AsPath>(path: P, perms: FilePermissions) -> io::Result<()> {
+        path.with_path(|path| super::set_perm(path, perms))
+    }
+    pub(crate) fn copy<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<u64> {
+        from.with_path(|from| to.with_path(|to| super::copy(from, to)))
+    }
+    pub(crate) fn canonicalize<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        path.with_path(super::canonicalize)
+    }
+    pub(crate) fn remove_dir_all<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_path(super::remove_dir_all)
+    }
+    pub(crate) fn read_link<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        path.with_path(super::readlink)
+    }
+    pub(crate) fn try_exists<P: AsPath>(path: P) -> io::Result<bool> {
+        path.with_path(super::try_exists)
+    }
+}
+
 /// A file descriptor.
 #[derive(Clone, Copy)]
 #[rustc_layout_scalar_valid_range_start(0)]
@@ -324,7 +376,7 @@ fn cstr(path: &Path) -> io::Result<CString> {
 }
 
 impl File {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+    pub fn open_native(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
         let flags = opts.get_access_mode()?
             | opts.get_creation_mode()?
             | (opts.custom_flags as c_int & !abi::O_ACCMODE);
@@ -332,7 +384,7 @@ impl File {
             let mut fd = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Open(
                 fd.as_mut_ptr(),
-                cstr(path)?.as_ptr(),
+                path.as_ptr(),
                 flags,
             ))
             .map_err(|e| e.as_io_error())?;
