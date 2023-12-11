@@ -6,13 +6,12 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::captures::Captures;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_middle::ty::Ty;
+use rustc_span::Span;
 
 use self::Constructor::*;
-use self::SliceKind::*;
 
-use crate::constructor::{Constructor, SliceKind};
+use crate::constructor::{Constructor, Slice, SliceKind};
 use crate::cx::MatchCheckCtxt;
 use crate::usefulness::PatCtxt;
 
@@ -90,31 +89,25 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 // We return a wildcard for each field of `other_ctor`.
                 pcx.cx.ctor_wildcard_fields(other_ctor, pcx.ty).iter().collect()
             }
-            (Slice(self_slice), Slice(other_slice))
-                if self_slice.arity() != other_slice.arity() =>
-            {
-                // The only tricky case: two slices of different arity. Since `self_slice` covers
-                // `other_slice`, `self_slice` must be `VarLen`, i.e. of the form
-                // `[prefix, .., suffix]`. Moreover `other_slice` is guaranteed to have a larger
-                // arity. So we fill the middle part with enough wildcards to reach the length of
-                // the new, larger slice.
-                match self_slice.kind {
-                    FixedLen(_) => bug!("{:?} doesn't cover {:?}", self_slice, other_slice),
-                    VarLen(prefix, suffix) => {
-                        let (ty::Slice(inner_ty) | ty::Array(inner_ty, _)) = *self.ty.kind() else {
-                            bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty);
-                        };
-                        let prefix = &self.fields[..prefix];
-                        let suffix = &self.fields[self_slice.arity() - suffix..];
-                        let wildcard: &_ = pcx
-                            .cx
-                            .pattern_arena
-                            .alloc(DeconstructedPat::wildcard(inner_ty, DUMMY_SP));
-                        let extra_wildcards = other_slice.arity() - self_slice.arity();
-                        let extra_wildcards = (0..extra_wildcards).map(|_| wildcard);
-                        prefix.iter().chain(extra_wildcards).chain(suffix).collect()
-                    }
+            (
+                &Slice(self_slice @ Slice { kind: SliceKind::VarLen(prefix, suffix), .. }),
+                &Slice(other_slice),
+            ) if self_slice.arity() != other_slice.arity() => {
+                // The only non-trivial case: two slices of different arity. `other_slice` is
+                // guaranteed to have a larger arity, so we fill the middle part with enough
+                // wildcards to reach the length of the new, larger slice.
+                // Start with a slice of wildcards of the appropriate length.
+                let mut fields: SmallVec<[_; 2]> =
+                    pcx.cx.ctor_wildcard_fields(other_ctor, pcx.ty).iter().collect();
+                // Fill in the fields from both ends.
+                let new_arity = fields.len();
+                for i in 0..prefix {
+                    fields[i] = &self.fields[i];
                 }
+                for i in 0..suffix {
+                    fields[new_arity - 1 - i] = &self.fields[self.fields.len() - 1 - i];
+                }
+                fields
             }
             _ => self.fields.iter().collect(),
         }

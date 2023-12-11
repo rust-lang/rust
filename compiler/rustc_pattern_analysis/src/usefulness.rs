@@ -556,7 +556,7 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
 use rustc_data_structures::{captures::Captures, stack::ensure_sufficient_stack};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::constructor::{Constructor, ConstructorSet};
@@ -856,11 +856,10 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let mut ty = self.wildcard_row.head().ty();
         // If the type is opaque and it is revealed anywhere in the column, we take the revealed
         // version. Otherwise we could encounter constructors for the revealed type and crash.
-        let is_opaque = |ty: Ty<'tcx>| matches!(ty.kind(), ty::Alias(ty::Opaque, ..));
-        if is_opaque(ty) {
+        if MatchCheckCtxt::is_opaque(ty) {
             for pat in self.heads() {
                 let pat_ty = pat.ty();
-                if !is_opaque(pat_ty) {
+                if !MatchCheckCtxt::is_opaque(pat_ty) {
                     ty = pat_ty;
                     break;
                 }

@@ -49,8 +49,12 @@ pub struct MatchCheckCtxt<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
-    pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
+    }
+
+    pub(crate) fn is_opaque(ty: Ty<'tcx>) -> bool {
+        matches!(ty.kind(), ty::Alias(ty::Opaque, ..))
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
