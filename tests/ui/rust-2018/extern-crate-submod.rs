@@ -5,7 +5,6 @@
 // us to rewrite paths. We don't (and we leave the `extern crate` in
 // place).
 
-#![feature(rust_2018_preview)]
 #![deny(absolute_paths_not_starting_with_crate)]
 
 mod m {
