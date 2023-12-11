@@ -11,7 +11,7 @@ pub struct MachineInfo {
 
 impl MachineInfo {
     pub fn target() -> MachineInfo {
-        with(|cx| cx.target_info().clone())
+        with(|cx| cx.target_info())
     }
 
     pub fn target_endianess() -> Endian {
