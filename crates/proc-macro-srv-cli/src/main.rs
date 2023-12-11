@@ -39,9 +39,16 @@ fn run() -> io::Result<()> {
             msg::Request::ListMacros { dylib_path } => {
                 msg::Response::ListMacros(srv.list_macros(&dylib_path))
             }
-            msg::Request::ExpandMacro(task) => msg::Response::ExpandMacro(srv.expand(task)),
+            msg::Request::ExpandMacro(task) => match srv.span_mode() {
+                msg::SpanMode::Id => msg::Response::ExpandMacro(srv.expand(task).map(|(it, _)| it)),
+                msg::SpanMode::RustAnalyzer => msg::Response::ExpandMacroSpans(srv.expand(task)),
+            },
             msg::Request::ApiVersionCheck {} => {
                 msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
+            }
+            msg::Request::SetSpanMode(span_mode) => {
+                srv.set_span_mode(span_mode);
+                msg::Response::SetSpanMode(span_mode)
             }
         };
         write_response(res)?

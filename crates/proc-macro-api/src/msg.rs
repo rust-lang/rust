@@ -10,28 +10,42 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::ProcMacroKind;
 
-pub use crate::msg::flat::{FlatTree, TokenId};
+pub use crate::msg::flat::{
+    deserialize_span_data_index_map, serialize_span_data_index_map, FlatTree, SpanDataIndexMap,
+    TokenId,
+};
 
 // The versions of the server protocol
 pub const NO_VERSION_CHECK_VERSION: u32 = 0;
 pub const VERSION_CHECK_VERSION: u32 = 1;
 pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
 pub const HAS_GLOBAL_SPANS: u32 = 3;
+pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
 
-pub const CURRENT_API_VERSION: u32 = HAS_GLOBAL_SPANS;
+pub const CURRENT_API_VERSION: u32 = RUST_ANALYZER_SPAN_SUPPORT;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
     ListMacros { dylib_path: PathBuf },
     ExpandMacro(ExpandMacro),
+    SetSpanMode(SpanMode),
     ApiVersionCheck {},
+}
+
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+pub enum SpanMode {
+    #[default]
+    Id,
+    RustAnalyzer,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
     ExpandMacro(Result<FlatTree, PanicMessage>),
+    ExpandMacroSpans(Result<(FlatTree, Vec<u32>), PanicMessage>),
     ApiVersionCheck(u32),
+    SetSpanMode(SpanMode),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,9 +78,12 @@ pub struct ExpandMacro {
     #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
     #[serde(default)]
     pub has_global_spans: ExpnGlobals,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    pub span_data_table: Vec<u32>,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ExpnGlobals {
     #[serde(skip_serializing)]
     #[serde(default)]
@@ -241,6 +258,7 @@ mod tests {
                 call_site: 0,
                 mixed_site: 0,
             },
+            span_data_table: Vec::new(),
         };
 
         let json = serde_json::to_string(&task).unwrap();

@@ -97,6 +97,14 @@ impl SyntaxContextId {
     pub fn is_root(self) -> bool {
         self == Self::ROOT
     }
+
+    pub fn into_u32(self) -> u32 {
+        self.0.as_u32()
+    }
+
+    pub fn from_u32(u32: u32) -> Self {
+        Self(InternId::from(u32))
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

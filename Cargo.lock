@@ -1277,6 +1277,7 @@ dependencies = [
 name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
+ "base-db",
  "expect-test",
  "libloading",
  "mbe",
@@ -1285,6 +1286,7 @@ dependencies = [
  "paths",
  "proc-macro-api",
  "proc-macro-test",
+ "span",
  "stdx",
  "tt",
 ]
