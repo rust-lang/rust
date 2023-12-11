@@ -556,13 +556,19 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
 use rustc_arena::TypedArena;
-use rustc_data_structures::{captures::Captures, stack::ensure_sufficient_stack};
 
 use crate::constructor::{Constructor, ConstructorSet};
 use crate::pat::{DeconstructedPat, WitnessPat};
-use crate::{MatchArm, MatchCx};
+use crate::{Captures, MatchArm, MatchCx};
 
 use self::ValidityConstraint::*;
+
+#[cfg(feature = "rustc")]
+use rustc_data_structures::stack::ensure_sufficient_stack;
+#[cfg(not(feature = "rustc"))]
+pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
+    f()
+}
 
 #[derive(Clone)]
 pub(crate) struct PatCtxt<'a, 'p, Cx: MatchCx> {

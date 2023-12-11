@@ -155,7 +155,7 @@ use std::iter::once;
 use smallvec::SmallVec;
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
 
 use self::Constructor::*;
@@ -546,7 +546,7 @@ impl Slice {
         // therefore `Presence::Seen` in the column.
         let mut min_var_len = usize::MAX;
         // Tracks the fixed-length slices we've seen, to mark them as `Presence::Seen`.
-        let mut seen_fixed_lens = FxHashSet::default();
+        let mut seen_fixed_lens = GrowableBitSet::new_empty();
         match &mut max_slice {
             VarLen(max_prefix_len, max_suffix_len) => {
                 // A length larger than any fixed-length slice encountered.
@@ -614,7 +614,7 @@ impl Slice {
 
         smaller_lengths.map(FixedLen).chain(once(max_slice)).map(move |kind| {
             let arity = kind.arity();
-            let seen = if min_var_len <= arity || seen_fixed_lens.contains(&arity) {
+            let seen = if min_var_len <= arity || seen_fixed_lens.contains(arity) {
                 Presence::Seen
             } else {
                 Presence::Unseen
@@ -906,12 +906,15 @@ impl<Cx: MatchCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
+                let mut seen_set: BitSet<_> = BitSet::new_empty(variants.len());
+                for idx in seen.iter().map(|c| c.as_variant().unwrap()) {
+                    seen_set.insert(idx);
+                }
                 let mut skipped_a_hidden_variant = false;
 
                 for (idx, visibility) in variants.iter_enumerated() {
                     let ctor = Variant(idx);
-                    if seen_set.contains(&idx) {
+                    if seen_set.contains(idx) {
                         present.push(ctor);
                     } else {
                         // We only put visible variants directly into `missing`.

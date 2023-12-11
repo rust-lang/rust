@@ -79,6 +79,13 @@ pub struct MatchArm<'p, Cx: MatchCx> {
 
 impl<'p, Cx: MatchCx> Copy for MatchArm<'p, Cx> {}
 
+#[cfg(not(feature = "rustc"))]
+pub trait Captures<'a> {}
+#[cfg(not(feature = "rustc"))]
+impl<'a, T: ?Sized> Captures<'a> for T {}
+#[cfg(feature = "rustc")]
+pub use rustc_data_structures::captures::Captures;
+
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.
 #[cfg(feature = "rustc")]

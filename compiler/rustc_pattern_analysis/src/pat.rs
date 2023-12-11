@@ -5,13 +5,11 @@ use std::fmt;
 
 use smallvec::{smallvec, SmallVec};
 
-use rustc_data_structures::captures::Captures;
-
-use self::Constructor::*;
-
 use crate::constructor::{Constructor, Slice, SliceKind};
 use crate::usefulness::PatCtxt;
-use crate::MatchCx;
+use crate::{Captures, MatchCx};
+
+use self::Constructor::*;
 
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form.
