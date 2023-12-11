@@ -629,12 +629,9 @@ impl ValidityConstraint {
     ///
     /// Pending further opsem decisions, the current behavior is: validity is preserved, except
     /// inside `&` and union fields where validity is reset to `MaybeInvalid`.
-    fn specialize<'tcx>(self, pcx: &PatCtxt<'_, '_, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
+    fn specialize(self, ctor: &Constructor<'_>) -> Self {
         // We preserve validity except when we go inside a reference or a union field.
-        if matches!(ctor, Constructor::Single)
-            && (matches!(pcx.ty.kind(), ty::Ref(..))
-                || matches!(pcx.ty.kind(), ty::Adt(def, ..) if def.is_union()))
-        {
+        if matches!(ctor, Constructor::Ref | Constructor::UnionField) {
             // Validity of `x: &T` does not imply validity of `*x: T`.
             MaybeInvalid
         } else {
@@ -902,7 +899,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
         let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
-        let new_validity = self.place_validity[0].specialize(pcx, ctor);
+        let new_validity = self.place_validity[0].specialize(ctor);
         let new_place_validity = std::iter::repeat(new_validity)
             .take(ctor.arity(pcx))
             .chain(self.place_validity[1..].iter().copied())

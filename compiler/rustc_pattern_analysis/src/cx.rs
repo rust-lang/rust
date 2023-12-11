@@ -105,7 +105,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     ) -> VariantIdx {
         match *ctor {
             Variant(idx) => idx,
-            Single => {
+            Struct | UnionField => {
                 assert!(!adt.is_enum());
                 FIRST_VARIANT
             }
@@ -123,9 +123,8 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     ) -> &'p [DeconstructedPat<'p, 'tcx>] {
         let cx = self;
         match ctor {
-            Single | Variant(_) => match ty.kind() {
+            Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => cx.alloc_wildcard_slice(fs.iter()),
-                ty::Ref(_, rty, _) => cx.alloc_wildcard_slice(once(*rty)),
                 ty::Adt(adt, args) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
@@ -138,7 +137,11 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         cx.alloc_wildcard_slice(tys)
                     }
                 }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
+                _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
+            },
+            Ref => match ty.kind() {
+                ty::Ref(_, rty, _) => cx.alloc_wildcard_slice(once(*rty)),
+                _ => bug!("Unexpected type for `Ref` constructor: {ty:?}"),
             },
             Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
@@ -167,9 +170,8 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     /// `Fields::wildcards`.
     pub(crate) fn ctor_arity(&self, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> usize {
         match ctor {
-            Single | Variant(_) => match ty.kind() {
+            Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => fs.len(),
-                ty::Ref(..) => 1,
                 ty::Adt(adt, ..) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
@@ -181,8 +183,9 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         self.list_variant_nonhidden_fields(ty, variant).count()
                     }
                 }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
+                _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
+            Ref => 1,
             Slice(slice) => slice.arity(),
             Bool(..)
             | IntRange(..)
@@ -298,9 +301,9 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     ConstructorSet::Variants { variants, non_exhaustive: is_declared_nonexhaustive }
                 }
             }
-            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => {
-                ConstructorSet::Single { empty: cx.is_uninhabited(ty) }
-            }
+            ty::Adt(def, _) if def.is_union() => ConstructorSet::Union,
+            ty::Adt(..) | ty::Tuple(..) => ConstructorSet::Struct { empty: cx.is_uninhabited(ty) },
+            ty::Ref(..) => ConstructorSet::Ref,
             ty::Never => ConstructorSet::NoConstructors,
             // This type is one for which we cannot list constructors, like `str` or `f64`.
             // FIXME(Nadrieril): which of these are actually allowed?
@@ -359,13 +362,18 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                 fields = &[];
             }
             PatKind::Deref { subpattern } => {
-                ctor = Single;
                 fields = singleton(self.lower_pat(subpattern));
+                ctor = match pat.ty.kind() {
+                    // This is a box pattern.
+                    ty::Adt(adt, ..) if adt.is_box() => Struct,
+                    ty::Ref(..) => Ref,
+                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, pat.ty),
+                };
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match pat.ty.kind() {
                     ty::Tuple(fs) => {
-                        ctor = Single;
+                        ctor = Struct;
                         let mut wilds: SmallVec<[_; 2]> =
                             fs.iter().map(|ty| DeconstructedPat::wildcard(ty, pat.span)).collect();
                         for pat in subpatterns {
@@ -380,7 +388,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         // _)` or a box pattern. As a hack to avoid an ICE with the former, we
                         // ignore other fields than the first one. This will trigger an error later
                         // anyway.
-                        // See https://github.com/rust-lang/rust/issues/82772 ,
+                        // See https://github.com/rust-lang/rust/issues/82772,
                         // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
                         // The problem is that we can't know from the type whether we'll match
                         // normally or through box-patterns. We'll have to figure out a proper
@@ -392,12 +400,13 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         } else {
                             DeconstructedPat::wildcard(args.type_at(0), pat.span)
                         };
-                        ctor = Single;
+                        ctor = Struct;
                         fields = singleton(pat);
                     }
                     ty::Adt(adt, _) => {
                         ctor = match pat.kind {
-                            PatKind::Leaf { .. } => Single,
+                            PatKind::Leaf { .. } if adt.is_union() => UnionField,
+                            PatKind::Leaf { .. } => Struct,
                             PatKind::Variant { variant_index, .. } => Variant(variant_index),
                             _ => bug!(),
                         };
@@ -477,11 +486,11 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         // with other `Deref` patterns. This could have been done in `const_to_pat`,
                         // but that causes issues with the rest of the matching code.
                         // So here, the constructor for a `"foo"` pattern is `&` (represented by
-                        // `Single`), and has one field. That field has constructor `Str(value)` and no
-                        // fields.
+                        // `Ref`), and has one field. That field has constructor `Str(value)` and no
+                        // subfields.
                         // Note: `t` is `str`, not `&str`.
                         let subpattern = DeconstructedPat::new(Str(*value), &[], *t, pat.span);
-                        ctor = Single;
+                        ctor = Ref;
                         fields = singleton(subpattern)
                     }
                     // All constants that can be structurally matched have already been expanded
@@ -657,7 +666,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return self.hoist_pat_range(range, pat.ty()),
-            Single | Variant(_) => match pat.ty().kind() {
+            Struct | Variant(_) | UnionField => match pat.ty().kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
                         .enumerate()
@@ -686,13 +695,13 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
-                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-                // be careful to reconstruct the correct constant pattern here. However a string
-                // literal pattern will never be reported as a non-exhaustiveness witness, so we
-                // ignore this issue.
-                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), pat.ty()),
             },
+            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+            // be careful to reconstruct the correct constant pattern here. However a string
+            // literal pattern will never be reported as a non-exhaustiveness witness, so we
+            // ignore this issue.
+            Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
             Slice(slice) => {
                 match slice.kind {
                     SliceKind::FixedLen(_) => PatKind::Slice {
@@ -758,7 +767,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         let mut start_or_comma = || start_or_continue(", ");
 
         match pat.ctor() {
-            Single | Variant(_) => match pat.ty().kind() {
+            Struct | Variant(_) | UnionField => match pat.ty().kind() {
                 ty::Adt(def, _) if def.is_box() => {
                     // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
                     // of `std`). So this branch is only reachable when the feature is enabled and
@@ -789,15 +798,15 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     }
                     write!(f, ")")
                 }
-                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-                // be careful to detect strings here. However a string literal pattern will never
-                // be reported as a non-exhaustiveness witness, so we can ignore this issue.
-                ty::Ref(_, _, mutbl) => {
-                    let subpattern = pat.iter_fields().next().unwrap();
-                    write!(f, "&{}{:?}", mutbl.prefix_str(), subpattern)
-                }
                 _ => write!(f, "_"),
             },
+            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+            // be careful to detect strings here. However a string literal pattern will never
+            // be reported as a non-exhaustiveness witness, so we can ignore this issue.
+            Ref => {
+                let subpattern = pat.iter_fields().next().unwrap();
+                write!(f, "&{:?}", subpattern)
+            }
             Slice(slice) => {
                 let mut subpatterns = pat.iter_fields();
                 write!(f, "[")?;

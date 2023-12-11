@@ -631,11 +631,16 @@ impl OpaqueId {
 /// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Constructor<'tcx> {
-    /// The constructor for patterns that have a single constructor, like tuples, struct patterns,
-    /// and references. Fixed-length arrays are treated separately with `Slice`.
-    Single,
+    /// Tuples and structs.
+    Struct,
     /// Enum variants.
     Variant(VariantIdx),
+    /// References
+    Ref,
+    /// Array and slice patterns.
+    Slice(Slice),
+    /// Union field accesses.
+    UnionField,
     /// Booleans
     Bool(bool),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
@@ -645,8 +650,6 @@ pub enum Constructor<'tcx> {
     F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(Const<'tcx>),
-    /// Array and slice patterns.
-    Slice(Slice),
     /// Constants that must not be matched structurally. They are treated as black boxes for the
     /// purposes of exhaustiveness: we must not inspect them, and they don't count towards making a
     /// match exhaustive.
@@ -723,7 +726,9 @@ impl<'tcx> Constructor<'tcx> {
             // Only a wildcard pattern can match these special constructors.
             (Missing { .. } | NonExhaustive | Hidden, _) => false,
 
-            (Single, Single) => true,
+            (Struct, Struct) => true,
+            (Ref, Ref) => true,
+            (UnionField, UnionField) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
             (Bool(self_b), Bool(other_b)) => self_b == other_b,
 
@@ -786,12 +791,15 @@ pub enum VariantVisibility {
 /// `exhaustive_patterns` feature.
 #[derive(Debug)]
 pub enum ConstructorSet {
-    /// The type has a single constructor, e.g. `&T` or a struct. `empty` tracks whether the
-    /// constructor is empty.
-    Single { empty: bool },
+    /// The type is a tuple or struct. `empty` tracks whether the type is empty.
+    Struct { empty: bool },
     /// This type has the following list of constructors. If `variants` is empty and
     /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
     Variants { variants: IndexVec<VariantIdx, VariantVisibility>, non_exhaustive: bool },
+    /// The type is `&T`.
+    Ref,
+    /// The type is a union.
+    Union,
     /// Booleans.
     Bool,
     /// The type is spanned by integer values. The range or ranges give the set of allowed values.
@@ -866,13 +874,27 @@ impl ConstructorSet {
         }
 
         match self {
-            ConstructorSet::Single { empty } => {
+            ConstructorSet::Struct { empty } => {
                 if !seen.is_empty() {
-                    present.push(Single);
+                    present.push(Struct);
                 } else if *empty {
-                    missing_empty.push(Single);
+                    missing_empty.push(Struct);
                 } else {
-                    missing.push(Single);
+                    missing.push(Struct);
+                }
+            }
+            ConstructorSet::Ref => {
+                if !seen.is_empty() {
+                    present.push(Ref);
+                } else {
+                    missing.push(Ref);
+                }
+            }
+            ConstructorSet::Union => {
+                if !seen.is_empty() {
+                    present.push(UnionField);
+                } else {
+                    missing.push(UnionField);
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
