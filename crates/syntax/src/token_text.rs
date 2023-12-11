@@ -13,7 +13,7 @@ pub(crate) enum Repr<'a> {
 }
 
 impl<'a> TokenText<'a> {
-    pub(crate) fn borrowed(text: &'a str) -> Self {
+    pub fn borrowed(text: &'a str) -> Self {
         TokenText(Repr::Borrowed(text))
     }
 

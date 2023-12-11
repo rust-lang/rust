@@ -186,6 +186,7 @@ fn augment_references_with_imports(
     references
         .iter()
         .filter_map(|FileReference { name, .. }| {
+            let name = name.clone().into_name_like()?;
             ctx.sema.scope(name.syntax()).map(|scope| (name, scope.module()))
         })
         .map(|(name, ref_module)| {
@@ -238,6 +239,7 @@ fn add_tuple_struct_def(
         .iter()
         .flat_map(|(_, refs)| refs)
         .filter_map(|FileReference { name, .. }| {
+            let name = name.clone().into_name_like()?;
             ctx.sema.scope(name.syntax()).map(|scope| scope.module())
         })
         .any(|module| module.nearest_non_block_module(ctx.db()) != *target_module);

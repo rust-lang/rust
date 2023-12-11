@@ -586,7 +586,7 @@ fn find_local_import_locations(
 #[cfg(test)]
 mod tests {
     use base_db::fixture::WithFixture;
-    use hir_expand::hygiene::Hygiene;
+    use hir_expand::db::ExpandDatabase;
     use syntax::ast::AstNode;
 
     use crate::test_db::TestDB;
@@ -608,7 +608,8 @@ mod tests {
         let parsed_path_file = syntax::SourceFile::parse(&format!("use {path};"));
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
-        let mod_path = ModPath::from_src(&db, ast_path, &Hygiene::new_unhygienic()).unwrap();
+        let mod_path =
+            ModPath::from_src(&db, ast_path, db.span_map(pos.file_id.into()).as_ref()).unwrap();
 
         let def_map = module.def_map(&db);
         let resolved = def_map

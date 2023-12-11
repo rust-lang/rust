@@ -97,7 +97,7 @@ use hir_def::{
     FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId,
     StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId, VariantId,
 };
-use hir_expand::{attrs::AttrId, name::AsName, HirFileId, MacroCallId};
+use hir_expand::{attrs::AttrId, name::AsName, HirFileId, HirFileIdExt, MacroCallId};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
@@ -112,7 +112,7 @@ pub(super) type SourceToDefCache = FxHashMap<(ChildContainer, HirFileId), DynMap
 
 pub(super) struct SourceToDefCtx<'a, 'b> {
     pub(super) db: &'b dyn HirDatabase,
-    pub(super) cache: &'a mut SourceToDefCache,
+    pub(super) dynmap_cache: &'a mut SourceToDefCache,
 }
 
 impl SourceToDefCtx<'_, '_> {
@@ -300,7 +300,7 @@ impl SourceToDefCtx<'_, '_> {
 
     fn cache_for(&mut self, container: ChildContainer, file_id: HirFileId) -> &DynMap {
         let db = self.db;
-        self.cache
+        self.dynmap_cache
             .entry((container, file_id))
             .or_insert_with(|| container.child_by_source(db, file_id))
     }

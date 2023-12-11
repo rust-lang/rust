@@ -4,7 +4,7 @@ use crate::{
     doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
     RangeInfo, TryToNav,
 };
-use hir::{AsAssocItem, AssocItem, Semantics};
+use hir::{AsAssocItem, AssocItem, DescendPreference, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, IdentClass},
@@ -52,21 +52,34 @@ pub(crate) fn goto_definition(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, _, link_range| {
             let nav = def.try_to_nav(db)?;
-            Some(RangeInfo::new(link_range, vec![nav]))
+            Some(RangeInfo::new(link_range, nav.collect()))
         });
     }
+
+    if let Some((range, resolution)) =
+        sema.check_for_format_args_template(original_token.clone(), offset)
+    {
+        return Some(RangeInfo::new(
+            range,
+            match resolution {
+                Some(res) => def_to_nav(db, Definition::from(res)),
+                None => vec![],
+            },
+        ));
+    }
+
     let navs = sema
-        .descend_into_macros(original_token.clone(), offset)
+        .descend_into_macros(DescendPreference::None, original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
-            if let Some(tt) = ast::TokenTree::cast(parent) {
+            if let Some(tt) = ast::TokenTree::cast(parent.clone()) {
                 if let Some(x) = try_lookup_include_path(sema, tt, token.clone(), file_id) {
                     return Some(vec![x]);
                 }
             }
             Some(
-                IdentClass::classify_token(sema, &token)?
+                IdentClass::classify_node(sema, &parent)?
                     .definitions()
                     .into_iter()
                     .flat_map(|def| {
@@ -75,6 +88,7 @@ pub(crate) fn goto_definition(
                                 .resolved_crate(db)
                                 .map(|it| it.root_module().to_nav(sema.db))
                                 .into_iter()
+                                .flatten()
                                 .collect();
                         }
                         try_filter_trait_item_definition(sema, &def)
@@ -125,6 +139,7 @@ fn try_lookup_include_path(
         docs: None,
     })
 }
+
 /// finds the trait definition of an impl'd item, except function
 /// e.g.
 /// ```rust
@@ -153,13 +168,13 @@ fn try_filter_trait_item_definition(
                 .iter()
                 .filter(|itm| discriminant(*itm) == discri_value)
                 .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
-                .map(|it| vec![it])
+                .map(|it| it.collect())
         }
     }
 }
 
 fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {
-    def.try_to_nav(db).map(|it| vec![it]).unwrap_or_default()
+    def.try_to_nav(db).map(|it| it.collect()).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -399,11 +414,11 @@ fn bar() {
 //- /lib.rs
 macro_rules! define_fn {
     () => (fn foo() {})
+            //^^^
 }
 
   define_fn!();
 //^^^^^^^^^^^^^
-
 fn bar() {
    $0foo();
 }
@@ -807,18 +822,13 @@ mod confuse_index { fn foo(); }
     fn goto_through_format() {
         check(
             r#"
+//- minicore: fmt
 #[macro_export]
 macro_rules! format {
     ($($arg:tt)*) => ($crate::fmt::format($crate::__export::format_args!($($arg)*)))
 }
-#[rustc_builtin_macro]
-#[macro_export]
-macro_rules! format_args {
-    ($fmt:expr) => ({ /* compiler built-in */ });
-    ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
-}
 pub mod __export {
-    pub use crate::format_args;
+    pub use core::format_args;
     fn foo() {} // for index confusion
 }
 fn foo() -> i8 {}
@@ -1738,9 +1748,9 @@ macro_rules! foo {
         fn $ident(Foo { $ident }: Foo) {}
     }
 }
-foo!(foo$0);
-   //^^^
-   //^^^
+  foo!(foo$0);
+     //^^^
+     //^^^
 "#,
         );
         check(
@@ -2053,6 +2063,20 @@ impl S1 {
 fn f2() {
     struct S2;
     S1::e$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn implicit_format_args() {
+        check(
+            r#"
+//- minicore: fmt
+fn test() {
+    let a = "world";
+     // ^
+    format_args!("hello {a$0}");
 }
 "#,
         );

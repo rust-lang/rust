@@ -17,10 +17,11 @@ always-assert = { version = "0.1.2", features = ["log"] }
 jod-thread = "0.1.2"
 libc.workspace = true
 crossbeam-channel = "0.5.5"
+itertools.workspace = true
 # Think twice before adding anything here
 
 [target.'cfg(windows)'.dependencies]
-miow = "0.5.0"
+miow = "0.6.0"
 winapi = { version = "0.3.9", features = ["winerror"] }
 
 [features]

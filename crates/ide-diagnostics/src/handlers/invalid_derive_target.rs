@@ -8,7 +8,7 @@ pub(crate) fn invalid_derive_target(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::InvalidDeriveTarget,
 ) -> Diagnostic {
-    let display_range = ctx.sema.diagnostics_display_range(d.node.clone()).range;
+    let display_range = ctx.sema.diagnostics_display_range(d.node.clone());
 
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0774"),

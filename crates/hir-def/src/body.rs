@@ -95,6 +95,8 @@ pub struct BodySourceMap {
     field_map_back: FxHashMap<ExprId, FieldSource>,
     pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
+    format_args_template_map: FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
+
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
     /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
@@ -387,6 +389,14 @@ impl BodySourceMap {
         self.expr_map.get(&src).copied()
     }
 
+    pub fn implicit_format_args(
+        &self,
+        node: InFile<&ast::FormatArgsExpr>,
+    ) -> Option<&[(syntax::TextRange, Name)]> {
+        let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
+        self.format_args_template_map.get(self.expr_map.get(&src)?).map(std::ops::Deref::deref)
+    }
+
     /// Get a reference to the body source map's diagnostics.
     pub fn diagnostics(&self) -> &[BodyDiagnostic] {
         &self.diagnostics
@@ -403,8 +413,10 @@ impl BodySourceMap {
             field_map_back,
             pat_field_map_back,
             expansions,
+            format_args_template_map,
             diagnostics,
         } = self;
+        format_args_template_map.shrink_to_fit();
         expr_map.shrink_to_fit();
         expr_map_back.shrink_to_fit();
         pat_map.shrink_to_fit();

@@ -1,4 +1,5 @@
 use hir::db::ExpandDatabase;
+use hir::HirFileIdExt;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{ast, SyntaxNode};
 use syntax::{match_ast, AstNode};

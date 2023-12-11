@@ -7,11 +7,11 @@ use std::{
 
 use crate::{
     db::ExpandDatabase,
-    hygiene::Hygiene,
-    name::{known, Name},
+    hygiene::{marks_rev, SyntaxContextExt, Transparency},
+    name::{known, AsName, Name},
+    span::SpanMapRef,
 };
-use base_db::CrateId;
-use either::Either;
+use base_db::{span::SyntaxContextId, CrateId};
 use smallvec::SmallVec;
 use syntax::{ast, AstNode};
 
@@ -38,6 +38,7 @@ pub enum PathKind {
     Crate,
     /// Absolute path (::foo)
     Abs,
+    // FIXME: Remove this
     /// `$crate` from macro expansion
     DollarCrate(CrateId),
 }
@@ -46,9 +47,9 @@ impl ModPath {
     pub fn from_src(
         db: &dyn ExpandDatabase,
         path: ast::Path,
-        hygiene: &Hygiene,
+        span_map: SpanMapRef<'_>,
     ) -> Option<ModPath> {
-        convert_path(db, None, path, hygiene)
+        convert_path(db, None, path, span_map)
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
@@ -193,33 +194,36 @@ fn convert_path(
     db: &dyn ExpandDatabase,
     prefix: Option<ModPath>,
     path: ast::Path,
-    hygiene: &Hygiene,
+    span_map: SpanMapRef<'_>,
 ) -> Option<ModPath> {
     let prefix = match path.qualifier() {
-        Some(qual) => Some(convert_path(db, prefix, qual, hygiene)?),
+        Some(qual) => Some(convert_path(db, prefix, qual, span_map)?),
         None => prefix,
     };
 
     let segment = path.segment()?;
     let mut mod_path = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
-            match hygiene.name_ref_to_name(db, name_ref) {
-                Either::Left(name) => {
-                    // no type args in use
-                    let mut res = prefix.unwrap_or_else(|| {
-                        ModPath::from_kind(
-                            segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
-                        )
-                    });
-                    res.segments.push(name);
-                    res
+            if name_ref.text() == "$crate" {
+                if prefix.is_some() {
+                    return None;
                 }
-                Either::Right(crate_id) => {
-                    return Some(ModPath::from_segments(
-                        PathKind::DollarCrate(crate_id),
-                        iter::empty(),
-                    ))
-                }
+                ModPath::from_kind(
+                    resolve_crate_root(
+                        db,
+                        span_map.span_for_range(name_ref.syntax().text_range()).ctx,
+                    )
+                    .map(PathKind::DollarCrate)
+                    .unwrap_or(PathKind::Crate),
+                )
+            } else {
+                let mut res = prefix.unwrap_or_else(|| {
+                    ModPath::from_kind(
+                        segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
+                    )
+                });
+                res.segments.push(name_ref.as_name());
+                res
             }
         }
         ast::PathSegmentKind::SelfTypeKw => {
@@ -261,13 +265,42 @@ fn convert_path(
     // We follow what it did anyway :)
     if mod_path.segments.len() == 1 && mod_path.kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            if let Some(crate_id) = hygiene.local_inner_macros(db, path) {
-                mod_path.kind = PathKind::DollarCrate(crate_id);
+            let syn_ctx = span_map.span_for_range(segment.syntax().text_range()).ctx;
+            if let Some(macro_call_id) = db.lookup_intern_syntax_context(syn_ctx).outer_expn {
+                if db.lookup_intern_macro_call(macro_call_id).def.local_inner {
+                    mod_path.kind = match resolve_crate_root(db, syn_ctx) {
+                        Some(crate_root) => PathKind::DollarCrate(crate_root),
+                        None => PathKind::Crate,
+                    }
+                }
             }
         }
     }
 
     Some(mod_path)
+}
+
+pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) -> Option<CrateId> {
+    // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
+    // we don't want to pretend that the `macro_rules!` definition is in the `macro`
+    // as described in `SyntaxContext::apply_mark`, so we ignore prepended opaque marks.
+    // FIXME: This is only a guess and it doesn't work correctly for `macro_rules!`
+    // definitions actually produced by `macro` and `macro` definitions produced by
+    // `macro_rules!`, but at least such configurations are not stable yet.
+    ctxt = ctxt.normalize_to_macro_rules(db);
+    let mut iter = marks_rev(ctxt, db).peekable();
+    let mut result_mark = None;
+    // Find the last opaque mark from the end if it exists.
+    while let Some(&(mark, Transparency::Opaque)) = iter.peek() {
+        result_mark = Some(mark);
+        iter.next();
+    }
+    // Then find the last semi-transparent mark from the end if it exists.
+    while let Some((mark, Transparency::SemiTransparent)) = iter.next() {
+        result_mark = Some(mark);
+    }
+
+    result_mark.flatten().map(|call| db.lookup_intern_macro_call(call.into()).def.krate)
 }
 
 pub use crate::name as __name;

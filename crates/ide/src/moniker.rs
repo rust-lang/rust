@@ -1,7 +1,7 @@
 //! This module generates [moniker](https://microsoft.github.io/language-server-protocol/specifications/lsif/0.6.0/specification/#exportsImports)
 //! for LSIF and LSP.
 
-use hir::{AsAssocItem, AssocItemContainer, Crate, Semantics};
+use hir::{AsAssocItem, AssocItemContainer, Crate, DescendPreference, Semantics};
 use ide_db::{
     base_db::{CrateOrigin, FilePosition, LangCrateOrigin},
     defs::{Definition, IdentClass},
@@ -99,7 +99,7 @@ pub(crate) fn moniker(
         });
     }
     let navs = sema
-        .descend_into_macros(original_token.clone(), offset)
+        .descend_into_macros(DescendPreference::None, original_token.clone())
         .into_iter()
         .filter_map(|token| {
             IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops).map(|it| {

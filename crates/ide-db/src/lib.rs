@@ -2,7 +2,7 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 mod apply_change;
 
@@ -144,6 +144,7 @@ impl RootDatabase {
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
         db.update_parse_query_lru_capacity(lru_capacity);
+        db.setup_syntax_context_root();
         db
     }
 
@@ -156,7 +157,6 @@ impl RootDatabase {
         base_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
         // macro expansions are usually rather small, so we can afford to keep more of them alive
         hir::db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(4 * lru_capacity);
-        hir::db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(4 * lru_capacity);
     }
 
     pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
@@ -171,12 +171,6 @@ impl RootDatabase {
         hir_db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(
             lru_capacities
                 .get(stringify!(ParseMacroExpansionQuery))
-                .copied()
-                .unwrap_or(4 * base_db::DEFAULT_PARSE_LRU_CAP),
-        );
-        hir_db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(
-            lru_capacities
-                .get(stringify!(MacroExpandQuery))
                 .copied()
                 .unwrap_or(4 * base_db::DEFAULT_PARSE_LRU_CAP),
         );
@@ -204,11 +198,10 @@ impl RootDatabase {
             hir_db::AstIdMapQuery
             // hir_db::ParseMacroExpansionQuery
             // hir_db::InternMacroCallQuery
-            hir_db::MacroArgNodeQuery
+            hir_db::MacroArgQuery
             hir_db::DeclMacroExpanderQuery
             // hir_db::MacroExpandQuery
             hir_db::ExpandProcMacroQuery
-            hir_db::HygieneFrameQuery
             hir_db::ParseMacroExpansionErrorQuery
 
             // DefDatabase

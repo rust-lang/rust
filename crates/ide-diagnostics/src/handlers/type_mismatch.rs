@@ -1,4 +1,4 @@
-use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, InFile, Type};
+use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
     ast::{self, BlockExpr, ExprStmt},
@@ -35,14 +35,10 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
                 Some(salient_token_range)
             },
         ),
-        pat => {
-            ctx.sema
-                .diagnostics_display_range(InFile {
-                    file_id: d.expr_or_pat.file_id,
-                    value: pat.syntax_node_ptr(),
-                })
-                .range
-        }
+        pat => ctx.sema.diagnostics_display_range(InFile {
+            file_id: d.expr_or_pat.file_id,
+            value: pat.syntax_node_ptr(),
+        }),
     };
     let mut diag = Diagnostic::new(
         DiagnosticCode::RustcHardError("E0308"),
@@ -84,7 +80,7 @@ fn add_reference(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let range = ctx.sema.diagnostics_display_range(expr_ptr.clone().map(|it| it.into())).range;
+    let range = ctx.sema.diagnostics_display_range(expr_ptr.clone().map(|it| it.into()));
 
     let (_, mutability) = d.expected.as_reference()?;
     let actual_with_ref = Type::reference(&d.actual, mutability);
@@ -94,10 +90,9 @@ fn add_reference(
 
     let ampersands = format!("&{}", mutability.as_keyword_for_ref());
 
-    let edit = TextEdit::insert(range.start(), ampersands);
-    let source_change =
-        SourceChange::from_text_edit(expr_ptr.file_id.original_file(ctx.sema.db), edit);
-    acc.push(fix("add_reference_here", "Add reference here", source_change, range));
+    let edit = TextEdit::insert(range.range.start(), ampersands);
+    let source_change = SourceChange::from_text_edit(range.file_id, edit);
+    acc.push(fix("add_reference_here", "Add reference here", source_change, range.range));
     Some(())
 }
 

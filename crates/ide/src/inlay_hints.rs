@@ -315,6 +315,7 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
         }
         self.make_new_part();
         let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
+        let location = location.call_site();
         let location =
             FileRange { file_id: location.file_id, range: location.focus_or_full_range() };
         self.location = Some(location);

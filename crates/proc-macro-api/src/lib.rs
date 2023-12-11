@@ -5,22 +5,22 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 pub mod msg;
 mod process;
 mod version;
 
+use base_db::span::SpanData;
+use indexmap::IndexSet;
 use paths::AbsPathBuf;
 use std::{fmt, io, sync::Mutex};
 use triomphe::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use ::tt::token_id as tt;
-
 use crate::{
-    msg::{ExpandMacro, FlatTree, PanicMessage},
+    msg::{ExpandMacro, ExpnGlobals, FlatTree, PanicMessage, HAS_GLOBAL_SPANS},
     process::ProcMacroProcessSrv,
 };
 
@@ -136,30 +136,47 @@ impl ProcMacro {
 
     pub fn expand(
         &self,
-        subtree: &tt::Subtree,
-        attr: Option<&tt::Subtree>,
+        subtree: &tt::Subtree<SpanData>,
+        attr: Option<&tt::Subtree<SpanData>>,
         env: Vec<(String, String)>,
-    ) -> Result<Result<tt::Subtree, PanicMessage>, ServerError> {
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
+    ) -> Result<Result<tt::Subtree<SpanData>, PanicMessage>, ServerError> {
         let version = self.process.lock().unwrap_or_else(|e| e.into_inner()).version();
         let current_dir = env
             .iter()
             .find(|(name, _)| name == "CARGO_MANIFEST_DIR")
             .map(|(_, value)| value.clone());
 
+        let mut span_data_table = IndexSet::default();
+        let def_site = span_data_table.insert_full(def_site).0;
+        let call_site = span_data_table.insert_full(call_site).0;
+        let mixed_site = span_data_table.insert_full(mixed_site).0;
         let task = ExpandMacro {
-            macro_body: FlatTree::new(subtree, version),
+            macro_body: FlatTree::new(subtree, version, &mut span_data_table),
             macro_name: self.name.to_string(),
-            attributes: attr.map(|subtree| FlatTree::new(subtree, version)),
+            attributes: attr.map(|subtree| FlatTree::new(subtree, version, &mut span_data_table)),
             lib: self.dylib_path.to_path_buf().into(),
             env,
             current_dir,
+            has_global_spans: ExpnGlobals {
+                serialize: version >= HAS_GLOBAL_SPANS,
+                def_site,
+                call_site,
+                mixed_site,
+            },
         };
 
-        let request = msg::Request::ExpandMacro(task);
-        let response = self.process.lock().unwrap_or_else(|e| e.into_inner()).send_task(request)?;
+        let response = self
+            .process
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .send_task(msg::Request::ExpandMacro(task))?;
+
         match response {
             msg::Response::ExpandMacro(it) => {
-                Ok(it.map(|tree| FlatTree::to_subtree(tree, version)))
+                Ok(it.map(|tree| FlatTree::to_subtree_resolved(tree, version, &span_data_table)))
             }
             msg::Response::ListMacros(..) | msg::Response::ApiVersionCheck(..) => {
                 Err(ServerError { message: "unexpected response".to_string(), io: None })
