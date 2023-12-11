@@ -424,7 +424,7 @@ fn ty_to_text_edit(
 
 pub enum RangeLimit {
     Fixed(TextRange),
-    NearestParentBlock(TextSize),
+    NearestParent(TextSize),
 }
 
 // Feature: Inlay Hints
@@ -470,13 +470,21 @@ pub(crate) fn inlay_hints(
                     .filter(|descendant| range.intersect(descendant.text_range()).is_some())
                     .for_each(hints),
             },
-            Some(RangeLimit::NearestParentBlock(position)) => {
-                match file
-                    .token_at_offset(position)
-                    .left_biased()
-                    .and_then(|token| token.parent_ancestors().find_map(ast::BlockExpr::cast))
-                {
-                    Some(parent_block) => parent_block.syntax().descendants().for_each(hints),
+            Some(RangeLimit::NearestParent(position)) => {
+                match file.token_at_offset(position).left_biased() {
+                    Some(token) => {
+                        if let Some(parent_block) =
+                            token.parent_ancestors().find_map(ast::BlockExpr::cast)
+                        {
+                            parent_block.syntax().descendants().for_each(hints)
+                        } else if let Some(parent_item) =
+                            token.parent_ancestors().find_map(ast::Item::cast)
+                        {
+                            parent_item.syntax().descendants().for_each(hints)
+                        } else {
+                            return acc;
+                        }
+                    }
                     None => return acc,
                 }
             }

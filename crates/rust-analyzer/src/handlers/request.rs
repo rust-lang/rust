@@ -1446,7 +1446,7 @@ pub(crate) fn handle_inlay_hints_resolve(
     let resolve_hints = snap.analysis.inlay_hints(
         &forced_resolve_inlay_hints_config,
         file_id,
-        Some(RangeLimit::NearestParentBlock(hint_position)),
+        Some(RangeLimit::NearestParent(hint_position)),
     )?;
 
     let mut resolved_hints = resolve_hints
