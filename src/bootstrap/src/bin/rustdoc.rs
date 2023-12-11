@@ -62,6 +62,8 @@ fn main() {
     cmd.arg("-Zunstable-options");
     cmd.arg("--check-cfg=cfg(bootstrap)");
 
+    bin_helpers::maybe_dump(format!("stage{stage}-rustdoc"), &cmd);
+
     if verbose > 1 {
         eprintln!(
             "rustdoc command: {:?}={:?} {:?}",

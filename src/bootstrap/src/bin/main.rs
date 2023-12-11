@@ -10,8 +10,9 @@ use std::io::Write;
 #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use std::process;
 use std::{
-    env, fs,
-    io::{self, IsTerminal},
+    env,
+    fs::{self, OpenOptions},
+    io::{self, BufRead, BufReader, IsTerminal},
 };
 
 use bootstrap::{
@@ -79,6 +80,9 @@ fn main() {
     }
 
     let pre_commit = config.src.join(".git").join("hooks").join("pre-commit");
+    let dump_bootstrap_shims = config.dump_bootstrap_shims;
+    let out_dir = config.out.clone();
+
     Build::new(config).build();
 
     if suggest_setup {
@@ -106,6 +110,29 @@ fn main() {
 
     if suggest_setup || changelog_suggestion.is_some() {
         println!("NOTE: this message was printed twice to make it more likely to be seen");
+    }
+
+    if dump_bootstrap_shims {
+        let dump_dir = out_dir.join("bootstrap-shims-dump");
+        assert!(dump_dir.exists());
+
+        for entry in walkdir::WalkDir::new(&dump_dir) {
+            let entry = t!(entry);
+
+            if !entry.file_type().is_file() {
+                continue;
+            }
+
+            let file = t!(fs::File::open(&entry.path()));
+
+            // To ensure deterministic results we must sort the dump lines.
+            // This is necessary because the order of rustc invocations different
+            // almost all the time.
+            let mut lines: Vec<String> = t!(BufReader::new(&file).lines().collect());
+            lines.sort_by_key(|t| t.to_lowercase());
+            let mut file = t!(OpenOptions::new().write(true).truncate(true).open(&entry.path()));
+            t!(file.write_all(lines.join("\n").as_bytes()));
+        }
     }
 }
 
