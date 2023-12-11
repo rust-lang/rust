@@ -705,9 +705,8 @@ impl MetadataBlob {
     }
 
     fn root_pos(&self) -> NonZeroUsize {
-        let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
-        let pos_bytes = slice[offset..][..8].try_into().unwrap();
+        let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
         let pos = u64::from_le_bytes(pos_bytes);
         NonZeroUsize::new(pos as usize).unwrap()
     }

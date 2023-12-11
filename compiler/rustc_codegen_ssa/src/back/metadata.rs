@@ -162,7 +162,7 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
             return Err(format!("Invalid metadata symbol offset: {offset}"));
         }
         // The offset specifies the location of rustc metadata in the comment section.
-        // The metadata is preceded by a 4-byte length field.
+        // The metadata is preceded by a 8-byte length field.
         let len = u64::from_le_bytes(info_data[(offset - 8)..offset].try_into().unwrap()) as usize;
         if offset + len > (info_data.len() as usize) {
             return Err(format!(
