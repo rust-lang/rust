@@ -5,7 +5,7 @@ use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
     DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
-    DebugEmissionKind,
+    DebugEmissionKind, DebugNameTableKind,
 };
 
 use libc::{c_char, c_int, c_uint, size_t};
@@ -793,6 +793,15 @@ pub mod debuginfo {
                 DebugInfo::Limited | DebugInfo::Full => DebugEmissionKind::FullDebug,
             }
         }
+    }
+
+    /// LLVMRustDebugNameTableKind
+    #[derive(Clone, Copy)]
+    #[repr(C)]
+    pub enum DebugNameTableKind {
+        Default,
+        Gnu,
+        None,
     }
 }
 
@@ -1812,6 +1821,7 @@ extern "C" {
         kind: DebugEmissionKind,
         DWOId: u64,
         SplitDebugInlining: bool,
+        DebugNameTableKind: DebugNameTableKind,
     ) -> &'a DIDescriptor;
 
     pub fn LLVMRustDIBuilderCreateFile<'a>(
