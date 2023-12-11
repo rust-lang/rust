@@ -159,9 +159,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::RangeEnd;
 use rustc_index::IndexVec;
 use rustc_middle::mir::Const;
-use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::{Integer, VariantIdx};
+use rustc_target::abi::VariantIdx;
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
@@ -183,6 +181,7 @@ enum Presence {
 pub enum MaybeInfiniteInt {
     NegInfinity,
     /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite`.
+    #[non_exhaustive]
     Finite(u128),
     /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
     JustAfterMax,
@@ -190,23 +189,31 @@ pub enum MaybeInfiniteInt {
 }
 
 impl MaybeInfiniteInt {
-    // The return value of `signed_bias` should be XORed with a value to encode/decode it.
-    pub(crate) fn signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u128 {
-        match *ty.kind() {
-            ty::Int(ity) => {
-                let bits = Integer::from_int_ty(&tcx, ity).size().bits() as u128;
-                1u128 << (bits - 1)
-            }
-            _ => 0,
-        }
+    pub fn new_finite_uint(bits: u128) -> Self {
+        Finite(bits)
     }
-
-    pub fn new_finite(tcx: TyCtxt<'_>, ty: Ty<'_>, bits: u128) -> Self {
-        let bias = Self::signed_bias(tcx, ty);
+    pub fn new_finite_int(bits: u128, size: u64) -> Self {
         // Perform a shift if the underlying types are signed, which makes the interval arithmetic
         // type-independent.
-        let x = bits ^ bias;
-        Finite(x)
+        let bias = 1u128 << (size - 1);
+        Finite(bits ^ bias)
+    }
+
+    pub fn as_finite_uint(self) -> Option<u128> {
+        match self {
+            Finite(bits) => Some(bits),
+            _ => None,
+        }
+    }
+    pub fn as_finite_int(self, size: u64) -> Option<u128> {
+        // We decode the shift.
+        match self {
+            Finite(bits) => {
+                let bias = 1u128 << (size - 1);
+                Some(bits ^ bias)
+            }
+            _ => None,
+        }
     }
 
     /// Note: this will not turn a finite value into an infinite one or vice-versa.
@@ -253,8 +260,7 @@ impl IntRange {
     }
 
     #[inline]
-    pub fn from_bits<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, bits: u128) -> IntRange {
-        let x = MaybeInfiniteInt::new_finite(tcx, ty, bits);
+    pub fn from_singleton(x: MaybeInfiniteInt) -> IntRange {
         IntRange { lo: x, hi: x.plus_one() }
     }
 

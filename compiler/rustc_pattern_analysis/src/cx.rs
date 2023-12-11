@@ -204,10 +204,10 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn ctors_for_ty(&self, ty: Ty<'tcx>) -> ConstructorSet {
         let cx = self;
-        let make_range = |start, end| {
+        let make_uint_range = |start, end| {
             IntRange::from_range(
-                MaybeInfiniteInt::new_finite(cx.tcx, ty, start),
-                MaybeInfiniteInt::new_finite(cx.tcx, ty, end),
+                MaybeInfiniteInt::new_finite_uint(start),
+                MaybeInfiniteInt::new_finite_uint(end),
                 RangeEnd::Included,
             )
         };
@@ -218,8 +218,8 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             ty::Char => {
                 // The valid Unicode Scalar Value ranges.
                 ConstructorSet::Integers {
-                    range_1: make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                    range_2: Some(make_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
+                    range_1: make_uint_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+                    range_2: Some(make_uint_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
                 }
             }
             &ty::Int(ity) => {
@@ -230,22 +230,24 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         hi: MaybeInfiniteInt::PosInfinity,
                     }
                 } else {
-                    let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
-                    let min = 1u128 << (bits - 1);
+                    let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
+                    let min = 1u128 << (size - 1);
                     let max = min - 1;
-                    make_range(min, max)
+                    let min = MaybeInfiniteInt::new_finite_int(min, size);
+                    let max = MaybeInfiniteInt::new_finite_int(max, size);
+                    IntRange::from_range(min, max, RangeEnd::Included)
                 };
                 ConstructorSet::Integers { range_1: range, range_2: None }
             }
             &ty::Uint(uty) => {
                 let range = if ty.is_ptr_sized_integral() {
                     // The max value of `usize` is not allowed to be observed.
-                    let lo = MaybeInfiniteInt::new_finite(cx.tcx, ty, 0);
+                    let lo = MaybeInfiniteInt::new_finite_uint(0);
                     IntRange { lo, hi: MaybeInfiniteInt::PosInfinity }
                 } else {
                     let size = Integer::from_uint_ty(&cx.tcx, uty).size();
                     let max = size.truncate(u128::MAX);
-                    make_range(0, max)
+                    make_uint_range(0, max)
                 };
                 ConstructorSet::Integers { range_1: range, range_2: None }
             }
@@ -329,7 +331,13 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
             PatRangeBoundary::Finite(value) => {
                 let bits = value.eval_bits(self.tcx, self.param_env);
-                MaybeInfiniteInt::new_finite(self.tcx, ty, bits)
+                match *ty.kind() {
+                    ty::Int(ity) => {
+                        let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
+                        MaybeInfiniteInt::new_finite_int(bits, size)
+                    }
+                    _ => MaybeInfiniteInt::new_finite_uint(bits),
+                }
             }
             PatRangeBoundary::PosInfinity => MaybeInfiniteInt::PosInfinity,
         }
@@ -428,7 +436,16 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
-                            Some(bits) => IntRange(IntRange::from_bits(cx.tcx, pat.ty, bits)),
+                            Some(bits) => {
+                                let x = match *pat.ty.kind() {
+                                    ty::Int(ity) => {
+                                        let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
+                                        MaybeInfiniteInt::new_finite_int(bits, size)
+                                    }
+                                    _ => MaybeInfiniteInt::new_finite_uint(bits),
+                                };
+                                IntRange(IntRange::from_singleton(x))
+                            }
                             None => Opaque(OpaqueId::new()),
                         };
                         fields = &[];
@@ -559,10 +576,12 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         let tcx = self.tcx;
         match miint {
             NegInfinity => PatRangeBoundary::NegInfinity,
-            Finite(x) => {
-                let bias = MaybeInfiniteInt::signed_bias(tcx, ty);
-                let bits = x ^ bias;
+            Finite(_) => {
                 let size = ty.primitive_size(tcx);
+                let bits = match *ty.kind() {
+                    ty::Int(_) => miint.as_finite_int(size.bits()).unwrap(),
+                    _ => miint.as_finite_uint().unwrap(),
+                };
                 match Scalar::try_from_uint(bits, size) {
                     Some(scalar) => {
                         let value = mir::Const::from_scalar(tcx, scalar, ty);
