@@ -32,9 +32,7 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
-    // We don't use the stage in this shim, but let's parse it to make sure that we're invoked
-    // by bootstrap, or that we provide a helpful error message if not.
-    bin_helpers::parse_rustc_stage();
+    let stage = bin_helpers::parse_rustc_stage();
     let verbose = bin_helpers::parse_rustc_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
@@ -213,6 +211,8 @@ fn main() {
             cmd.arg("-Clink-args=-Wl,-q");
         }
     }
+
+    bin_helpers::maybe_dump(format!("stage{stage}-rustc"), &cmd);
 
     let start = Instant::now();
     let (child, status) = {
