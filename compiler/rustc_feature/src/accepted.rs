@@ -54,6 +54,8 @@ declare_features! (
     (accepted, abi_thiscall, "1.73.0", None, None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
+    /// Allows using anonymous lifetimes in argument-position impl-trait.
+    (accepted, anonymous_lifetime_in_impl_trait, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553), None),
     /// Allows using `sym` operands in inline assembly.

@@ -1,5 +1,3 @@
-#![feature(anonymous_lifetime_in_impl_trait)]
-
 trait Foo<T> {
     fn bar(self, baz: T);
 }
