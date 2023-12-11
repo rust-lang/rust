@@ -119,12 +119,7 @@ where
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
 #[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Hash(bound = ""),
-    Copy(bound = "CanonicalVarKind<I>: Copy"),
-    Debug(bound = "")
-)]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Debug(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct CanonicalVarInfo<I: Interner> {
     pub kind: CanonicalVarKind<I>,
@@ -207,7 +202,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Debug(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum CanonicalVarKind<I: Interner> {
     /// Some kind of type inference variable.
@@ -232,15 +227,6 @@ pub enum CanonicalVarKind<I: Interner> {
 
     /// A "placeholder" that represents "any const".
     PlaceholderConst(I::PlaceholderConst, I::Ty),
-}
-
-impl<I: Interner> Copy for CanonicalVarKind<I>
-where
-    I::PlaceholderTy: Copy,
-    I::PlaceholderRegion: Copy,
-    I::PlaceholderConst: Copy,
-    I::Ty: Copy,
-{
 }
 
 impl<I: Interner> PartialEq for CanonicalVarKind<I> {
