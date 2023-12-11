@@ -555,7 +555,12 @@
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
+// It's not possible to only enable the `typed_arena` dependency when the `rustc` feature is off, so
+// we use another feature instead. The crate won't compile if one of these isn't enabled.
+#[cfg(feature = "rustc")]
 use rustc_arena::TypedArena;
+#[cfg(feature = "stable")]
+use typed_arena::Arena as TypedArena;
 
 use crate::constructor::{Constructor, ConstructorSet};
 use crate::pat::{DeconstructedPat, WitnessPat};
