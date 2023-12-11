@@ -267,7 +267,8 @@ class StdVecSyntheticProvider:
     """Pretty-printer for alloc::vec::Vec<T>
 
     struct Vec<T> { buf: RawVec<T>, len: usize }
-    struct RawVec<T> { ptr: Unique<T>, cap: usize, ... }
+    rust 1.75: struct RawVec<T> { ptr: Unique<T>, cap: usize, ... }
+    rust 1.76: struct RawVec<T> { ptr: Unique<T>, cap: Cap(usize), ... }
     rust 1.31.1: struct Unique<T: ?Sized> { pointer: NonZero<*const T>, ... }
     rust 1.33.0: struct Unique<T: ?Sized> { pointer: *const T, ... }
     rust 1.62.0: struct Unique<T: ?Sized> { pointer: NonNull<T>, ... }
@@ -390,7 +391,10 @@ class StdVecDequeSyntheticProvider:
         self.head = self.valobj.GetChildMemberWithName("head").GetValueAsUnsigned()
         self.size = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
         self.buf = self.valobj.GetChildMemberWithName("buf")
-        self.cap = self.buf.GetChildMemberWithName("cap").GetValueAsUnsigned()
+        cap = self.buf.GetChildMemberWithName("cap")
+        if cap.GetType().num_fields == 1:
+            cap = cap.GetChildAtIndex(0)
+        self.cap = cap.GetValueAsUnsigned()
 
         self.data_ptr = unwrap_unique_or_non_null(self.buf.GetChildMemberWithName("ptr"))
 
