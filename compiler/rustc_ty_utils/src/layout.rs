@@ -433,7 +433,21 @@ fn layout_of_uncached<'tcx>(
                 .size
                 .checked_mul(e_len, dl)
                 .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
-            let align = dl.vector_align(size);
+
+            let (abi, align) = if def.repr().packed() && !e_len.is_power_of_two() {
+                // Non-power-of-two vectors have padding up to the next power-of-two.
+                // If we're a packed repr, remove the padding while keeping the alignment as close
+                // to a vector as possible.
+                (
+                    Abi::Aggregate { sized: true },
+                    AbiAndPrefAlign {
+                        abi: Align::max_for_offset(size),
+                        pref: dl.vector_align(size).pref,
+                    },
+                )
+            } else {
+                (Abi::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
+            };
             let size = size.align_to(align.abi);
 
             // Compute the placement of the vector fields:
@@ -446,7 +460,7 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(LayoutS {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields,
-                abi: Abi::Vector { element: e_abi, count: e_len },
+                abi,
                 largest_niche: e_ly.largest_niche,
                 size,
                 align,
