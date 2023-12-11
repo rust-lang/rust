@@ -1603,8 +1603,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         old_name
                     && let Ok(rest) = virtual_name.strip_prefix(virtual_dir)
                 {
-                    let virtual_name = virtual_name.clone();
-
                     // The std library crates are in
                     // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
                     // may be in `$sysroot/lib/rustlib/src/rust/` directly. So we
