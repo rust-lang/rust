@@ -6,8 +6,7 @@ use crate::errors::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree};
-use rustc_ast::tokenstream::{DelimSpan, Spacing};
+use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{LazyAttrTokenStream, TokenTree};
 use rustc_ast::NodeId;
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
@@ -242,7 +241,7 @@ impl<'a> StripUnconfigured<'a> {
             stream.0.iter().all(|tree| match tree {
                 AttrTokenTree::Attributes(_) => false,
                 AttrTokenTree::Token(..) => true,
-                AttrTokenTree::Delimited(_, _, inner) => can_skip(inner),
+                AttrTokenTree::Delimited(.., inner) => can_skip(inner),
             })
         }
 
@@ -266,9 +265,9 @@ impl<'a> StripUnconfigured<'a> {
                         None.into_iter()
                     }
                 }
-                AttrTokenTree::Delimited(sp, delim, mut inner) => {
+                AttrTokenTree::Delimited(sp, spacing, delim, mut inner) => {
                     inner = self.configure_tokens(&inner);
-                    Some(AttrTokenTree::Delimited(sp, delim, inner)).into_iter()
+                    Some(AttrTokenTree::Delimited(sp, spacing, delim, inner)).into_iter()
                 }
                 AttrTokenTree::Token(ref token, _)
                     if let TokenKind::Interpolated(nt) = &token.kind =>
@@ -372,27 +371,32 @@ impl<'a> StripUnconfigured<'a> {
         };
         let pound_span = pound_token.span;
 
-        let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
-        if attr.style == AttrStyle::Inner {
-            // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
-                orig_trees.next().unwrap().clone()
-            else {
-                panic!("Bad tokens for attribute {attr:?}");
-            };
-            trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));
-        }
         // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
         let bracket_group = AttrTokenTree::Delimited(
             DelimSpan::from_single(pound_span),
+            DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
             Delimiter::Bracket,
             item.tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("Missing tokens for {item:?}"))
                 .to_attr_token_stream(),
         );
-        trees.push(bracket_group);
+        let trees = if attr.style == AttrStyle::Inner {
+            // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
+            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
+                orig_trees.next().unwrap().clone()
+            else {
+                panic!("Bad tokens for attribute {attr:?}");
+            };
+            vec![
+                AttrTokenTree::Token(pound_token, Spacing::Joint),
+                AttrTokenTree::Token(bang_token, Spacing::JointHidden),
+                bracket_group,
+            ]
+        } else {
+            vec![AttrTokenTree::Token(pound_token, Spacing::JointHidden), bracket_group]
+        };
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
         let attr = attr::mk_attr_from_item(
             &self.sess.parse_sess.attr_id_generator,

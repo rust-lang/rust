@@ -10,7 +10,7 @@ use crate::pp::{self, Breaks};
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
@@ -183,10 +183,10 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         //
         // FIXME: Incorrect cases:
         // - Let: `let(a, b) = (1, 2)`
-        (Tok(Token { kind: Ident(..), .. }, _), Del(_, Parenthesis, _)) => false,
+        (Tok(Token { kind: Ident(..), .. }, _), Del(_, _, Parenthesis, _)) => false,
 
         // `#` + `[`: `#[attr]`
-        (Tok(Token { kind: Pound, .. }, _), Del(_, Bracket, _)) => false,
+        (Tok(Token { kind: Pound, .. }, _), Del(_, _, Bracket, _)) => false,
 
         _ => true,
     }
@@ -509,16 +509,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// appropriate macro, transcribe back into the grammar we just parsed from,
     /// and then pretty-print the resulting AST nodes (so, e.g., we print
     /// expression arguments as expressions). It can be done! I think.
-    fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
+    fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) -> Spacing {
         match tt {
-            TokenTree::Token(token, _) => {
+            TokenTree::Token(token, spacing) => {
                 let token_str = self.token_to_string_ext(token, convert_dollar_crate);
                 self.word(token_str);
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
                 }
+                *spacing
             }
-            TokenTree::Delimited(dspan, delim, tts) => {
+            TokenTree::Delimited(dspan, spacing, delim, tts) => {
                 self.print_mac_common(
                     None,
                     false,
@@ -528,6 +529,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     convert_dollar_crate,
                     dspan.entire(),
                 );
+                spacing.close
             }
         }
     }
@@ -535,9 +537,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
         let mut iter = tts.trees().peekable();
         while let Some(tt) = iter.next() {
-            self.print_tt(tt, convert_dollar_crate);
+            let spacing = self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
-                if space_between(tt, next) {
+                // Should we print a space after `tt`? There are two guiding
+                // factors.
+                // - `spacing` is the more important and accurate one. Most
+                //   tokens have good spacing information, and
+                //   `Joint`/`JointHidden` get used a lot.
+                // - `space_between` is the backup. Code produced by proc
+                //   macros has worse spacing information, with no
+                //   `JointHidden` usage and too much `Alone` usage, which
+                //   would result in over-spaced output such as
+                //   `( x () , y . z )`. `space_between` avoids some of the
+                //   excess whitespace.
+                if spacing == Spacing::Alone && space_between(tt, next) {
                     self.space();
                 }
             }
@@ -1797,7 +1810,9 @@ impl<'a> State<'a> {
     }
 
     pub(crate) fn tt_to_string(&self, tt: &TokenTree) -> String {
-        Self::to_string(|s| s.print_tt(tt, false))
+        Self::to_string(|s| {
+            s.print_tt(tt, false);
+        })
     }
 
     pub(crate) fn tts_to_string(&self, tokens: &TokenStream) -> String {

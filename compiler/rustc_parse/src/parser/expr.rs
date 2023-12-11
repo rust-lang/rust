@@ -2276,7 +2276,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.token.kind == TokenKind::Semi
-            && matches!(self.token_cursor.stack.last(), Some((_, Delimiter::Parenthesis, _)))
+            && matches!(self.token_cursor.stack.last(), Some((.., Delimiter::Parenthesis)))
             && self.may_recover()
         {
             // It is likely that the closure body is a block but where the

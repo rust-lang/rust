@@ -7,7 +7,7 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree,
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
@@ -31,14 +31,24 @@ impl MutVisitor for Marker {
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame<'a> {
-    Delimited { tts: &'a [mbe::TokenTree], idx: usize, delim: Delimiter, span: DelimSpan },
-    Sequence { tts: &'a [mbe::TokenTree], idx: usize, sep: Option<Token> },
+    Delimited {
+        tts: &'a [mbe::TokenTree],
+        idx: usize,
+        delim: Delimiter,
+        span: DelimSpan,
+        spacing: DelimSpacing,
+    },
+    Sequence {
+        tts: &'a [mbe::TokenTree],
+        idx: usize,
+        sep: Option<Token>,
+    },
 }
 
 impl<'a> Frame<'a> {
     /// Construct a new frame around the delimited set of tokens.
-    fn new(src: &'a mbe::Delimited, span: DelimSpan) -> Frame<'a> {
-        Frame::Delimited { tts: &src.tts, idx: 0, delim: src.delim, span }
+    fn new(src: &'a mbe::Delimited, span: DelimSpan, spacing: DelimSpacing) -> Frame<'a> {
+        Frame::Delimited { tts: &src.tts, idx: 0, delim: src.delim, span, spacing }
     }
 }
 
@@ -89,8 +99,10 @@ pub(super) fn transcribe<'a>(
     }
 
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
-    // we have yet to expand/are still expanding. We start the stack off with the whole RHS.
-    let mut stack: SmallVec<[Frame<'_>; 1]> = smallvec![Frame::new(src, src_span)];
+    // we have yet to expand/are still expanding. We start the stack off with the whole RHS. The
+    // choice of spacing values doesn't matter.
+    let mut stack: SmallVec<[Frame<'_>; 1]> =
+        smallvec![Frame::new(src, src_span, DelimSpacing::new(Spacing::Alone, Spacing::Alone))];
 
     // As we descend in the RHS, we will need to be able to match nested sequences of matchers.
     // `repeats` keeps track of where we are in matching at each level, with the last element being
@@ -144,14 +156,19 @@ pub(super) fn transcribe<'a>(
                 // We are done processing a Delimited. If this is the top-level delimited, we are
                 // done. Otherwise, we unwind the result_stack to append what we have produced to
                 // any previous results.
-                Frame::Delimited { delim, span, .. } => {
+                Frame::Delimited { delim, span, mut spacing, .. } => {
+                    // Hack to force-insert a space after `]` in certain case.
+                    // See discussion of the `hex-literal` crate in #114571.
+                    if delim == Delimiter::Bracket {
+                        spacing.close = Spacing::Alone;
+                    }
                     if result_stack.is_empty() {
                         // No results left to compute! We are back at the top-level.
                         return Ok(TokenStream::new(result));
                     }
 
                     // Step back into the parent Delimited.
-                    let tree = TokenTree::Delimited(span, delim, TokenStream::new(result));
+                    let tree = TokenTree::Delimited(span, spacing, delim, TokenStream::new(result));
                     result = result_stack.pop().unwrap();
                     result.push(tree);
                 }
@@ -240,7 +257,7 @@ pub(super) fn transcribe<'a>(
                     // with modified syntax context. (I believe this supports nested macros).
                     marker.visit_span(&mut sp);
                     marker.visit_ident(&mut original_ident);
-                    result.push(TokenTree::token_alone(token::Dollar, sp));
+                    result.push(TokenTree::token_joint_hidden(token::Dollar, sp));
                     result.push(TokenTree::Token(
                         Token::from_ast_ident(original_ident),
                         Spacing::Alone,
@@ -258,13 +275,14 @@ pub(super) fn transcribe<'a>(
             // We will produce all of the results of the inside of the `Delimited` and then we will
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
-            mbe::TokenTree::Delimited(mut span, delimited) => {
+            mbe::TokenTree::Delimited(mut span, spacing, delimited) => {
                 mut_visit::visit_delim_span(&mut span, &mut marker);
                 stack.push(Frame::Delimited {
                     tts: &delimited.tts,
                     delim: delimited.delim,
                     idx: 0,
                     span,
+                    spacing: *spacing,
                 });
                 result_stack.push(mem::take(&mut result));
             }
@@ -374,7 +392,7 @@ fn lockstep_iter_size(
 ) -> LockstepIterSize {
     use mbe::TokenTree;
     match tree {
-        TokenTree::Delimited(_, delimited) => {
+        TokenTree::Delimited(.., delimited) => {
             delimited.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
                 size.with(lockstep_iter_size(tt, interpolations, repeats))
             })

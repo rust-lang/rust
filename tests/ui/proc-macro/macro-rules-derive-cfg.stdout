@@ -4,6 +4,15 @@ PRINT-DERIVE INPUT (DISPLAY): struct Foo
     [bool ;
     {
         let a = #[rustc_dummy(first)] #[rustc_dummy(second)]
+        { #![allow(unused)] 30 }; 0
+    }]
+}
+PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): struct Foo
+{
+    val :
+    [bool ;
+    {
+        let a = #[rustc_dummy(first)] #[rustc_dummy(second)]
         { #! [allow(unused)] 30 } ; 0
     }]
 }
@@ -111,7 +120,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                 stream: TokenStream [
                                     Punct {
                                         ch: '#',
-                                        spacing: Alone,
+                                        spacing: Joint,
                                         span: $DIR/macro-rules-derive-cfg.rs:27:5: 27:6 (#0),
                                     },
                                     Punct {

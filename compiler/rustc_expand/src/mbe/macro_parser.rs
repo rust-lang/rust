@@ -184,7 +184,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
                 TokenTree::Token(token) => {
                     locs.push(MatcherLoc::Token { token: token.clone() });
                 }
-                TokenTree::Delimited(span, delimited) => {
+                TokenTree::Delimited(span, _, delimited) => {
                     let open_token = Token::new(token::OpenDelim(delimited.delim), span.open);
                     let close_token = Token::new(token::CloseDelim(delimited.delim), span.close);
 
@@ -335,7 +335,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
         .map(|tt| match tt {
             TokenTree::MetaVarDecl(..) => 1,
             TokenTree::Sequence(_, seq) => seq.num_captures,
-            TokenTree::Delimited(_, delim) => count_metavar_decls(&delim.tts),
+            TokenTree::Delimited(.., delim) => count_metavar_decls(&delim.tts),
             TokenTree::Token(..) => 0,
             TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
         })

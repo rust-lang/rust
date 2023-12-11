@@ -1,4 +1,5 @@
-PRINT-ATTR INPUT (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #! [rustfmt :: skip] }
+PRINT-ATTR INPUT (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #![rustfmt::skip] }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #! [rustfmt :: skip] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
