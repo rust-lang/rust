@@ -195,18 +195,11 @@ pub struct LocatedImport {
     /// the original item is the associated constant, but the import has to be a trait that
     /// defines this constant.
     pub original_item: ItemInNs,
-    /// A path of the original item.
-    pub original_path: Option<ModPath>,
 }
 
 impl LocatedImport {
-    pub fn new(
-        import_path: ModPath,
-        item_to_import: ItemInNs,
-        original_item: ItemInNs,
-        original_path: Option<ModPath>,
-    ) -> Self {
-        Self { import_path, item_to_import, original_item, original_path }
+    pub fn new(import_path: ModPath, item_to_import: ItemInNs, original_item: ItemInNs) -> Self {
+        Self { import_path, item_to_import, original_item }
     }
 }
 
@@ -351,7 +344,7 @@ fn path_applicable_imports(
             )
             .filter_map(|item| {
                 let mod_path = mod_path(item)?;
-                Some(LocatedImport::new(mod_path.clone(), item, item, Some(mod_path)))
+                Some(LocatedImport::new(mod_path, item, item))
             })
             .collect()
         }
@@ -416,24 +409,15 @@ fn import_for_item(
             // especially in case of lazy completion edit resolutions.
             return None;
         }
-        (false, Some(trait_to_import)) => LocatedImport::new(
-            mod_path(trait_to_import)?,
-            trait_to_import,
-            original_item,
-            mod_path(original_item),
-        ),
-        (true, None) => LocatedImport::new(
-            import_path_candidate,
-            original_item_candidate,
-            original_item,
-            mod_path(original_item),
-        ),
-        (false, None) => LocatedImport::new(
-            mod_path(segment_import)?,
-            segment_import,
-            original_item,
-            mod_path(original_item),
-        ),
+        (false, Some(trait_to_import)) => {
+            LocatedImport::new(mod_path(trait_to_import)?, trait_to_import, original_item)
+        }
+        (true, None) => {
+            LocatedImport::new(import_path_candidate, original_item_candidate, original_item)
+        }
+        (false, None) => {
+            LocatedImport::new(mod_path(segment_import)?, segment_import, original_item)
+        }
     })
 }
 
@@ -550,7 +534,6 @@ fn trait_applicable_items(
                         mod_path(trait_item)?,
                         trait_item,
                         original_item,
-                        mod_path(original_item),
                     ));
                 }
                 None::<()>
@@ -573,7 +556,6 @@ fn trait_applicable_items(
                         mod_path(trait_item)?,
                         trait_item,
                         original_item,
-                        mod_path(original_item),
                     ));
                 }
                 None::<()>
