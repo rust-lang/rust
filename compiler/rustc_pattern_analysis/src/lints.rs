@@ -7,15 +7,16 @@ use rustc_session::lint;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::Span;
 
-use crate::constructor::{Constructor, IntRange, MaybeInfiniteInt, SplitConstructorSet};
-use crate::cx::MatchCheckCtxt;
+use crate::constructor::{IntRange, MaybeInfiniteInt};
+use crate::cx::{
+    Constructor, DeconstructedPat, MatchArm, MatchCheckCtxt, PatCtxt, SplitConstructorSet,
+    WitnessPat,
+};
 use crate::errors::{
     NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Overlap,
     OverlappingRangeEndpoints, Uncovered,
 };
-use crate::pat::{DeconstructedPat, WitnessPat};
-use crate::usefulness::PatCtxt;
-use crate::MatchArm;
+use crate::MatchCx;
 
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".
@@ -55,10 +56,10 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
         // If the type is opaque and it is revealed anywhere in the column, we take the revealed
         // version. Otherwise we could encounter constructors for the revealed type and crash.
         let first_ty = self.patterns[0].ty();
-        if MatchCheckCtxt::is_opaque(first_ty) {
+        if MatchCheckCtxt::is_opaque_ty(first_ty) {
             for pat in &self.patterns {
                 let ty = pat.ty();
-                if !MatchCheckCtxt::is_opaque(ty) {
+                if !MatchCheckCtxt::is_opaque_ty(ty) {
                     return Some(ty);
                 }
             }
@@ -67,7 +68,7 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     }
 
     /// Do constructor splitting on the constructors of the column.
-    fn analyze_ctors(&self, pcx: &PatCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'tcx> {
+    fn analyze_ctors(&self, pcx: &PatCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'p, 'tcx> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
         pcx.cx.ctors_for_ty(pcx.ty).split(pcx, column_ctors)
     }
@@ -84,7 +85,7 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     fn specialize<'b>(
         &self,
         pcx: &'b PatCtxt<'_, 'p, 'tcx>,
-        ctor: &Constructor<'tcx>,
+        ctor: &Constructor<'p, 'tcx>,
     ) -> Vec<PatternColumn<'b, 'p, 'tcx>>
     where
         'a: 'b,
@@ -128,7 +129,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     column: &PatternColumn<'a, 'p, 'tcx>,
     wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
-) -> Vec<WitnessPat<'tcx>> {
+) -> Vec<WitnessPat<'p, 'tcx>> {
     let Some(ty) = column.head_ty() else {
         return Vec::new();
     };
@@ -215,7 +216,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
                 };
 
                 use rustc_errors::DecorateLint;
-                let mut err = cx.tcx.sess.struct_span_warn(arm.pat.span(), "");
+                let mut err = cx.tcx.sess.struct_span_warn(*arm.pat.span(), "");
                 err.set_primary_message(decorator.msg());
                 decorator.decorate_lint(&mut err);
                 err.emit();
@@ -265,7 +266,7 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
                 let mut suffixes: SmallVec<[_; 1]> = Default::default();
                 // Iterate on patterns that contained `overlap`.
                 for pat in column.iter() {
-                    let this_span = pat.span();
+                    let this_span = *pat.span();
                     let Constructor::IntRange(this_range) = pat.ctor() else { continue };
                     if this_range.is_singleton() {
                         // Don't lint when one of the ranges is a singleton.

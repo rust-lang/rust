@@ -6,14 +6,12 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::captures::Captures;
-use rustc_middle::ty::Ty;
-use rustc_span::Span;
 
 use self::Constructor::*;
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::cx::MatchCheckCtxt;
 use crate::usefulness::PatCtxt;
+use crate::MatchCx;
 
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form.
@@ -26,25 +24,25 @@ use crate::usefulness::PatCtxt;
 /// This happens if a private or `non_exhaustive` field is uninhabited, because the code mustn't
 /// observe that it is uninhabited. In that case that field is not included in `fields`. Care must
 /// be taken when converting to/from `thir::Pat`.
-pub struct DeconstructedPat<'p, 'tcx> {
-    ctor: Constructor<'tcx>,
-    fields: &'p [DeconstructedPat<'p, 'tcx>],
-    ty: Ty<'tcx>,
-    span: Span,
+pub struct DeconstructedPat<'p, Cx: MatchCx> {
+    ctor: Constructor<Cx>,
+    fields: &'p [DeconstructedPat<'p, Cx>],
+    ty: Cx::Ty,
+    span: Cx::Span,
     /// Whether removing this arm would change the behavior of the match expression.
     useful: Cell<bool>,
 }
 
-impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
-    pub fn wildcard(ty: Ty<'tcx>, span: Span) -> Self {
+impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
+    pub fn wildcard(ty: Cx::Ty, span: Cx::Span) -> Self {
         Self::new(Wildcard, &[], ty, span)
     }
 
     pub fn new(
-        ctor: Constructor<'tcx>,
-        fields: &'p [DeconstructedPat<'p, 'tcx>],
-        ty: Ty<'tcx>,
-        span: Span,
+        ctor: Constructor<Cx>,
+        fields: &'p [DeconstructedPat<'p, Cx>],
+        ty: Cx::Ty,
+        span: Cx::Span,
     ) -> Self {
         DeconstructedPat { ctor, fields, ty, span, useful: Cell::new(false) }
     }
@@ -61,19 +59,19 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         }
     }
 
-    pub fn ctor(&self) -> &Constructor<'tcx> {
+    pub fn ctor(&self) -> &Constructor<Cx> {
         &self.ctor
     }
-    pub fn ty(&self) -> Ty<'tcx> {
+    pub fn ty(&self) -> Cx::Ty {
         self.ty
     }
-    pub fn span(&self) -> Span {
-        self.span
+    pub fn span(&self) -> &Cx::Span {
+        &self.span
     }
 
     pub fn iter_fields<'a>(
         &'a self,
-    ) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'a> {
+    ) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'a> {
         self.fields.iter()
     }
 
@@ -81,13 +79,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
     pub(crate) fn specialize<'a>(
         &self,
-        pcx: &PatCtxt<'a, 'p, 'tcx>,
-        other_ctor: &Constructor<'tcx>,
-    ) -> SmallVec<[&'a DeconstructedPat<'p, 'tcx>; 2]> {
+        pcx: &PatCtxt<'a, 'p, Cx>,
+        other_ctor: &Constructor<Cx>,
+    ) -> SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]> {
         let wildcard_sub_tys = || {
             let tys = pcx.cx.ctor_sub_tys(other_ctor, pcx.ty);
             tys.iter()
-                .map(|ty| DeconstructedPat::wildcard(*ty, Span::default()))
+                .map(|ty| DeconstructedPat::wildcard(*ty, Cx::Span::default()))
                 .map(|pat| pcx.wildcard_arena.alloc(pat) as &_)
                 .collect()
         };
@@ -137,15 +135,15 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     }
 
     /// Report the spans of subpatterns that were not useful, if any.
-    pub(crate) fn redundant_spans(&self) -> Vec<Span> {
+    pub(crate) fn redundant_spans(&self) -> Vec<Cx::Span> {
         let mut spans = Vec::new();
         self.collect_redundant_spans(&mut spans);
         spans
     }
-    fn collect_redundant_spans(&self, spans: &mut Vec<Span>) {
+    fn collect_redundant_spans(&self, spans: &mut Vec<Cx::Span>) {
         // We don't look at subpatterns if we already reported the whole pattern as redundant.
         if !self.is_useful() {
-            spans.push(self.span);
+            spans.push(self.span.clone());
         } else {
             for p in self.iter_fields() {
                 p.collect_redundant_spans(spans);
@@ -156,46 +154,46 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
 
 /// This is mostly copied from the `Pat` impl. This is best effort and not good enough for a
 /// `Display` impl.
-impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
+impl<'p, Cx: MatchCx> fmt::Debug for DeconstructedPat<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        MatchCheckCtxt::debug_pat(f, self)
+        Cx::debug_pat(f, self)
     }
 }
 
 /// Same idea as `DeconstructedPat`, except this is a fictitious pattern built up for diagnostics
 /// purposes. As such they don't use interning and can be cloned.
 #[derive(Debug, Clone)]
-pub struct WitnessPat<'tcx> {
-    ctor: Constructor<'tcx>,
-    pub(crate) fields: Vec<WitnessPat<'tcx>>,
-    ty: Ty<'tcx>,
+pub struct WitnessPat<Cx: MatchCx> {
+    ctor: Constructor<Cx>,
+    pub(crate) fields: Vec<WitnessPat<Cx>>,
+    ty: Cx::Ty,
 }
 
-impl<'tcx> WitnessPat<'tcx> {
-    pub(crate) fn new(ctor: Constructor<'tcx>, fields: Vec<Self>, ty: Ty<'tcx>) -> Self {
+impl<Cx: MatchCx> WitnessPat<Cx> {
+    pub(crate) fn new(ctor: Constructor<Cx>, fields: Vec<Self>, ty: Cx::Ty) -> Self {
         Self { ctor, fields, ty }
     }
-    pub(crate) fn wildcard(ty: Ty<'tcx>) -> Self {
+    pub(crate) fn wildcard(ty: Cx::Ty) -> Self {
         Self::new(Wildcard, Vec::new(), ty)
     }
 
     /// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
-    pub(crate) fn wild_from_ctor(pcx: &PatCtxt<'_, '_, 'tcx>, ctor: Constructor<'tcx>) -> Self {
+    pub(crate) fn wild_from_ctor(pcx: &PatCtxt<'_, '_, Cx>, ctor: Constructor<Cx>) -> Self {
         let field_tys = pcx.cx.ctor_sub_tys(&ctor, pcx.ty);
         let fields = field_tys.iter().map(|ty| Self::wildcard(*ty)).collect();
         Self::new(ctor, fields, pcx.ty)
     }
 
-    pub fn ctor(&self) -> &Constructor<'tcx> {
+    pub fn ctor(&self) -> &Constructor<Cx> {
         &self.ctor
     }
-    pub fn ty(&self) -> Ty<'tcx> {
+    pub fn ty(&self) -> Cx::Ty {
         self.ty
     }
 
-    pub fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a WitnessPat<'tcx>> {
+    pub fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a WitnessPat<Cx>> {
         self.fields.iter()
     }
 }

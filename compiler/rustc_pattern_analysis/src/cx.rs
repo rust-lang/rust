@@ -9,7 +9,7 @@ use rustc_index::Idx;
 use rustc_index::IndexVec;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::{self};
+use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
@@ -18,13 +18,26 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
 
 use crate::constructor::{
-    Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, OpaqueId, Slice, SliceKind,
-    VariantVisibility,
+    IntRange, MaybeInfiniteInt, OpaqueId, Slice, SliceKind, VariantVisibility,
 };
-use crate::pat::{DeconstructedPat, WitnessPat};
+use crate::MatchCx;
 
-use Constructor::*;
+use crate::constructor::Constructor::*;
 
+pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<MatchCheckCtxt<'p, 'tcx>>;
+pub type ConstructorSet<'p, 'tcx> = crate::constructor::ConstructorSet<MatchCheckCtxt<'p, 'tcx>>;
+pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<'p, MatchCheckCtxt<'p, 'tcx>>;
+pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, MatchCheckCtxt<'p, 'tcx>>;
+pub(crate) type PatCtxt<'a, 'p, 'tcx> =
+    crate::usefulness::PatCtxt<'a, 'p, MatchCheckCtxt<'p, 'tcx>>;
+pub(crate) type SplitConstructorSet<'p, 'tcx> =
+    crate::constructor::SplitConstructorSet<MatchCheckCtxt<'p, 'tcx>>;
+pub type Usefulness = crate::usefulness::Usefulness<Span>;
+pub type UsefulnessReport<'p, 'tcx> =
+    crate::usefulness::UsefulnessReport<'p, MatchCheckCtxt<'p, 'tcx>>;
+pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<MatchCheckCtxt<'p, 'tcx>>;
+
+#[derive(Clone)]
 pub struct MatchCheckCtxt<'p, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
@@ -49,13 +62,15 @@ pub struct MatchCheckCtxt<'p, 'tcx> {
     pub known_valid_scrutinee: bool,
 }
 
+impl<'p, 'tcx> fmt::Debug for MatchCheckCtxt<'p, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MatchCheckCtxt").finish()
+    }
+}
+
 impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     pub(crate) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
-    }
-
-    pub(crate) fn is_opaque(ty: Ty<'tcx>) -> bool {
-        matches!(ty.kind(), ty::Alias(ty::Opaque, ..))
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
@@ -65,6 +80,20 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                 def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
             }
             _ => false,
+        }
+    }
+
+    /// Whether the range denotes the fictitious values before `isize::MIN` or after
+    /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
+    pub fn is_range_beyond_boundaries(&self, range: &IntRange, ty: Ty<'tcx>) -> bool {
+        ty.is_ptr_sized_integral() && {
+            // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
+            // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `hoist_pat_range_bdy`
+            // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `range.lo`
+            // otherwise.
+            let lo = self.hoist_pat_range_bdy(range.lo, ty);
+            matches!(lo, PatRangeBoundary::PosInfinity)
+                || matches!(range.hi, MaybeInfiniteInt::Finite(0))
         }
     }
 
@@ -97,7 +126,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     }
 
     pub(crate) fn variant_index_for_adt(
-        ctor: &Constructor<'tcx>,
+        ctor: &Constructor<'p, 'tcx>,
         adt: ty::AdtDef<'tcx>,
     ) -> VariantIdx {
         match *ctor {
@@ -113,7 +142,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     /// Returns the types of the fields for a given constructor. The result must have a length of
     /// `ctor.arity()`.
     #[instrument(level = "trace", skip(self))]
-    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> &[Ty<'tcx>] {
+    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<'p, 'tcx>, ty: Ty<'tcx>) -> &[Ty<'tcx>] {
         let cx = self;
         match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
@@ -159,9 +188,8 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// The number of fields for this constructor. This must be kept in sync with
-    /// `Fields::wildcards`.
-    pub(crate) fn ctor_arity(&self, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> usize {
+    /// The number of fields for this constructor.
+    pub(crate) fn ctor_arity(&self, ctor: &Constructor<'p, 'tcx>, ty: Ty<'tcx>) -> usize {
         match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => fs.len(),
@@ -198,7 +226,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     ///
     /// See [`crate::constructor`] for considerations of emptiness.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn ctors_for_ty(&self, ty: Ty<'tcx>) -> ConstructorSet {
+    pub fn ctors_for_ty(&self, ty: Ty<'tcx>) -> ConstructorSet<'p, 'tcx> {
         let cx = self;
         let make_uint_range = |start, end| {
             IntRange::from_range(
@@ -599,20 +627,6 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// Whether the range denotes the fictitious values before `isize::MIN` or after
-    /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
-    pub fn is_range_beyond_boundaries(&self, range: &IntRange, ty: Ty<'tcx>) -> bool {
-        ty.is_ptr_sized_integral() && {
-            // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
-            // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `hoist_pat_range_bdy`
-            // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `range.lo`
-            // otherwise.
-            let lo = self.hoist_pat_range_bdy(range.lo, ty);
-            matches!(lo, PatRangeBoundary::PosInfinity)
-                || matches!(range.hi, MaybeInfiniteInt::Finite(0))
-        }
-    }
-
     /// Convert back to a `thir::Pat` for diagnostic purposes.
     pub(crate) fn hoist_pat_range(&self, range: &IntRange, ty: Ty<'tcx>) -> Pat<'tcx> {
         use MaybeInfiniteInt::*;
@@ -652,7 +666,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     }
     /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
     /// appear in diagnostics, like float ranges.
-    pub fn hoist_witness_pat(&self, pat: &WitnessPat<'tcx>) -> Pat<'tcx> {
+    pub fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> Pat<'tcx> {
         let cx = self;
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
         let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
@@ -746,7 +760,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     /// Best-effort `Debug` implementation.
     pub(crate) fn debug_pat(
         f: &mut fmt::Formatter<'_>,
-        pat: &DeconstructedPat<'p, 'tcx>,
+        pat: &crate::pat::DeconstructedPat<'_, Self>,
     ) -> fmt::Result {
         let mut first = true;
         let mut start_or_continue = |s| {
@@ -837,6 +851,44 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             }
             Wildcard | Missing { .. } | NonExhaustive | Hidden => write!(f, "_ : {:?}", pat.ty()),
         }
+    }
+}
+
+impl<'p, 'tcx> MatchCx for MatchCheckCtxt<'p, 'tcx> {
+    type Ty = Ty<'tcx>;
+    type Span = Span;
+    type VariantIdx = VariantIdx;
+    type StrLit = Const<'tcx>;
+
+    fn is_exhaustive_patterns_feature_on(&self) -> bool {
+        self.tcx.features().exhaustive_patterns
+    }
+    fn is_opaque_ty(ty: Self::Ty) -> bool {
+        matches!(ty.kind(), ty::Alias(ty::Opaque, ..))
+    }
+
+    fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: Self::Ty) -> usize {
+        self.ctor_arity(ctor, ty)
+    }
+    fn ctor_sub_tys(
+        &self,
+        ctor: &crate::constructor::Constructor<Self>,
+        ty: Self::Ty,
+    ) -> &[Self::Ty] {
+        self.ctor_sub_tys(ctor, ty)
+    }
+    fn ctors_for_ty(&self, ty: Self::Ty) -> crate::constructor::ConstructorSet<Self> {
+        self.ctors_for_ty(ty)
+    }
+
+    fn debug_pat(
+        f: &mut fmt::Formatter<'_>,
+        pat: &crate::pat::DeconstructedPat<'_, Self>,
+    ) -> fmt::Result {
+        Self::debug_pat(f, pat)
+    }
+    fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
+        span_bug!(self.scrut_span, "{}", fmt)
     }
 }
 

@@ -1,8 +1,7 @@
-use rustc_pattern_analysis::constructor::Constructor;
-use rustc_pattern_analysis::cx::MatchCheckCtxt;
+use rustc_pattern_analysis::cx::{
+    Constructor, DeconstructedPat, MatchCheckCtxt, Usefulness, UsefulnessReport, WitnessPat,
+};
 use rustc_pattern_analysis::errors::Uncovered;
-use rustc_pattern_analysis::pat::{DeconstructedPat, WitnessPat};
-use rustc_pattern_analysis::usefulness::{Usefulness, UsefulnessReport};
 use rustc_pattern_analysis::{analyze_match, MatchArm};
 
 use crate::errors::*;
@@ -851,14 +850,15 @@ fn report_arm_reachability<'p, 'tcx>(
         );
     };
 
-    use Usefulness::*;
     let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
-            Redundant => report_unreachable_pattern(arm.pat.span(), arm.hir_id, catchall),
-            Useful(redundant_spans) if redundant_spans.is_empty() => {}
+            Usefulness::Redundant => {
+                report_unreachable_pattern(*arm.pat.span(), arm.hir_id, catchall)
+            }
+            Usefulness::Useful(redundant_spans) if redundant_spans.is_empty() => {}
             // The arm is reachable, but contains redundant subpatterns (from or-patterns).
-            Useful(redundant_spans) => {
+            Usefulness::Useful(redundant_spans) => {
                 let mut redundant_spans = redundant_spans.clone();
                 // Emit lints in the order in which they occur in the file.
                 redundant_spans.sort_unstable();
@@ -868,17 +868,16 @@ fn report_arm_reachability<'p, 'tcx>(
             }
         }
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
-            catchall = Some(arm.pat.span());
+            catchall = Some(*arm.pat.span());
         }
     }
 }
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
 fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
-    use Constructor::*;
     match pat.ctor() {
-        Wildcard => true,
-        Struct | Ref => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
+        Constructor::Wildcard => true,
+        Constructor::Struct | Constructor::Ref => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
         _ => false,
     }
 }
@@ -889,7 +888,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     thir: &Thir<'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
-    witnesses: Vec<WitnessPat<'tcx>>,
+    witnesses: Vec<WitnessPat<'p, 'tcx>>,
     arms: &[ArmId],
     expr_span: Span,
 ) -> ErrorGuaranteed {
@@ -1086,10 +1085,10 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
 fn joined_uncovered_patterns<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    witnesses: &[WitnessPat<'tcx>],
+    witnesses: &[WitnessPat<'p, 'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &WitnessPat<'tcx>| cx.hoist_witness_pat(pat).to_string();
+    let pat_to_str = |pat: &WitnessPat<'p, 'tcx>| cx.hoist_witness_pat(pat).to_string();
     match witnesses {
         [] => bug!(),
         [witness] => format!("`{}`", cx.hoist_witness_pat(witness)),
@@ -1107,7 +1106,7 @@ fn joined_uncovered_patterns<'p, 'tcx>(
 
 fn collect_non_exhaustive_tys<'tcx>(
     cx: &MatchCheckCtxt<'_, 'tcx>,
-    pat: &WitnessPat<'tcx>,
+    pat: &WitnessPat<'_, 'tcx>,
     non_exhaustive_tys: &mut FxIndexSet<Ty<'tcx>>,
 ) {
     if matches!(pat.ctor(), Constructor::NonExhaustive) {
@@ -1126,7 +1125,7 @@ fn collect_non_exhaustive_tys<'tcx>(
 fn report_adt_defined_here<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    witnesses: &[WitnessPat<'tcx>],
+    witnesses: &[WitnessPat<'_, 'tcx>],
     point_at_non_local_ty: bool,
 ) -> Option<AdtDefinedHere<'tcx>> {
     let ty = ty.peel_refs();
@@ -1148,15 +1147,14 @@ fn report_adt_defined_here<'tcx>(
     Some(AdtDefinedHere { adt_def_span, ty, variants })
 }
 
-fn maybe_point_at_variant<'a, 'tcx: 'a>(
+fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'p>(
     tcx: TyCtxt<'tcx>,
     def: AdtDef<'tcx>,
-    patterns: impl Iterator<Item = &'a WitnessPat<'tcx>>,
+    patterns: impl Iterator<Item = &'a WitnessPat<'p, 'tcx>>,
 ) -> Vec<Span> {
-    use Constructor::*;
     let mut covered = vec![];
     for pattern in patterns {
-        if let Variant(variant_index) = pattern.ctor() {
+        if let Constructor::Variant(variant_index) = pattern.ctor() {
             if let ty::Adt(this_def, _) = pattern.ty().kind()
                 && this_def.did() != def.did()
             {
