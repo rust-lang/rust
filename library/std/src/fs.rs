@@ -242,10 +242,10 @@ pub struct DirBuilder {
 ///
 /// ```no_run
 /// use std::fs;
-/// use std::net::SocketAddr;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-///     let foo: SocketAddr = String::from_utf8_lossy(&fs::read("address.txt")?).parse()?;
+///     let address: String = String::from_utf8_lossy(&fs::read("address.txt")?).to_string();
+///     println!("{}", address);
 ///     Ok(())
 /// }
 /// ```
