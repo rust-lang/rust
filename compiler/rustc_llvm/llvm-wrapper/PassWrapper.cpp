@@ -841,7 +841,11 @@ LLVMRustOptimize(
         // cargo run tests in multhreading mode by default
         // so use atomics for coverage counters
         Options.Atomic = true;
+#if LLVM_VERSION_GE(18, 0)
+        MPM.addPass(InstrProfilingLoweringPass(Options, false));
+#else
         MPM.addPass(InstrProfiling(Options, false));
+#endif
       }
     );
   }
