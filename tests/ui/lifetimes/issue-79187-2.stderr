@@ -54,8 +54,13 @@ error[E0308]: mismatched types
 LL |     take_foo(|a: &i32| a);
    |     ^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-   = note: expected reference `&_`
-              found reference `&_`
+   = note: expected trait `for<'a> <{closure@$DIR/issue-79187-2.rs:11:14: 11:23} as FnOnce<(&'a i32,)>>`
+              found trait `for<'a> <{closure@$DIR/issue-79187-2.rs:11:14: 11:23} as FnOnce<(&'a i32,)>>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-79187-2.rs:11:14
+   |
+LL |     take_foo(|a: &i32| a);
+   |              ^^^^^^^^^
 note: the lifetime requirement is introduced here
   --> $DIR/issue-79187-2.rs:5:21
    |
@@ -68,8 +73,13 @@ error[E0308]: mismatched types
 LL |     take_foo(|a: &i32| -> &i32 { a });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-   = note: expected reference `&_`
-              found reference `&_`
+   = note: expected trait `for<'a> <{closure@$DIR/issue-79187-2.rs:14:14: 14:31} as FnOnce<(&'a i32,)>>`
+              found trait `for<'a> <{closure@$DIR/issue-79187-2.rs:14:14: 14:31} as FnOnce<(&'a i32,)>>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-79187-2.rs:14:14
+   |
+LL |     take_foo(|a: &i32| -> &i32 { a });
+   |              ^^^^^^^^^^^^^^^^^
 note: the lifetime requirement is introduced here
   --> $DIR/issue-79187-2.rs:5:21
    |

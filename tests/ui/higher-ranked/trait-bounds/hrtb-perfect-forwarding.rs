@@ -41,7 +41,7 @@ where
     // isize>`, we require `T : for<'a> Bar<&'a isize>`, but the where
     // clause only specifies `T : Bar<&'b isize>`.
     foo_hrtb_bar_not(&mut t);
-    //~^ ERROR implementation of `Bar` is not general enough
+    //~^ ERROR mismatched types
     //~^^ ERROR lifetime may not live long enough
 }
 

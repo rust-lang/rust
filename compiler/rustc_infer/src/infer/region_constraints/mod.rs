@@ -20,7 +20,6 @@ use rustc_middle::ty::{ReBound, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 
-use std::collections::BTreeMap;
 use std::ops::Range;
 use std::{cmp, fmt, mem};
 
@@ -90,7 +89,7 @@ pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
 pub struct RegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
-    pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
+    pub constraints: Vec<(Constraint<'tcx>, SubregionOrigin<'tcx>)>,
 
     /// Constraints of the form `R0 member of [R1, ..., Rn]`, meaning that
     /// `R0` must be equal to one of the regions `R1..Rn`. These occur
@@ -273,7 +272,7 @@ pub(crate) enum UndoLog<'tcx> {
     AddVar(RegionVid),
 
     /// We added the given `constraint`.
-    AddConstraint(Constraint<'tcx>),
+    AddConstraint(usize),
 
     /// We added the given `verify`.
     AddVerify(usize),
@@ -319,8 +318,9 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
                 self.var_infos.pop().unwrap();
                 assert_eq!(self.var_infos.len(), vid.index());
             }
-            AddConstraint(ref constraint) => {
-                self.data.constraints.remove(constraint);
+            AddConstraint(index) => {
+                self.data.constraints.pop().unwrap();
+                assert_eq!(self.data.constraints.len(), index);
             }
             AddVerify(index) => {
                 self.data.verifys.pop();
@@ -443,14 +443,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // cannot add constraints once regions are resolved
         debug!("RegionConstraintCollector: add_constraint({:?})", constraint);
 
-        // never overwrite an existing (constraint, origin) - only insert one if it isn't
-        // present in the map yet. This prevents origins from outside the snapshot being
-        // replaced with "less informative" origins e.g., during calls to `can_eq`
-        let undo_log = &mut self.undo_log;
-        self.storage.data.constraints.entry(constraint).or_insert_with(|| {
-            undo_log.push(AddConstraint(constraint));
-            origin
-        });
+        let index = self.storage.data.constraints.len();
+        self.storage.data.constraints.push((constraint, origin));
+        self.undo_log.push(AddConstraint(index));
     }
 
     fn add_verify(&mut self, verify: Verify<'tcx>) {

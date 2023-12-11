@@ -416,8 +416,8 @@ impl<'tcx> MiniGraph<'tcx> {
                 region_constraints.undo_log.region_constraints_in_snapshot(&snapshot.undo_snapshot)
             {
                 match undo_entry {
-                    AddConstraint(constraint) => {
-                        each_constraint(constraint);
+                    &AddConstraint(i) => {
+                        each_constraint(&region_constraints.data().constraints[i].0);
                     }
                     &AddVerify(i) => span_bug!(
                         region_constraints.data().verifys[i].origin.span(),
@@ -430,8 +430,8 @@ impl<'tcx> MiniGraph<'tcx> {
             region_constraints
                 .data()
                 .constraints
-                .keys()
-                .for_each(|constraint| each_constraint(constraint));
+                .iter()
+                .for_each(|(constraint, _)| each_constraint(constraint));
         }
     }
 

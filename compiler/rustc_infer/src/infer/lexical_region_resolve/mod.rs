@@ -137,6 +137,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ) -> LexicalRegionResolutions<'tcx> {
         let mut var_data = self.construct_var_data();
 
+        // Deduplicating constraints is shown to have a positive perf impact.
+        self.data.constraints.sort_by_key(|(constraint, _)| *constraint);
+        self.data.constraints.dedup_by_key(|(constraint, _)| *constraint);
+
         if cfg!(debug_assertions) {
             self.dump_constraints();
         }
@@ -183,7 +187,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut constraints = IndexVec::from_elem(Vec::new(), &var_values.values);
         // Tracks the changed region vids.
         let mut changes = Vec::new();
-        for constraint in self.data.constraints.keys() {
+        for (constraint, _) in &self.data.constraints {
             match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
@@ -678,7 +682,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let dummy_source = graph.add_node(());
         let dummy_sink = graph.add_node(());
 
-        for constraint in self.data.constraints.keys() {
+        for (constraint, _) in &self.data.constraints {
             match *constraint {
                 Constraint::VarSubVar(a_id, b_id) => {
                     graph.add_edge(NodeIndex(a_id.index()), NodeIndex(b_id.index()), *constraint);
@@ -885,9 +889,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     }
 
                     Constraint::RegSubVar(region, _) | Constraint::VarSubReg(_, region) => {
+                        let constraint_idx =
+                            this.constraints.binary_search_by(|(c, _)| c.cmp(&edge.data)).unwrap();
                         state.result.push(RegionAndOrigin {
                             region,
-                            origin: this.constraints.get(&edge.data).unwrap().clone(),
+                            origin: this.constraints[constraint_idx].1.clone(),
                         });
                     }
 
