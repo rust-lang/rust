@@ -194,7 +194,7 @@ where
     /// With padding, `read_unaligned` will read past the end of an array of N elements.
     ///
     /// # Safety
-    /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read_unaligned`.
+    /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read`.
     #[inline]
     const unsafe fn load(ptr: *const [T; N]) -> Self {
         // There are potentially simpler ways to write this function, but this should result in
@@ -215,7 +215,7 @@ where
     /// See `load` as to why this function is necessary.
     ///
     /// # Safety
-    /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write_unaligned`.
+    /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write`.
     #[inline]
     const unsafe fn store(self, ptr: *mut [T; N]) {
         // There are potentially simpler ways to write this function, but this should result in
