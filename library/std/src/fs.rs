@@ -283,11 +283,11 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 ///
 /// ```no_run
 /// use std::fs;
-/// use std::net::SocketAddr;
 /// use std::error::Error;
 ///
 /// fn main() -> Result<(), Box<dyn Error>> {
-///     let foo: SocketAddr = fs::read_to_string("address.txt")?.parse()?;
+///     let address: String = fs::read_to_string("address.txt")?;
+///     println!("{}", address);
 ///     Ok(())
 /// }
 /// ```
