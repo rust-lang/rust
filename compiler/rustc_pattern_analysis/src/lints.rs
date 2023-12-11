@@ -1,3 +1,4 @@
+use rustc_arena::TypedArena;
 use smallvec::SmallVec;
 
 use rustc_data_structures::captures::Captures;
@@ -27,11 +28,11 @@ use crate::MatchArm;
 ///
 /// This is not used in the main algorithm; only in lints.
 #[derive(Debug)]
-pub(crate) struct PatternColumn<'p, 'tcx> {
-    patterns: Vec<&'p DeconstructedPat<'p, 'tcx>>,
+pub(crate) struct PatternColumn<'a, 'p, 'tcx> {
+    patterns: Vec<&'a DeconstructedPat<'p, 'tcx>>,
 }
 
-impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
+impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     pub(crate) fn new(arms: &[MatchArm<'p, 'tcx>]) -> Self {
         let mut patterns = Vec::with_capacity(arms.len());
         for arm in arms {
@@ -71,7 +72,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         pcx.cx.ctors_for_ty(pcx.ty).split(pcx, column_ctors)
     }
 
-    fn iter<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'a> {
+    fn iter<'b>(&'b self) -> impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>> + Captures<'b> {
         self.patterns.iter().copied()
     }
 
@@ -80,7 +81,14 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     /// This returns one column per field of the constructor. They usually all have the same length
     /// (the number of patterns in `self` that matched `ctor`), except that we expand or-patterns
     /// which may change the lengths.
-    fn specialize(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Vec<Self> {
+    fn specialize<'b>(
+        &self,
+        pcx: &'b PatCtxt<'_, 'p, 'tcx>,
+        ctor: &Constructor<'tcx>,
+    ) -> Vec<PatternColumn<'b, 'p, 'tcx>>
+    where
+        'a: 'b,
+    {
         let arity = ctor.arity(pcx);
         if arity == 0 {
             return Vec::new();
@@ -115,15 +123,16 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
 
 /// Traverse the patterns to collect any variants of a non_exhaustive enum that fail to be mentioned
 /// in a given column.
-#[instrument(level = "debug", skip(cx), ret)]
-fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
+#[instrument(level = "debug", skip(cx, wildcard_arena), ret)]
+fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    column: &PatternColumn<'p, 'tcx>,
+    column: &PatternColumn<'a, 'p, 'tcx>,
+    wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) -> Vec<WitnessPat<'tcx>> {
     let Some(ty) = column.head_ty() else {
         return Vec::new();
     };
-    let pcx = &PatCtxt::new_dummy(cx, ty);
+    let pcx = &PatCtxt::new_dummy(cx, ty, wildcard_arena);
 
     let set = column.analyze_ctors(pcx);
     if set.present.is_empty() {
@@ -150,7 +159,7 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
         let wild_pat = WitnessPat::wild_from_ctor(pcx, ctor);
         for (i, col_i) in specialized_columns.iter().enumerate() {
             // Compute witnesses for each column.
-            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i);
+            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i, wildcard_arena);
             // For each witness, we build a new pattern in the shape of `ctor(_, _, wit, _, _)`,
             // adding enough wildcards to match `arity`.
             for wit in wits_for_col_i {
@@ -163,17 +172,18 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     witnesses
 }
 
-pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
+pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
-    pat_column: &PatternColumn<'p, 'tcx>,
+    pat_column: &PatternColumn<'a, 'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
+    wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) {
     if !matches!(
         cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, cx.match_lint_level).0,
         rustc_session::lint::Level::Allow
     ) {
-        let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column);
+        let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column, wildcard_arena);
         if !witnesses.is_empty() {
             // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
             // is not exhaustive enough.
@@ -215,15 +225,16 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
 }
 
 /// Traverse the patterns to warn the user about ranges that overlap on their endpoints.
-#[instrument(level = "debug", skip(cx))]
-pub(crate) fn lint_overlapping_range_endpoints<'p, 'tcx>(
+#[instrument(level = "debug", skip(cx, wildcard_arena))]
+pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    column: &PatternColumn<'p, 'tcx>,
+    column: &PatternColumn<'a, 'p, 'tcx>,
+    wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) {
     let Some(ty) = column.head_ty() else {
         return;
     };
-    let pcx = &PatCtxt::new_dummy(cx, ty);
+    let pcx = &PatCtxt::new_dummy(cx, ty, wildcard_arena);
 
     let set = column.analyze_ctors(pcx);
 
@@ -282,7 +293,7 @@ pub(crate) fn lint_overlapping_range_endpoints<'p, 'tcx>(
         // Recurse into the fields.
         for ctor in set.present {
             for col in column.specialize(pcx, &ctor) {
-                lint_overlapping_range_endpoints(cx, &col);
+                lint_overlapping_range_endpoints(cx, &col, wildcard_arena);
             }
         }
     }

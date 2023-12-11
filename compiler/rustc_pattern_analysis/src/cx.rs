@@ -1,15 +1,15 @@
 use std::fmt;
 use std::iter::once;
 
-use rustc_arena::TypedArena;
+use rustc_arena::{DroplessArena, TypedArena};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_index::Idx;
 use rustc_index::IndexVec;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::{self};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
@@ -35,6 +35,7 @@ pub struct MatchCheckCtxt<'p, 'tcx> {
     pub module: DefId,
     pub param_env: ty::ParamEnv<'tcx>,
     pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    pub dropless_arena: &'p DroplessArena,
     /// Lint level at the match.
     pub match_lint_level: HirId,
     /// The span of the whole match, if applicable.
@@ -65,14 +66,6 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             }
             _ => false,
         }
-    }
-
-    pub(crate) fn alloc_wildcard_slice(
-        &self,
-        tys: impl IntoIterator<Item = Ty<'tcx>>,
-    ) -> &'p [DeconstructedPat<'p, 'tcx>] {
-        self.pattern_arena
-            .alloc_from_iter(tys.into_iter().map(|ty| DeconstructedPat::wildcard(ty, DUMMY_SP)))
     }
 
     // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
@@ -117,40 +110,36 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// Creates a new list of wildcard fields for a given constructor. The result must have a length
-    /// of `ctor.arity()`.
+    /// Returns the types of the fields for a given constructor. The result must have a length of
+    /// `ctor.arity()`.
     #[instrument(level = "trace", skip(self))]
-    pub(crate) fn ctor_wildcard_fields(
-        &self,
-        ctor: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> &'p [DeconstructedPat<'p, 'tcx>] {
+    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> &[Ty<'tcx>] {
         let cx = self;
         match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
-                ty::Tuple(fs) => cx.alloc_wildcard_slice(fs.iter()),
+                ty::Tuple(fs) => cx.dropless_arena.alloc_from_iter(fs.iter()),
                 ty::Adt(adt, args) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
-                        cx.alloc_wildcard_slice(once(args.type_at(0)))
+                        cx.dropless_arena.alloc_from_iter(once(args.type_at(0)))
                     } else {
                         let variant =
                             &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
-                        cx.alloc_wildcard_slice(tys)
+                        cx.dropless_arena.alloc_from_iter(tys)
                     }
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
             Ref => match ty.kind() {
-                ty::Ref(_, rty, _) => cx.alloc_wildcard_slice(once(*rty)),
+                ty::Ref(_, rty, _) => cx.dropless_arena.alloc_from_iter(once(*rty)),
                 _ => bug!("Unexpected type for `Ref` constructor: {ty:?}"),
             },
             Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
-                    cx.alloc_wildcard_slice((0..arity).map(|_| ty))
+                    cx.dropless_arena.alloc_from_iter((0..arity).map(|_| ty))
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },

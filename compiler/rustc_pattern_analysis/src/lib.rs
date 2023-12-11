@@ -39,17 +39,19 @@ pub fn analyze_match<'p, 'tcx>(
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
+    // Arena to store the extra wildcards we construct during analysis.
+    let wildcard_arena = cx.pattern_arena;
     let pat_column = PatternColumn::new(arms);
 
-    let report = compute_match_usefulness(cx, arms, scrut_ty);
+    let report = compute_match_usefulness(cx, arms, scrut_ty, wildcard_arena);
 
     // Lint on ranges that overlap on their endpoints, which is likely a mistake.
-    lint_overlapping_range_endpoints(cx, &pat_column);
+    lint_overlapping_range_endpoints(cx, &pat_column, wildcard_arena);
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
     if cx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
-        lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty)
+        lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty, wildcard_arena)
     }
 
     report

@@ -53,7 +53,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         matches!(self.ctor, Or)
     }
     /// Expand this (possibly-nested) or-pattern into its alternatives.
-    pub(crate) fn flatten_or_pat(&'p self) -> SmallVec<[&'p Self; 1]> {
+    pub(crate) fn flatten_or_pat(&self) -> SmallVec<[&Self; 1]> {
         if self.is_or_pat() {
             self.iter_fields().flat_map(|p| p.flatten_or_pat()).collect()
         } else {
@@ -80,25 +80,29 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     /// Specialize this pattern with a constructor.
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
     pub(crate) fn specialize<'a>(
-        &'a self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
+        &self,
+        pcx: &PatCtxt<'a, 'p, 'tcx>,
         other_ctor: &Constructor<'tcx>,
-    ) -> SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]> {
+    ) -> SmallVec<[&'a DeconstructedPat<'p, 'tcx>; 2]> {
+        let wildcard_sub_tys = || {
+            let tys = pcx.cx.ctor_sub_tys(other_ctor, pcx.ty);
+            tys.iter()
+                .map(|ty| DeconstructedPat::wildcard(*ty, Span::default()))
+                .map(|pat| pcx.wildcard_arena.alloc(pat) as &_)
+                .collect()
+        };
         match (&self.ctor, other_ctor) {
-            (Wildcard, _) => {
-                // We return a wildcard for each field of `other_ctor`.
-                pcx.cx.ctor_wildcard_fields(other_ctor, pcx.ty).iter().collect()
-            }
+            // Return a wildcard for each field of `other_ctor`.
+            (Wildcard, _) => wildcard_sub_tys(),
+            // The only non-trivial case: two slices of different arity. `other_slice` is
+            // guaranteed to have a larger arity, so we fill the middle part with enough
+            // wildcards to reach the length of the new, larger slice.
             (
                 &Slice(self_slice @ Slice { kind: SliceKind::VarLen(prefix, suffix), .. }),
                 &Slice(other_slice),
             ) if self_slice.arity() != other_slice.arity() => {
-                // The only non-trivial case: two slices of different arity. `other_slice` is
-                // guaranteed to have a larger arity, so we fill the middle part with enough
-                // wildcards to reach the length of the new, larger slice.
                 // Start with a slice of wildcards of the appropriate length.
-                let mut fields: SmallVec<[_; 2]> =
-                    pcx.cx.ctor_wildcard_fields(other_ctor, pcx.ty).iter().collect();
+                let mut fields: SmallVec<[_; 2]> = wildcard_sub_tys();
                 // Fill in the fields from both ends.
                 let new_arity = fields.len();
                 for i in 0..prefix {
@@ -179,9 +183,8 @@ impl<'tcx> WitnessPat<'tcx> {
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(pcx: &PatCtxt<'_, '_, 'tcx>, ctor: Constructor<'tcx>) -> Self {
-        let field_tys =
-            pcx.cx.ctor_wildcard_fields(&ctor, pcx.ty).iter().map(|deco_pat| deco_pat.ty());
-        let fields = field_tys.map(|ty| Self::wildcard(ty)).collect();
+        let field_tys = pcx.cx.ctor_sub_tys(&ctor, pcx.ty);
+        let fields = field_tys.iter().map(|ty| Self::wildcard(*ty)).collect();
         Self::new(ctor, fields, pcx.ty)
     }
 

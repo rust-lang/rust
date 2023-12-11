@@ -7,7 +7,7 @@ use rustc_pattern_analysis::{analyze_match, MatchArm};
 
 use crate::errors::*;
 
-use rustc_arena::TypedArena;
+use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -31,6 +31,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     let (thir, expr) = tcx.thir_body(def_id)?;
     let thir = thir.borrow();
     let pattern_arena = TypedArena::default();
+    let dropless_arena = DroplessArena::default();
     let mut visitor = MatchVisitor {
         tcx,
         thir: &*thir,
@@ -38,6 +39,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         lint_level: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
+        dropless_arena: &dropless_arena,
         error: Ok(()),
     };
     visitor.visit_expr(&thir[expr]);
@@ -82,6 +84,7 @@ struct MatchVisitor<'thir, 'p, 'tcx> {
     lint_level: HirId,
     let_source: LetSource,
     pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    dropless_arena: &'p DroplessArena,
     /// Tracks if we encountered an error while checking this body. That the first function to
     /// report it stores it here. Some functions return `Result` to allow callers to short-circuit
     /// on error, but callers don't need to store it here again.
@@ -382,6 +385,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
             pattern_arena: self.pattern_arena,
+            dropless_arena: self.dropless_arena,
             match_lint_level: self.lint_level,
             whole_match_span,
             scrut_span,

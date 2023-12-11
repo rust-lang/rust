@@ -555,9 +555,10 @@
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
+use rustc_arena::TypedArena;
 use rustc_data_structures::{captures::Captures, stack::ensure_sufficient_stack};
 use rustc_middle::ty::Ty;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use crate::constructor::{Constructor, ConstructorSet};
 use crate::cx::MatchCheckCtxt;
@@ -574,12 +575,18 @@ pub(crate) struct PatCtxt<'a, 'p, 'tcx> {
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(crate) is_top_level: bool,
+    /// An arena to store the wildcards we produce during analysis.
+    pub(crate) wildcard_arena: &'a TypedArena<DeconstructedPat<'p, 'tcx>>,
 }
 
 impl<'a, 'p, 'tcx> PatCtxt<'a, 'p, 'tcx> {
     /// A `PatCtxt` when code other than `is_useful` needs one.
-    pub(crate) fn new_dummy(cx: &'a MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
-        PatCtxt { cx, ty, is_top_level: false }
+    pub(crate) fn new_dummy(
+        cx: &'a MatchCheckCtxt<'p, 'tcx>,
+        ty: Ty<'tcx>,
+        wildcard_arena: &'a TypedArena<DeconstructedPat<'p, 'tcx>>,
+    ) -> Self {
+        PatCtxt { cx, ty, is_top_level: false, wildcard_arena }
     }
 }
 
@@ -651,14 +658,18 @@ impl fmt::Display for ValidityConstraint {
 }
 
 /// Represents a pattern-tuple under investigation.
+// The three lifetimes are:
+// - 'a allocated by us
+// - 'p coming from the input
+// - 'tcx global compilation context
 #[derive(Clone)]
-struct PatStack<'p, 'tcx> {
+struct PatStack<'a, 'p, 'tcx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
-    pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
+    pats: SmallVec<[&'a DeconstructedPat<'p, 'tcx>; 2]>,
 }
 
-impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    fn from_pattern(pat: &'p DeconstructedPat<'p, 'tcx>) -> Self {
+impl<'a, 'p, 'tcx> PatStack<'a, 'p, 'tcx> {
+    fn from_pattern(pat: &'a DeconstructedPat<'p, 'tcx>) -> Self {
         PatStack { pats: smallvec![pat] }
     }
 
@@ -670,17 +681,17 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'p DeconstructedPat<'p, 'tcx> {
+    fn head(&self) -> &'a DeconstructedPat<'p, 'tcx> {
         self.pats[0]
     }
 
-    fn iter(&self) -> impl Iterator<Item = &DeconstructedPat<'p, 'tcx>> {
+    fn iter<'b>(&'b self) -> impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>> + Captures<'b> {
         self.pats.iter().copied()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
+    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = PatStack<'a, 'p, 'tcx>> + Captures<'b> {
         self.head().flatten_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
@@ -692,9 +703,9 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'a, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
-    ) -> PatStack<'p, 'tcx> {
+    ) -> PatStack<'a, 'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
         let mut new_pats = self.head().specialize(pcx, ctor);
@@ -703,7 +714,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
+impl<'a, 'p, 'tcx> fmt::Debug for PatStack<'a, 'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We pretty-print similarly to the `Debug` impl of `Matrix`.
         write!(f, "+")?;
@@ -716,9 +727,9 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 
 /// A row of the matrix.
 #[derive(Clone)]
-struct MatrixRow<'p, 'tcx> {
+struct MatrixRow<'a, 'p, 'tcx> {
     // The patterns in the row.
-    pats: PatStack<'p, 'tcx>,
+    pats: PatStack<'a, 'p, 'tcx>,
     /// Whether the original arm had a guard. This is inherited when specializing.
     is_under_guard: bool,
     /// When we specialize, we remember which row of the original matrix produced a given row of the
@@ -731,7 +742,7 @@ struct MatrixRow<'p, 'tcx> {
     useful: bool,
 }
 
-impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
+impl<'a, 'p, 'tcx> MatrixRow<'a, 'p, 'tcx> {
     fn is_empty(&self) -> bool {
         self.pats.is_empty()
     }
@@ -740,17 +751,17 @@ impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'p DeconstructedPat<'p, 'tcx> {
+    fn head(&self) -> &'a DeconstructedPat<'p, 'tcx> {
         self.pats.head()
     }
 
-    fn iter(&self) -> impl Iterator<Item = &DeconstructedPat<'p, 'tcx>> {
+    fn iter<'b>(&'b self) -> impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>> + Captures<'b> {
         self.pats.iter()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = MatrixRow<'p, 'tcx>> + Captures<'a> {
+    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = MatrixRow<'a, 'p, 'tcx>> + Captures<'b> {
         self.pats.expand_or_pat().map(|patstack| MatrixRow {
             pats: patstack,
             parent_row: self.parent_row,
@@ -763,10 +774,10 @@ impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'a, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         parent_row: usize,
-    ) -> MatrixRow<'p, 'tcx> {
+    ) -> MatrixRow<'a, 'p, 'tcx> {
         MatrixRow {
             pats: self.pats.pop_head_constructor(pcx, ctor),
             parent_row,
@@ -776,7 +787,7 @@ impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> fmt::Debug for MatrixRow<'p, 'tcx> {
+impl<'a, 'p, 'tcx> fmt::Debug for MatrixRow<'a, 'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.pats.fmt(f)
     }
@@ -793,22 +804,22 @@ impl<'p, 'tcx> fmt::Debug for MatrixRow<'p, 'tcx> {
 /// specializing `(,)` and `Some` on a pattern of type `(Option<u32>, bool)`, the first column of
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
-struct Matrix<'p, 'tcx> {
+struct Matrix<'a, 'p, 'tcx> {
     /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
-    rows: Vec<MatrixRow<'p, 'tcx>>,
+    rows: Vec<MatrixRow<'a, 'p, 'tcx>>,
     /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
     /// each column. This must obey the same invariants as the real rows.
-    wildcard_row: PatStack<'p, 'tcx>,
+    wildcard_row: PatStack<'a, 'p, 'tcx>,
     /// Track for each column/place whether it contains a known valid value.
     place_validity: SmallVec<[ValidityConstraint; 2]>,
 }
 
-impl<'p, 'tcx> Matrix<'p, 'tcx> {
+impl<'a, 'p, 'tcx> Matrix<'a, 'p, 'tcx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
-    fn expand_and_push(&mut self, row: MatrixRow<'p, 'tcx>) {
+    fn expand_and_push(&mut self, row: MatrixRow<'a, 'p, 'tcx>) {
         if !row.is_empty() && row.head().is_or_pat() {
             // Expand nested or-patterns.
             for new_row in row.expand_or_pat() {
@@ -820,16 +831,14 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new<'a>(
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        arms: &[MatchArm<'p, 'tcx>],
+    fn new(
+        wildcard_arena: &'a TypedArena<DeconstructedPat<'p, 'tcx>>,
+        arms: &'a [MatchArm<'p, 'tcx>],
         scrut_ty: Ty<'tcx>,
         scrut_validity: ValidityConstraint,
-    ) -> Self
-    where
-        'p: 'a,
-    {
-        let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
+    ) -> Self {
+        let wild_pattern =
+            wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty, Span::default()));
         let wildcard_row = PatStack::from_pattern(wild_pattern);
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
@@ -871,32 +880,34 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.wildcard_row.len()
     }
 
-    fn rows<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = &'a MatrixRow<'p, 'tcx>> + Clone + DoubleEndedIterator + ExactSizeIterator
-    {
+    fn rows<'b>(
+        &'b self,
+    ) -> impl Iterator<Item = &'b MatrixRow<'a, 'p, 'tcx>>
+    + Clone
+    + DoubleEndedIterator
+    + ExactSizeIterator {
         self.rows.iter()
     }
-    fn rows_mut<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = &'a mut MatrixRow<'p, 'tcx>> + DoubleEndedIterator + ExactSizeIterator
+    fn rows_mut<'b>(
+        &'b mut self,
+    ) -> impl Iterator<Item = &'b mut MatrixRow<'a, 'p, 'tcx>> + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter_mut()
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Clone + Captures<'a> {
+    fn heads<'b>(
+        &'b self,
+    ) -> impl Iterator<Item = &'b DeconstructedPat<'p, 'tcx>> + Clone + Captures<'a> {
         self.rows().map(|r| r.head())
     }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'a, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
-    ) -> Matrix<'p, 'tcx> {
+    ) -> Matrix<'a, 'p, 'tcx> {
         let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
         let new_validity = self.place_validity[0].specialize(ctor);
         let new_place_validity = std::iter::repeat(new_validity)
@@ -925,7 +936,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// + _     + [_, _, tail @ ..] +
 /// | ✓     | ?                 | // column validity
 /// ```
-impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
+impl<'a, 'p, 'tcx> fmt::Debug for Matrix<'a, 'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -1156,10 +1167,11 @@ impl<'tcx> WitnessMatrix<'tcx> {
 /// - unspecialization, where we lift the results from the previous step into results for this step
 ///     (using `apply_constructor` and by updating `row.useful` for each parent row).
 /// This is all explained at the top of the file.
-#[instrument(level = "debug", skip(cx, is_top_level), ret)]
-fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    matrix: &mut Matrix<'p, 'tcx>,
+#[instrument(level = "debug", skip(cx, is_top_level, wildcard_arena), ret)]
+fn compute_exhaustiveness_and_usefulness<'a, 'p, 'tcx>(
+    cx: &'a MatchCheckCtxt<'p, 'tcx>,
+    matrix: &mut Matrix<'a, 'p, 'tcx>,
+    wildcard_arena: &'a TypedArena<DeconstructedPat<'p, 'tcx>>,
     is_top_level: bool,
 ) -> WitnessMatrix<'tcx> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
@@ -1181,7 +1193,7 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PatCtxt { cx, ty, is_top_level };
+    let pcx = &PatCtxt { cx, ty, is_top_level, wildcard_arena };
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
@@ -1224,7 +1236,7 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
         // Dig into rows that match `ctor`.
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_usefulness(cx, &mut spec_matrix, false)
+            compute_exhaustiveness_and_usefulness(cx, &mut spec_matrix, wildcard_arena, false)
         });
 
         let counts_for_exhaustiveness = match ctor {
@@ -1286,15 +1298,17 @@ pub struct UsefulnessReport<'p, 'tcx> {
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
-#[instrument(skip(cx, arms), level = "debug")]
+#[instrument(skip(cx, arms, wildcard_arena), level = "debug")]
 pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
+    wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) -> UsefulnessReport<'p, 'tcx> {
     let scrut_validity = ValidityConstraint::from_bool(cx.known_valid_scrutinee);
-    let mut matrix = Matrix::new(cx, arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix, true);
+    let mut matrix = Matrix::new(wildcard_arena, arms, scrut_ty, scrut_validity);
+    let non_exhaustiveness_witnesses =
+        compute_exhaustiveness_and_usefulness(cx, &mut matrix, wildcard_arena, true);
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
