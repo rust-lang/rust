@@ -1,10 +1,10 @@
 //! Analysis of patterns, notably match exhaustiveness checking.
 
 pub mod constructor;
-pub mod cx;
 pub mod errors;
 pub(crate) mod lints;
 pub mod pat;
+pub mod rustc;
 pub mod usefulness;
 
 #[macro_use]
@@ -21,11 +21,11 @@ use lints::PatternColumn;
 use rustc_hir::HirId;
 use rustc_index::Idx;
 use rustc_middle::ty::Ty;
-use usefulness::{compute_match_usefulness, UsefulnessReport, ValidityConstraint};
+use usefulness::{compute_match_usefulness, ValidityConstraint};
 
-use crate::cx::MatchCheckCtxt;
 use crate::lints::{lint_nonexhaustive_missing_variants, lint_overlapping_range_endpoints};
 use crate::pat::DeconstructedPat;
+use crate::rustc::RustcCtxt;
 
 pub trait MatchCx: Sized + Clone + fmt::Debug {
     type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
@@ -69,10 +69,10 @@ impl<'p, Cx: MatchCx> Copy for MatchArm<'p, Cx> {}
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.
 pub fn analyze_match<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    arms: &[MatchArm<'p, MatchCheckCtxt<'p, 'tcx>>],
+    cx: &RustcCtxt<'p, 'tcx>,
+    arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
-) -> UsefulnessReport<'p, MatchCheckCtxt<'p, 'tcx>> {
+) -> rustc::UsefulnessReport<'p, 'tcx> {
     // Arena to store the extra wildcards we construct during analysis.
     let wildcard_arena = cx.pattern_arena;
     let pat_column = PatternColumn::new(arms);

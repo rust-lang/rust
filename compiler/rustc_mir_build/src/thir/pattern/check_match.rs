@@ -1,7 +1,8 @@
-use rustc_pattern_analysis::cx::{
-    Constructor, DeconstructedPat, MatchCheckCtxt, Usefulness, UsefulnessReport, WitnessPat,
-};
 use rustc_pattern_analysis::errors::Uncovered;
+use rustc_pattern_analysis::rustc::{
+    Constructor, DeconstructedPat, RustcCtxt as MatchCheckCtxt, Usefulness, UsefulnessReport,
+    WitnessPat,
+};
 use rustc_pattern_analysis::{analyze_match, MatchArm};
 
 use crate::errors::*;

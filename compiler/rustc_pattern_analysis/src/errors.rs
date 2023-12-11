@@ -4,7 +4,7 @@ use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
-use crate::cx::{MatchCheckCtxt, WitnessPat};
+use crate::rustc::{RustcCtxt, WitnessPat};
 
 #[derive(Subdiagnostic)]
 #[label(pattern_analysis_uncovered)]
@@ -21,7 +21,7 @@ pub struct Uncovered<'tcx> {
 impl<'tcx> Uncovered<'tcx> {
     pub fn new<'p>(
         span: Span,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        cx: &RustcCtxt<'p, 'tcx>,
         witnesses: Vec<WitnessPat<'p, 'tcx>>,
     ) -> Self {
         let witness_1 = cx.hoist_witness_pat(witnesses.get(0).unwrap());
