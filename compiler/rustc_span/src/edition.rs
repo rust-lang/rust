@@ -1,4 +1,3 @@
-use crate::symbol::{sym, Symbol};
 use std::fmt;
 use std::str::FromStr;
 
@@ -55,15 +54,6 @@ impl Edition {
             Edition::Edition2018 => "rust_2018_compatibility",
             Edition::Edition2021 => "rust_2021_compatibility",
             Edition::Edition2024 => "rust_2024_compatibility",
-        }
-    }
-
-    pub fn feature_name(self) -> Symbol {
-        match self {
-            Edition::Edition2015 => sym::rust_2015_preview,
-            Edition::Edition2018 => sym::rust_2018_preview,
-            Edition::Edition2021 => sym::rust_2021_preview,
-            Edition::Edition2024 => sym::rust_2024_preview,
         }
     }
 
