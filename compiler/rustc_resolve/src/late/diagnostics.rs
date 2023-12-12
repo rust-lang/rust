@@ -8,7 +8,7 @@ use crate::{PathResult, PathSource, Segment};
 use rustc_hir::def::Namespace::{self, *};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt};
+use rustc_ast::visit::{walk_ty, FnCtxt, FnKind, LifetimeCtxt, Visitor};
 use rustc_ast::{
     self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
     MethodCall, NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
@@ -2830,6 +2830,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             .collect();
         debug!(?in_scope_lifetimes);
 
+        let mut maybe_static = false;
         debug!(?function_param_lifetimes);
         if let Some((param_lifetimes, params)) = &function_param_lifetimes {
             let elided_len = param_lifetimes.len();
@@ -2868,10 +2869,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
             if num_params == 0 {
                 err.help(
-                    "this function's return type contains a borrowed value, \
-                 but there is no value for it to be borrowed from",
+                    "this function's return type contains a borrowed value, but there is no value \
+                     for it to be borrowed from",
                 );
                 if in_scope_lifetimes.is_empty() {
+                    maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
                         (DUMMY_NODE_ID, LifetimeRes::Static),
@@ -2879,11 +2881,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             } else if elided_len == 0 {
                 err.help(
-                    "this function's return type contains a borrowed value with \
-                 an elided lifetime, but the lifetime cannot be derived from \
-                 the arguments",
+                    "this function's return type contains a borrowed value with an elided \
+                     lifetime, but the lifetime cannot be derived from the arguments",
                 );
                 if in_scope_lifetimes.is_empty() {
+                    maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
                         (DUMMY_NODE_ID, LifetimeRes::Static),
@@ -2891,13 +2893,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             } else if num_params == 1 {
                 err.help(format!(
-                    "this function's return type contains a borrowed value, \
-                 but the signature does not say which {m} it is borrowed from"
+                    "this function's return type contains a borrowed value, but the signature does \
+                     not say which {m} it is borrowed from",
                 ));
             } else {
                 err.help(format!(
-                    "this function's return type contains a borrowed value, \
-                 but the signature does not say whether it is borrowed from {m}"
+                    "this function's return type contains a borrowed value, but the signature does \
+                     not say whether it is borrowed from {m}",
                 ));
             }
         }
@@ -2962,11 +2964,238 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 );
             }
             1 => {
+                let post = if maybe_static {
+                    let owned = if let [lt] = &lifetime_refs[..]
+                        && lt.kind != MissingLifetimeKind::Ampersand
+                    {
+                        ", or if you will only have owned values"
+                    } else {
+                        ""
+                    };
+                    format!(
+                        ", but this is uncommon unless you're returning a borrowed value from a \
+                         `const` or a `static`{owned}",
+                    )
+                } else {
+                    String::new()
+                };
                 err.multipart_suggestion_verbose(
-                    format!("consider using the `{existing_name}` lifetime"),
+                    format!("consider using the `{existing_name}` lifetime{post}"),
                     spans_suggs,
                     Applicability::MaybeIncorrect,
                 );
+                if maybe_static {
+                    // FIXME: what follows are general suggestions, but we'd want to perform some
+                    // minimal flow analysis to provide more accurate suggestions. For example, if
+                    // we identified that the return expression references only one argument, we
+                    // would suggest borrowing only that argument, and we'd skip the prior
+                    // "use `'static`" suggestion entirely.
+                    if let [lt] = &lifetime_refs[..]
+                        && (lt.kind == MissingLifetimeKind::Ampersand
+                            || lt.kind == MissingLifetimeKind::Underscore)
+                    {
+                        let pre = if lt.kind == MissingLifetimeKind::Ampersand
+                            && let Some((kind, _span)) = self.diagnostic_metadata.current_function
+                            && let FnKind::Fn(_, _, sig, _, _, _) = kind
+                            && !sig.decl.inputs.is_empty()
+                            && let sugg = sig
+                                .decl
+                                .inputs
+                                .iter()
+                                .filter_map(|param| {
+                                    if param.ty.span.contains(lt.span) {
+                                        // We don't want to suggest `fn elision(_: &fn() -> &i32)`
+                                        // when we have `fn elision(_: fn() -> &i32)`
+                                        None
+                                    } else if let TyKind::CVarArgs = param.ty.kind {
+                                        // Don't suggest `&...` for ffi fn with varargs
+                                        None
+                                    } else if let TyKind::ImplTrait(..) = &param.ty.kind {
+                                        // We handle these in the next `else if` branch.
+                                        None
+                                    } else {
+                                        Some((param.ty.span.shrink_to_lo(), "&".to_string()))
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                            && !sugg.is_empty()
+                        {
+                            let (the, s) = if sig.decl.inputs.len() == 1 {
+                                ("the", "")
+                            } else {
+                                ("one of the", "s")
+                            };
+                            err.multipart_suggestion_verbose(
+                                format!(
+                                    "instead, you are more likely to want to change {the} \
+                                     argument{s} to be borrowed...",
+                                ),
+                                sugg,
+                                Applicability::MaybeIncorrect,
+                            );
+                            "...or alternatively, you might want"
+                        } else if (lt.kind == MissingLifetimeKind::Ampersand
+                            || lt.kind == MissingLifetimeKind::Underscore)
+                            && let Some((kind, _span)) = self.diagnostic_metadata.current_function
+                            && let FnKind::Fn(_, _, sig, _, _, _) = kind
+                            && let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output
+                            && !sig.decl.inputs.is_empty()
+                            && let arg_refs = sig
+                                .decl
+                                .inputs
+                                .iter()
+                                .filter_map(|param| match &param.ty.kind {
+                                    TyKind::ImplTrait(_, bounds) => Some(bounds),
+                                    _ => None,
+                                })
+                                .flat_map(|bounds| bounds.into_iter())
+                                .collect::<Vec<_>>()
+                            && !arg_refs.is_empty()
+                        {
+                            // We have a situation like
+                            // fn g(mut x: impl Iterator<Item = &()>) -> Option<&()>
+                            // So we look at every ref in the trait bound. If there's any, we
+                            // suggest
+                            // fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()>
+                            let mut lt_finder =
+                                LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
+                            for bound in arg_refs {
+                                if let ast::GenericBound::Trait(trait_ref, _) = bound {
+                                    lt_finder.visit_trait_ref(&trait_ref.trait_ref);
+                                }
+                            }
+                            lt_finder.visit_ty(ret_ty);
+                            let spans_suggs: Vec<_> = lt_finder
+                                .seen
+                                .iter()
+                                .filter_map(|ty| match &ty.kind {
+                                    TyKind::Ref(_, mut_ty) => {
+                                        let span = ty.span.with_hi(mut_ty.ty.span.lo());
+                                        Some((span, "&'a ".to_string()))
+                                    }
+                                    _ => None,
+                                })
+                                .collect();
+                            self.suggest_introducing_lifetime(
+                                err,
+                                None,
+                                |err, higher_ranked, span, message, intro_sugg| {
+                                    err.multipart_suggestion_verbose(
+                                        message,
+                                        std::iter::once((span, intro_sugg))
+                                            .chain(spans_suggs.iter().cloned())
+                                            .collect(),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    higher_ranked
+                                },
+                            );
+                            "alternatively, you might want"
+                        } else {
+                            "instead, you are more likely to want"
+                        };
+                        let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
+                        let mut sugg = vec![(lt.span, String::new())];
+                        if let Some((kind, _span)) = self.diagnostic_metadata.current_function
+                            && let FnKind::Fn(_, _, sig, _, _, _) = kind
+                            && let ast::FnRetTy::Ty(ty) = &sig.decl.output
+                        {
+                            let mut lt_finder =
+                                LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
+                            lt_finder.visit_ty(&ty);
+
+                            if let [Ty { span, kind: TyKind::Ref(_, mut_ty), .. }] =
+                                &lt_finder.seen[..]
+                            {
+                                // We might have a situation like
+                                // fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()>
+                                // but `lt.span` only points at `'_`, so to suggest `-> Option<()>`
+                                // we need to find a more accurate span to end up with
+                                // fn g<'a>(mut x: impl Iterator<Item = &'_ ()>) -> Option<()>
+                                sugg = vec![(span.with_hi(mut_ty.ty.span.lo()), String::new())];
+                                owned_sugg = true;
+                            }
+                            if let Some(ty) = lt_finder.found {
+                                if let TyKind::Path(None, path) = &ty.kind {
+                                    // Check if the path being borrowed is likely to be owned.
+                                    let path: Vec<_> = Segment::from_path(path);
+                                    match self.resolve_path(&path, Some(TypeNS), None) {
+                                        PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                                            match module.res() {
+                                                Some(Res::PrimTy(PrimTy::Str)) => {
+                                                    // Don't suggest `-> str`, suggest `-> String`.
+                                                    sugg = vec![(
+                                                        lt.span.with_hi(ty.span.hi()),
+                                                        "String".to_string(),
+                                                    )];
+                                                }
+                                                Some(Res::PrimTy(..)) => {}
+                                                Some(Res::Def(
+                                                    DefKind::Struct
+                                                    | DefKind::Union
+                                                    | DefKind::Enum
+                                                    | DefKind::ForeignTy
+                                                    | DefKind::AssocTy
+                                                    | DefKind::OpaqueTy
+                                                    | DefKind::TyParam,
+                                                    _,
+                                                )) => {}
+                                                _ => {
+                                                    // Do not suggest in all other cases.
+                                                    owned_sugg = false;
+                                                }
+                                            }
+                                        }
+                                        PathResult::NonModule(res) => {
+                                            match res.base_res() {
+                                                Res::PrimTy(PrimTy::Str) => {
+                                                    // Don't suggest `-> str`, suggest `-> String`.
+                                                    sugg = vec![(
+                                                        lt.span.with_hi(ty.span.hi()),
+                                                        "String".to_string(),
+                                                    )];
+                                                }
+                                                Res::PrimTy(..) => {}
+                                                Res::Def(
+                                                    DefKind::Struct
+                                                    | DefKind::Union
+                                                    | DefKind::Enum
+                                                    | DefKind::ForeignTy
+                                                    | DefKind::AssocTy
+                                                    | DefKind::OpaqueTy
+                                                    | DefKind::TyParam,
+                                                    _,
+                                                ) => {}
+                                                _ => {
+                                                    // Do not suggest in all other cases.
+                                                    owned_sugg = false;
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            // Do not suggest in all other cases.
+                                            owned_sugg = false;
+                                        }
+                                    }
+                                }
+                                if let TyKind::Slice(inner_ty) = &ty.kind {
+                                    // Don't suggest `-> [T]`, suggest `-> Vec<T>`.
+                                    sugg = vec![
+                                        (lt.span.with_hi(inner_ty.span.lo()), "Vec<".to_string()),
+                                        (ty.span.with_lo(inner_ty.span.hi()), ">".to_string()),
+                                    ];
+                                }
+                            }
+                        }
+                        if owned_sugg {
+                            err.multipart_suggestion_verbose(
+                                format!("{pre} to return an owned value"),
+                                sugg,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
 
                 // Record as using the suggested resolution.
                 let (_, (_, res)) = in_scope_lifetimes[0];
@@ -2996,7 +3225,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 fn mk_where_bound_predicate(
     path: &Path,
     poly_trait_ref: &ast::PolyTraitRef,
-    ty: &ast::Ty,
+    ty: &Ty,
 ) -> Option<ast::WhereBoundPredicate> {
     use rustc_span::DUMMY_SP;
     let modified_segments = {
@@ -3071,6 +3300,24 @@ pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: I
     err.span_label(orig.span, "first declared here");
     err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
     err.emit();
+}
+
+struct LifetimeFinder<'ast> {
+    lifetime: Span,
+    found: Option<&'ast Ty>,
+    seen: Vec<&'ast Ty>,
+}
+
+impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
+    fn visit_ty(&mut self, t: &'ast Ty) {
+        if let TyKind::Ref(_, mut_ty) = &t.kind {
+            self.seen.push(t);
+            if t.span.lo() == self.lifetime.lo() {
+                self.found = Some(&mut_ty.ty);
+            }
+        }
+        walk_ty(self, t)
+    }
 }
 
 /// Shadowing involving a label is only a warning for historical reasons.
