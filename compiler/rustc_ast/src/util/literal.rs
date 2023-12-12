@@ -161,7 +161,6 @@ impl LitKind {
                         error = Err(LitError::NulInCStr(span));
                     }
                     Ok(CStrUnit::Byte(b)) => buf.push(b),
-                    Ok(CStrUnit::Char(c)) if c.len_utf8() == 1 => buf.push(c as u8),
                     Ok(CStrUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }
