@@ -862,7 +862,7 @@ pub enum Abi {
     RiscvInterruptS,
 }
 
-/// A Binder<T> represents a possibly generic type and its bound vars.
+/// A binder represents a possibly generic type and its bound vars.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Binder<T> {
     pub value: T,
