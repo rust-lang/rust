@@ -89,6 +89,7 @@
 + 
 +     bb6: {
 +         _1 = CoroutineState::<i32, bool>::Yielded(move _8);
++         StorageDead(_8);
 +         discriminant((*_6)) = 3;
 +         goto -> bb2;
 +     }
