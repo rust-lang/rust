@@ -862,7 +862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             mutability,
                         ),
                     ),
-                    match &args[..] {
+                    match &args {
                         [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
                         [first, ..] => (base.span.between(first.span), ", ".to_string()),
                     },

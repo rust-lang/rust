@@ -1063,12 +1063,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             initial_binding.res()
                         });
                         let res = binding.res();
-                        let has_ambiguity_error = this
-                            .ambiguity_errors
-                            .iter()
-                            .filter(|error| !error.warning)
-                            .next()
-                            .is_some();
+                        let has_ambiguity_error =
+                            this.ambiguity_errors.iter().any(|error| !error.warning);
                         if res == Res::Err || has_ambiguity_error {
                             this.tcx
                                 .sess

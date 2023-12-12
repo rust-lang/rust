@@ -1701,7 +1701,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             && !ty.is_never()
         {
             let indentation = if let None = block.expr
-                && let [.., last] = &block.stmts[..]
+                && let [.., last] = &block.stmts
             {
                 tcx.sess.source_map().indentation_before(last.span).unwrap_or_else(String::new)
             } else if let Some(expr) = block.expr {
@@ -1710,7 +1710,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 String::new()
             };
             if let None = block.expr
-                && let [.., last] = &block.stmts[..]
+                && let [.., last] = &block.stmts
             {
                 err.span_suggestion_verbose(
                     last.span.shrink_to_hi(),
@@ -1750,7 +1750,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 }
             }
             if let None = block.expr
-                && let [.., last] = &block.stmts[..]
+                && let [.., last] = &block.stmts
             {
                 sugg.push((last.span.shrink_to_hi(), format!("\n{indentation}None")));
             } else if let Some(expr) = block.expr {
