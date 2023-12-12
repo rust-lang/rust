@@ -298,10 +298,6 @@ function initSearch(rawSearchIndex) {
         return "=,>-]".indexOf(c) !== -1;
     }
 
-    function isStopCharacter(c) {
-        return isEndCharacter(c);
-    }
-
     function isErrorCharacter(c) {
         return "()".indexOf(c) !== -1;
     }
@@ -617,8 +613,7 @@ function initSearch(rawSearchIndex) {
                     }
                 } else if (
                     c === "[" ||
-                    c === "=" ||
-                    isStopCharacter(c) ||
+                    isEndCharacter(c) ||
                     isSpecialStartCharacter(c) ||
                     isSeparatorCharacter(c)
                 ) {
@@ -917,7 +912,7 @@ function initSearch(rawSearchIndex) {
 
         while (parserState.pos < parserState.length) {
             const c = parserState.userQuery[parserState.pos];
-            if (isStopCharacter(c)) {
+            if (isEndCharacter(c)) {
                 foundStopChar = true;
                 if (isSeparatorCharacter(c)) {
                     parserState.pos += 1;

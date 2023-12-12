@@ -3525,20 +3525,30 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
-                let ty::ConstKind::Unevaluated(uv) = ct.kind() else {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => {
+                    let mut err =
+                        self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
+                    let const_span = self.tcx.def_span(uv.def);
+                    match self.tcx.sess.source_map().span_to_snippet(const_span) {
+                            Ok(snippet) => err.help(format!(
+                                "try adding a `where` bound using this expression: `where [(); {snippet}]:`"
+                            )),
+                            _ => err.help("consider adding a `where` bound using this expression"),
+                        };
+                    Some(err)
+                }
+                ty::ConstKind::Expr(_) => {
+                    let err = self
+                        .tcx
+                        .sess
+                        .struct_span_err(span, format!("unconstrained generic constant `{ct}`"));
+                    Some(err)
+                }
+                _ => {
                     bug!("const evaluatable failed for non-unevaluated const `{ct:?}`");
-                };
-                let mut err = self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
-                let const_span = self.tcx.def_span(uv.def);
-                match self.tcx.sess.source_map().span_to_snippet(const_span) {
-                    Ok(snippet) => err.help(format!(
-                        "try adding a `where` bound using this expression: `where [(); {snippet}]:`"
-                    )),
-                    _ => err.help("consider adding a `where` bound using this expression"),
-                };
-                Some(err)
-            }
+                }
+            },
             _ => {
                 span_bug!(
                     span,

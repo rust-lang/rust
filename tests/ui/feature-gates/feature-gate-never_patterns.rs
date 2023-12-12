@@ -12,16 +12,63 @@ fn main() {
     unsafe {
         let ptr: *const Void = NonNull::dangling().as_ptr();
         match *ptr {
-            ! //~ ERROR `!` patterns are experimental
+            !
+            //~^ ERROR `!` patterns are experimental
+        }
+        // Check that the gate operates even behind `cfg`.
+        #[cfg(FALSE)]
+        match *ptr {
+            !
+            //~^ ERROR `!` patterns are experimental
+        }
+        #[cfg(FALSE)]
+        match *ptr {
+            ! => {}
+            //~^ ERROR `!` patterns are experimental
         }
     }
 
+    // Correctly gate match arms with no body.
+    match Some(0) {
+        None => {}
+        Some(_),
+        //~^ ERROR unexpected `,` in pattern
+    }
+    match Some(0) {
+        None => {}
+        Some(_)
+        //~^ ERROR `match` arm with no body
+    }
+    match Some(0) {
+        _ => {}
+        Some(_) if false,
+        //~^ ERROR `match` arm with no body
+        Some(_) if false
+        //~^ ERROR `match` arm with no body
+    }
+    match res {
+        Ok(_) => {}
+        Err(!),
+        //~^ ERROR `!` patterns are experimental
+    }
+    match res {
+        Err(!) if false,
+        //~^ ERROR `!` patterns are experimental
+        //~| ERROR a guard on a never pattern will never be run
+        _ => {}
+    }
+
     // Check that the gate operates even behind `cfg`.
-    #[cfg(FALSE)]
-    unsafe {
-        let ptr: *const Void = NonNull::dangling().as_ptr();
-        match *ptr {
-            ! => {} //~ ERROR `!` patterns are experimental
-        }
+    match Some(0) {
+        None => {}
+        #[cfg(FALSE)]
+        Some(_)
+        //~^ ERROR `match` arm with no body
+    }
+    match Some(0) {
+        _ => {}
+        #[cfg(FALSE)]
+        Some(_) if false
+        //~^ ERROR `match` arm with no body
     }
 }

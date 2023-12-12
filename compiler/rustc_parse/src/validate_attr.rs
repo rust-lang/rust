@@ -6,9 +6,9 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::MetaItemKind;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem};
-use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
+use rustc_session::errors::report_lit_error;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, Symbol};
@@ -51,28 +51,44 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                 MetaItemKind::List(nmis)
             }
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
-                if let ast::ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = ast::MetaItemLit::from_token_lit(token_lit, expr.span)
-                {
-                    if token_lit.suffix.is_some() {
-                        let mut err = sess.span_diagnostic.struct_span_err(
-                            expr.span,
-                            "suffixed literals are not allowed in attributes",
-                        );
-                        err.help(
-                            "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), \
-                            use an unsuffixed version (`1`, `1.0`, etc.)",
-                        );
-                        return Err(err);
-                    } else {
-                        MetaItemKind::NameValue(lit)
-                    }
+                if let ast::ExprKind::Lit(token_lit) = expr.kind {
+                    let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
+                    let res = match res {
+                        Ok(lit) => {
+                            if token_lit.suffix.is_some() {
+                                let mut err = sess.span_diagnostic.struct_span_err(
+                                    expr.span,
+                                    "suffixed literals are not allowed in attributes",
+                                );
+                                err.help(
+                                    "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), \
+                                    use an unsuffixed version (`1`, `1.0`, etc.)",
+                                );
+                                return Err(err);
+                            } else {
+                                MetaItemKind::NameValue(lit)
+                            }
+                        }
+                        Err(err) => {
+                            report_lit_error(sess, err, token_lit, expr.span);
+                            let lit = ast::MetaItemLit {
+                                symbol: token_lit.symbol,
+                                suffix: token_lit.suffix,
+                                kind: ast::LitKind::Err,
+                                span: expr.span,
+                            };
+                            MetaItemKind::NameValue(lit)
+                        }
+                    };
+                    res
                 } else {
-                    // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can
-                    // happen with e.g. `#[foo = include_str!("nonexistent-file.rs")]`; in that
-                    // case we delay the error because an earlier error will have already been
-                    // reported.
-                    let msg = format!("unexpected expression: `{}`", pprust::expr_to_string(expr));
+                    // Example cases:
+                    // - `#[foo = 1+1]`: results in `ast::ExprKind::BinOp`.
+                    // - `#[foo = include_str!("nonexistent-file.rs")]`:
+                    //   results in `ast::ExprKind::Err`. In that case we delay
+                    //   the error because an earlier error will have already
+                    //   been reported.
+                    let msg = format!("attribute value must be a literal");
                     let mut err = sess.span_diagnostic.struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err = expr.kind {
                         err.downgrade_to_delayed_bug();

@@ -816,6 +816,9 @@ impl ThinLTOKeysMap {
         use std::io::Write;
         let file = File::create(path)?;
         let mut writer = io::BufWriter::new(file);
+        // The entries are loaded back into a hash map in `load_from_file()`, so
+        // the order in which we write them to file here does not matter.
+        #[allow(rustc::potential_query_instability)]
         for (module, key) in &self.keys {
             writeln!(writer, "{module} {key}")?;
         }
