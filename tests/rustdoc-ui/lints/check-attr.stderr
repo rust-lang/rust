@@ -171,5 +171,16 @@ LL | | /// ```
    |
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: aborting due to 12 previous errors
+error: unknown attribute `rust2018`. Did you mean `edition2018`?
+  --> $DIR/check-attr.rs:43:1
+   |
+LL | / /// b
+LL | |
+LL | | ///
+LL | | /// ```rust2018
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+
+error: aborting due to 13 previous errors
 

@@ -39,3 +39,11 @@ pub fn foobar() {}
 /// boo
 /// ```
 pub fn b() {}
+
+/// b
+//~^ ERROR
+///
+/// ```rust2018
+/// boo
+/// ```
+pub fn c() {}
