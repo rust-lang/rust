@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `self.thread` which is behind a mutable reference
-  --> $DIR/remap-path-prefix-sysroot.rs:14:9
+  --> $DIR/remap-path-prefix-sysroot.rs:LL:COL
    |
 LL |         self.thread.join().unwrap();
    |         ^^^^^^^^^^^ ------ `self.thread` moved due to this method call
