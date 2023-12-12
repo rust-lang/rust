@@ -232,7 +232,7 @@ fn main() {
 
     println!(" --- matching cases ---");
 
-    // Ensure that let and let else have the same behaviour
+    // Ensure that let and let else have the same behavior
     acc.new_list("let _");
     let_!(&acc, _);
     acc.new_list("let else _");
@@ -240,7 +240,7 @@ fn main() {
     acc.assert_equality_last_two_lists();
     acc.print_table();
 
-    // Ensure that let and let else have the same behaviour
+    // Ensure that let and let else have the same behavior
     acc.new_list("let _v");
     let_!(&acc, _v);
     acc.new_list("let else _v");

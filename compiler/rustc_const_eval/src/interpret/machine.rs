@@ -92,7 +92,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
 }
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
-/// and some use case dependent behaviour can instead be applied.
+/// and some use case dependent behavior can instead be applied.
 pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKind: Debug + std::fmt::Display + MayLeak + Eq + 'static;

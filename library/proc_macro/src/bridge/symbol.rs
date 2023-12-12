@@ -76,7 +76,7 @@ impl Symbol {
                 .all(|b| matches!(b, b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9'))
     }
 
-    // Mimics the behaviour of `Symbol::can_be_raw` from `rustc_span`
+    // Mimics the behavior of `Symbol::can_be_raw` from `rustc_span`
     fn can_be_raw(string: &str) -> bool {
         match string {
             "_" | "super" | "self" | "Self" | "crate" => false,

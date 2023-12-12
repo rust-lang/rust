@@ -33,7 +33,7 @@ impl DisallowedPath {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum MatchLintBehaviour {
+pub enum MatchLintBehavior {
     AllTypes,
     WellKnownTypes,
     Never,

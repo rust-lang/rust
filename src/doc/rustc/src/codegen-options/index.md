@@ -149,7 +149,7 @@ values:
 * `n`, `no`, `off` or `false`: do not force-enable frame pointers. This does
   not necessarily mean frame pointers will be removed.
 
-The default behaviour, if frame pointers are not force-enabled, depends on the
+The default behavior, if frame pointers are not force-enabled, depends on the
 target.
 
 ## force-unwind-tables
@@ -344,7 +344,7 @@ of the following values:
 * `y`, `yes`, `on`, `true` or no value: disable the red zone.
 * `n`, `no`, `off` or `false`: enable the red zone.
 
-The default behaviour, if the flag is not specified, depends on the target.
+The default behavior, if the flag is not specified, depends on the target.
 
 ## no-stack-check
 

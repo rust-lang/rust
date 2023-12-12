@@ -600,7 +600,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// Adds an explanatory note if the move error occurs in a derive macro
     /// expansion of a packed struct.
     /// Such errors happen because derive macro expansions shy away from taking
-    /// references to the struct's fields since doing so would be undefined behaviour
+    /// references to the struct's fields since doing so would be undefined behavior
     fn add_note_for_packed_struct_derive(&self, err: &mut Diagnostic, local: Local) {
         let local_place: PlaceRef<'tcx> = local.into();
         let local_ty = local_place.ty(self.body.local_decls(), self.infcx.tcx).ty.peel_refs();
@@ -610,7 +610,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             && let ExpnKind::Macro(MacroKind::Derive, name) =
                 self.body.span.ctxt().outer_expn_data().kind
         {
-            err.note(format!("`#[derive({name})]` triggers a move because taking references to the fields of a packed struct is undefined behaviour"));
+            err.note(format!("`#[derive({name})]` triggers a move because taking references to the fields of a packed struct is undefined behavior"));
         }
     }
 }

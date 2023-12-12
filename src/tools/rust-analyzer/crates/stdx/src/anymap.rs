@@ -316,14 +316,14 @@ pub trait Downcast {
     ///
     /// # Safety
     ///
-    /// The caller must ensure that `T` matches the trait object, on pain of *undefined behaviour*.
+    /// The caller must ensure that `T` matches the trait object, on pain of *undefined behavior*.
     unsafe fn downcast_ref_unchecked<T: 'static>(&self) -> &T;
 
     /// Downcast from `&mut Any` to `&mut T`, without checking the type matches.
     ///
     /// # Safety
     ///
-    /// The caller must ensure that `T` matches the trait object, on pain of *undefined behaviour*.
+    /// The caller must ensure that `T` matches the trait object, on pain of *undefined behavior*.
     unsafe fn downcast_mut_unchecked<T: 'static>(&mut self) -> &mut T;
 }
 

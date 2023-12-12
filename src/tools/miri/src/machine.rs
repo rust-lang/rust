@@ -656,7 +656,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 }
                 // Note: it is the user's responsibility to provide a correct SO file.
                 // WATCH OUT: If an invalid/incorrect SO file is specified, this can cause
-                // undefined behaviour in Miri itself!
+                // undefined behavior in Miri itself!
                 (
                     unsafe {
                         libloading::Library::new(lib_file_path)

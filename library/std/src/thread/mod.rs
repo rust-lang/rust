@@ -880,7 +880,7 @@ pub fn sleep(dur: Duration) {
 ///
 /// # Platform-specific behavior
 ///
-/// This function uses [`sleep`] internally, see its platform-specific behaviour.
+/// This function uses [`sleep`] internally, see its platform-specific behavior.
 ///
 ///
 /// # Examples
@@ -951,7 +951,7 @@ pub fn sleep_until(deadline: Instant) {
 }
 
 /// Used to ensure that `park` and `park_timeout` do not unwind, as that can
-/// cause undefined behaviour if not handled correctly (see #102398 for context).
+/// cause undefined behavior if not handled correctly (see #102398 for context).
 struct PanicGuard;
 
 impl Drop for PanicGuard {

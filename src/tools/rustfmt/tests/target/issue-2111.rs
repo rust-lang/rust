@@ -5,7 +5,7 @@ use super::{
     Holding,
     LodaModel,
     MethodDescription,
-    ModelBehaviour,
+    ModelBehavior,
     ModelEdges,
     ModelProperties,
     ModelRequestGraph,

@@ -100,7 +100,7 @@ Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
  * Tracking issue: [#43781](https://github.com/rust-lang/rust/issues/43781)
 
 `doc_auto_cfg` is an extension to the `#[doc(cfg)]` feature. With it, you don't need to add
-`#[doc(cfg(...)]` anymore unless you want to override the default behaviour. So if we take the
+`#[doc(cfg(...)]` anymore unless you want to override the default behavior. So if we take the
 previous source code:
 
 ```rust

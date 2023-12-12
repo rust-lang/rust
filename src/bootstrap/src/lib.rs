@@ -1875,7 +1875,7 @@ pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
 }
 
 /// Ensures that the behavior dump directory is properly initialized.
-pub fn prepare_behaviour_dump_dir(build: &Build) {
+pub fn prepare_behavior_dump_dir(build: &Build) {
     static INITIALIZED: OnceLock<bool> = OnceLock::new();
 
     let dump_path = build.out.join("bootstrap-shims-dump");

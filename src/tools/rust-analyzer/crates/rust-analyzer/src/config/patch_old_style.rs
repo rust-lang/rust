@@ -34,7 +34,7 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         assist.importEnforceGranularity -> imports.granularity.enforce;
         assist.importGranularity -> imports.granularity.group;
         assist.importMergeBehavior -> imports.granularity.group;
-        assist.importMergeBehaviour -> imports.granularity.group;
+        assist.importMergeBehavior -> imports.granularity.group;
         assist.importGroup -> imports.group.enable;
         assist.importPrefix -> imports.prefix;
         primeCaches.enable -> cachePriming.enable;

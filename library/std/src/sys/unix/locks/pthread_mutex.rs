@@ -87,7 +87,7 @@ impl Drop for AllocatedMutex {
             // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
             // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
             // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
-            // this behaviour no longer occurs.
+            // this behavior no longer occurs.
             debug_assert!(r == 0 || r == libc::EINVAL);
         } else {
             debug_assert_eq!(r, 0);

@@ -30,7 +30,7 @@ _x.py() {
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -81,7 +81,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -124,7 +124,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -172,7 +172,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -216,7 +216,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -259,7 +259,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -303,7 +303,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -354,7 +354,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -405,7 +405,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -448,7 +448,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -492,7 +492,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -535,7 +535,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -579,7 +579,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -622,7 +622,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
@@ -666,7 +666,7 @@ _arguments "${_arguments_options[@]}" \
 '--src=[path to the root of the rust checkout]:DIR:_files -/' \
 '-j+[number of jobs to run in parallel]:JOBS:( )' \
 '--jobs=[number of jobs to run in parallel]:JOBS:( )' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
+'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behavior]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
 '--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \

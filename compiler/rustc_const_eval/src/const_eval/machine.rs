@@ -34,7 +34,7 @@ use super::error::*;
 /// what they intended, they can just allow the lint.
 const LINT_TERMINATOR_LIMIT: usize = 2_000_000;
 /// The limit used by `-Z tiny-const-eval-limit`. This smaller limit is useful for internal
-/// tests not needing to run 30s or more to show some behaviour.
+/// tests not needing to run 30s or more to show some behavior.
 const TINY_LINT_TERMINATOR_LIMIT: usize = 20;
 /// After this many interpreted terminators, we start emitting progress indicators at every
 /// power of two of interpreted terminators.

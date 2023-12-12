@@ -571,7 +571,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Like `check_stability`, except that we permit items to have custom behaviour for
+    /// Like `check_stability`, except that we permit items to have custom behavior for
     /// missing stability attributes (not necessarily just emit a `bug!`). This is necessary
     /// for default generic parameters, which only have stability attributes if they were
     /// added after the type on which they're defined.

@@ -769,7 +769,7 @@ pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
     // it lets Miri and CTFE understand them better, including things
     // like enforcing type validity for them.
     // Importantly, read+copy_nonoverlapping+write introduces confusing
-    // asymmetry to the behaviour where one value went through read+write
+    // asymmetry to the behavior where one value went through read+write
     // whereas the other was copied over by the intrinsic (see #94371).
     // Furthermore, using only read+write here benefits limited backends
     // such as SPIR-V that work on an underlying *typed* view of memory,

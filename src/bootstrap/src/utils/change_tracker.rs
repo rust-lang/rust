@@ -89,7 +89,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 116278,
         severity: ChangeSeverity::Info,
-        summary: "The `rust.use-lld` configuration now has different options ('external'/true or 'self-contained'), and its behaviour has changed.",
+        summary: "The `rust.use-lld` configuration now has different options ('external'/true or 'self-contained'), and its behavior has changed.",
     },
     ChangeInfo {
         change_id: 118703,

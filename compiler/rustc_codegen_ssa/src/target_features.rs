@@ -16,7 +16,7 @@ use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
-/// Features that control behaviour of rustc, rather than the codegen.
+/// Features that control behavior of rustc, rather than the codegen.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
 /// Stability information for target features.

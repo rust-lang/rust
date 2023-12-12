@@ -2223,7 +2223,7 @@ pub fn exit(code: i32) -> ! {
 /// Rust IO buffers (eg, from `BufWriter`) will not be flushed.
 /// Likewise, C stdio buffers will (on most platforms) not be flushed.
 ///
-/// This is in contrast to the default behaviour of [`panic!`] which unwinds
+/// This is in contrast to the default behavior of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
 /// When `panic="abort"` is set, either as an argument to `rustc` or in a
 /// crate's Cargo.toml, [`panic!`] and `abort` are similar. However,

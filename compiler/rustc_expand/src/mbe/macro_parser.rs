@@ -473,7 +473,7 @@ impl TtParser {
                 MatcherLoc::Token { token: t } => {
                     // If it's a doc comment, we just ignore it and move on to the next tt in the
                     // matcher. This is a bug, but #95267 showed that existing programs rely on
-                    // this behaviour, and changing it would require some care and a transition
+                    // this behavior, and changing it would require some care and a transition
                     // period.
                     //
                     // If the token matches, we can just advance the parser.

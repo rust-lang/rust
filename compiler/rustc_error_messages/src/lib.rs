@@ -403,8 +403,8 @@ impl Into<SubdiagnosticMessage> for DiagnosticMessage {
             DiagnosticMessage::FluentIdentifier(id, None) => {
                 SubdiagnosticMessage::FluentIdentifier(id)
             }
-            // There isn't really a sensible behaviour for this because it loses information but
-            // this is the most sensible of the behaviours.
+            // There isn't really a sensible behavior for this because it loses information but
+            // this is the most sensible of the behaviors.
             DiagnosticMessage::FluentIdentifier(_, Some(attr)) => {
                 SubdiagnosticMessage::FluentAttr(attr)
             }

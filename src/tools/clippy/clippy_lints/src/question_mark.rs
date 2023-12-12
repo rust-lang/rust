@@ -1,7 +1,7 @@
 use crate::manual_let_else::MANUAL_LET_ELSE;
 use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::msrvs::Msrv;
-use clippy_config::types::MatchLintBehaviour;
+use clippy_config::types::MatchLintBehavior;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -49,7 +49,7 @@ declare_clippy_lint! {
 
 pub struct QuestionMark {
     pub(crate) msrv: Msrv,
-    pub(crate) matches_behaviour: MatchLintBehaviour,
+    pub(crate) matches_behavior: MatchLintBehavior,
     /// Keeps track of how many try blocks we are in at any point during linting.
     /// This allows us to answer the question "are we inside of a try block"
     /// very quickly, without having to walk up the parent chain, by simply checking
@@ -62,10 +62,10 @@ impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
 
 impl QuestionMark {
     #[must_use]
-    pub fn new(msrv: Msrv, matches_behaviour: MatchLintBehaviour) -> Self {
+    pub fn new(msrv: Msrv, matches_behavior: MatchLintBehavior) -> Self {
         Self {
             msrv,
-            matches_behaviour,
+            matches_behavior,
             try_block_depth_stack: Vec::new(),
         }
     }

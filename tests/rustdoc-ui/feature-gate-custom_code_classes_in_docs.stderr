@@ -1,4 +1,4 @@
-warning: custom classes in code blocks will change behaviour
+warning: custom classes in code blocks will change behavior
   --> $DIR/feature-gate-custom_code_classes_in_docs.rs:3:1
    |
 LL | / /// ```{class=language-c}

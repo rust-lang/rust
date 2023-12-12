@@ -274,7 +274,7 @@ impl CodegenCx<'_, '_> {
         };
 
         // For MSVC, omit the column number.
-        // Otherwise, emit it. This mimics clang behaviour.
+        // Otherwise, emit it. This mimics clang behavior.
         // See discussion in https://github.com/rust-lang/rust/issues/42921
         if self.sess().target.is_like_msvc {
             DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }

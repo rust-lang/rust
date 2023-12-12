@@ -1,5 +1,5 @@
 // Tests that C++ double unwinding through Rust code will be properly guarded
-// against instead of exhibiting undefined behaviour.
+// against instead of exhibiting undefined behavior.
 
 extern "C-unwind" {
     fn throw_cxx_exception();

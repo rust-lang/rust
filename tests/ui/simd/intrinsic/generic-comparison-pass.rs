@@ -30,7 +30,7 @@ macro_rules! cmp {
         let lhs = $lhs;
         let rhs = $rhs;
         let e: u32x4 = concat_idents!(simd_, $method)($lhs, $rhs);
-        // assume the scalar version is correct/the behaviour we want.
+        // assume the scalar version is correct/the behavior we want.
         assert!((e.0 != 0) == lhs.0 .$method(&rhs.0));
         assert!((e.1 != 0) == lhs.1 .$method(&rhs.1));
         assert!((e.2 != 0) == lhs.2 .$method(&rhs.2));

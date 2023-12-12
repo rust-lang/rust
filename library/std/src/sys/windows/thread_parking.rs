@@ -35,7 +35,7 @@
 // different implementations.
 //
 // Unfortunately, NT Keyed Events are an undocumented Windows API. However:
-// - This API is relatively simple with obvious behaviour, and there are
+// - This API is relatively simple with obvious behavior, and there are
 //   several (unofficial) articles documenting the details. [1]
 // - `parking_lot` has been using this API for years (on Windows versions
 //   before Windows 8). [2] Many big projects extensively use parking_lot,
@@ -43,7 +43,7 @@
 // - It is the underlying API used by Windows SRW locks and Windows critical
 //   sections. [3] [4]
 // - The source code of the implementations of Wine, ReactOs, and Windows XP
-//   are available and match the expected behaviour.
+//   are available and match the expected behavior.
 // - The main risk with an undocumented API is that it might change in the
 //   future. But since we only use it for older versions of Windows, that's not
 //   a problem.

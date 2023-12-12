@@ -61,7 +61,7 @@ fn main() {
         _ => {}
     }
 
-    // No error, despite the prefix being irrefutable: moving out could change the behaviour,
+    // No error, despite the prefix being irrefutable: moving out could change the behavior,
     // due to possible side effects of the operation.
     while let first = &opt && let Some(ref second) = first && let None = second.start {}
 

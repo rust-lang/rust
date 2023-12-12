@@ -3698,7 +3698,7 @@ Compatibility Notes
   disallow zero-initialization.][71274]
 - [`#[target_feature]` will now error if used in a place where it has no effect.][78143]
 - [Foreign exceptions are now caught by `catch_unwind` and will cause an abort.][70212]
-  Note: This behaviour is not guaranteed and is still considered undefined behaviour,
+  Note: This behavior is not guaranteed and is still considered undefined behavior,
   see the [`catch_unwind`] documentation for further information.
 
 
@@ -4031,8 +4031,8 @@ Version 1.45.0 (2020-07-16)
 Language
 --------
 - [Out of range float to int conversions using `as` has been defined as a saturating
-  conversion.][71269] This was previously undefined behaviour, but you can use the
-   `{f64, f32}::to_int_unchecked` methods to continue using the current behaviour, which
+  conversion.][71269] This was previously undefined behavior, but you can use the
+   `{f64, f32}::to_int_unchecked` methods to continue using the current behavior, which
    may be desirable in rare performance sensitive situations.
 - [`mem::Discriminant<T>` now uses `T`'s discriminant type instead of always
   using `u64`.][70705]
@@ -4309,8 +4309,8 @@ Compatibility Notes
   previously a warning.
 - [In 1.45.0 (the next release) converting a `f64` to `u32` using the `as`
   operator has been defined as a saturating operation.][71269] This was previously
-  undefined behaviour, but you can use the `{f64, f32}::to_int_unchecked` methods to
-  continue using the current behaviour, which may be desirable in rare performance
+  undefined behavior, but you can use the `{f64, f32}::to_int_unchecked` methods to
+  continue using the current behavior, which may be desirable in rare performance
   sensitive situations.
 
 Internal Only
@@ -4479,7 +4479,7 @@ related tools.
 - [Improved how rustc generates drop code.][67332]
 - [Improved performance from `#[inline]`-ing certain hot functions.][69256]
 - [traits: preallocate 2 Vecs of known initial size][69022]
-- [Avoid exponential behaviour when relating types][68772]
+- [Avoid exponential behavior when relating types][68772]
 - [Skip `Drop` terminators for enum variants without drop glue][68943]
 - [Improve performance of coherence checks][68966]
 - [Deduplicate types in the generator witness][68672]
@@ -5081,7 +5081,7 @@ Rustdoc
 Misc
 ----
 - [`rustc` will now warn about some incorrect uses of
-  `mem::{uninitialized, zeroed}` that are known to cause undefined behaviour.][63346]
+  `mem::{uninitialized, zeroed}` that are known to cause undefined behavior.][63346]
 
 Compatibility Notes
 -------------------
@@ -5637,7 +5637,7 @@ Language
   }
   ```
 - [You can now have irrefutable `if let` and `while let` patterns.][57535] Using
-  this feature will by default produce a warning as this behaviour can be
+  this feature will by default produce a warning as this behavior can be
   unintuitive. E.g. `if let _ = 5 {}`
 - [You can now use `let` bindings, assignments, expression statements,
   and irrefutable pattern destructuring in const functions.][57175]

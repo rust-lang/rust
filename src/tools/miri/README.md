@@ -70,7 +70,7 @@ behavior** in your program, and cannot run all programs:
   not support networking. System API support varies between targets; if you run
   on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
   better support.
-* Weak memory emulation may [produce weak behaviours](https://github.com/rust-lang/miri/issues/2301)
+* Weak memory emulation may [produce weak behaviors](https://github.com/rust-lang/miri/issues/2301)
   unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
   cannot produce all behaviors possibly observable on real hardware.
 
@@ -384,7 +384,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   memory effects.
 * `-Zmiri-extern-so-file=<path to a shared object file>` is an experimental flag for providing support
   for FFI calls. Functions not provided by that file are still executed via the usual Miri shims.
-  **WARNING**: If an invalid/incorrect `.so` file is specified, this can cause undefined behaviour in Miri itself!
+  **WARNING**: If an invalid/incorrect `.so` file is specified, this can cause undefined behavior in Miri itself!
   And of course, Miri cannot do any checks on the actions taken by the external code.
   Note that Miri has its own handling of file descriptors, so if you want to replace *some* functions
   working on file descriptors, you will have to replace *all* of them, or the two kinds of

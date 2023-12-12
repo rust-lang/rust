@@ -153,7 +153,7 @@ impl InFile<&SyntaxNode> {
                     ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value.text_range())
                 {
                     // FIXME: Figure out an API that makes proper use of ctx, this only exists to
-                    // keep pre-token map rewrite behaviour.
+                    // keep pre-token map rewrite behavior.
                     if ctxt.is_root() {
                         return res;
                     }
@@ -174,7 +174,7 @@ impl InFile<&SyntaxNode> {
                     ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value.text_range())
                 {
                     // FIXME: Figure out an API that makes proper use of ctx, this only exists to
-                    // keep pre-token map rewrite behaviour.
+                    // keep pre-token map rewrite behavior.
                     if ctxt.is_root() {
                         return res;
                     }
@@ -221,7 +221,7 @@ impl InFile<&SyntaxNode> {
             ExpansionInfo::new(db, file_id).map_node_range_up(db, self.value.text_range())?;
 
         // FIXME: Figure out an API that makes proper use of ctx, this only exists to
-        // keep pre-token map rewrite behaviour.
+        // keep pre-token map rewrite behavior.
         if !ctx.is_root() {
             return None;
         }
@@ -253,7 +253,7 @@ impl InFile<SyntaxToken> {
                     .span_for_offset(db, self.value.text_range().start());
 
                 // FIXME: Figure out an API that makes proper use of ctx, this only exists to
-                // keep pre-token map rewrite behaviour.
+                // keep pre-token map rewrite behavior.
                 if ctxt.is_root() {
                     return range;
                 }
@@ -276,7 +276,7 @@ impl InFile<SyntaxToken> {
                     .span_for_offset(db, self.value.text_range().start());
 
                 // FIXME: Figure out an API that makes proper use of ctx, this only exists to
-                // keep pre-token map rewrite behaviour.
+                // keep pre-token map rewrite behavior.
                 if ctxt.is_root() {
                     Some(range)
                 } else {
@@ -362,7 +362,7 @@ impl<N: AstNode> InFile<N> {
             .map_node_range_up(db, self.value.syntax().text_range())?;
 
         // FIXME: Figure out an API that makes proper use of ctx, this only exists to
-        // keep pre-token map rewrite behaviour.
+        // keep pre-token map rewrite behavior.
         if !ctx.is_root() {
             return None;
         }

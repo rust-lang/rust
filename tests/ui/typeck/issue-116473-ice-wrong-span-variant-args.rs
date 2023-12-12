@@ -19,7 +19,7 @@ macro_rules! recursive_tt {
 
 
 // Recursive macro call using an ident metavariable for variant
-// (the behaviour is different for tt and ident)
+// (the behavior is different for tt and ident)
 macro_rules! recursive_ident {
     () => (recursive_ident!(VariantB));
     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
@@ -42,7 +42,7 @@ macro_rules! nested2_tt {
 
 
 // Mested macro calls using an ident metavariable for variant
-// (the behaviour is different for tt and ident)
+// (the behavior is different for tt and ident)
 macro_rules! nested1_ident {
     () => (nested2_ident!(VariantB));
 }

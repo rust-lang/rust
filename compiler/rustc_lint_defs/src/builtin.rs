@@ -2325,7 +2325,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `pointer_structural_match` lint detects pointers used in patterns whose behaviour
+    /// The `pointer_structural_match` lint detects pointers used in patterns whose behavior
     /// cannot be relied upon across compiler versions and optimization levels.
     ///
     /// ### Example
@@ -2860,7 +2860,7 @@ declare_lint! {
     ///
     /// If your code can't comply with strict provenance and needs to expose
     /// the provenance, then there is [`ptr::expose_addr`] as an escape hatch,
-    /// which preserves the behaviour of `as usize` casts while being explicit
+    /// which preserves the behavior of `as usize` casts while being explicit
     /// about the semantics.
     ///
     /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
@@ -3915,7 +3915,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// On most of the targets the behaviour of `stdcall` and similar calling conventions is not
+    /// On most of the targets the behavior of `stdcall` and similar calling conventions is not
     /// defined at all, but was previously accepted due to a bug in the implementation of the
     /// compiler.
     pub UNSUPPORTED_CALLING_CONVENTIONS,

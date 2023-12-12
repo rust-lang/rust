@@ -14,7 +14,7 @@ pub fn f(x: !) -> ! {
 }
 
 pub fn ub() {
-    // This is completely undefined behaviour,
+    // This is completely undefined behavior,
     // but we still want to make sure it compiles.
     let x: ! = unsafe {
         std::mem::transmute::<Foo, !>(Foo)

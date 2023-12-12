@@ -1523,7 +1523,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         debug!(?id_args);
 
         // This zip may have several times the same lifetime in `args` paired with a different
-        // lifetime from `id_args`. Simply `collect`ing the iterator is the correct behaviour:
+        // lifetime from `id_args`. Simply `collect`ing the iterator is the correct behavior:
         // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
         let map = args.iter().zip(id_args).collect();
         debug!("map = {:#?}", map);

@@ -7,7 +7,7 @@ use super::{
     ModelSelector,
     RequestDescription,
     MethodDescription,
-    ModelBehaviour,
+    ModelBehavior,
     ModelRequestGraph,
     DelayChoice,
     Holding,

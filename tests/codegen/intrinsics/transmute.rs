@@ -433,7 +433,7 @@ pub unsafe fn check_unit_from_never(x: ZstNever) -> () {
 pub unsafe fn check_maybe_uninit_pair(
     x: (MaybeUninit<u16>, MaybeUninit<u64>),
 ) -> (MaybeUninit<i64>, MaybeUninit<i16>) {
-    // Thanks to `MaybeUninit` this is actually defined behaviour,
+    // Thanks to `MaybeUninit` this is actually defined behavior,
     // unlike the examples above with pairs of primitives.
 
     // CHECK: store i16 %x.0

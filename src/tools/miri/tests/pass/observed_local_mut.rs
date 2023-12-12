@@ -5,7 +5,7 @@
 // 39bb1254d1eaf74f45a4e741097e33fc942168d5.
 //
 // As written, it might be considered UB in compiled Rust, but of course Miri gives it a safe,
-// deterministic behaviour (one that might not correspond with how an eventual Rust spec would
+// deterministic behavior (one that might not correspond with how an eventual Rust spec would
 // defined this).
 //
 // An alternative way to write the test without `unsafe` would be to use `Cell<i32>`, but it would

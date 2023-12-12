@@ -2,13 +2,13 @@
 //! based on Dynamic Race Detection for C++ ("the paper"):
 //! <https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf>
 //!
-//! This implementation will never generate weak memory behaviours forbidden by the C++11 model,
-//! but it is incapable of producing all possible weak behaviours allowed by the model. There are
-//! certain weak behaviours observable on real hardware but not while using this.
+//! This implementation will never generate weak memory behaviors forbidden by the C++11 model,
+//! but it is incapable of producing all possible weak behaviors allowed by the model. There are
+//! certain weak behaviors observable on real hardware but not while using this.
 //!
 //! Note that this implementation does not fully take into account of C++20's memory model revision to SC accesses
 //! and fences introduced by P0668 (<https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0668r5.html>).
-//! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
+//! This implementation is not fully correct under the revised C++20 model and may generate behaviors C++20
 //! disallows (<https://github.com/rust-lang/miri/issues/2301>).
 //!
 //! A modification is made to the paper's model to partially address C++20 changes.
@@ -17,7 +17,7 @@
 //! load to the first, as a result of C++20's coherence-ordered before rules.
 //!
 //! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
-//! `std::atomic<T>` API). It is therefore possible for this implementation to generate behaviours never observable when the
+//! `std::atomic<T>` API). It is therefore possible for this implementation to generate behaviors never observable when the
 //! same program is compiled and run natively. Unfortunately, no literature exists at the time of writing which proposes
 //! an implementable and C++20-compatible relaxed memory model that supports all atomic operation existing in Rust. The closest one is
 //! A Promising Semantics for Relaxed-Memory Concurrency by Jeehoon Kang et al. (<https://www.cs.tau.ac.il/~orilahav/papers/popl17.pdf>)
@@ -96,7 +96,7 @@ pub type AllocState = StoreBufferAlloc;
 
 // Each store buffer must be bounded otherwise it will grow indefinitely.
 // However, bounding the store buffer means restricting the amount of weak
-// behaviours observable. The author picked 128 as a good tradeoff
+// behaviors observable. The author picked 128 as a good tradeoff
 // so we follow them here.
 const STORE_BUFFER_LIMIT: usize = 128;
 
@@ -171,7 +171,7 @@ impl StoreBufferAlloc {
     /// When a non-atomic access happens on a location that has been atomically accessed
     /// before without data race, we can determine that the non-atomic access fully happens
     /// after all the prior atomic accesses so the location no longer needs to exhibit
-    /// any weak memory behaviours until further atomic accesses.
+    /// any weak memory behaviors until further atomic accesses.
     pub fn memory_accessed(&self, range: AllocRange, global: &DataRaceState) {
         if !global.ongoing_action_data_race_free() {
             let mut buffers = self.store_buffers.borrow_mut();
@@ -186,7 +186,7 @@ impl StoreBufferAlloc {
                     buffers.remove_pos_range(pos_range);
                 }
                 AccessType::Empty(_) => {
-                    // The range had no weak behaviours attached, do nothing
+                    // The range had no weak behaviors attached, do nothing
                 }
             }
         }

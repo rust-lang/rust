@@ -493,8 +493,8 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
 
             // FIXME: The code below had debug messages claiming to add items to a
             // particular end of the worklist, but was confused about which end was
-            // which. The existing behaviour has been preserved for now, but it's
-            // unclear what the intended behaviour was.
+            // which. The existing behavior has been preserved for now, but it's
+            // unclear what the intended behavior was.
 
             if self.basic_coverage_blocks.successors[successor].len() > 1 {
                 context.worklist.push_back(successor);

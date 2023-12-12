@@ -1,4 +1,4 @@
-//! This test checks the behaviour of walking into binders
+//! This test checks the behavior of walking into binders
 //! and normalizing something behind them actually works.
 
 // edition: 2021

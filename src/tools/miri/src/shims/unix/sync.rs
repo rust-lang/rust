@@ -12,7 +12,7 @@ use crate::*;
 
 /// A flag that allows to distinguish `PTHREAD_MUTEX_NORMAL` from
 /// `PTHREAD_MUTEX_DEFAULT`. Since in `glibc` they have the same numeric values,
-/// but different behaviour, we need a way to distinguish them. We do this by
+/// but different behavior, we need a way to distinguish them. We do this by
 /// setting this bit flag to the `PTHREAD_MUTEX_NORMAL` mutexes. See the comment
 /// in `pthread_mutexattr_settype` function.
 const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
@@ -302,7 +302,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // In `glibc` implementation, the numeric values of
             // `PTHREAD_MUTEX_NORMAL` and `PTHREAD_MUTEX_DEFAULT` are equal.
             // However, a mutex created by explicitly passing
-            // `PTHREAD_MUTEX_NORMAL` type has in some cases different behaviour
+            // `PTHREAD_MUTEX_NORMAL` type has in some cases different behavior
             // from the default mutex for which the type was not explicitly
             // specified. For a more detailed discussion, please see
             // https://github.com/rust-lang/miri/issues/1419.

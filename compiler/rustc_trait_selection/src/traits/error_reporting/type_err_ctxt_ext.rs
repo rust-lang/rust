@@ -723,7 +723,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
                         // implemented, and fallback has occurred, then it could be due to a
                         // variable that used to fallback to `()` now falling back to `!`. Issue a
-                        // note informing about the change in behaviour.
+                        // note informing about the change in behavior.
                         if trait_predicate.skip_binder().self_ty().is_never()
                             && self.fallback_has_occurred
                         {

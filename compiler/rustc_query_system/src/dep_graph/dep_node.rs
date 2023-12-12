@@ -233,7 +233,7 @@ pub struct DepKindStruct<Tcx: DepContext> {
     pub is_eval_always: bool,
 
     /// Whether the query key can be recovered from the hashed fingerprint.
-    /// See [DepNodeParams] trait for the behaviour of each key type.
+    /// See [DepNodeParams] trait for the behavior of each key type.
     pub fingerprint_style: FingerprintStyle,
 
     /// The red/green evaluation system will try to mark a specific DepNode in the

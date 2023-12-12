@@ -68,7 +68,7 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
         let sess = &cx.tcx.sess.parse_sess;
         let mut err = sess
             .span_diagnostic
-            .struct_span_warn(span, "custom classes in code blocks will change behaviour");
+            .struct_span_warn(span, "custom classes in code blocks will change behavior");
         add_feature_diagnostics_for_issue(
             &mut err,
             sess,

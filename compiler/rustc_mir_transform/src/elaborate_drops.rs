@@ -53,7 +53,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
         let def_id = body.source.def_id();
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        // For types that do not need dropping, the behaviour is trivial. So we only need to track
+        // For types that do not need dropping, the behavior is trivial. So we only need to track
         // init/uninit for types that do need dropping.
         let move_data =
             MoveData::gather_moves(body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));

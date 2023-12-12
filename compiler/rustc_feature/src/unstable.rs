@@ -363,7 +363,7 @@ declare_features! (
     (unstable, c_unwind, "1.52.0", Some(74990)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
-    /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
+    /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behavior.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
     (unstable, cfg_relocation_model, "1.73.0", Some(114929)),

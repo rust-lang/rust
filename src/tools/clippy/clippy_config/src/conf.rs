@@ -1,5 +1,5 @@
 use crate::msrvs::Msrv;
-use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, Rename};
+use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehavior, Rename};
 use crate::ClippyConfiguration;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::Session;
@@ -396,7 +396,7 @@ define_Conf! {
     ///
     /// Whether the matches should be considered by the lint, and whether there should
     /// be filtering for common types.
-    (matches_for_let_else: MatchLintBehaviour = MatchLintBehaviour::WellKnownTypes),
+    (matches_for_let_else: MatchLintBehavior = MatchLintBehavior::WellKnownTypes),
     /// Lint: CARGO_COMMON_METADATA.
     ///
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.

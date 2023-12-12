@@ -9,7 +9,7 @@
 // mut_ref_in_final.rs).
 
 const fn helper() -> Option<&'static mut i32> { unsafe {
-    // Undefined behaviour (integer as pointer), who doesn't love tests like this.
+    // Undefined behavior (integer as pointer), who doesn't love tests like this.
     Some(&mut *(42 as *mut i32))
 } }
 // The error is an evaluation error and not a validation error, so the error is reported
@@ -18,7 +18,7 @@ const A: Option<&mut i32> = helper(); //~ ERROR it is undefined behavior to use 
 //~^ encountered mutable reference in a `const`
 
 const fn helper2() -> Option<&'static mut i32> { unsafe {
-    // Undefined behaviour (dangling pointer), who doesn't love tests like this.
+    // Undefined behavior (dangling pointer), who doesn't love tests like this.
     Some(&mut *(&mut 42 as *mut i32))
 } }
 const B: Option<&mut i32> = helper2(); //~ ERROR encountered dangling pointer in final constant

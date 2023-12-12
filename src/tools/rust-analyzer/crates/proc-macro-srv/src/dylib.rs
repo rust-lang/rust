@@ -57,7 +57,7 @@ fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
 /// Usage of RTLD_DEEPBIND
 /// [here](https://github.com/fedochet/rust-proc-macro-panic-inside-panic-expample/issues/1)
 ///
-/// It seems that on Windows that behaviour is default, so we do nothing in that case.
+/// It seems that on Windows that behavior is default, so we do nothing in that case.
 #[cfg(windows)]
 fn load_library(file: &Path) -> Result<Library, libloading::Error> {
     unsafe { Library::new(file) }

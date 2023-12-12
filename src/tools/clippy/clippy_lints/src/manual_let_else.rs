@@ -1,6 +1,6 @@
 use crate::question_mark::{QuestionMark, QUESTION_MARK};
 use clippy_config::msrvs;
-use clippy_config::types::MatchLintBehaviour;
+use clippy_config::types::MatchLintBehavior;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::source::snippet_with_context;
@@ -72,7 +72,7 @@ impl<'tcx> QuestionMark {
                     }
                 },
                 IfLetOrMatch::Match(match_expr, arms, source) => {
-                    if self.matches_behaviour == MatchLintBehaviour::Never {
+                    if self.matches_behavior == MatchLintBehavior::Never {
                         return;
                     }
                     if source != MatchSource::Normal {
@@ -87,7 +87,7 @@ impl<'tcx> QuestionMark {
                     if arms.iter().any(|arm| arm.guard.is_some()) {
                         return;
                     }
-                    let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
+                    let check_types = self.matches_behavior == MatchLintBehavior::WellKnownTypes;
                     let diverging_arm_opt = arms.iter().enumerate().find(|(_, arm)| {
                         is_never_expr(cx, arm.body).is_some() && pat_allowed_for_else(cx, arm.pat, check_types)
                     });

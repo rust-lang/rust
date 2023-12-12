@@ -141,7 +141,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                         reachable_set.into_iter().filter_map(|&local_def_id| {
                             // Do the same filtering that rustc does:
                             // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
-                            // Otherwise it may cause unexpected behaviours and ICEs
+                            // Otherwise it may cause unexpected behaviors and ICEs
                             // (https://github.com/rust-lang/rust/issues/86261).
                             let is_reachable_non_generic = matches!(
                                 tcx.hir().get(tcx.local_def_id_to_hir_id(local_def_id)),

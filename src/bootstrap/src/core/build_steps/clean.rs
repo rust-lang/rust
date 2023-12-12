@@ -116,7 +116,7 @@ fn clean(build: &Build, all: bool, stage: Option<u32>) {
         return;
     }
 
-    // Follow the default behaviour
+    // Follow the default behavior
     clean_default(build);
 }
 

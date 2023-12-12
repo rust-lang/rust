@@ -18,7 +18,7 @@ use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
-use crate::prepare_behaviour_dump_dir;
+use crate::prepare_behavior_dump_dir;
 use crate::utils::cache::{Cache, Interned, INTERNER};
 use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
 use crate::utils::helpers::{libdir, linker_flags, output, t, LldThreads};
@@ -1790,7 +1790,7 @@ impl<'a> Builder<'a> {
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
         if self.config.dump_bootstrap_shims {
-            prepare_behaviour_dump_dir(&self.build);
+            prepare_behavior_dump_dir(&self.build);
 
             cargo
                 .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))

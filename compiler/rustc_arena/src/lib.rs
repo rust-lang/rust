@@ -687,7 +687,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     }
 }
 
-// Marker types that let us give different behaviour for arenas allocating
+// Marker types that let us give different behavior for arenas allocating
 // `Copy` types vs `!Copy` types.
 pub struct IsCopy;
 pub struct IsNotCopy;

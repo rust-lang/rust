@@ -25,7 +25,7 @@ fn do_bar(
 
 // If the first argument doesn't fit on the same line with the function name,
 // the whole list should probably be pushed to the next line with hanging
-// indent. That's not what happens though, so check current behaviour instead.
+// indent. That's not what happens though, so check current behavior instead.
 // In any case, it should maintain single argument per line.
 fn do_this_that_and_the_other_thing(
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: u8,

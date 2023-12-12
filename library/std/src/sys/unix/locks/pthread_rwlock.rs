@@ -55,7 +55,7 @@ impl Drop for AllocatedRwLock {
         // On DragonFly pthread_rwlock_destroy() returns EINVAL if called on a
         // rwlock that was just initialized with
         // libc::PTHREAD_RWLOCK_INITIALIZER. Once it is used (locked/unlocked)
-        // or pthread_rwlock_init() is called, this behaviour no longer occurs.
+        // or pthread_rwlock_init() is called, this behavior no longer occurs.
         if cfg!(target_os = "dragonfly") {
             debug_assert!(r == 0 || r == libc::EINVAL);
         } else {

@@ -1,6 +1,6 @@
 // edition:2021
 // gate-test-anonymous_lifetime_in_impl_trait
-// Verify the behaviour of `feature(anonymous_lifetime_in_impl_trait)`.
+// Verify the behavior of `feature(anonymous_lifetime_in_impl_trait)`.
 
 mod elided {
     fn f(_: impl Iterator<Item = &()>) {}

@@ -421,7 +421,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// line.
     ///
     /// It is expected that the provided import is nested - this isn't checked by the
-    /// function. If this invariant is not upheld, this function's behaviour will be unexpected
+    /// function. If this invariant is not upheld, this function's behavior will be unexpected
     /// as characters expected by span manipulations won't be present.
     fn add_suggestion_for_duplicate_nested_use(
         &self,

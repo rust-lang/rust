@@ -577,8 +577,8 @@ trait ChainFormatter {
     fn pure_root(&mut self) -> Option<String>;
 }
 
-// Data and behaviour that is shared by both chain formatters. The concrete
-// formatters can delegate much behaviour to `ChainFormatterShared`.
+// Data and behavior that is shared by both chain formatters. The concrete
+// formatters can delegate much behavior to `ChainFormatterShared`.
 struct ChainFormatterShared<'a> {
     // The current working set of child items.
     children: &'a [ChainItem],

@@ -99,7 +99,7 @@ fn tricky_no_clash() {
 
         // The case of a no_mangle name colliding with an extern decl (see #28179) is related but
         // shouldn't be reported by ClashingExternDeclarations, because this is an example of
-        // unmangled name clash causing bad behaviour in functions with a defined body.
+        // unmangled name clash causing bad behavior in functions with a defined body.
         fn no_mangle_name() -> u32;
     }
 }

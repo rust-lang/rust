@@ -108,7 +108,7 @@ pub trait Translate {
                 // Always yeet out for errors on debug (unless
                 // `RUSTC_TRANSLATION_NO_DEBUG_ASSERT` is set in the environment - this allows
                 // local runs of the test suites, of builds with debug assertions, to test the
-                // behaviour in a normal build).
+                // behavior in a normal build).
                 Some(Err(primary))
                     if cfg!(debug_assertions)
                         && env::var("RUSTC_TRANSLATION_NO_DEBUG_ASSERT").is_err() =>

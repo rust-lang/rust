@@ -303,7 +303,7 @@ where
 }
 
 // This function requires the CGUs to be sorted by name on input, and ensures
-// they are sorted by name on return, for deterministic behaviour.
+// they are sorted by name on return, for deterministic behavior.
 fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut Vec<CodegenUnit<'tcx>>,

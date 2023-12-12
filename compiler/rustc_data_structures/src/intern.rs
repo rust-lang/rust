@@ -29,7 +29,7 @@ impl<'a, T> Interned<'a, T> {
     /// and thus be unique, and it *must* remain unique in the future. This
     /// function has `_unchecked` in the name but is not `unsafe`, because if
     /// the uniqueness condition is violated condition it will cause incorrect
-    /// behaviour but will not affect memory safety.
+    /// behavior but will not affect memory safety.
     #[inline]
     pub const fn new_unchecked(t: &'a T) -> Self {
         Interned(t, private::PrivateZst)

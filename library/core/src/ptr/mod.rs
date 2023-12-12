@@ -97,7 +97,7 @@
 //! **This section is *non-normative* and is part of the [Strict Provenance][] experiment.**
 //!
 //! Pointers are not *simply* an "integer" or "address". For instance, it's uncontroversial
-//! to say that a Use After Free is clearly Undefined Behaviour, even if you "get lucky"
+//! to say that a Use After Free is clearly Undefined Behavior, even if you "get lucky"
 //! and the freed memory gets reallocated before your read/write (in fact this is the
 //! worst-case scenario, UAFs would be much less concerning if this didn't happen!).
 //! To rationalize this claim, pointers need to somehow be *more* than just their addresses:
@@ -205,7 +205,7 @@
 //! ## Using Strict Provenance
 //!
 //! Most code needs no changes to conform to strict provenance, as the only really concerning
-//! operation that *wasn't* obviously already Undefined Behaviour is casts from usize to a
+//! operation that *wasn't* obviously already Undefined Behavior is casts from usize to a
 //! pointer. For code which *does* cast a usize to a pointer, the scope of the change depends
 //! on exactly what you're doing.
 //!
@@ -259,7 +259,7 @@
 //! special attention at all, because they're generally accessing memory outside the scope of
 //! "the abstract machine", or already using "I know what I'm doing" annotations like "volatile".
 //!
-//! Under [Strict Provenance] it is Undefined Behaviour to:
+//! Under [Strict Provenance] it is Undefined Behavior to:
 //!
 //! * Access memory through a pointer that does not have provenance over that memory.
 //!
@@ -986,7 +986,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
 }
 
-/// Same behaviour and safety conditions as [`swap_nonoverlapping`]
+/// Same behavior and safety conditions as [`swap_nonoverlapping`]
 ///
 /// LLVM can vectorize this (at least it can for the power-of-two-sized types
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.

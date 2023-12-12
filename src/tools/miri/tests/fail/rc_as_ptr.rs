@@ -15,6 +15,6 @@ fn main() {
 
     drop(strong);
     // But not any more. We can do Weak::as_raw(&weak), but accessing the pointer would lead to
-    // undefined behaviour.
+    // undefined behavior.
     assert_eq!(42, **unsafe { &*Weak::as_ptr(&weak) }); //~ ERROR: has been freed
 }

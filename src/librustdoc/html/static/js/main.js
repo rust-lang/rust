@@ -1173,7 +1173,7 @@ function preLoadCss(cssUrl) {
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(document.activeElement) &&
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(event.relatedTarget)
         ) {
-            // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
+            // Work around a difference in the focus behavior between Firefox, Chrome, and Safari.
             // When I click the button on an already-opened tooltip popover, Safari
             // hides the popover and then immediately shows it again, while everyone else hides it
             // and it stays hidden.

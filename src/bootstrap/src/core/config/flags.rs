@@ -121,7 +121,7 @@ pub struct Flags {
     #[clap(value_enum, default_value_t=Warnings::Default, value_name = "deny|warn")]
     /// if value is deny, will deny warnings
     /// if value is warn, will emit warnings
-    /// otherwise, use the default configured behaviour
+    /// otherwise, use the default configured behavior
     pub warnings: Warnings,
 
     #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "FORMAT")]

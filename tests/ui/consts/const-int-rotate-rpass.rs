@@ -6,7 +6,7 @@ const RIGHT: u32 = 0xb301u32.rotate_right(8);
 // Rotating these should make no difference
 //
 // We test using 124 bits because to ensure that overlong bit shifts do
-// not cause undefined behaviour. See #10183.
+// not cause undefined behavior. See #10183.
 const LEFT_OVERFLOW: i16 = 0i16.rotate_left(124);
 const RIGHT_OVERFLOW: i16 = 0i16.rotate_right(124);
 const ONE_LEFT_OVERFLOW: u16 = 1u16.rotate_left(124);

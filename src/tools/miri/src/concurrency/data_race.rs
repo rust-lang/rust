@@ -12,7 +12,7 @@
 //! The implementation also models races with memory allocation and deallocation via treating allocation and
 //! deallocation as a type of write internally for detecting data-races.
 //!
-//! Weak memory orders are explored but not all weak behaviours are exhibited, so it can still miss data-races
+//! Weak memory orders are explored but not all weak behaviors are exhibited, so it can still miss data-races
 //! but should not report false-positives
 //!
 //! Data-race definition from(<https://en.cppreference.com/w/cpp/language/memory_model#Threads_and_data_races>):

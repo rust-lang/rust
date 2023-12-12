@@ -820,7 +820,7 @@ E.g., `&&Some(foo)` matches, `Foo(4, Bar)` does not.
 
 Where a function call has a single argument, and that argument is formatted
 across multiple-lines, format the outer call as if it were a single-line call,
-if the result fits. Apply the same combining behaviour to any similar
+if the result fits. Apply the same combining behavior to any similar
 expressions which have multi-line, block-indented lists of sub-expressions
 delimited by parentheses (e.g., macros or tuple struct literals). E.g.,
 

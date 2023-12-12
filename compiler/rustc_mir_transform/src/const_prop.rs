@@ -804,7 +804,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             std::mem::take(&mut self.ecx.machine.written_only_inside_own_block_locals);
 
         // This loop can get very hot for some bodies: it check each local in each bb.
-        // To avoid this quadratic behaviour, we only clear the locals that were modified inside
+        // To avoid this quadratic behavior, we only clear the locals that were modified inside
         // the current block.
         for local in written_only_inside_own_block_locals.drain() {
             debug_assert_eq!(

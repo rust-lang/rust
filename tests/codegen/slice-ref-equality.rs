@@ -9,7 +9,7 @@ use std::num::{NonZeroI16, NonZeroU32};
 // This was originally fixed by ensuring it generates a single bcmp,
 // but we now generate it as a load+icmp instead. `is_zero_slice` was
 // tweaked to still test the case of comparison against a slice,
-// and `is_zero_array` tests the new array-specific behaviour.
+// and `is_zero_array` tests the new array-specific behavior.
 // The optimization was then extended to short slice-to-array comparisons,
 // so the first test here now has a long slice to still get the bcmp.
 

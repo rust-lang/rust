@@ -12,7 +12,7 @@ value, which can only depend on the values of the function parameters, and is
 not affected by changes to the observable state of the program.
 
 Applying the `#[ffi_const]` attribute to a function that violates these
-requirements is undefined behaviour.
+requirements is undefined behavior.
 
 This attribute enables Rust to perform common optimizations, like sub-expression
 elimination, and it can avoid emitting some calls in repeated invocations of the

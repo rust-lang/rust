@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-ignore-leaks -Zmiri-preemption-rate=0
 
-// Tests showing weak memory behaviours are exhibited. All tests
-// return true when the desired behaviour is seen.
+// Tests showing weak memory behaviors are exhibited. All tests
+// return true when the desired behavior is seen.
 // This is scheduler and pseudo-RNG dependent, so each test is
 // run multiple times until one try returns true.
 // Spurious failure is possible, if you are really unlucky with
