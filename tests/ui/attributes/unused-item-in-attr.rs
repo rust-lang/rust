@@ -1,5 +1,5 @@
 #[w = { extern crate alloc; }]
-//~^ ERROR unexpected expression: `{
+//~^ ERROR attribute value must be a literal
 //~| ERROR cannot find attribute `w` in this scope
 fn f() {}
 
