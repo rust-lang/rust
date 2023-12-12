@@ -581,8 +581,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             // Either `body.is_none()` or `is_never_pattern` here.
             if !is_never_pattern {
-                let suggestion = span.shrink_to_hi();
-                self.tcx.sess.emit_err(MatchArmWithNoBody { span, suggestion });
+                if self.tcx.features().never_patterns {
+                    // If the feature is off we already emitted the error after parsing.
+                    let suggestion = span.shrink_to_hi();
+                    self.tcx.sess.emit_err(MatchArmWithNoBody { span, suggestion });
+                }
             } else if let Some(body) = &arm.body {
                 self.tcx.sess.emit_err(NeverPatternWithBody { span: body.span });
                 guard = None;

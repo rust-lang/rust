@@ -554,7 +554,34 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
-    gate_all!(never_patterns, "`!` patterns are experimental");
+
+    if !visitor.features.never_patterns {
+        if let Some(spans) = spans.get(&sym::never_patterns) {
+            for &span in spans {
+                if span.allows_unstable(sym::never_patterns) {
+                    continue;
+                }
+                let sm = sess.source_map();
+                // We gate two types of spans: the span of a `!` pattern, and the span of a
+                // match arm without a body. For the latter we want to give the user a normal
+                // error.
+                if let Ok(snippet) = sm.span_to_snippet(span)
+                    && snippet == "!"
+                {
+                    feature_err(
+                        &sess.parse_sess,
+                        sym::never_patterns,
+                        span,
+                        "`!` patterns are experimental",
+                    )
+                    .emit();
+                } else {
+                    let suggestion = span.shrink_to_hi();
+                    sess.emit_err(errors::MatchArmWithNoBody { span, suggestion });
+                }
+            }
+        }
+    }
 
     if !visitor.features.negative_bounds {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {
