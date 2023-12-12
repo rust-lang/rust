@@ -9,6 +9,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::{FxHashSet, FxHasher};
 use smallvec::SmallVec;
+use stdx::format_to;
 use triomphe::Arc;
 
 use crate::{
@@ -53,13 +54,25 @@ pub struct ImportMap {
     fst: fst::Map<Vec<u8>>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 enum IsTraitAssocItem {
     Yes,
     No,
 }
 
 impl ImportMap {
+    pub fn dump(&self, db: &dyn DefDatabase) -> String {
+        let mut out = String::new();
+        for (k, v) in self.map.iter() {
+            format_to!(out, "{:?} ({:?}) -> ", k, v.1);
+            for v in &v.0 {
+                format_to!(out, "{}:{:?}, ", v.name.display(db.upcast()), v.container);
+            }
+            format_to!(out, "\n");
+        }
+        out
+    }
+
     pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
         let _p = profile::span("import_map_query");
 
@@ -68,26 +81,31 @@ impl ImportMap {
         let mut importables: Vec<_> = map
             .iter()
             // We've only collected items, whose name cannot be tuple field.
-            .flat_map(|(&item, (info, _))| {
-                info.iter()
-                    .map(move |info| (item, info.name.as_str().unwrap().to_ascii_lowercase()))
+            .flat_map(|(&item, (info, is_assoc))| {
+                info.iter().map(move |info| {
+                    (item, *is_assoc, info.name.as_str().unwrap().to_ascii_lowercase())
+                })
             })
             .collect();
-        importables.sort_by(|(_, lhs_name), (_, rhs_name)| lhs_name.cmp(rhs_name));
+        importables.sort_by(|(_, l_is_assoc, lhs_name), (_, r_is_assoc, rhs_name)| {
+            lhs_name.cmp(rhs_name).then_with(|| l_is_assoc.cmp(r_is_assoc))
+        });
         importables.dedup();
 
         // Build the FST, taking care not to insert duplicate values.
         let mut builder = fst::MapBuilder::memory();
-        let iter =
-            importables.iter().enumerate().dedup_by(|(_, (_, lhs)), (_, (_, rhs))| lhs == rhs);
-        for (start_idx, (_, name)) in iter {
+        let iter = importables
+            .iter()
+            .enumerate()
+            .dedup_by(|(_, (_, _, lhs)), (_, (_, _, rhs))| lhs == rhs);
+        for (start_idx, (_, _, name)) in iter {
             let _ = builder.insert(name, start_idx as u64);
         }
 
         Arc::new(ImportMap {
             map,
             fst: builder.into_map(),
-            importables: importables.into_iter().map(|(item, _)| item).collect(),
+            importables: importables.into_iter().map(|(item, _, _)| item).collect(),
         })
     }
 
@@ -332,20 +350,20 @@ impl Query {
     }
 
     /// Checks whether the import map entry matches the query.
-    fn import_matches(
-        &self,
-        db: &dyn DefDatabase,
-        import: &ImportInfo,
-        enforce_lowercase: bool,
-    ) -> bool {
+    fn import_matches(&self, import: &ImportInfo, enforce_lowercase: bool) -> bool {
         let _p = profile::span("import_map::Query::import_matches");
 
         // FIXME: Can we get rid of the alloc here?
-        let mut input = import.name.display(db.upcast()).to_string();
+        let input = import.name.to_smol_str();
+        let mut _s_slot;
         let case_insensitive = enforce_lowercase || !self.case_sensitive;
-        if case_insensitive {
-            input.make_ascii_lowercase();
-        }
+        let input = if case_insensitive {
+            _s_slot = String::from(input);
+            _s_slot.make_ascii_lowercase();
+            &*_s_slot
+        } else {
+            &*input
+        };
 
         let query_string = if case_insensitive { &self.lowercased } else { &self.query };
 
@@ -355,7 +373,7 @@ impl Query {
             SearchMode::Fuzzy => {
                 let mut input_chars = input.chars();
                 for query_char in query_string.chars() {
-                    if input_chars.find(|&it| it == query_char).is_none() {
+                    if !input_chars.any(|it| it == query_char) {
                         return false;
                     }
                 }
@@ -376,6 +394,7 @@ pub fn search_dependencies(
     let _p = profile::span("search_dependencies").detail(|| format!("{query:?}"));
 
     let graph = db.crate_graph();
+
     let import_maps: Vec<_> =
         graph[krate].dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
 
@@ -390,22 +409,28 @@ pub fn search_dependencies(
 
     let mut res = FxHashSet::default();
     let mut common_importable_data_scratch = vec![];
+    // FIXME: Improve this, its rather unreadable and does duplicate amount of work
     while let Some((_, indexed_values)) = stream.next() {
         for &IndexedValue { index, value } in indexed_values {
             let import_map = &import_maps[index];
-            let importables @ [importable, ..] = &import_map.importables[value as usize..] else {
+            let importables = &import_map.importables[value as usize..];
+
+            // Find the first item in this group that has a matching assoc mode and slice the rest away
+            let Some(importable) =
+                importables.iter().position(|it| query.matches_assoc_mode(import_map.map[it].1))
+            else {
+                continue;
+            };
+            let importables @ [importable, ..] = &importables[importable..] else {
                 continue;
             };
 
-            let &(ref importable_data, is_trait_assoc_item) = &import_map.map[importable];
-            if !query.matches_assoc_mode(is_trait_assoc_item) {
-                continue;
-            }
-
+            // Fetch all the known names of this importable item (to handle import aliases/renames)
             common_importable_data_scratch.extend(
-                importable_data
+                import_map.map[importable]
+                    .0
                     .iter()
-                    .filter(|&info| query.import_matches(db, info, true))
+                    .filter(|&info| query.import_matches(info, true))
                     // Name shared by the importable items in this group.
                     .map(|info| info.name.to_smol_str()),
             );
@@ -419,6 +444,7 @@ pub fn search_dependencies(
                 common_importable_data_scratch.drain(..).flat_map(|common_importable_name| {
                     // Add the items from this name group. Those are all subsequent items in
                     // `importables` whose name match `common_importable_name`.
+
                     importables
                         .iter()
                         .copied()
@@ -434,11 +460,8 @@ pub fn search_dependencies(
                         .filter(move |item| {
                             !query.case_sensitive || {
                                 // we've already checked the common importables name case-insensitively
-                                let &(ref import_infos, assoc_mode) = &import_map.map[item];
-                                query.matches_assoc_mode(assoc_mode)
-                                    && import_infos
-                                        .iter()
-                                        .any(|info| query.import_matches(db, info, false))
+                                let &(ref import_infos, _) = &import_map.map[item];
+                                import_infos.iter().any(|info| query.import_matches(info, false))
                             }
                         })
                 });
