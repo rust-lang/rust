@@ -196,5 +196,34 @@ LL | | /// ```
    |
    = help: there is an attribute with a similar name: `edition2018`
 
-error: aborting due to 13 previous errors
+error: unknown attribute `rust2018`
+  --> $DIR/check-attr.rs:51:1
+   |
+LL | / /// b
+LL | |
+LL | |
+LL | | ///
+LL | | /// ```rust2018 shouldpanic
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: there is an attribute with a similar name: `edition2018`
+
+error: unknown attribute `shouldpanic`
+  --> $DIR/check-attr.rs:51:1
+   |
+LL | / /// b
+LL | |
+LL | |
+LL | | ///
+LL | | /// ```rust2018 shouldpanic
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: there is an attribute with a similar name: `should_panic`
+   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+
+error: aborting due to 15 previous errors
 

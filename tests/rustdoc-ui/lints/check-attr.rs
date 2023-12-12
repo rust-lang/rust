@@ -47,3 +47,12 @@ pub fn b() {}
 /// boo
 /// ```
 pub fn c() {}
+
+/// b
+//~^ ERROR
+//~| ERROR
+///
+/// ```rust2018 shouldpanic
+/// boo
+/// ```
+pub fn d() {}
