@@ -283,24 +283,6 @@ impl TyKind {
         )
     }
 
-    /// A scalar type is one that denotes an atomic datum, with no sub-components.
-    /// (A RawPtr is scalar because it represents a non-managed pointer, so its
-    /// contents are abstract to rustc.)
-    #[inline]
-    pub fn is_scalar(&self) -> bool {
-        matches!(
-            self,
-            TyKind::RigidTy(RigidTy::Bool)
-                | TyKind::RigidTy(RigidTy::Char)
-                | TyKind::RigidTy(RigidTy::Int(_))
-                | TyKind::RigidTy(RigidTy::Float(_))
-                | TyKind::RigidTy(RigidTy::Uint(_))
-                | TyKind::RigidTy(RigidTy::FnDef(..))
-                | TyKind::RigidTy(RigidTy::FnPtr(_))
-                | TyKind::RigidTy(RigidTy::RawPtr(..))
-        )
-    }
-
     #[inline]
     pub fn is_float(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Float(_)))
@@ -871,7 +853,7 @@ pub struct Binder<T> {
 
 impl<T> Binder<T> {
     /// Create a new binder with the given bound vars.
-    pub fn new(value: T, bound_vars: Vec<BoundVariableKind>) -> Self {
+    pub fn bind_with_vars(value: T, bound_vars: Vec<BoundVariableKind>) -> Self {
         Binder { value, bound_vars }
     }
 

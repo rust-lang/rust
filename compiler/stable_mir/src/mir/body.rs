@@ -278,10 +278,6 @@ impl BinOp {
     /// Return the type of this operation for the given input Ty.
     /// This function does not perform type checking, and it currently doesn't handle SIMD.
     pub fn ty(&self, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
-        let lhs_kind = lhs_ty.kind();
-        let rhs_kind = rhs_ty.kind();
-        assert!(lhs_kind.is_primitive() || lhs_kind.is_any_ptr());
-        assert!(rhs_kind.is_primitive() || rhs_kind.is_any_ptr());
         match self {
             BinOp::Add
             | BinOp::AddUnchecked
@@ -295,13 +291,23 @@ impl BinOp {
             | BinOp::BitAnd
             | BinOp::BitOr => {
                 assert_eq!(lhs_ty, rhs_ty);
+                assert!(lhs_ty.kind().is_primitive());
                 lhs_ty
             }
-            BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked | BinOp::Offset => {
+            BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => {
+                assert!(lhs_ty.kind().is_primitive());
+                assert!(rhs_ty.kind().is_primitive());
+                lhs_ty
+            }
+            BinOp::Offset => {
+                assert!(lhs_ty.kind().is_raw_ptr());
+                assert!(rhs_ty.kind().is_integral());
                 lhs_ty
             }
             BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
                 assert_eq!(lhs_ty, rhs_ty);
+                let lhs_kind = lhs_ty.kind();
+                assert!(lhs_kind.is_primitive() || lhs_kind.is_raw_ptr() || lhs_kind.is_fn_ptr());
                 Ty::bool_ty()
             }
         }
