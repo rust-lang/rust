@@ -832,13 +832,15 @@ pub(crate) fn format_impl(
 
     if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, item)? {
         result.push_str(&where_clause_str);
-        if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
-            // if the where_clause contains extra comments AND
-            // there is only one where-clause predicate
-            // recover the suppressed comma in single line where_clause formatting
+        if where_clause_str.contains('\n') {
+            // If there is only one where-clause predicate
+            // and the where-clause spans multiple lines,
+            // then recover the suppressed comma in single line where-clause formatting
             if generics.where_clause.predicates.len() == 1 {
                 result.push(',');
             }
+        }
+        if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
             result.push_str(&format!("{sep}{{{sep}}}"));
         } else {
             result.push_str(" {}");
