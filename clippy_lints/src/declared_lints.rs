@@ -215,6 +215,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::index_refutable_slice::INDEX_REFUTABLE_SLICE_INFO,
     crate::indexing_slicing::INDEXING_SLICING_INFO,
     crate::indexing_slicing::OUT_OF_BOUNDS_INDEXING_INFO,
+    crate::ineffective_open_options::INEFFECTIVE_OPEN_OPTIONS_INFO,
     crate::infinite_iter::INFINITE_ITER_INFO,
     crate::infinite_iter::MAYBE_INFINITE_ITER_INFO,
     crate::inherent_impl::MULTIPLE_INHERENT_IMPL_INFO,
