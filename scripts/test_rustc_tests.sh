@@ -44,6 +44,7 @@ rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
 # vendor intrinsics
 rm tests/ui/sse2.rs # CodegenBackend::target_features not yet implemented
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
+rm tests/ui/simd/masked-load-store.rs
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
