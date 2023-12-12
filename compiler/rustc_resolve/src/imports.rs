@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             UNUSED_IMPORTS,
                             id,
                             import.span,
-                            msg.to_string(),
+                            msg,
                             BuiltinLintDiagnostics::RedundantImportVisibility {
                                 max_vis: max_vis.to_string(def_id, self.tcx),
                                 span: import.span,

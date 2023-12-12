@@ -30,7 +30,7 @@ impl<'tcx> IntoKind for Const<'tcx> {
     type Kind = ConstKind<'tcx>;
 
     fn kind(self) -> ConstKind<'tcx> {
-        self.kind().clone()
+        self.kind()
     }
 }
 
