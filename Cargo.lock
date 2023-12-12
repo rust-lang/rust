@@ -3853,8 +3853,10 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
+ "directories",
  "rustc_data_structures",
  "rustc_span",
+ "time",
 ]
 
 [[package]]

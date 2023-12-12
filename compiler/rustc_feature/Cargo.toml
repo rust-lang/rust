@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
+directories = "5.0"
+time = { version = "0.3", default-features = false, features = ["alloc", "formatting"] }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_span = { path = "../rustc_span" }
 # tidy-alphabetical-end

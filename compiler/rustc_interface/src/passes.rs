@@ -59,9 +59,12 @@ pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
         rustc_ast_passes::show_span::run(sess.diagnostic(), s, &krate);
     }
 
-    if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
-    }
+    hir_stats::ast_stats(
+        &krate,
+        "PRE EXPANSION AST STATS",
+        "ast-stats-1",
+        sess.opts.unstable_opts.hir_stats,
+    );
 
     Ok(krate)
 }
@@ -287,9 +290,12 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         eprintln!("Post-expansion node count: {}", count_nodes(krate));
     }
 
-    if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats-2");
-    }
+    hir_stats::ast_stats(
+        krate,
+        "POST EXPANSION AST STATS",
+        "ast-stats-2",
+        sess.opts.unstable_opts.hir_stats,
+    );
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {

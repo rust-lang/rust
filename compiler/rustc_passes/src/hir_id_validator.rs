@@ -8,9 +8,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    if tcx.sess.opts.unstable_opts.hir_stats {
-        crate::hir_stats::print_hir_stats(tcx);
-    }
+    crate::hir_stats::hir_stats(tcx, tcx.sess.opts.unstable_opts.hir_stats);
 
     #[cfg(debug_assertions)]
     {

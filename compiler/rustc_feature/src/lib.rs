@@ -26,8 +26,61 @@ mod unstable;
 #[cfg(test)]
 mod tests;
 
+use directories::ProjectDirs;
 use rustc_span::symbol::Symbol;
+use std::env::args_os;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::num::NonZeroU32;
+use std::path::PathBuf;
+use std::sync::OnceLock;
+use std::time::SystemTime;
+use time::OffsetDateTime;
+
+static PROJECT_DIRS: OnceLock<Option<ProjectDirs>> = OnceLock::new();
+static METRICS_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+pub fn project_dirs() -> &'static Option<ProjectDirs> {
+    PROJECT_DIRS.get_or_init(|| ProjectDirs::from("org", "rust-lang", "rustc"))
+}
+
+pub fn metrics_path() -> &'static Option<PathBuf> {
+    METRICS_PATH.get_or_init(|| {
+        if !UnstableFeatures::from_environment(None).is_nightly_build() {
+            // Do not enable in stable.
+            return None;
+        }
+        // Use XDG_CACHE_DIR as it's the closest to correct for log files.
+        let _path = project_dirs().as_ref()?.cache_dir().to_path_buf();
+        // TEST: testing writing directly to the project's directory to avoid accidentally sneaking
+        // files without a clean-up strategy
+        let mut path: PathBuf = "target/tmp/stats-dir/".into();
+        let _ = std::fs::create_dir_all(&path).ok()?;
+        path.push("stats");
+
+        // Add some information about the built project: timestamp, rustc PID and crate name.
+        let now: OffsetDateTime = SystemTime::now().into();
+        let file_now = now
+            .format(
+                &time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]")
+                    .unwrap(),
+            )
+            .unwrap_or_default();
+        let pid = std::process::id();
+        let file = File::options().create(true).append(true).open(&path).ok()?;
+        let mut file = BufWriter::new(file);
+        let mut args = args_os().skip(1);
+        args.find(|arg| arg == "--crate-name");
+        let crate_name = if let Some(name) = args.next() {
+            format!(" - {}", name.to_string_lossy())
+        } else {
+            String::new()
+        };
+        writeln!(file, "{file_now} - {pid}{crate_name}").ok()?;
+
+        Some(path)
+    })
+}
 
 #[derive(Debug, Clone)]
 pub struct Feature {

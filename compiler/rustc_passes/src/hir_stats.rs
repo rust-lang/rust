@@ -6,6 +6,7 @@ use rustc_ast::visit as ast_visit;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{self as ast, AttrId, NodeId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_feature::metrics_path;
 use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::HirId;
@@ -14,6 +15,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::common::to_readable_str;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use std::io::{BufWriter, Error as IOError, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum Id {
@@ -67,7 +69,7 @@ struct StatCollector<'k> {
     seen: FxHashSet<Id>,
 }
 
-pub fn print_hir_stats(tcx: TyCtxt<'_>) {
+pub fn hir_stats(tcx: TyCtxt<'_>, write_to_stderr: bool) {
     let mut collector = StatCollector {
         krate: Some(tcx.hir()),
         nodes: FxHashMap::default(),
@@ -75,16 +77,27 @@ pub fn print_hir_stats(tcx: TyCtxt<'_>) {
     };
     tcx.hir().walk_toplevel_module(&mut collector);
     tcx.hir().walk_attributes(&mut collector);
-    collector.print("HIR STATS", "hir-stats");
+
+    if let Some(path) = metrics_path() {
+        collector.store(path, "hir-stats");
+    }
+    if write_to_stderr {
+        collector.print("HIR STATS", "hir-stats");
+    }
 }
 
-pub fn print_ast_stats(krate: &ast::Crate, title: &str, prefix: &str) {
+pub fn ast_stats(krate: &ast::Crate, title: &str, prefix: &str, write_to_stderr: bool) {
     use rustc_ast::visit::Visitor;
 
     let mut collector =
         StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
-    collector.print(title, prefix);
+    if let Some(path) = metrics_path() {
+        collector.store(path, prefix);
+    }
+    if write_to_stderr {
+        collector.print(title, prefix);
+    }
 }
 
 impl<'k> StatCollector<'k> {
@@ -120,7 +133,61 @@ impl<'k> StatCollector<'k> {
         }
     }
 
+    fn store(&self, path: &std::path::Path, title: &str) {
+        let Ok(file) = std::fs::File::options().create(true).append(true).open(&path) else {
+            // Keep quiet about not being able to write to the file, there's nothing we can do
+            // about it, and the automatic collection of stats is merely "best effort".
+            return;
+        };
+        let file = BufWriter::new(file);
+        let _ = self.write_json_to_output(file, title);
+    }
+
+    fn write_json_to_output(&self, mut output: impl Write, title: &str) -> Result<(), IOError> {
+        // We don't reuse the ASCII output for files because the size baloons quite quickly, and
+        // having a minimally parseable file from the start seems more reasonable.
+        writeln!(output, "{{ \"{title}\": {{")?;
+        let count = self.nodes.len();
+        for (i, (label, node)) in self.nodes.iter().enumerate() {
+            write!(
+                output,
+                "\"{}\": {{ \"count\": {}, \"size\": {}",
+                label,
+                to_readable_str(node.stats.count),
+                to_readable_str(node.stats.size)
+            )?;
+            if !node.subnodes.is_empty() {
+                writeln!(output, ", \"subnodes\": {{")?;
+                let count = node.subnodes.len();
+                for (i, (label, subnode)) in node.subnodes.iter().enumerate() {
+                    writeln!(
+                        output,
+                        "  \"{}\": {{ \"count\": {}, \"size\": {} }}{}",
+                        label,
+                        to_readable_str(subnode.count),
+                        to_readable_str(subnode.size),
+                        if i == count - 1 { "" } else { "," },
+                    )?;
+                }
+                writeln!(output, "}}")?;
+            }
+            writeln!(output, "}}{}", if i == count - 1 { "" } else { "," })?;
+        }
+        writeln!(output, "}} }}")
+    }
+
     fn print(&self, title: &str, prefix: &str) {
+        if let Err(err) = self.write_to_output(std::io::stderr(), title, prefix) {
+            eprintln!("couldn't print {title}: {err}")
+        }
+    }
+
+    fn write_to_output(
+        &self,
+        mut output: impl Write,
+        title: &str,
+        prefix: &str,
+    ) -> Result<(), IOError> {
         // We will soon sort, so the initial order does not matter.
         #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
@@ -128,18 +195,23 @@ impl<'k> StatCollector<'k> {
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
-        eprintln!("{prefix} {title}");
-        eprintln!(
+        writeln!(output, "{prefix} {title}")?;
+        writeln!(
+            output,
             "{} {:<18}{:>18}{:>14}{:>14}",
             prefix, "Name", "Accumulated Size", "Count", "Item Size"
-        );
-        eprintln!("{prefix} ----------------------------------------------------------------");
+        )?;
+        writeln!(
+            output,
+            "{prefix} ----------------------------------------------------------------"
+        )?;
 
         let percent = |m, n| (m * 100) as f64 / n as f64;
 
         for (label, node) in nodes {
             let size = node.stats.count * node.stats.size;
-            eprintln!(
+            writeln!(
+                output,
                 "{} {:<18}{:>10} ({:4.1}%){:>14}{:>14}",
                 prefix,
                 label,
@@ -147,7 +219,7 @@ impl<'k> StatCollector<'k> {
                 percent(size, total_size),
                 to_readable_str(node.stats.count),
                 to_readable_str(node.stats.size)
-            );
+            )?;
             if !node.subnodes.is_empty() {
                 // We will soon sort, so the initial order does not matter.
                 #[allow(rustc::potential_query_instability)]
@@ -156,20 +228,24 @@ impl<'k> StatCollector<'k> {
 
                 for (label, subnode) in subnodes {
                     let size = subnode.count * subnode.size;
-                    eprintln!(
+                    writeln!(
+                        output,
                         "{} - {:<18}{:>10} ({:4.1}%){:>14}",
                         prefix,
                         label,
                         to_readable_str(size),
                         percent(size, total_size),
                         to_readable_str(subnode.count),
-                    );
+                    )?;
                 }
             }
         }
-        eprintln!("{prefix} ----------------------------------------------------------------");
-        eprintln!("{} {:<18}{:>10}", prefix, "Total", to_readable_str(total_size));
-        eprintln!("{prefix}");
+        writeln!(
+            output,
+            "{prefix} ----------------------------------------------------------------"
+        )?;
+        writeln!(output, "{} {:<18}{:>10}", prefix, "Total", to_readable_str(total_size))?;
+        writeln!(output, "{prefix}")
     }
 }
 
