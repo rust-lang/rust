@@ -979,6 +979,7 @@ impl ConstructorSet {
             && !(pcx.is_top_level && matches!(self, Self::NoConstructors))
         {
             // Treat all missing constructors as nonempty.
+            // This clears `missing_empty`.
             missing.append(&mut missing_empty);
         }
 
