@@ -37,59 +37,73 @@ declare_lint_pass!(InvalidReferenceCasting => [INVALID_REFERENCE_CASTING]);
 
 impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        let Some((is_assignment, e)) = is_operation_we_care_about(cx, expr) else {
-            return;
-        };
+        if let Some((e, pat)) = borrow_or_assign(cx, expr) {
+            if matches!(pat, PatternKind::Borrow { mutbl: Mutability::Mut } | PatternKind::Assign) {
+                let init = cx.expr_or_init(e);
 
-        let init = cx.expr_or_init(e);
+                let Some(ty_has_interior_mutability) = is_cast_from_ref_to_mut_ptr(cx, init) else {
+                    return;
+                };
+                let orig_cast = if init.span != e.span { Some(init.span) } else { None };
+                let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
 
-        let Some(ty_has_interior_mutability) = is_cast_from_const_to_mut(cx, init) else {
-            return;
-        };
-        let orig_cast = if init.span != e.span { Some(init.span) } else { None };
-        let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
-
-        cx.emit_spanned_lint(
-            INVALID_REFERENCE_CASTING,
-            expr.span,
-            if is_assignment {
-                InvalidReferenceCastingDiag::AssignToRef { orig_cast, ty_has_interior_mutability }
-            } else {
-                InvalidReferenceCastingDiag::BorrowAsMut { orig_cast, ty_has_interior_mutability }
-            },
-        );
+                cx.emit_spanned_lint(
+                    INVALID_REFERENCE_CASTING,
+                    expr.span,
+                    if pat == PatternKind::Assign {
+                        InvalidReferenceCastingDiag::AssignToRef {
+                            orig_cast,
+                            ty_has_interior_mutability,
+                        }
+                    } else {
+                        InvalidReferenceCastingDiag::BorrowAsMut {
+                            orig_cast,
+                            ty_has_interior_mutability,
+                        }
+                    },
+                );
+            }
+        }
     }
 }
 
-fn is_operation_we_care_about<'tcx>(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PatternKind {
+    Borrow { mutbl: Mutability },
+    Assign,
+}
+
+fn borrow_or_assign<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx Expr<'tcx>,
-) -> Option<(bool, &'tcx Expr<'tcx>)> {
-    fn deref_assign_or_addr_of<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<(bool, &'tcx Expr<'tcx>)> {
-        // &mut <expr>
-        let inner = if let ExprKind::AddrOf(_, Mutability::Mut, expr) = expr.kind {
-            expr
+) -> Option<(&'tcx Expr<'tcx>, PatternKind)> {
+    fn deref_assign_or_addr_of<'tcx>(
+        expr: &'tcx Expr<'tcx>,
+    ) -> Option<(&'tcx Expr<'tcx>, PatternKind)> {
+        // &(mut) <expr>
+        let (inner, pat) = if let ExprKind::AddrOf(_, mutbl, expr) = expr.kind {
+            (expr, PatternKind::Borrow { mutbl })
         // <expr> = ...
         } else if let ExprKind::Assign(expr, _, _) = expr.kind {
-            expr
+            (expr, PatternKind::Assign)
         // <expr> += ...
         } else if let ExprKind::AssignOp(_, expr, _) = expr.kind {
-            expr
+            (expr, PatternKind::Assign)
         } else {
             return None;
         };
 
-        if let ExprKind::Unary(UnOp::Deref, e) = &inner.kind {
-            Some((!matches!(expr.kind, ExprKind::AddrOf(..)), e))
-        } else {
-            None
-        }
+        // *<inner>
+        let ExprKind::Unary(UnOp::Deref, e) = &inner.kind else {
+            return None;
+        };
+        Some((e, pat))
     }
 
     fn ptr_write<'tcx>(
         cx: &LateContext<'tcx>,
         e: &'tcx Expr<'tcx>,
-    ) -> Option<(bool, &'tcx Expr<'tcx>)> {
+    ) -> Option<(&'tcx Expr<'tcx>, PatternKind)> {
         if let ExprKind::Call(path, [arg_ptr, _arg_val]) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
@@ -98,7 +112,7 @@ fn is_operation_we_care_about<'tcx>(
                 Some(sym::ptr_write | sym::ptr_write_volatile | sym::ptr_write_unaligned)
             )
         {
-            Some((true, arg_ptr))
+            Some((arg_ptr, PatternKind::Assign))
         } else {
             None
         }
@@ -107,7 +121,7 @@ fn is_operation_we_care_about<'tcx>(
     deref_assign_or_addr_of(e).or_else(|| ptr_write(cx, e))
 }
 
-fn is_cast_from_const_to_mut<'tcx>(
+fn is_cast_from_ref_to_mut_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     orig_expr: &'tcx Expr<'tcx>,
 ) -> Option<bool> {
@@ -122,12 +136,12 @@ fn is_cast_from_const_to_mut<'tcx>(
 
     let start_ty = cx.typeck_results().node_type(e.hir_id);
     if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
-        // If an UnsafeCell method is involved we need to additionally check the
+        // If an UnsafeCell method is involved, we need to additionally check the
         // inner type for the presence of the Freeze trait (ie does NOT contain
         // an UnsafeCell), since in that case we would incorrectly lint on valid casts.
         //
-        // We also consider non concrete skeleton types (ie generics)
-        // to be an issue since there is no way to make it safe for abitrary types.
+        // Except on the presence of non concrete skeleton types (ie generics)
+        // since there is no way to make it safe for arbitrary types.
         let inner_ty_has_interior_mutability =
             !inner_ty.is_freeze(cx.tcx, cx.param_env) && inner_ty.has_concrete_skeleton();
         (!need_check_freeze || !inner_ty_has_interior_mutability)
