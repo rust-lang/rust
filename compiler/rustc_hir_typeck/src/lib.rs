@@ -283,8 +283,6 @@ fn typeck_with_fallback<'tcx>(
 
     fcx.check_asms();
 
-    fcx.infcx.skip_region_resolution();
-
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds

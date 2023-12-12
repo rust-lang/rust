@@ -141,7 +141,7 @@ fn get_owner_return_paths(
 /// Forbid defining intrinsics in Rust code,
 /// as they must always be defined by the compiler.
 // FIXME: Move this to a more appropriate place.
-pub fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
+pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
         tcx.sess.span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
     }

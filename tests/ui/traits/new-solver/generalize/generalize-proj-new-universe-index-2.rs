@@ -1,7 +1,5 @@
 // compile-flags: -Ztrait-solver=next
 // known-bug: trait-system-refactor-initiative#60
-// dont-check-failure-status
-// dont-check-compiler-stderr
 
 // Generalizing a projection containing an inference variable
 // which cannot be named by the `root_vid` can result in ambiguity.

@@ -479,7 +479,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                 match assoc_item.kind {
                     ty::AssocKind::Fn => {
                         let abi = tcx.fn_sig(assoc_item.def_id).skip_binder().abi();
-                        fn_maybe_err(tcx, assoc_item.ident(tcx).span, abi);
+                        forbid_intrinsic_abi(tcx, assoc_item.ident(tcx).span, abi);
                     }
                     ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
                         let trait_args = GenericArgs::identity_for_item(tcx, id.owner_id);
