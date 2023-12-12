@@ -979,7 +979,8 @@ impl ConstructorSet {
             && !(pcx.is_top_level && matches!(self, Self::NoConstructors))
         {
             // Treat all missing constructors as nonempty.
-            missing.extend(missing_empty.drain(..));
+            // This clears `missing_empty`.
+            missing.append(&mut missing_empty);
         }
 
         SplitConstructorSet { present, missing, missing_empty }
