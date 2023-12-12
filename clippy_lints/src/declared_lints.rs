@@ -266,6 +266,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::loops::EXPLICIT_INTO_ITER_LOOP_INFO,
     crate::loops::EXPLICIT_ITER_LOOP_INFO,
     crate::loops::FOR_KV_MAP_INFO,
+    crate::loops::INFINITE_LOOP_INFO,
     crate::loops::ITER_NEXT_LOOP_INFO,
     crate::loops::MANUAL_FIND_INFO,
     crate::loops::MANUAL_FLATTEN_INFO,
