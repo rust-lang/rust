@@ -203,6 +203,85 @@ mod tests {
     use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
+    fn test_assoc_func_fix() {
+        check_fix(
+            r#"
+struct A {}
+
+impl A {
+    fn hello() {}
+}
+fn main() {
+    let a = A{};
+    a.hello$0();
+}
+"#,
+            r#"
+struct A {}
+
+impl A {
+    fn hello() {}
+}
+fn main() {
+    let a = A{};
+    A::hello();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_assoc_func_diagnostic() {
+        check_diagnostics(
+            r#"
+struct A {}
+impl A {
+    fn hello() {}
+}
+fn main() {
+    let a = A{};
+    a.hello();
+ // ^^^^^^^^^ 💡 error: no method `hello` on type `A`, but an associated function with a similar name exists
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_assoc_func_fix_with_generic() {
+        check_fix(
+            r#"
+struct A<T, U> {
+    a: T,
+    b: U
+}
+
+impl<T, U> A<T, U> {
+    fn foo() {}
+}
+fn main() {
+    let a = A {a: 0, b: ""};
+    a.foo()$0;
+}
+"#,
+            r#"
+struct A<T, U> {
+    a: T,
+    b: U
+}
+
+impl<T, U> A<T, U> {
+    fn foo() {}
+}
+fn main() {
+    let a = A {a: 0, b: ""};
+    A::<i32, &str>::foo();
+}
+"#,
+        );
+    }
+
+    #[test]
     fn smoke_test() {
         check_diagnostics(
             r#"
