@@ -17,9 +17,11 @@ pub(crate) fn collect(
 
     let mut result = Vec::new();
     for file in document.file_information {
+        let concluded_license = file.concluded_license.expect("File should have licence info");
+        let copyright_text = file.copyright_text.expect("File should have copyright text");
         let license = interner.intern(License {
-            spdx: file.concluded_license.to_string(),
-            copyright: file.copyright_text.split('\n').map(|s| s.into()).collect(),
+            spdx: concluded_license.to_string(),
+            copyright: copyright_text.split('\n').map(|s| s.into()).collect(),
         });
 
         result.push((file.file_name.into(), license));
@@ -30,7 +32,7 @@ pub(crate) fn collect(
 
 fn obtain_spdx_document(reuse_exe: &Path) -> Result<String, Error> {
     let output = Command::new(reuse_exe)
-        .args(&["spdx", "--add-license-concluded", "--creator-person=bors"])
+        .args(&["--include-submodules", "spdx", "--add-license-concluded", "--creator-person=bors"])
         .stdout(Stdio::piped())
         .spawn()?
         .wait_with_output()?;
