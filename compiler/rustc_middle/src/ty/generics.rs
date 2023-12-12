@@ -326,6 +326,8 @@ impl<'tcx> Generics {
             own_params.start = 1;
         }
 
+        let verbose = tcx.sess.verbose();
+
         // Filter the default arguments.
         //
         // This currently uses structural equality instead
@@ -340,6 +342,8 @@ impl<'tcx> Generics {
                 param.default_value(tcx).is_some_and(|default| {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
+                // filter out trailing effect params, if we're not in `-Zverbose`.
+                || (!verbose && matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. }))
             })
             .count();
 

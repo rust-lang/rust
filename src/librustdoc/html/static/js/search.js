@@ -243,7 +243,7 @@ function initSearch(rawSearchIndex) {
      * Map from normalized type names to integers. Used to make type search
      * more efficient.
      *
-     * @type {Map<string, integer>}
+     * @type {Map<string, {id: integer, assocOnly: boolean}>}
      */
     let typeNameIdMap;
     const ALIASES = new Map();
@@ -270,19 +270,22 @@ function initSearch(rawSearchIndex) {
      * get the same ID.
      *
      * @param {string} name
+     * @param {boolean} isAssocType - True if this is an assoc type
      *
      * @returns {integer}
      */
-    function buildTypeMapIndex(name) {
+    function buildTypeMapIndex(name, isAssocType) {
         if (name === "" || name === null) {
             return null;
         }
 
         if (typeNameIdMap.has(name)) {
-            return typeNameIdMap.get(name);
+            const obj = typeNameIdMap.get(name);
+            obj.assocOnly = isAssocType && obj.assocOnly;
+            return obj.id;
         } else {
             const id = typeNameIdMap.size;
-            typeNameIdMap.set(name, id);
+            typeNameIdMap.set(name, {id, assocOnly: isAssocType});
             return id;
         }
     }
@@ -1430,7 +1433,7 @@ function initSearch(rawSearchIndex) {
                             return true;
                         }
                     } else if (unifyFunctionTypes(
-                        fnType.generics,
+                        [...fnType.generics, ...Array.from(fnType.bindings.values()).flat() ],
                         queryElems,
                         whereClause,
                         mgens ? new Map(mgens) : null,
@@ -2129,17 +2132,20 @@ function initSearch(rawSearchIndex) {
              * See `buildTypeMapIndex` for more information.
              *
              * @param {QueryElement} elem
+             * @param {boolean} isAssocType
              */
-            function convertNameToId(elem) {
-                if (typeNameIdMap.has(elem.pathLast)) {
-                    elem.id = typeNameIdMap.get(elem.pathLast);
+            function convertNameToId(elem, isAssocType) {
+                if (typeNameIdMap.has(elem.pathLast) &&
+                    (isAssocType || !typeNameIdMap.get(elem.pathLast).assocOnly)) {
+                    elem.id = typeNameIdMap.get(elem.pathLast).id;
                 } else if (!parsedQuery.literalSearch) {
                     let match = null;
                     let matchDist = maxEditDistance + 1;
                     let matchName = "";
-                    for (const [name, id] of typeNameIdMap) {
+                    for (const [name, {id, assocOnly}] of typeNameIdMap) {
                         const dist = editDistance(name, elem.pathLast, maxEditDistance);
-                        if (dist <= matchDist && dist <= maxEditDistance) {
+                        if (dist <= matchDist && dist <= maxEditDistance &&
+                            (isAssocType || !assocOnly)) {
                             if (dist === matchDist && matchName > name) {
                                 continue;
                             }
@@ -2206,12 +2212,13 @@ function initSearch(rawSearchIndex) {
                                 name,
                                 " does not exist",
                             ];
+                            return [null, []];
                         }
                         for (const elem2 of constraints) {
                             convertNameToId(elem2);
                         }
 
-                        return [typeNameIdMap.get(name), constraints];
+                        return [typeNameIdMap.get(name).id, constraints];
                     })
                 );
             }
@@ -2720,7 +2727,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      *
      * @param {RawFunctionType} type
      */
-    function buildItemSearchType(type, lowercasePaths) {
+    function buildItemSearchType(type, lowercasePaths, isAssocType) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
         const BINDINGS_DATA = 2;
@@ -2749,7 +2756,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     //
                     // As a result, the key should never have generics on it.
                     return [
-                        buildItemSearchType(assocType, lowercasePaths).id,
+                        buildItemSearchType(assocType, lowercasePaths, true).id,
                         buildItemSearchTypeAll(constraints, lowercasePaths),
                     ];
                 }));
@@ -2780,7 +2787,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         const item = lowercasePaths[pathIndex - 1];
         return {
-            id: buildTypeMapIndex(item.name),
+            id: buildTypeMapIndex(item.name, isAssocType),
             ty: item.ty,
             path: item.path,
             generics,

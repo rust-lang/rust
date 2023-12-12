@@ -29,8 +29,9 @@ use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    self, add_link_lib_path, add_rustdoc_cargo_lld_flags, add_rustdoc_lld_flags, dylib_path,
-    dylib_path_var, output, t, target_supports_cranelift_backend, up_to_date, LldThreads,
+    self, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
+    linker_args, linker_flags, output, t, target_supports_cranelift_backend, up_to_date,
+    LldThreads,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
@@ -277,7 +278,7 @@ impl Step for Cargotest {
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
-        add_rustdoc_cargo_lld_flags(&mut cmd, builder, compiler.host, LldThreads::No);
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
         builder.run_delaying_failure(cmd);
     }
 }
@@ -863,7 +864,7 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        add_rustdoc_lld_flags(&mut cmd, builder, self.compiler.host, LldThreads::No);
+        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
         builder.run_delaying_failure(&mut cmd);
     }
@@ -1039,7 +1040,7 @@ impl Step for RustdocGUI {
         cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
 
-        add_rustdoc_cargo_lld_flags(&mut cmd, builder, self.compiler.host, LldThreads::No);
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.compiler.host, LldThreads::No);
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
@@ -1746,14 +1747,14 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
-        hostflags.extend(builder.lld_flags(compiler.host));
+        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
         for flag in hostflags {
             cmd.arg("--host-rustcflags").arg(flag);
         }
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        targetflags.extend(builder.lld_flags(target));
+        targetflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }
@@ -1931,7 +1932,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         //
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
-        if !builder.config.dry_run() && target.contains("msvc") {
+        if !builder.config.dry_run() && target.is_msvc() {
             for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
@@ -3070,7 +3071,7 @@ impl Step for TestHelpers {
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform cc of these compilers. Note, though, that
         // on MSVC we still need cc's detection of env vars (ugh).
-        if !target.contains("msvc") {
+        if !target.is_msvc() {
             if let Some(ar) = builder.ar(target) {
                 cfg.archiver(ar);
             }

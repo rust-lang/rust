@@ -18,12 +18,12 @@ use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
+use crate::prepare_behaviour_dump_dir;
 use crate::utils::cache::{Cache, Interned, INTERNER};
-use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, add_rustdoc_lld_flags, exe};
-use crate::utils::helpers::{libdir, output, t, LldThreads};
-use crate::Crate;
+use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
+use crate::utils::helpers::{libdir, linker_flags, output, t, LldThreads};
 use crate::EXTRA_CHECK_CFGS;
-use crate::{Build, CLang, DocTests, GitRepo, Mode};
+use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
 
@@ -1174,7 +1174,7 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MAKEFLAGS");
         cmd.env_remove("MFLAGS");
 
-        add_rustdoc_lld_flags(&mut cmd, self, compiler.host, LldThreads::Yes);
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
         cmd
     }
 
@@ -1673,23 +1673,22 @@ impl<'a> Builder<'a> {
             rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
         }
 
-        if let Some(host_linker) = self.linker(compiler.host) {
-            hostflags.arg(format!("-Clinker={}", host_linker.display()));
-        }
-        if self.is_fuse_ld_lld(compiler.host) {
-            hostflags.arg("-Clink-args=-fuse-ld=lld");
+        for arg in linker_args(self, compiler.host, LldThreads::Yes) {
+            hostflags.arg(&arg);
         }
 
         if let Some(target_linker) = self.linker(target) {
             let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
-        if self.is_fuse_ld_lld(target) {
-            rustflags.arg("-Clink-args=-fuse-ld=lld");
+        // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
+        // `linker_args` here.
+        for flag in linker_flags(self, target, LldThreads::Yes) {
+            rustflags.arg(&flag);
         }
-        self.lld_flags(target).for_each(|flag| {
-            rustdocflags.arg(&flag);
-        });
+        for arg in linker_args(self, target, LldThreads::Yes) {
+            rustdocflags.arg(&arg);
+        }
 
         if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
@@ -1729,8 +1728,7 @@ impl<'a> Builder<'a> {
 
         let split_debuginfo_is_stable = target.contains("linux")
             || target.contains("apple")
-            || (target.contains("msvc")
-                && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
+            || (target.is_msvc() && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
             || (target.contains("windows")
                 && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
 
@@ -1790,6 +1788,16 @@ impl<'a> Builder<'a> {
 
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
+
+        if self.config.dump_bootstrap_shims {
+            prepare_behaviour_dump_dir(&self.build);
+
+            cargo
+                .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))
+                .env("BUILD_OUT", &self.build.out)
+                .env("CARGO_HOME", t!(home::cargo_home()));
+        };
+
         self.add_rust_test_threads(&mut cargo);
 
         // Almost all of the crates that we compile as part of the bootstrap may
@@ -1909,7 +1917,7 @@ impl<'a> Builder<'a> {
         // the options through environment variables that are fetched and understood by both.
         //
         // FIXME: the guard against msvc shouldn't need to be here
-        if target.contains("msvc") {
+        if target.is_msvc() {
             if let Some(ref cl) = self.config.llvm_clang_cl {
                 cargo.env("CC", cl).env("CXX", cl);
             }

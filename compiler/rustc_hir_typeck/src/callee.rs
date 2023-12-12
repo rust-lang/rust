@@ -780,7 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let generics = tcx.generics_of(callee_did);
         let Some(host_effect_index) = generics.host_effect_index else { return };
 
-        let effect = tcx.expected_const_effect_param_for_body(self.body_id);
+        let effect = tcx.expected_host_effect_param_for_body(self.body_id);
 
         trace!(?effect, ?generics, ?callee_args);
 

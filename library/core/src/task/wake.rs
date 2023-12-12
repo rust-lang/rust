@@ -1,7 +1,7 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::fmt;
-use crate::marker::{PhantomData, Unpin};
+use crate::marker::PhantomData;
 use crate::ptr;
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]

@@ -14,7 +14,6 @@ use std::fmt;
 
 use smallvec::SmallVec;
 
-use rustc_const_eval::interpret::InterpResult;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
 use rustc_target::abi::Size;

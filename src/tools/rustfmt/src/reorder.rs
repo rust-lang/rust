@@ -6,7 +6,7 @@
 
 // FIXME(#2455): Reorder trait items.
 
-use std::cmp::{Ord, Ordering};
+use std::cmp::Ordering;
 
 use rustc_ast::{ast, attr};
 use rustc_span::{symbol::sym, Span};

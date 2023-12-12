@@ -16,7 +16,7 @@ use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
-use stable_mir::{self, Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
+use stable_mir::{Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
 
 use crate::rustc_internal::{internal, RustcInternal};

@@ -174,6 +174,10 @@ ast_passes_item_underscore = `{$kind}` items in this context need a name
 ast_passes_keyword_lifetime =
     lifetimes cannot use keyword names
 
+ast_passes_match_arm_with_no_body =
+    `match` arm with no body
+    .suggestion = add a body after the pattern
+
 ast_passes_module_nonascii = trying to load file for module `{$name}` with non-ascii identifier name
     .help = consider using the `#[path]` attribute to specify filesystem path
 

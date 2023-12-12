@@ -7,10 +7,10 @@
 //! a `MutVisitor` renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
+use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
-use crate::{ast::*, StaticItem};
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -682,7 +682,7 @@ pub fn visit_attr_tt<T: MutVisitor>(tt: &mut AttrTokenTree, vis: &mut T) {
         AttrTokenTree::Token(token, _) => {
             visit_token(token, vis);
         }
-        AttrTokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
+        AttrTokenTree::Delimited(DelimSpan { open, close }, _spacing, _delim, tts) => {
             vis.visit_span(open);
             vis.visit_span(close);
             visit_attr_tts(tts, vis);
@@ -709,7 +709,7 @@ pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
         TokenTree::Token(token, _) => {
             visit_token(token, vis);
         }
-        TokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
+        TokenTree::Delimited(DelimSpan { open, close }, _spacing, _delim, tts) => {
             vis.visit_span(open);
             vis.visit_span(close);
             visit_tts(tts, vis);

@@ -10,7 +10,6 @@ use std::thread;
 use log::info;
 use rustc_middle::ty::Ty;
 
-use crate::borrow_tracker::RetagFields;
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::FxHashSet;

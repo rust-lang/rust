@@ -1,6 +1,6 @@
 use crate::{
     fmt,
-    iter::{ExactSizeIterator, FusedIterator},
+    iter::FusedIterator,
     mem::{self, MaybeUninit},
     ptr,
 };

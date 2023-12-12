@@ -5,7 +5,6 @@
 
 #![feature(coroutines, coroutine_trait)]
 
-use std::marker::Unpin;
 use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;
 

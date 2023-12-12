@@ -94,9 +94,6 @@ pub use array_into_iter::ARRAY_INTO_ITER;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::{
-    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
-};
 
 use array_into_iter::ArrayIntoIter;
 use async_fn_in_trait::AsyncFnInTrait;

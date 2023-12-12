@@ -2276,7 +2276,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.token.kind == TokenKind::Semi
-            && matches!(self.token_cursor.stack.last(), Some((_, Delimiter::Parenthesis, _)))
+            && matches!(self.token_cursor.stack.last(), Some((.., Delimiter::Parenthesis)))
             && self.may_recover()
         {
             // It is likely that the closure body is a block but where the
@@ -2918,7 +2918,15 @@ impl<'a> Parser<'a> {
             let mut result = if !is_fat_arrow && !is_almost_fat_arrow {
                 // A pattern without a body, allowed for never patterns.
                 arm_body = None;
-                this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)])
+                this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)]).map(
+                    |x| {
+                        // Don't gate twice
+                        if !pat.contains_never_pattern() {
+                            this.sess.gated_spans.gate(sym::never_patterns, pat.span);
+                        }
+                        x
+                    },
+                )
             } else {
                 if let Err(mut err) = this.expect(&token::FatArrow) {
                     // We might have a `=>` -> `=` or `->` typo (issue #89396).

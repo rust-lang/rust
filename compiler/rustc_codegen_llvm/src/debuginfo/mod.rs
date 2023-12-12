@@ -32,7 +32,7 @@ use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_span::{self, BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span};
+use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span};
 use rustc_target::abi::Size;
 
 use libc::c_uint;

@@ -13,7 +13,7 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use crate::{ast::*, StaticItem};
+use crate::ast::*;
 
 use rustc_span::symbol::Ident;
 use rustc_span::Span;

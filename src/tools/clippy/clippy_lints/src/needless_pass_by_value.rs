@@ -186,6 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         cx.param_env,
                         ty,
                         t,
+                        None,
                         [Option::<ty::GenericArg<'tcx>>::None],
                     )
                 })

@@ -833,7 +833,7 @@ impl<'a> Builder<'a> {
         // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
         // mode) and that C compiler may need some extra PATH modification. Do
         // so here.
-        if compiler.host.contains("msvc") {
+        if compiler.host.is_msvc() {
             let curpaths = env::var_os("PATH").unwrap_or_default();
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
             for &(ref k, ref v) in self.cc.borrow()[&compiler.host].env() {

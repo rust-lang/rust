@@ -1,4 +1,5 @@
-PRINT-ATTR INPUT (DISPLAY): struct S1 { #[cfg(all())] #[allow()] field_true : u8, }
+PRINT-ATTR INPUT (DISPLAY): struct S1 { #[cfg(all())] #[allow()] field_true: u8, }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): struct S1 { #[cfg(all())] #[allow()] field_true : u8, }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",

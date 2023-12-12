@@ -1,4 +1,5 @@
-PRINT-ATTR INPUT (DISPLAY): fn foo < T : MyTrait < MyStruct < { true } >> > () {}
+PRINT-ATTR INPUT (DISPLAY): fn foo<T: MyTrait<MyStruct<{ true }>>>() {}
+PRINT-ATTR RE-COLLECTED (DISPLAY): fn foo < T : MyTrait < MyStruct < { true } >>> () {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",
@@ -76,7 +77,9 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/attr-complex-fn.rs:19:42: 19:44 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): impl < T > MyTrait < T > for MyStruct < { true } > { #! [rustc_dummy] }
+PRINT-ATTR INPUT (DISPLAY): impl<T> MyTrait<T> for MyStruct<{ true }> { #![rustc_dummy] }
+PRINT-ATTR RE-COLLECTED (DISPLAY): impl < T > MyTrait < T > for MyStruct < { true } > { #![rustc_dummy] }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): impl < T > MyTrait < T > for MyStruct < { true } > { #! [rustc_dummy] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "impl",

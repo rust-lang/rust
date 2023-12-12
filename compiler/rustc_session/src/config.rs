@@ -8,7 +8,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
@@ -1114,6 +1114,7 @@ impl Default for Options {
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
             color: ColorConfig::Auto,
+            logical_env: FxIndexMap::default(),
         }
     }
 }
@@ -1246,46 +1247,85 @@ pub const fn default_lib_output() -> CrateType {
 }
 
 fn default_configuration(sess: &Session) -> Cfg {
-    // NOTE: This should be kept in sync with `CheckCfg::fill_well_known` below.
-    let end = &sess.target.endian;
-    let arch = &sess.target.arch;
-    let wordsz = sess.target.pointer_width as u64;
-    let os = &sess.target.os;
-    let env = &sess.target.env;
-    let abi = &sess.target.abi;
-    let relocation_model = sess.target.relocation_model.desc_symbol();
-    let vendor = &sess.target.vendor;
-    let min_atomic_width = sess.target.min_atomic_width();
-    let max_atomic_width = sess.target.max_atomic_width();
-    let atomic_cas = sess.target.atomic_cas;
+    let mut ret = Cfg::default();
+
+    macro_rules! ins_none {
+        ($key:expr) => {
+            ret.insert(($key, None));
+        };
+    }
+    macro_rules! ins_str {
+        ($key:expr, $val_str:expr) => {
+            ret.insert(($key, Some(Symbol::intern($val_str))));
+        };
+    }
+    macro_rules! ins_sym {
+        ($key:expr, $val_sym:expr) => {
+            ret.insert(($key, Some($val_sym)));
+        };
+    }
+
+    // Symbols are inserted in alphabetical order as much as possible.
+    // The exceptions are where control flow forces things out of order.
+    //
+    // Run `rustc --print cfg` to see the configuration in practice.
+    //
+    // NOTE: These insertions should be kept in sync with
+    // `CheckCfg::fill_well_known` below.
+
+    if sess.opts.debug_assertions {
+        ins_none!(sym::debug_assertions);
+    }
+
+    if sess.overflow_checks() {
+        ins_none!(sym::overflow_checks);
+    }
+
+    ins_sym!(sym::panic, sess.panic_strategy().desc_symbol());
+
+    // JUSTIFICATION: before wrapper fn is available
+    #[allow(rustc::bad_opt_access)]
+    if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
+        ins_none!(sym::proc_macro);
+    }
+
+    if sess.is_nightly_build() {
+        ins_sym!(sym::relocation_model, sess.target.relocation_model.desc_symbol());
+    }
+
+    for mut s in sess.opts.unstable_opts.sanitizer {
+        // KASAN is still ASAN under the hood, so it uses the same attribute.
+        if s == SanitizerSet::KERNELADDRESS {
+            s = SanitizerSet::ADDRESS;
+        }
+        ins_str!(sym::sanitize, &s.to_string());
+    }
+
+    if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+        ins_none!(sym::sanitizer_cfi_generalize_pointers);
+    }
+    if sess.is_sanitizer_cfi_normalize_integers_enabled() {
+        ins_none!(sym::sanitizer_cfi_normalize_integers);
+    }
+
+    ins_str!(sym::target_abi, &sess.target.abi);
+    ins_str!(sym::target_arch, &sess.target.arch);
+    ins_str!(sym::target_endian, sess.target.endian.as_str());
+    ins_str!(sym::target_env, &sess.target.env);
+
+    for family in sess.target.families.as_ref() {
+        ins_str!(sym::target_family, family);
+        if family == "windows" {
+            ins_none!(sym::windows);
+        } else if family == "unix" {
+            ins_none!(sym::unix);
+        }
+    }
+
+    // `target_has_atomic*`
     let layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
         sess.emit_fatal(err);
     });
-
-    let mut ret = Cfg::default();
-    ret.reserve(7); // the minimum number of insertions
-    // Target bindings.
-    ret.insert((sym::target_os, Some(Symbol::intern(os))));
-    for fam in sess.target.families.as_ref() {
-        ret.insert((sym::target_family, Some(Symbol::intern(fam))));
-        if fam == "windows" {
-            ret.insert((sym::windows, None));
-        } else if fam == "unix" {
-            ret.insert((sym::unix, None));
-        }
-    }
-    ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
-    ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
-    ret.insert((sym::target_pointer_width, Some(sym::integer(wordsz))));
-    ret.insert((sym::target_env, Some(Symbol::intern(env))));
-    ret.insert((sym::target_abi, Some(Symbol::intern(abi))));
-    if sess.is_nightly_build() {
-        ret.insert((sym::relocation_model, Some(relocation_model)));
-    }
-    ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
-    if sess.opts.unstable_opts.has_thread_local.unwrap_or(sess.target.has_thread_local) {
-        ret.insert((sym::target_thread_local, None));
-    }
     let mut has_atomic = false;
     for (i, align) in [
         (8, layout.i8_align.abi),
@@ -1294,63 +1334,46 @@ fn default_configuration(sess: &Session) -> Cfg {
         (64, layout.i64_align.abi),
         (128, layout.i128_align.abi),
     ] {
-        if i >= min_atomic_width && i <= max_atomic_width {
-            has_atomic = true;
+        if i >= sess.target.min_atomic_width() && i <= sess.target.max_atomic_width() {
+            if !has_atomic {
+                has_atomic = true;
+                if sess.is_nightly_build() {
+                    if sess.target.atomic_cas {
+                        ins_none!(sym::target_has_atomic);
+                    }
+                    ins_none!(sym::target_has_atomic_load_store);
+                }
+            }
             let mut insert_atomic = |sym, align: Align| {
-                ret.insert((sym::target_has_atomic_load_store, Some(sym)));
-                if atomic_cas {
-                    ret.insert((sym::target_has_atomic, Some(sym)));
+                if sess.target.atomic_cas {
+                    ins_sym!(sym::target_has_atomic, sym);
                 }
                 if align.bits() == i {
-                    ret.insert((sym::target_has_atomic_equal_alignment, Some(sym)));
+                    ins_sym!(sym::target_has_atomic_equal_alignment, sym);
                 }
+                ins_sym!(sym::target_has_atomic_load_store, sym);
             };
             insert_atomic(sym::integer(i), align);
-            if wordsz == i {
+            if sess.target.pointer_width as u64 == i {
                 insert_atomic(sym::ptr, layout.pointer_align.abi);
             }
         }
     }
-    if sess.is_nightly_build() && has_atomic {
-        ret.insert((sym::target_has_atomic_load_store, None));
-        if atomic_cas {
-            ret.insert((sym::target_has_atomic, None));
-        }
+
+    ins_str!(sym::target_os, &sess.target.os);
+    ins_sym!(sym::target_pointer_width, sym::integer(sess.target.pointer_width));
+
+    if sess.opts.unstable_opts.has_thread_local.unwrap_or(sess.target.has_thread_local) {
+        ins_none!(sym::target_thread_local);
     }
 
-    let panic_strategy = sess.panic_strategy();
-    ret.insert((sym::panic, Some(panic_strategy.desc_symbol())));
+    ins_str!(sym::target_vendor, &sess.target.vendor);
 
-    for mut s in sess.opts.unstable_opts.sanitizer {
-        // KASAN should use the same attribute name as ASAN, as it's still ASAN
-        // under the hood
-        if s == SanitizerSet::KERNELADDRESS {
-            s = SanitizerSet::ADDRESS;
-        }
-
-        let symbol = Symbol::intern(&s.to_string());
-        ret.insert((sym::sanitize, Some(symbol)));
+    // If the user wants a test runner, then add the test cfg.
+    if sess.is_test_crate() {
+        ins_none!(sym::test);
     }
 
-    if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-        ret.insert((sym::sanitizer_cfi_generalize_pointers, None));
-    }
-
-    if sess.is_sanitizer_cfi_normalize_integers_enabled() {
-        ret.insert((sym::sanitizer_cfi_normalize_integers, None));
-    }
-
-    if sess.opts.debug_assertions {
-        ret.insert((sym::debug_assertions, None));
-    }
-    if sess.overflow_checks() {
-        ret.insert((sym::overflow_checks, None));
-    }
-    // JUSTIFICATION: before wrapper fn is available
-    #[allow(rustc::bad_opt_access)]
-    if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
-        ret.insert((sym::proc_macro, None));
-    }
     ret
 }
 
@@ -1421,90 +1444,71 @@ impl CheckCfg {
             ExpectedValues::Some(values)
         };
 
-        // NOTE: This should be kept in sync with `default_configuration`
+        macro_rules! ins {
+            ($name:expr, $values:expr) => {
+                self.expecteds.entry($name).or_insert_with($values)
+            };
+        }
+
+        // Symbols are inserted in alphabetical order as much as possible.
+        // The exceptions are where control flow forces things out of order.
+        //
+        // NOTE: This should be kept in sync with `default_configuration`.
+        // Note that symbols inserted conditionally in `default_configuration`
+        // are inserted unconditionally here.
         //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs`.
 
-        let panic_values = &PanicStrategy::all();
+        ins!(sym::debug_assertions, no_values);
 
-        let atomic_values = &[
-            sym::ptr,
-            sym::integer(8usize),
-            sym::integer(16usize),
-            sym::integer(32usize),
-            sym::integer(64usize),
-            sym::integer(128usize),
-        ];
+        // These three are never set by rustc, but we set them anyway: they
+        // should not trigger a lint because `cargo doc`, `cargo test`, and
+        // `cargo miri run` (respectively) can set them.
+        ins!(sym::doc, no_values);
+        ins!(sym::doctest, no_values);
+        ins!(sym::miri, no_values);
+
+        ins!(sym::overflow_checks, no_values);
+
+        ins!(sym::panic, empty_values).extend(&PanicStrategy::all());
+
+        ins!(sym::proc_macro, no_values);
+
+        ins!(sym::relocation_model, empty_values).extend(RelocModel::all());
 
         let sanitize_values = SanitizerSet::all()
             .into_iter()
             .map(|sanitizer| Symbol::intern(sanitizer.as_str().unwrap()));
+        ins!(sym::sanitize, empty_values).extend(sanitize_values);
 
-        let relocation_model_values = RelocModel::all();
+        ins!(sym::sanitizer_cfi_generalize_pointers, no_values);
+        ins!(sym::sanitizer_cfi_normalize_integers, no_values);
 
-        // Unknown possible values:
-        //  - `target_feature`
-        for name in [sym::target_feature] {
-            self.expecteds.entry(name).or_insert(ExpectedValues::Any);
-        }
+        // rustc_codegen_ssa has a list of known target features and their
+        // stability, but we should allow any target feature as a new target or
+        // rustc version may introduce new target features.
+        ins!(sym::target_feature, || ExpectedValues::Any);
 
-        // No-values
-        for name in [
-            sym::doc,
-            sym::miri,
-            sym::unix,
-            sym::test,
-            sym::doctest,
-            sym::windows,
-            sym::proc_macro,
-            sym::debug_assertions,
-            sym::overflow_checks,
-            sym::target_thread_local,
-        ] {
-            self.expecteds.entry(name).or_insert_with(no_values);
-        }
-
-        // Pre-defined values
-        self.expecteds.entry(sym::panic).or_insert_with(empty_values).extend(panic_values);
-        self.expecteds.entry(sym::sanitize).or_insert_with(empty_values).extend(sanitize_values);
-        self.expecteds
-            .entry(sym::target_has_atomic)
-            .or_insert_with(no_values)
-            .extend(atomic_values);
-        self.expecteds
-            .entry(sym::target_has_atomic_load_store)
-            .or_insert_with(no_values)
-            .extend(atomic_values);
-        self.expecteds
-            .entry(sym::target_has_atomic_equal_alignment)
-            .or_insert_with(no_values)
-            .extend(atomic_values);
-        self.expecteds
-            .entry(sym::relocation_model)
-            .or_insert_with(empty_values)
-            .extend(relocation_model_values);
-
-        // Target specific values
+        // sym::target_*
         {
             const VALUES: [&Symbol; 8] = [
-                &sym::target_os,
-                &sym::target_family,
+                &sym::target_abi,
                 &sym::target_arch,
                 &sym::target_endian,
                 &sym::target_env,
-                &sym::target_abi,
-                &sym::target_vendor,
+                &sym::target_family,
+                &sym::target_os,
                 &sym::target_pointer_width,
+                &sym::target_vendor,
             ];
 
             // Initialize (if not already initialized)
             for &e in VALUES {
-                let entry = self.expecteds.entry(e);
                 if !self.exhaustive_values {
-                    entry.or_insert(ExpectedValues::Any);
+                    ins!(e, || ExpectedValues::Any);
                 } else {
-                    entry.or_insert_with(empty_values);
+                    ins!(e, empty_values);
                 }
             }
 
@@ -1512,14 +1516,14 @@ impl CheckCfg {
                 // Get all values map at once otherwise it would be costly.
                 // (8 values * 220 targets ~= 1760 times, at the time of writing this comment).
                 let [
-                    values_target_os,
-                    values_target_family,
+                    values_target_abi,
                     values_target_arch,
                     values_target_endian,
                     values_target_env,
-                    values_target_abi,
-                    values_target_vendor,
+                    values_target_family,
+                    values_target_os,
                     values_target_pointer_width,
+                    values_target_vendor,
                 ] = self
                     .expecteds
                     .get_many_mut(VALUES)
@@ -1530,31 +1534,49 @@ impl CheckCfg {
                     .map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
                     .chain(iter::once(current_target.clone()))
                 {
-                    values_target_os.insert(Symbol::intern(&target.options.os));
-                    values_target_family.extend(
-                        target.options.families.iter().map(|family| Symbol::intern(family)),
-                    );
+                    values_target_abi.insert(Symbol::intern(&target.options.abi));
                     values_target_arch.insert(Symbol::intern(&target.arch));
                     values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
                     values_target_env.insert(Symbol::intern(&target.options.env));
-                    values_target_abi.insert(Symbol::intern(&target.options.abi));
-                    values_target_vendor.insert(Symbol::intern(&target.options.vendor));
+                    values_target_family.extend(
+                        target.options.families.iter().map(|family| Symbol::intern(family)),
+                    );
+                    values_target_os.insert(Symbol::intern(&target.options.os));
                     values_target_pointer_width.insert(sym::integer(target.pointer_width));
+                    values_target_vendor.insert(Symbol::intern(&target.options.vendor));
                 }
             }
         }
+
+        let atomic_values = &[
+            sym::ptr,
+            sym::integer(8usize),
+            sym::integer(16usize),
+            sym::integer(32usize),
+            sym::integer(64usize),
+            sym::integer(128usize),
+        ];
+        for sym in [
+            sym::target_has_atomic,
+            sym::target_has_atomic_equal_alignment,
+            sym::target_has_atomic_load_store,
+        ] {
+            ins!(sym, no_values).extend(atomic_values);
+        }
+
+        ins!(sym::target_thread_local, no_values);
+
+        ins!(sym::test, no_values);
+
+        ins!(sym::unix, no_values);
+        ins!(sym::windows, no_values);
     }
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
-    let default_cfg = default_configuration(sess);
-    // If the user wants a test runner, then add the test cfg.
-    if sess.is_test_crate() {
-        user_cfg.insert((sym::test, None));
-    }
-    user_cfg.extend(default_cfg.iter().cloned());
+    user_cfg.extend(default_configuration(sess).into_iter());
     user_cfg
 }
 
@@ -1813,6 +1835,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
+        opt::multi("", "env", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
@@ -2592,6 +2615,23 @@ fn parse_remap_path_prefix(
     mapping
 }
 
+fn parse_logical_env(
+    handler: &mut EarlyErrorHandler,
+    matches: &getopts::Matches,
+) -> FxIndexMap<String, String> {
+    let mut vars = FxIndexMap::default();
+
+    for arg in matches.opt_strs("env") {
+        if let Some((name, val)) = arg.split_once('=') {
+            vars.insert(name.to_string(), val.to_string());
+        } else {
+            handler.early_error(format!("`--env`: specify value for variable `{arg}`"));
+        }
+    }
+
+    vars
+}
+
 // JUSTIFICATION: before wrapper fn is available
 #[allow(rustc::bad_opt_access)]
 pub fn build_session_options(
@@ -2830,6 +2870,8 @@ pub fn build_session_options(
         handler.early_error("can't dump dependency graph without `-Z query-dep-graph`");
     }
 
+    let logical_env = parse_logical_env(handler, matches);
+
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.
     let tmp_buf;
@@ -2910,6 +2952,7 @@ pub fn build_session_options(
         pretty,
         working_dir,
         color,
+        logical_env,
     }
 }
 
@@ -3184,6 +3227,7 @@ pub(crate) mod dep_tracking {
     };
     use crate::lint;
     use crate::utils::NativeLib;
+    use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
@@ -3338,6 +3382,21 @@ pub(crate) mod dep_tracking {
             for (index, elem) in self.iter().enumerate() {
                 Hash::hash(&index, hasher);
                 DepTrackingHash::hash(elem, hasher, error_format, for_crate_hash);
+            }
+        }
+    }
+
+    impl<T: DepTrackingHash, V: DepTrackingHash> DepTrackingHash for FxIndexMap<T, V> {
+        fn hash(
+            &self,
+            hasher: &mut DefaultHasher,
+            error_format: ErrorOutputType,
+            for_crate_hash: bool,
+        ) {
+            Hash::hash(&self.len(), hasher);
+            for (key, value) in self.iter() {
+                DepTrackingHash::hash(key, hasher, error_format, for_crate_hash);
+                DepTrackingHash::hash(value, hasher, error_format, for_crate_hash);
             }
         }
     }

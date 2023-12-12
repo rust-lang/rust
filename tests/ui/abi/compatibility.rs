@@ -263,6 +263,13 @@ test_abi_compatible!(box_ptr, Box<i32>, *const i32);
 test_abi_compatible!(nonnull_ptr, NonNull<i32>, *const i32);
 test_abi_compatible!(fn_fn, fn(), fn(i32) -> i32);
 
+// Compatibility of integer types.
+test_abi_compatible!(char_uint, char, u32);
+#[cfg(target_pointer_width = "32")]
+test_abi_compatible!(isize_int, isize, i32);
+#[cfg(target_pointer_width = "64")]
+test_abi_compatible!(isize_int, isize, i64);
+
 // Compatibility of 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
 #[cfg(not(any(target_arch = "sparc64")))]

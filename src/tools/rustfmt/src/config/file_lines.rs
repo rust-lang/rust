@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter, str};
 
 use rustc_data_structures::sync::Lrc;
-use rustc_span::{self, SourceFile};
+use rustc_span::SourceFile;
 use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json as json;
 use thiserror::Error;

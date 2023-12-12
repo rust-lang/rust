@@ -1,6 +1,5 @@
 use super::*;
 use crate::config::Verbosity;
-use std::io::Write;
 
 #[derive(Debug)]
 pub(crate) struct StdoutEmitter {

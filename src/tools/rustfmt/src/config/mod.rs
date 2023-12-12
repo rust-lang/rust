@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::default::Default;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
@@ -1017,7 +1016,6 @@ make_backup = false
     #[cfg(test)]
     mod partially_unstable_option {
         use super::mock::{Config, PartiallyUnstableOption};
-        use super::*;
 
         /// From the command line, we can override with a stable variant.
         #[test]

@@ -1,11 +1,8 @@
 use super::*;
 
-use crate::json::JsonEmitter;
-use rustc_span::source_map::{FilePathMapping, SourceMap};
-
-use crate::emitter::{ColorConfig, HumanReadableErrorType};
-use crate::{Handler, TerminalUrl};
-use rustc_span::{BytePos, Span};
+use crate::emitter::ColorConfig;
+use crate::Handler;
+use rustc_span::BytePos;
 
 use std::str;
 

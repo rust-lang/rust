@@ -1,7 +1,7 @@
 // run-pass
 
 use std::fmt::Debug;
-use std::cmp::{self, PartialOrd, Ordering};
+use std::cmp::{self, Ordering};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct Foo {

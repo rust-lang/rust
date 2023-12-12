@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::span_bug;

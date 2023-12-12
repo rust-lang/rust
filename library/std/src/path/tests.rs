@@ -1,9 +1,7 @@
 use super::*;
 
 use crate::collections::{BTreeSet, HashSet};
-use crate::hash::{DefaultHasher, Hasher};
-use crate::rc::Rc;
-use crate::sync::Arc;
+use crate::hash::DefaultHasher;
 use core::hint::black_box;
 
 #[allow(unknown_lints, unused_macro_rules)]

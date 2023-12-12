@@ -10,7 +10,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
-use rustc_codegen_ssa::mir::operand::OperandRef;
+use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
@@ -945,6 +945,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     let sig =
         tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
+
+    // Vectors must be immediates (non-power-of-2 #[repr(packed)] are not)
+    for (ty, arg) in arg_tys.iter().zip(args) {
+        if ty.is_simd() && !matches!(arg.val, OperandValue::Immediate(_)) {
+            return_error!(InvalidMonomorphization::SimdArgument { span, name, ty: *ty });
+        }
+    }
 
     if name == sym::simd_select_bitmask {
         let (len, _) = require_simd!(arg_tys[1], SimdArgument);

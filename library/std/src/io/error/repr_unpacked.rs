@@ -3,7 +3,6 @@
 //! would have no benefit.
 
 use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
-use alloc::boxed::Box;
 
 type Inner = ErrorData<Box<Custom>>;
 

@@ -1574,6 +1574,76 @@ pub enum InvalidNanComparisonsSuggestion {
     Spanless,
 }
 
+#[derive(LintDiagnostic)]
+pub enum AmbiguousWidePointerComparisons<'a> {
+    #[diag(lint_ambiguous_wide_pointer_comparisons)]
+    Spanful {
+        #[subdiagnostic]
+        addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion<'a>,
+        #[subdiagnostic]
+        addr_metadata_suggestion: Option<AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a>>,
+    },
+    #[diag(lint_ambiguous_wide_pointer_comparisons)]
+    #[help(lint_addr_metadata_suggestion)]
+    #[help(lint_addr_suggestion)]
+    Spanless,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    lint_addr_metadata_suggestion,
+    style = "verbose",
+    applicability = "machine-applicable"
+)]
+pub struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
+    pub ne: &'a str,
+    pub deref_left: &'a str,
+    pub deref_right: &'a str,
+    #[suggestion_part(code = "{ne}std::ptr::eq({deref_left}")]
+    pub left: Span,
+    #[suggestion_part(code = ", {deref_right}")]
+    pub middle: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
+    #[multipart_suggestion(
+        lint_addr_suggestion,
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    AddrEq {
+        ne: &'a str,
+        deref_left: &'a str,
+        deref_right: &'a str,
+        #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
+        left: Span,
+        #[suggestion_part(code = ", {deref_right}")]
+        middle: Span,
+        #[suggestion_part(code = ")")]
+        right: Span,
+    },
+    #[multipart_suggestion(
+        lint_addr_suggestion,
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    Cast {
+        deref_left: &'a str,
+        deref_right: &'a str,
+        #[suggestion_part(code = "{deref_left}")]
+        left_before: Option<Span>,
+        #[suggestion_part(code = " as *const ()")]
+        left: Span,
+        #[suggestion_part(code = "{deref_right}")]
+        right_before: Option<Span>,
+        #[suggestion_part(code = " as *const ()")]
+        right: Span,
+    },
+}
+
 pub struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,
     pub desc: &'a str,

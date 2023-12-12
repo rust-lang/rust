@@ -1,7 +1,6 @@
 //! This pass lowers calls to core::slice::len to just Len op.
 //! It should run before inlining!
 
-use crate::MirPass;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::*;

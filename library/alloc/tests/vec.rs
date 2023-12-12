@@ -1,7 +1,5 @@
-use alloc::vec::Vec;
 use core::alloc::{Allocator, Layout};
 use core::{assert_eq, assert_ne};
-use core::iter::{IntoIterator, Iterator};
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 use std::alloc::System;
@@ -1982,7 +1980,7 @@ fn vec_macro_repeating_null_raw_fat_pointer() {
 
     let vec = vec![null_raw_dyn; 1];
     dbg!(ptr_metadata(vec[0]));
-    assert!(vec[0] == null_raw_dyn);
+    assert!(std::ptr::eq(vec[0], null_raw_dyn));
 
     // Polyfill for https://github.com/rust-lang/rfcs/pull/2580
 

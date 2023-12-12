@@ -1,4 +1,4 @@
-use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
+use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZeroUsize;
 use crate::ops::Try;
 

@@ -26,7 +26,7 @@ mod unstable;
 #[cfg(test)]
 mod tests;
 
-use rustc_span::{edition::Edition, symbol::Symbol};
+use rustc_span::symbol::Symbol;
 use std::num::NonZeroU32;
 
 #[derive(Debug, Clone)]
@@ -34,7 +34,6 @@ pub struct Feature {
     pub name: Symbol,
     pub since: &'static str,
     issue: Option<NonZeroU32>,
-    pub edition: Option<Edition>,
 }
 
 #[derive(Copy, Clone, Debug)]

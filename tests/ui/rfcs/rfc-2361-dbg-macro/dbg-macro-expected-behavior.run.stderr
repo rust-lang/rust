@@ -12,7 +12,7 @@
 [$DIR/dbg-macro-expected-behavior.rs:42] &a = NoCopy(
     1337,
 )
-[$DIR/dbg-macro-expected-behavior.rs:42] dbg!(& a) = NoCopy(
+[$DIR/dbg-macro-expected-behavior.rs:42] dbg!(&a) = NoCopy(
     1337,
 )
 [$DIR/dbg-macro-expected-behavior.rs:47] f(&42) = 42

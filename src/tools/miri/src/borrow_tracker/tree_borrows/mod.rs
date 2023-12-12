@@ -2,9 +2,7 @@ use log::trace;
 
 use rustc_target::abi::{Abi, Size};
 
-use crate::borrow_tracker::{
-    AccessKind, GlobalState, GlobalStateInner, ProtectorKind, RetagFields,
-};
+use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
 use rustc_middle::{
     mir::{Mutability, RetagKind},
     ty::{

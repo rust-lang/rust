@@ -66,8 +66,6 @@ fn main() {
         pat!()
         //~^ ERROR expected `,` following `match` arm
         //~| HELP missing a comma here
-        //~| ERROR `match` arm with no body
-        //~| HELP add a body after the pattern
         _ => {}
     }
     match Some(false) {

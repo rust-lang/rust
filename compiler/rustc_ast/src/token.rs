@@ -13,7 +13,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym};
 #[allow(hidden_glob_reexports)]
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
+use rustc_span::{edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 

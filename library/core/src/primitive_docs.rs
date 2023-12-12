@@ -330,7 +330,7 @@ mod prim_never {}
 /// the future ("reserved"); some will never be a character ("noncharacters"); and some may be given
 /// different meanings by different users ("private use").
 ///
-/// `char` is guaranteed to have the same size and alignment as `u32` on all
+/// `char` is guaranteed to have the same size, alignment, and function call ABI as `u32` on all
 /// platforms.
 /// ```
 /// use std::alloc::Layout;
@@ -1557,6 +1557,7 @@ mod prim_ref {}
 ///   Pointee>::Metadata`).
 /// - `usize` is ABI-compatible with the `uN` integer type of the same size, and likewise `isize` is
 ///   ABI-compatible with the `iN` integer type of the same size.
+/// - `char` is ABI-compatible with `u32`.
 /// - Any two `fn` (function pointer) types are ABI-compatible with each other if they have the same
 ///   ABI string or the ABI string only differs in a trailing `-unwind`, independent of the rest of
 ///   their signature. (This means you can pass `fn()` to a function expecting `fn(i32)`, and the
@@ -1585,9 +1586,9 @@ mod prim_ref {}
 /// since it is not portable and not a stable guarantee.
 ///
 /// Noteworthy cases of types *not* being ABI-compatible in general are:
-/// * `bool` vs `u8`, and `i32` vs `u32`: on some targets, the calling conventions for these types
-///   differ in terms of what they guarantee for the remaining bits in the register that are not
-///   used by the value.
+/// * `bool` vs `u8`, `i32` vs `u32`, `char` vs `i32`: on some targets, the calling conventions for
+///   these types differ in terms of what they guarantee for the remaining bits in the register that
+///   are not used by the value.
 /// * `i32` vs `f32` are not compatible either, as has already been mentioned above.
 /// * `struct Foo(u32)` and `u32` are not compatible (without `repr(transparent)`) since structs are
 ///   aggregate types and often passed in a different way than primitives like `i32`.

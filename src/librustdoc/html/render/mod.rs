@@ -45,7 +45,6 @@ use std::iter::Peekable;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str;
-use std::string::ToString;
 
 use askama::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};

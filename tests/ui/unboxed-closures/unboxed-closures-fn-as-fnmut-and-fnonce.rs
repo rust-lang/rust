@@ -4,8 +4,6 @@
 
 #![feature(unboxed_closures, fn_traits)]
 
-use std::ops::{Fn,FnMut,FnOnce};
-
 struct S;
 
 impl Fn<(i32,)> for S {
