@@ -776,9 +776,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         new_err: impl Fn(TyCtxt<'tcx>, ErrorGuaranteed) -> T,
     ) -> T
     where
-        T: Into<ty::GenericArg<'tcx>> + Copy,
-        T: TypeFoldable<TyCtxt<'tcx>>,
-        T: TypeSuperFoldable<TyCtxt<'tcx>>,
+        T: Into<ty::GenericArg<'tcx>> + TypeSuperFoldable<TyCtxt<'tcx>> + Copy,
     {
         let tcx = self.fcx.tcx;
         // We must deeply normalize in the new solver, since later lints
