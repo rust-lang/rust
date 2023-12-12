@@ -1,0 +1,12 @@
+error[E0658]: the `#[patchable_function_entry]` attribute is an experimental feature
+  --> $DIR/feature-gate-patchable-function-entry.rs:1:1
+   |
+LL | #[patchable_function_entry(entry(1), prefix(1))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #9999 <https://github.com/rust-lang/rust/issues/9999> for more information
+   = help: add `#![feature(patchable_function_entry)]` to the crate attributes to enable
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

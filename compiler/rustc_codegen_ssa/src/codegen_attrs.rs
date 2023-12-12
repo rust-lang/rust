@@ -5,7 +5,9 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::{lang_items, weak_lang_items::WEAK_LANG_ITEMS, LangItem};
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::codegen_fn_attrs::{
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
@@ -462,6 +464,28 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 } else {
                     None
                 };
+            }
+            sym::patchable_function_entry => {
+                codegen_fn_attrs.patchable_function_entry = attr.meta_item_list().and_then(|l| {
+                    let mut prefix = 0;
+                    let mut entry = 0;
+                    for item in l {
+                        if let Some((sym, lit)) = item.name_value_literal() {
+                            let val = match lit.kind {
+                                // FIXME emit error if too many nops requested
+                                rustc_ast::LitKind::Int(i, _) => i as u8,
+                                _ => continue,
+                            };
+                            match sym {
+                                sym::prefix => prefix = val,
+                                sym::entry => entry = val,
+                                // FIXME possibly emit error here?
+                                _ => continue,
+                            }
+                        }
+                    }
+                    Some(PatchableFunctionEntry::from_prefix_and_entry(prefix, entry))
+                })
             }
             _ => {}
         }
