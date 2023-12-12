@@ -92,10 +92,6 @@ macro_rules! arena_types {
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::symbol::Symbol>,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::symbol::Symbol>,
 
-            // Interned types
-            [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyKind<'tcx>>,
-            [] consts: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::ConstData<'tcx>>,
-
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
