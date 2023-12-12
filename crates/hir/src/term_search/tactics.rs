@@ -1,4 +1,12 @@
 //! Tactics for term search
+//!
+//! All the tactics take following arguments
+//! * `db` - HIR database
+//! * `module` - Module where the term search target location
+//! * `defs` - Set of items in scope at term search target location
+//! * `lookup` - Lookup table for types
+//! * `goal` - Term search target type
+//! And they return iterator that yields type trees that unify with the `goal` type.
 
 use hir_def::generics::TypeOrConstParamData;
 use hir_ty::db::HirDatabase;
@@ -16,10 +24,21 @@ use crate::term_search::TypeTree;
 
 use super::{LookupTable, NewTypesKey, MAX_VARIATIONS};
 
-/// Trivial tactic
+/// # Trivial tactic
 ///
 /// Attempts to fulfill the goal by trying items in scope
-/// Also works as a starting point to move all items in scope to lookup table
+/// Also works as a starting point to move all items in scope to lookup table.
+///
+/// # Arguments
+/// * `db` - HIR database
+/// * `defs` - Set of items in scope at term search target location
+/// * `lookup` - Lookup table for types
+/// * `goal` - Term search target type
+///
+/// Returns iterator that yields elements that unify with `goal`.
+///
+/// _Note that there is no use of calling this tactic in every iteration as the output does not
+/// depend on the current state of `lookup`_
 pub(super) fn trivial<'a>(
     db: &'a dyn HirDatabase,
     defs: &'a FxHashSet<ScopeDef>,
@@ -67,9 +86,12 @@ pub(super) fn trivial<'a>(
     })
 }
 
-/// Type constructor tactic
+/// # Type constructor tactic
 ///
 /// Attempts different type constructors for enums and structs in scope
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
 ///
 /// # Arguments
 /// * `db` - HIR database
@@ -255,9 +277,13 @@ pub(super) fn type_constructor<'a>(
         .flatten()
 }
 
-/// Free function tactic
+/// # Free function tactic
 ///
-/// Attempts to call different functions in scope with parameters from lookup table
+/// Attempts to call different functions in scope with parameters from lookup table.
+/// Functions that include generics are not used for performance reasons.
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
 ///
 /// # Arguments
 /// * `db` - HIR database
@@ -356,10 +382,15 @@ pub(super) fn free_function<'a>(
         .flatten()
 }
 
-/// Impl method tactic
+/// # Impl method tactic
 ///
 /// Attempts to to call methods on types from lookup table.
 /// This includes both functions from direct impl blocks as well as functions from traits.
+/// Methods defined in impl blocks that are generic and methods that are themselves have
+/// generics are ignored for performance reasons.
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
 ///
 /// # Arguments
 /// * `db` - HIR database
@@ -484,9 +515,12 @@ pub(super) fn impl_method<'a>(
         .flatten()
 }
 
-/// Struct projection tactic
+/// # Struct projection tactic
 ///
-/// Attempts different struct fields
+/// Attempts different struct fields (`foo.bar.baz`)
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
 ///
 /// # Arguments
 /// * `db` - HIR database
@@ -522,9 +556,14 @@ pub(super) fn struct_projection<'a>(
         .flatten()
 }
 
-/// Famous types tactic
+/// # Famous types tactic
 ///
-/// Attempts different values of well known types such as `true` or `false`
+/// Attempts different values of well known types such as `true` or `false`.
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
+///
+/// _Note that there is no point of calling it iteratively as the output is always the same_
 ///
 /// # Arguments
 /// * `db` - HIR database

@@ -9,6 +9,7 @@ use crate::{
     Struct, StructKind, Trait, Type, Variant,
 };
 
+/// Helper function to prefix items with modules when required
 fn mod_item_path(db: &dyn HirDatabase, sema_scope: &SemanticsScope<'_>, def: &ModuleDef) -> String {
     // Account for locals shadowing items from module
     let name_hit_count = def.name(db).map(|def_name| {
@@ -76,6 +77,11 @@ pub enum TypeTree {
 }
 
 impl TypeTree {
+    /// Generate source code for type tree.
+    ///
+    /// Note that trait imports are not added to generated code.
+    /// To make sure that the code is valid, callee has to also ensure that all the traits listed
+    /// by `traits_used` method are also imported.
     pub fn gen_source_code(&self, sema_scope: &SemanticsScope<'_>) -> String {
         let db = sema_scope.db;
         match self {
@@ -222,6 +228,7 @@ impl TypeTree {
         }
     }
 
+    /// List the traits used in type tree
     pub fn traits_used(&self, db: &dyn HirDatabase) -> Vec<Trait> {
         let mut res = Vec::new();
 
