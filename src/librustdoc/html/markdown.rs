@@ -27,7 +27,7 @@
 //! ```
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -843,7 +843,9 @@ impl<'tcx> ExtraInfo<'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagnosticMessage>,
-        help: impl Into<SubdiagnosticMessage>,
+        f: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
@@ -851,7 +853,7 @@ impl<'tcx> ExtraInfo<'tcx> {
                 self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
                 msg,
-                |lint| lint.help(help),
+                f,
             );
         }
     }
@@ -1288,10 +1290,15 @@ impl LangString {
                         if x.starts_with("rust") && x[4..].parse::<Edition>().is_ok() =>
                     {
                         if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr(format!(
-                                "unknown attribute `{x}`. Did you mean `edition{}`?",
-                                &x[4..]
-                            ));
+                            extra.error_invalid_codeblock_attr_with_help(
+                                format!("unknown attribute `{x}`"),
+                                |lint| {
+                                    lint.help(format!(
+                                        "there is an attribute with a similar name: `edition{}`",
+                                        &x[4..],
+                                    ))
+                                },
+                            );
                         }
                     }
                     LangStringToken::LangToken(x)
@@ -1338,8 +1345,13 @@ impl LangString {
                         } {
                             if let Some(extra) = extra {
                                 extra.error_invalid_codeblock_attr_with_help(
-                                    format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
-                                    help,
+                                    format!("unknown attribute `{x}`"),
+                                    |lint| {
+                                        lint.help(format!(
+                                            "there is an attribute with a similar name: `{flag}`"
+                                        ))
+                                        .help(help)
+                                    },
                                 );
                             }
                         }
