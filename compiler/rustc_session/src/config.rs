@@ -1485,10 +1485,8 @@ impl CheckCfg {
         ins!(sym::sanitizer_cfi_generalize_pointers, no_values);
         ins!(sym::sanitizer_cfi_normalize_integers, no_values);
 
-        // rustc_codegen_ssa has a list of known target features and their
-        // stability, but we should allow any target feature as a new target or
-        // rustc version may introduce new target features.
-        ins!(sym::target_feature, || ExpectedValues::Any);
+        ins!(sym::target_feature, empty_values)
+            .extend(rustc_target::target_features::all_known_features().map(|(f, _sb)| Symbol::intern(f)));
 
         // sym::target_*
         {

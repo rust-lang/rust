@@ -51,7 +51,8 @@
     //~^ WARN unexpected `cfg` condition value
     target_family = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
-    target_feature = "_UNEXPECTED_VALUE", // currently *any* values are "expected"
+    target_feature = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
     target_has_atomic = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
