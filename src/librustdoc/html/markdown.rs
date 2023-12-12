@@ -234,10 +234,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
-        let compile_fail;
-        let should_panic;
-        let ignore;
-        let edition;
         let Some(Event::Start(Tag::CodeBlock(kind))) = event else {
             return event;
         };
@@ -253,48 +249,43 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
         }
 
-        let parse_result = match kind {
-            CodeBlockKind::Fenced(ref lang) => {
-                let parse_result = LangString::parse_without_check(
-                    lang,
-                    self.check_error_codes,
-                    false,
-                    self.custom_code_classes_in_docs,
-                );
-                if !parse_result.rust {
-                    let added_classes = parse_result.added_classes;
-                    let lang_string = if let Some(lang) = parse_result.unknown.first() {
-                        format!("language-{}", lang)
-                    } else {
-                        String::new()
-                    };
-                    let whitespace = if added_classes.is_empty() { "" } else { " " };
-                    return Some(Event::Html(
-                        format!(
-                            "<div class=\"example-wrap\">\
+        let LangString { added_classes, compile_fail, should_panic, ignore, edition, .. } =
+            match kind {
+                CodeBlockKind::Fenced(ref lang) => {
+                    let parse_result = LangString::parse_without_check(
+                        lang,
+                        self.check_error_codes,
+                        false,
+                        self.custom_code_classes_in_docs,
+                    );
+                    if !parse_result.rust {
+                        let added_classes = parse_result.added_classes;
+                        let lang_string = if let Some(lang) = parse_result.unknown.first() {
+                            format!("language-{}", lang)
+                        } else {
+                            String::new()
+                        };
+                        let whitespace = if added_classes.is_empty() { "" } else { " " };
+                        return Some(Event::Html(
+                            format!(
+                                "<div class=\"example-wrap\">\
                                  <pre class=\"{lang_string}{whitespace}{added_classes}\">\
                                      <code>{text}</code>\
                                  </pre>\
                              </div>",
-                            added_classes = added_classes.join(" "),
-                            text = Escape(&original_text),
-                        )
-                        .into(),
-                    ));
+                                added_classes = added_classes.join(" "),
+                                text = Escape(&original_text),
+                            )
+                            .into(),
+                        ));
+                    }
+                    parse_result
                 }
-                parse_result
-            }
-            CodeBlockKind::Indented => Default::default(),
-        };
+                CodeBlockKind::Indented => Default::default(),
+            };
 
-        let added_classes = parse_result.added_classes;
         let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.intersperse("\n".into()).collect::<String>();
-
-        compile_fail = parse_result.compile_fail;
-        should_panic = parse_result.should_panic;
-        ignore = parse_result.ignore;
-        edition = parse_result.edition;
 
         let explicit_edition = edition.is_some();
         let edition = edition.unwrap_or(self.edition);
