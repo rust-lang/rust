@@ -220,6 +220,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "derive_more",
     "derive_setters",
     "digest",
+    "directories", // Already used by Miri
+    "dirs-sys",    // Dependency of `directories`
     "displaydoc",
     "dissimilar",
     "dlmalloc",
@@ -282,6 +284,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "object",
     "odht",
     "once_cell",
+    "option-ext", // Dependency of `directories`
     "overload",
     "parking_lot",
     "parking_lot_core",
@@ -305,6 +308,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rand_xorshift",
     "rand_xoshiro",
     "redox_syscall",
+    "redox_users", // Dependency of `directories`
     "regex",
     "regex-automata",
     "regex-syntax",
