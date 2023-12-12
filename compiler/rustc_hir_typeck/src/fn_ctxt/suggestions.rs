@@ -2698,6 +2698,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
+        if expr.span.in_derive_expansion() {
+            // Ignore if span is from derive macro.
+            return false;
+        }
+
         let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) else {
             return false;
         };
