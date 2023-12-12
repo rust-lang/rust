@@ -50,6 +50,8 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
+use std::collections::BTreeMap;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 
@@ -725,6 +727,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         Box::new(vec::UselessVec {
             too_large_for_stack,
             msrv: msrv(),
+            span_to_lint_map: BTreeMap::new(),
         })
     });
     store.register_late_pass(|_| Box::new(panic_unimplemented::PanicUnimplemented));
