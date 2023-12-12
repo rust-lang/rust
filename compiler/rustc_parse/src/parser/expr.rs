@@ -2920,7 +2920,10 @@ impl<'a> Parser<'a> {
                 arm_body = None;
                 this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)]).map(
                     |x| {
-                        this.sess.gated_spans.gate(sym::never_patterns, pat.span);
+                        // Don't gate twice
+                        if !pat.contains_never_pattern() {
+                            this.sess.gated_spans.gate(sym::never_patterns, pat.span);
+                        }
                         x
                     },
                 )

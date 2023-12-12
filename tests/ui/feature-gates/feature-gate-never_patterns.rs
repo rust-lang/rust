@@ -14,14 +14,12 @@ fn main() {
         match *ptr {
             !
             //~^ ERROR `!` patterns are experimental
-            //~| ERROR `!` patterns are experimental
         }
         // Check that the gate operates even behind `cfg`.
         #[cfg(FALSE)]
         match *ptr {
             !
             //~^ ERROR `!` patterns are experimental
-            //~| ERROR `!` patterns are experimental
         }
         #[cfg(FALSE)]
         match *ptr {
@@ -51,14 +49,12 @@ fn main() {
     match res {
         Ok(_) => {}
         Err(!),
-        //~^ ERROR `match` arm with no body
-        //~| ERROR `!` patterns are experimental
+        //~^ ERROR `!` patterns are experimental
     }
     match res {
         Err(!) if false,
-        //~^ ERROR `match` arm with no body
+        //~^ ERROR `!` patterns are experimental
         //~| ERROR a guard on a never pattern will never be run
-        //~| ERROR `!` patterns are experimental
         _ => {}
     }
 
