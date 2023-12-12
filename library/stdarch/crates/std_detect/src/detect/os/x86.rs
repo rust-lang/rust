@@ -69,12 +69,13 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // EAX = 7, ECX = 0: Queries "Extended Features";
     // Contains information about bmi,bmi2, and avx2 support.
-    let (extended_features_ebx, extended_features_ecx) = if max_basic_leaf >= 7 {
-        let CpuidResult { ebx, ecx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
-        (ebx, ecx)
-    } else {
-        (0, 0) // CPUID does not support "Extended Features"
-    };
+    let (extended_features_ebx, extended_features_ecx, extended_features_edx) =
+        if max_basic_leaf >= 7 {
+            let CpuidResult { ebx, ecx, edx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
+            (ebx, ecx, edx)
+        } else {
+            (0, 0, 0) // CPUID does not support "Extended Features"
+        };
 
     // EAX = 0x8000_0000, ECX = 0: Get Highest Extended Function Supported
     // - EAX returns the max leaf value for extended information, that is,
@@ -217,6 +218,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(extended_features_ecx, 11, Feature::avx512vnni);
                         enable(extended_features_ecx, 12, Feature::avx512bitalg);
                         enable(extended_features_ecx, 14, Feature::avx512vpopcntdq);
+                        enable(extended_features_edx, 23, Feature::avx512fp16);
                     }
                 }
             }

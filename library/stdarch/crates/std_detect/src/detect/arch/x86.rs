@@ -75,6 +75,7 @@ features! {
     /// * `"avx512bitalg"`
     /// * `"avx512bf16"`
     /// * `"avx512vp2intersect"`
+    /// * `"avx512fp16"`
     /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
@@ -169,6 +170,8 @@ features! {
     /// AVX-512 BF16 (BFLOAT16 instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vp2intersect: "avx512vp2intersect";
     /// AVX-512 P2INTERSECT
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512fp16: "avx512fp16";
+    /// AVX-512 FP16 (FLOAT16 instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";

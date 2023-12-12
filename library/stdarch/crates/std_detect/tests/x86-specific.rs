@@ -51,6 +51,7 @@ fn dump() {
         "avx512vp2intersect {:?}",
         is_x86_feature_detected!("avx512vp2intersect")
     );
+    println!("avx512fp16 {:?}", is_x86_feature_detected!("avx512fp16"));
     println!("fma: {:?}", is_x86_feature_detected!("fma"));
     println!("abm: {:?}", is_x86_feature_detected!("abm"));
     println!("bmi: {:?}", is_x86_feature_detected!("bmi1"));

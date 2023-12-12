@@ -233,6 +233,7 @@ fn x86_all() {
         "avx512vp2intersect {:?}",
         is_x86_feature_detected!("avx512vp2intersect")
     );
+    println!("avx512fp16 {:?}", is_x86_feature_detected!("avx512fp16"));
     println!("f16c: {:?}", is_x86_feature_detected!("f16c"));
     println!("fma: {:?}", is_x86_feature_detected!("fma"));
     println!("bmi1: {:?}", is_x86_feature_detected!("bmi1"));
