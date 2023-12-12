@@ -180,7 +180,7 @@ impl Scope {
         };
         let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(blk) = tcx.hir().get(hir_id) {
+            if let Node::Block(blk) = tcx.hir_node(hir_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`

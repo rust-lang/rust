@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
             "called `skip(..).next()` on an iterator",
             |diag| {
                 if let Some(id) = path_to_local(recv)
-                    && let Node::Pat(pat) = cx.tcx.hir().get(id)
+                    && let Node::Pat(pat) = cx.tcx.hir_node(id)
                     && let PatKind::Binding(ann, _, _, _) = pat.kind
                     && ann != BindingAnnotation::MUT
                 {

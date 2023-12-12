@@ -161,7 +161,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
 }
 
 fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> + '_ {
-    let node = tcx.hir().get(tcx.local_def_id_to_hir_id(def_id));
+    let node = tcx.hir_node_by_def_id(def_id);
     if let Some(decl) = node.fn_decl() {
         decl.inputs.iter().map(|ty| ty.span).chain(iter::once(decl.output.span()))
     } else {

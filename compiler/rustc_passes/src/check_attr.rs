@@ -604,7 +604,7 @@ impl CheckAttrVisitor<'_> {
                     && !self.tcx.sess.target.is_like_wasm
                     && !self.tcx.sess.opts.actually_rustdoc
                 {
-                    let hir::Node::Item(item) = self.tcx.hir().get(hir_id) else {
+                    let hir::Node::Item(item) = self.tcx.hir_node(hir_id) else {
                         unreachable!();
                     };
                     let hir::ItemKind::Fn(sig, _, _) = item.kind else {
@@ -820,7 +820,7 @@ impl CheckAttrVisitor<'_> {
             self.doc_attr_str_error(meta, "keyword");
             return false;
         }
-        match self.tcx.hir().find(hir_id).and_then(|node| match node {
+        match self.tcx.opt_hir_node(hir_id).and_then(|node| match node {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         }) {
@@ -846,7 +846,7 @@ impl CheckAttrVisitor<'_> {
     }
 
     fn check_doc_fake_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
-        match self.tcx.hir().find(hir_id).and_then(|node| match node {
+        match self.tcx.opt_hir_node(hir_id).and_then(|node| match node {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         }) {
@@ -1387,7 +1387,7 @@ impl CheckAttrVisitor<'_> {
     /// Checks if `#[link]` is applied to an item other than a foreign module.
     fn check_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
         if target == Target::ForeignMod
-            && let hir::Node::Item(item) = self.tcx.hir().get(hir_id)
+            && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
             && !matches!(abi, Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic)
         {
@@ -1456,7 +1456,7 @@ impl CheckAttrVisitor<'_> {
     }
 
     fn is_impl_item(&self, hir_id: HirId) -> bool {
-        matches!(self.tcx.hir().get(hir_id), hir::Node::ImplItem(..))
+        matches!(self.tcx.hir_node(hir_id), hir::Node::ImplItem(..))
     }
 
     /// Checks if `#[export_name]` is applied to a function or static. Returns `true` if valid.
@@ -2074,7 +2074,7 @@ impl CheckAttrVisitor<'_> {
             && let hir::Node::Item(Item {
                 kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic | Abi::PlatformIntrinsic, .. },
                 ..
-            }) = hir.get(parent)
+            }) = self.tcx.hir_node(parent)
         {
             return true;
         }
@@ -2222,7 +2222,7 @@ impl CheckAttrVisitor<'_> {
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
             let (macro_definition, _) =
-                self.tcx.hir().find(hir_id).unwrap().expect_item().expect_macro();
+                self.tcx.opt_hir_node(hir_id).unwrap().expect_item().expect_macro();
             let is_decl_macro = !macro_definition.macro_rules;
 
             if is_decl_macro {

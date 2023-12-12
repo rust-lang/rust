@@ -275,7 +275,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
-        let item = tcx.hir().get_by_def_id(res_did);
+        let item = tcx.hir_node_by_def_id(res_did);
 
         if !please_inline {
             let inherits_hidden = !document_hidden && inherits_doc_hidden(tcx, res_did, None);

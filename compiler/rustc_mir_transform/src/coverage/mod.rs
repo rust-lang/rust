@@ -50,7 +50,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         }
 
         let is_fn_like =
-            tcx.hir().get_by_def_id(mir_source.def_id().expect_local()).fn_kind().is_some();
+            tcx.hir_node_by_def_id(mir_source.def_id().expect_local()).fn_kind().is_some();
 
         // Only instrument functions, methods, and closures (not constants since they are evaluated
         // at compile time by Miri).

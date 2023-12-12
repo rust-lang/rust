@@ -32,7 +32,7 @@ use crate::errors::{
 // may need to be marked as live.
 fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(
-        tcx.hir().find_by_def_id(def_id),
+        tcx.opt_hir_node_by_def_id(def_id),
         Some(
             Node::Item(..)
                 | Node::ImplItem(..)
@@ -297,7 +297,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // tuple struct constructor function
             let id = self.struct_constructors.get(&id).copied().unwrap_or(id);
 
-            if let Some(node) = self.tcx.hir().find_by_def_id(id) {
+            if let Some(node) = self.tcx.opt_hir_node_by_def_id(id) {
                 // When using `#[allow]` or `#[expect]` of `dead_code`, we do a QOL improvement
                 // by declaring fn calls, statics, ... within said items as live, as well as
                 // the item itself, although technically this is not the case.

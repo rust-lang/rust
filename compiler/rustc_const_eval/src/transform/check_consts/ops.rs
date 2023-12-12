@@ -119,8 +119,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             match self_ty.kind() {
                 Param(param_ty) => {
                     debug!(?param_ty);
-                    let caller_hir_id = tcx.local_def_id_to_hir_id(caller);
-                    if let Some(generics) = tcx.hir().get(caller_hir_id).generics() {
+                    if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
                         let constraint = with_no_trimmed_paths!(format!(
                             "~const {}",
                             trait_ref.print_only_trait_path()

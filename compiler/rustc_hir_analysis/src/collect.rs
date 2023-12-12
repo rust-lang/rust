@@ -221,7 +221,7 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
 
             // Check if parent is const or static
             let parent_id = tcx.hir().parent_id(hir_ty.hir_id);
-            let parent_node = tcx.hir().get(parent_id);
+            let parent_node = tcx.hir_node(parent_id);
 
             is_const_or_static = matches!(
                 parent_node,
@@ -354,7 +354,7 @@ impl<'tcx> ItemCtxt<'tcx> {
     }
 
     pub fn node(&self) -> hir::Node<'tcx> {
-        self.tcx.hir().get(self.hir_id())
+        self.tcx.hir_node(self.hir_id())
     }
 }
 
@@ -835,8 +835,7 @@ fn convert_variant(
 fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
     use rustc_hir::*;
 
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let Node::Item(item) = tcx.hir().get(hir_id) else {
+    let Node::Item(item) = tcx.hir_node_by_def_id(def_id) else {
         bug!();
     };
 
@@ -1105,7 +1104,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let output = match tcx.hir().get(hir_id) {
+    let output = match tcx.hir_node(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
@@ -1551,7 +1550,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 }
 
 fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineKind> {
-    match tcx.hir().get_by_def_id(def_id) {
+    match tcx.hir_node_by_def_id(def_id) {
         Node::Expr(&rustc_hir::Expr {
             kind: rustc_hir::ExprKind::Closure(&rustc_hir::Closure { body, .. }),
             ..
@@ -1561,7 +1560,7 @@ fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineK
 }
 
 fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
-    match tcx.hir().get_by_def_id(def_id) {
+    match tcx.hir_node_by_def_id(def_id) {
         Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. }) => {
             matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias { .. })
         }

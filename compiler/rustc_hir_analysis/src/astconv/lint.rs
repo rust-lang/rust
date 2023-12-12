@@ -24,7 +24,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ..
                 }),
             ..
-        }) = tcx.hir().get_by_def_id(parent_id)
+        }) = tcx.hir_node_by_def_id(parent_id)
             && self_ty.hir_id == impl_self_ty.hir_id
         {
             if !of_trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {

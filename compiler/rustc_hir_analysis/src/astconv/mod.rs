@@ -2715,7 +2715,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let hir = tcx.hir();
 
         let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), ident, .. }) =
-            hir.get(fn_hir_id)
+            tcx.hir_node(fn_hir_id)
         else {
             return None;
         };

@@ -176,10 +176,10 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     let hir = cx.tcx.hir();
-    if let Some(Node::Pat(pat)) = hir.find(hir_id)
+    if let Some(Node::Pat(pat)) = cx.tcx.opt_hir_node(hir_id)
         && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
         && let parent = hir.parent_id(hir_id)
-        && let Some(Node::Local(local)) = hir.find(parent)
+        && let Some(Node::Local(local)) = cx.tcx.opt_hir_node(parent)
     {
         return local.init;
     }
@@ -563,7 +563,7 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     let hir = tcx.hir();
 
     let root_mod;
-    let item_kind = match hir.find_by_def_id(local_id) {
+    let item_kind = match tcx.opt_hir_node_by_def_id(local_id) {
         Some(Node::Crate(r#mod)) => {
             root_mod = ItemKind::Mod(r#mod);
             &root_mod
@@ -712,7 +712,7 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> 
     let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if parent_impl != hir::CRATE_OWNER_ID
-        && let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl.def_id)
+        && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_impl.def_id)
         && let hir::ItemKind::Impl(impl_) = &item.kind
     {
         return impl_.of_trait.as_ref();
@@ -1242,7 +1242,7 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
-    match cx.tcx.hir().find_by_def_id(parent_id) {
+    match cx.tcx.opt_hir_node_by_def_id(parent_id) {
         Some(
             Node::Item(Item { ident, .. })
             | Node::TraitItem(TraitItem { ident, .. })
@@ -1319,7 +1319,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     let map = &cx.tcx.hir();
     let enclosing_node = map
         .get_enclosing_scope(hir_id)
-        .and_then(|enclosing_id| map.find(enclosing_id));
+        .and_then(|enclosing_id| cx.tcx.opt_hir_node(enclosing_id));
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
@@ -2691,7 +2691,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                 if let Some(Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
                     ..
-                })) = cx.tcx.hir().find(hir_id)
+                })) = cx.tcx.opt_hir_node(hir_id)
                 {
                     match c.fn_decl.output {
                         FnRetTy::DefaultReturn(_) => None,
@@ -2757,7 +2757,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Optio
     walk_to_expr_usage(cx, e, &mut |parent, child_id| {
         // LocalTableInContext returns the wrong lifetime, so go use `expr_adjustments` instead.
         if adjustments.is_empty()
-            && let Node::Expr(e) = cx.tcx.hir().get(child_id)
+            && let Node::Expr(e) = cx.tcx.hir_node(child_id)
         {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }

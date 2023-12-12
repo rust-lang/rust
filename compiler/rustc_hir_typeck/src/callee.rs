@@ -295,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let hir = self.tcx.hir();
         let parent_hir_id = hir.parent_id(hir_id);
-        let parent_node = hir.get(parent_hir_id);
+        let parent_node = self.tcx.hir_node(parent_hir_id);
         if let (
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, body, .. }),
@@ -313,7 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                     ..
-                }) = hir.get(async_closure)
+                }) = self.tcx.hir_node(async_closure)
                 {
                     fn_decl_span
                 } else {
@@ -343,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_expr: &'tcx hir::Expr<'tcx>,
     ) -> bool {
         let hir_id = self.tcx.hir().parent_id(call_expr.hir_id);
-        let parent_node = self.tcx.hir().get(hir_id);
+        let parent_node = self.tcx.hir_node(hir_id);
         if let (
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Array(_), .. }),
             hir::ExprKind::Tup(exp),

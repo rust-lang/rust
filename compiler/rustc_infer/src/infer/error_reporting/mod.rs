@@ -891,7 +891,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
                 // don't suggest wrapping either blocks in `if .. {} else {}`
                 let is_empty_arm = |id| {
-                    let hir::Node::Block(blk) = self.tcx.hir().get(id) else {
+                    let hir::Node::Block(blk) = self.tcx.hir_node(id) else {
                         return false;
                     };
                     if blk.expr.is_some() || !blk.stmts.is_empty() {
@@ -2007,7 +2007,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             diag.span_note(span, "this closure does not fulfill the lifetime requirements");
             self.suggest_for_all_lifetime_closure(
                 span,
-                self.tcx.hir().get_by_def_id(def_id),
+                self.tcx.hir_node_by_def_id(def_id),
                 &exp_found,
                 diag,
             );
@@ -2121,7 +2121,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let TypeError::FixedArraySize(sz) = terr else {
             return None;
         };
-        let tykind = match hir.find_by_def_id(trace.cause.body_id) {
+        let tykind = match self.tcx.opt_hir_node_by_def_id(trace.cause.body_id) {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
                 let body = hir.body(*body_id);
                 struct LetVisitor<'v> {
@@ -2997,7 +2997,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Given a [`hir::HirId`] for a block, get the span of its last expression
     /// or statement, peeling off any inner blocks.
     pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
-        match self.tcx.hir().get(hir_id) {
+        match self.tcx.hir_node(hir_id) {
             hir::Node::Block(blk) => self.find_block_span(blk),
             // The parser was in a weird state if either of these happen, but
             // it's better not to panic.
