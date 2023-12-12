@@ -53,6 +53,31 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
     }
 }
 
+#[inline]
+fn patchable_function_entry_attrs<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+) -> SmallVec<[&'ll Attribute; 2]> {
+    let mut attrs = SmallVec::new();
+    let patchable_spec = cx.tcx.sess.opts.unstable_opts.patchable_function_entry;
+    let entry = patchable_spec.entry();
+    let prefix = patchable_spec.prefix();
+    if entry > 0 {
+        attrs.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "patchable-function-entry",
+            &format!("{}", entry),
+        ));
+    }
+    if prefix > 0 {
+        attrs.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "patchable-function-prefix",
+            &format!("{}", prefix),
+        ));
+    }
+    attrs
+}
+
 /// Get LLVM sanitize attributes.
 #[inline]
 pub fn sanitize_attrs<'ll>(
@@ -421,6 +446,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         llvm::set_alignment(llfn, align);
     }
     to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
+    to_add.extend(patchable_function_entry_attrs(cx));
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
