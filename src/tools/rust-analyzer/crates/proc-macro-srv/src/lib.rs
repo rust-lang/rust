@@ -11,11 +11,12 @@
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
-#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
+#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unreachable_pub, internal_features)]
 
 extern crate proc_macro;
+extern crate rustc_driver as _;
 
 mod dylib;
 mod server;

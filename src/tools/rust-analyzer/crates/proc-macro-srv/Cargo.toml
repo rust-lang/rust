@@ -36,3 +36,4 @@ proc-macro-test.workspace = true
 
 [features]
 sysroot-abi = []
+in-rust-tree = ["mbe/in-rust-tree"]
