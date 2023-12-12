@@ -94,7 +94,7 @@ pub use crate::{
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
         InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition,
-        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
+        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints, RangeLimit,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -397,7 +397,7 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        range: Option<TextRange>,
+        range: Option<RangeLimit>,
     ) -> Cancellable<Vec<InlayHint>> {
         self.with_db(|db| inlay_hints::inlay_hints(db, file_id, range, config))
     }

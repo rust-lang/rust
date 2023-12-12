@@ -422,6 +422,11 @@ fn ty_to_text_edit(
     Some(builder.finish())
 }
 
+pub enum RangeLimit {
+    Fixed(TextRange),
+    NearestParent(TextSize),
+}
+
 // Feature: Inlay Hints
 //
 // rust-analyzer shows additional information inline with the source code.
@@ -443,7 +448,7 @@ fn ty_to_text_edit(
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
-    range_limit: Option<TextRange>,
+    range_limit: Option<RangeLimit>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
     let _p = profile::span("inlay_hints");
@@ -458,13 +463,31 @@ pub(crate) fn inlay_hints(
 
         let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
         match range_limit {
-            Some(range) => match file.covering_element(range) {
+            Some(RangeLimit::Fixed(range)) => match file.covering_element(range) {
                 NodeOrToken::Token(_) => return acc,
                 NodeOrToken::Node(n) => n
                     .descendants()
                     .filter(|descendant| range.intersect(descendant.text_range()).is_some())
                     .for_each(hints),
             },
+            Some(RangeLimit::NearestParent(position)) => {
+                match file.token_at_offset(position).left_biased() {
+                    Some(token) => {
+                        if let Some(parent_block) =
+                            token.parent_ancestors().find_map(ast::BlockExpr::cast)
+                        {
+                            parent_block.syntax().descendants().for_each(hints)
+                        } else if let Some(parent_item) =
+                            token.parent_ancestors().find_map(ast::Item::cast)
+                        {
+                            parent_item.syntax().descendants().for_each(hints)
+                        } else {
+                            return acc;
+                        }
+                    }
+                    None => return acc,
+                }
+            }
             None => file.descendants().for_each(hints),
         };
     }
