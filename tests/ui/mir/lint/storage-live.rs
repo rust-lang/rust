@@ -1,4 +1,4 @@
-// compile-flags: -Zvalidate-mir -Ztreat-err-as-bug
+// compile-flags: -Zlint-mir -Ztreat-err-as-bug
 // failure-status: 101
 // error-pattern: broken MIR in
 // error-pattern: StorageLive(_1) which already has storage here

@@ -86,6 +86,7 @@ pub mod inline;
 mod instsimplify;
 mod jump_threading;
 mod large_enums;
+mod lint;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
