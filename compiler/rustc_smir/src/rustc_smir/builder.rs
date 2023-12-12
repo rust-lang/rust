@@ -6,7 +6,7 @@
 use crate::rustc_smir::{Stable, Tables};
 use rustc_middle::mir;
 use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 
 /// Builds a monomorphic body for a given instance.
 pub struct BodyBuilder<'tcx> {
@@ -66,6 +66,10 @@ impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
         let ty = constant.ty();
         constant.const_ = mir::Const::Val(val, ty);
         self.super_constant(constant, location);
+    }
+
+    fn visit_args(&mut self, args: &mut GenericArgsRef<'tcx>, _: mir::Location) {
+        *args = self.monomorphize(*args);
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
