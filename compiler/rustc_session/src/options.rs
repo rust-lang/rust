@@ -1584,10 +1584,10 @@ options! {
         all `statement`s (including terminators), only `terminator` spans, or \
         computed `block` spans (one span encompassing a block's terminator and \
         all statements)."),
-    dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Enabled(Some("/dev/null/".into())),
+    dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "output statistics about monomorphization collection"),
-    dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Json, parse_dump_mono_stats, [UNTRACKED],
+    dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Markdown, parse_dump_mono_stats, [UNTRACKED],
         "the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)"),
     dump_solver_proof_tree: DumpSolverProofTree = (DumpSolverProofTree::Never, parse_dump_solver_proof_tree, [UNTRACKED],
         "dump a proof tree for every goal evaluated by the new trait solver. If the flag is specified without any options after it
@@ -1835,7 +1835,7 @@ written to standard error output)"),
     saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
         the max/min integer respectively, and NaN is mapped to 0 (default: yes)"),
-    self_profile: SwitchWithOptPath = (SwitchWithOptPath::Enabled(Some("/dev/null/".into())),
+    self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
     self_profile_counter: String = ("wall-time".to_string(), parse_string, [UNTRACKED],
@@ -1845,7 +1845,7 @@ written to standard error output)"),
         `instructions-minus-irqs:u` (subtracting hardware interrupt counts for extra accuracy)"
     ),
     /// keep this in sync with the event filter names in librustc_data_structures/profiling.rs
-    self_profile_events: Option<Vec<String>> = (Some(Vec::from(["artifact-sizes".to_string()])), parse_opt_comma_list, [UNTRACKED],
+    self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
         "specify the events recorded by the self profiler;
         for example: `-Z self-profile-events=default,query-keys`
         all options: none, all, default, generic-activity, query-provider, query-cache-hit
