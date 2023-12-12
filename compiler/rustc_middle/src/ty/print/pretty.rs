@@ -2754,6 +2754,10 @@ forward_display_to_print! {
 define_print! {
     (self, cx):
 
+    ty::TypeAndMut<'tcx> {
+        p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
+    }
+
     ty::ClauseKind<'tcx> {
         match *self {
             ty::ClauseKind::Trait(ref data) => {
@@ -2797,10 +2801,6 @@ define_print_and_forward_display! {
 
     &'tcx ty::List<Ty<'tcx>> {
         p!("{{", comma_sep(self.iter()), "}}")
-    }
-
-    ty::TypeAndMut<'tcx> {
-        p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
 
     ty::ExistentialTraitRef<'tcx> {
