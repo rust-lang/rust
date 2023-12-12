@@ -315,11 +315,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let final_tupled_upvars_type = Ty::new_tup(self.tcx, &final_upvar_tys);
         self.demand_suptype(span, args.tupled_upvars_ty(), final_tupled_upvars_type);
 
-        let fake_reads = delegate
-            .fake_reads
-            .into_iter()
-            .map(|(place, cause, hir_id)| (place, cause, hir_id))
-            .collect();
+        let fake_reads = delegate.fake_reads;
+
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
         if self.tcx.sess.opts.unstable_opts.profile_closures {

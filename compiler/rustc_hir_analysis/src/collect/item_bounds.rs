@@ -34,17 +34,14 @@ fn associated_type_bounds<'tcx>(
     let trait_def_id = tcx.local_parent(assoc_item_def_id);
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
 
-    let bounds_from_parent = trait_predicates
-        .predicates
-        .iter()
-        .copied()
-        .filter(|(pred, _)| match pred.kind().skip_binder() {
+    let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
+        match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(tr) => tr.self_ty() == item_ty,
             ty::ClauseKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
             ty::ClauseKind::TypeOutlives(outlives) => outlives.0 == item_ty,
             _ => false,
-        })
-        .map(|(clause, span)| (clause, span));
+        }
+    });
 
     let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
     debug!(

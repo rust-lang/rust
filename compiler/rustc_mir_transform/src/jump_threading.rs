@@ -649,7 +649,7 @@ impl OpportunitySet {
 
             // `succ` must be a successor of `current`. If it is not, this means this TO is not
             // satisfiable and a previous TO erased this edge, so we bail out.
-            if basic_blocks[current].terminator().successors().find(|s| *s == succ).is_none() {
+            if !basic_blocks[current].terminator().successors().any(|s| s == succ) {
                 debug!("impossible");
                 return;
             }

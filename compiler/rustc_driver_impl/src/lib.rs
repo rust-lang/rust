@@ -587,10 +587,8 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     let mut print_formatted = if pager_name == "less" {
         cmd.arg("-r");
         true
-    } else if ["bat", "catbat", "delta"].iter().any(|v| *v == pager_name) {
-        true
     } else {
-        false
+        ["bat", "catbat", "delta"].iter().any(|v| *v == pager_name)
     };
 
     if color == ColorConfig::Never {
