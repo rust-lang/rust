@@ -831,7 +831,10 @@ fn coroutine_layout<'tcx>(
                     Assigned(_) => bug!("assignment does not match variant"),
                     Ineligible(_) => false,
                 })
-                .map(|local| subst_field(info.field_tys[*local].ty));
+                .map(|local| {
+                    let field_ty = subst_field(info.field_tys[*local].ty);
+                    Ty::new_maybe_uninit(tcx, field_ty)
+                });
 
             let mut variant = univariant_uninterned(
                 cx,
