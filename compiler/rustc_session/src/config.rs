@@ -1485,8 +1485,12 @@ impl CheckCfg {
         ins!(sym::sanitizer_cfi_generalize_pointers, no_values);
         ins!(sym::sanitizer_cfi_normalize_integers, no_values);
 
-        ins!(sym::target_feature, empty_values)
-            .extend(rustc_target::target_features::all_known_features().map(|(f, _sb)| Symbol::intern(f)));
+        ins!(sym::target_feature, empty_values).extend(
+            rustc_target::target_features::all_known_features()
+                .map(|(f, _sb)| f)
+                .chain(rustc_target::target_features::RUSTC_SPECIFIC_FEATURES.iter().cloned())
+                .map(Symbol::intern),
+        );
 
         // sym::target_*
         {
