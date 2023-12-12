@@ -32,7 +32,10 @@ fn integrated_highlighting_benchmark() {
     let workspace_to_load = project_root();
     let file = "./crates/rust-analyzer/src/config.rs";
 
-    let cargo_config = CargoConfig::default();
+    let cargo_config = CargoConfig {
+        sysroot: Some(project_model::RustLibSource::Discover),
+        ..CargoConfig::default()
+    };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::None,
@@ -85,7 +88,10 @@ fn integrated_completion_benchmark() {
     let workspace_to_load = project_root();
     let file = "./crates/hir/src/lib.rs";
 
-    let cargo_config = CargoConfig::default();
+    let cargo_config = CargoConfig {
+        sysroot: Some(project_model::RustLibSource::Discover),
+        ..CargoConfig::default()
+    };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::None,

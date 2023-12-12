@@ -36,7 +36,8 @@ pub fn items_with_name<'a>(
         NameToImport::Prefix(exact_name, case_sensitive)
         | NameToImport::Exact(exact_name, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(exact_name.clone());
-            let mut external_query = import_map::Query::new(exact_name);
+            let mut external_query =
+                import_map::Query::new(exact_name).assoc_search_mode(assoc_item_search);
             if prefix {
                 local_query.prefix();
                 external_query = external_query.prefix();
