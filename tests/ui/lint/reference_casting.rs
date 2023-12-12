@@ -116,6 +116,13 @@ unsafe fn assign_to_ref() {
     let value = num as *const i32 as *mut i32;
     *value = 1;
     //~^ ERROR assigning to `&T` is undefined behavior
+    let value = num as *const i32;
+    let value = value as *mut i32;
+    *value = 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
+    let value = num as *const i32 as *mut i32;
+    *value = 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
     let value_rebind = value;
     *value_rebind = 1;
     //~^ ERROR assigning to `&T` is undefined behavior

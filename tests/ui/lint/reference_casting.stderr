@@ -286,7 +286,27 @@ LL |     *value = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:120:5
+  --> $DIR/reference_casting.rs:121:5
+   |
+LL |     let value = value as *mut i32;
+   |                 ----------------- casting happend here
+LL |     *value = 1;
+   |     ^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:124:5
+   |
+LL |     let value = num as *const i32 as *mut i32;
+   |                 ----------------------------- casting happend here
+LL |     *value = 1;
+   |     ^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:127:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -297,7 +317,7 @@ LL |     *value_rebind = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:122:5
+  --> $DIR/reference_casting.rs:129:5
    |
 LL |     *(num as *const i32).cast::<i32>().cast_mut() = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -305,7 +325,7 @@ LL |     *(num as *const i32).cast::<i32>().cast_mut() = 2;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:124:5
+  --> $DIR/reference_casting.rs:131:5
    |
 LL |     *(num as *const _ as usize as *mut i32) = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -313,7 +333,7 @@ LL |     *(num as *const _ as usize as *mut i32) = 2;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:126:5
+  --> $DIR/reference_casting.rs:133:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -324,7 +344,7 @@ LL |     std::ptr::write(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:128:5
+  --> $DIR/reference_casting.rs:135:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -335,7 +355,7 @@ LL |     std::ptr::write_unaligned(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:130:5
+  --> $DIR/reference_casting.rs:137:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -346,12 +366,12 @@ LL |     std::ptr::write_volatile(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:134:9
+  --> $DIR/reference_casting.rs:141:9
    |
 LL |         *(this as *const _ as *mut _) = a;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
-error: aborting due to 40 previous errors
+error: aborting due to 42 previous errors
 

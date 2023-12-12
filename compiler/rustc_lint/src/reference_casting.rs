@@ -182,7 +182,12 @@ fn peel_casts<'tcx>(cx: &LateContext<'tcx>, mut e: &'tcx Expr<'tcx>) -> (&'tcx E
             }
             arg
         } else {
-            break;
+            let init = cx.expr_or_init(e);
+            if init.hir_id != e.hir_id {
+                init
+            } else {
+                break;
+            }
         };
     }
 
