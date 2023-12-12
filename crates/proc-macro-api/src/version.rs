@@ -85,8 +85,8 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 }
 
 /// Check the version of rustc that was used to compile a proc macro crate's
-///
 /// binary file.
+///
 /// A proc macro crate binary's ".rustc" section has following byte layout:
 /// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes
 /// * ff060000 734e6150 is followed, it's the snappy format magic bytes,
@@ -96,8 +96,8 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 /// The bytes you get after decompressing the snappy format portion has
 /// following layout:
 /// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes(again)
-/// * [crate root bytes] next 4 bytes is to store crate root position,
-///   according to rustc's source code comment
+/// * [crate root bytes] next 8 bytes (4 in old versions) is to store
+///   crate root position, according to rustc's source code comment
 /// * [length byte] next 1 byte tells us how many bytes we should read next
 ///   for the version string's utf8 bytes
 /// * [version string bytes encoded in utf8] <- GET THIS BOI
@@ -119,13 +119,18 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     }
     let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
     // Last supported version is:
-    // https://github.com/rust-lang/rust/commit/0696e79f2740ad89309269b460579e548a5cd632
-    let snappy_portion = match version {
-        5 | 6 => &dot_rustc[8..],
+    // https://github.com/rust-lang/rust/commit/b94cfefc860715fb2adf72a6955423d384c69318
+    let (snappy_portion, bytes_before_version) = match version {
+        5 | 6 => (&dot_rustc[8..], 13),
         7 | 8 => {
             let len_bytes = &dot_rustc[8..12];
             let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
-            &dot_rustc[12..data_len + 12]
+            (&dot_rustc[12..data_len + 12], 13)
+        }
+        9 => {
+            let len_bytes = &dot_rustc[8..16];
+            let data_len = u64::from_le_bytes(len_bytes.try_into().unwrap()) as usize;
+            (&dot_rustc[16..data_len + 12], 17)
         }
         _ => {
             return Err(io::Error::new(
@@ -142,15 +147,15 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
         Box::new(SnapDecoder::new(snappy_portion))
     };
 
-    // the bytes before version string bytes, so this basically is:
+    // We're going to skip over the bytes before the version string, so basically:
     // 8 bytes for [b'r',b'u',b's',b't',0,0,0,5]
-    // 4 bytes for [crate root bytes]
+    // 4 or 8 bytes for [crate root bytes]
     // 1 byte for length of version string
-    // so 13 bytes in total, and we should check the 13th byte
+    // so 13 or 17 bytes in total, and we should check the last of those bytes
     // to know the length
-    let mut bytes_before_version = [0u8; 13];
-    uncompressed.read_exact(&mut bytes_before_version)?;
-    let length = bytes_before_version[12];
+    let mut bytes = [0u8; 17];
+    uncompressed.read_exact(&mut bytes[..bytes_before_version])?;
+    let length = bytes[bytes_before_version - 1];
 
     let mut version_string_utf8 = vec![0u8; length as usize];
     uncompressed.read_exact(&mut version_string_utf8)?;

@@ -73,7 +73,7 @@ pub fn expand_eager_macro_input(
         )
     };
     let err = parse_err.or(err);
-    if cfg!(debug) {
+    if cfg!(debug_assertions) {
         arg_map.finish();
     }
 
