@@ -304,6 +304,7 @@ fn test_const_nonnull_new() {
 #[test]
 #[cfg(unix)] // printf may not be available on other platforms
 #[allow(deprecated)] // For SipHasher
+#[cfg_attr(not(bootstrap), allow(unpredictable_function_pointer_comparisons))]
 pub fn test_variadic_fnptr() {
     use core::ffi;
     use core::hash::{Hash, SipHasher};
