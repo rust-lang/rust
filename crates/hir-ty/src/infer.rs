@@ -217,6 +217,7 @@ pub enum InferenceDiagnostic {
         name: Name,
         /// Contains the type the field resolves to
         field_with_same_name: Option<Ty>,
+        assoc_func_with_same_name: Option<AssocItemId>,
     },
     // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
