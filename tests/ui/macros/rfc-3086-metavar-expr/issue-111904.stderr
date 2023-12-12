@@ -1,13 +1,13 @@
 error: `count` followed by a comma must have an associated index indicating its depth
   --> $DIR/issue-111904.rs:4:37
    |
-LL |     ( $( $($t:ident),* );* ) => { ${count(t,)} }
+LL |     ( $( $($t:ident),* );* ) => { ${count($t,)} }
    |                                     ^^^^^
 
 error: expected expression, found `$`
   --> $DIR/issue-111904.rs:4:35
    |
-LL |     ( $( $($t:ident),* );* ) => { ${count(t,)} }
+LL |     ( $( $($t:ident),* );* ) => { ${count($t,)} }
    |                                   ^ expected expression
 ...
 LL |     foo!(a, a; b, b);
