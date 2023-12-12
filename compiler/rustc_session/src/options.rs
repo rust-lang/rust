@@ -1835,7 +1835,7 @@ written to standard error output)"),
     saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
         the max/min integer respectively, and NaN is mapped to 0 (default: yes)"),
-    self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
+    self_profile: SwitchWithOptPath = (SwitchWithOptPath::Enabled(Some("target/tmp/stats-dir/".into())),
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
     self_profile_counter: String = ("wall-time".to_string(), parse_string, [UNTRACKED],
@@ -1845,7 +1845,7 @@ written to standard error output)"),
         `instructions-minus-irqs:u` (subtracting hardware interrupt counts for extra accuracy)"
     ),
     /// keep this in sync with the event filter names in librustc_data_structures/profiling.rs
-    self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
+    self_profile_events: Option<Vec<String>> = (Some(Vec::from(["artifact-sizes".to_string()])), parse_opt_comma_list, [UNTRACKED],
         "specify the events recorded by the self profiler;
         for example: `-Z self-profile-events=default,query-keys`
         all options: none, all, default, generic-activity, query-provider, query-cache-hit
