@@ -1204,7 +1204,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 };
                                 err.multipart_suggestion_verbose(
                                     msg,
-                                    sugg.clone(),
+                                    sugg,
                                     Applicability::MaybeIncorrect,
                                 );
                                 for error in errors {
