@@ -1285,6 +1285,16 @@ impl LangString {
                         data.edition = x[7..].parse::<Edition>().ok();
                     }
                     LangStringToken::LangToken(x)
+                        if x.starts_with("rust") && x[4..].parse::<Edition>().is_ok() =>
+                    {
+                        if let Some(extra) = extra {
+                            extra.error_invalid_codeblock_attr(format!(
+                                "unknown attribute `{x}`. Did you mean `edition{}`?",
+                                &x[4..]
+                            ));
+                        }
+                    }
+                    LangStringToken::LangToken(x)
                         if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
                     {
                         if x[1..].parse::<u32>().is_ok() {
