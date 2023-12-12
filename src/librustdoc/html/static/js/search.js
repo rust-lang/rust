@@ -2000,11 +2000,11 @@ function initSearch(rawSearchIndex) {
                 fullId,
                 parsedQuery.typeFingerprint
             );
-            if (tfpDist !== null &&
-                !(results_in_args.size >= MAX_RESULTS && tfpDist > results_in_args.max_dist)
-            ) {
+            if (tfpDist !== null) {
                 const in_args = row.type && row.type.inputs
                     && checkIfInList(row.type.inputs, elem, row.type.where_clause);
+                const returned = row.type && row.type.output
+                    && checkIfInList(row.type.output, elem, row.type.where_clause);
                 if (in_args) {
                     results_in_args.max_dist = Math.max(results_in_args.max_dist || 0, tfpDist);
                     const maxDist = results_in_args.size < MAX_RESULTS ?
@@ -2012,12 +2012,6 @@ function initSearch(rawSearchIndex) {
                         results_in_args.max_dist;
                     addIntoResults(results_in_args, fullId, pos, -1, tfpDist, 0, maxDist);
                 }
-            }
-            if (tfpDist !== false &&
-                !(results_returned.size >= MAX_RESULTS && tfpDist > results_returned.max_dist)
-            ) {
-                const returned = row.type && row.type.output
-                    && checkIfInList(row.type.output, elem, row.type.where_clause);
                 if (returned) {
                     results_returned.max_dist = Math.max(results_returned.max_dist || 0, tfpDist);
                     const maxDist = results_returned.size < MAX_RESULTS ?
