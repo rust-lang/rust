@@ -174,11 +174,14 @@ where
                     };
                     (base_meta, offset.align_to(align))
                 }
-                None => {
-                    // For unsized types with an extern type tail we perform no adjustments.
-                    // NOTE: keep this in sync with `PlaceRef::project_field` in the codegen backend.
-                    assert!(matches!(base_meta, MemPlaceMeta::None));
+                None if offset == Size::ZERO => {
+                    // If the offset is 0, then rounding it up to alignment wouldn't change anything,
+                    // so we can do this even for types where we cannot determine the alignment.
                     (base_meta, offset)
+                }
+                None => {
+                    // We don't know the alignment of this field, so we cannot adjust.
+                    throw_unsup_format!("`extern type` does not have a known offset")
                 }
             }
         } else {

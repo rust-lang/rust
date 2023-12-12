@@ -2,7 +2,7 @@ use super::operand::OperandValue;
 use super::{FunctionCx, LocalRef};
 
 use crate::common::IntPredicate;
-use crate::glue;
+use crate::size_of_val;
 use crate::traits::*;
 
 use rustc_middle::mir;
@@ -99,6 +99,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let offset = self.layout.fields.offset(ix);
         let effective_field_align = self.align.restrict_for_offset(offset);
 
+        // `simple` is called when we don't need to adjust the offset to
+        // the dynamic alignment of the field.
         let mut simple = || {
             let llval = match self.layout.abi {
                 _ if offset.bytes() == 0 => {
@@ -141,28 +143,21 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         };
 
         // Simple cases, which don't need DST adjustment:
-        //   * no metadata available - just log the case
-        //   * known alignment - sized types, `[T]`, `str` or a foreign type
+        //   * known alignment - sized types, `[T]`, `str`
+        //   * offset 0 -- rounding up to alignment cannot change the offset
         // Note that looking at `field.align` is incorrect since that is not necessarily equal
         // to the dynamic alignment of the type.
         match field.ty.kind() {
-            _ if self.llextra.is_none() => {
-                debug!(
-                    "unsized field `{}`, of `{:?}` has no metadata for adjustment",
-                    ix, self.llval
-                );
-                return simple();
-            }
             _ if field.is_sized() => return simple(),
-            ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(),
+            ty::Slice(..) | ty::Str => return simple(),
+            _ if offset.bytes() == 0 => return simple(),
             _ => {}
         }
 
         // We need to get the pointer manually now.
         // We do this by casting to a `*i8`, then offsetting it by the appropriate amount.
         // We do this instead of, say, simply adjusting the pointer from the result of a GEP
-        // because the field may have an arbitrary alignment in the LLVM representation
-        // anyway.
+        // because the field may have an arbitrary alignment in the LLVM representation.
         //
         // To demonstrate:
         //
@@ -179,7 +174,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let unaligned_offset = bx.cx().const_usize(offset.bytes());
 
         // Get the alignment of the field
-        let (_, mut unsized_align) = glue::size_and_align_of_dst(bx, field.ty, meta);
+        let (_, mut unsized_align) = size_of_val::size_and_align_of_dst(bx, field.ty, meta);
 
         // For packed types, we need to cap alignment.
         if let ty::Adt(def, _) = self.layout.ty.kind()
