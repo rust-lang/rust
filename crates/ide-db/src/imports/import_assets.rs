@@ -1,14 +1,14 @@
 //! Look up accessible paths for items.
+
 use hir::{
-    AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, ModPath, Module, ModuleDef,
+    AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, ModPath, Module, ModuleDef, Name,
     PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
 };
-use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use itertools::{EitherOrBoth, Itertools};
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make, HasName},
-    utils::path_to_string_stripping_turbo_fish,
-    AstNode, SyntaxNode,
+    AstNode, SmolStr, SyntaxNode,
 };
 
 use crate::{
@@ -51,16 +51,9 @@ pub struct TraitImportCandidate {
 #[derive(Debug)]
 pub struct PathImportCandidate {
     /// Optional qualifier before name.
-    pub qualifier: Option<FirstSegmentUnresolved>,
+    pub qualifier: Option<Vec<SmolStr>>,
     /// The name the item (struct, trait, enum, etc.) should have.
     pub name: NameToImport,
-}
-
-/// A qualifier that has a first segment and it's unresolved.
-#[derive(Debug)]
-pub struct FirstSegmentUnresolved {
-    fist_segment: ast::NameRef,
-    full_qualifier: ast::Path,
 }
 
 /// A name that will be used during item lookups.
@@ -348,60 +341,71 @@ fn path_applicable_imports(
             })
             .collect()
         }
-        Some(first_segment_unresolved) => {
-            let unresolved_qualifier =
-                path_to_string_stripping_turbo_fish(&first_segment_unresolved.full_qualifier);
-            let unresolved_first_segment = first_segment_unresolved.fist_segment.text();
-            items_locator::items_with_name(
-                sema,
-                current_crate,
-                path_candidate.name.clone(),
-                AssocSearchMode::Include,
-                Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
-            )
-            .filter_map(|item| {
-                import_for_item(
-                    sema.db,
-                    mod_path,
-                    &unresolved_first_segment,
-                    &unresolved_qualifier,
-                    item,
-                )
-            })
-            .collect()
-        }
+        Some(qualifier) => items_locator::items_with_name(
+            sema,
+            current_crate,
+            path_candidate.name.clone(),
+            AssocSearchMode::Include,
+            Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
+        )
+        .filter_map(|item| import_for_item(sema.db, mod_path, &qualifier, item))
+        .collect(),
     }
 }
 
 fn import_for_item(
     db: &RootDatabase,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
-    unresolved_first_segment: &str,
-    unresolved_qualifier: &str,
+    unresolved_qualifier: &[SmolStr],
     original_item: ItemInNs,
 ) -> Option<LocatedImport> {
     let _p = profile::span("import_assets::import_for_item");
+    let [first_segment, ..] = unresolved_qualifier else { return None };
 
-    let original_item_candidate = item_for_path_search(db, original_item)?;
-    let import_path_candidate = mod_path(original_item_candidate)?;
-    let import_path_string = import_path_candidate.display(db).to_string();
+    let item_as_assoc = item_as_assoc(db, original_item);
 
-    let expected_import_end = if item_as_assoc(db, original_item).is_some() {
-        unresolved_qualifier.to_string()
-    } else {
-        format!("{unresolved_qualifier}::{}", item_name(db, original_item)?.display(db))
+    let (original_item_candidate, trait_item_to_import) = match item_as_assoc {
+        Some(assoc_item) => match assoc_item.container(db) {
+            AssocItemContainer::Trait(trait_) => {
+                let trait_ = ItemInNs::from(ModuleDef::from(trait_));
+                (trait_, Some(trait_))
+            }
+            AssocItemContainer::Impl(impl_) => {
+                (ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?)), None)
+            }
+        },
+        None => (original_item, None),
     };
-    if !import_path_string.contains(unresolved_first_segment)
-        || !import_path_string.ends_with(&expected_import_end)
-    {
+    let import_path_candidate = mod_path(original_item_candidate)?;
+
+    let mut import_path_candidate_segments = import_path_candidate.segments().iter().rev();
+    let predicate = |it: EitherOrBoth<&SmolStr, &Name>| match it {
+        // segments match, check next one
+        EitherOrBoth::Both(a, b) if b.as_str() == Some(&**a) => None,
+        // segments mismatch / qualifier is longer than the path, bail out
+        EitherOrBoth::Both(..) | EitherOrBoth::Left(_) => Some(false),
+        // all segments match and we have exhausted the qualifier, proceed
+        EitherOrBoth::Right(_) => Some(true),
+    };
+    if item_as_assoc.is_none() {
+        let item_name = item_name(db, original_item)?.as_text()?;
+        let last_segment = import_path_candidate_segments.next()?;
+        if last_segment.as_str() != Some(&*item_name) {
+            return None;
+        }
+    }
+    let ends_with = unresolved_qualifier
+        .iter()
+        .rev()
+        .zip_longest(import_path_candidate_segments)
+        .find_map(predicate)
+        .unwrap_or(true);
+    if !ends_with {
         return None;
     }
 
-    let segment_import =
-        find_import_for_segment(db, original_item_candidate, unresolved_first_segment)?;
-    let trait_item_to_import = item_as_assoc(db, original_item)
-        .and_then(|assoc| assoc.containing_trait(db))
-        .map(|trait_| ItemInNs::from(ModuleDef::from(trait_)));
+    let segment_import = find_import_for_segment(db, original_item_candidate, first_segment)?;
+
     Some(match (segment_import == original_item_candidate, trait_item_to_import) {
         (true, Some(_)) => {
             // FIXME we should be able to import both the trait and the segment,
@@ -424,15 +428,19 @@ fn import_for_item(
 pub fn item_for_path_search(db: &RootDatabase, item: ItemInNs) -> Option<ItemInNs> {
     Some(match item {
         ItemInNs::Types(_) | ItemInNs::Values(_) => match item_as_assoc(db, item) {
-            Some(assoc_item) => match assoc_item.container(db) {
-                AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
-                AssocItemContainer::Impl(impl_) => {
-                    ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?))
-                }
-            },
+            Some(assoc_item) => item_for_path_search_assoc(db, assoc_item)?,
             None => item,
         },
         ItemInNs::Macros(_) => item,
+    })
+}
+
+fn item_for_path_search_assoc(db: &RootDatabase, assoc_item: AssocItem) -> Option<ItemInNs> {
+    Some(match assoc_item.container(db) {
+        AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+        AssocItemContainer::Impl(impl_) => {
+            ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?))
+        }
     })
 }
 
@@ -512,6 +520,7 @@ fn trait_applicable_items(
     .collect();
 
     let mut located_imports = FxHashSet::default();
+    let mut trait_import_paths = FxHashMap::default();
 
     if trait_assoc_item {
         trait_candidate.receiver_ty.iterate_path_candidates(
@@ -529,11 +538,14 @@ fn trait_applicable_items(
                     }
                     let located_trait = assoc.containing_trait(db)?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
-                    let original_item = assoc_to_item(assoc);
+                    let import_path = trait_import_paths
+                        .entry(trait_item)
+                        .or_insert_with(|| mod_path(trait_item))
+                        .clone()?;
                     located_imports.insert(LocatedImport::new(
-                        mod_path(trait_item)?,
+                        import_path,
                         trait_item,
-                        original_item,
+                        assoc_to_item(assoc),
                     ));
                 }
                 None::<()>
@@ -551,11 +563,14 @@ fn trait_applicable_items(
                 if required_assoc_items.contains(&assoc) {
                     let located_trait = assoc.containing_trait(db)?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
-                    let original_item = assoc_to_item(assoc);
+                    let import_path = trait_import_paths
+                        .entry(trait_item)
+                        .or_insert_with(|| mod_path(trait_item))
+                        .clone()?;
                     located_imports.insert(LocatedImport::new(
-                        mod_path(trait_item)?,
+                        import_path,
                         trait_item,
-                        original_item,
+                        assoc_to_item(assoc),
                     ));
                 }
                 None::<()>
@@ -653,18 +668,13 @@ fn path_import_candidate(
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
             None => {
-                let qualifier_start =
-                    qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
-                let qualifier_start_path =
-                    qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
-                if sema.resolve_path(&qualifier_start_path).is_none() {
-                    ImportCandidate::Path(PathImportCandidate {
-                        qualifier: Some(FirstSegmentUnresolved {
-                            fist_segment: qualifier_start,
-                            full_qualifier: qualifier,
-                        }),
-                        name,
-                    })
+                if qualifier.first_qualifier().map_or(true, |it| sema.resolve_path(&it).is_none()) {
+                    let mut qualifier = qualifier
+                        .segments_of_this_path_only_rev()
+                        .map(|seg| seg.name_ref().map(|name| SmolStr::new(name.text())))
+                        .collect::<Option<Vec<_>>>()?;
+                    qualifier.reverse();
+                    ImportCandidate::Path(PathImportCandidate { qualifier: Some(qualifier), name })
                 } else {
                     return None;
                 }
