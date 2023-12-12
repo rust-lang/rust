@@ -689,6 +689,8 @@ declare_lint! {
 This makes the `ANONYMOUS_PARAMETERS` lint allow-by-default in the 2015 edition
 but warn-by-default in the 2018 edition.
 
+See [Edition-specific lints](../guides/editions.md#edition-specific-lints) for more information.
+
 ### Feature-gated lints
 
 Lints belonging to a feature should only be usable if the feature is enabled in the
@@ -720,6 +722,7 @@ meaning that rustc exclusively exposes to users as "future incompatible".
 meaning in an upcoming *edition*. These are often called "edition lints" and can be
 typically seen in the various "edition compatibility" lint groups (e.g., `rust_2021_compatibility`)
 that are used to lint against code that will break if the user updates the crate's edition.
+See [migration lints](guides/editions.md#migration-lints) for more details.
 
 A future-incompatible lint should be declared with the `@future_incompatible`
 additional "field":

@@ -184,6 +184,10 @@
 - [Sanitizers Support](./sanitizers.md)
 - [Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
 
+# General Guides
+
+- [Editions](guides/editions.md)
+
 ---
 
 [Appendix A: Background topics](./appendix/background.md)
