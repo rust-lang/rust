@@ -413,22 +413,17 @@ pub fn search_dependencies(
     while let Some((_, indexed_values)) = stream.next() {
         for &IndexedValue { index, value } in indexed_values {
             let import_map = &import_maps[index];
-            let importables = &import_map.importables[value as usize..];
-
-            // Find the first item in this group that has a matching assoc mode and slice the rest away
-            let Some(importable) =
-                importables.iter().position(|it| query.matches_assoc_mode(import_map.map[it].1))
-            else {
+            let importables @ [importable, ..] = &import_map.importables[value as usize..] else {
                 continue;
             };
-            let importables @ [importable, ..] = &importables[importable..] else {
+            let &(ref importable_data, is_trait_assoc_item) = &import_map.map[importable];
+            if !query.matches_assoc_mode(is_trait_assoc_item) {
                 continue;
-            };
+            }
 
             // Fetch all the known names of this importable item (to handle import aliases/renames)
             common_importable_data_scratch.extend(
-                import_map.map[importable]
-                    .0
+                importable_data
                     .iter()
                     .filter(|&info| query.import_matches(info, true))
                     // Name shared by the importable items in this group.
