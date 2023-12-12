@@ -63,21 +63,21 @@ use std::rc::Rc;
 
 use smallvec::{smallvec, SmallVec};
 use syntax::SmolStr;
+use tt::Span;
 
 use crate::{
     expander::{Binding, Bindings, ExpandResult, Fragment},
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    tt,
     tt_iter::TtIter,
     ExpandError, MetaTemplate, ValueResult,
 };
 
-impl Bindings {
+impl<S: Span> Bindings<S> {
     fn push_optional(&mut self, name: &SmolStr) {
         // FIXME: Do we have a better way to represent an empty token ?
         // Insert an empty subtree for empty token
         let tt =
-            tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] }.into();
+            tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] }.into();
         self.inner.insert(name.clone(), Binding::Fragment(Fragment::Tokens(tt)));
     }
 
@@ -85,14 +85,14 @@ impl Bindings {
         self.inner.insert(name.clone(), Binding::Empty);
     }
 
-    fn bindings(&self) -> impl Iterator<Item = &Binding> {
+    fn bindings(&self) -> impl Iterator<Item = &Binding<S>> {
         self.inner.values()
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(super) struct Match {
-    pub(super) bindings: Bindings,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct Match<S> {
+    pub(super) bindings: Bindings<S>,
     /// We currently just keep the first error and count the rest to compare matches.
     pub(super) err: Option<ExpandError>,
     pub(super) err_count: usize,
@@ -102,7 +102,19 @@ pub(super) struct Match {
     pub(super) bound_count: usize,
 }
 
-impl Match {
+impl<S> Default for Match<S> {
+    fn default() -> Self {
+        Self {
+            bindings: Default::default(),
+            err: Default::default(),
+            err_count: Default::default(),
+            unmatched_tts: Default::default(),
+            bound_count: Default::default(),
+        }
+    }
+}
+
+impl<S> Match<S> {
     fn add_err(&mut self, err: ExpandError) {
         let prev_err = self.err.take();
         self.err = prev_err.or(Some(err));
@@ -111,12 +123,16 @@ impl Match {
 }
 
 /// Matching errors are added to the `Match`.
-pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree, is_2021: bool) -> Match {
+pub(super) fn match_<S: Span>(
+    pattern: &MetaTemplate<S>,
+    input: &tt::Subtree<S>,
+    is_2021: bool,
+) -> Match<S> {
     let mut res = match_loop(pattern, input, is_2021);
     res.bound_count = count(res.bindings.bindings());
     return res;
 
-    fn count<'a>(bindings: impl Iterator<Item = &'a Binding>) -> usize {
+    fn count<'a, S: 'a>(bindings: impl Iterator<Item = &'a Binding<S>>) -> usize {
         bindings
             .map(|it| match it {
                 Binding::Fragment(_) => 1,
@@ -129,10 +145,10 @@ pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree, is_2021: bool)
 }
 
 #[derive(Debug, Clone)]
-enum BindingKind {
+enum BindingKind<S> {
     Empty(SmolStr),
     Optional(SmolStr),
-    Fragment(SmolStr, Fragment),
+    Fragment(SmolStr, Fragment<S>),
     Missing(SmolStr, MetaVarKind),
     Nested(usize, usize),
 }
@@ -146,13 +162,18 @@ enum LinkNode<T> {
     Parent { idx: usize, len: usize },
 }
 
-#[derive(Default)]
-struct BindingsBuilder {
-    nodes: Vec<Vec<LinkNode<Rc<BindingKind>>>>,
+struct BindingsBuilder<S> {
+    nodes: Vec<Vec<LinkNode<Rc<BindingKind<S>>>>>,
     nested: Vec<Vec<LinkNode<usize>>>,
 }
 
-impl BindingsBuilder {
+impl<S> Default for BindingsBuilder<S> {
+    fn default() -> Self {
+        Self { nodes: Default::default(), nested: Default::default() }
+    }
+}
+
+impl<S: Span> BindingsBuilder<S> {
     fn alloc(&mut self) -> BindingsIdx {
         let idx = self.nodes.len();
         self.nodes.push(Vec::new());
@@ -189,7 +210,7 @@ impl BindingsBuilder {
         self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Optional(var.clone()))));
     }
 
-    fn push_fragment(&mut self, idx: &mut BindingsIdx, var: &SmolStr, fragment: Fragment) {
+    fn push_fragment(&mut self, idx: &mut BindingsIdx, var: &SmolStr, fragment: Fragment<S>) {
         self.nodes[idx.0]
             .push(LinkNode::Node(Rc::new(BindingKind::Fragment(var.clone(), fragment))));
     }
@@ -210,11 +231,11 @@ impl BindingsBuilder {
         idx.0 = new_idx;
     }
 
-    fn build(self, idx: &BindingsIdx) -> Bindings {
+    fn build(self, idx: &BindingsIdx) -> Bindings<S> {
         self.build_inner(&self.nodes[idx.0])
     }
 
-    fn build_inner(&self, link_nodes: &[LinkNode<Rc<BindingKind>>]) -> Bindings {
+    fn build_inner(&self, link_nodes: &[LinkNode<Rc<BindingKind<S>>>]) -> Bindings<S> {
         let mut bindings = Bindings::default();
         let mut nodes = Vec::new();
         self.collect_nodes(link_nodes, &mut nodes);
@@ -264,7 +285,7 @@ impl BindingsBuilder {
         &'a self,
         id: usize,
         len: usize,
-        nested_refs: &mut Vec<&'a [LinkNode<Rc<BindingKind>>]>,
+        nested_refs: &mut Vec<&'a [LinkNode<Rc<BindingKind<S>>>]>,
     ) {
         self.nested[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(id) => nested_refs.push(&self.nodes[*id]),
@@ -272,7 +293,7 @@ impl BindingsBuilder {
         });
     }
 
-    fn collect_nested(&self, idx: usize, nested_idx: usize, nested: &mut Vec<Bindings>) {
+    fn collect_nested(&self, idx: usize, nested_idx: usize, nested: &mut Vec<Bindings<S>>) {
         let last = &self.nodes[idx];
         let mut nested_refs: Vec<&[_]> = Vec::new();
         self.nested[nested_idx].iter().for_each(|it| match *it {
@@ -283,7 +304,7 @@ impl BindingsBuilder {
         nested.extend(nested_refs.into_iter().map(|iter| self.build_inner(iter)));
     }
 
-    fn collect_nodes_ref<'a>(&'a self, id: usize, len: usize, nodes: &mut Vec<&'a BindingKind>) {
+    fn collect_nodes_ref<'a>(&'a self, id: usize, len: usize, nodes: &mut Vec<&'a BindingKind<S>>) {
         self.nodes[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
             LinkNode::Parent { idx, len } => self.collect_nodes_ref(*idx, *len, nodes),
@@ -292,8 +313,8 @@ impl BindingsBuilder {
 
     fn collect_nodes<'a>(
         &'a self,
-        link_nodes: &'a [LinkNode<Rc<BindingKind>>],
-        nodes: &mut Vec<&'a BindingKind>,
+        link_nodes: &'a [LinkNode<Rc<BindingKind<S>>>],
+        nodes: &mut Vec<&'a BindingKind<S>>,
     ) {
         link_nodes.iter().for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
@@ -303,22 +324,22 @@ impl BindingsBuilder {
 }
 
 #[derive(Debug, Clone)]
-struct MatchState<'t> {
+struct MatchState<'t, S> {
     /// The position of the "dot" in this matcher
-    dot: OpDelimitedIter<'t>,
+    dot: OpDelimitedIter<'t, S>,
 
     /// Token subtree stack
     /// When matching against matchers with nested delimited submatchers (e.g., `pat ( pat ( .. )
     /// pat ) pat`), we need to keep track of the matchers we are descending into. This stack does
     /// that where the bottom of the stack is the outermost matcher.
-    stack: SmallVec<[OpDelimitedIter<'t>; 4]>,
+    stack: SmallVec<[OpDelimitedIter<'t, S>; 4]>,
 
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the repetition.
-    up: Option<Box<MatchState<'t>>>,
+    up: Option<Box<MatchState<'t, S>>>,
 
     /// The separator if we are in a repetition.
-    sep: Option<Separator>,
+    sep: Option<Separator<S>>,
 
     /// The KleeneOp of this sequence if we are in a repetition.
     sep_kind: Option<RepeatKind>,
@@ -330,7 +351,7 @@ struct MatchState<'t> {
     bindings: BindingsIdx,
 
     /// Cached result of meta variable parsing
-    meta_result: Option<(TtIter<'t>, ExpandResult<Option<Fragment>>)>,
+    meta_result: Option<(TtIter<'t, S>, ExpandResult<Option<Fragment<S>>>)>,
 
     /// Is error occurred in this state, will `poised` to "parent"
     is_error: bool,
@@ -355,16 +376,16 @@ struct MatchState<'t> {
 /// - `bb_items`: the set of items that are waiting for the black-box parser.
 /// - `error_items`: the set of items in errors, used for error-resilient parsing
 #[inline]
-fn match_loop_inner<'t>(
-    src: TtIter<'t>,
-    stack: &[TtIter<'t>],
-    res: &mut Match,
-    bindings_builder: &mut BindingsBuilder,
-    cur_items: &mut SmallVec<[MatchState<'t>; 1]>,
-    bb_items: &mut SmallVec<[MatchState<'t>; 1]>,
-    next_items: &mut Vec<MatchState<'t>>,
-    eof_items: &mut SmallVec<[MatchState<'t>; 1]>,
-    error_items: &mut SmallVec<[MatchState<'t>; 1]>,
+fn match_loop_inner<'t, S: Span>(
+    src: TtIter<'t, S>,
+    stack: &[TtIter<'t, S>],
+    res: &mut Match<S>,
+    bindings_builder: &mut BindingsBuilder<S>,
+    cur_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
+    bb_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
+    next_items: &mut Vec<MatchState<'t, S>>,
+    eof_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
+    error_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
     is_2021: bool,
 ) {
     macro_rules! try_push {
@@ -468,7 +489,7 @@ fn match_loop_inner<'t>(
                 if let Ok(subtree) = src.clone().expect_subtree() {
                     if subtree.delimiter.kind == delimiter.kind {
                         item.stack.push(item.dot);
-                        item.dot = tokens.iter_delimited(Some(delimiter));
+                        item.dot = tokens.iter_delimited(Some(*delimiter));
                         cur_items.push(item);
                     }
                 }
@@ -587,9 +608,9 @@ fn match_loop_inner<'t>(
     }
 }
 
-fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree, is_2021: bool) -> Match {
+fn match_loop<S: Span>(pattern: &MetaTemplate<S>, src: &tt::Subtree<S>, is_2021: bool) -> Match<S> {
     let mut src = TtIter::new(src);
-    let mut stack: SmallVec<[TtIter<'_>; 1]> = SmallVec::new();
+    let mut stack: SmallVec<[TtIter<'_, S>; 1]> = SmallVec::new();
     let mut res = Match::default();
     let mut error_recover_item = None;
 
@@ -736,16 +757,16 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree, is_2021: bool) -> Match
     }
 }
 
-fn match_meta_var(
+fn match_meta_var<S: Span>(
     kind: MetaVarKind,
-    input: &mut TtIter<'_>,
+    input: &mut TtIter<'_, S>,
     is_2021: bool,
-) -> ExpandResult<Option<Fragment>> {
+) -> ExpandResult<Option<Fragment<S>>> {
     let fragment = match kind {
         MetaVarKind::Path => {
             return input
                 .expect_fragment(parser::PrefixEntryPoint::Path)
-                .map(|it| it.map(Fragment::Path));
+                .map(|it| it.map(tt::TokenTree::subtree_or_wrap).map(Fragment::Path));
         }
         MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
         MetaVarKind::Pat if is_2021 => parser::PrefixEntryPoint::PatTop,
@@ -771,9 +792,21 @@ fn match_meta_var(
                 }
                 _ => {}
             };
-            return input
-                .expect_fragment(parser::PrefixEntryPoint::Expr)
-                .map(|tt| tt.map(Fragment::Expr));
+            return input.expect_fragment(parser::PrefixEntryPoint::Expr).map(|tt| {
+                tt.map(|tt| match tt {
+                    tt::TokenTree::Leaf(leaf) => tt::Subtree {
+                        delimiter: tt::Delimiter::dummy_invisible(),
+                        token_trees: vec![leaf.into()],
+                    },
+                    tt::TokenTree::Subtree(mut s) => {
+                        if s.delimiter.kind == tt::DelimiterKind::Invisible {
+                            s.delimiter.kind = tt::DelimiterKind::Parenthesis;
+                        }
+                        s
+                    }
+                })
+                .map(Fragment::Expr)
+            });
         }
         MetaVarKind::Ident | MetaVarKind::Tt | MetaVarKind::Lifetime | MetaVarKind::Literal => {
             let tt_result = match kind {
@@ -796,7 +829,7 @@ fn match_meta_var(
                             match neg {
                                 None => lit.into(),
                                 Some(neg) => tt::TokenTree::Subtree(tt::Subtree {
-                                    delimiter: tt::Delimiter::unspecified(),
+                                    delimiter: tt::Delimiter::dummy_invisible(),
                                     token_trees: vec![neg, lit.into()],
                                 }),
                             }
@@ -811,7 +844,7 @@ fn match_meta_var(
     input.expect_fragment(fragment).map(|it| it.map(Fragment::Tokens))
 }
 
-fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate) {
+fn collect_vars<S: Span>(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate<S>) {
     for op in pattern.iter() {
         match op {
             Op::Var { name, .. } => collector_fun(name.clone()),
@@ -824,38 +857,38 @@ fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate)
         }
     }
 }
-impl MetaTemplate {
-    fn iter_delimited<'a>(&'a self, delimited: Option<&'a tt::Delimiter>) -> OpDelimitedIter<'a> {
+impl<S: Span> MetaTemplate<S> {
+    fn iter_delimited(&self, delimited: Option<tt::Delimiter<S>>) -> OpDelimitedIter<'_, S> {
         OpDelimitedIter {
             inner: &self.0,
             idx: 0,
-            delimited: delimited.unwrap_or(&tt::Delimiter::UNSPECIFIED),
+            delimited: delimited.unwrap_or(tt::Delimiter::DUMMY_INVISIBLE),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-enum OpDelimited<'a> {
-    Op(&'a Op),
+enum OpDelimited<'a, S> {
+    Op(&'a Op<S>),
     Open,
     Close,
 }
 
 #[derive(Debug, Clone, Copy)]
-struct OpDelimitedIter<'a> {
-    inner: &'a [Op],
-    delimited: &'a tt::Delimiter,
+struct OpDelimitedIter<'a, S> {
+    inner: &'a [Op<S>],
+    delimited: tt::Delimiter<S>,
     idx: usize,
 }
 
-impl<'a> OpDelimitedIter<'a> {
+impl<'a, S: Span> OpDelimitedIter<'a, S> {
     fn is_eof(&self) -> bool {
         let len = self.inner.len()
             + if self.delimited.kind != tt::DelimiterKind::Invisible { 2 } else { 0 };
         self.idx >= len
     }
 
-    fn peek(&self) -> Option<OpDelimited<'a>> {
+    fn peek(&self) -> Option<OpDelimited<'a, S>> {
         match self.delimited.kind {
             tt::DelimiterKind::Invisible => self.inner.get(self.idx).map(OpDelimited::Op),
             _ => match self.idx {
@@ -871,8 +904,8 @@ impl<'a> OpDelimitedIter<'a> {
     }
 }
 
-impl<'a> Iterator for OpDelimitedIter<'a> {
-    type Item = OpDelimited<'a>;
+impl<'a, S: Span> Iterator for OpDelimitedIter<'a, S> {
+    type Item = OpDelimited<'a, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let res = self.peek();
@@ -888,8 +921,8 @@ impl<'a> Iterator for OpDelimitedIter<'a> {
     }
 }
 
-impl TtIter<'_> {
-    fn expect_separator(&mut self, separator: &Separator) -> bool {
+impl<S: Span> TtIter<'_, S> {
+    fn expect_separator(&mut self, separator: &Separator<S>) -> bool {
         let mut fork = self.clone();
         let ok = match separator {
             Separator::Ident(lhs) => match fork.expect_ident_or_underscore() {
@@ -919,7 +952,7 @@ impl TtIter<'_> {
         ok
     }
 
-    fn expect_tt(&mut self) -> Result<tt::TokenTree, ()> {
+    fn expect_tt(&mut self) -> Result<tt::TokenTree<S>, ()> {
         if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = self.peek_n(0) {
             if punct.char == '\'' {
                 self.expect_lifetime()
@@ -927,7 +960,7 @@ impl TtIter<'_> {
                 let puncts = self.expect_glued_punct()?;
                 let token_trees = puncts.into_iter().map(|p| tt::Leaf::Punct(p).into()).collect();
                 Ok(tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: tt::Delimiter::unspecified(),
+                    delimiter: tt::Delimiter::dummy_invisible(),
                     token_trees,
                 }))
             }
@@ -936,7 +969,7 @@ impl TtIter<'_> {
         }
     }
 
-    fn expect_lifetime(&mut self) -> Result<tt::TokenTree, ()> {
+    fn expect_lifetime(&mut self) -> Result<tt::TokenTree<S>, ()> {
         let punct = self.expect_single_punct()?;
         if punct.char != '\'' {
             return Err(());
@@ -944,7 +977,7 @@ impl TtIter<'_> {
         let ident = self.expect_ident_or_underscore()?;
 
         Ok(tt::Subtree {
-            delimiter: tt::Delimiter::unspecified(),
+            delimiter: tt::Delimiter::dummy_invisible(),
             token_trees: vec![
                 tt::Leaf::Punct(*punct).into(),
                 tt::Leaf::Ident(ident.clone()).into(),
@@ -953,7 +986,7 @@ impl TtIter<'_> {
         .into())
     }
 
-    fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
+    fn eat_char(&mut self, c: char) -> Option<tt::TokenTree<S>> {
         let mut fork = self.clone();
         match fork.expect_char(c) {
             Ok(_) => {

@@ -8,7 +8,7 @@ use ide_db::{
     defs::Definition,
     imports::insert_use::remove_path_if_in_use_stmt,
     path_transform::PathTransform,
-    search::{FileReference, SearchScope},
+    search::{FileReference, FileReferenceNode, SearchScope},
     source_change::SourceChangeBuilder,
     syntax_helpers::{insert_whitespace_into_node::insert_ws_into, node_ext::expr_as_name_ref},
     RootDatabase,
@@ -148,7 +148,7 @@ pub(super) fn split_refs_and_uses<T: ast::AstNode>(
 ) -> (Vec<T>, Vec<ast::Path>) {
     iter.into_iter()
         .filter_map(|file_ref| match file_ref.name {
-            ast::NameLike::NameRef(name_ref) => Some(name_ref),
+            FileReferenceNode::NameRef(name_ref) => Some(name_ref),
             _ => None,
         })
         .filter_map(|name_ref| match name_ref.syntax().ancestors().find_map(ast::UseTree::cast) {
@@ -346,7 +346,7 @@ fn inline(
             match param.as_local(sema.db) {
                 Some(l) => usages_for_locals(l)
                     .map(|FileReference { name, range, .. }| match name {
-                        ast::NameLike::NameRef(_) => body
+                        FileReferenceNode::NameRef(_) => body
                             .syntax()
                             .covering_element(range)
                             .ancestors()
@@ -372,7 +372,7 @@ fn inline(
         if let Some(self_local) = params[0].2.as_local(sema.db) {
             usages_for_locals(self_local)
                 .filter_map(|FileReference { name, range, .. }| match name {
-                    ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
+                    FileReferenceNode::NameRef(_) => Some(body.syntax().covering_element(range)),
                     _ => None,
                 })
                 .for_each(|usage| {

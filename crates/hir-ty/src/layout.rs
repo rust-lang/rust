@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use base_db::salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
@@ -431,7 +432,7 @@ pub fn layout_of_ty_query(
 
 pub fn layout_of_ty_recover(
     _: &dyn HirDatabase,
-    _: &[String],
+    _: &Cycle,
     _: &Ty,
     _: &Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {

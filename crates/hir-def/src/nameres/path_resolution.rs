@@ -96,8 +96,8 @@ impl DefMap {
                 let types = result.take_types()?;
                 match types {
                     ModuleDefId::ModuleId(m) => Visibility::Module(m),
+                    // error: visibility needs to refer to module
                     _ => {
-                        // error: visibility needs to refer to module
                         return None;
                     }
                 }

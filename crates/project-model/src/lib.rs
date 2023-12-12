@@ -15,7 +15,7 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 mod manifest_path;
 mod cargo_workspace;

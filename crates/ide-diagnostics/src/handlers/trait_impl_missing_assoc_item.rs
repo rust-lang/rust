@@ -112,4 +112,18 @@ impl Trait for () {
 "#,
         );
     }
+
+    #[test]
+    fn negative_impl() {
+        check_diagnostics(
+            r#"
+trait Trait {
+    fn item();
+}
+
+// Negative impls don't require any items (in fact, the forbid providing any)
+impl !Trait for () {}
+"#,
+        )
+    }
 }

@@ -1,5 +1,7 @@
 //! TokenStream implementation used by sysroot ABI
 
+use proc_macro_api::msg::TokenId;
+
 use crate::tt::{self, TokenTree};
 
 #[derive(Debug, Default, Clone)]
@@ -20,8 +22,15 @@ impl TokenStream {
         }
     }
 
-    pub(crate) fn into_subtree(self) -> tt::Subtree {
-        tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: self.token_trees }
+    pub(crate) fn into_subtree(self, call_site: TokenId) -> tt::Subtree {
+        tt::Subtree {
+            delimiter: tt::Delimiter {
+                open: call_site,
+                close: call_site,
+                kind: tt::DelimiterKind::Invisible,
+            },
+            token_trees: self.token_trees,
+        }
     }
 
     pub(super) fn is_empty(&self) -> bool {
@@ -84,7 +93,7 @@ pub(super) struct TokenStreamBuilder {
 
 /// pub(super)lic implementation details for the `TokenStream` type, such as iterators.
 pub(super) mod token_stream {
-    use std::str::FromStr;
+    use proc_macro_api::msg::TokenId;
 
     use super::{tt, TokenStream, TokenTree};
 
@@ -109,14 +118,15 @@ pub(super) mod token_stream {
     ///
     /// NOTE: some errors may cause panics instead of returning `LexError`. We reserve the right to
     /// change these errors into `LexError`s later.
-    impl FromStr for TokenStream {
-        type Err = LexError;
+    #[rustfmt::skip]
+    impl /*FromStr for*/ TokenStream {
+        // type Err = LexError;
 
-        fn from_str(src: &str) -> Result<TokenStream, LexError> {
-            let (subtree, _token_map) =
-                mbe::parse_to_token_tree(src).ok_or("Failed to parse from mbe")?;
+        pub(crate) fn from_str(src: &str, call_site: TokenId) -> Result<TokenStream, LexError> {
+            let subtree =
+                mbe::parse_to_token_tree_static_span(call_site, src).ok_or("Failed to parse from mbe")?;
 
-            let subtree = subtree_replace_token_ids_with_unspecified(subtree);
+            let subtree = subtree_replace_token_ids_with_call_site(subtree,call_site);
             Ok(TokenStream::with_subtree(subtree))
         }
     }
@@ -127,43 +137,39 @@ pub(super) mod token_stream {
         }
     }
 
-    fn subtree_replace_token_ids_with_unspecified(subtree: tt::Subtree) -> tt::Subtree {
+    fn subtree_replace_token_ids_with_call_site(
+        subtree: tt::Subtree,
+        call_site: TokenId,
+    ) -> tt::Subtree {
         tt::Subtree {
-            delimiter: tt::Delimiter {
-                open: tt::TokenId::UNSPECIFIED,
-                close: tt::TokenId::UNSPECIFIED,
-                ..subtree.delimiter
-            },
+            delimiter: tt::Delimiter { open: call_site, close: call_site, ..subtree.delimiter },
             token_trees: subtree
                 .token_trees
                 .into_iter()
-                .map(token_tree_replace_token_ids_with_unspecified)
+                .map(|it| token_tree_replace_token_ids_with_call_site(it, call_site))
                 .collect(),
         }
     }
 
-    fn token_tree_replace_token_ids_with_unspecified(tt: tt::TokenTree) -> tt::TokenTree {
+    fn token_tree_replace_token_ids_with_call_site(
+        tt: tt::TokenTree,
+        call_site: TokenId,
+    ) -> tt::TokenTree {
         match tt {
             tt::TokenTree::Leaf(leaf) => {
-                tt::TokenTree::Leaf(leaf_replace_token_ids_with_unspecified(leaf))
+                tt::TokenTree::Leaf(leaf_replace_token_ids_with_call_site(leaf, call_site))
             }
             tt::TokenTree::Subtree(subtree) => {
-                tt::TokenTree::Subtree(subtree_replace_token_ids_with_unspecified(subtree))
+                tt::TokenTree::Subtree(subtree_replace_token_ids_with_call_site(subtree, call_site))
             }
         }
     }
 
-    fn leaf_replace_token_ids_with_unspecified(leaf: tt::Leaf) -> tt::Leaf {
+    fn leaf_replace_token_ids_with_call_site(leaf: tt::Leaf, call_site: TokenId) -> tt::Leaf {
         match leaf {
-            tt::Leaf::Literal(lit) => {
-                tt::Leaf::Literal(tt::Literal { span: tt::TokenId::unspecified(), ..lit })
-            }
-            tt::Leaf::Punct(punct) => {
-                tt::Leaf::Punct(tt::Punct { span: tt::TokenId::unspecified(), ..punct })
-            }
-            tt::Leaf::Ident(ident) => {
-                tt::Leaf::Ident(tt::Ident { span: tt::TokenId::unspecified(), ..ident })
-            }
+            tt::Leaf::Literal(lit) => tt::Leaf::Literal(tt::Literal { span: call_site, ..lit }),
+            tt::Leaf::Punct(punct) => tt::Leaf::Punct(tt::Punct { span: call_site, ..punct }),
+            tt::Leaf::Ident(ident) => tt::Leaf::Ident(tt::Ident { span: call_site, ..ident }),
         }
     }
 }

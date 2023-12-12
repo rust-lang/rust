@@ -10,7 +10,7 @@ pub(crate) mod variant;
 pub(crate) mod union_literal;
 pub(crate) mod literal;
 
-use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
+use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
 use ide_db::{
     documentation::{Documentation, HasDocs},
     helpers::item_name,
@@ -169,14 +169,14 @@ pub(crate) fn render_field(
                 if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
                     builder.insert(receiver.syntax().text_range().start(), "(".to_string());
                     builder.insert(ctx.source_range().end(), ")".to_string());
+
+                    let is_parens_needed =
+                        !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+
+                    if is_parens_needed {
+                        builder.insert(ctx.source_range().end(), "()".to_string());
+                    }
                 }
-            }
-
-            let is_parens_needed =
-                !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
-
-            if is_parens_needed {
-                builder.insert(ctx.source_range().end(), "()".to_string());
             }
         }
 
@@ -340,6 +340,7 @@ fn render_resolution_path(
     let cap = ctx.snippet_cap();
     let db = completion.db;
     let config = completion.config;
+    let requires_import = import_to_add.is_some();
 
     let name = local_name.to_smol_str();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
@@ -370,8 +371,8 @@ fn render_resolution_path(
             }
         }
     }
-    if let ScopeDef::Local(local) = resolution {
-        let ty = local.ty(db);
+
+    let mut set_item_relevance = |ty: Type| {
         if !ty.is_unknown() {
             item.detail(ty.display(db).to_string());
         }
@@ -379,12 +380,38 @@ fn render_resolution_path(
         item.set_relevance(CompletionRelevance {
             type_match: compute_type_match(completion, &ty),
             exact_name_match: compute_exact_name_match(completion, &name),
-            is_local: true,
+            is_local: matches!(resolution, ScopeDef::Local(_)),
+            requires_import,
             ..CompletionRelevance::default()
         });
 
         path_ref_match(completion, path_ctx, &ty, &mut item);
     };
+
+    match resolution {
+        ScopeDef::Local(local) => set_item_relevance(local.ty(db)),
+        ScopeDef::ModuleDef(ModuleDef::Adt(adt)) | ScopeDef::AdtSelfType(adt) => {
+            set_item_relevance(adt.ty(db))
+        }
+        // Filtered out above
+        ScopeDef::ModuleDef(
+            ModuleDef::Function(_) | ModuleDef::Variant(_) | ModuleDef::Macro(_),
+        ) => (),
+        ScopeDef::ModuleDef(ModuleDef::Const(konst)) => set_item_relevance(konst.ty(db)),
+        ScopeDef::ModuleDef(ModuleDef::Static(stat)) => set_item_relevance(stat.ty(db)),
+        ScopeDef::ModuleDef(ModuleDef::BuiltinType(bt)) => set_item_relevance(bt.ty(db)),
+        ScopeDef::ImplSelfType(imp) => set_item_relevance(imp.self_ty(db)),
+        ScopeDef::GenericParam(_)
+        | ScopeDef::Label(_)
+        | ScopeDef::Unknown
+        | ScopeDef::ModuleDef(
+            ModuleDef::Trait(_)
+            | ModuleDef::TraitAlias(_)
+            | ModuleDef::Module(_)
+            | ModuleDef::TypeAlias(_),
+        ) => (),
+    };
+
     item
 }
 
@@ -471,6 +498,21 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
     }
 }
 
+// FIXME: This checks types without possible coercions which some completions might want to do
+fn match_types(
+    ctx: &CompletionContext<'_>,
+    ty1: &hir::Type,
+    ty2: &hir::Type,
+) -> Option<CompletionRelevanceTypeMatch> {
+    if ty1 == ty2 {
+        Some(CompletionRelevanceTypeMatch::Exact)
+    } else if ty1.could_unify_with(ctx.db, ty2) {
+        Some(CompletionRelevanceTypeMatch::CouldUnify)
+    } else {
+        None
+    }
+}
+
 fn compute_type_match(
     ctx: &CompletionContext<'_>,
     completion_ty: &hir::Type,
@@ -483,13 +525,7 @@ fn compute_type_match(
         return None;
     }
 
-    if completion_ty == expected_type {
-        Some(CompletionRelevanceTypeMatch::Exact)
-    } else if expected_type.could_unify_with(ctx.db, completion_ty) {
-        Some(CompletionRelevanceTypeMatch::CouldUnify)
-    } else {
-        None
-    }
+    match_types(ctx, expected_type, completion_ty)
 }
 
 fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
@@ -633,6 +669,330 @@ mod tests {
 
             format!("[{relevance_factors}]")
         }
+    }
+
+    #[test]
+    fn set_struct_type_completion_info() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+
+pub mod test_mod_b {
+    pub struct Struct {}
+}
+
+pub mod test_mod_a {
+    pub struct Struct {}
+}
+
+//- /main.rs crate:main deps:dep
+
+fn test(input: dep::test_mod_b::Struct) { }
+
+fn main() {
+    test(Struct$0);
+}
+"#,
+            expect![[r#"
+                st dep::test_mod_b::Struct {…} [type_could_unify]
+                st Struct (use dep::test_mod_b::Struct) [type_could_unify+requires_import]
+                fn main() []
+                fn test(…) []
+                md dep []
+                st Struct (use dep::test_mod_a::Struct) [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_union_type_completion_info() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+
+pub mod test_mod_b {
+    pub union Union {
+        a: i32,
+        b: i32
+    }
+}
+
+pub mod test_mod_a {
+    pub enum Union {
+        a: i32,
+        b: i32
+    }
+}
+
+//- /main.rs crate:main deps:dep
+
+fn test(input: dep::test_mod_b::Union) { }
+
+fn main() {
+    test(Union$0);
+}
+"#,
+            expect![[r#"
+                un Union (use dep::test_mod_b::Union) [type_could_unify+requires_import]
+                fn main() []
+                fn test(…) []
+                md dep []
+                en Union (use dep::test_mod_a::Union) [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_enum_type_completion_info() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+
+pub mod test_mod_b {
+    pub enum Enum {
+        variant
+    }
+}
+
+pub mod test_mod_a {
+    pub enum Enum {
+        variant
+    }
+}
+
+//- /main.rs crate:main deps:dep
+
+fn test(input: dep::test_mod_b::Enum) { }
+
+fn main() {
+    test(Enum$0);
+}
+"#,
+            expect![[r#"
+                ev dep::test_mod_b::Enum::variant [type_could_unify]
+                en Enum (use dep::test_mod_b::Enum) [type_could_unify+requires_import]
+                fn main() []
+                fn test(…) []
+                md dep []
+                en Enum (use dep::test_mod_a::Enum) [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_enum_variant_type_completion_info() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+
+pub mod test_mod_b {
+    pub enum Enum {
+        Variant
+    }
+}
+
+pub mod test_mod_a {
+    pub enum Enum {
+        Variant
+    }
+}
+
+//- /main.rs crate:main deps:dep
+
+fn test(input: dep::test_mod_b::Enum) { }
+
+fn main() {
+    test(Variant$0);
+}
+"#,
+            expect![[r#"
+                ev dep::test_mod_b::Enum::Variant [type_could_unify]
+                fn main() []
+                fn test(…) []
+                md dep []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_fn_type_completion_info() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+
+pub mod test_mod_b {
+    pub fn function(j: isize) -> i32 {}
+}
+
+pub mod test_mod_a {
+    pub fn function(i: usize) -> i32 {}
+}
+
+//- /main.rs crate:main deps:dep
+
+fn test(input: fn(usize) -> i32) { }
+
+fn main() {
+    test(function$0);
+}
+"#,
+            expect![[r#"
+                fn main []
+                fn test []
+                md dep []
+                fn function (use dep::test_mod_a::function) [requires_import]
+                fn function (use dep::test_mod_b::function) [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_const_type_completion_info() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+
+pub mod test_mod_b {
+    pub const CONST: i32 = 1;
+}
+
+pub mod test_mod_a {
+    pub const CONST: i64 = 2;
+}
+
+//- /main.rs crate:main deps:dep
+
+fn test(input: i32) { }
+
+fn main() {
+    test(CONST$0);
+}
+"#,
+            expect![[r#"
+                ct CONST (use dep::test_mod_b::CONST) [type_could_unify+requires_import]
+                fn main() []
+                fn test(…) []
+                md dep []
+                ct CONST (use dep::test_mod_a::CONST) [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_static_type_completion_info() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+
+pub mod test_mod_b {
+    pub static STATIC: i32 = 5;
+}
+
+pub mod test_mod_a {
+    pub static STATIC: i64 = 5;
+}
+
+//- /main.rs crate:main deps:dep
+
+fn test(input: i32) { }
+
+fn main() {
+    test(STATIC$0);
+}
+"#,
+            expect![[r#"
+                sc STATIC (use dep::test_mod_b::STATIC) [type_could_unify+requires_import]
+                fn main() []
+                fn test(…) []
+                md dep []
+                sc STATIC (use dep::test_mod_a::STATIC) [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_self_type_completion_info_with_params() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+pub struct Struct;
+
+impl Struct {
+    pub fn Function(&self, input: i32) -> bool {
+                false
+    }
+}
+
+
+//- /main.rs crate:main deps:dep
+
+use dep::Struct;
+
+
+fn test(input: fn(&dep::Struct, i32) -> bool) { }
+
+fn main() {
+    test(Struct::Function$0);
+}
+
+"#,
+            expect![[r#"
+                me Function []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_self_type_completion_info() {
+        check_relevance(
+            r#"
+//- /main.rs crate:main
+
+struct Struct;
+
+impl Struct {
+fn test(&self) {
+        func(Self$0);
+    }
+}
+
+fn func(input: Struct) { }
+
+"#,
+            expect![[r#"
+                st Struct [type]
+                st Self [type]
+                sp Self [type]
+                st Struct [type]
+                lc self [local]
+                fn func(…) []
+                me self.test() []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_builtin_type_completion_info() {
+        check_relevance(
+            r#"
+//- /main.rs crate:main
+
+fn test(input: bool) { }
+    pub Input: bool = false;
+
+fn main() {
+    let input = false;
+    let inputbad = 3;
+    test(inp$0);
+}
+"#,
+            expect![[r#"
+                lc input [type+name+local]
+                lc inputbad [local]
+                fn main() []
+                fn test(…) []
+            "#]],
+        );
     }
 
     #[test]
@@ -1026,6 +1386,7 @@ use self::E::*;
                         kind: SymbolKind(
                             Enum,
                         ),
+                        detail: "E",
                         documentation: Documentation(
                             "enum docs",
                         ),
@@ -1270,6 +1631,7 @@ fn go(world: &WorldSnapshot) { go(w$0) }
                 st WorldSnapshot {…} []
                 st &WorldSnapshot {…} [type]
                 st WorldSnapshot []
+                st &WorldSnapshot [type]
                 fn go(…) []
             "#]],
         );
@@ -1369,6 +1731,7 @@ fn main() {
                 st S []
                 st &mut S [type]
                 st S []
+                st &mut S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1385,7 +1748,7 @@ fn main() {
             expect![[r#"
                 lc s [type+name+local]
                 st S [type]
-                st S []
+                st S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1402,7 +1765,7 @@ fn main() {
             expect![[r#"
                 lc ssss [type+local]
                 st S [type]
-                st S []
+                st S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1441,7 +1804,9 @@ fn main() {
                 st S []
                 st &S [type]
                 st S []
+                st &S [type]
                 st T []
+                st &T [type]
                 fn foo(…) []
                 fn main() []
                 md core []
@@ -1487,7 +1852,9 @@ fn main() {
                 st S []
                 st &mut S [type]
                 st S []
+                st &mut S [type]
                 st T []
+                st &mut T [type]
                 fn foo(…) []
                 fn main() []
                 md core []
@@ -1526,7 +1893,7 @@ fn bar(t: Foo) {}
             expect![[r#"
                 ev Foo::A [type]
                 ev Foo::B [type]
-                en Foo []
+                en Foo [type]
                 fn bar(…) []
                 fn foo() []
             "#]],
@@ -1549,6 +1916,7 @@ fn bar(t: &Foo) {}
                 ev Foo::B []
                 ev &Foo::B [type]
                 en Foo []
+                en &Foo [type]
                 fn bar(…) []
                 fn foo() []
             "#]],
@@ -1582,7 +1950,9 @@ fn main() {
                 st S []
                 st &S [type]
                 st S []
+                st &S [type]
                 st T []
+                st &T [type]
                 fn bar() []
                 fn &bar() [type]
                 fn foo(…) []
@@ -1791,8 +2161,8 @@ fn foo() {
                 lc foo [type+local]
                 ev Foo::A(…) [type_could_unify]
                 ev Foo::B [type_could_unify]
+                en Foo [type_could_unify]
                 fn foo() []
-                en Foo []
                 fn bar() []
                 fn baz() []
             "#]],

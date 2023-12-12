@@ -457,7 +457,7 @@ pub(crate) fn inlay_hint(
             inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
         };
     let data = if needs_resolve && something_to_resolve {
-        Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.0 }).unwrap())
+        Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.index() }).unwrap())
     } else {
         None
     };

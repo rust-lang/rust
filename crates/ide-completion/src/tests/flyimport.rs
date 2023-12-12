@@ -139,10 +139,10 @@ fn main() {
 }
 "#,
         expect![[r#"
-            st Rc (use dep::Rc)
-            st Rcar (use dep::Rcar)
-            st Rc (use dep::some_module::Rc)
-            st Rcar (use dep::some_module::Rcar)
+            st Rc (use dep::Rc)       Rc
+            st Rcar (use dep::Rcar)   Rcar
+            st Rc (use dep::some_module::Rc) Rc
+            st Rcar (use dep::some_module::Rcar) Rcar
         "#]],
     );
     check(
@@ -165,12 +165,12 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)
-            st Rc (use dep::Rc)
-            st Rcar (use dep::Rcar)
-            ct RC (use dep::some_module::RC)
-            st Rc (use dep::some_module::Rc)
-            st Rcar (use dep::some_module::Rcar)
+            ct RC (use dep::RC)       ()
+            st Rc (use dep::Rc)       Rc
+            st Rcar (use dep::Rcar)   Rcar
+            ct RC (use dep::some_module::RC) ()
+            st Rc (use dep::some_module::Rc) Rc
+            st Rcar (use dep::some_module::Rcar) Rcar
         "#]],
     );
     check(
@@ -193,8 +193,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)
-            ct RC (use dep::some_module::RC)
+            ct RC (use dep::RC)       ()
+            ct RC (use dep::some_module::RC) ()
         "#]],
     );
 }
@@ -227,10 +227,10 @@ fn main() {
 }
 "#,
         expect![[r#"
-                st ThirdStruct (use dep::some_module::ThirdStruct)
-                st AfterThirdStruct (use dep::some_module::AfterThirdStruct)
-                st ThiiiiiirdStruct (use dep::some_module::ThiiiiiirdStruct)
-            "#]],
+            st ThirdStruct (use dep::some_module::ThirdStruct) ThirdStruct
+            st AfterThirdStruct (use dep::some_module::AfterThirdStruct) AfterThirdStruct
+            st ThiiiiiirdStruct (use dep::some_module::ThiiiiiirdStruct) ThiiiiiirdStruct
+        "#]],
     );
 }
 
@@ -309,7 +309,7 @@ fn trait_const_fuzzy_completion() {
     check(
         fixture,
         expect![[r#"
-            ct SPECIAL_CONST (use dep::test_mod::TestTrait)
+            ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8
         "#]],
     );
 
@@ -597,7 +597,7 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct SPECIAL_CONST (use dep::test_mod::TestTrait) DEPRECATED
+            ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
             fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
         "#]],
     );
@@ -717,7 +717,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-        st Item (use foo::bar::baz::Item)
+            st Item (use foo::bar::baz::Item) Item
         "#]],
     );
 
@@ -759,7 +759,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-        ct TEST_ASSOC (use foo::Item)
+            ct TEST_ASSOC (use foo::Item) usize
         "#]],
     );
 
@@ -803,8 +803,8 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-        ct TEST_ASSOC (use foo::bar::Item)
-    "#]],
+            ct TEST_ASSOC (use foo::bar::Item) usize
+        "#]],
     );
 
     check_edit(
@@ -897,7 +897,7 @@ fn main() {
     TES$0
 }"#,
         expect![[r#"
-            ct TEST_CONST (use foo::TEST_CONST)
+            ct TEST_CONST (use foo::TEST_CONST) usize
         "#]],
     );
 
@@ -914,7 +914,7 @@ fn main() {
     tes$0
 }"#,
         expect![[r#"
-            ct TEST_CONST (use foo::TEST_CONST)
+            ct TEST_CONST (use foo::TEST_CONST) usize
             fn test_function() (use foo::test_function) fn() -> i32
         "#]],
     );
@@ -1138,8 +1138,8 @@ mod mud {
 }
 "#,
         expect![[r#"
-                st Struct (use crate::Struct)
-            "#]],
+            st Struct (use crate::Struct) Struct
+        "#]],
     );
 }
 
@@ -1250,7 +1250,7 @@ enum Foo {
 }
 }"#,
         expect![[r#"
-            st Barbara (use foo::Barbara)
+            st Barbara (use foo::Barbara) Barbara
         "#]],
     )
 }

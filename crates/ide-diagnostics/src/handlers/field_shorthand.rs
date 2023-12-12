@@ -1,7 +1,10 @@
 //! Suggests shortening `Foo { field: field }` to `Foo { field }` in both
 //! expressions and patterns.
 
-use ide_db::{base_db::FileId, source_change::SourceChange};
+use ide_db::{
+    base_db::{FileId, FileRange},
+    source_change::SourceChange,
+};
 use syntax::{ast, match_ast, AstNode, SyntaxNode};
 use text_edit::TextEdit;
 
@@ -49,7 +52,7 @@ fn check_expr_field_shorthand(
             Diagnostic::new(
                 DiagnosticCode::Clippy("redundant_field_names"),
                 "Shorthand struct initialization",
-                field_range,
+                FileRange { file_id, range: field_range },
             )
             .with_fixes(Some(vec![fix(
                 "use_expr_field_shorthand",
@@ -93,7 +96,7 @@ fn check_pat_field_shorthand(
             Diagnostic::new(
                 DiagnosticCode::Clippy("redundant_field_names"),
                 "Shorthand struct pattern",
-                field_range,
+                FileRange { file_id, range: field_range },
             )
             .with_fixes(Some(vec![fix(
                 "use_pat_field_shorthand",

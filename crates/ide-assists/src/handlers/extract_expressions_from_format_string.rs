@@ -1,4 +1,5 @@
 use crate::{AssistContext, Assists};
+use hir::DescendPreference;
 use ide_db::{
     assists::{AssistId, AssistKind},
     syntax_helpers::{
@@ -35,7 +36,8 @@ pub(crate) fn extract_expressions_from_format_string(
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
 
     let expanded_t = ast::String::cast(
-        ctx.sema.descend_into_macros_with_kind_preference(fmt_string.syntax().clone(), 0.into()),
+        ctx.sema
+            .descend_into_macros_single(DescendPreference::SameKind, fmt_string.syntax().clone()),
     )?;
     if !is_format_string(&expanded_t) {
         return None;

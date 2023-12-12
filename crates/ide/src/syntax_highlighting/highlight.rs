@@ -1,6 +1,6 @@
 //! Computes color for a single element.
 
-use hir::{AsAssocItem, HasVisibility, Semantics};
+use hir::{AsAssocItem, HasVisibility, MacroFileIdExt, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
     FxHashMap, RootDatabase, SymbolKind,
@@ -218,7 +218,10 @@ fn highlight_name_ref(
         // We can fix this for derive attributes since derive helpers are recorded, but not for
         // general attributes.
         None if name_ref.syntax().ancestors().any(|it| it.kind() == ATTR)
-            && !sema.hir_file_for(name_ref.syntax()).is_derive_attr_pseudo_expansion(sema.db) =>
+            && !sema
+                .hir_file_for(name_ref.syntax())
+                .macro_file()
+                .map_or(false, |it| it.is_derive_attr_pseudo_expansion(sema.db)) =>
         {
             return HlTag::Symbol(SymbolKind::Attribute).into();
         }
@@ -348,7 +351,7 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
     hash((name, shadow_count))
 }
 
-fn highlight_def(
+pub(super) fn highlight_def(
     sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     def: Definition,

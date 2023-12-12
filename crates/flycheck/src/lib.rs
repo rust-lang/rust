@@ -2,7 +2,7 @@
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::{
     ffi::OsString,

@@ -2,14 +2,14 @@ use std::fmt;
 
 use ast::HasName;
 use cfg::CfgExpr;
-use hir::{db::HirDatabase, AsAssocItem, HasAttrs, HasSource, Semantics};
+use hir::{db::HirDatabase, AsAssocItem, HasAttrs, HasSource, HirFileIdExt, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
-    search::SearchScope,
+    search::{FileReferenceNode, SearchScope},
     FxHashMap, FxHashSet, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
@@ -142,7 +142,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
                     Definition::Function(it) => it.source(db).map(|src| src.file_id),
                     _ => None,
                 };
-                if let Some(file_id) = file_id.filter(|file| file.call_node(db).is_some()) {
+                if let Some(file_id) = file_id.filter(|file| file.macro_file().is_some()) {
                     in_macro_expansion.entry(file_id).or_default().push(runnable);
                     return;
                 }
@@ -240,7 +240,7 @@ fn find_related_tests(
             .flatten();
         for ref_ in defs {
             let name_ref = match ref_.name {
-                ast::NameLike::NameRef(name_ref) => name_ref,
+                FileReferenceNode::NameRef(name_ref) => name_ref,
                 _ => continue,
             };
             if let Some(fn_def) =
@@ -335,7 +335,8 @@ pub(crate) fn runnable_fn(
         sema.db,
         def.source(sema.db)?.as_ref().map(|it| it as &dyn ast::HasName),
         SymbolKind::Function,
-    );
+    )
+    .call_site();
     let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { use_name_in_title: false, nav, kind, cfg })
 }
@@ -357,7 +358,7 @@ pub(crate) fn runnable_mod(
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
-    let nav = NavigationTarget::from_module_to_decl(sema.db, def);
+    let nav = NavigationTarget::from_module_to_decl(sema.db, def).call_site();
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
@@ -370,7 +371,7 @@ pub(crate) fn runnable_impl(
         return None;
     }
     let cfg = attrs.cfg();
-    let nav = def.try_to_nav(sema.db)?;
+    let nav = def.try_to_nav(sema.db)?.call_site();
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.generic_parameters(sema.db).peekable();
@@ -407,7 +408,7 @@ fn runnable_mod_outline_definition(
     match def.definition_source(sema.db).value {
         hir::ModuleSource::SourceFile(_) => Some(Runnable {
             use_name_in_title: false,
-            nav: def.to_nav(sema.db),
+            nav: def.to_nav(sema.db).call_site(),
             kind: RunnableKind::TestMod { path },
             cfg,
         }),
@@ -465,7 +466,8 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
     let mut nav = match def {
         Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),
         def => def.try_to_nav(db)?,
-    };
+    }
+    .call_site();
     nav.focus_range = None;
     nav.description = None;
     nav.docs = None;

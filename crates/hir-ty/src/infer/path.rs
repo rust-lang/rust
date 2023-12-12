@@ -390,6 +390,7 @@ impl InferenceContext<'_> {
     }
 }
 
+#[derive(Debug)]
 enum ValuePathResolution {
     // It's awkward to wrap a single ID in two enums, but we need both and this saves fallible
     // conversion between them + `unwrap()`.
