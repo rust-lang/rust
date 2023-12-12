@@ -381,10 +381,9 @@
 
 #![stable(feature = "pin", since = "1.33.0")]
 
-use crate::cmp::{self, PartialEq, PartialOrd};
+use crate::cmp;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::marker::{Sized, Unpin};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 
 /// A pinned pointer.

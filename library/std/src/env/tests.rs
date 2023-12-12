@@ -1,7 +1,5 @@
 use super::*;
 
-use crate::path::Path;
-
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
 fn test_self_exe_path() {

@@ -272,7 +272,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::TraitRef::new(
                 tcx,
                 partial_eq_trait_id,
-                tcx.with_opt_const_effect_param(
+                tcx.with_opt_host_effect_param(
                     tcx.hir().enclosing_body_owner(self.id),
                     partial_eq_trait_id,
                     [ty, ty],

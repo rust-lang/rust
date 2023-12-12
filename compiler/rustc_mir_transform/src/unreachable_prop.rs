@@ -2,7 +2,6 @@
 //! when all of their successors are unreachable. This is achieved through a
 //! post-order traversal of the blocks.
 
-use crate::MirPass;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::patch::MirPatch;

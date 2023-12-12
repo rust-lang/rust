@@ -1,5 +1,4 @@
 use core::cell::Cell;
-use core::clone::Clone;
 use core::mem;
 use core::ops::DerefMut;
 use core::option::*;

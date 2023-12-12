@@ -4,7 +4,7 @@ use crate::num::NonZeroUsize;
 use crate::{
     fmt,
     intrinsics::transmute_unchecked,
-    iter::{self, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce},
+    iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce},
     mem::MaybeUninit,
     ops::{IndexRange, Range},
     ptr,

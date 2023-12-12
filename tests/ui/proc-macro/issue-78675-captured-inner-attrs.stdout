@@ -46,7 +46,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                         stream: TokenStream [
                             Punct {
                                 ch: '#',
-                                spacing: Alone,
+                                spacing: Joint,
                                 span: $DIR/issue-78675-captured-inner-attrs.rs:28:9: 28:16 (#0),
                             },
                             Punct {

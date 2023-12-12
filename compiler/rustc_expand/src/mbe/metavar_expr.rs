@@ -35,7 +35,7 @@ impl MetaVarExpr {
     ) -> PResult<'sess, MetaVarExpr> {
         let mut tts = input.trees();
         let ident = parse_ident(&mut tts, sess, outer_span)?;
-        let Some(TokenTree::Delimited(_, Delimiter::Parenthesis, args)) = tts.next() else {
+        let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = tts.next() else {
             let msg = "meta-variable expression parameter must be wrapped in parentheses";
             return Err(sess.span_diagnostic.struct_span_err(ident.span, msg));
         };

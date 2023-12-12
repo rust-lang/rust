@@ -1,7 +1,5 @@
 // run-pass
 #![feature(fn_traits, unboxed_closures)]
-use std::ops::Fn;
-
 struct Foo<T>(T);
 
 impl<T: Copy> Fn<()> for Foo<T> {

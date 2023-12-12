@@ -103,7 +103,6 @@
 //! the time.
 
 use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
-use alloc::boxed::Box;
 use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
 use core::ptr::{self, NonNull};

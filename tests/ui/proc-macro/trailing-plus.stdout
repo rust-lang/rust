@@ -1,4 +1,5 @@
-PRINT-ATTR INPUT (DISPLAY): fn foo < T > () where T : Copy + {}
+PRINT-ATTR INPUT (DISPLAY): fn foo<T>() where T: Copy + {}
+PRINT-ATTR RE-COLLECTED (DISPLAY): fn foo < T > () where T : Copy + {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",

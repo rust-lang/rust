@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, Span};
-use std::iter::{once, Iterator};
+use std::iter::once;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,

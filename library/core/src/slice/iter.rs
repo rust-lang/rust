@@ -10,7 +10,7 @@ use crate::intrinsics::assume;
 use crate::iter::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
 };
-use crate::marker::{PhantomData, Send, Sized, Sync};
+use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ptr::{self, invalid, invalid_mut, NonNull};

@@ -1,4 +1,3 @@
-use core::iter::Iterator;
 use std::{
     collections::{vec_deque, VecDeque},
     mem,

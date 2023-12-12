@@ -1,44 +1,34 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::creader::{CStore, CrateMetadataRef};
+use crate::creader::CStore;
 use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
-use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
-use rustc_index::{Idx, IndexVec};
-use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
-use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, ParameterizedOverTcx, Ty, TyCtxt, Visibility};
+use rustc_middle::ty::Visibility;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
-use rustc_session::cstore::{
-    CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
-};
+use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnIndex;
-use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{self, BytePos, ExpnId, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::symbol::kw;
+use rustc_span::{BytePos, Pos, SpanData, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
-use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
@@ -700,28 +690,25 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 8).unwrap())
             .decode(self)
     }
 
-    pub(crate) fn get_header(&self) -> CrateHeader {
-        let slice = &self.blob()[..];
+    fn root_pos(&self) -> NonZeroUsize {
         let offset = METADATA_HEADER.len();
+        let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
+        let pos = u64::from_le_bytes(pos_bytes);
+        NonZeroUsize::new(pos as usize).unwrap()
+    }
 
-        let pos_bytes = slice[offset..][..4].try_into().unwrap();
-        let pos = u32::from_be_bytes(pos_bytes) as usize;
-
-        LazyValue::<CrateHeader>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+    pub(crate) fn get_header(&self) -> CrateHeader {
+        let pos = self.root_pos();
+        LazyValue::<CrateHeader>::from_position(pos).decode(self)
     }
 
     pub(crate) fn get_root(&self) -> CrateRoot {
-        let slice = &self.blob()[..];
-        let offset = METADATA_HEADER.len();
-
-        let pos_bytes = slice[offset..][..4].try_into().unwrap();
-        let pos = u32::from_be_bytes(pos_bytes) as usize;
-
-        LazyValue::<CrateRoot>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+        let pos = self.root_pos();
+        LazyValue::<CrateRoot>::from_position(pos).decode(self)
     }
 
     pub(crate) fn list_crate_metadata(

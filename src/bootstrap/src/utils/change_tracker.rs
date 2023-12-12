@@ -86,4 +86,14 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Use of the `if-available` value for `download-ci-llvm` is deprecated; prefer using the new `if-unchanged` value.",
     },
+    ChangeInfo {
+        change_id: 116278,
+        severity: ChangeSeverity::Info,
+        summary: "The `rust.use-lld` configuration now has different options ('external'/true or 'self-contained'), and its behaviour has changed.",
+    },
+    ChangeInfo {
+        change_id: 118703,
+        severity: ChangeSeverity::Info,
+        summary: "Removed rust.run_dsymutil and dist.gpg_password_file config options, as they were unused.",
+    },
 ];

@@ -500,7 +500,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.tcx,
             eq_def_id,
             sym::eq,
-            self.tcx.with_opt_const_effect_param(self.def_id, eq_def_id, [ty, ty]),
+            self.tcx.with_opt_host_effect_param(self.def_id, eq_def_id, [ty, ty]),
         );
 
         let bool_ty = self.tcx.types.bool;

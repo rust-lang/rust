@@ -71,6 +71,8 @@ fn main() {
         test_abi_compat(0isize, 0i64);
     }
     test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
+    // - `char` and `u32`.
+    test_abi_compat(42u32, 'x');
     // - Reference/pointer types with the same pointee.
     test_abi_compat(&0u32, &0u32 as *const u32);
     test_abi_compat(&mut 0u32 as *mut u32, Box::new(0u32));
@@ -81,7 +83,7 @@ fn main() {
     test_abi_compat(main as fn(), id::<i32> as fn(i32) -> i32);
     // - 1-ZST
     test_abi_compat((), [0u8; 0]);
-    // - Guaranteed null-pointer-optimizations.
+    // - Guaranteed null-pointer-optimizations (RFC 3391).
     test_abi_compat(&0u32 as *const u32, Some(&0u32));
     test_abi_compat(main as fn(), Some(main as fn()));
     test_abi_compat(0u32, Some(num::NonZeroU32::new(1).unwrap()));
@@ -103,6 +105,8 @@ fn main() {
     test_abi_newtype::<Option<num::NonZeroU32>>();
 
     // Extra test for assumptions made by arbitrary-self-dyn-receivers.
+    // This is interesting since these types are not `repr(transparent)`. So this is not part of our
+    // public ABI guarantees, but is relied on by the compiler.
     let rc = Rc::new(0);
     let rc_ptr: *mut i32 = unsafe { mem::transmute_copy(&rc) };
     test_abi_compat(rc, rc_ptr);

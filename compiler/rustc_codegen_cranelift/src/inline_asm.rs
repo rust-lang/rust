@@ -3,7 +3,6 @@
 use std::fmt::Write;
 
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_middle::mir::InlineAsmOperand;
 use rustc_span::sym;
 use rustc_target::asm::*;
 use target_lexicon::BinaryFormat;

@@ -39,7 +39,7 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from(ar))
     } else if let Some(ar) = env::var_os("AR") {
         Some(PathBuf::from(ar))
-    } else if target.contains("msvc") {
+    } else if target.is_msvc() {
         None
     } else if target.contains("musl") {
         Some(PathBuf::from("ar"))
@@ -78,7 +78,7 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
             cfg.static_crt(a);
         }
         None => {
-            if target.contains("msvc") {
+            if target.is_msvc() {
                 cfg.static_crt(true);
             }
             if target.contains("musl") {

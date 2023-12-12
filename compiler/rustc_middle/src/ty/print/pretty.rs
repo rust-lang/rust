@@ -2,24 +2,22 @@ use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar
 use crate::query::IntoQueryParam;
 use crate::query::Providers;
 use crate::traits::util::supertraits_for_pretty_printing;
+use crate::ty::GenericArgKind;
 use crate::ty::{
-    self, ConstInt, ParamConst, ScalarInt, Term, TermKind, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    ConstInt, ParamConst, ScalarInt, Term, TermKind, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
-use crate::ty::{GenericArg, GenericArgKind};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{DefId, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::def_id::{DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
-use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileNameDisplayPreference;
 use rustc_target::abi::Size;
@@ -2034,37 +2032,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
 
-        let tcx = self.tcx;
-
-        let args = args.iter().copied();
-
-        let args: Vec<_> = if !tcx.sess.verbose() {
-            // skip host param as those are printed as `~const`
-            args.filter(|arg| match arg.unpack() {
-                // FIXME(effects) there should be a better way than just matching the name
-                GenericArgKind::Const(c)
-                    if tcx.features().effects
-                        && matches!(
-                            c.kind(),
-                            ty::ConstKind::Param(ty::ParamConst { name: sym::host, .. })
-                        ) =>
-                {
-                    false
-                }
-                _ => true,
-            })
-            .collect()
-        } else {
-            // If -Zverbose is passed, we should print the host parameter instead
-            // of eating it.
-            args.collect()
-        };
-
         if !args.is_empty() {
             if self.in_value {
                 write!(self, "::")?;
             }
-            self.generic_delimiters(|cx| cx.comma_sep(args.into_iter()))
+            self.generic_delimiters(|cx| cx.comma_sep(args.iter().copied()))
         } else {
             Ok(())
         }
@@ -2894,11 +2866,16 @@ define_print_and_forward_display! {
     }
 
     TraitPredPrintModifiersAndPath<'tcx> {
-        // FIXME(effects) print `~const` here
+        if let Some(idx) = cx.tcx().generics_of(self.0.trait_ref.def_id).host_effect_index
+        {
+            let arg = self.0.trait_ref.args.const_at(idx);
+            if arg != cx.tcx().consts.true_ && !arg.has_infer() {
+                p!("~const ");
+            }
+        }
         if let ty::ImplPolarity::Negative = self.0.polarity {
             p!("!")
         }
-
         p!(print(self.0.trait_ref.print_only_trait_path()));
     }
 
@@ -2933,7 +2910,6 @@ define_print_and_forward_display! {
                 p!("~const ");
             }
         }
-        // FIXME(effects) print `~const` here
         if let ty::ImplPolarity::Negative = self.polarity {
             p!("!");
         }

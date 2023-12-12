@@ -1,7 +1,6 @@
 use super::*;
 use crate::env;
 use crate::thread;
-use crate::time::{Duration, Instant};
 
 pub fn stress_factor() -> usize {
     match env::var("RUST_TEST_STRESS") {

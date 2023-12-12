@@ -3,7 +3,6 @@
 
 extern crate cci_class_cast;
 
-use std::string::ToString;
 use cci_class_cast::kitty::cat;
 
 fn print_out(thing: Box<dyn ToString>, expected: String) {

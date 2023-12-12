@@ -237,7 +237,7 @@ than building it.
             }
         }
 
-        if need_cmake && target.contains("msvc") {
+        if need_cmake && target.is_msvc() {
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.

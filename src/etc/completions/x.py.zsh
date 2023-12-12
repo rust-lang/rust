@@ -45,6 +45,7 @@ _x.py() {
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -95,6 +96,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -138,6 +140,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -185,6 +188,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -227,6 +231,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -270,6 +275,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -314,6 +320,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -369,6 +376,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -412,6 +420,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -455,6 +464,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -497,6 +507,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -539,6 +550,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -582,6 +594,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -624,6 +637,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
@@ -668,6 +682,7 @@ _arguments "${_arguments_options[@]}" \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
 '--dry-run[dry run; don'\''t build anything]' \
+'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
 '--json-output[use message-format=json]' \
 '--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \

@@ -8,8 +8,6 @@
 
 #![feature(box_patterns)]
 
-use std::ops::Drop;
-
 static mut FLAGS: u64 = 0;
 
 struct Box<T> { f: T }

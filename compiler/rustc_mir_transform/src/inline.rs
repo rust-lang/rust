@@ -17,7 +17,6 @@ use rustc_target::spec::abi::Abi;
 use crate::cost_checker::CostChecker;
 use crate::simplify::{remove_dead_blocks, CfgSimplifier};
 use crate::util;
-use crate::MirPass;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 

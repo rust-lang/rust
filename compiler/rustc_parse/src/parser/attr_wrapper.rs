@@ -1,7 +1,7 @@
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttributesData, ToAttrTokenStream};
-use rustc_ast::tokenstream::{AttrTokenTree, DelimSpan, LazyAttrTokenStream, Spacing};
+use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttributesData, DelimSpacing};
+use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, ToAttrTokenStream};
 use rustc_ast::{self as ast};
 use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
@@ -389,7 +389,7 @@ fn make_token_stream(
     #[derive(Debug)]
     struct FrameData {
         // This is `None` for the first frame, `Some` for all others.
-        open_delim_sp: Option<(Delimiter, Span)>,
+        open_delim_sp: Option<(Delimiter, Span, Spacing)>,
         inner: Vec<AttrTokenTree>,
     }
     let mut stack = vec![FrameData { open_delim_sp: None, inner: vec![] }];
@@ -397,21 +397,23 @@ fn make_token_stream(
     while let Some((token, spacing)) = token_and_spacing {
         match token {
             FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span }) => {
-                stack.push(FrameData { open_delim_sp: Some((delim, span)), inner: vec![] });
+                stack
+                    .push(FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] });
             }
             FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
                 let frame_data = stack
                     .pop()
                     .unwrap_or_else(|| panic!("Token stack was empty for token: {token:?}"));
 
-                let (open_delim, open_sp) = frame_data.open_delim_sp.unwrap();
+                let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
                 assert_eq!(
                     open_delim, delim,
                     "Mismatched open/close delims: open={open_delim:?} close={span:?}"
                 );
                 let dspan = DelimSpan::from_pair(open_sp, span);
+                let dspacing = DelimSpacing::new(open_spacing, spacing);
                 let stream = AttrTokenStream::new(frame_data.inner);
-                let delimited = AttrTokenTree::Delimited(dspan, delim, stream);
+                let delimited = AttrTokenTree::Delimited(dspan, dspacing, delim, stream);
                 stack
                     .last_mut()
                     .unwrap_or_else(|| panic!("Bottom token frame is missing for token: {token:?}"))

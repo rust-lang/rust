@@ -1,4 +1,5 @@
 use crate::pp::Breaks::Inconsistent;
+use crate::pprust::state::expr::FixupContext;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 use ast::StaticItem;
@@ -97,7 +98,7 @@ impl<'a> State<'a> {
         self.end(); // end the head-ibox
         if let Some(body) = body {
             self.word_space("=");
-            self.print_expr(body);
+            self.print_expr(body, FixupContext::default());
         }
         self.print_where_clause(&generics.where_clause);
         self.word(";");
@@ -514,7 +515,7 @@ impl<'a> State<'a> {
         if let Some(d) = &v.disr_expr {
             self.space();
             self.word_space("=");
-            self.print_expr(&d.value)
+            self.print_expr(&d.value, FixupContext::default())
         }
     }
 

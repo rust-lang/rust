@@ -6,7 +6,6 @@
 #![feature(coroutines, coroutine_trait)]
 
 use std::fmt::Debug;
-use std::marker::Unpin;
 use std::ops::{
     Coroutine,
     CoroutineState::{self, *},

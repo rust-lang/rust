@@ -4,8 +4,6 @@
 
 #![feature(negative_impls)]
 
-use std::marker::Send;
-
 struct TestType;
 
 impl !Send for TestType {}

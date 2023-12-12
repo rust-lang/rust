@@ -758,3 +758,12 @@ pub struct AnonStructOrUnionNotAllowed {
     pub span: Span,
     pub struct_or_union: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_match_arm_with_no_body)]
+pub struct MatchArmWithNoBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    pub suggestion: Span,
+}

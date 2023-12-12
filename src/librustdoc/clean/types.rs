@@ -31,7 +31,7 @@ use rustc_resolve::rustdoc::{
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, FileName, Loc, DUMMY_SP};
+use rustc_span::{FileName, Loc, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 

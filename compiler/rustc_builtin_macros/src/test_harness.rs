@@ -2,7 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
-use rustc_ast::mut_visit::{ExpectOne, *};
+use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_item, Visitor};
 use rustc_ast::{attr, ModKind};

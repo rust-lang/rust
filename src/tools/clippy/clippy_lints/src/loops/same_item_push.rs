@@ -11,7 +11,6 @@ use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Nod
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use rustc_span::SyntaxContext;
-use std::iter::Iterator;
 
 /// Detects for loop pushing the same item into a Vec
 pub(super) fn check<'tcx>(

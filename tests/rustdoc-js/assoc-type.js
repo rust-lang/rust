@@ -19,6 +19,17 @@ const EXPECTED = [
             { 'path': 'assoc_type::my', 'name': 'other_fn' },
         ],
     },
+    {
+        'query': 'something',
+        'correction': null,
+        'others': [
+            { 'path': 'assoc_type', 'name': 'Something' },
+        ],
+        'in_args': [
+            { 'path': 'assoc_type', 'name': 'my_fn' },
+            { 'path': 'assoc_type::my', 'name': 'other_fn' },
+        ],
+    },
     // if I write an explicit binding, only it shows up
     {
         'query': 'iterator<item=something> -> u32',
