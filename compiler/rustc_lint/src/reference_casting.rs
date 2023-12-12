@@ -111,15 +111,34 @@ fn is_cast_from_const_to_mut<'tcx>(
     cx: &LateContext<'tcx>,
     orig_expr: &'tcx Expr<'tcx>,
 ) -> Option<bool> {
-    let mut need_check_freeze = false;
-    let mut e = orig_expr;
-
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
     // Bail out early if the end type is **not** a mutable pointer.
     if !matches!(end_ty.kind(), ty::RawPtr(TypeAndMut { ty: _, mutbl: Mutability::Mut })) {
         return None;
     }
+
+    let (e, need_check_freeze) = peel_casts(cx, orig_expr);
+
+    let start_ty = cx.typeck_results().node_type(e.hir_id);
+    if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
+        // If an UnsafeCell method is involved we need to additionally check the
+        // inner type for the presence of the Freeze trait (ie does NOT contain
+        // an UnsafeCell), since in that case we would incorrectly lint on valid casts.
+        //
+        // We also consider non concrete skeleton types (ie generics)
+        // to be an issue since there is no way to make it safe for abitrary types.
+        let inner_ty_has_interior_mutability =
+            !inner_ty.is_freeze(cx.tcx, cx.param_env) && inner_ty.has_concrete_skeleton();
+        (!need_check_freeze || !inner_ty_has_interior_mutability)
+            .then_some(inner_ty_has_interior_mutability)
+    } else {
+        None
+    }
+}
+
+fn peel_casts<'tcx>(cx: &LateContext<'tcx>, mut e: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, bool) {
+    let mut gone_trough_unsafe_cell_raw_get = false;
 
     loop {
         e = e.peel_blocks();
@@ -145,7 +164,7 @@ fn is_cast_from_const_to_mut<'tcx>(
             )
         {
             if cx.tcx.is_diagnostic_item(sym::unsafe_cell_raw_get, def_id) {
-                need_check_freeze = true;
+                gone_trough_unsafe_cell_raw_get = true;
             }
             arg
         } else {
@@ -153,19 +172,5 @@ fn is_cast_from_const_to_mut<'tcx>(
         };
     }
 
-    let start_ty = cx.typeck_results().node_type(e.hir_id);
-    if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
-        // If an UnsafeCell method is involved we need to additionally check the
-        // inner type for the presence of the Freeze trait (ie does NOT contain
-        // an UnsafeCell), since in that case we would incorrectly lint on valid casts.
-        //
-        // We also consider non concrete skeleton types (ie generics)
-        // to be an issue since there is no way to make it safe for abitrary types.
-        let inner_ty_has_interior_mutability =
-            !inner_ty.is_freeze(cx.tcx, cx.param_env) && inner_ty.has_concrete_skeleton();
-        (!need_check_freeze || !inner_ty_has_interior_mutability)
-            .then_some(inner_ty_has_interior_mutability)
-    } else {
-        None
-    }
+    (e, gone_trough_unsafe_cell_raw_get)
 }
