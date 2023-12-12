@@ -74,7 +74,7 @@ export class Cargo {
                             artifacts.push({
                                 fileName: message.executable,
                                 name: message.target.name,
-                                workspace: message.manifest_path.replace(/\/Cargo\.toml$/, ""),
+                                workspace: path.dirname(message.manifest_path),
                                 kind: message.target.kind[0],
                                 isTest: message.profile.test,
                             });

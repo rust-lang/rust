@@ -1,4 +1,4 @@
-use crate::{LineIndex, TextSize, WideChar};
+use crate::{LineCol, LineIndex, TextSize, WideChar, WideEncoding, WideLineCol};
 
 macro_rules! test {
     (
@@ -102,7 +102,7 @@ test!(
     case: multi_byte_with_new_lines,
     text: "01\t345\n789abcΔf01234567\u{07}9\nbcΔf",
     lines: vec![7, 27],
-    multi_byte_chars: vec![(1, (13, 15)), (2, (29, 31))],
+    multi_byte_chars: vec![(1, (6, 8)), (2, (2, 4))],
 );
 
 test!(
@@ -118,3 +118,27 @@ test!(
     lines: vec![16],
     multi_byte_chars: vec![],
 );
+
+#[test]
+fn test_try_line_col() {
+    let text = "\n\n\n\n\n宽3456";
+    assert_eq!(&text[5..8], "宽");
+    assert_eq!(&text[11..12], "6");
+    let line_index = LineIndex::new(text);
+    let before_6 = TextSize::from(11);
+    let line_col = line_index.try_line_col(before_6);
+    assert_eq!(line_col, Some(LineCol { line: 5, col: 6 }));
+}
+
+#[test]
+fn test_to_wide() {
+    let text = "\n\n\n\n\n宽3456";
+    assert_eq!(&text[5..8], "宽");
+    assert_eq!(&text[11..12], "6");
+    let line_index = LineIndex::new(text);
+    let before_6 = TextSize::from(11);
+    let line_col = line_index.try_line_col(before_6);
+    assert_eq!(line_col, Some(LineCol { line: 5, col: 6 }));
+    let wide_line_col = line_index.to_wide(WideEncoding::Utf16, line_col.unwrap());
+    assert_eq!(wide_line_col, Some(WideLineCol { line: 5, col: 4 }));
+}

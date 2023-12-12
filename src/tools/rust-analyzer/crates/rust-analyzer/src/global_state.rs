@@ -187,11 +187,9 @@ impl GlobalState {
             config_errors: Default::default(),
 
             proc_macro_changed: false,
-            // FIXME: use `Arc::from_iter` when it becomes available
-            proc_macro_clients: Arc::from(Vec::new()),
+            proc_macro_clients: Arc::from_iter([]),
 
-            // FIXME: use `Arc::from_iter` when it becomes available
-            flycheck: Arc::from(Vec::new()),
+            flycheck: Arc::from_iter([]),
             flycheck_sender,
             flycheck_receiver,
             last_flycheck_error: None,
@@ -202,7 +200,7 @@ impl GlobalState {
             vfs_progress_n_total: 0,
             vfs_progress_n_done: 0,
 
-            workspaces: Arc::new(Vec::new()),
+            workspaces: Arc::from(Vec::new()),
             crate_graph_file_dependencies: FxHashSet::default(),
             fetch_workspaces_queue: OpQueue::default(),
             fetch_build_data_queue: OpQueue::default(),

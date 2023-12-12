@@ -121,6 +121,7 @@ impl ast::Whitespace {
     }
 }
 
+#[derive(Debug)]
 pub struct QuoteOffsets {
     pub quotes: (TextRange, TextRange),
     pub contents: TextRange,
@@ -166,6 +167,11 @@ pub trait IsString: AstToken {
     }
     fn text_range_between_quotes(&self) -> Option<TextRange> {
         self.quote_offsets().map(|it| it.contents)
+    }
+    fn text_without_quotes(&self) -> &str {
+        let text = self.text();
+        let Some(offsets) = self.text_range_between_quotes() else { return text };
+        &text[offsets - self.syntax().text_range().start()]
     }
     fn open_quote_text_range(&self) -> Option<TextRange> {
         self.quote_offsets().map(|it| it.quotes.0)

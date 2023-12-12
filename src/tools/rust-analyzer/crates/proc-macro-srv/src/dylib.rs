@@ -11,7 +11,7 @@ use libloading::Library;
 use memmap2::Mmap;
 use object::Object;
 use paths::AbsPath;
-use proc_macro_api::{read_dylib_info, ProcMacroKind};
+use proc_macro_api::{msg::TokenId, read_dylib_info, ProcMacroKind};
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
@@ -152,9 +152,15 @@ impl Expander {
         macro_name: &str,
         macro_body: &crate::tt::Subtree,
         attributes: Option<&crate::tt::Subtree>,
+        def_site: TokenId,
+        call_site: TokenId,
+        mixed_site: TokenId,
     ) -> Result<crate::tt::Subtree, String> {
-        let result = self.inner.proc_macros.expand(macro_name, macro_body, attributes);
-        result.map_err(|e| e.as_str().unwrap_or_else(|| "<unknown error>".to_string()))
+        let result = self
+            .inner
+            .proc_macros
+            .expand(macro_name, macro_body, attributes, def_site, call_site, mixed_site);
+        result.map_err(|e| e.into_string().unwrap_or_default())
     }
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {

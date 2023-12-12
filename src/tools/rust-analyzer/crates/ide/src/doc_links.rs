@@ -12,7 +12,9 @@ use pulldown_cmark_to_cmark::{cmark_resume_with_options, Options as CMarkOptions
 use stdx::format_to;
 use url::Url;
 
-use hir::{db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs};
+use hir::{
+    db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, DescendPreference, HasAttrs,
+};
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
@@ -144,7 +146,7 @@ pub(crate) fn external_docs(
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;
-    let token = sema.descend_into_macros_single(token, offset);
+    let token = sema.descend_into_macros_single(DescendPreference::None, token);
 
     let node = token.parent()?;
     let definition = match_ast! {
@@ -286,7 +288,7 @@ impl DocCommentToken {
         let original_start = doc_token.text_range().start();
         let relative_comment_offset = offset - original_start - prefix_len;
 
-        sema.descend_into_macros(doc_token, offset).into_iter().find_map(|t| {
+        sema.descend_into_macros(DescendPreference::None, doc_token).into_iter().find_map(|t| {
             let (node, descended_prefix_len) = match_ast! {
                 match t {
                     ast::Comment(comment) => (t.parent()?, TextSize::try_from(comment.prefix().len()).ok()?),

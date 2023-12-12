@@ -17,7 +17,7 @@
 //! from the ide with completions, hovers, etc. It is a (soft, internal) boundary:
 //! <https://www.tedinski.com/2018/02/06/system-boundaries.html>.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "512"]
 
@@ -59,7 +59,7 @@ use hir_def::{
     Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
-use hir_expand::{name::name, MacroCallKind};
+use hir_expand::{attrs::collect_attrs, name::name, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
@@ -81,7 +81,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, HasAttrs as _, HasDocComments, HasName},
+    ast::{self, HasAttrs as _, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
 use triomphe::Arc;
@@ -92,7 +92,9 @@ pub use crate::{
     attrs::{resolve_doc_path_on, HasAttrs},
     diagnostics::*,
     has_source::HasSource,
-    semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
+    semantics::{
+        DescendPreference, PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits,
+    },
 };
 
 // Be careful with these re-exports.
@@ -123,8 +125,10 @@ pub use {
     },
     hir_expand::{
         attrs::{Attr, AttrId},
+        hygiene::{marks_rev, SyntaxContextExt},
         name::{known, Name},
-        ExpandResult, HirFileId, InFile, MacroFile, Origin,
+        tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
+        MacroFileIdExt,
     },
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
@@ -140,7 +144,10 @@ pub use {
 #[allow(unused)]
 use {
     hir_def::path::Path,
-    hir_expand::{hygiene::Hygiene, name::AsName},
+    hir_expand::{
+        name::AsName,
+        span::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
+    },
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -601,7 +608,7 @@ impl Module {
             let tree = loc.id.item_tree(db.upcast());
             let node = &tree[loc.id.value];
             let file_id = loc.id.file_id();
-            if file_id.is_builtin_derive(db.upcast()) {
+            if file_id.macro_file().map_or(false, |it| it.is_builtin_derive(db.upcast())) {
                 // these expansion come from us, diagnosing them is a waste of resources
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;
@@ -664,7 +671,8 @@ impl Module {
                 _ => (),
             };
 
-            if let Some(trait_) = trait_ {
+            // Negative impls can't have items, don't emit missing items diagnostic for them
+            if let (false, Some(trait_)) = (impl_is_negative, trait_) {
                 let items = &db.trait_data(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
@@ -685,6 +693,26 @@ impl Module {
                         ))
                     },
                 ));
+
+                let redundant = impl_assoc_items_scratch
+                    .iter()
+                    .filter(|(id, name)| {
+                        !items.iter().any(|(impl_name, impl_item)| {
+                            discriminant(impl_item) == discriminant(id) && impl_name == name
+                        })
+                    })
+                    .map(|(item, name)| (name.clone(), AssocItem::from(*item)));
+                for (name, assoc_item) in redundant {
+                    acc.push(
+                        TraitImplRedundantAssocItems {
+                            trait_,
+                            file_id,
+                            impl_: ast_id_map.get(node.ast_id()),
+                            assoc_item: (name, assoc_item),
+                        }
+                        .into(),
+                    )
+                }
 
                 let missing: Vec<_> = required_items
                     .filter(|(name, id)| {
@@ -947,10 +975,9 @@ fn precise_macro_call_location(
             // Compute the precise location of the macro name's token in the derive
             // list.
             let token = (|| {
-                let derive_attr = node
-                    .doc_comments_and_attrs()
+                let derive_attr = collect_attrs(&node)
                     .nth(derive_attr_index.ast_index())
-                    .and_then(Either::left)?;
+                    .and_then(|x| Either::left(x.1))?;
                 let token_tree = derive_attr.meta()?.token_tree()?;
                 let group_by = token_tree
                     .syntax()
@@ -975,10 +1002,9 @@ fn precise_macro_call_location(
         }
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
             let node = ast_id.to_node(db.upcast());
-            let attr = node
-                .doc_comments_and_attrs()
+            let attr = collect_attrs(&node)
                 .nth(invoc_attr_index.ast_index())
-                .and_then(Either::left)
+                .and_then(|x| Either::left(x.1))
                 .unwrap_or_else(|| {
                     panic!("cannot find attribute #{}", invoc_attr_index.ast_index())
                 });
@@ -3490,9 +3516,34 @@ impl Impl {
         self.id.lookup(db.upcast()).container.into()
     }
 
-    pub fn as_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
+    pub fn as_builtin_derive_path(self, db: &dyn HirDatabase) -> Option<InMacroFile<ast::Path>> {
         let src = self.source(db)?;
-        src.file_id.as_builtin_derive_attr_node(db.upcast())
+
+        let macro_file = src.file_id.macro_file()?;
+        let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let (derive_attr, derive_index) = match loc.kind {
+            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
+                let module_id = self.id.lookup(db.upcast()).container;
+                (
+                    db.crate_def_map(module_id.krate())[module_id.local_id]
+                        .scope
+                        .derive_macro_invoc(ast_id, derive_attr_index)?,
+                    derive_index,
+                )
+            }
+            _ => return None,
+        };
+        let file_id = MacroFileId { macro_call_id: derive_attr };
+        let path = db
+            .parse_macro_expansion(file_id)
+            .value
+            .0
+            .syntax_node()
+            .children()
+            .nth(derive_index as usize)
+            .and_then(<ast::Attr as AstNode>::cast)
+            .and_then(|it| it.path())?;
+        Some(InMacroFile { file_id, value: path })
     }
 
     pub fn check_orphan_rules(self, db: &dyn HirDatabase) -> bool {
@@ -3512,10 +3563,9 @@ impl TraitRef {
         resolver: &Resolver,
         trait_ref: hir_ty::TraitRef,
     ) -> TraitRef {
-        let env = resolver.generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(resolver.krate())),
-            |d| db.trait_environment(d),
-        );
+        let env = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
         TraitRef { env, trait_ref }
     }
 
@@ -3655,15 +3705,14 @@ impl Type {
         resolver: &Resolver,
         ty: Ty,
     ) -> Type {
-        let environment = resolver.generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(resolver.krate())),
-            |d| db.trait_environment(d),
-        );
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
         Type { env: environment, ty }
     }
 
     pub(crate) fn new_for_crate(krate: CrateId, ty: Ty) -> Type {
-        Type { env: Arc::new(TraitEnvironment::empty(krate)), ty }
+        Type { env: TraitEnvironment::empty(krate), ty }
     }
 
     pub fn reference(inner: &Type, m: Mutability) -> Type {
@@ -3679,10 +3728,9 @@ impl Type {
 
     fn new(db: &dyn HirDatabase, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
-        let environment = resolver.generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(resolver.krate())),
-            |d| db.trait_environment(d),
-        );
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
         Type { env: environment, ty }
     }
 
@@ -4252,10 +4300,10 @@ impl Type {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let krate = scope.krate();
-        let environment = scope.resolver().generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(krate.id)),
-            |d| db.trait_environment(d),
-        );
+        let environment = scope
+            .resolver()
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
 
         method_resolution::iterate_method_candidates_dyn(
             &canonical,
@@ -4309,10 +4357,10 @@ impl Type {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let krate = scope.krate();
-        let environment = scope.resolver().generic_def().map_or_else(
-            || Arc::new(TraitEnvironment::empty(krate.id)),
-            |d| db.trait_environment(d),
-        );
+        let environment = scope
+            .resolver()
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
 
         method_resolution::iterate_path_candidates(
             &canonical,

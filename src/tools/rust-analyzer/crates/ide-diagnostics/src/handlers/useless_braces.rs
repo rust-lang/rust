@@ -1,5 +1,8 @@
 use hir::InFile;
-use ide_db::{base_db::FileId, source_change::SourceChange};
+use ide_db::{
+    base_db::{FileId, FileRange},
+    source_change::SourceChange,
+};
 use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxNode};
 use text_edit::TextEdit;
@@ -38,7 +41,7 @@ pub(crate) fn useless_braces(
             Diagnostic::new(
                 DiagnosticCode::RustcLint("unused_braces"),
                 "Unnecessary braces in use statement".to_string(),
-                use_range,
+                FileRange { file_id, range: use_range },
             )
             .with_main_node(InFile::new(file_id.into(), node.clone()))
             .with_fixes(Some(vec![fix(

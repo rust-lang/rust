@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay, InFile};
+use hir::{HasSource, HirDisplay, InRealFile};
 use ide_db::assists::{AssistId, AssistKind};
 use syntax::{
     ast::{self, make, HasArgList},
@@ -114,14 +114,14 @@ fn add_variant_to_accumulator(
     parent: PathParent,
 ) -> Option<()> {
     let db = ctx.db();
-    let InFile { file_id, value: enum_node } = adt.source(db)?.original_ast_node(db)?;
+    let InRealFile { file_id, value: enum_node } = adt.source(db)?.original_ast_node(db)?;
 
     acc.add(
         AssistId("generate_enum_variant", AssistKind::Generate),
         "Generate variant",
         target,
         |builder| {
-            builder.edit_file(file_id.original_file(db));
+            builder.edit_file(file_id);
             let node = builder.make_mut(enum_node);
             let variant = make_variant(ctx, name_ref, parent);
             node.variant_list().map(|it| it.add_variant(variant.clone_for_update()));

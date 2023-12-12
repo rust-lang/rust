@@ -51,8 +51,7 @@ use crate::{
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    // FIXME: use `Arc::from_iter` when it becomes available
-    state.proc_macro_clients = Arc::from(Vec::new());
+    state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
     state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), false);
@@ -60,8 +59,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow:
 }
 
 pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    // FIXME: use `Arc::from_iter` when it becomes available
-    state.proc_macro_clients = Arc::from(Vec::new());
+    state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
     state.fetch_build_data_queue.request_op("rebuild proc macros request".to_string(), ());
@@ -1438,7 +1436,7 @@ pub(crate) fn handle_inlay_hints_resolve(
     };
 
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
-    let file_id = FileId(resolve_data.file_id);
+    let file_id = FileId::from_raw(resolve_data.file_id);
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;

@@ -18,15 +18,15 @@ fn target_type_or_trait_in_impl_block() {
 impl Tra$0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],
@@ -40,15 +40,15 @@ fn target_type_in_trait_impl_block() {
 impl Trait for Str$0
 "#,
         expect![[r#"
-            en Enum
+            en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Record
-            st Tuple
-            st Unit
+            st Record    Record
+            st Tuple     Tuple
+            st Unit      Unit
             tt Trait
-            un Union
-            bt u32
+            un Union     Union
+            bt u32       u32
             kw crate::
             kw self::
         "#]],

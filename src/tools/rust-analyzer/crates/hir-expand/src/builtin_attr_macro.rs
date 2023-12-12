@@ -1,16 +1,22 @@
 //! Builtin attributes.
 
+use base_db::{
+    span::{SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
+    FileId,
+};
+use syntax::{TextRange, TextSize};
+
 use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
 
 macro_rules! register_builtin {
-    ( $(($name:ident, $variant:ident) => $expand:ident),* ) => {
+    ($expand_fn:ident: $(($name:ident, $variant:ident) => $expand:ident),* ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinAttrExpander {
             $($variant),*
         }
 
         impl BuiltinAttrExpander {
-            pub fn expand(
+            pub fn $expand_fn(
                 &self,
                 db: &dyn ExpandDatabase,
                 id: MacroCallId,
@@ -45,7 +51,7 @@ impl BuiltinAttrExpander {
     }
 }
 
-register_builtin! {
+register_builtin! { expand:
     (bench, Bench) => dummy_attr_expand,
     (cfg_accessible, CfgAccessible) => dummy_attr_expand,
     (cfg_eval, CfgEval) => dummy_attr_expand,
@@ -77,9 +83,8 @@ fn dummy_attr_expand(
 ///
 /// As such, we expand `#[derive(Foo, bar::Bar)]` into
 /// ```
-///  #[Foo]
-///  #[bar::Bar]
-///  ();
+///  #![Foo]
+///  #![bar::Bar]
 /// ```
 /// which allows fallback path resolution in hir::Semantics to properly identify our derives.
 /// Since we do not expand the attribute in nameres though, we keep the original item.
@@ -98,21 +103,31 @@ fn derive_attr_expand(
 ) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
-        MacroCallKind::Attr { attr_args, .. } if loc.def.is_attribute_derive() => &attr_args.0,
-        _ => return ExpandResult::ok(tt::Subtree::empty()),
+        MacroCallKind::Attr { attr_args: Some(attr_args), .. } if loc.def.is_attribute_derive() => {
+            attr_args
+        }
+        _ => return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan::DUMMY)),
     };
-    pseudo_derive_attr_expansion(tt, derives)
+    pseudo_derive_attr_expansion(tt, derives, loc.call_site)
 }
 
 pub fn pseudo_derive_attr_expansion(
     tt: &tt::Subtree,
     args: &tt::Subtree,
+    call_site: SyntaxContextId,
 ) -> ExpandResult<tt::Subtree> {
     let mk_leaf = |char| {
         tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
             char,
             spacing: tt::Spacing::Alone,
-            span: tt::TokenId::unspecified(),
+            span: tt::SpanData {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor: base_db::span::SpanAnchor {
+                    file_id: FileId::BOGUS,
+                    ast_id: ROOT_ERASED_FILE_AST_ID,
+                },
+                ctx: call_site,
+            },
         }))
     };
 
@@ -122,12 +137,10 @@ pub fn pseudo_derive_attr_expansion(
         .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))))
     {
         token_trees.push(mk_leaf('#'));
+        token_trees.push(mk_leaf('!'));
         token_trees.push(mk_leaf('['));
         token_trees.extend(tt.iter().cloned());
         token_trees.push(mk_leaf(']'));
     }
-    token_trees.push(mk_leaf('('));
-    token_trees.push(mk_leaf(')'));
-    token_trees.push(mk_leaf(';'));
     ExpandResult::ok(tt::Subtree { delimiter: tt.delimiter, token_trees })
 }
