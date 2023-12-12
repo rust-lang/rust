@@ -191,8 +191,9 @@ impl Mode {
     /// Byte literals do not allow unicode escape.
     fn is_unicode_escape_disallowed(self) -> bool {
         match self {
-            Byte | ByteStr | RawByteStr => true,
-            Char | Str | RawStr | CStr | RawCStr => false,
+            Byte | ByteStr => true,
+            Char | Str | CStr => false,
+            RawByteStr | RawStr | RawCStr => unreachable!(),
         }
     }
 
