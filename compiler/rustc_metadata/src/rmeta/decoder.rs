@@ -1637,7 +1637,22 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         virtual_name.display(),
                         new_path.display(),
                     );
-                    let new_name = rustc_span::RealFileName::LocalPath(new_path);
+
+                    // Check if the translated real path is affected by any user-requested
+                    // remaps via --remap-path-prefix. Apply them if so.
+                    // Note that this is a special case for imported rust-src paths specified by
+                    // https://rust-lang.github.io/rfcs/3127-trim-paths.html#handling-sysroot-paths.
+                    // Other imported paths are not currently remapped (see #66251).
+                    let (user_remapped, applied) =
+                        sess.source_map().path_mapping().map_prefix(&new_path);
+                    let new_name = if applied {
+                        rustc_span::RealFileName::Remapped {
+                            local_path: Some(new_path.clone()),
+                            virtual_name: user_remapped.to_path_buf(),
+                        }
+                    } else {
+                        rustc_span::RealFileName::LocalPath(new_path)
+                    };
                     *old_name = new_name;
                 }
             }
