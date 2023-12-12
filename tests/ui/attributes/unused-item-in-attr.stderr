@@ -1,6 +1,4 @@
-error: unexpected expression: `{
-           extern crate alloc;
-       }`
+error: attribute value must be a literal
   --> $DIR/unused-item-in-attr.rs:1:7
    |
 LL | #[w = { extern crate alloc; }]

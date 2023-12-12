@@ -68,19 +68,19 @@ error: `match` arm with no body
   --> $DIR/match-arm-without-body.rs:30:9
    |
 LL |         Some(_) if true
-   |         ^^^^^^^^^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
 
 error: `match` arm with no body
   --> $DIR/match-arm-without-body.rs:40:9
    |
 LL |         Some(_) if true,
-   |         ^^^^^^^^^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
 
 error: `match` arm with no body
   --> $DIR/match-arm-without-body.rs:45:9
    |
 LL |         Some(_) if true,
-   |         ^^^^^^^^^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
 
 error: `match` arm with no body
   --> $DIR/match-arm-without-body.rs:51:9
@@ -98,19 +98,13 @@ error: `match` arm with no body
   --> $DIR/match-arm-without-body.rs:61:9
    |
 LL |         pat!() if true,
-   |         ^^^^^^^^^^^^^^- help: add a body after the pattern: `=> todo!(),`
-
-error: `match` arm with no body
-  --> $DIR/match-arm-without-body.rs:66:9
-   |
-LL |         pat!()
    |         ^^^^^^- help: add a body after the pattern: `=> todo!(),`
 
 error: `match` arm with no body
-  --> $DIR/match-arm-without-body.rs:74:9
+  --> $DIR/match-arm-without-body.rs:72:9
    |
 LL |         pat!(),
    |         ^^^^^^- help: add a body after the pattern: `=> todo!(),`
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 

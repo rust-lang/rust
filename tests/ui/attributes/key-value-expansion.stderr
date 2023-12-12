@@ -1,10 +1,10 @@
-error: unexpected expression: `(7u32)`
+error: attribute value must be a literal
   --> $DIR/key-value-expansion.rs:21:6
    |
 LL | bug!((column!()));
    |      ^^^^^^^^^^^
 
-error: unexpected expression: `"bug" + "found"`
+error: attribute value must be a literal
   --> $DIR/key-value-expansion.rs:27:14
    |
 LL |         bug!("bug" + stringify!(found));
@@ -15,7 +15,7 @@ LL | bug!();
    |
    = note: this error originates in the macro `bug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: unexpected expression: `{ let res = ::alloc::fmt::format(format_args!("{0}", "u8")); res }.as_str()`
+error: attribute value must be a literal
   --> $DIR/key-value-expansion.rs:48:23
    |
 LL |         doc_comment! {format!("{coor}", coor = stringify!($t1)).as_str()}
