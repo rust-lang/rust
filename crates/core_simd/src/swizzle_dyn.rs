@@ -55,7 +55,7 @@ where
                 16 => transize(vqtbl1q_u8, self, idxs),
                 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
                 32 => transize_raw(avx2_pshufb, self, idxs),
-                #[cfg(target_feature = "avx512vl,avx512vbmi")]
+                #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 32 => transize(x86::_mm256_permutexvar_epi8, self, idxs),
                 // Notable absence: avx512bw shuffle
                 // If avx512bw is available, odds of avx512vbmi are good
