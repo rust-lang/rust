@@ -1584,7 +1584,7 @@ options! {
         all `statement`s (including terminators), only `terminator` spans, or \
         computed `block` spans (one span encompassing a block's terminator and \
         all statements)."),
-    dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Enabled(Some("target/tmp/stats-dir/".into())),
+    dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Enabled(Some("/dev/null/".into())),
         parse_switch_with_opt_path, [UNTRACKED],
         "output statistics about monomorphization collection"),
     dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Json, parse_dump_mono_stats, [UNTRACKED],
@@ -1835,7 +1835,7 @@ written to standard error output)"),
     saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
         the max/min integer respectively, and NaN is mapped to 0 (default: yes)"),
-    self_profile: SwitchWithOptPath = (SwitchWithOptPath::Enabled(Some("target/tmp/stats-dir/".into())),
+    self_profile: SwitchWithOptPath = (SwitchWithOptPath::Enabled(Some("/dev/null/".into())),
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
     self_profile_counter: String = ("wall-time".to_string(), parse_string, [UNTRACKED],

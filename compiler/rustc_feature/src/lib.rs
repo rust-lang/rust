@@ -54,7 +54,7 @@ pub fn metrics_path() -> &'static Option<PathBuf> {
         let _path = project_dirs().as_ref()?.cache_dir().to_path_buf();
         // TEST: testing writing directly to the project's directory to avoid accidentally sneaking
         // files without a clean-up strategy
-        let mut path: PathBuf = "target/tmp/stats-dir/".into();
+        let mut path: PathBuf = "/dev/null/".into();
         let _ = std::fs::create_dir_all(&path).ok()?;
         path.push("stats");
 
