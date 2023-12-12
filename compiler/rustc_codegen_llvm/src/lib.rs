@@ -17,7 +17,6 @@
 #![feature(never_type)]
 #![feature(impl_trait_in_assoc_type)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
