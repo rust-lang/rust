@@ -157,7 +157,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
                 (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
             })
             .into_iter()
-            .filter_map(|c| c)
+            .flatten()
             .collect();
         crates
     }
