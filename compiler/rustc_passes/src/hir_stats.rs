@@ -160,6 +160,7 @@ impl<'k> StatCollector<'k> {
         // having a minimally parseable file from the start seems more reasonable.
         writeln!(output, "{{ \"{title}\": {{")?;
         let count = self.nodes.len();
+        #[allow(rustc::potential_query_instability)]
         for (i, (label, node)) in self.nodes.iter().enumerate() {
             write!(
                 output,
@@ -171,6 +172,7 @@ impl<'k> StatCollector<'k> {
             if !node.subnodes.is_empty() {
                 writeln!(output, ", \"subnodes\": {{")?;
                 let count = node.subnodes.len();
+                #[allow(rustc::potential_query_instability)]
                 for (i, (label, subnode)) in node.subnodes.iter().enumerate() {
                     writeln!(
                         output,
