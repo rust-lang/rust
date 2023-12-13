@@ -10,9 +10,8 @@ use rustc_span::Span;
 /// A meta-variable expression, for expansions based on properties of meta-variables.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
 pub(crate) enum MetaVarExpr {
-    /// The number of repetitions of an identifier, optionally limited to a number
-    /// of outer-most repetition depths. If the depth limit is `None` then the depth is unlimited.
-    Count(Ident, Option<usize>),
+    /// The number of repetitions of an identifier.
+    Count(Ident, usize),
 
     /// Ignore a meta-variable for repetition without expansion.
     Ignore(Ident),
@@ -43,7 +42,10 @@ impl MetaVarExpr {
         let mut iter = args.trees();
         let rslt = match ident.as_str() {
             "count" => parse_count(&mut iter, sess, ident.span)?,
-            "ignore" => MetaVarExpr::Ignore(parse_ident(&mut iter, sess, ident.span)?),
+            "ignore" => {
+                eat_dollar(&mut iter, sess, ident.span)?;
+                MetaVarExpr::Ignore(parse_ident(&mut iter, sess, ident.span)?)
+            }
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, sess, ident.span)?),
             "length" => MetaVarExpr::Length(parse_depth(&mut iter, sess, ident.span)?),
             _ => {
@@ -92,6 +94,7 @@ fn parse_count<'sess>(
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, MetaVarExpr> {
+    eat_dollar(iter, sess, span)?;
     let ident = parse_ident(iter, sess, span)?;
     let depth = if try_eat_comma(iter) {
         if iter.look_ahead(0).is_none() {
@@ -100,9 +103,9 @@ fn parse_count<'sess>(
                 "`count` followed by a comma must have an associated index indicating its depth",
             ));
         }
-        Some(parse_depth(iter, sess, span)?)
+        parse_depth(iter, sess, span)?
     } else {
-        None
+        0
     };
     Ok(MetaVarExpr::Count(ident, depth))
 }
@@ -165,4 +168,21 @@ fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
         return true;
     }
     false
+}
+
+/// Expects that the next item is a dollar sign.
+fn eat_dollar<'sess>(
+    iter: &mut RefTokenTreeCursor<'_>,
+    sess: &'sess ParseSess,
+    span: Span,
+) -> PResult<'sess, ()> {
+    if let Some(TokenTree::Token(token::Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0)
+    {
+        let _ = iter.next();
+        return Ok(());
+    }
+    Err(sess.span_diagnostic.struct_span_err(
+        span,
+        "meta-variables within meta-variable expressions must be referenced using a dollar sign",
+    ))
 }

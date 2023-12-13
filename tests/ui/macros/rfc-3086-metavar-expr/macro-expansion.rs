@@ -13,17 +13,17 @@ macro_rules! example {
     ( $( [ $( ( $( $x:ident )* ) )* ] )* ) => {
         Example {
             _indexes: &[],
-            _counts: &[${count(x, 0)}, ${count(x, 1)}, ${count(x, 2)}],
+            _counts: &[${count($x, 0)}, ${count($x, 1)}, ${count($x, 2)}],
             _nested: vec![
             $(
                 Example {
                     _indexes: &[(${index()}, ${length()})],
-                    _counts: &[${count(x, 0)}, ${count(x, 1)}],
+                    _counts: &[${count($x, 0)}, ${count($x, 1)}],
                     _nested: vec![
                     $(
                         Example {
                             _indexes: &[(${index(1)}, ${length(1)}), (${index()}, ${length()})],
-                            _counts: &[${count(x)}],
+                            _counts: &[${count($x)}],
                             _nested: vec![
                             $(
                                 Example {
@@ -34,7 +34,7 @@ macro_rules! example {
                                     ],
                                     _counts: &[],
                                     _nested: vec![],
-                                    ${ignore(x)}
+                                    ${ignore($x)}
                                 }
                             ),*
                             ]
@@ -49,9 +49,9 @@ macro_rules! example {
 }
 
 static EXPECTED: &str = concat!(
-    "Example { _indexes: [], _counts: [2, 4, 13], _nested: [",
+    "Example { _indexes: [], _counts: [13, 4, 2], _nested: [",
     concat!(
-        "Example { _indexes: [(0, 2)], _counts: [3, 10], _nested: [",
+        "Example { _indexes: [(0, 2)], _counts: [10, 3], _nested: [",
         concat!(
             "Example { _indexes: [(0, 2), (0, 3)], _counts: [4], _nested: [",
             concat!(
@@ -77,7 +77,7 @@ static EXPECTED: &str = concat!(
             "] }",
         ),
         "] }, ",
-        "Example { _indexes: [(1, 2)], _counts: [1, 3], _nested: [",
+        "Example { _indexes: [(1, 2)], _counts: [3, 1], _nested: [",
         concat!(
             "Example { _indexes: [(1, 2), (0, 1)], _counts: [3], _nested: [",
             concat!(
