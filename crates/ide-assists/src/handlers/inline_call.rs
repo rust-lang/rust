@@ -373,7 +373,9 @@ fn inline(
     // We should place the following code after last usage of `usages_for_locals`
     // because `ted::replace` will change the offset in syntax tree, which makes
     // `FileReference` incorrect
-    if let Some(imp) = body.syntax().ancestors().find_map(ast::Impl::cast) {
+    if let Some(imp) =
+        sema.ancestors_with_macros(fn_body.syntax().clone()).find_map(ast::Impl::cast)
+    {
         if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
             if let Some(t) = imp.self_ty() {
                 while let Some(self_tok) = body
@@ -1558,6 +1560,64 @@ fn a() -> bool {
         let ref this = Enum::A;
         this == &Enum::A || this == &Enum::B
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_with_self_type_in_macros() {
+        check_assist(
+            inline_call,
+            r#"
+trait Trait<T1> {
+    fn f(a: T1) -> Self;
+}
+
+macro_rules! impl_from {
+    ($t: ty) => {
+        impl Trait<$t> for $t {
+            fn f(a: $t) -> Self {
+                a as Self
+            }
+        }
+    };
+}
+
+struct A {}
+
+impl_from!(A);
+
+fn main() {
+    let a: A = A{};
+    let b = <A as Trait<A>>::$0f(a);
+}
+"#,
+            r#"
+trait Trait<T1> {
+    fn f(a: T1) -> Self;
+}
+
+macro_rules! impl_from {
+    ($t: ty) => {
+        impl Trait<$t> for $t {
+            fn f(a: $t) -> Self {
+                a as Self
+            }
+        }
+    };
+}
+
+struct A {}
+
+impl_from!(A);
+
+fn main() {
+    let a: A = A{};
+    let b = {
+        let a = a;
+      a as A
+    };
 }
 "#,
         )
