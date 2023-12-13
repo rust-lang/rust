@@ -15,8 +15,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate,
-    TraitPredicate, Ty,
+    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
 };
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -359,6 +358,7 @@ fn get_input_traits_and_projections<'tcx>(
     (trait_predicates, projection_predicates)
 }
 
+#[expect(clippy::too_many_lines)]
 fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<'a>) -> bool {
     for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
         match node {
@@ -387,22 +387,21 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 if let Some((callee_def_id, call_generic_args, recv, call_args)) =
                     get_callee_generic_args_and_args(cx, parent_expr)
                 {
-                    // FIXME: the `instantiate_identity()` below seems incorrect, since we eventually
-                    // call `tcx.try_instantiate_and_normalize_erasing_regions` further down
-                    // (i.e., we are explicitly not in the identity context).
-                    let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder();
+                    let bound_fn_sig = cx.tcx.fn_sig(callee_def_id);
+                    let fn_sig = bound_fn_sig.skip_binder();
                     if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
-                        && let Some(param_ty) = fn_sig.inputs().get(arg_index)
-                        && let ty::Param(ParamTy { index: param_index , ..}) = param_ty.kind()
+                        && let param_ty = fn_sig.input(arg_index).skip_binder()
+                        && let ty::Param(ParamTy { index: param_index , ..}) = *param_ty.kind()
                         // https://github.com/rust-lang/rust-clippy/issues/9504 and https://github.com/rust-lang/rust-clippy/issues/10021
-                        && (*param_index as usize) < call_generic_args.len()
+                        && (param_index as usize) < call_generic_args.len()
                     {
                         if fn_sig
+                            .skip_binder()
                             .inputs()
                             .iter()
                             .enumerate()
                             .filter(|(i, _)| *i != arg_index)
-                            .any(|(_, ty)| ty.contains(*param_ty))
+                            .any(|(_, ty)| ty.contains(param_ty))
                         {
                             return false;
                         }
@@ -414,7 +413,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                                 .iter()
                                 .filter(|predicate| {
                                     if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                                        && trait_predicate.trait_ref.self_ty() == *param_ty
+                                        && trait_predicate.trait_ref.self_ty() == param_ty
                                     {
                                         true
                                     } else {
@@ -425,7 +424,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         let new_subst = cx
                             .tcx
                             .mk_args_from_iter(call_generic_args.iter().enumerate().map(|(i, t)| {
-                                if i == (*param_index as usize) {
+                                if i == param_index as usize {
                                     GenericArg::from(ty)
                                 } else {
                                     t
@@ -433,7 +432,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             }));
 
                         if trait_predicates.any(|predicate| {
-                            let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, new_subst);
+                            let predicate = bound_fn_sig.rebind(predicate).instantiate(cx.tcx, new_subst);
                             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx
                                 .infer_ctxt()
@@ -443,12 +442,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             return false;
                         }
 
-                        let output_ty = fn_sig.output();
-                        if output_ty.contains(*param_ty) {
+                        let output_ty = cx.tcx.instantiate_bound_regions_with_erased(fn_sig.output());
+                        if output_ty.contains(param_ty) {
                             if let Ok(new_ty) = cx.tcx.try_instantiate_and_normalize_erasing_regions(
                                 new_subst,
                                 cx.param_env,
-                                EarlyBinder::bind(output_ty),
+                                bound_fn_sig.rebind(output_ty),
                             ) {
                                 expr = parent_expr;
                                 ty = new_ty;
