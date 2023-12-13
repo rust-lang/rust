@@ -1101,22 +1101,22 @@ impl Handler {
 
     #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        DiagnosticBuilder::<FatalError>::new(self, Fatal, msg).emit().raise()
+        self.struct_fatal(msg).emit()
     }
 
     #[rustc_lint_diagnostics]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        DiagnosticBuilder::<ErrorGuaranteed>::new(self, Error { lint: false }, msg).emit()
+        self.struct_err(msg).emit()
     }
 
     #[rustc_lint_diagnostics]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
-        DiagnosticBuilder::<()>::new(self, Warning(None), msg).emit();
+        self.struct_warn(msg).emit()
     }
 
     #[rustc_lint_diagnostics]
     pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
-        DiagnosticBuilder::<()>::new(self, Note, msg).emit();
+        self.struct_note(msg).emit()
     }
 
     pub fn bug(&self, msg: impl Into<DiagnosticMessage>) -> ! {
