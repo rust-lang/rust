@@ -3,6 +3,22 @@ use std::collections::HashMap;
 use std::env as std_env;
 use std::ffi::OsStr;
 
+#[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
+pub enum Channel {
+    #[default]
+    Debug,
+    Release,
+}
+
+impl Channel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Debug => "debug",
+            Self::Release => "release",
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct ConfigInfo {
     pub target_triple: String,
@@ -12,6 +28,7 @@ pub struct ConfigInfo {
     pub cargo_target_dir: String,
     pub dylib_ext: String,
     pub sysroot_release_channel: bool,
+    pub channel: Channel,
     pub sysroot_panic_abort: bool,
     pub cg_backend_path: String,
     pub sysroot_path: String,
@@ -40,6 +57,7 @@ impl ConfigInfo {
                 _ => return Err("Expected a value after `--out-dir`, found nothing".to_string()),
             },
             "--release-sysroot" => self.sysroot_release_channel = true,
+            "--release" => self.channel = Channel::Release,
             "--sysroot-panic-abort" => self.sysroot_panic_abort = true,
             _ => return Ok(false),
         }
@@ -108,7 +126,7 @@ impl ConfigInfo {
 
         let current_dir =
             std_env::current_dir().map_err(|error| format!("`current_dir` failed: {:?}", error))?;
-        let channel = if self.sysroot_release_channel {
+        let channel = if self.channel == Channel::Release {
             "release"
         } else if let Some(channel) = env.get("CHANNEL") {
             channel.as_str()
@@ -151,6 +169,9 @@ impl ConfigInfo {
         // This environment variable is useful in case we want to change options of rustc commands.
         if let Some(cg_rustflags) = env.get("CG_RUSTFLAGS") {
             rustflags.extend_from_slice(&split_args(&cg_rustflags)?);
+        }
+        if let Some(test_flags) = env.get("TEST_FLAGS") {
+            rustflags.extend_from_slice(&split_args(&test_flags)?);
         }
 
         if let Some(linker) = linker {
@@ -223,6 +244,7 @@ impl ConfigInfo {
             "\
     --target-triple [arg]  : Set the target triple to [arg]
     --out-dir              : Location where the files will be generated
+    --release              : Build in release mode
     --release-sysroot      : Build sysroot in release mode
     --sysroot-panic-abort  : Build the sysroot without unwinding support."
         );

@@ -1,5 +1,5 @@
 use crate::build;
-use crate::config::ConfigInfo;
+use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
     get_gcc_path, get_toolchain, remove_file, run_command, run_command_with_env,
     run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
@@ -104,28 +104,11 @@ fn show_usage() {
     println!("    --help                 : Show this help");
 }
 
-#[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
-enum Channel {
-    #[default]
-    Debug,
-    Release,
-}
-
-impl Channel {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Debug => "debug",
-            Self::Release => "release",
-        }
-    }
-}
-
 #[derive(Default, Debug)]
 struct TestArg {
     no_default_features: bool,
     build_only: bool,
     gcc_path: String,
-    channel: Channel,
     use_backend: bool,
     runners: BTreeSet<String>,
     flags: Vec<String>,
@@ -147,10 +130,6 @@ impl TestArg {
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--release" => {
-                    test_arg.channel = Channel::Release;
-                    test_arg.config_info.sysroot_release_channel = true;
-                }
                 "--no-default-features" => {
                     // To prevent adding it more than once.
                     if !test_arg.no_default_features {
@@ -233,7 +212,7 @@ fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
     }
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
     let mut tmp_env;
-    let env = if args.channel == Channel::Release {
+    let env = if args.config_info.channel == Channel::Release {
         tmp_env = env.clone();
         tmp_env.insert("CARGO_INCREMENTAL".to_string(), "1".to_string());
         command.push(&"--release");
@@ -613,7 +592,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
                 pwd = std::env::current_dir()
                     .map_err(|error| format!("`current_dir` failed: {:?}", error))?
                     .display(),
-                channel = args.channel.as_str(),
+                channel = args.config_info.channel.as_str(),
                 dylib_ext = args.config_info.dylib_ext,
             )
             .as_str(),

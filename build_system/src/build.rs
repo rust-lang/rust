@@ -1,4 +1,4 @@
-use crate::config::ConfigInfo;
+use crate::config::{Channel, ConfigInfo};
 use crate::utils::{get_gcc_path, run_command, run_command_with_output_and_env, walk_dir};
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -7,7 +7,6 @@ use std::path::Path;
 
 #[derive(Default)]
 struct BuildArg {
-    codegen_release_channel: bool,
     flags: Vec<String>,
     gcc_path: String,
     config_info: ConfigInfo,
@@ -25,7 +24,6 @@ impl BuildArg {
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--release" => build_arg.codegen_release_channel = true,
                 "--no-default-features" => {
                     build_arg.flags.push("--no-default-features".to_string());
                 }
@@ -58,7 +56,6 @@ impl BuildArg {
             r#"
 `build` command help:
 
-    --release              : Build codegen in release mode
     --no-default-features  : Add `--no-default-features` flag
     --features [arg]       : Add a new feature [arg]"#
         );
@@ -118,6 +115,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     if config.sysroot_panic_abort {
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
+    rustflags.push_str(" -Z force-unstable-if-unmarked");
     let mut env = env.clone();
     let channel = if config.sysroot_release_channel {
         env.insert(
@@ -194,7 +192,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     env.insert("LIBRARY_PATH".to_string(), args.gcc_path.clone());
 
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
-    if args.codegen_release_channel {
+    if args.config_info.channel == Channel::Release {
         command.push(&"--release");
         env.insert("CHANNEL".to_string(), "release".to_string());
         env.insert("CARGO_INCREMENTAL".to_string(), "1".to_string());
