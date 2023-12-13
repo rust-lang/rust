@@ -2100,8 +2100,6 @@ function initSearch(rawSearchIndex) {
         }
 
         function innerRunQuery() {
-            let elem, i, nSearchWords, in_returned, row;
-
             let queryLen = 0;
             for (const elem of parsedQuery.elems) {
                 queryLen += elem.name.length;
@@ -2227,8 +2225,8 @@ function initSearch(rawSearchIndex) {
 
             if (parsedQuery.foundElems === 1) {
                 if (parsedQuery.elems.length === 1) {
-                    elem = parsedQuery.elems[0];
-                    for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
+                    const elem = parsedQuery.elems[0];
+                    for (let i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         // It means we want to check for this element everywhere (in names, args and
                         // returned).
                         handleSingleArg(
@@ -2243,10 +2241,9 @@ function initSearch(rawSearchIndex) {
                     }
                 } else if (parsedQuery.returned.length === 1) {
                     // We received one returned argument to check, so looking into returned values.
-                    elem = parsedQuery.returned[0];
-                    for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
-                        row = searchIndex[i];
-                        in_returned = row.type && unifyFunctionTypes(
+                    for (let i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
+                        const row = searchIndex[i];
+                        const in_returned = row.type && unifyFunctionTypes(
                             row.type.output,
                             parsedQuery.returned,
                             row.type.where_clause
@@ -2264,7 +2261,7 @@ function initSearch(rawSearchIndex) {
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {
-                for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
+                for (let i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                     handleArgs(searchIndex[i], i, results_others);
                 }
             }
@@ -2420,7 +2417,6 @@ function initSearch(rawSearchIndex) {
         const extraClass = display ? " active" : "";
 
         const output = document.createElement("div");
-        let length = 0;
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
@@ -2429,8 +2425,6 @@ function initSearch(rawSearchIndex) {
                 const type = itemTypes[item.ty];
                 const longType = longItemTypes[item.ty];
                 const typeName = longType.length !== 0 ? `${longType}` : "?";
-
-                length += 1;
 
                 const link = document.createElement("a");
                 link.className = "result-" + type;
@@ -2479,7 +2473,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
                 " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
         }
-        return [output, length];
+        return [output, array.length];
     }
 
     function makeTabHeader(tabNb, text, nbElems) {
