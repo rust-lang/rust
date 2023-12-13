@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{opts, Arch};
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     let base = opts("watchos", Arch::Arm64_32);
@@ -11,7 +11,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a,+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
-            stack_probes: StackProbeType::Inline,
             dynamic_linking: false,
             position_independent_executables: true,
             ..base

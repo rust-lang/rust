@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch};
-use crate::spec::{FramePointer, StackProbeType, Target, TargetOptions};
+use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64_sim;
@@ -15,7 +15,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
-            stack_probes: StackProbeType::Inline,
             frame_pointer: FramePointer::NonLeaf,
             ..opts("watchos", arch)
         },

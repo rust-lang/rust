@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{ios_llvm_target, opts, Arch};
-use crate::spec::{FramePointer, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64;
@@ -18,7 +18,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
-            stack_probes: StackProbeType::Inline,
             frame_pointer: FramePointer::NonLeaf,
             ..base
         },
