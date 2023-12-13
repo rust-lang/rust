@@ -5,13 +5,14 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::Metadata;
+use crate::sealed::Sealed;
 use crate::sys_common::AsInner;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
 /// [`fs::Metadata`]: crate::fs::Metadata
 #[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Returns the device ID on which this file resides.
     ///
     /// # Examples

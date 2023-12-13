@@ -5,6 +5,7 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::Metadata;
+use crate::sealed::Sealed;
 use crate::sys_common::AsInner;
 
 #[allow(deprecated)]
@@ -14,7 +15,7 @@ use crate::os::l4re::raw;
 ///
 /// [`fs::Metadata`]: crate::fs::Metadata
 #[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Gain a reference to the underlying `stat` structure which contains
     /// the raw information returned by the OS.
     ///

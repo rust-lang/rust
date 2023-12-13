@@ -301,7 +301,7 @@ impl OpenOptionsExt for OpenOptions {
 /// [`BY_HANDLE_FILE_INFORMATION`]:
 ///     https://docs.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
 #[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
     ///
     /// This field contains the file system attribute information for a file

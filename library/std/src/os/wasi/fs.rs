@@ -9,6 +9,7 @@ use crate::ffi::OsStr;
 use crate::fs::{self, File, Metadata, OpenOptions};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::path::{Path, PathBuf};
+use crate::sealed::Sealed;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 // Used for `File::read` on intra-doc links
 #[allow(unused_imports)]
@@ -410,7 +411,7 @@ impl OpenOptionsExt for OpenOptions {
 }
 
 /// WASI-specific extensions to [`fs::Metadata`].
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Returns the `st_dev` field of the internal `filestat_t`
     fn dev(&self) -> u64;
     /// Returns the `st_ino` field of the internal `filestat_t`

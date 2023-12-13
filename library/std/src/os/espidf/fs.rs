@@ -1,6 +1,7 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::Metadata;
+use crate::sealed::Sealed;
 use crate::sys_common::AsInner;
 
 #[allow(deprecated)]
@@ -10,7 +11,7 @@ use crate::os::espidf::raw;
 ///
 /// [`fs::Metadata`]: crate::fs::Metadata
 #[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     #[deprecated(
         since = "1.8.0",

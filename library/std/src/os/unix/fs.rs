@@ -429,7 +429,7 @@ impl OpenOptionsExt for OpenOptions {
 
 /// Unix-specific extensions to [`fs::Metadata`].
 #[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Returns the ID of the device containing the file.
     ///
     /// # Examples

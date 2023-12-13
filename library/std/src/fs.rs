@@ -111,6 +111,10 @@ pub struct File {
 #[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Metadata {}
+
 /// Iterator over the entries in a directory.
 ///
 /// This iterator is returned from the [`read_dir`] function of this module and
