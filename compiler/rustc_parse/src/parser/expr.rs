@@ -2684,7 +2684,8 @@ impl<'a> Parser<'a> {
 
     /// Parses `for await? <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
     fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
-        let is_await = self.eat_keyword(kw::Await);
+        let is_await =
+            self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(kw::Await);
 
         if is_await {
             self.sess.gated_spans.gate(sym::async_for_loop, self.prev_token.span);
