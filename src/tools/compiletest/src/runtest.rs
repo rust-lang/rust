@@ -4222,7 +4222,9 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_build_dir, "$BUILD_DIR");
 
         // Real paths into the libstd/libcore
-        normalize_path(&parent_build_dir.parent().unwrap().join("library"), "$SRC_DIR_REAL");
+        let rust_src_dir =
+            &self.config.sysroot_base.join("lib/rustlib/src/rust").canonicalize().unwrap();
+        normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
         if json {
             // escaped newlines in json strings should be readable
