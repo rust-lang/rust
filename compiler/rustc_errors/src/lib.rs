@@ -987,8 +987,7 @@ impl Handler {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
-        FatalError.raise()
+        self.struct_span_fatal(span, msg).emit()
     }
 
     #[rustc_lint_diagnostics]
@@ -999,8 +998,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> ! {
-        self.emit_diag_at_span(Diagnostic::new_with_code(Fatal, Some(code), msg), span);
-        FatalError.raise()
+        self.struct_span_fatal_with_code(span, msg, code).emit()
     }
 
     #[rustc_lint_diagnostics]
@@ -1010,7 +1008,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        self.emit_diag_at_span(Diagnostic::new(Error { lint: false }, msg), span).unwrap()
+        self.struct_span_err(span, msg).emit()
     }
 
     #[rustc_lint_diagnostics]
@@ -1021,17 +1019,13 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> ErrorGuaranteed {
-        self.emit_diag_at_span(
-            Diagnostic::new_with_code(Error { lint: false }, Some(code), msg),
-            span,
-        )
-        .unwrap()
+        self.struct_span_err_with_code(span, msg, code).emit()
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
-        self.emit_diag_at_span(Diagnostic::new(Warning(None), msg), span);
+        self.struct_span_warn(span, msg).emit()
     }
 
     #[rustc_lint_diagnostics]
@@ -1042,7 +1036,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) {
-        self.emit_diag_at_span(Diagnostic::new_with_code(Warning(None), Some(code), msg), span);
+        self.struct_span_warn_with_code(span, msg, code).emit()
     }
 
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
@@ -1064,14 +1058,17 @@ impl Handler {
         // This is technically `self.treat_err_as_bug()` but `span_delayed_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
+        // njn: add treat_next_err_as_bug in a precursor
         if inner.flags.treat_err_as_bug.is_some_and(|c| {
             inner.err_count + inner.lint_err_count + inner.delayed_bug_count() + 1 >= c.get()
         }) {
             // FIXME: don't abort here if report_delayed_bugs is off
+            // njn: aborts
             inner.span_bug(sp, msg.into());
         }
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg.into());
         diagnostic.set_span(sp.into());
+        // njn: ??
         inner.emit_diagnostic(&mut diagnostic).unwrap()
     }
 
@@ -1082,6 +1079,7 @@ impl Handler {
 
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         if inner.flags.report_delayed_bugs {
+            // njn: ?
             inner.emit_diagnostic(&mut diagnostic);
         }
         let backtrace = std::backtrace::Backtrace::capture();
@@ -1091,14 +1089,14 @@ impl Handler {
     #[track_caller]
     #[rustc_lint_diagnostics]
     pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
-        self.emit_diag_at_span(Diagnostic::new(Note, msg), span);
+        self.struct_span_note(span, msg).emit()
     }
 
     #[track_caller]
     #[rustc_lint_diagnostics]
     pub fn struct_span_note(
         &self,
-        span: Span,
+        span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         let mut db = DiagnosticBuilder::new(self, Note, msg);
@@ -1341,14 +1339,6 @@ impl Handler {
         note: impl IntoDiagnostic<'a, Noted>,
     ) -> DiagnosticBuilder<'a, Noted> {
         note.into_diagnostic(self)
-    }
-
-    fn emit_diag_at_span(
-        &self,
-        mut diag: Diagnostic,
-        sp: impl Into<MultiSpan>,
-    ) -> Option<ErrorGuaranteed> {
-        self.emit_diagnostic(diag.set_span(sp))
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -1598,9 +1588,16 @@ impl HandlerInner {
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
         self.emit_diagnostic(Diagnostic::new(Bug, msg.into()).set_span(sp));
         panic::panic_any(ExplicitBug);
+ 
+        //// njn: ?
+        //let mut db = DiagnosticBuilder::new(self, Bug, msg.into());
+        //db.set_span(sp);
+        //db.emit()
+        ////panic::panic_any(ExplicitBug);
     }
 
     fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
+        // njn?
         self.emit_diagnostic(&mut Diagnostic::new(FailureNote, msg));
     }
 
