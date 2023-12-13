@@ -727,7 +727,12 @@ impl Handler {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
-    /// Construct a builder with the `msg` at the level appropriate for the specific `EmissionGuarantee`.
+    /// Construct a builder with the `msg` at the level appropriate for the
+    /// specific `EmissionGuarantee`.
+    ///
+    /// Note: this is necessary for `derive(Diagnostic)`, but shouldn't be used
+    /// outside of that. Instead use `struct_err`, `struct_warn`, etc., which
+    /// make the diagnostic kind clearer.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_diagnostic<G: EmissionGuarantee>(
@@ -942,10 +947,20 @@ impl Handler {
         result
     }
 
-    /// Construct a builder at the `Error` level with the `msg`.
+    /// Construct a builder at the `Fatal` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
+        DiagnosticBuilder::new(self, Level::Fatal, msg)
+    }
+
+    /// Construct a builder at the `Fatal` level with the `msg`, that doesn't abort.
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn struct_almost_fatal(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, FatalError> {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 

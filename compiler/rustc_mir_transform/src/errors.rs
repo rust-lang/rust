@@ -65,7 +65,7 @@ pub(crate) struct RequiresUnsafe {
 impl<'sess> IntoDiagnostic<'sess> for RequiresUnsafe {
     #[track_caller]
     fn into_diagnostic(self, handler: &'sess Handler) -> DiagnosticBuilder<'sess, ErrorGuaranteed> {
-        let mut diag = handler.struct_diagnostic(fluent::mir_transform_requires_unsafe);
+        let mut diag = handler.struct_err(fluent::mir_transform_requires_unsafe);
         diag.code(rustc_errors::DiagnosticId::Error("E0133".to_string()));
         diag.set_span(self.span);
         diag.span_label(self.span, self.details.label());
