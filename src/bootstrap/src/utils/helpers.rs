@@ -519,7 +519,7 @@ pub fn linker_flags(
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
                 "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(builder.config.lld_mode, target.is_msvc())
+                lld_flag_no_threads(builder.config.lld_mode, target.is_windows())
             ));
         }
     }
