@@ -364,7 +364,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     //     _ZTSFvu27NvNtC1234_5crate6Trait13fooIu22NtC1234_5crate7Struct1Iu3i32ES_EE
     //
     // The reason for not using v0's extended form of paths is to use a consistent and simpler
-    // encoding, as the reasoning for using it isn't relevand for type metadata identifiers (i.e.,
+    // encoding, as the reasoning for using it isn't relevant for type metadata identifiers (i.e.,
     // keep symbol names close to how methods are represented in error messages). See
     // https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html#methods.
     let mut s = String::new();
