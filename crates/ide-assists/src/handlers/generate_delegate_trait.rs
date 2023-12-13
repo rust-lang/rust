@@ -1032,28 +1032,29 @@ struct B<T> {
 }
 
 trait Trait<T> {
-    fn f(a: T);
+    fn f(&self, a: T) -> T;
 }
 
 impl<T1, T2> Trait<T1> for B<T2> {
-    fn f(a: T1) -> T2 { self.a }
+    fn f(&self, a: T1) -> T1 { a }
 }
 
 struct A {}
 struct S {
-    b$0 : B<A>,
-}"#,
+    b :$0 B<A>,
+}
+"#,
             r#"
 struct B<T> {
     a: T
 }
 
 trait Trait<T> {
-    fn f(a: T);
+    fn f(&self, a: T) -> T;
 }
 
 impl<T1, T2> Trait<T1> for B<T2> {
-    fn f(a: T1) -> T2 { self.a }
+    fn f(&self, a: T1) -> T1 { a }
 }
 
 struct A {}
@@ -1062,10 +1063,11 @@ struct S {
 }
 
 impl<T1> Trait<T1> for S {
-    fn f(a: T1) -> A {
-        <B<A> as Trait<T1>>::f(a)
+    fn f(&self, a: T1) -> T1 {
+        <B<A> as Trait<T1>>::f(&self.b, a)
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1088,7 +1090,8 @@ impl<T, T0> Trait<T> for B<T0> {
 
 struct S<T> {
     b : $0B<T>,
-}"#,
+}
+"#,
             r#"
 struct B<T> {
     a: T
@@ -1110,7 +1113,8 @@ impl<T, T1> Trait<T> for S<T1> {
     fn f(&self, a: T) -> T {
         <B<T1> as Trait<T>>::f(&self.b, a)
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1133,7 +1137,8 @@ impl<'a, T, T0> Trait<T> for B<'a, T0> {
 
 struct S<'a, T> {
     b : $0B<'a, T>,
-}"#,
+}
+"#,
             r#"
 struct B<'a, T> {
     a: &'a T
@@ -1155,7 +1160,8 @@ impl<'a, T, T1> Trait<T> for S<'a, T1> {
     fn f(&self, a: T) -> T {
         <B<'a, T1> as Trait<T>>::f(&self.b, a)
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1179,7 +1185,8 @@ impl<T, T0> Trait<T> for B<T, T0> {
 
 struct S<T> {
     b :$0 B<i32, T>,
-}"#,
+}
+"#,
             r#"
 struct B<T1, T2> {
     a: T1,
@@ -1202,7 +1209,8 @@ impl<T1> Trait<i32> for S<T1> {
     fn f(&self, a: i32) -> i32 {
         <B<i32, T1> as Trait<i32>>::f(&self.b, a)
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1225,7 +1233,8 @@ impl<T> Trait<T> for B<T> {
 
 struct S<T> {
     b : $0B<T>,
-}"#,
+}
+"#,
             r#"
 struct B<T> {
     a: T
@@ -1247,7 +1256,8 @@ impl<T0> Trait<T0> for S<T0> {
     fn f(&self, a: T0) -> T0 {
         <B<T0> as Trait<T0>>::f(&self.b, a)
     }
-}"#,
+}
+"#,
         );
     }
 
