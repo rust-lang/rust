@@ -94,7 +94,7 @@ enum LengthComparison {
 
 /// Extracts parts out of a length comparison expression.
 ///
-/// E.g. for `v.len() > 5` this returns `Some((LengthComparison::IntLessThanLength, 5, `v.len()`))`
+/// E.g. for `v.len() > 5` this returns `Some((LengthComparison::IntLessThanLength, 5, v.len()))`
 fn len_comparison<'hir>(
     bin_op: BinOp,
     left: &'hir Expr<'hir>,
