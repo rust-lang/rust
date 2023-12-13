@@ -1,6 +1,6 @@
 use crate::ffi::{OsStr, OsString};
 use crate::io;
-use crate::path::{Path, PathBuf, Prefix};
+use crate::path::{AsPath, Path, PathBuf, Prefix};
 use crate::ptr;
 use crate::sys::pal::{c, fill_utf16_buf, os2path, to_u16s};
 
@@ -9,6 +9,59 @@ mod tests;
 
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
+
+pub(crate) struct NativePathBuf(pub Vec<u16>);
+impl NativePathBuf {
+    pub fn from_os_str<S: AsRef<OsStr>>(path: S) -> io::Result<Self> {
+        to_u16s(path).map(Self)
+    }
+}
+impl core::ops::Deref for NativePathBuf {
+    type Target = NativePath;
+    fn deref(&self) -> &Self::Target {
+        unsafe { NativePath::new_unchecked(&self.0) }
+    }
+}
+
+/// A null-terminated `[u16]` string.
+#[unstable(feature = "fs_native_path_internals", issue = "none")]
+#[repr(transparent)]
+#[derive(Debug)]
+pub struct NativePath(pub [u16]);
+impl NativePath {
+    pub(crate) unsafe fn new_unchecked(native: &[u16]) -> &Self {
+        unsafe { &*(native as *const [u16] as *const Self) }
+    }
+    pub(crate) fn as_ptr(&self) -> *const u16 {
+        self.0.as_ptr()
+    }
+}
+
+#[unstable(feature = "fs_native_path_internals", issue = "none")]
+impl<P: AsRef<Path>> AsPath for P {
+    #[doc(hidden)]
+    fn with_path<T, F: FnOnce(&Path) -> io::Result<T>>(self, f: F) -> io::Result<T> {
+        f(self.as_ref())
+    }
+    #[doc(hidden)]
+    fn with_native_path<T, F: Fn(&NativePath) -> io::Result<T>>(self, f: F) -> io::Result<T> {
+        let path = maybe_verbatim(self.as_ref())?;
+        f(&path)
+    }
+}
+
+#[unstable(feature = "fs_native_path_internals", issue = "none")]
+impl AsPath for &crate::path::NativePath {
+    #[doc(hidden)]
+    fn with_path<T, F: FnOnce(&Path) -> io::Result<T>>(self, f: F) -> io::Result<T> {
+        let path = os2path(&self.0.0[..self.0.0.len().saturating_sub(1)]);
+        f(&path)
+    }
+    #[doc(hidden)]
+    fn with_native_path<T, F: Fn(&NativePath) -> io::Result<T>>(self, f: F) -> io::Result<T> {
+        f(&self.0)
+    }
+}
 
 #[inline]
 pub fn is_sep_byte(b: u8) -> bool {
@@ -213,9 +266,9 @@ fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
 /// Returns a UTF-16 encoded path capable of bypassing the legacy `MAX_PATH` limits.
 ///
 /// This path may or may not have a verbatim prefix.
-pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
+pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<NativePathBuf> {
     let path = to_u16s(path)?;
-    get_long_path(path, true)
+    get_long_path(path, true).map(NativePathBuf)
 }
 
 /// Get a normalized absolute path that can bypass path length limits.

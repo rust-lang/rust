@@ -23,7 +23,7 @@ use crate::sys::c::{self, NonZeroDWORD, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::path;
+use crate::sys::path::{self, NativePathBuf};
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
@@ -597,7 +597,8 @@ impl Stdio {
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
                 opts.security_attributes(&mut sa);
-                File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner())
+                File::open_native(&NativePathBuf::from_os_str(r"\\.\NUL")?, &opts)
+                    .map(|file| file.into_inner())
             }
         }
     }

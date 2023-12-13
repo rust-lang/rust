@@ -38,7 +38,7 @@ fn verbatim() {
     use crate::path::Path;
     fn check(path: &str, expected: &str) {
         let verbatim = maybe_verbatim(Path::new(path)).unwrap();
-        let verbatim = String::from_utf16_lossy(verbatim.strip_suffix(&[0]).unwrap());
+        let verbatim = String::from_utf16_lossy(verbatim.0.strip_suffix(&[0]).unwrap());
         assert_eq!(&verbatim, expected, "{}", path);
     }
 

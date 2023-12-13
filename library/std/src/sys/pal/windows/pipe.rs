@@ -3,7 +3,6 @@ use crate::os::windows::prelude::*;
 use crate::ffi::OsStr;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::mem;
-use crate::path::Path;
 use crate::ptr;
 use crate::slice;
 use crate::sync::atomic::AtomicUsize;
@@ -12,6 +11,7 @@ use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::hashmap_random_keys;
+use crate::sys::path::NativePathBuf;
 use crate::sys_common::{FromInner, IntoInner};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +161,8 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
             bInheritHandle: their_handle_inheritable as i32,
         };
         opts.security_attributes(&mut sa);
-        let theirs = File::open(Path::new(&name), &opts)?;
+        let path = NativePathBuf::from_os_str(&name)?;
+        let theirs = File::open_native(&path, &opts)?;
         let theirs = AnonPipe { inner: theirs.into_inner() };
 
         Ok(Pipes {
