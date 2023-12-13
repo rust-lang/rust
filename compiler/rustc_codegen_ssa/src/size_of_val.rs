@@ -1,10 +1,11 @@
-//!
-//
-// Code relating to drop glue.
+//! Computing the size and alignment of a value.
 
+use crate::common;
 use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
+use rustc_hir::LangItem;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::WrappingRange;
 
@@ -14,7 +15,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     info: Option<Bx::Value>,
 ) -> (Bx::Value, Bx::Value) {
     let layout = bx.layout_of(t);
-    debug!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}", t, info, layout);
+    trace!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}", t, info, layout);
     if layout.is_sized() {
         let size = bx.const_usize(layout.size.bytes());
         let align = bx.const_usize(layout.align.abi.bytes());
@@ -51,7 +52,31 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 bx.const_usize(unit.align.abi.bytes()),
             )
         }
-        _ => {
+        ty::Foreign(_) => {
+            // `extern` type. We cannot compute the size, so panic.
+            let msg_str = with_no_visible_paths!({
+                with_no_trimmed_paths!({
+                    format!("attempted to compute the size or alignment of extern type `{t}`")
+                })
+            });
+            let msg = bx.const_str(&msg_str);
+
+            // Obtain the panic entry point.
+            let (fn_abi, llfn) = common::build_langcall(bx, None, LangItem::PanicNounwind);
+
+            // Generate the call.
+            // Cannot use `do_call` since we don't have a MIR terminator so we can't create a `TerminationCodegenHelper`.
+            // (But we are in good company, this code is duplicated plenty of times.)
+            let fn_ty = bx.fn_decl_backend_type(fn_abi);
+
+            bx.call(fn_ty, /* fn_attrs */ None, Some(fn_abi), llfn, &[msg.0, msg.1], None);
+
+            // This function does not return so we can now return whatever we want.
+            let size = bx.const_usize(layout.size.bytes());
+            let align = bx.const_usize(layout.align.abi.bytes());
+            (size, align)
+        }
+        ty::Adt(..) | ty::Tuple(..) => {
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
             // want to avoid, as the unsized field's alignment could be smaller.
@@ -122,5 +147,6 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             (size, align)
         }
+        _ => bug!("size_and_align_of_dst: {t} not supported"),
     }
 }
