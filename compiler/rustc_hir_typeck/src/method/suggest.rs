@@ -3312,6 +3312,7 @@ fn print_disambiguation_help<'tcx>(
     span: Span,
     item: ty::AssocItem,
 ) -> Option<String> {
+    let trait_impl_type = trait_ref.self_ty();
     let trait_ref = if item.fn_has_self_parameter {
         trait_ref.print_only_trait_name().to_string()
     } else {
@@ -3324,6 +3325,13 @@ fn print_disambiguation_help<'tcx>(
         {
             let def_kind_descr = tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id);
             let item_name = item.ident(tcx);
+            let first_arg_type = tcx
+                .fn_sig(item.def_id)
+                .instantiate_identity()
+                .skip_binder()
+                .inputs()
+                .get(0)
+                .and_then(|first| Some(first.peel_refs()));
             let rcvr_ref = tcx
                 .fn_sig(item.def_id)
                 .skip_binder()
@@ -3332,19 +3340,22 @@ fn print_disambiguation_help<'tcx>(
                 .get(0)
                 .and_then(|ty| ty.ref_mutability())
                 .map_or("", |mutbl| mutbl.ref_prefix_str());
-            let args = format!(
-                "({}{})",
-                rcvr_ref,
-                std::iter::once(receiver)
-                    .chain(args.iter())
-                    .map(|arg| tcx
-                        .sess
-                        .source_map()
-                        .span_to_snippet(arg.span)
-                        .unwrap_or_else(|_| { "_".to_owned() }))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            );
+            // If the type of first arg of this assoc function is `Self` or current trait impl type, we need to take the receiver as args. Otherwise, we don't.
+            let args = if let Some(t) = first_arg_type
+                && (t.to_string() == "Self" || t == trait_impl_type)
+            {
+                std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
+            } else {
+                args.iter().collect::<Vec<_>>()
+            }
+            .iter()
+            .map(|arg| {
+                tcx.sess.source_map().span_to_snippet(arg.span).unwrap_or_else(|_| "_".to_owned())
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+            let args = format!("({}{})", rcvr_ref, args);
             err.span_suggestion_verbose(
                 span,
                 format!(
