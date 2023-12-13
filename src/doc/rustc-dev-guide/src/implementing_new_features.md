@@ -128,10 +128,10 @@ a new unstable feature:
 
    ```rust ignore
    /// description of feature
-   (unstable, $feature_name, "CURRENT_RUSTC_VERSION", Some($tracking_issue_number), $edition)
+   (unstable, $feature_name, "CURRENT_RUSTC_VERSION", Some($tracking_issue_number))
    ```
 
-   where `$edition` has the type `Option<Edition>`, and is typically just `None`. If you haven't yet
+   If you haven't yet
    opened a tracking issue (e.g. because you want initial feedback on whether the feature is likely
    to be accepted), you can temporarily use `None` - but make sure to update it before the PR is
    merged!

@@ -25,7 +25,7 @@ To remove a feature gate, follow these steps:
 
    ```rust,ignore
    /// description of feature
-   (unstable, $feature_name, "$version", Some($tracking_issue_number), $edition)
+   (unstable, $feature_name, "$version", Some($tracking_issue_number))
    ```
 
 2. Add a modified version of the feature gate declaration that you just
@@ -33,7 +33,7 @@ To remove a feature gate, follow these steps:
 
    ```rust,ignore
    /// description of feature
-   (removed, $old_feature_name, "$version", Some($tracking_issue_number), $edition,
+   (removed, $old_feature_name, "$version", Some($tracking_issue_number),
     Some("$why_it_was_removed"))
    ```
 
@@ -50,7 +50,7 @@ to follow when [removing a feature gate][removing]):
 
    ```rust,ignore
    /// description of feature
-   (unstable, $old_feature_name, "$version", Some($tracking_issue_number), $edition)
+   (unstable, $old_feature_name, "$version", Some($tracking_issue_number))
    ```
 
 2. Add a modified version of the old feature gate declaration that you just
@@ -59,7 +59,7 @@ to follow when [removing a feature gate][removing]):
    ```rust,ignore
    /// description of feature
    /// Renamed to `$new_feature_name`
-   (removed, $old_feature_name, "$version", Some($tracking_issue_number), $edition,
+   (removed, $old_feature_name, "$version", Some($tracking_issue_number),
     Some("renamed to `$new_feature_name`"))
    ```
 
@@ -69,7 +69,7 @@ to follow when [removing a feature gate][removing]):
 
    ```rust,ignore
    /// description of feature
-   (unstable, $new_feature_name, "$version", Some($tracking_issue_number), $edition)
+   (unstable, $new_feature_name, "$version", Some($tracking_issue_number))
    ```
 
 
