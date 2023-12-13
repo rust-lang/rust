@@ -18,7 +18,7 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
+use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, SplitDebuginfo};
 
 use cc::windows_registry;
 
@@ -930,8 +930,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
-        match strip {
-            Strip::None => {
+        match self.sess.split_debuginfo() {
+            SplitDebuginfo::Off if strip != Strip::None => {
+                self.cmd.arg("/DEBUG:NONE");
+            }
+            _ => {
                 // This will cause the Microsoft linker to generate a PDB file
                 // from the CodeView line tables in the object files.
                 self.cmd.arg("/DEBUG");
@@ -962,9 +965,6 @@ impl<'a> Linker for MsvcLinker<'a> {
                     arg.push(path);
                     self.cmd.arg(arg);
                 }
-            }
-            Strip::Debuginfo | Strip::Symbols => {
-                self.cmd.arg("/DEBUG:NONE");
             }
         }
     }

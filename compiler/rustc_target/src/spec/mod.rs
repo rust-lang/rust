@@ -1081,14 +1081,15 @@ pub enum SplitDebuginfo {
     /// you can find all debug information in the executable itself. This is
     /// only supported for ELF effectively.
     ///
-    /// * Windows - not supported
+    /// * Windows - `*.pdb`
     /// * macOS - don't run `dsymutil`
     /// * ELF - `.debug_*` sections
     #[default]
     Off,
 
     /// Split debug-information can be found in a "packed" location separate
-    /// from the final artifact. This is supported on all platforms.
+    /// from the final artifact. The main executable may point to the "packed"
+    /// location.
     ///
     /// * Windows - `*.pdb`
     /// * macOS - `*.dSYM` (run `dsymutil`)
