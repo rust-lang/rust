@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use std::collections::{hash_set, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};

@@ -212,7 +212,7 @@ pub(crate) fn format_expr(
             &cl.binder,
             cl.constness,
             cl.capture_clause,
-            &cl.asyncness,
+            &cl.coroutine_kind,
             cl.movability,
             &cl.fn_decl,
             &cl.body,
@@ -367,15 +367,15 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::Async(capture_by, ref block) => {
-            let mover = if capture_by == ast::CaptureBy::Value {
+        ast::ExprKind::Gen(capture_by, ref block, ref kind) => {
+            let mover = if matches!(capture_by, ast::CaptureBy::Value { .. }) {
                 "move "
             } else {
                 ""
             };
             if let rw @ Some(_) = rewrite_single_line_block(
                 context,
-                format!("async {mover}").as_str(),
+                format!("{kind} {mover}").as_str(),
                 block,
                 Some(&expr.attrs),
                 None,
@@ -386,7 +386,7 @@ pub(crate) fn format_expr(
                 // 6 = `async `
                 let budget = shape.width.saturating_sub(6);
                 Some(format!(
-                    "async {mover}{}",
+                    "{kind} {mover}{}",
                     rewrite_block(
                         block,
                         Some(&expr.attrs),
@@ -1371,7 +1371,7 @@ pub(crate) fn can_be_overflowed_expr(
         }
 
         // Handle always block-like expressions
-        ast::ExprKind::Async(..) | ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
+        ast::ExprKind::Gen(..) | ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
 
         // Handle `[]` and `{}`-like expressions
         ast::ExprKind::Array(..) | ast::ExprKind::Struct(..) => {
@@ -1933,7 +1933,7 @@ fn rewrite_unary_op(
     shape: Shape,
 ) -> Option<String> {
     // For some reason, an UnOp is not spanned like BinOp!
-    rewrite_unary_prefix(context, ast::UnOp::to_string(op), expr, shape)
+    rewrite_unary_prefix(context, op.as_str(), expr, shape)
 }
 
 pub(crate) enum RhsAssignKind<'ast> {

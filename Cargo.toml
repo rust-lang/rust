@@ -43,7 +43,7 @@ diff = "0.1"
 dirs = "4.0"
 getopts = "0.2"
 ignore = "0.4"
-itertools = "0.10"
+itertools = "0.11"
 lazy_static = "1.4"
 regex = "1.7"
 serde = { version = "1.0.160", features = ["derive"] }

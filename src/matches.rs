@@ -223,7 +223,7 @@ fn rewrite_match_arm(
 ) -> Option<String> {
     let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
-            let (_, body) = flatten_arm_body(context, &arm.body, None);
+            let (_, body) = flatten_arm_body(context, arm.body.as_deref()?, None);
             // `arm.span()` does not include trailing comma, add it manually.
             return Some(format!(
                 "{}{}",
@@ -246,7 +246,7 @@ fn rewrite_match_arm(
     };
 
     // Patterns
-    let pat_shape = match &arm.body.kind {
+    let pat_shape = match &arm.body.as_ref()?.kind {
         ast::ExprKind::Block(_, Some(label)) => {
             // Some block with a label ` => 'label: {`
             // 7 = ` => : {`
@@ -280,10 +280,10 @@ fn rewrite_match_arm(
         false,
     )?;
 
-    let arrow_span = mk_sp(arm.pat.span.hi(), arm.body.span().lo());
+    let arrow_span = mk_sp(arm.pat.span.hi(), arm.body.as_ref()?.span().lo());
     rewrite_match_body(
         context,
-        &arm.body,
+        arm.body.as_ref()?,
         &lhs_str,
         shape,
         guard_str.contains('\n'),
