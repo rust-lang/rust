@@ -1568,7 +1568,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         // Alignment of T, must be a constant integer value:
         let alignment_ty = bx.type_i32();
-        let alignment = bx.const_i32(bx.align_of(values_ty).bytes() as i32);
+        let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
