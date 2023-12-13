@@ -1,4 +1,4 @@
-error: unknown attribute `compile-fail`. Did you mean `compile_fail`?
+error: unknown attribute `compile-fail`
   --> $DIR/check-attr.rs:3:1
    |
 LL | / /// foo
@@ -10,6 +10,7 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `compile_fail`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
 note: the lint level is defined here
   --> $DIR/check-attr.rs:1:9
@@ -17,7 +18,7 @@ note: the lint level is defined here
 LL | #![deny(rustdoc::invalid_codeblock_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unknown attribute `compilefail`. Did you mean `compile_fail`?
+error: unknown attribute `compilefail`
   --> $DIR/check-attr.rs:3:1
    |
 LL | / /// foo
@@ -29,9 +30,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `compile_fail`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
 
-error: unknown attribute `comPile_fail`. Did you mean `compile_fail`?
+error: unknown attribute `comPile_fail`
   --> $DIR/check-attr.rs:3:1
    |
 LL | / /// foo
@@ -43,9 +45,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `compile_fail`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
 
-error: unknown attribute `should-panic`. Did you mean `should_panic`?
+error: unknown attribute `should-panic`
   --> $DIR/check-attr.rs:13:1
    |
 LL | / /// bar
@@ -57,9 +60,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `should_panic`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
 
-error: unknown attribute `shouldpanic`. Did you mean `should_panic`?
+error: unknown attribute `shouldpanic`
   --> $DIR/check-attr.rs:13:1
    |
 LL | / /// bar
@@ -71,9 +75,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `should_panic`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
 
-error: unknown attribute `sHould_panic`. Did you mean `should_panic`?
+error: unknown attribute `sHould_panic`
   --> $DIR/check-attr.rs:13:1
    |
 LL | / /// bar
@@ -85,9 +90,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `should_panic`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
 
-error: unknown attribute `no-run`. Did you mean `no_run`?
+error: unknown attribute `no-run`
   --> $DIR/check-attr.rs:23:1
    |
 LL | / /// foobar
@@ -99,9 +105,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `no_run`
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `norun`. Did you mean `no_run`?
+error: unknown attribute `norun`
   --> $DIR/check-attr.rs:23:1
    |
 LL | / /// foobar
@@ -113,9 +120,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `no_run`
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `no_Run`. Did you mean `no_run`?
+error: unknown attribute `no_Run`
   --> $DIR/check-attr.rs:23:1
    |
 LL | / /// foobar
@@ -127,9 +135,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `no_run`
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `test-harness`. Did you mean `test_harness`?
+error: unknown attribute `test-harness`
   --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
@@ -141,9 +150,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `test_harness`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: unknown attribute `testharness`. Did you mean `test_harness`?
+error: unknown attribute `testharness`
   --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
@@ -155,9 +165,10 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `test_harness`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: unknown attribute `teSt_harness`. Did you mean `test_harness`?
+error: unknown attribute `teSt_harness`
   --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
@@ -169,7 +180,50 @@ LL | | /// boo
 LL | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `test_harness`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: aborting due to 12 previous errors
+error: unknown attribute `rust2018`
+  --> $DIR/check-attr.rs:43:1
+   |
+LL | / /// b
+LL | |
+LL | | ///
+LL | | /// ```rust2018
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: there is an attribute with a similar name: `edition2018`
+
+error: unknown attribute `rust2018`
+  --> $DIR/check-attr.rs:51:1
+   |
+LL | / /// b
+LL | |
+LL | |
+LL | | ///
+LL | | /// ```rust2018 shouldpanic
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: there is an attribute with a similar name: `edition2018`
+
+error: unknown attribute `shouldpanic`
+  --> $DIR/check-attr.rs:51:1
+   |
+LL | / /// b
+LL | |
+LL | |
+LL | | ///
+LL | | /// ```rust2018 shouldpanic
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: there is an attribute with a similar name: `should_panic`
+   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+
+error: aborting due to 15 previous errors
 
