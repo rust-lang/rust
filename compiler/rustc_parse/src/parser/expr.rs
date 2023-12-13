@@ -1440,21 +1440,23 @@ impl<'a> Parser<'a> {
             } else if this.eat_keyword(kw::Underscore) {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
-                // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
-                if this.check_keyword(kw::Async) {
+                // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
+                if this.token.uninterpolated_span().at_least_rust_2024()
+                    // check for `gen {}` and `gen move {}`
+                    // or `async gen {}` and `async gen move {}`
+                    && (this.is_gen_block(kw::Gen, 0)
+                        || (this.check_keyword(kw::Async) && this.is_gen_block(kw::Gen, 1)))
+                {
+                    // FIXME: (async) gen closures aren't yet parsed.
+                    this.parse_gen_block()
+                } else if this.check_keyword(kw::Async) {
                     // FIXME(gen_blocks): Parse `gen async` and suggest swap
                     if this.is_gen_block(kw::Async, 0) {
                         // Check for `async {` and `async move {`,
-                        // or `async gen {` and `async gen move {`.
                         this.parse_gen_block()
                     } else {
                         this.parse_expr_closure()
                     }
-                } else if this.token.uninterpolated_span().at_least_rust_2024()
-                    && (this.is_gen_block(kw::Gen, 0)
-                        || (this.check_keyword(kw::Async) && this.is_gen_block(kw::Gen, 1)))
-                {
-                    this.parse_gen_block()
                 } else if this.eat_keyword_noexpect(kw::Await) {
                     this.recover_incorrect_await_syntax(lo, this.prev_token.span)
                 } else {
@@ -3227,9 +3229,16 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Gen) { GenBlockKind::AsyncGen } else { GenBlockKind::Async }
         } else {
             assert!(self.eat_keyword(kw::Gen));
-            self.sess.gated_spans.gate(sym::gen_blocks, lo.to(self.token.span));
             GenBlockKind::Gen
         };
+        match kind {
+            GenBlockKind::Async => {
+                // `async` blocks are stable
+            }
+            GenBlockKind::Gen | GenBlockKind::AsyncGen => {
+                self.sess.gated_spans.gate(sym::gen_blocks, lo.to(self.prev_token.span));
+            }
+        }
         let capture_clause = self.parse_capture_clause()?;
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
         let kind = ExprKind::Gen(capture_clause, body, kind);
