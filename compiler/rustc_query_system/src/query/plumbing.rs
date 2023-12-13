@@ -112,7 +112,7 @@ fn handle_cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     cycle_error: &CycleError,
-    mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
+    error: DiagnosticBuilder<'_, ErrorGuaranteed>,
 ) -> Q::Value
 where
     Q: QueryConfig<Qcx>,

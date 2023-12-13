@@ -3010,7 +3010,7 @@ fn clean_use_statement_inner<'tcx>(
             "anonymous imports cannot be inlined"
         )
         .span_label(import.span, "anonymous import")
-        .emit();
+        .emit1();
     }
 
     // We consider inlining the documentation of `pub use` statements, but we

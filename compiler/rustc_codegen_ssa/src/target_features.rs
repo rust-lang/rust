@@ -454,7 +454,7 @@ pub fn from_target_feature(
         tcx.sess
             .struct_span_err(span, msg)
             .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
-            .emit();
+            .emit1();
     };
     let rust_features = tcx.features();
     for item in list {
@@ -474,12 +474,14 @@ pub fn from_target_feature(
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
-                let mut err = tcx.sess.struct_span_err(item.span(), msg);
-                err.span_label(item.span(), format!("`{feature}` is not valid for this target"));
+                let mut err = tcx
+                    .sess
+                    .struct_span_err(item.span(), msg)
+                    .span_label(item.span(), format!("`{feature}` is not valid for this target"));
                 if let Some(stripped) = feature.strip_prefix('+') {
                     let valid = supported_target_features.contains_key(stripped);
                     if valid {
-                        err.help("consider removing the leading `+` in the feature name");
+                        err = err.help("consider removing the leading `+` in the feature name");
                     }
                 }
                 err.emit();

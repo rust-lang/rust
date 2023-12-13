@@ -99,6 +99,9 @@ impl<'a> DiagnosticDerive<'a> {
         for test in slugs.borrow().iter().map(|s| generate_test(s, &structure)) {
             imp.extend(test);
         }
+        // njn: remove all of these
+        //eprintln!("imp = {:?}", rustc_ast_pretty::pprust::tts_to_string(imp));
+        //eprintln!("imp = {}", imp);
         imp
     }
 }
@@ -172,10 +175,10 @@ impl<'a> LintDiagnosticDerive<'a> {
         let mut imp = structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
                 #[track_caller]
-                fn decorate_lint<'__b>(
+                fn decorate_lint(
                     self,
-                    #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>
-                ) -> &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()> {
+                    mut #diag: rustc_errors::DiagnosticBuilder<'__a, ()>
+                ) -> rustc_errors::DiagnosticBuilder<'__a, ()> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }
@@ -189,6 +192,8 @@ impl<'a> LintDiagnosticDerive<'a> {
             imp.extend(test);
         }
 
+        //njn: temp
+        //eprintln!("imp = {}", imp);
         imp
     }
 }

@@ -19,10 +19,7 @@ impl<'a> IntoDiagnostic<'a> for FeatureGateError {
         self,
         handler: &'a rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(self.explain);
-        diag.set_span(self.span);
-        diag.code(error_code!(E0658));
-        diag
+        handler.struct_err(self.explain).set_span(self.span).code(error_code!(E0658))
     }
 }
 

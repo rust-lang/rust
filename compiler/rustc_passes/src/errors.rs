@@ -869,13 +869,14 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::passes_invalid_attr_at_crate_level);
-        diag.set_span(self.span);
-        diag.set_arg("name", self.name);
+        let mut diag = handler
+            .struct_err(fluent::passes_invalid_attr_at_crate_level)
+            .set_span(self.span)
+            .set_arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
         // of the attribute span
         if let Some(span) = self.sugg_span {
-            diag.span_suggestion_verbose(
+            diag = diag.span_suggestion_verbose(
                 span,
                 fluent::passes_suggestion,
                 String::new(),
@@ -883,8 +884,9 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
             );
         }
         if let Some(item) = self.item {
-            diag.set_arg("kind", item.kind);
-            diag.span_label(item.span, fluent::passes_invalid_attr_at_crate_level_item);
+            diag = diag
+                .set_arg("kind", item.kind)
+                .span_label(item.span, fluent::passes_invalid_attr_at_crate_level_item);
         }
         diag
     }
@@ -1022,17 +1024,14 @@ impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
         self,
         handler: &rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            self.span,
-            fluent::passes_break_non_loop,
-            error_code!(E0571),
-        );
-        diag.set_arg("kind", self.kind);
-        diag.span_label(self.span, fluent::passes_label);
+        let mut diag = handler
+            .struct_span_err_with_code(self.span, fluent::passes_break_non_loop, error_code!(E0571))
+            .set_arg("kind", self.kind)
+            .span_label(self.span, fluent::passes_label);
         if let Some(head) = self.head {
-            diag.span_label(head, fluent::passes_label2);
+            diag = diag.span_label(head, fluent::passes_label2);
         }
-        diag.span_suggestion(
+        diag = diag.span_suggestion(
             self.span,
             fluent::passes_suggestion,
             self.suggestion,
@@ -1047,10 +1046,10 @@ impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
                     // This error is redundant, we will have already emitted a
                     // suggestion to use the label when `segment` wasn't found
                     // (hence the `Res::Err` check).
-                    diag.delay_as_bug();
+                    diag.delay_as_bug1();
                 }
                 _ => {
-                    diag.span_suggestion(
+                    diag = diag.span_suggestion(
                         self.break_expr_span,
                         fluent::passes_break_expr_suggestion,
                         label.ident,
@@ -1177,10 +1176,10 @@ impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
             error_code!(E0787),
         );
         for span in self.multiple_asms.iter() {
-            diag.span_label(*span, fluent::passes_label_multiple_asm);
+            diag = diag.span_label(*span, fluent::passes_label_multiple_asm);
         }
         for span in self.non_asms.iter() {
-            diag.span_label(*span, fluent::passes_label_non_asm);
+            diag = diag.span_label(*span, fluent::passes_label_non_asm);
         }
         diag
     }
@@ -1287,20 +1286,21 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
         self,
         handler: &'a rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            DUMMY_SP,
-            fluent::passes_no_main_function,
-            error_code!(E0601),
-        );
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("filename", self.filename);
-        diag.set_arg("has_filename", self.has_filename);
+        let mut diag = handler
+            .struct_span_err_with_code(
+                DUMMY_SP,
+                fluent::passes_no_main_function,
+                error_code!(E0601),
+            )
+            .set_arg("crate_name", self.crate_name)
+            .set_arg("filename", self.filename)
+            .set_arg("has_filename", self.has_filename);
         let note = if !self.non_main_fns.is_empty() {
             for &span in &self.non_main_fns {
-                diag.span_note(span, fluent::passes_here_is_main);
+                diag = diag.span_note(span, fluent::passes_here_is_main);
             }
-            diag.note(fluent::passes_one_or_more_possible_main);
-            diag.help(fluent::passes_consider_moving_main);
+            diag = diag.note(fluent::passes_one_or_more_possible_main);
+            diag = diag.help(fluent::passes_consider_moving_main);
             // There were some functions named `main` though. Try to give the user a hint.
             fluent::passes_main_must_be_defined_at_crate
         } else if self.has_filename {
@@ -1309,21 +1309,21 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
             fluent::passes_consider_adding_main_at_crate
         };
         if self.file_empty {
-            diag.note(note);
+            diag = diag.note(note);
         } else {
-            diag.set_span(self.sp.shrink_to_hi());
-            diag.span_label(self.sp.shrink_to_hi(), note);
+            diag = diag.set_span(self.sp.shrink_to_hi());
+            diag = diag.span_label(self.sp.shrink_to_hi(), note);
         }
 
         if let Some(main_def) = self.main_def_opt
             && main_def.opt_fn_def_id().is_none()
         {
             // There is something at `crate::main`, but it is not a function definition.
-            diag.span_label(main_def.span, fluent::passes_non_function_main);
+            diag = diag.span_label(main_def.span, fluent::passes_non_function_main);
         }
 
         if self.add_teach_note {
-            diag.note(fluent::passes_teach_note);
+            diag = diag.note(fluent::passes_teach_note);
         }
         diag
     }
@@ -1350,43 +1350,44 @@ impl IntoDiagnostic<'_> for DuplicateLangItem {
         self,
         handler: &rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err_with_code(
-            match self.duplicate {
-                Duplicate::Plain => fluent::passes_duplicate_lang_item,
-                Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
-                Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
-            },
-            error_code!(E0152),
-        );
-        diag.set_arg("lang_item_name", self.lang_item_name);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("dependency_of", self.dependency_of);
-        diag.set_arg("path", self.path);
-        diag.set_arg("orig_crate_name", self.orig_crate_name);
-        diag.set_arg("orig_dependency_of", self.orig_dependency_of);
-        diag.set_arg("orig_path", self.orig_path);
+        let mut diag = handler
+            .struct_err_with_code(
+                match self.duplicate {
+                    Duplicate::Plain => fluent::passes_duplicate_lang_item,
+                    Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
+                    Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
+                },
+                error_code!(E0152),
+            )
+            .set_arg("lang_item_name", self.lang_item_name)
+            .set_arg("crate_name", self.crate_name)
+            .set_arg("dependency_of", self.dependency_of)
+            .set_arg("path", self.path)
+            .set_arg("orig_crate_name", self.orig_crate_name)
+            .set_arg("orig_dependency_of", self.orig_dependency_of)
+            .set_arg("orig_path", self.orig_path);
         if let Some(span) = self.local_span {
-            diag.set_span(span);
+            diag = diag.set_span(span);
         }
         if let Some(span) = self.first_defined_span {
-            diag.span_note(span, fluent::passes_first_defined_span);
+            diag = diag.span_note(span, fluent::passes_first_defined_span);
         } else {
             if self.orig_dependency_of.is_empty() {
-                diag.note(fluent::passes_first_defined_crate);
+                diag = diag.note(fluent::passes_first_defined_crate);
             } else {
-                diag.note(fluent::passes_first_defined_crate_depends);
+                diag = diag.note(fluent::passes_first_defined_crate_depends);
             }
 
             if self.orig_is_local {
-                diag.note(fluent::passes_first_definition_local);
+                diag = diag.note(fluent::passes_first_definition_local);
             } else {
-                diag.note(fluent::passes_first_definition_path);
+                diag = diag.note(fluent::passes_first_definition_path);
             }
 
             if self.is_local {
-                diag.note(fluent::passes_second_definition_local);
+                diag = diag.note(fluent::passes_second_definition_local);
             } else {
-                diag.note(fluent::passes_second_definition_path);
+                diag = diag.note(fluent::passes_second_definition_path);
             }
         }
         diag

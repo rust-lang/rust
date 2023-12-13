@@ -295,7 +295,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         _ => bug!(),
                     }
                 ))
-                .emit();
+                .emit1();
             }
             CastError::IllegalCast => {
                 make_invalid_casting_error(
@@ -316,7 +316,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx,
                 )
                 .note("vtable kinds may not match")
-                .emit();
+                .emit1();
             }
             CastError::CastToBool => {
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
@@ -556,7 +556,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx,
                 )
                 .note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
-                .emit();
+                .emit1();
             }
         }
     }

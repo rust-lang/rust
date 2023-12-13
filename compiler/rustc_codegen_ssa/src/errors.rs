@@ -211,194 +211,130 @@ pub struct ThorinErrorWrapper(pub thorin::Error);
 
 impl IntoDiagnostic<'_> for ThorinErrorWrapper {
     fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag;
         match self.0 {
             thorin::Error::ReadInput(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_read_input_failure);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_read_input_failure)
             }
             thorin::Error::ParseFileKind(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_input_file_kind);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_input_file_kind)
             }
             thorin::Error::ParseObjectFile(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_input_object_file);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_input_object_file)
             }
             thorin::Error::ParseArchiveFile(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_input_archive_file);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_input_archive_file)
             }
             thorin::Error::ParseArchiveMember(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_archive_member);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_archive_member)
             }
             thorin::Error::InvalidInputKind => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_invalid_input_kind);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_invalid_input_kind)
             }
             thorin::Error::DecompressData(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_decompress_data);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_decompress_data)
             }
-            thorin::Error::NamelessSection(_, offset) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_section_without_name);
-                diag.set_arg("offset", format!("0x{offset:08x}"));
-                diag
-            }
-            thorin::Error::RelocationWithInvalidSymbol(section, offset) => {
-                diag =
-                    handler.struct_err(fluent::codegen_ssa_thorin_relocation_with_invalid_symbol);
-                diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{offset:08x}"));
-                diag
-            }
-            thorin::Error::MultipleRelocations(section, offset) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_multiple_relocations);
-                diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{offset:08x}"));
-                diag
-            }
-            thorin::Error::UnsupportedRelocation(section, offset) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_unsupported_relocation);
-                diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{offset:08x}"));
-                diag
-            }
-            thorin::Error::MissingDwoName(id) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_missing_dwo_name);
-                diag.set_arg("id", format!("0x{id:08x}"));
-                diag
-            }
+            thorin::Error::NamelessSection(_, offset) => handler
+                .struct_err(fluent::codegen_ssa_thorin_section_without_name)
+                .set_arg("offset", format!("0x{offset:08x}")),
+            thorin::Error::RelocationWithInvalidSymbol(section, offset) => handler
+                .struct_err(fluent::codegen_ssa_thorin_relocation_with_invalid_symbol)
+                .set_arg("section", section)
+                .set_arg("offset", format!("0x{offset:08x}")),
+            thorin::Error::MultipleRelocations(section, offset) => handler
+                .struct_err(fluent::codegen_ssa_thorin_multiple_relocations)
+                .set_arg("section", section)
+                .set_arg("offset", format!("0x{offset:08x}")),
+            thorin::Error::UnsupportedRelocation(section, offset) => handler
+                .struct_err(fluent::codegen_ssa_thorin_unsupported_relocation)
+                .set_arg("section", section)
+                .set_arg("offset", format!("0x{offset:08x}")),
+            thorin::Error::MissingDwoName(id) => handler
+                .struct_err(fluent::codegen_ssa_thorin_missing_dwo_name)
+                .set_arg("id", format!("0x{id:08x}")),
             thorin::Error::NoCompilationUnits => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_no_compilation_units);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_no_compilation_units)
             }
-            thorin::Error::NoDie => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_no_die);
-                diag
-            }
+            thorin::Error::NoDie => handler.struct_err(fluent::codegen_ssa_thorin_no_die),
             thorin::Error::TopLevelDieNotUnit => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_top_level_die_not_unit);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_top_level_die_not_unit)
             }
-            thorin::Error::MissingRequiredSection(section) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_missing_required_section);
-                diag.set_arg("section", section);
-                diag
-            }
+            thorin::Error::MissingRequiredSection(section) => handler
+                .struct_err(fluent::codegen_ssa_thorin_missing_required_section)
+                .set_arg("section", section),
             thorin::Error::ParseUnitAbbreviations(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_unit_abbreviations);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_unit_abbreviations)
             }
             thorin::Error::ParseUnitAttribute(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_unit_attribute);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_unit_attribute)
             }
             thorin::Error::ParseUnitHeader(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_unit_header);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_unit_header)
             }
             thorin::Error::ParseUnit(_) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_unit);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_parse_unit)
             }
-            thorin::Error::IncompatibleIndexVersion(section, format, actual) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_incompatible_index_version);
-                diag.set_arg("section", section);
-                diag.set_arg("actual", actual);
-                diag.set_arg("format", format);
-                diag
-            }
-            thorin::Error::OffsetAtIndex(_, index) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_offset_at_index);
-                diag.set_arg("index", index);
-                diag
-            }
-            thorin::Error::StrAtOffset(_, offset) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_str_at_offset);
-                diag.set_arg("offset", format!("0x{offset:08x}"));
-                diag
-            }
-            thorin::Error::ParseIndex(_, section) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_parse_index);
-                diag.set_arg("section", section);
-                diag
-            }
-            thorin::Error::UnitNotInIndex(unit) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_unit_not_in_index);
-                diag.set_arg("unit", format!("0x{unit:08x}"));
-                diag
-            }
+            thorin::Error::IncompatibleIndexVersion(section, format, actual) => handler
+                .struct_err(fluent::codegen_ssa_thorin_incompatible_index_version)
+                .set_arg("section", section)
+                .set_arg("actual", actual)
+                .set_arg("format", format),
+            thorin::Error::OffsetAtIndex(_, index) => handler
+                .struct_err(fluent::codegen_ssa_thorin_offset_at_index)
+                .set_arg("index", index),
+            thorin::Error::StrAtOffset(_, offset) => handler
+                .struct_err(fluent::codegen_ssa_thorin_str_at_offset)
+                .set_arg("offset", format!("0x{offset:08x}")),
+            thorin::Error::ParseIndex(_, section) => handler
+                .struct_err(fluent::codegen_ssa_thorin_parse_index)
+                .set_arg("section", section),
+            thorin::Error::UnitNotInIndex(unit) => handler
+                .struct_err(fluent::codegen_ssa_thorin_unit_not_in_index)
+                .set_arg("unit", format!("0x{unit:08x}")),
             thorin::Error::RowNotInIndex(_, row) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_row_not_in_index);
-                diag.set_arg("row", row);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_row_not_in_index).set_arg("row", row)
             }
             thorin::Error::SectionNotInRow => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_section_not_in_row);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_section_not_in_row)
             }
-            thorin::Error::EmptyUnit(unit) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_empty_unit);
-                diag.set_arg("unit", format!("0x{unit:08x}"));
-                diag
-            }
+            thorin::Error::EmptyUnit(unit) => handler
+                .struct_err(fluent::codegen_ssa_thorin_empty_unit)
+                .set_arg("unit", format!("0x{unit:08x}")),
             thorin::Error::MultipleDebugInfoSection => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_multiple_debug_info_section);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_multiple_debug_info_section)
             }
             thorin::Error::MultipleDebugTypesSection => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_multiple_debug_types_section);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_multiple_debug_types_section)
             }
             thorin::Error::NotSplitUnit => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_not_split_unit);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_not_split_unit)
             }
-            thorin::Error::DuplicateUnit(unit) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_duplicate_unit);
-                diag.set_arg("unit", format!("0x{unit:08x}"));
-                diag
-            }
-            thorin::Error::MissingReferencedUnit(unit) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_missing_referenced_unit);
-                diag.set_arg("unit", format!("0x{unit:08x}"));
-                diag
-            }
+            thorin::Error::DuplicateUnit(unit) => handler
+                .struct_err(fluent::codegen_ssa_thorin_duplicate_unit)
+                .set_arg("unit", format!("0x{unit:08x}")),
+            thorin::Error::MissingReferencedUnit(unit) => handler
+                .struct_err(fluent::codegen_ssa_thorin_missing_referenced_unit)
+                .set_arg("unit", format!("0x{unit:08x}")),
             thorin::Error::NoOutputObjectCreated => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_not_output_object_created);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_not_output_object_created)
             }
             thorin::Error::MixedInputEncodings => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_mixed_input_encodings);
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_mixed_input_encodings)
             }
             thorin::Error::Io(e) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_io);
-                diag.set_arg("error", format!("{e}"));
-                diag
+                handler.struct_err(fluent::codegen_ssa_thorin_io).set_arg("error", format!("{e}"))
             }
-            thorin::Error::ObjectRead(e) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_object_read);
-                diag.set_arg("error", format!("{e}"));
-                diag
-            }
-            thorin::Error::ObjectWrite(e) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_object_write);
-                diag.set_arg("error", format!("{e}"));
-                diag
-            }
-            thorin::Error::GimliRead(e) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_gimli_read);
-                diag.set_arg("error", format!("{e}"));
-                diag
-            }
-            thorin::Error::GimliWrite(e) => {
-                diag = handler.struct_err(fluent::codegen_ssa_thorin_gimli_write);
-                diag.set_arg("error", format!("{e}"));
-                diag
-            }
+            thorin::Error::ObjectRead(e) => handler
+                .struct_err(fluent::codegen_ssa_thorin_object_read)
+                .set_arg("error", format!("{e}")),
+            thorin::Error::ObjectWrite(e) => handler
+                .struct_err(fluent::codegen_ssa_thorin_object_write)
+                .set_arg("error", format!("{e}")),
+            thorin::Error::GimliRead(e) => handler
+                .struct_err(fluent::codegen_ssa_thorin_gimli_read)
+                .set_arg("error", format!("{e}")),
+            thorin::Error::GimliWrite(e) => handler
+                .struct_err(fluent::codegen_ssa_thorin_gimli_write)
+                .set_arg("error", format!("{e}")),
             _ => unimplemented!("Untranslated thorin error"),
         }
     }
@@ -413,18 +349,20 @@ pub struct LinkingFailed<'a> {
 
 impl IntoDiagnostic<'_> for LinkingFailed<'_> {
     fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::codegen_ssa_linking_failed);
-        diag.set_arg("linker_path", format!("{}", self.linker_path.display()));
-        diag.set_arg("exit_status", format!("{}", self.exit_status));
+        let mut diag = handler
+            .struct_err(fluent::codegen_ssa_linking_failed)
+            .set_arg("linker_path", format!("{}", self.linker_path.display()))
+            .set_arg("exit_status", format!("{}", self.exit_status));
 
         let contains_undefined_ref = self.escaped_output.contains("undefined reference to");
 
-        diag.note(format!("{:?}", self.command)).note(self.escaped_output);
+        diag = diag.note(format!("{:?}", self.command)).note(self.escaped_output);
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
         if contains_undefined_ref {
-            diag.note(fluent::codegen_ssa_extern_funcs_not_found)
+            diag = diag
+                .note(fluent::codegen_ssa_extern_funcs_not_found)
                 .note(fluent::codegen_ssa_specify_libraries_to_link)
                 .note(fluent::codegen_ssa_use_cargo_directive);
         }

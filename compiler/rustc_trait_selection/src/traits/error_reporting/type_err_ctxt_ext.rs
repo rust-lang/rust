@@ -358,7 +358,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let obligation = self.resolve_vars_if_possible(obligation);
         let mut err = self.build_overflow_error(&obligation.predicate, obligation.cause.span, true);
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
+        err = self.point_at_returns_when_relevant(err, &obligation);
         err.emit()
     }
 
@@ -523,7 +523,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
 
                         if is_try_conversion && let Some(ret_span) = self.return_type_span(&obligation) {
-                            err.span_label(
+                            err = err.span_label(
                                 ret_span,
                                 format!(
                                     "expected `{}` because of this",
@@ -542,8 +542,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if Some(trait_ref.def_id()) == tcx.lang_items().drop_trait()
                             && predicate_is_const
                         {
-                            err.note("`~const Drop` was renamed to `~const Destruct`");
-                            err.note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
+                            err = err
+                                .note("`~const Drop` was renamed to `~const Destruct`")
+                                .note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
                         }
 
                         let explanation = get_explanation_based_on_obligation(
@@ -569,21 +570,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return;
                         }
 
-                        file_note.map(|note| err.note(note));
+                        if let Some(file_note) = file_note {
+                            err = err.note(file_note);
+                        }
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
-                            err.span_label(span, s);
+                            err = err.span_label(span, s);
                             if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
                                 // at the type param with a label to suggest constraining it.
-                                err.help(explanation);
+                                err = err.help(explanation);
                             }
                         } else if let Some(custom_explanation) = safe_transmute_explanation {
-                            err.span_label(span, custom_explanation);
+                            err = err.span_label(span, custom_explanation);
                         } else {
-                            err.span_label(span, explanation);
+                            err = err.span_label(span, explanation);
                         }
 
                         if let ObligationCauseCode::Coercion { source, target } =
@@ -609,15 +612,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
 
                         if let Some((msg, span)) = type_def {
-                            err.span_label(span, msg);
+                            err = err.span_label(span, msg);
                         }
                         for note in notes {
                             // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
-                            err.note(note);
+                            err = err.note(note);
                         }
                         if let Some(s) = parent_label {
                             let body = obligation.cause.body_id;
-                            err.span_label(tcx.def_span(body), s);
+                            err = err.span_label(tcx.def_span(body), s);
                         }
 
                         self.suggest_floating_point_literal(&obligation, &mut err, &trait_ref);
@@ -630,7 +633,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if let (ty::FnPtr(_), ty::FnDef(..)) =
                                 (cand.self_ty().kind(), trait_ref.self_ty().skip_binder().kind())
                             {
-                                err.span_suggestion(
+                                err = err.span_suggestion(
                                     span.shrink_to_hi(),
                                     format!(
                                         "the trait `{}` is implemented for fn pointer `{}`, try casting using `as`",
@@ -681,7 +684,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if is_unsize {
                             // If the obligation failed due to a missing implementation of the
                             // `Unsize` trait, give a pointer to why that might be the case
-                            err.note(
+                            err = err.note(
                                 "all implementations of `Unsize` are provided \
                                 automatically by the compiler, see \
                                 <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> \
@@ -698,7 +701,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             false
                         };
                         if is_fn_trait && is_target_feature_fn {
-                            err.note(
+                            err = err.note(
                                 "`#[target_feature]` functions do not implement the `Fn` traits",
                             );
                         }
@@ -732,13 +735,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
-                                err.note(
+                                err = err.note(
                                     "this error might have been caused by changes to \
                                     Rust's type-inference algorithm (see issue #48950 \
                                     <https://github.com/rust-lang/rust/issues/48950> \
                                     for more information)",
-                                );
-                                err.help("did you intend to use the type `()` here instead?");
+                                )
+                                .help("did you intend to use the type `()` here instead?");
                             }
                         }
 
@@ -945,7 +948,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
+        err = self.point_at_returns_when_relevant(err, &obligation);
         err.emit();
     }
 
@@ -974,7 +977,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let mut err =
                 self.report_closure_error(&obligation, closure_def_id, found_kind, expected_kind);
             self.note_obligation_cause(&mut err, &obligation);
-            self.point_at_returns_when_relevant(&mut err, &obligation);
+            err = self.point_at_returns_when_relevant(err, &obligation);
             Some(err.emit())
         } else {
             None
@@ -1265,7 +1268,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     && obligation.cause.code().parent().is_none()
                 {
                     if ty.is_structural_eq_shallow(self.tcx) {
-                        diag.span_suggestion(
+                        diag = diag.span_suggestion(
                             span,
                             "add `#[derive(ConstParamTy)]` to the struct",
                             "#[derive(ConstParamTy)]\n",
@@ -1274,7 +1277,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     } else {
                         // FIXME(adt_const_params): We should check there's not already an
                         // overlapping `Eq`/`PartialEq` impl.
-                        diag.span_suggestion(
+                        diag = diag.span_suggestion(
                             span,
                             "add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct",
                             "#[derive(ConstParamTy, PartialEq, Eq)]\n",
@@ -1299,7 +1302,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         while let Some((next_code, next_pred)) = code.parent() {
             if let Some(pred) = pred {
                 let pred = self.instantiate_binder_with_placeholders(pred);
-                diag.note(format!(
+                diag = diag.note(format!(
                     "`{}` must implement `{}`, but it does not",
                     pred.self_ty(),
                     pred.print_modifiers_and_trait_path()
@@ -2427,7 +2430,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err.cancel();
                         return;
                     }
-                    err.note(format!("cannot satisfy `{predicate}`"));
+                    err = err.note(format!("cannot satisfy `{predicate}`"));
                     let impl_candidates = self
                         .find_similar_impl_candidates(predicate.to_opt_poly_trait_pred().unwrap());
                     if impl_candidates.len() < 40 {
@@ -2504,13 +2507,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 .iter()
                                 .find(|item_ref| item_ref.ident == *assoc_item_name)
                         {
-                            err.span_label(
+                            err = err.span_label(
                                 method_ref.span,
                                 format!("`{trait_name}::{assoc_item_name}` defined here"),
                             );
                         }
 
-                        err.span_label(span, format!("cannot {verb} associated {noun} of trait"));
+                        err = err
+                            .span_label(span, format!("cannot {verb} associated {noun} of trait"));
 
                         let trait_impls = self.tcx.trait_impls_of(data.trait_ref.def_id);
 
@@ -2553,7 +2557,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     ">".to_string(),
                                 ));
                             }
-                            err.multipart_suggestion(
+                            err = err.multipart_suggestion(
                                 message,
                                 suggestions,
                                 Applicability::MaybeIncorrect,
@@ -2614,26 +2618,24 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .chain(Some(data.term.into_arg()))
                     .find(|g| g.has_non_region_infer());
                 if let Some(subst) = subst {
-                    let mut err = self.emit_inference_failure_err(
+                    self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
                         subst,
                         ErrorCode::E0284,
                         true,
-                    );
-                    err.note(format!("cannot satisfy `{predicate}`"));
-                    err
+                    )
+                    .note(format!("cannot satisfy `{predicate}`"))
                 } else {
                     // If we can't find a substitution, just print a generic error
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.tcx.sess,
                         span,
                         E0284,
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
-                    );
-                    err.span_label(span, format!("cannot satisfy `{predicate}`"));
-                    err
+                    )
+                    .span_label(span, format!("cannot satisfy `{predicate}`"))
                 }
             }
 
@@ -2653,30 +2655,28 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err
                 } else {
                     // If we can't find a substitution, just print a generic error
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.tcx.sess,
                         span,
                         E0284,
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
-                    );
-                    err.span_label(span, format!("cannot satisfy `{predicate}`"));
-                    err
+                    )
+                    .span_label(span, format!("cannot satisfy `{predicate}`"))
                 }
             }
             _ => {
                 if self.tcx.sess.has_errors().is_some() || self.tainted_by_errors().is_some() {
                     return;
                 }
-                let mut err = struct_span_err!(
+                struct_span_err!(
                     self.tcx.sess,
                     span,
                     E0284,
                     "type annotations needed: cannot satisfy `{}`",
                     predicate,
-                );
-                err.span_label(span, format!("cannot satisfy `{predicate}`"));
-                err
+                )
+                .span_label(span, format!("cannot satisfy `{predicate}`"))
             }
         };
         self.note_obligation_cause(&mut err, obligation);
@@ -3368,15 +3368,18 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 format!("`{}`", self.tcx.def_path_debug_str(def_id))
             }
         };
-        let mut err = self.tcx.sess.struct_span_err(
-            obligation.cause.span,
-            format!("cannot check whether the hidden type of {name} satisfies auto traits"),
-        );
-        err.span_note(self.tcx.def_span(def_id), "opaque type is declared here");
+        let mut err = self
+            .tcx
+            .sess
+            .struct_span_err(
+                obligation.cause.span,
+                format!("cannot check whether the hidden type of {name} satisfies auto traits"),
+            )
+            .span_note(self.tcx.def_span(def_id), "opaque type is declared here");
         match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => {}
             DefiningAnchor::Bind(bind) => {
-                err.span_note(
+                err = err.span_note(
                     self.tcx.def_ident_span(bind).unwrap_or_else(|| self.tcx.def_span(bind)),
                     "this item depends on auto traits of the hidden type, \
                     but may also be registering the hidden type. \
@@ -3509,18 +3512,18 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         if !self.tcx.features().generic_const_exprs {
-            let mut err = self
-                .tcx
+            #[allow(rustc::untranslatable_diagnostic_trivial)]
+            self.tcx
                 .sess
-                .struct_span_err(span, "constant expression depends on a generic parameter");
-            // FIXME(const_generics): we should suggest to the user how they can resolve this
-            // issue. However, this is currently not actually possible
-            // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
-            //
-            // Note that with `feature(generic_const_exprs)` this case should not
-            // be reachable.
-            err.note("this may fail depending on what value the parameter takes");
-            err.emit();
+                .struct_span_err(span, "constant expression depends on a generic parameter")
+                // FIXME(const_generics): we should suggest to the user how they can resolve this
+                // issue. However, this is currently not actually possible
+                // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
+                //
+                // Note that with `feature(generic_const_exprs)` this case should not
+                // be reachable.
+                .note("this may fail depending on what value the parameter takes")
+                .emit();
             return None;
         }
 
@@ -3531,10 +3534,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
                     let const_span = self.tcx.def_span(uv.def);
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {
-                            Ok(snippet) => err.help(format!(
+                            Ok(snippet) => err = err.help(format!(
                                 "try adding a `where` bound using this expression: `where [(); {snippet}]:`"
                             )),
-                            _ => err.help("consider adding a `where` bound using this expression"),
+                            _ => err = err.help("consider adding a `where` bound using this expression"),
                         };
                     Some(err)
                 }

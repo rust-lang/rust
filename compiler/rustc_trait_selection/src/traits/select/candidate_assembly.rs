@@ -967,7 +967,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     "multiple drop impls found",
                                 )
                                 .span_note(self.tcx().def_span(old_impl_def_id), "other impl here")
-                                .delay_as_bug();
+                                .delay_as_bug1();
                         }
 
                         relevant_impl = Some(impl_def_id);

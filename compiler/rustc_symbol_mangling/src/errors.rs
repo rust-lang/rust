@@ -21,9 +21,7 @@ impl IntoDiagnostic<'_> for TestOutput {
         let TestOutput { span, kind, content } = self;
 
         #[allow(rustc::untranslatable_diagnostic)]
-        let mut diag = handler.struct_err(format!("{kind}({content})"));
-        diag.set_span(span);
-        diag
+        handler.struct_span_err(span, format!("{kind}({content})"))
     }
 }
 

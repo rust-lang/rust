@@ -720,7 +720,7 @@ fn print_crate_info(
         let result = parse_crate_attrs(sess);
         match result {
             Ok(attrs) => Some(attrs),
-            Err(mut parse_error) => {
+            Err(parse_error) => {
                 parse_error.emit();
                 return Compilation::Stop;
             }

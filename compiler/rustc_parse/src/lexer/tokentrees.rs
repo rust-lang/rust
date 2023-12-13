@@ -75,7 +75,7 @@ impl<'a> TokenTreesReader<'a> {
         let msg = "this file contains an unclosed delimiter";
         let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
         for &(_, sp) in &self.diag_info.open_braces {
-            err.span_label(sp, "unclosed delimiter");
+            err = err.span_label(sp, "unclosed delimiter");
             self.diag_info.unmatched_delims.push(UnmatchedDelim {
                 expected_delim: Delimiter::Brace,
                 found_delim: None,
@@ -257,17 +257,17 @@ impl<'a> TokenTreesReader<'a> {
                     // This might be the beginning of the `if`/`while` body (i.e., the end of the condition)
                     in_cond = false;
                 } else if maybe_andand == token::AndAnd && maybe_let.is_keyword(kw::Let) {
-                    let mut err = parser.struct_span_err(
+                    let err = parser.struct_span_err(
                         parser.token.span,
                         "found a `{` in the middle of a let-chain",
-                    );
-                    err.span_suggestion(
+                    )
+                    .span_suggestion(
                         parser.token.span,
                         "consider removing this brace to parse the `let` as part of the same chain",
                         "",
                         Applicability::MachineApplicable,
-                    );
-                    err.span_label(
+                    )
+                    .span_label(
                         maybe_andand.span.to(maybe_let.span),
                         "you might have meant to continue the let-chain here",
                     );
@@ -278,7 +278,7 @@ impl<'a> TokenTreesReader<'a> {
         }
         if !diff_errs.is_empty() {
             errs.iter_mut().for_each(|err| {
-                err.delay_as_bug();
+                err.delay_as_bug1();
             });
             return diff_errs;
         }
@@ -298,7 +298,6 @@ impl<'a> TokenTreesReader<'a> {
             self.string_reader.sess.source_map(),
             delim,
         );
-        err.span_label(self.token.span, "unexpected closing delimiter");
-        err
+        err.span_label(self.token.span, "unexpected closing delimiter")
     }
 }

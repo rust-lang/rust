@@ -538,7 +538,7 @@ impl server::TokenStream for Rustc<'_, '_> {
             }
             expr
         };
-        let expr = expr.map_err(|mut err| {
+        let expr = expr.map_err(|err| {
             err.emit();
         })?;
 

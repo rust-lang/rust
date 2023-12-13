@@ -64,20 +64,21 @@ impl<'a> Parser<'a> {
                     Ok(p) => {
                         if let TyKind::ImplTrait(_, bounds) = &p.kind {
                             let span = impl_span.to(self.token.span.shrink_to_lo());
-                            let mut err = self.struct_span_err(
-                                span,
-                                "expected trait bound, found `impl Trait` type",
-                            );
-                            err.span_label(span, "not a trait");
+                            let mut err = self
+                                .struct_span_err(
+                                    span,
+                                    "expected trait bound, found `impl Trait` type",
+                                )
+                                .span_label(span, "not a trait");
                             if let [bound, ..] = &bounds[..] {
-                                err.span_suggestion_verbose(
+                                err = err.span_suggestion_verbose(
                                     impl_span.until(bound.span()),
                                     "use the trait bounds directly",
                                     String::new(),
                                     Applicability::MachineApplicable,
                                 );
                             }
-                            err.emit();
+                            err.emit1();
                             return Err(err);
                         }
                     }
@@ -141,17 +142,17 @@ impl<'a> Parser<'a> {
         // Parse optional const generics default value.
         let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
 
-        let mut err = self.struct_span_err(
+        self.struct_span_err(
             mistyped_const_ident.span,
             format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
-        );
-        err.span_suggestion_verbose(
+        )
+        .span_suggestion_verbose(
             mistyped_const_ident.span,
             "use the `const` keyword",
             kw::Const.as_str(),
             Applicability::MachineApplicable,
-        );
-        err.emit();
+        )
+        .emit();
 
         Ok(GenericParam {
             ident,

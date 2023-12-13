@@ -2333,17 +2333,17 @@ impl CheckAttrVisitor<'_> {
                 match terr {
                     TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
                         if let Some(ty) = hir_sig.decl.inputs.get(idx) {
-                            diag.set_span(ty.span);
+                            diag = diag.set_span(ty.span);
                             cause.span = ty.span;
                         } else if idx == hir_sig.decl.inputs.len() {
                             let span = hir_sig.decl.output.span();
-                            diag.set_span(span);
+                            diag = diag.set_span(span);
                             cause.span = span;
                         }
                     }
                     TypeError::ArgCount => {
                         if let Some(ty) = hir_sig.decl.inputs.get(expected_sig.inputs().len()) {
-                            diag.set_span(ty.span);
+                            diag = diag.set_span(ty.span);
                             cause.span = ty.span;
                         }
                     }

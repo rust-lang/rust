@@ -570,7 +570,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                                     egs.map(|egs| format!(" like `{egs}`")).unwrap_or_default(),
                                 ),
                             )
-                            .emit();
+                            .emit1();
                         }
 
                         let item = tcx.hir().foreign_item(item.id);
@@ -802,7 +802,7 @@ fn check_impl_items_against_trait<'tcx>(
                         surprising ways with {feature}, \
                         and for now is disallowed"
                     ))
-                    .emit();
+                    .emit1();
             }
         }
 
@@ -840,7 +840,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         if !fields.iter().all(|f| f.ty(tcx, args) == e) {
             struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
                 .span_label(sp, "SIMD elements must have the same type")
-                .emit();
+                .emit1();
             return;
         }
 
@@ -1117,7 +1117,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 "unsupported representation for zero-variant enum"
             )
             .span_label(tcx.def_span(def_id), "zero-variant enum")
-            .emit();
+            .emit1();
         }
     }
 
@@ -1149,7 +1149,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let disr_non_unit = def.variants().iter().any(|var| !is_unit(var) && has_disr(var));
 
         if disr_non_unit || (disr_units && has_non_units) {
-            let mut err = struct_span_err!(
+            let err = struct_span_err!(
                 tcx.sess,
                 tcx.def_span(def_id),
                 E0732,
@@ -1258,7 +1258,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
             }
         }
 
-        if let Some(mut e) = error {
+        if let Some(e) = error {
             e.emit();
         }
 
@@ -1304,7 +1304,7 @@ pub(super) fn check_type_params_are_used<'tcx>(
             let span = tcx.def_span(param.def_id);
             struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name,)
                 .span_label(span, "unused type parameter")
-                .emit();
+                .emit1();
         }
     }
 }
@@ -1326,7 +1326,7 @@ fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) -> ErrorGuaranteed
         .note(
             "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
         )
-        .emit()
+        .emit1()
 }
 
 /// Emit an error for recursive opaque types.

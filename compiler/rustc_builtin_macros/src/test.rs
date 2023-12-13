@@ -401,7 +401,7 @@ fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>)
         _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
     };
     if let Some(item) = item {
-        err.span_label(
+        err = err.span_label(
             item.span,
             format!(
                 "expected a non-associated function, found {} {}",
@@ -487,7 +487,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                                 allowed and will become a hard error in a \
                                 future release",
                         )
-                        .emit();
+                        .emit1();
                         ShouldPanic::Yes(None)
                     } else {
                         ShouldPanic::Yes(msg)

@@ -129,20 +129,20 @@ pub(crate) fn emit_unescape_error(
                 "unknown character escape"
             };
             let ec = escaped_char(c);
-            let mut diag = handler.struct_span_err(span, format!("{label}: `{ec}`"));
-            diag.span_label(span, label);
+            let mut diag =
+                handler.struct_span_err(span, format!("{label}: `{ec}`")).span_label(span, label);
             if c == '{' || c == '}' && matches!(mode, Mode::Str | Mode::RawStr) {
-                diag.help(
+                diag = diag.help(
                     "if used in a formatting string, curly braces are escaped with `{{` and `}}`",
                 );
             } else if c == '\r' {
-                diag.help(
+                diag = diag.help(
                     "this is an isolated carriage return; consider checking your editor and \
                      version control settings",
                 );
             } else {
                 if mode == Mode::Str || mode == Mode::Char {
-                    diag.span_suggestion(
+                    diag = diag.span_suggestion(
                         span_with_quotes,
                         "if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal",
                         format!("r\"{lit}\""),
@@ -150,7 +150,7 @@ pub(crate) fn emit_unescape_error(
                     );
                 }
 
-                diag.help(
+                diag = diag.help(
                     "for more information, visit \
                      <https://doc.rust-lang.org/reference/tokens.html#literals>",
                 );
@@ -180,11 +180,11 @@ pub(crate) fn emit_unescape_error(
             } else {
                 String::new()
             };
-            err.span_label(span, format!("must be ASCII{postfix}"));
+            err = err.span_label(span, format!("must be ASCII{postfix}"));
             // Note: the \\xHH suggestions are not given for raw byte string
             // literals, because they are araw and so cannot use any escapes.
             if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
-                err.span_suggestion(
+                err = err.span_suggestion(
                     span,
                     format!(
                         "if you meant to use the unicode code point for {c:?}, use a \\xHH escape"
@@ -193,11 +193,12 @@ pub(crate) fn emit_unescape_error(
                     Applicability::MaybeIncorrect,
                 );
             } else if mode == Mode::Byte {
-                err.span_label(span, "this multibyte character does not fit into a single byte");
+                err = err
+                    .span_label(span, "this multibyte character does not fit into a single byte");
             } else if mode != Mode::RawByteStr {
                 let mut utf8 = String::new();
                 utf8.push(c);
-                err.span_suggestion(
+                err = err.span_suggestion(
                     span,
                     format!("if you meant to use the UTF-8 encoding of {c:?}, use \\xHH escapes"),
                     utf8.as_bytes()

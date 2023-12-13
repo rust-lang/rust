@@ -157,7 +157,7 @@ where
             error.add_args(tcx.sess.diagnostic(), &mut err);
 
             // Use *our* span to label the interp error
-            err.span_label(our_span, msg);
+            err = err.span_label(our_span, msg);
             ErrorHandled::Reported(err.emit().into(), span)
         }
     }

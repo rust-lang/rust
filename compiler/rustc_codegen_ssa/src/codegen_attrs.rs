@@ -303,14 +303,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         // This exception needs to be kept in sync with allowing
                         // `#[target_feature]` on `main` and `start`.
                     } else if !tcx.features().target_feature_11 {
-                        let mut err = feature_err(
+                        feature_err(
                             &tcx.sess.parse_sess,
                             sym::target_feature_11,
                             attr.span,
                             "`#[target_feature(..)]` can only be applied to `unsafe` functions",
-                        );
-                        err.span_label(tcx.def_span(did), "not an `unsafe` function");
-                        err.emit();
+                        )
+                        .span_label(tcx.def_span(did), "not an `unsafe` function")
+                        .emit();
                     } else {
                         check_target_feature_trait_unsafe(tcx, did, attr.span);
                     }
@@ -489,7 +489,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         "invalid argument"
                     )
                     .help("valid inline arguments are `always` and `never`")
-                    .emit();
+                    .emit1();
 
                     InlineAttr::None
                 }
@@ -672,7 +672,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
             tcx.sess
                 .struct_span_err(attr.span, msg)
                 .note("the value may not exceed `u16::MAX`")
-                .emit();
+                .emit1();
             None
         }
     } else {

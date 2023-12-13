@@ -129,7 +129,7 @@ pub fn is_const_evaluatable<'tcx>(
                         "#![feature(generic_const_exprs)]\n",
                         rustc_errors::Applicability::MaybeIncorrect,
                     )
-                    .emit()
+                    .emit1()
             }
 
             Err(ErrorHandled::TooGeneric(_)) => {

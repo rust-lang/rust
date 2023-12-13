@@ -1152,7 +1152,7 @@ impl<'a> ExtCtxt<'a> {
         for (span, notes) in self.expansions.iter() {
             let mut db = self.sess.parse_sess.create_note(errors::TraceMacro { span: *span });
             for note in notes {
-                db.note(note.clone());
+                db = db.note(note.clone());
             }
             db.emit();
         }
@@ -1241,7 +1241,7 @@ pub fn expr_to_spanned_string<'a>(
             Ok(ast::LitKind::ByteStr(..)) => {
                 let mut err = cx.struct_span_err(expr.span, err_msg);
                 let span = expr.span.shrink_to_lo();
-                err.span_suggestion(
+                err = err.span_suggestion(
                     span.with_hi(span.lo() + BytePos(1)),
                     "consider removing the leading `b`",
                     "",
@@ -1271,7 +1271,7 @@ pub fn expr_to_string(
 ) -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| {
-            err.map(|(mut err, _)| {
+            err.map(|(err, _)| {
                 err.emit();
             })
         })
@@ -1293,7 +1293,7 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str
 pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
     match p.parse_expr() {
         Ok(e) => return Some(e),
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
         }
     }

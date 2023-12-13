@@ -63,30 +63,32 @@ impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
         self,
         handler: &Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::trait_selection_negative_positive_conflict);
-        diag.set_arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
-        diag.set_arg(
-            "self_desc",
-            self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()),
-        );
-        diag.set_span(self.impl_span);
-        diag.code(rustc_errors::error_code!(E0751));
+        let mut diag = handler
+            .struct_err(fluent::trait_selection_negative_positive_conflict)
+            .set_arg("trait_desc", self.trait_desc.print_only_trait_path().to_string())
+            .set_arg(
+                "self_desc",
+                self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()),
+            )
+            .set_span(self.impl_span)
+            .code(rustc_errors::error_code!(E0751));
         match self.negative_impl_span {
             Ok(span) => {
-                diag.span_label(span, fluent::trait_selection_negative_implementation_here);
+                diag = diag.span_label(span, fluent::trait_selection_negative_implementation_here);
             }
             Err(cname) => {
-                diag.note(fluent::trait_selection_negative_implementation_in_crate);
-                diag.set_arg("negative_impl_cname", cname.to_string());
+                diag = diag
+                    .note(fluent::trait_selection_negative_implementation_in_crate)
+                    .set_arg("negative_impl_cname", cname.to_string());
             }
         }
         match self.positive_impl_span {
             Ok(span) => {
-                diag.span_label(span, fluent::trait_selection_positive_implementation_here);
+                diag = diag.span_label(span, fluent::trait_selection_positive_implementation_here);
             }
             Err(cname) => {
-                diag.note(fluent::trait_selection_positive_implementation_in_crate);
-                diag.set_arg("positive_impl_cname", cname.to_string());
+                diag = diag.note(fluent::trait_selection_positive_implementation_in_crate);
+                diag = diag.set_arg("positive_impl_cname", cname.to_string());
             }
         }
         diag

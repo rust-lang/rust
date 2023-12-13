@@ -1412,7 +1412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty.normalized.sort_string(self.tcx)
                 )
                 .span_label(path_span, "not a struct")
-                .emit(),
+                .emit1(),
             })
         }
     }
@@ -1486,8 +1486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
-            if let Some(mut err) =
-                self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
+            if let Some(err) = self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
             {
                 err.emit();
             }

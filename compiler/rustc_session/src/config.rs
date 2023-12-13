@@ -2498,7 +2498,7 @@ pub fn parse_externs(
             ));
             let adjusted_name = name.replace('-', "_");
             if is_ascii_ident(&adjusted_name) {
-                error.help(format!(
+                error = error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
                 ));
             }

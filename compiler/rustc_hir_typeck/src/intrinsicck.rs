@@ -77,7 +77,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .note(format!("source type: {from}"))
                     .note(format!("target type: {to}"))
                     .help("cast with `as` to a pointer instead")
-                    .emit();
+                    .emit1();
                 return;
             }
         }
@@ -125,11 +125,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
             if let Err(LayoutError::ReferencesError(_)) = sk_from {
-                err.delay_as_bug();
+                err.delay_as_bug1();
             } else if let Err(LayoutError::ReferencesError(_)) = sk_to {
-                err.delay_as_bug();
+                err.delay_as_bug1();
             }
         }
-        err.emit();
+        err.emit1();
     }
 }

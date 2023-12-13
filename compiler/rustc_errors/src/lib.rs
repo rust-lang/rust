@@ -754,9 +754,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn(msg);
-        result.set_span(span);
-        result
+        self.struct_warn(msg).set_span(span)
     }
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
@@ -772,9 +770,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         id: LintExpectationId,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn_with_expectation(msg, id);
-        result.set_span(span);
-        result
+        self.struct_warn_with_expectation(msg, id).set_span(span)
     }
 
     /// Construct a builder at the `Allow` level at the given `span` and with the `msg`.
@@ -785,9 +781,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_allow(msg);
-        result.set_span(span);
-        result
+        self.struct_allow(msg).set_span(span)
     }
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
@@ -800,9 +794,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_span_warn(span, msg);
-        result.code(code);
-        result
+        self.struct_span_warn(span, msg).code(code)
     }
 
     /// Construct a builder at the `Warning` level with the `msg`.
@@ -857,9 +849,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut result = self.struct_err(msg);
-        result.set_span(span);
-        result
+        self.struct_err(msg).set_span(span)
     }
 
     /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
@@ -871,9 +861,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut result = self.struct_span_err(span, msg);
-        result.code(code);
-        result
+        self.struct_span_err(span, msg).code(code)
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
@@ -902,9 +890,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut result = self.struct_err(msg);
-        result.code(code);
-        result
+        self.struct_err(msg).code(code)
     }
 
     /// Construct a builder at the `Warn` level with the `msg` and the `code`.
@@ -915,9 +901,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn(msg);
-        result.code(code);
-        result
+        self.struct_warn(msg).code(code)
     }
 
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
@@ -928,9 +912,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, !> {
-        let mut result = self.struct_fatal(msg);
-        result.set_span(span);
-        result
+        self.struct_fatal(msg).set_span(span)
     }
 
     /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
@@ -942,9 +924,7 @@ impl Handler {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, !> {
-        let mut result = self.struct_span_fatal(span, msg);
-        result.code(code);
-        result
+        self.struct_span_fatal(span, msg).code(code)
     }
 
     /// Construct a builder at the `Fatal` level with the `msg`.
@@ -1099,9 +1079,8 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut db = DiagnosticBuilder::new(self, Note, msg);
-        db.set_span(span);
-        db
+        // njn: this didn't follow the usual pattern; fix in precursor?
+        self.struct_note(msg).set_span(span)
     }
 
     #[rustc_lint_diagnostics]
@@ -1588,7 +1567,7 @@ impl HandlerInner {
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
         self.emit_diagnostic(Diagnostic::new(Bug, msg.into()).set_span(sp));
         panic::panic_any(ExplicitBug);
- 
+
         //// njn: ?
         //let mut db = DiagnosticBuilder::new(self, Bug, msg.into());
         //db.set_span(sp);
@@ -1830,19 +1809,21 @@ pub fn add_elided_lifetime_in_path_suggestion(
 }
 
 pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(
-    db: &mut DiagnosticBuilder<'a, G>,
+    mut db: DiagnosticBuilder<'a, G>,
     ambiguity: rustc_lint_defs::AmbiguityErrorDiag,
-) {
-    db.span_label(ambiguity.label_span, ambiguity.label_msg);
-    db.note(ambiguity.note_msg);
-    db.span_note(ambiguity.b1_span, ambiguity.b1_note_msg);
+) -> DiagnosticBuilder<'a, G> {
+    db = db
+        .span_label(ambiguity.label_span, ambiguity.label_msg)
+        .note(ambiguity.note_msg)
+        .span_note(ambiguity.b1_span, ambiguity.b1_note_msg);
     for help_msg in ambiguity.b1_help_msgs {
-        db.help(help_msg);
+        db = db.help(help_msg)
     }
-    db.span_note(ambiguity.b2_span, ambiguity.b2_note_msg);
+    db = db.span_note(ambiguity.b2_span, ambiguity.b2_note_msg);
     for help_msg in ambiguity.b2_help_msgs {
-        db.help(help_msg);
+        db = db.help(help_msg);
     }
+    db
 }
 
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]

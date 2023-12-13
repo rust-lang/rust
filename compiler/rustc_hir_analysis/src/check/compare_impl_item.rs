@@ -1112,7 +1112,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                             "hidden type must only reference lifetimes captured by this impl trait",
                         )
                         .note(format!("hidden type inferred to be `{}`", self.ty))
-                        .emit()
+                        .emit1()
                 }
                 _ => {
                     self.tcx.sess.span_delayed_bug(DUMMY_SP, "should've been able to remap region")

@@ -243,6 +243,7 @@ pub fn explain_lint_level_source(
     }
 }
 
+/// njn: see  #118727 by compiler-errors
 /// The innermost function for emitting lints.
 ///
 /// If you are looking to implement a lint, look for higher level functions,
@@ -284,9 +285,7 @@ pub fn struct_lint_level(
     src: LintLevelSource,
     span: Option<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
-    decorate: impl for<'a, 'b> FnOnce(
-        &'b mut DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut DiagnosticBuilder<'a, ()>,
+    decorate: impl for<'a, 'b> FnOnce(DiagnosticBuilder<'a, ()>) -> DiagnosticBuilder<'a, ()>,
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
@@ -299,10 +298,7 @@ pub fn struct_lint_level(
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
         decorate: Box<
-            dyn '_
-                + for<'a, 'b> FnOnce(
-                    &'b mut DiagnosticBuilder<'a, ()>,
-                ) -> &'b mut DiagnosticBuilder<'a, ()>,
+            dyn '_ + for<'a, 'b> FnOnce(DiagnosticBuilder<'a, ()>) -> DiagnosticBuilder<'a, ()>,
         >,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
@@ -350,14 +346,12 @@ pub fn struct_lint_level(
             (Level::Warn | Level::ForceWarn(None), Some(span)) => sess.struct_span_warn(span, ""),
             (Level::Warn | Level::ForceWarn(None), None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => {
-                let mut builder = sess.diagnostic().struct_err_lint("");
-                builder.set_span(span);
-                builder
+                sess.diagnostic().struct_err_lint("").set_span(span)
             }
             (Level::Deny | Level::Forbid, None) => sess.diagnostic().struct_err_lint(""),
         };
 
-        err.set_is_lint();
+        err = err.set_is_lint();
 
         // If this code originates in a foreign macro, aka something that this crate
         // did not itself author, then it's likely that there's nothing this crate
@@ -365,7 +359,7 @@ pub fn struct_lint_level(
         if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
             // Any suggestions made here are likely to be incorrect, so anything we
             // emit shouldn't be automatically fixed by rustfix.
-            err.disable_suggestions();
+            err = err.disable_suggestions();
 
             // If this is a future incompatible that is not an edition fixing lint
             // it'll become a hard error, so we have to emit *something*. Also,
@@ -384,7 +378,7 @@ pub fn struct_lint_level(
 
         // Delay evaluating and setting the primary message until after we've
         // suppressed the lint due to macros.
-        err.set_primary_message(msg);
+        err = err.set_primary_message(msg);
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.
@@ -392,16 +386,15 @@ pub fn struct_lint_level(
         // the `Diagnostic`.
         if let Level::Expect(_) = level {
             let name = lint.name_lower();
-            err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn: false });
-
-            decorate(&mut err);
+            err = err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn: false });
+            err = decorate(err);
             err.emit();
             return;
         }
 
         let name = lint.name_lower();
         let is_force_warn = matches!(level, Level::ForceWarn(_));
-        err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
+        err = err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 
         if let Some(future_incompatible) = future_incompatible {
             let explanation = match future_incompatible.reason {
@@ -427,18 +420,18 @@ pub fn struct_lint_level(
             };
 
             if future_incompatible.explain_reason {
-                err.warn(explanation);
+                err = err.warn(explanation);
             }
             if !future_incompatible.reference.is_empty() {
                 let citation =
                     format!("for more information, see {}", future_incompatible.reference);
-                err.note(citation);
+                err = err.note(citation);
             }
         }
 
         // Finally, run `decorate`.
-        decorate(&mut err);
-        explain_lint_level_source(lint, level, src, &mut *err);
+        err = decorate(err);
+        explain_lint_level_source(lint, level, src, &mut err);
         err.emit()
     }
     struct_lint_level_impl(sess, lint, level, src, span, msg, Box::new(decorate))

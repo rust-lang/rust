@@ -1720,7 +1720,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .struct_span_err_with_code(span, msg, rustc_errors::error_code!(E0624))
                 .span_label(span, format!("private {kind}"))
                 .span_label(def_span, format!("{kind} defined here"))
-                .emit();
+                .emit1();
         }
         tcx.check_stability(item, Some(block), span, None);
     }

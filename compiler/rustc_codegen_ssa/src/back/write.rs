@@ -1864,7 +1864,7 @@ impl SharedEmitterMain {
                     if cookie != 0 {
                         let pos = BytePos::from_u32(cookie);
                         let span = Span::with_root_ctxt(pos, pos);
-                        err.set_span(span);
+                        err = err.set_span(span);
                     };
 
                     // Point to the generated assembly if it is available.
@@ -1881,7 +1881,7 @@ impl SharedEmitterMain {
                                 )
                             })
                             .collect();
-                        err.span_note(spans, "instantiated into assembly here");
+                        err = err.span_note(spans, "instantiated into assembly here");
                     }
 
                     err.emit();

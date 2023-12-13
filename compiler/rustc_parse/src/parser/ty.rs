@@ -310,7 +310,7 @@ impl<'a> Parser<'a> {
                     let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
                     let kind =
                         self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?;
-                    let mut err = self.sess.create_err(errors::TransposeDynOrImpl {
+                    let err = self.sess.create_err(errors::TransposeDynOrImpl {
                         span: kw.span,
                         kw: kw.name.as_str(),
                         sugg: errors::TransposeDynOrImplSugg {
@@ -363,8 +363,9 @@ impl<'a> Parser<'a> {
             }
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
-            let mut err = self.struct_span_err(self.token.span, msg);
-            err.span_label(self.token.span, "expected type");
+            let err = self
+                .struct_span_err(self.token.span, msg)
+                .span_label(self.token.span, "expected type");
             return Err(err);
         };
 
@@ -497,7 +498,7 @@ impl<'a> Parser<'a> {
     fn parse_array_or_slice_ty(&mut self) -> PResult<'a, TyKind> {
         let elt_ty = match self.parse_ty() {
             Ok(ty) => ty,
-            Err(mut err)
+            Err(err)
                 if self.look_ahead(1, |t| t.kind == token::CloseDelim(Delimiter::Bracket))
                     | self.look_ahead(1, |t| t.kind == token::Semi) =>
             {
@@ -954,7 +955,7 @@ impl<'a> Parser<'a> {
                     _ => return Err(err),
                 };
 
-                err.span_suggestion_verbose(span, message, sugg, applicability);
+                err = err.span_suggestion_verbose(span, message, sugg, applicability);
 
                 path.clone()
             } else {
@@ -1116,19 +1117,18 @@ impl<'a> Parser<'a> {
         lifetime_defs.append(&mut generic_params);
 
         let generic_args_span = generic_args.span();
-        let mut err =
-            self.struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters");
         let snippet = format!(
             "for<{}> ",
             lifetimes.iter().map(|lt| lt.ident.as_str()).intersperse(", ").collect::<String>(),
         );
         let before_fn_path = fn_path.span.shrink_to_lo();
-        err.multipart_suggestion(
-            "consider using a higher-ranked trait bound instead",
-            vec![(generic_args_span, "".to_owned()), (before_fn_path, snippet)],
-            Applicability::MaybeIncorrect,
-        )
-        .emit();
+        self.struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters")
+            .multipart_suggestion(
+                "consider using a higher-ranked trait bound instead",
+                vec![(generic_args_span, "".to_owned()), (before_fn_path, snippet)],
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
         Ok(())
     }
 

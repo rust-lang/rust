@@ -1670,8 +1670,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         E0637,
                         "{}",
                         msg,
-                    );
-                    diag.span_label(lifetime.ident.span, note);
+                    )
+                    .span_label(lifetime.ident.span, note);
                     if elided {
                         for rib in self.lifetime_ribs[i..].iter().rev() {
                             if let LifetimeRibKind::Generics {
@@ -1680,7 +1680,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 ..
                             } = &rib.kind
                             {
-                                diag.multipart_suggestion(
+                                diag = diag.multipart_suggestion(
                                     "consider introducing a higher-ranked lifetime here",
                                     vec![
                                         (span.shrink_to_lo(), "for<'a> ".into()),
@@ -2605,7 +2605,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     "`'_` cannot be used here"
                 )
                 .span_label(param.ident.span, "`'_` is a reserved lifetime name")
-                .emit();
+                .emit1();
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;
@@ -2620,7 +2620,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     param.ident,
                 )
                 .span_label(param.ident.span, "'static is a reserved lifetime name")
-                .emit();
+                .emit1();
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;

@@ -400,7 +400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!("evaluate({predicate:?}) = {result:?}"),
                             )
                             .span_label(predicate_span, "predicate")
-                            .emit();
+                            .emit1();
                     }
                 }
                 (fn_sig, Some(def_id))

@@ -215,7 +215,7 @@ fn expand_macro<'cx>(
             // rhs has holes ( `$id` and `$(...)` that need filled)
             let mut tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
                 Ok(tts) => tts,
-                Err(mut err) => {
+                Err(err) => {
                     err.emit();
                     return DummyResult::any(arm_span);
                 }
@@ -475,8 +475,7 @@ pub fn compile_declarative_macro(
 
                 let s = parse_failure_msg(&token);
                 let sp = token.span.substitute_dummy(def.span);
-                let mut err = sess.diagnostic().struct_span_err(sp, s);
-                err.span_label(sp, msg);
+                let mut err = sess.diagnostic().struct_span_err(sp, s).span_label(sp, msg);
                 annotate_doc_comment(&mut err, sess.source_map(), sp);
                 err.emit();
                 return dummy_syn_ext();
@@ -1194,7 +1193,8 @@ fn check_matcher_core<'tt>(
                                     may_be = may_be
                                 ),
                             );
-                            err.span_label(sp, format!("not allowed after `{kind}` fragments"));
+                            err =
+                                err.span_label(sp, format!("not allowed after `{kind}` fragments"));
 
                             if kind == NonterminalKind::PatWithOr
                                 && sess.edition.at_least_rust_2021()
@@ -1205,7 +1205,7 @@ fn check_matcher_core<'tt>(
                                     name,
                                     Some(NonterminalKind::PatParam { inferred: false }),
                                 ));
-                                err.span_suggestion(
+                                err = err.span_suggestion(
                                     span,
                                     "try a `pat_param` fragment specifier instead",
                                     suggestion,
@@ -1217,12 +1217,12 @@ fn check_matcher_core<'tt>(
                             match possible {
                                 &[] => {}
                                 &[t] => {
-                                    err.note(format!(
+                                    err = err.note(format!(
                                         "only {t} is allowed after `{kind}` fragments",
                                     ));
                                 }
                                 ts => {
-                                    err.note(format!(
+                                    err = err.note(format!(
                                         "{}{} or {}",
                                         msg,
                                         ts[..ts.len() - 1].to_vec().join(", "),

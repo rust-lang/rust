@@ -120,19 +120,18 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |lint| {
-        lint.set_arg("name", symbol);
-        lint.note(fluent::lint_note);
-        lint.note(fluent::lint_more_info_note);
+    cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |mut lint| {
+        lint =
+            lint.set_arg("name", symbol).note(fluent::lint_note).note(fluent::lint_more_info_note);
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
             return lint;
         }
         if arg_macro.is_some_and(|id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
-            lint.note(fluent::lint_supports_fmt_note);
+            lint = lint.note(fluent::lint_supports_fmt_note);
             if let Some((open, close, _)) = find_delimiters(cx, arg_span) {
-                lint.multipart_suggestion(
+                lint = lint.multipart_suggestion(
                     fluent::lint_supports_fmt_suggestion,
                     vec![
                         (arg_span.until(open.shrink_to_hi()), "".into()),
@@ -173,15 +172,15 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             };
 
             if suggest_display {
-                lint.span_suggestion_verbose(
+                lint = lint.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
                     fluent::lint_display_suggestion,
                     "\"{}\", ",
                     fmt_applicability,
                 );
             } else if suggest_debug {
-                lint.set_arg("ty", ty);
-                lint.span_suggestion_verbose(
+                lint = lint.set_arg("ty", ty);
+                lint = lint.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
                     fluent::lint_debug_suggestion,
                     "\"{:?}\", ",
@@ -191,8 +190,8 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
             if suggest_panic_any {
                 if let Some((open, close, del)) = find_delimiters(cx, span) {
-                    lint.set_arg("already_suggested", suggest_display || suggest_debug);
-                    lint.multipart_suggestion(
+                    lint = lint.set_arg("already_suggested", suggest_display || suggest_debug);
+                    lint = lint.multipart_suggestion(
                         fluent::lint_panic_suggestion,
                         if del == '(' {
                             vec![(span.until(open), "std::panic::panic_any".into())]

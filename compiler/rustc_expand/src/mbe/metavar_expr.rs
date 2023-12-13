@@ -48,13 +48,13 @@ impl MetaVarExpr {
             "length" => MetaVarExpr::Length(parse_depth(&mut iter, sess, ident.span)?),
             _ => {
                 let err_msg = "unrecognized meta-variable expression";
-                let mut err = sess.span_diagnostic.struct_span_err(ident.span, err_msg);
-                err.span_suggestion(
-                    ident.span,
-                    "supported expressions are count, ignore, index and length",
-                    "",
-                    Applicability::MachineApplicable,
-                );
+                let err =
+                    sess.span_diagnostic.struct_span_err(ident.span, err_msg).span_suggestion(
+                        ident.span,
+                        "supported expressions are count, ignore, index and length",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
                 return Err(err);
             }
         };
@@ -76,10 +76,10 @@ fn check_trailing_token<'sess>(
     sess: &'sess ParseSess,
 ) -> PResult<'sess, ()> {
     if let Some(tt) = iter.next() {
-        let mut diag = sess
+        let diag = sess
             .span_diagnostic
-            .struct_span_err(tt.span(), format!("unexpected token: {}", pprust::tt_to_string(tt)));
-        diag.span_note(tt.span(), "meta-variable expression must not have trailing tokens");
+            .struct_span_err(tt.span(), format!("unexpected token: {}", pprust::tt_to_string(tt)))
+            .span_note(tt.span(), "meta-variable expression must not have trailing tokens");
         Err(diag)
     } else {
         Ok(())
@@ -143,15 +143,15 @@ fn parse_ident<'sess>(
             return Ok(elem);
         }
         let token_str = pprust::token_to_string(token);
-        let mut err = sess
+        let err = sess
             .span_diagnostic
-            .struct_span_err(span, format!("expected identifier, found `{}`", &token_str));
-        err.span_suggestion(
-            token.span,
-            format!("try removing `{}`", &token_str),
-            "",
-            Applicability::MaybeIncorrect,
-        );
+            .struct_span_err(span, format!("expected identifier, found `{}`", &token_str))
+            .span_suggestion(
+                token.span,
+                format!("try removing `{}`", &token_str),
+                "",
+                Applicability::MaybeIncorrect,
+            );
         return Err(err);
     }
     Err(sess.span_diagnostic.struct_span_err(span, "expected identifier"))

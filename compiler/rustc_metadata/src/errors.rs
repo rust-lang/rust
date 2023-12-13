@@ -500,13 +500,14 @@ impl IntoDiagnostic<'_> for MultipleCandidates {
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::metadata_multiple_candidates);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("flavor", self.flavor);
-        diag.code(error_code!(E0464));
-        diag.set_span(self.span);
+        let mut diag = handler
+            .struct_err(fluent::metadata_multiple_candidates)
+            .set_arg("crate_name", self.crate_name)
+            .set_arg("flavor", self.flavor)
+            .code(error_code!(E0464))
+            .set_span(self.span);
         for (i, candidate) in self.candidates.iter().enumerate() {
-            diag.note(format!("candidate #{}: {}", i + 1, candidate.display()));
+            diag = diag.note(format!("candidate #{}: {}", i + 1, candidate.display()));
         }
         diag
     }
@@ -599,13 +600,14 @@ impl IntoDiagnostic<'_> for InvalidMetadataFiles {
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::metadata_invalid_meta_files);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("add_info", self.add_info);
-        diag.code(error_code!(E0786));
-        diag.set_span(self.span);
+        let mut diag = handler
+            .struct_err(fluent::metadata_invalid_meta_files)
+            .set_arg("crate_name", self.crate_name)
+            .set_arg("add_info", self.add_info)
+            .code(error_code!(E0786))
+            .set_span(self.span);
         for crate_rejection in self.crate_rejections {
-            diag.note(crate_rejection);
+            diag = diag.note(crate_rejection);
         }
         diag
     }
@@ -629,31 +631,32 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::metadata_cannot_find_crate);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("current_crate", self.current_crate);
-        diag.set_arg("add_info", self.add_info);
-        diag.set_arg("locator_triple", self.locator_triple.triple());
-        diag.code(error_code!(E0463));
-        diag.set_span(self.span);
+        let mut diag = handler
+            .struct_err(fluent::metadata_cannot_find_crate)
+            .set_arg("crate_name", self.crate_name)
+            .set_arg("current_crate", self.current_crate)
+            .set_arg("add_info", self.add_info)
+            .set_arg("locator_triple", self.locator_triple.triple())
+            .code(error_code!(E0463))
+            .set_span(self.span);
         if (self.crate_name == sym::std || self.crate_name == sym::core)
             && self.locator_triple != TargetTriple::from_triple(config::host_triple())
         {
             if self.missing_core {
-                diag.note(fluent::metadata_target_not_installed);
+                diag = diag.note(fluent::metadata_target_not_installed);
             } else {
-                diag.note(fluent::metadata_target_no_std_support);
+                diag = diag.note(fluent::metadata_target_no_std_support);
             }
 
             if self.missing_core {
                 if env!("CFG_RELEASE_CHANNEL") == "dev" && !self.is_ui_testing {
                     // Note: Emits the nicer suggestion only for the dev channel.
-                    diag.help(fluent::metadata_consider_adding_std);
+                    diag = diag.help(fluent::metadata_consider_adding_std);
                 } else {
                     // NOTE: this suggests using rustup, even though the user may not have it installed.
                     // That's because they could choose to install it; or this may give them a hint which
                     // target they need to install from their distro.
-                    diag.help(fluent::metadata_consider_downloading_target);
+                    diag = diag.help(fluent::metadata_consider_downloading_target);
                 }
             }
 
@@ -662,18 +665,17 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
             // If it's not a dummy, that means someone added `extern crate std` explicitly and
             // `#![no_std]` won't help.
             if !self.missing_core && self.span.is_dummy() {
-                diag.note(fluent::metadata_std_required);
+                diag = diag.note(fluent::metadata_std_required);
             }
             if self.is_nightly_build {
-                diag.help(fluent::metadata_consider_building_std);
+                diag = diag.help(fluent::metadata_consider_building_std);
             }
         } else if self.crate_name == self.profiler_runtime {
-            diag.note(fluent::metadata_compiler_missing_profiler);
+            diag = diag.note(fluent::metadata_compiler_missing_profiler);
         } else if self.crate_name.as_str().starts_with("rustc_") {
-            diag.help(fluent::metadata_install_missing_components);
+            diag = diag.help(fluent::metadata_install_missing_components);
         }
-        diag.span_label(self.span, fluent::metadata_cant_find_crate);
-        diag
+        diag.span_label(self.span, fluent::metadata_cant_find_crate)
     }
 }
 

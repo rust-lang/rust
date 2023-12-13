@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_catch_underscore(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
         match self.parse_expr_res(restrictions, None) {
             Ok(expr) => Ok(expr),
-            Err(mut err) => match self.token.ident() {
+            Err(err) => match self.token.ident() {
                 Some((Ident { name: kw::Underscore, .. }, false))
                     if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
@@ -1270,12 +1270,12 @@ impl<'a> Parser<'a> {
                                 },
                             }
                             .into_diagnostic(self.diagnostic());
-                            replacement_err.emit();
+                            replacement_err.emit1();
 
                             let old_err = mem::replace(err, replacement_err);
                             old_err.cancel();
                         } else {
-                            err.emit();
+                            err.emit1();
                         }
                         return Some(self.mk_expr_err(span));
                     }
@@ -1368,7 +1368,7 @@ impl<'a> Parser<'a> {
                     // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                     // then suggest parens around the lhs.
                     if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
-                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                        err = err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                     }
                     err
                 })
@@ -1398,24 +1398,17 @@ impl<'a> Parser<'a> {
                 this.parse_expr_labeled(label, true)
             } else if this.eat_keyword(kw::Loop) {
                 let sp = this.prev_token.span;
-                this.parse_expr_loop(None, this.prev_token.span).map_err(|mut err| {
-                    err.span_label(sp, "while parsing this `loop` expression");
-                    err
-                })
+                this.parse_expr_loop(None, this.prev_token.span)
+                    .map_err(|err| err.span_label(sp, "while parsing this `loop` expression"))
             } else if this.eat_keyword(kw::Match) {
                 let match_sp = this.prev_token.span;
-                this.parse_expr_match().map_err(|mut err| {
-                    err.span_label(match_sp, "while parsing this `match` expression");
-                    err
+                this.parse_expr_match().map_err(|err| {
+                    err.span_label(match_sp, "while parsing this `match` expression")
                 })
             } else if this.eat_keyword(kw::Unsafe) {
                 let sp = this.prev_token.span;
-                this.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided)).map_err(
-                    |mut err| {
-                        err.span_label(sp, "while parsing this `unsafe` expression");
-                        err
-                    },
-                )
+                this.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided))
+                    .map_err(|err| err.span_label(sp, "while parsing this `unsafe` expression"))
             } else if this.check_inline_const(0) {
                 this.parse_const_block(lo.to(this.token.span), false)
             } else if this.may_recover() && this.is_do_catch_block() {
@@ -1543,7 +1536,12 @@ impl<'a> Parser<'a> {
                 // directly adjacent (i.e. '=<')
                 if maybe_eq_tok.kind == TokenKind::Eq && maybe_eq_tok.span.hi() == lt_span.lo() {
                     let eq_lt = maybe_eq_tok.span.to(lt_span);
-                    err.span_suggestion(eq_lt, "did you mean", "<=", Applicability::Unspecified);
+                    err = err.span_suggestion(
+                        eq_lt,
+                        "did you mean",
+                        "<=",
+                        Applicability::Unspecified,
+                    );
                 }
                 err
             })?;
@@ -1691,7 +1689,7 @@ impl<'a> Parser<'a> {
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a, ErrorGuaranteed>,
     ) -> L {
-        if let Some(mut diag) =
+        if let Some(diag) =
             self.diagnostic().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
         {
             diag.span_suggestion_verbose(
@@ -1957,9 +1955,9 @@ impl<'a> Parser<'a> {
             && let token::NtExpr(e) | token::NtLiteral(e) = &nt.0
             && matches!(e.kind, ExprKind::Err)
         {
-            let mut err = errors::InvalidInterpolatedExpression { span: self.token.span }
-                .into_diagnostic(self.diagnostic());
-            err.downgrade_to_delayed_bug();
+            let err = errors::InvalidInterpolatedExpression { span: self.token.span }
+                .into_diagnostic(self.diagnostic())
+                .downgrade_to_delayed_bug();
             return Err(err);
         }
         let token = self.token.clone();
@@ -2456,7 +2454,7 @@ impl<'a> Parser<'a> {
                             && let maybe_let = self.look_ahead(1, |t| t.clone())
                             && maybe_let.is_keyword(kw::Let)
                         {
-                            err.span_suggestion(
+                            err = err.span_suggestion(
                                 self.prev_token.span,
                                 "consider removing this semicolon to parse the `let` as part of the same chain",
                                 "",
@@ -2466,7 +2464,7 @@ impl<'a> Parser<'a> {
                                 "you likely meant to continue parsing the let-chain starting here",
                             );
                         } else {
-                            err.span_note(
+                            err = err.span_note(
                                 cond_span,
                                 "the `if` expression is missing a block after this condition",
                             );
@@ -2738,14 +2736,12 @@ impl<'a> Parser<'a> {
 
     /// Parses a `while` or `while let` expression (`while` token already eaten).
     fn parse_expr_while(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
-        let cond = self.parse_expr_cond().map_err(|mut err| {
-            err.span_label(lo, "while parsing the condition of this `while` expression");
-            err
+        let cond = self.parse_expr_cond().map_err(|err| {
+            err.span_label(lo, "while parsing the condition of this `while` expression")
         })?;
-        let (attrs, body) = self.parse_inner_attrs_and_block().map_err(|mut err| {
-            err.span_label(lo, "while parsing the body of this `while` expression");
-            err.span_label(cond.span, "this `while` condition successfully parsed");
-            err
+        let (attrs, body) = self.parse_inner_attrs_and_block().map_err(|err| {
+            err.span_label(lo, "while parsing the body of this `while` expression")
+                .span_label(cond.span, "this `while` condition successfully parsed")
         })?;
 
         self.recover_loop_else("while", lo)?;
@@ -2783,7 +2779,7 @@ impl<'a> Parser<'a> {
         let scrutinee = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
         if let Err(mut e) = self.expect(&token::OpenDelim(Delimiter::Brace)) {
             if self.token == token::Semi {
-                e.span_suggestion_short(
+                e = e.span_suggestion_short(
                     match_span,
                     "try removing this `match`",
                     "",
@@ -2803,7 +2799,7 @@ impl<'a> Parser<'a> {
         while self.token != token::CloseDelim(Delimiter::Brace) {
             match self.parse_arm() {
                 Ok(arm) => arms.push(arm),
-                Err(mut e) => {
+                Err(e) => {
                     // Recover by skipping to the end of the block.
                     e.emit();
                     self.recover_stmt();
@@ -2931,7 +2927,7 @@ impl<'a> Parser<'a> {
                 if let Err(mut err) = this.expect(&token::FatArrow) {
                     // We might have a `=>` -> `=` or `->` typo (issue #89396).
                     if is_almost_fat_arrow {
-                        err.span_suggestion(
+                        err = err.span_suggestion(
                             this.token.span,
                             "use a fat arrow to start a match arm",
                             "=>",
@@ -2955,11 +2951,9 @@ impl<'a> Parser<'a> {
                 let arrow_span = this.prev_token.span;
                 let arm_start_span = this.token.span;
 
-                let expr =
-                    this.parse_expr_res(Restrictions::STMT_EXPR, None).map_err(|mut err| {
-                        err.span_label(arrow_span, "while parsing the `match` arm starting here");
-                        err
-                    })?;
+                let expr = this.parse_expr_res(Restrictions::STMT_EXPR, None).map_err(|err| {
+                    err.span_label(arrow_span, "while parsing the `match` arm starting here")
+                })?;
 
                 let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
                     && this.token != token::CloseDelim(Delimiter::Brace);
@@ -2995,7 +2989,7 @@ impl<'a> Parser<'a> {
                                     //   |      - ^^ self.token.span
                                     //   |      |
                                     //   |      parsed until here as `"y" & X`
-                                    err.span_suggestion_short(
+                                    err = err.span_suggestion_short(
                                         arm_start_span.shrink_to_hi(),
                                         "missing a comma here to end this `match` arm",
                                         ",",
@@ -3003,7 +2997,7 @@ impl<'a> Parser<'a> {
                                     );
                                 }
                             } else {
-                                err.span_label(
+                                err = err.span_label(
                                     arrow_span,
                                     "while parsing the `match` arm starting here",
                                 );
@@ -3176,7 +3170,12 @@ impl<'a> Parser<'a> {
                         } else {
                             Applicability::MaybeIncorrect
                         };
-                        err.span_suggestion_verbose(sugg_sp, msg, "=> ".to_string(), applicability);
+                        err = err.span_suggestion_verbose(
+                            sugg_sp,
+                            msg,
+                            "=> ".to_string(),
+                            applicability,
+                        );
                     }
                 }
                 err
@@ -3325,7 +3324,7 @@ impl<'a> Parser<'a> {
                 }
                 match self.parse_expr() {
                     Ok(e) => base = ast::StructRest::Base(e),
-                    Err(mut e) if recover => {
+                    Err(e) if recover => {
                         e.emit();
                         self.recover_stmt();
                     }
@@ -3342,7 +3341,7 @@ impl<'a> Parser<'a> {
                     if pth == kw::Async {
                         async_block_err(&mut e, pth.span);
                     } else {
-                        e.span_label(pth.span, "while parsing this struct");
+                        e = e.span_label(pth.span, "while parsing this struct");
                     }
 
                     if let Some((ident, _)) = self.token.ident()
@@ -3354,7 +3353,7 @@ impl<'a> Parser<'a> {
                         })
                     {
                         // Looks like they tried to write a shorthand, complex expression.
-                        e.span_suggestion_verbose(
+                        e = e.span_suggestion_verbose(
                             self.token.span.shrink_to_lo(),
                             "try naming a field",
                             &format!("{ident}: ",),
@@ -3401,10 +3400,10 @@ impl<'a> Parser<'a> {
                     if pth == kw::Async {
                         async_block_err(&mut e, pth.span);
                     } else {
-                        e.span_label(pth.span, "while parsing this struct");
+                        e = e.span_label(pth.span, "while parsing this struct");
                         if let Some(f) = recovery_field {
                             fields.push(f);
-                            e.span_suggestion(
+                            e = e.span_suggestion(
                                 self.prev_token.span.shrink_to_hi(),
                                 "try adding a comma",
                                 ",",

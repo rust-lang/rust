@@ -30,9 +30,7 @@ where
     G: EmissionGuarantee,
 {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
-        let mut diag = self.node.into_diagnostic(handler);
-        diag.set_span(self.span);
-        diag
+        self.node.into_diagnostic(handler).set_span(self.span)
     }
 }
 
@@ -301,6 +299,7 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
     }
 }
 
+// njn: update this comment
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
 /// transparent way. *However,* many of the methods are intended to
@@ -312,12 +311,13 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 macro_rules! forward {
     // Forward pattern for &mut self -> &mut Self
     (
+        // njn: remove the `&mut`s here
         $(#[$attrs:meta])*
         pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)?) -> &mut Self
     ) => {
         $(#[$attrs])*
         #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
+        pub fn $n(mut self, $($name: $ty),*) -> Self {
             self.inner.diagnostic.$n($($name),*);
             self
         }
@@ -367,8 +367,15 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     /// Emit the diagnostic.
     #[track_caller]
-    pub fn emit(&mut self) -> G {
+    // njn: remove as many as possible
+    pub fn emit1(&mut self) -> G {
         G::diagnostic_builder_emit_producing_guarantee(self)
+    }
+
+    /// Emit the diagnostic.
+    #[track_caller]
+    pub fn emit(mut self) -> G {
+        G::diagnostic_builder_emit_producing_guarantee(&mut self)
     }
 
     /// Emit the diagnostic unless `delay` is true,
@@ -376,9 +383,9 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     #[track_caller]
-    pub fn emit_unless(&mut self, delay: bool) -> G {
+    pub fn emit_unless(mut self, delay: bool) -> G {
         if delay {
-            self.downgrade_to_delayed_bug();
+            self = self.downgrade_to_delayed_bug();
         }
         self.emit()
     }
@@ -463,9 +470,15 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn delay_as_bug(&mut self) -> G {
-        self.downgrade_to_delayed_bug();
-        self.emit()
+    pub fn delay_as_bug(self) -> G {
+        self.downgrade_to_delayed_bug().emit()
+    }
+    #[track_caller]
+    // njn: remove as many as possible
+    pub fn delay_as_bug1(&mut self) -> G {
+        // self.downgrade_to_delayed_bug();
+        // self.emit1()
+        panic!("njn: todo");
     }
 
     forward!(

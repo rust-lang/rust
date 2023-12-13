@@ -99,6 +99,7 @@ impl SubdiagnosticDeriveBuilder {
                 }
             }
         });
+        //eprintln!("ret = {}", ret);
         ret
     }
 }

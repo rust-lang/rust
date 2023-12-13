@@ -68,8 +68,7 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
                     ) {
-                        err.note(fluent::parse_note);
-                        err.span_suggestion_verbose(
+                        err = err.note(fluent::parse_note).span_suggestion_verbose(
                             replacement_span,
                             fluent::parse_suggestion,
                             "",
@@ -200,29 +199,26 @@ impl<'a> Parser<'a> {
         if let InnerAttrPolicy::Forbidden(reason) = policy {
             let mut diag = match reason.as_ref().copied() {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
-                    let mut diag = self.struct_span_err(
+                    self.struct_span_err(
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
-                    );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_doc_comment_span, fluent::parse_label_prev_doc_comment);
-                    diag
+                    )
+                    .span_label(attr_sp, fluent::parse_label_attr)
+                    .span_label(prev_doc_comment_span, fluent::parse_label_prev_doc_comment)
                 }
-                Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
-                    let mut diag = self.struct_span_err(
+                Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => self
+                    .struct_span_err(
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_attr,
-                    );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr);
-                    diag
-                }
+                    )
+                    .span_label(attr_sp, fluent::parse_label_attr)
+                    .span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr),
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
                     self.struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
                 }
             };
 
-            diag.note(fluent::parse_inner_attr_explanation);
+            diag = diag.note(fluent::parse_inner_attr_explanation);
             if self
                 .annotate_following_item_if_applicable(
                     &mut diag,
@@ -231,7 +227,7 @@ impl<'a> Parser<'a> {
                 )
                 .is_some()
             {
-                diag.note(fluent::parse_outer_attr_explanation);
+                diag = diag.note(fluent::parse_outer_attr_explanation);
             };
             diag.emit();
         }

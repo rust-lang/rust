@@ -679,7 +679,7 @@ impl TtParser {
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
                         let nt = match parser.to_mut().parse_nonterminal(kind) {
-                            Err(mut err) => {
+                            Err(err) => {
                                 let guarantee = err.span_label(
                                     span,
                                     format!(

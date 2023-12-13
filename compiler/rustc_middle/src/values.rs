@@ -189,7 +189,7 @@ pub fn recursive_type_error(
         }
         s
     };
-    let mut err = struct_span_err!(
+    struct_span_err!(
         tcx.sess,
         err_span,
         E0072,
@@ -197,13 +197,13 @@ pub fn recursive_type_error(
         pluralize!(cycle_len),
         items_list,
         pluralize!("has", cycle_len),
-    );
-    err.multipart_suggestion(
+    )
+    .multipart_suggestion(
         "insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle",
         suggestion,
         Applicability::HasPlaceholders,
-    );
-    err.emit();
+    )
+    .emit();
 }
 
 fn find_item_ty_spans(

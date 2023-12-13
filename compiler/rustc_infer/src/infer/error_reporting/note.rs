@@ -249,7 +249,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if !self.tcx.is_impl_trait_in_trait(impl_item_def_id.to_def_id()) {
                     let trait_item_span = self.tcx.def_span(trait_item_def_id);
                     let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
-                    err.span_label(
+                    err = err.span_label(
                         trait_item_span,
                         format!("definition of `{item_name}` from trait"),
                     );
@@ -285,7 +285,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
         if sub.is_error() || sup.is_error() {
-            err.delay_as_bug();
+            err.delay_as_bug1();
         }
         err
     }
@@ -371,9 +371,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &trace.cause.code().peel_derives()
                 {
                     let span = *span;
-                    let mut err = self.report_concrete_failure(placeholder_origin, sub, sup);
-                    err.span_note(span, "the lifetime requirement is introduced here");
-                    err
+                    self.report_concrete_failure(placeholder_origin, sub, sup)
+                        .span_note(span, "the lifetime requirement is introduced here")
                 } else {
                     unreachable!()
                 }

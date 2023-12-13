@@ -146,7 +146,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
             } else {
                 let mut err = struct_span_err!(self.tcx.sess, diag.span, E0659, "{}", &diag.msg);
-                report_ambiguity_error(&mut err, diag);
+                err = report_ambiguity_error(err, diag);
                 err.emit();
             }
         }
@@ -183,8 +183,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
                 err.emit();
             } else if let Some((span, msg, sugg, appl)) = suggestion {
-                err.span_suggestion_verbose(span, msg, sugg, appl);
-                err.emit();
+                err.span_suggestion_verbose(span, msg, sugg, appl).emit();
             } else if let [segment] = path.as_slice()
                 && is_call
             {
@@ -258,16 +257,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             },
         };
 
-        err.note(format!(
+        err = err.note(format!(
             "`{}` must be defined only once in the {} namespace of this {}",
             name,
             ns.descr(),
             container
         ));
 
-        err.span_label(span, format!("`{name}` re{new_participle} here"));
+        err = err.span_label(span, format!("`{name}` re{new_participle} here"));
         if !old_binding.span.is_dummy() && old_binding.span != span {
-            err.span_label(
+            err = err.span_label(
                 self.tcx.sess.source_map().guess_head_span(old_binding.span),
                 format!("previous {old_noun} of the {old_kind} `{name}` here"),
             );
@@ -324,7 +323,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some((import, _, true)) if should_remove_import && !import.is_glob() => {
                 // Simple case - remove the entire import. Due to the above match arm, this can
                 // only be a single use so just remove it entirely.
-                err.tool_only_span_suggestion(
+                err = err.tool_only_span_suggestion(
                     import.use_span_with_attributes,
                     "remove unnecessary import",
                     "",
@@ -660,10 +659,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     name,
                 );
                 for sp in target_sp {
-                    err.span_label(sp, format!("pattern doesn't bind `{name}`"));
+                    err = err.span_label(sp, format!("pattern doesn't bind `{name}`"));
                 }
                 for sp in origin_sp {
-                    err.span_label(sp, "variable not in all patterns");
+                    err = err.span_label(sp, "variable not in all patterns");
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
@@ -689,7 +688,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             "if you meant to match on a variant or a `const` item, consider \
                              making the path in the pattern qualified: `path::to::ModOrType::{name}`",
                         );
-                        err.span_help(span, help_msg);
+                        err = err.span_help(span, help_msg);
                     }
                     show_candidates(
                         self.tcx,
@@ -784,15 +783,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span }),
             ResolutionError::FailedToResolve { last_segment, label, suggestion, module } => {
                 let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0433, "failed to resolve: {}", &label);
-                err.span_label(span, label);
+                    struct_span_err!(self.tcx.sess, span, E0433, "failed to resolve: {}", &label)
+                .span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
                     if suggestions.is_empty() {
-                        err.help(msg);
-                        return err;
+                        return err.help(msg)
                     }
-                    err.multipart_suggestion(msg, suggestions, applicability);
+                    err = err.multipart_suggestion(msg, suggestions, applicability);
                 }
 
                 if let Some(ModuleOrUniformRoot::Module(module)) = module
@@ -942,16 +940,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 trait_item_span,
                 trait_path,
             } => {
-                let mut err = self.tcx.sess.struct_span_err_with_code(
+                self.tcx.sess.struct_span_err_with_code(
                     span,
                     format!(
                         "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
                     ),
                     code,
-                );
-                err.span_label(span, "does not match trait");
-                err.span_label(trait_item_span, "item in trait");
-                err
+                )
+                .span_label(span, "does not match trait")
+                .span_label(trait_item_span, "item in trait")
             }
             ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => self
                 .tcx
@@ -1699,8 +1696,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Print the primary message.
         let descr = get_descr(binding);
         let mut err =
-            struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
-        err.span_label(ident.span, format!("private {descr}"));
+            struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident)
+                .span_label(ident.span, format!("private {descr}"));
 
         let mut not_publicly_reexported = false;
         if let Some((this_res, outer_ident)) = outermost_res {
@@ -1724,7 +1721,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // If we suggest importing a public re-export, don't point at the definition.
             if point_to_def && ident.span != outer_ident.span {
                 not_publicly_reexported = true;
-                err.span_label(
+                err = err.span_label(
                     outer_ident.span,
                     format!("{} `{outer_ident}` is not publicly re-exported", this_res.descr()),
                 );
@@ -1741,11 +1738,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         {
             non_exhaustive = Some(attr.span);
         } else if let Some(span) = ctor_fields_span {
-            err.span_label(span, "a constructor is private if any of the fields is private");
+            err = err.span_label(span, "a constructor is private if any of the fields is private");
             if let Res::Def(_, d) = res
                 && let Some(fields) = self.field_visibility_spans.get(&d)
             {
-                err.multipart_suggestion_verbose(
+                err = err.multipart_suggestion_verbose(
                     format!(
                         "consider making the field{} publicly accessible",
                         pluralize!(fields.len())
@@ -1861,7 +1858,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     "cannot be constructed because it is `#[non_exhaustive]`",
                 );
             }
-            err.span_note(note_span, msg);
+            err = err.span_note(note_span, msg);
         }
         // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
         sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0] == "core", *reexport));
@@ -1875,7 +1872,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 continue;
             }
             let path = sugg.join("::");
-            err.span_suggestion_verbose(
+            err = err.span_suggestion_verbose(
                 dedup_span,
                 format!(
                     "import `{ident}` {}",

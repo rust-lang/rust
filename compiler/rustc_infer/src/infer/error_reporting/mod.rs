@@ -355,7 +355,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             );
         }
         ty::ReError(_) => {
-            err.delay_as_bug();
+            err.delay_as_bug1();
         }
         _ => {
             // Ugh. This is a painful case: the hidden region is not one
@@ -2389,7 +2389,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 || !bound_kind.is_suggestable(self.tcx, false)
             {
                 let lt_name = sub.get_name_or_anon().to_string();
-                err.help(format!("{msg} `{bound_kind}: {lt_name}`..."));
+                err = err.help(format!("{msg} `{bound_kind}: {lt_name}`..."));
                 break 'suggestion;
             }
 
@@ -2447,11 +2447,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
             } else {
                 let consider = format!("{msg} `{bound_kind}: {sub}`...");
-                err.help(consider);
+                err = err.help(consider);
             }
 
             if !suggs.is_empty() {
-                err.multipart_suggestion_verbose(
+                err = err.multipart_suggestion_verbose(
                     format!("{msg}"),
                     suggs,
                     Applicability::MaybeIncorrect, // Issue #41966
@@ -2604,12 +2604,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 "...",
                 None,
             );
-            err.span_note(
+            err = err.span_note(
                 sup_trace.cause.span,
                 format!("...so that the {}", sup_trace.cause.as_requirement_str()),
             );
-
-            err.note_expected_found(&"", sup_expected, &"", sup_found);
+            err = err.note_expected_found(&"", sup_expected, &"", sup_found);
             if sub_region.is_error() | sup_region.is_error() {
                 err.delay_as_bug();
             } else {

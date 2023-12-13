@@ -180,19 +180,16 @@ pub(crate) struct UnsafeOpInUnsafeFn {
 
 impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
     #[track_caller]
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: DiagnosticBuilder<'a, ()>) -> DiagnosticBuilder<'a, ()> {
         let handler = diag.handler().expect("lint should not yet be emitted");
         let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
-        diag.set_arg("details", desc);
-        diag.span_label(self.details.span, self.details.label());
-        self.details.add_subdiagnostics(diag);
+        diag = diag.set_arg("details", desc);
+        diag = diag.span_label(self.details.span, self.details.label());
+        self.details.add_subdiagnostics(&mut diag);
 
         if let Some((start, end, fn_sig)) = self.suggest_unsafe_block {
-            diag.span_note(fn_sig, fluent::mir_transform_note);
-            diag.tool_only_multipart_suggestion(
+            diag = diag.span_note(fn_sig, fluent::mir_transform_note);
+            diag = diag.tool_only_multipart_suggestion(
                 fluent::mir_transform_suggestion,
                 vec![(start, " unsafe {".into()), (end, "}".into())],
                 Applicability::MaybeIncorrect,
@@ -213,19 +210,14 @@ pub(crate) enum AssertLint<P> {
 }
 
 impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: DiagnosticBuilder<'a, ()>) -> DiagnosticBuilder<'a, ()> {
         let span = self.span();
         let assert_kind = self.panic();
         let message = assert_kind.diagnostic_message();
         assert_kind.add_args(&mut |name, value| {
-            diag.set_arg(name, value);
+            diag = diag.set_arg(name, value);
         });
-        diag.span_label(span, message);
-
-        diag
+        diag.span_label(span, message)
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -286,17 +278,16 @@ pub(crate) struct MustNotSupend<'tcx, 'a> {
 impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
     fn decorate_lint<'b>(
         self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        diag.span_label(self.yield_sp, fluent::_subdiag::label);
+        diag: rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag = diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {
-            diag.subdiagnostic(reason);
+            diag = diag.subdiagnostic(reason);
         }
-        diag.span_help(self.src_sp, fluent::_subdiag::help);
-        diag.set_arg("pre", self.pre);
-        diag.set_arg("def_path", self.tcx.def_path_str(self.def_id));
-        diag.set_arg("post", self.post);
-        diag
+        diag.span_help(self.src_sp, fluent::_subdiag::help)
+            .set_arg("pre", self.pre)
+            .set_arg("def_path", self.tcx.def_path_str(self.def_id))
+            .set_arg("post", self.post)
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {

@@ -735,7 +735,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 fragment_kind.expect_from_annotatables(items)
                             }
                         }
-                        Err(mut err) => {
+                        Err(err) => {
                             err.emit();
                             fragment_kind.dummy(span)
                         }
@@ -855,7 +855,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Err(mut err) => {
                 if err.span.is_dummy() {
-                    err.set_span(span);
+                    err = err.set_span(span);
                 }
                 annotate_err_with_kind(&mut err, kind, span);
                 err.emit();

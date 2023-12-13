@@ -267,13 +267,12 @@ fn overlap<'tcx>(
                             .span_label(
                                 infcx.tcx.def_span(impl2_header.impl_def_id),
                                 "the second impl is here",
-                            );
-                            lint.note(format!(
+                            )
+                            .note(format!(
                                 "`{}` may be considered to hold in future releases, \
                                     causing the impls to overlap",
                                 infcx.resolve_vars_if_possible(failing_obligation.predicate)
-                            ));
-                            lint
+                            ))
                         },
                     );
                 }

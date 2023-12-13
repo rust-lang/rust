@@ -1067,11 +1067,11 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     src,
                     Some(span.into()),
                     fluent::lint_unknown_gated_lint,
-                    |lint| {
-                        lint.set_arg("name", lint_id.lint.name_lower());
-                        lint.note(fluent::lint_note);
+                    |mut lint| {
+                        lint = lint.set_arg("name", lint_id.lint.name_lower());
+                        lint = lint.note(fluent::lint_note);
                         rustc_session::parse::add_feature_diagnostics_for_issue(
-                            lint,
+                            &mut lint,
                             &self.sess.parse_sess,
                             feature,
                             GateIssue::Language,
@@ -1104,9 +1104,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         lint: &'static Lint,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(DiagnosticBuilder<'a, ()>) -> DiagnosticBuilder<'a, ()>,
     ) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, span, msg, decorate)

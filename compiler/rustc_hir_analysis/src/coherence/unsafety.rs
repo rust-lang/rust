@@ -31,7 +31,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "",
                     rustc_errors::Applicability::MachineApplicable,
                 )
-                .emit();
+                .emit1();
             }
 
             (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
@@ -54,7 +54,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "unsafe ",
                     rustc_errors::Applicability::MaybeIncorrect,
                 )
-                .emit();
+                .emit1();
             }
 
             (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
@@ -77,7 +77,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "unsafe ",
                     rustc_errors::Applicability::MaybeIncorrect,
                 )
-                .emit();
+                .emit1();
             }
 
             (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {

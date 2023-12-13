@@ -29,13 +29,11 @@ impl<'tcx> InferCtxt<'tcx> {
         if !self.tcx.is_impl_trait_in_trait(trait_item_def_id) {
             if let Some(span) = self.tcx.hir().span_if_local(trait_item_def_id) {
                 let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
-                err.span_label(span, format!("definition of `{item_name}` from trait"));
+                err = err.span_label(span, format!("definition of `{item_name}` from trait"));
             }
         }
 
-        err.span_label(error_span, format!("impl has extra requirement {requirement}"));
-
-        err
+        err.span_label(error_span, format!("impl has extra requirement {requirement}"))
     }
 }
 
@@ -56,8 +54,8 @@ pub fn report_object_safety_error<'tcx>(
         E0038,
         "the trait `{}` cannot be made into an object",
         trait_str
-    );
-    err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
+    )
+    .span_label(span, format!("`{trait_str}` cannot be made into an object"));
 
     let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];
@@ -78,7 +76,7 @@ pub fn report_object_safety_error<'tcx>(
                 format!("...because {}", violation.error_msg())
             };
             if spans.is_empty() {
-                err.note(msg);
+                err = err.note(msg);
             } else {
                 for span in spans {
                     multi_span.push(span);
@@ -95,7 +93,7 @@ pub fn report_object_safety_error<'tcx>(
     for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);
     }
-    err.span_note(
+    err = err.span_note(
         note_span,
         "for a trait to be \"object safe\" it needs to allow building a vtable to allow the call \
          to be resolvable dynamically; for more information visit \
@@ -142,14 +140,14 @@ pub fn report_object_safety_error<'tcx>(
         [] => {}
         _ if impls.len() > 9 => {}
         [only] if externally_visible => {
-            err.help(with_no_trimmed_paths!(format!(
+            err = err.help(with_no_trimmed_paths!(format!(
                 "only type `{}` is seen to implement the trait in this crate, consider using it \
                  directly instead",
                 tcx.type_of(*only).instantiate_identity(),
             )));
         }
         [only] => {
-            err.help(with_no_trimmed_paths!(format!(
+            err = err.help(with_no_trimmed_paths!(format!(
                 "only type `{}` implements the trait, consider using it directly instead",
                 tcx.type_of(*only).instantiate_identity(),
             )));
@@ -161,7 +159,7 @@ pub fn report_object_safety_error<'tcx>(
                     with_no_trimmed_paths!(format!("  {}", tcx.type_of(*t).instantiate_identity(),))
                 })
                 .collect::<Vec<_>>();
-            err.help(format!(
+            err = err.help(format!(
                 "the following types implement the trait, consider defining an enum where each \
                  variant holds one of these types, implementing `{}` for this new enum and using \
                  it instead:\n{}",
@@ -171,7 +169,7 @@ pub fn report_object_safety_error<'tcx>(
         }
     }
     if externally_visible {
-        err.note(format!(
+        err = err.note(format!(
             "`{trait_str}` can be implemented in other crates; if you want to support your users \
              passing their own types here, you can't refer to a specific type",
         ));

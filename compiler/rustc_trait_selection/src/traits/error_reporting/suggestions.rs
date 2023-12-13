@@ -207,9 +207,9 @@ pub trait TypeErrCtxtExt<'tcx> {
 
     fn point_at_returns_when_relevant(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
         obligation: &PredicateObligation<'tcx>,
-    );
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn report_closure_arg_mismatch(
         &self,
@@ -234,8 +234,8 @@ pub trait TypeErrCtxtExt<'tcx> {
     fn note_conflicting_closure_bounds(
         &self,
         cause: &ObligationCauseCode<'tcx>,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-    );
+        err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn suggest_fully_qualified_path(
         &self,
@@ -1914,12 +1914,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn point_at_returns_when_relevant(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        mut err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
         obligation: &PredicateObligation<'tcx>,
-    ) {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         match obligation.cause.code().peel_derives() {
             ObligationCauseCode::SizedReturnType => {}
-            _ => return,
+            _ => return err,
         }
 
         let hir = self.tcx.hir();
@@ -1937,13 +1937,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let ty = self.resolve_vars_if_possible(returned_ty);
                     if ty.references_error() {
                         // don't print out the [type error] here
-                        err.delay_as_bug();
+                        err.delay_as_bug1();
                     } else {
-                        err.span_label(expr.span, format!("this returned value is of type `{ty}`"));
+                        err = err.span_label(
+                            expr.span,
+                            format!("this returned value is of type `{ty}`"),
+                        );
                     }
                 }
             }
         }
+        err
     }
 
     fn report_closure_arg_mismatch(
@@ -2001,10 +2005,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             "type mismatch in {argument_kind} arguments",
         );
 
-        err.span_label(span, "expected due to this");
+        err = err.span_label(span, "expected due to this");
 
         let found_span = found_span.unwrap_or(span);
-        err.span_label(found_span, "found signature defined here");
+        err = err.span_label(found_span, "found signature defined here");
 
         let expected = build_fn_sig_ty(self, expected);
         let found = build_fn_sig_ty(self, found);
@@ -2012,10 +2016,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let (expected_str, found_str) = self.cmp(expected, found);
 
         let signature_kind = format!("{argument_kind} signature");
-        err.note_expected_found(&signature_kind, expected_str, &signature_kind, found_str);
+        err = err.note_expected_found(&signature_kind, expected_str, &signature_kind, found_str);
 
         self.note_conflicting_fn_args(&mut err, cause, expected, found, param_env);
-        self.note_conflicting_closure_bounds(cause, &mut err);
+        err = self.note_conflicting_closure_bounds(cause, err);
 
         if let Some(found_node) = found_node {
             hint_missing_borrow(self, param_env, span, found, expected, found_node, &mut err);
@@ -2181,8 +2185,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn note_conflicting_closure_bounds(
         &self,
         cause: &ObligationCauseCode<'tcx>,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-    ) {
+        mut err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // First, look for an `ExprBindingObligation`, which means we can get
         // the unsubstituted predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
@@ -2223,12 +2227,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             });
             // If we found one, then it's very likely the cause of the error.
             if let Some((_, (_, other_pred_span))) = other_pred {
-                err.span_note(
+                err = err.span_note(
                     other_pred_span,
                     "closure inferred to have a different signature due to this bound",
                 );
             }
         }
+        err
     }
 
     fn suggest_fully_qualified_path(

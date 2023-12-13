@@ -384,7 +384,7 @@ fn report_unexpected_variant_res(
         }
         _ => err.span_label(span, format!("not a {expected}")),
     }
-    .emit()
+    .emit1()
 }
 
 /// Controls whether the arguments are tupled. This is used for the call

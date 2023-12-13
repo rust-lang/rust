@@ -245,9 +245,9 @@ impl<'a> StringReader<'a> {
                     let lifetime_name = self.str_from(start);
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
-                        let mut diag = self.sess.struct_err("lifetimes cannot start with a number");
-                        diag.set_span(span);
-                        diag.stash(span, StashKey::LifetimeIsChar);
+                        self.sess.struct_err("lifetimes cannot start with a number")
+                            .set_span(span)
+                            .stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
                     token::Lifetime(ident)
@@ -578,16 +578,18 @@ impl<'a> StringReader<'a> {
         possible_offset: Option<u32>,
         found_terminators: u32,
     ) -> ! {
-        let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
-            self.mk_sp(start, start),
-            "unterminated raw string",
-            error_code!(E0748),
-        );
-
-        err.span_label(self.mk_sp(start, start), "unterminated raw string");
+        let mut err = self
+            .sess
+            .span_diagnostic
+            .struct_span_fatal_with_code(
+                self.mk_sp(start, start),
+                "unterminated raw string",
+                error_code!(E0748),
+            )
+            .span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {
-            err.note(format!(
+            err = err.note(format!(
                 "this raw string should be terminated with `\"{}`",
                 "#".repeat(n_hashes as usize)
             ));
@@ -597,7 +599,7 @@ impl<'a> StringReader<'a> {
             let lo = start + BytePos(possible_offset);
             let hi = lo + BytePos(found_terminators);
             let span = self.mk_sp(lo, hi);
-            err.span_suggestion(
+            err = err.span_suggestion(
                 span,
                 "consider terminating the string here",
                 "#".repeat(n_hashes as usize),
@@ -637,7 +639,8 @@ impl<'a> StringReader<'a> {
         }
 
         if let Some((nested_open_idx, nested_close_idx)) = last_nested_block_comment_idxs {
-            err.span_label(self.mk_sp(start, start + BytePos(2)), msg)
+            err = err
+                .span_label(self.mk_sp(start, start + BytePos(2)), msg)
                 .span_label(
                     self.mk_sp(
                         start + BytePos(nested_open_idx as u32),

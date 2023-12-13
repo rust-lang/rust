@@ -53,15 +53,15 @@ pub(crate) struct UnknownMetaItem<'a> {
 impl<'a> IntoDiagnostic<'a> for UnknownMetaItem<'_> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
-        let mut diag = handler.struct_span_err_with_code(
-            self.span,
-            fluent::attr_unknown_meta_item,
-            error_code!(E0541),
-        );
-        diag.set_arg("item", self.item);
-        diag.set_arg("expected", expected.join(", "));
-        diag.span_label(self.span, fluent::attr_label);
-        diag
+        handler
+            .struct_span_err_with_code(
+                self.span,
+                fluent::attr_unknown_meta_item,
+                error_code!(E0541),
+            )
+            .set_arg("item", self.item)
+            .set_arg("expected", expected.join(", "))
+            .span_label(self.span, fluent::attr_label)
     }
 }
 
@@ -217,7 +217,7 @@ impl<'a> IntoDiagnostic<'a> for UnsupportedLiteral {
             error_code!(E0565),
         );
         if self.is_bytestr {
-            diag.span_suggestion(
+            diag = diag.span_suggestion(
                 self.start_point_span,
                 fluent::attr_unsupported_literal_suggestion,
                 "",

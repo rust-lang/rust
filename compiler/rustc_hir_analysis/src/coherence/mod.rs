@@ -189,7 +189,7 @@ fn check_object_overlap<'tcx>(
                             tcx.def_path_str(trait_def_id)
                         ),
                     )
-                    .emit();
+                    .emit1();
                 }
             }
         }

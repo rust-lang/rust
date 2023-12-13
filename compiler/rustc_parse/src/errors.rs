@@ -1046,21 +1046,24 @@ impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = handler.struct_err(match token_descr {
-            Some(TokenDescription::ReservedIdentifier) => {
-                fluent::parse_expected_identifier_found_reserved_identifier_str
-            }
-            Some(TokenDescription::Keyword) => fluent::parse_expected_identifier_found_keyword_str,
-            Some(TokenDescription::ReservedKeyword) => {
-                fluent::parse_expected_identifier_found_reserved_keyword_str
-            }
-            Some(TokenDescription::DocComment) => {
-                fluent::parse_expected_identifier_found_doc_comment_str
-            }
-            None => fluent::parse_expected_identifier_found_str,
-        });
-        diag.set_span(self.span);
-        diag.set_arg("token", self.token);
+        let mut diag = handler
+            .struct_err(match token_descr {
+                Some(TokenDescription::ReservedIdentifier) => {
+                    fluent::parse_expected_identifier_found_reserved_identifier_str
+                }
+                Some(TokenDescription::Keyword) => {
+                    fluent::parse_expected_identifier_found_keyword_str
+                }
+                Some(TokenDescription::ReservedKeyword) => {
+                    fluent::parse_expected_identifier_found_reserved_keyword_str
+                }
+                Some(TokenDescription::DocComment) => {
+                    fluent::parse_expected_identifier_found_doc_comment_str
+                }
+                None => fluent::parse_expected_identifier_found_str,
+            })
+            .set_span(self.span)
+            .set_arg("token", self.token);
 
         if let Some(sugg) = self.suggest_raw {
             sugg.add_to_diagnostic(&mut diag);
@@ -1103,22 +1106,25 @@ impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = handler.struct_err(match token_descr {
-            Some(TokenDescription::ReservedIdentifier) => {
-                fluent::parse_expected_semi_found_reserved_identifier_str
-            }
-            Some(TokenDescription::Keyword) => fluent::parse_expected_semi_found_keyword_str,
-            Some(TokenDescription::ReservedKeyword) => {
-                fluent::parse_expected_semi_found_reserved_keyword_str
-            }
-            Some(TokenDescription::DocComment) => fluent::parse_expected_semi_found_doc_comment_str,
-            None => fluent::parse_expected_semi_found_str,
-        });
-        diag.set_span(self.span);
-        diag.set_arg("token", self.token);
+        let mut diag = handler
+            .struct_err(match token_descr {
+                Some(TokenDescription::ReservedIdentifier) => {
+                    fluent::parse_expected_semi_found_reserved_identifier_str
+                }
+                Some(TokenDescription::Keyword) => fluent::parse_expected_semi_found_keyword_str,
+                Some(TokenDescription::ReservedKeyword) => {
+                    fluent::parse_expected_semi_found_reserved_keyword_str
+                }
+                Some(TokenDescription::DocComment) => {
+                    fluent::parse_expected_semi_found_doc_comment_str
+                }
+                None => fluent::parse_expected_semi_found_str,
+            })
+            .set_span(self.span)
+            .set_arg("token", self.token);
 
         if let Some(unexpected_token_label) = self.unexpected_token_label {
-            diag.span_label(unexpected_token_label, fluent::parse_label_unexpected_token);
+            diag = diag.span_label(unexpected_token_label, fluent::parse_label_unexpected_token);
         }
 
         self.sugg.add_to_diagnostic(&mut diag);

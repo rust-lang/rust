@@ -50,17 +50,17 @@ pub(super) fn failed_to_match_macro<'cx>(
     let span = token.span.substitute_dummy(sp);
 
     let mut err = cx.struct_span_err(span, parse_failure_msg(&token));
-    err.span_label(span, label);
+    err = err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
-        err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
+        err = err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
     }
 
     annotate_doc_comment(&mut err, sess.source_map(), span);
 
     if let Some(span) = remaining_matcher.span() {
-        err.span_note(span, format!("while trying to match {remaining_matcher}"));
+        err = err.span_note(span, format!("while trying to match {remaining_matcher}"));
     } else {
-        err.note(format!("while trying to match {remaining_matcher}"));
+        err = err.note(format!("while trying to match {remaining_matcher}"));
     }
 
     if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
@@ -68,16 +68,17 @@ pub(super) fn failed_to_match_macro<'cx>(
             || matches!(token.kind, TokenKind::Interpolated(_)))
     {
         if let TokenKind::Interpolated(node) = &expected_token.kind {
-            err.span_label(node.1, "");
+            err = err.span_label(node.1, "");
         }
         if let TokenKind::Interpolated(node) = &token.kind {
-            err.span_label(node.1, "");
+            err = err.span_label(node.1, "");
         }
-        err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
-        err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
+        err = err
+            .note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens")
+            .note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
 
         if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
-            err.help("try using `:tt` instead in the macro definition");
+            err = err.help("try using `:tt` instead in the macro definition");
         }
     }
 
@@ -91,9 +92,9 @@ pub(super) fn failed_to_match_macro<'cx>(
                 tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
             {
                 if comma_span.is_dummy() {
-                    err.note("you might be missing a comma");
+                    err = err.note("you might be missing a comma");
                 } else {
-                    err.span_suggestion_short(
+                    err = err.span_suggestion_short(
                         comma_span,
                         "missing comma here",
                         ", ",
@@ -244,23 +245,23 @@ pub(super) fn emit_frag_parse_err(
         // Get around lack of span in error (#30128)
         e.replace_span_with(site_span, true);
         if !parser.sess.source_map().is_imported(arm_span) {
-            e.span_label(arm_span, "in this macro arm");
+            e = e.span_label(arm_span, "in this macro arm");
         }
     } else if parser.sess.source_map().is_imported(parser.token.span) {
-        e.span_label(site_span, "in this macro invocation");
+        e = e.span_label(site_span, "in this macro invocation");
     }
     match kind {
         // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
         AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
             Err(err) => err.cancel(),
             Ok(_) => {
-                e.note(
+                e = e.note(
                     "the macro call doesn't expand to an expression, but it can expand to a statement",
                 );
 
                 if parser.token == token::Semi {
                     if let Ok(snippet) = parser.sess.source_map().span_to_snippet(site_span) {
-                        e.span_suggestion_verbose(
+                        e = e.span_suggestion_verbose(
                             site_span,
                             "surround the macro invocation with `{}` to interpret the expansion as a statement",
                             format!("{{ {snippet}; }}"),
@@ -268,7 +269,7 @@ pub(super) fn emit_frag_parse_err(
                         );
                     }
                 } else {
-                    e.span_suggestion_verbose(
+                    e = e.span_suggestion_verbose(
                         site_span.shrink_to_hi(),
                         "add `;` to interpret the expansion as a statement",
                         ";",

@@ -578,13 +578,13 @@ impl Options {
                 if !theme_file.is_file() {
                     diag.struct_err(format!("invalid argument: \"{theme_s}\""))
                         .help("arguments to --theme must be files")
-                        .emit();
+                        .emit1();
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
                     diag.struct_err(format!("invalid argument: \"{theme_s}\""))
                         .help("arguments to --theme must have a .css extension")
-                        .emit();
+                        .emit1();
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
@@ -599,7 +599,7 @@ impl Options {
                     .help(format!(
                         "to see what rules are missing, call `rustdoc --check-theme \"{theme_s}\"`",
                     ))
-                    .emit();
+                    .emit1();
                 }
                 themes.push(StylePath { path: theme_file });
             }
@@ -813,7 +813,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
                     "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                     for more information",
                 )
-                .emit();
+                .emit1();
         }
     }
 

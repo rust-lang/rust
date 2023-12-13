@@ -107,10 +107,9 @@ impl IntoDiagnostic<'_, FatalError> for ParseTargetMachineConfig<'_> {
         let (message, _) = diag.styled_message().first().expect("`LlvmError` with no message");
         let message = handler.eagerly_translate_to_string(message.clone(), diag.args());
 
-        let mut diag =
-            handler.struct_almost_fatal(fluent::codegen_llvm_parse_target_machine_config);
-        diag.set_arg("error", message);
-        diag
+        handler
+            .struct_almost_fatal(fluent::codegen_llvm_parse_target_machine_config)
+            .set_arg("error", message)
     }
 }
 
@@ -128,13 +127,12 @@ impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
     fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_err(fluent::codegen_llvm_target_feature_disable_or_enable);
         if let Some(span) = self.span {
-            diag.set_span(span);
+            diag = diag.set_span(span);
         };
         if let Some(missing_features) = self.missing_features {
-            diag.subdiagnostic(missing_features);
+            diag = diag.subdiagnostic(missing_features);
         }
-        diag.set_arg("features", self.features.join(", "));
-        diag
+        diag.set_arg("features", self.features.join(", "))
     }
 }
 
@@ -202,10 +200,10 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
             PrepareThinLtoModule => fluent::codegen_llvm_prepare_thin_lto_module_with_llvm_err,
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
         };
-        let mut diag = self.0.into_diagnostic(handler);
-        diag.set_primary_message(msg_with_llvm_err);
-        diag.set_arg("llvm_err", self.1);
-        diag
+        self.0
+            .into_diagnostic(handler)
+            .set_primary_message(msg_with_llvm_err)
+            .set_arg("llvm_err", self.1)
     }
 }
 

@@ -166,7 +166,7 @@ fn lint_object_unsafe_trait(
         hir::CRATE_HIR_ID,
         span,
         DelayDm(|| format!("the trait `{}` cannot be made into an object", tcx.def_path_str(trait_def_id))),
-        |err| {
+        |mut err| {
             let node = tcx.hir().get_if_local(trait_def_id);
             let mut spans = MultiSpan::from_span(span);
             if let Some(hir::Node::Item(item)) = node {
@@ -184,7 +184,7 @@ fn lint_object_unsafe_trait(
                     ),
                 );
             };
-            err.span_note(
+            err = err.span_note(
                 spans,
                 "for a trait to be \"object safe\" it needs to allow building a vtable to allow the \
                 call to be resolvable dynamically; for more information visit \
@@ -192,7 +192,7 @@ fn lint_object_unsafe_trait(
             );
             if node.is_some() {
                 // Only provide the help if its a local trait, otherwise it's not
-                violation.solution().add_to(err);
+                violation.solution().add_to(&mut err);
             }
             err
         },

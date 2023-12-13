@@ -1775,7 +1775,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // Don't report an error if actual type is `Error`.
         if actual_ty.references_error() {
-            err.downgrade_to_delayed_bug();
+            err = err.downgrade_to_delayed_bug();
         }
 
         err

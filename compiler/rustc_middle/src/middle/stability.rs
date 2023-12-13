@@ -119,7 +119,7 @@ pub fn report_unstable(
         let mut err =
             feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), msg);
         if let Some((inner_types, msg, sugg, applicability)) = suggestion {
-            err.span_suggestion(inner_types, msg, sugg, applicability);
+            err = err.span_suggestion(inner_types, msg, sugg, applicability);
         }
         err.emit();
     }
@@ -218,10 +218,10 @@ fn late_report_deprecation(
         return;
     }
     let method_span = method_span.unwrap_or(span);
-    tcx.struct_span_lint_hir(lint, hir_id, method_span, message, |diag| {
+    tcx.struct_span_lint_hir(lint, hir_id, method_span, message, |mut diag| {
         if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
             let kind = tcx.def_descr(def_id);
-            deprecation_suggestion(diag, kind, suggestion, method_span);
+            deprecation_suggestion(&mut diag, kind, suggestion, method_span);
         }
         diag
     });

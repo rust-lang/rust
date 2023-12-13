@@ -247,51 +247,38 @@ impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
 
 impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
     fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        let mut diag;
         match self {
-            TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_address_space);
-                diag.set_arg("addr_space", addr_space);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_bits);
-                diag.set_arg("kind", kind);
-                diag.set_arg("bit", bit);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = handler.struct_fatal(fluent::errors_target_missing_alignment);
-                diag.set_arg("cause", cause);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_alignment);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err_kind", err.diag_ident());
-                diag.set_arg("align", err.align());
-                diag
-            }
-            TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = handler.struct_fatal(fluent::errors_target_inconsistent_architecture);
-                diag.set_arg("dl", dl);
-                diag.set_arg("target", target);
-                diag
-            }
+            TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => handler
+                .struct_fatal(fluent::errors_target_invalid_address_space)
+                .set_arg("addr_space", addr_space)
+                .set_arg("cause", cause)
+                .set_arg("err", err),
+            TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => handler
+                .struct_fatal(fluent::errors_target_invalid_bits)
+                .set_arg("kind", kind)
+                .set_arg("bit", bit)
+                .set_arg("cause", cause)
+                .set_arg("err", err),
+            TargetDataLayoutErrors::MissingAlignment { cause } => handler
+                .struct_fatal(fluent::errors_target_missing_alignment)
+                .set_arg("cause", cause),
+            TargetDataLayoutErrors::InvalidAlignment { cause, err } => handler
+                .struct_fatal(fluent::errors_target_invalid_alignment)
+                .set_arg("cause", cause)
+                .set_arg("err_kind", err.diag_ident())
+                .set_arg("align", err.align()),
+            TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => handler
+                .struct_fatal(fluent::errors_target_inconsistent_architecture)
+                .set_arg("dl", dl)
+                .set_arg("target", target),
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = handler.struct_fatal(fluent::errors_target_inconsistent_pointer_width);
-                diag.set_arg("pointer_size", pointer_size);
-                diag.set_arg("target", target);
-                diag
+                handler
+                    .struct_fatal(fluent::errors_target_inconsistent_pointer_width)
+                    .set_arg("pointer_size", pointer_size)
+                    .set_arg("target", target)
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_bits_size);
-                diag.set_arg("err", err);
-                diag
+                handler.struct_fatal(fluent::errors_target_invalid_bits_size).set_arg("err", err)
             }
         }
     }

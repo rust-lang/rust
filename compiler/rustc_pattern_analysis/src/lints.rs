@@ -206,9 +206,12 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
                 };
 
                 use rustc_errors::DecorateLint;
-                let mut err = cx.tcx.sess.struct_span_warn(arm.pat.span(), "");
-                err.set_primary_message(decorator.msg());
-                decorator.decorate_lint(&mut err);
+                let mut err = cx
+                    .tcx
+                    .sess
+                    .struct_span_warn(arm.pat.span(), "")
+                    .set_primary_message(decorator.msg());
+                err = decorator.decorate_lint(err);
                 err.emit();
             }
         }

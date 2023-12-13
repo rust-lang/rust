@@ -334,7 +334,7 @@ impl<'a> Parser<'a> {
                             .rev()
                             .find(|arg| !matches!(arg, AngleBracketedArg::Constraint(_)))
                         {
-                            err.span_suggestion_verbose(
+                            err = err.span_suggestion_verbose(
                                 arg.span().shrink_to_hi(),
                                 "you might have meant to end the type parameters here",
                                 ">",
@@ -494,7 +494,7 @@ impl<'a> Parser<'a> {
                 self.angle_bracket_nesting -= 1;
                 Ok(args)
             }
-            Err(mut e) if self.angle_bracket_nesting > 10 => {
+            Err(e) if self.angle_bracket_nesting > 10 => {
                 self.angle_bracket_nesting -= 1;
                 // When encountering severely malformed code where there are several levels of
                 // nested unclosed angle args (`f::<f::<f::<f::<...`), we avoid severe O(n^2)
@@ -568,15 +568,15 @@ impl<'a> Parser<'a> {
                     // Add `>` to the list of expected tokens.
                     self.check(&token::Gt);
                     // Handle `,` to `;` substitution
-                    let mut err = self.unexpected::<()>().unwrap_err();
+                    let err = self.unexpected::<()>().unwrap_err();
                     self.bump();
                     err.span_suggestion_verbose(
                         self.prev_token.span.until(self.token.span),
                         "use a comma to separate type parameters",
                         ", ",
                         Applicability::MachineApplicable,
-                    );
-                    err.emit();
+                    )
+                    .emit();
                     continue;
                 }
                 if !self.token.kind.should_end_const_arg() {
@@ -688,23 +688,24 @@ impl<'a> Parser<'a> {
                 let mut err = self
                     .struct_span_err(after_eq.to(before_next), "missing type to the right of `=`");
                 if matches!(self.token.kind, token::Comma | token::Gt) {
-                    err.span_suggestion(
-                        self.sess.source_map().next_point(eq).to(before_next),
-                        "to constrain the associated type, add a type after `=`",
-                        " TheType",
-                        Applicability::HasPlaceholders,
-                    );
-                    err.span_suggestion(
-                        eq.to(before_next),
-                        format!("remove the `=` if `{ident}` is a type"),
-                        "",
-                        Applicability::MaybeIncorrect,
-                    )
+                    err = err
+                        .span_suggestion(
+                            self.sess.source_map().next_point(eq).to(before_next),
+                            "to constrain the associated type, add a type after `=`",
+                            " TheType",
+                            Applicability::HasPlaceholders,
+                        )
+                        .span_suggestion(
+                            eq.to(before_next),
+                            format!("remove the `=` if `{ident}` is a type"),
+                            "",
+                            Applicability::MaybeIncorrect,
+                        );
                 } else {
-                    err.span_label(
+                    err = err.span_label(
                         self.token.span,
                         format!("expected type, found {}", super::token_descr(&self.token)),
-                    )
+                    );
                 };
                 return Err(err);
             }

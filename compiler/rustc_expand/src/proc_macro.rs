@@ -95,7 +95,7 @@ impl base::AttrProcMacro for AttrProcMacro {
             |e| {
                 let mut err = ecx.struct_span_err(span, "custom attribute panicked");
                 if let Some(s) = e.as_str() {
-                    err.help(format!("message: {s}"));
+                    err = err.help(format!("message: {s}"));
                 }
                 err.emit()
             },
@@ -148,7 +148,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Err(e) => {
                     let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
                     if let Some(s) = e.as_str() {
-                        err.help(format!("message: {s}"));
+                        err = err.help(format!("message: {s}"));
                     }
                     err.emit();
                     return ExpandResult::Ready(vec![]);
@@ -171,7 +171,7 @@ impl MultiItemModifier for DeriveProcMacro {
                         items.push(Annotatable::Item(item));
                     }
                 }
-                Err(mut err) => {
+                Err(err) => {
                     err.emit();
                     break;
                 }

@@ -24,7 +24,7 @@ macro_rules! gate {
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
             feature_err(&$visitor.sess.parse_sess, sym::$feature, $span, $explain)
                 .help($help)
-                .emit();
+                .emit1();
         }
     }};
 }

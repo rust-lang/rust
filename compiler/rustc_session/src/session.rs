@@ -1790,7 +1790,7 @@ impl EarlyErrorHandler {
             self.handler
                 .struct_warn(err)
                 .note("the build environment is likely misconfigured")
-                .emit()
+                .emit1()
         });
     }
 }

@@ -129,7 +129,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                         tcx.sess
                             .struct_span_err(ident.span, msg)
                             .span_label(old_ident.span, "already registered here")
-                            .emit();
+                            .emit1();
                     }
                 }
                 None => {
@@ -138,7 +138,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                     tcx.sess
                         .struct_span_err(span, msg)
                         .span_label(span, "not an identifier")
-                        .emit();
+                        .emit1();
                 }
             }
         }
@@ -579,10 +579,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
             }
 
-            let mut err = self.tcx.sess.create_err(err);
-            err.span_label(path.span, format!("not {article} {expected}"));
-
-            err.emit();
+            self.tcx
+                .sess
+                .create_err(err)
+                .span_label(path.span, format!("not {article} {expected}"))
+                .emit();
 
             return Ok((self.dummy_ext(kind), Res::Err));
         }
@@ -912,7 +913,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     format!("cannot use {} {} through an import", kind.article(), kind.descr());
                 let mut err = self.tcx.sess.struct_span_err(span, msg);
                 if let Some(binding) = binding {
-                    err.span_note(binding.span, format!("the {} imported here", kind.descr()));
+                    err =
+                        err.span_note(binding.span, format!("the {} imported here", kind.descr()));
                 }
                 err.emit();
             }
@@ -959,7 +961,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             "attempted to define built-in macro more than once"
                         )
                         .span_note(span, "previously defined here")
-                        .emit();
+                        .emit1();
                     }
                 }
             } else {

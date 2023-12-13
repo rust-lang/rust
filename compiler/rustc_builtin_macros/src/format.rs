@@ -101,7 +101,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
             }
 
             match p.expect(&token::Comma) {
-                Err(mut err) => {
+                Err(err) => {
                     match token::TokenKind::Comma.similar_tokens() {
                         Some(tks) if tks.contains(&p.token.kind) => {
                             // If a similar token is found, then it may be a typo. We
@@ -183,7 +183,7 @@ fn make_format_args(
                         && let ExprKind::Path(None, path) = &expr.kind
                         && path.is_potential_trivial_const_arg()
                     {
-                        err.multipart_suggestion(
+                        err = err.multipart_suggestion(
                             "quote your inlined format argument to use as string literal",
                             vec![
                                 (unexpanded_fmt_span.shrink_to_hi(), "\"".to_string()),
@@ -196,7 +196,7 @@ fn make_format_args(
                             0 => "{}".to_string(),
                             _ => format!("{}{{}}", "{} ".repeat(args.explicit_args().len())),
                         };
-                        err.span_suggestion(
+                        err = err.span_suggestion(
                             unexpanded_fmt_span.shrink_to_lo(),
                             "you might be missing a string literal to format with",
                             format!("\"{sugg_fmt}\", "),
@@ -632,8 +632,7 @@ fn report_missing_placeholders(
         .collect::<Vec<_>>();
 
     if !placeholders.is_empty() {
-        if let Some(mut new_diag) = report_redundant_format_arguments(ecx, args, used, placeholders)
-        {
+        if let Some(new_diag) = report_redundant_format_arguments(ecx, args, used, placeholders) {
             diag.cancel();
             new_diag.emit();
             return;
@@ -684,7 +683,7 @@ fn report_missing_placeholders(
                     if success {
                         suggestions.push((sp, trn));
                     } else {
-                        diag.span_note(
+                        diag = diag.span_note(
                             sp,
                             format!("format specifiers use curly braces, and {}", trn),
                         );
@@ -692,13 +691,13 @@ fn report_missing_placeholders(
                 }
 
                 if show_doc_note {
-                    diag.note(concat!(
+                    diag = diag.note(concat!(
                         stringify!($kind),
                         " formatting is not supported; see the documentation for `std::fmt`",
                     ));
                 }
                 if suggestions.len() > 0 {
-                    diag.multipart_suggestion(
+                    diag = diag.multipart_suggestion(
                         "format specifiers use curly braces",
                         suggestions,
                         Applicability::MachineApplicable,
@@ -713,7 +712,7 @@ fn report_missing_placeholders(
         }
     }
     if !found_foreign && unused.len() == 1 {
-        diag.span_label(fmt_span, "formatting specifier missing");
+        diag = diag.span_label(fmt_span, "formatting specifier missing");
     }
 
     diag.emit();
@@ -908,7 +907,7 @@ fn report_invalid_references(
             {
                 let (Ok(index) | Err(index)) = index;
                 has_precision_star = true;
-                e.span_label(
+                e = e.span_label(
                     *span,
                     format!(
                         "this precision flag adds an extra required argument at position {}, which is why there {} expected",
@@ -923,7 +922,7 @@ fn report_invalid_references(
             }
         }
         if has_precision_star {
-            e.note("positional arguments are zero-based");
+            e = e.note("positional arguments are zero-based");
         }
     } else {
         let mut indexes: Vec<_> = invalid_refs.iter().map(|&(index, _, _, _)| index).collect();
@@ -949,7 +948,7 @@ fn report_invalid_references(
             span,
             format!("invalid reference to positional {arg_list} ({num_args_desc})"),
         );
-        e.note("positional arguments are zero-based");
+        e = e.note("positional arguments are zero-based");
     }
 
     if template.iter().any(|piece| match piece {
@@ -958,7 +957,7 @@ fn report_invalid_references(
         }
         _ => false,
     }) {
-        e.note("for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html");
+        e = e.note("for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html");
     }
 
     e.emit();
@@ -979,7 +978,7 @@ fn expand_format_args_impl<'cx>(
                 MacEager::expr(DummyResult::raw_expr(sp, true))
             }
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }

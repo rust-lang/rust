@@ -139,7 +139,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                              parameter list of the `impl Trait` type alias"
                         ),
                     )
-                    .emit();
+                    .emit1();
 
                 ty::Region::new_error(self.interner(), e)
             }

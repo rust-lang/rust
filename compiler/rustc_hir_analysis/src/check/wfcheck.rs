@@ -838,7 +838,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
                 sugg,
                 Applicability::MachineApplicable,
             )
-            .emit();
+            .emit1();
     }
 }
 
@@ -1596,7 +1596,7 @@ fn check_method_receiver<'tcx>(
                     ),
                 )
                 .help(HELP_FOR_SELF_TYPE)
-                .emit()
+                .emit1()
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
                 e0307(tcx, span, receiver_ty)
@@ -1615,7 +1615,7 @@ fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
     )
     .note("type of `self` must be `Self` or a type that dereferences to it")
     .help(HELP_FOR_SELF_TYPE)
-    .emit()
+    .emit1()
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If

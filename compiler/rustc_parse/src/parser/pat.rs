@@ -143,7 +143,7 @@ impl<'a> Parser<'a> {
         // Parse the first pattern (`p_0`).
         let mut first_pat = match self.parse_pat_no_top_alt(expected, syntax_loc) {
             Ok(pat) => pat,
-            Err(mut err)
+            Err(err)
                 if self.token.is_reserved_ident()
                     && !self.token.is_keyword(kw::In)
                     && !self.token.is_keyword(kw::If) =>
@@ -192,10 +192,9 @@ impl<'a> Parser<'a> {
                     break;
                 }
             }
-            let pat = self.parse_pat_no_top_alt(expected, syntax_loc).map_err(|mut err| {
-                err.span_label(lo, WHILE_PARSING_OR_MSG);
-                err
-            })?;
+            let pat = self
+                .parse_pat_no_top_alt(expected, syntax_loc)
+                .map_err(|err| err.span_label(lo, WHILE_PARSING_OR_MSG))?;
             if rc == RecoverComma::Yes && !pat.could_be_never_pattern() {
                 self.maybe_recover_unexpected_comma(pat.span, rt)?;
             }
@@ -250,7 +249,7 @@ impl<'a> Parser<'a> {
                 }
             });
             if trailing_vert {
-                err.delay_as_bug();
+                err.delay_as_bug1();
             }
             err.emit();
         }
@@ -459,9 +458,9 @@ impl<'a> Parser<'a> {
                         super::token_descr(&self_.token)
                     );
 
-                    let mut err = self_.struct_span_err(self_.token.span, msg);
-                    err.span_label(self_.token.span, format!("expected {expected}"));
-                    err
+                    self_
+                        .struct_span_err(self_.token.span, msg)
+                        .span_label(self_.token.span, format!("expected {expected}"))
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {
@@ -695,12 +694,13 @@ impl<'a> Parser<'a> {
         let expected = Expected::to_string_or_fallback(expected);
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
-        let mut err = self.struct_span_err(self.token.span, msg);
-        err.span_label(self.token.span, format!("expected {expected}"));
+        let mut err = self
+            .struct_span_err(self.token.span, msg)
+            .span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+            err = err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
 
         Err(err)
@@ -886,9 +886,8 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
         }
         self.bump();
-        let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
-            e.span_label(path.span, "while parsing the fields for this pattern");
-            e.emit();
+        let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|e| {
+            e.span_label(path.span, "while parsing the fields for this pattern").emit();
             self.recover_stmt();
             (ThinVec::new(), true)
         });
@@ -976,7 +975,7 @@ impl<'a> Parser<'a> {
             let attrs = match self.parse_outer_attributes() {
                 Ok(attrs) => attrs,
                 Err(err) => {
-                    if let Some(mut delayed) = delayed_err {
+                    if let Some(delayed) = delayed_err {
                         delayed.emit();
                     }
                     return Err(err);
@@ -988,10 +987,10 @@ impl<'a> Parser<'a> {
             if !ate_comma {
                 let mut err = ExpectedCommaAfterPatternField { span: self.token.span }
                     .into_diagnostic(self.diagnostic());
-                if let Some(mut delayed) = delayed_err {
+                if let Some(delayed) = delayed_err {
                     delayed.emit();
                 }
-                self.recover_misplaced_pattern_modifiers(&fields, &mut err);
+                err = self.recover_misplaced_pattern_modifiers(&fields, err);
                 return Err(err);
             }
             ate_comma = false;
@@ -1027,15 +1026,15 @@ impl<'a> Parser<'a> {
                 }
                 let token_str = super::token_descr(&self.token);
                 let msg = format!("expected `}}`, found {token_str}");
-                let mut err = self.struct_span_err(self.token.span, msg);
-
-                err.span_label(self.token.span, "expected `}`");
+                let mut err = self
+                    .struct_span_err(self.token.span, msg)
+                    .span_label(self.token.span, "expected `}`");
                 let mut comma_sp = None;
                 if self.token == token::Comma {
                     // Issue #49257
                     let nw_span = self.sess.source_map().span_until_non_whitespace(self.token.span);
                     etc_sp = etc_sp.to(nw_span);
-                    err.span_label(
+                    err = err.span_label(
                         etc_sp,
                         "`..` must be at the end and cannot have a trailing comma",
                     );
@@ -1047,7 +1046,7 @@ impl<'a> Parser<'a> {
                 if self.token == token::CloseDelim(Delimiter::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
-                        err.span_suggestion_short(
+                        err = err.span_suggestion_short(
                             sp,
                             "remove this comma",
                             "",
@@ -1061,14 +1060,14 @@ impl<'a> Parser<'a> {
                     // This way we avoid "pattern missing fields" errors afterwards.
                     // We delay this error until the end in order to have a span for a
                     // suggested fix.
-                    if let Some(mut delayed_err) = delayed_err {
+                    if let Some(delayed_err) = delayed_err {
                         delayed_err.emit();
                         return Err(err);
                     } else {
                         delayed_err = Some(err);
                     }
                 } else {
-                    if let Some(mut err) = delayed_err {
+                    if let Some(err) = delayed_err {
                         err.emit();
                     }
                     return Err(err);
@@ -1080,7 +1079,7 @@ impl<'a> Parser<'a> {
                     let field = match this.parse_pat_field(lo, attrs) {
                         Ok(field) => Ok(field),
                         Err(err) => {
-                            if let Some(mut delayed_err) = delayed_err.take() {
+                            if let Some(delayed_err) = delayed_err.take() {
                                 delayed_err.emit();
                             }
                             return Err(err);
@@ -1102,7 +1101,7 @@ impl<'a> Parser<'a> {
             if let Some(first_etc_span) = first_etc_and_maybe_comma_span {
                 if self.prev_token == token::DotDot {
                     // We have `.., x, ..`.
-                    err.multipart_suggestion(
+                    err = err.multipart_suggestion(
                         "remove the starting `..`",
                         vec![(first_etc_span, String::new())],
                         Applicability::MachineApplicable,
@@ -1110,7 +1109,7 @@ impl<'a> Parser<'a> {
                 } else {
                     if let Some(last_non_comma_dotdot_span) = last_non_comma_dotdot_span {
                         // We have `.., x`.
-                        err.multipart_suggestion(
+                        err = err.multipart_suggestion(
                             "move the `..` to the end of the field list",
                             vec![
                                 (first_etc_span, String::new()),
@@ -1134,8 +1133,8 @@ impl<'a> Parser<'a> {
     fn recover_misplaced_pattern_modifiers(
         &self,
         fields: &ThinVec<PatField>,
-        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) {
+        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         if let Some(last) = fields.iter().last()
             && last.is_shorthand
             && let PatKind::Ident(binding, ident, None) = last.pat.kind
@@ -1149,7 +1148,7 @@ impl<'a> Parser<'a> {
         {
             let span = last.pat.span.with_hi(ident.span.lo());
             // We have `S { ref field: name }` instead of `S { field: ref name }`
-            err.multipart_suggestion(
+            err = err.multipart_suggestion(
                 "the pattern modifiers belong after the `:`",
                 vec![
                     (span, String::new()),
@@ -1158,6 +1157,7 @@ impl<'a> Parser<'a> {
                 Applicability::MachineApplicable,
             );
         }
+        err
     }
 
     /// Recover on `...` or `_` as if it were `..` to avoid further errors.

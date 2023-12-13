@@ -162,7 +162,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                         but the {self_descr} it is implemented for does not",
                     )
                     .span_note(item_span, "the implementor must specify the same requirement")
-                    .emit(),
+                    .emit1(),
                 );
             }
         }
@@ -194,7 +194,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     but the {self_descr} it is implemented for does not",
                 )
                 .span_note(item_span, "the implementor must specify the same requirement")
-                .emit(),
+                .emit1(),
             );
         }
         return Err(guar.unwrap());

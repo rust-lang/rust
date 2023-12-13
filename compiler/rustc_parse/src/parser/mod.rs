@@ -494,7 +494,7 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
         if !is_raw && ident.is_reserved() {
-            let mut err = self.expected_ident_found_err();
+            let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
             } else {
@@ -922,7 +922,7 @@ impl<'a> Parser<'a> {
                 });
         }
 
-        expect_err.set_primary_message(
+        expect_err = expect_err.set_primary_message(
             "closure bodies that contain statements must be surrounded by braces",
         );
 
@@ -938,7 +938,7 @@ impl<'a> Parser<'a> {
             closure_spans.body,
             "this expression is a statement because of the trailing semicolon",
         );
-        expect_err.span_note(first_note, "statement found outside of a block");
+        expect_err = expect_err.span_note(first_note, "statement found outside of a block");
 
         let mut second_note = MultiSpan::from(vec![closure_spans.whole_closure]);
         second_note.push_span_label(closure_spans.whole_closure, "this is the parsed closure...");
@@ -946,14 +946,15 @@ impl<'a> Parser<'a> {
             following_token_span,
             "...but likely you meant the closure to end here",
         );
-        expect_err.span_note(second_note, "the closure body may be incorrectly delimited");
+        expect_err =
+            expect_err.span_note(second_note, "the closure body may be incorrectly delimited");
 
-        expect_err.set_span(vec![preceding_pipe_span, following_token_span]);
+        expect_err = expect_err.set_span(vec![preceding_pipe_span, following_token_span]);
 
         let opening_suggestion_str = " {".to_string();
         let closing_suggestion_str = "}".to_string();
 
-        expect_err.multipart_suggestion(
+        expect_err = expect_err.multipart_suggestion(
             "try adding braces",
             vec![
                 (preceding_pipe_span.shrink_to_hi(), opening_suggestion_str),

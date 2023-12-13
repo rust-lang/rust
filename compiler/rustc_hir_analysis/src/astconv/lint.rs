@@ -115,13 +115,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self_ty.hir_id,
                     self_ty.span,
                     msg,
-                    |lint| {
-                        lint.multipart_suggestion_verbose(
+                    |mut lint| {
+                        lint = lint.multipart_suggestion_verbose(
                             "use `dyn`",
                             sugg,
                             Applicability::MachineApplicable,
                         );
-                        self.maybe_lint_blanket_trait_impl(self_ty, lint);
+                        self.maybe_lint_blanket_trait_impl(self_ty, &mut lint);
                         lint
                     },
                 );

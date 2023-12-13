@@ -57,7 +57,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if !trait_def.paren_sugar {
             if trait_segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar {
                 // For now, require that parenthetical notation be used only with `Fn()` etc.
-                let mut err = feature_err(
+                let err = feature_err(
                     &self.tcx().sess.parse_sess,
                     sym::unboxed_closures,
                     span,

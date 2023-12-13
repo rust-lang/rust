@@ -71,7 +71,7 @@ fn generic_arg_mismatch_err(
                 add_braces_suggestion(arg, &mut err);
                 return err
                     .set_primary_message("unresolved item provided when a constant was expected")
-                    .emit();
+                    .emit1();
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {

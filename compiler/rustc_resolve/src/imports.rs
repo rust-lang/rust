@@ -689,20 +689,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut diag = struct_span_err!(self.tcx.sess, span, E0432, "{}", &msg);
 
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
-            diag.note(note.clone());
+            diag = diag.note(note.clone());
         }
 
         for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
             if let Some(label) = err.label {
-                diag.span_label(err.span, label);
+                diag = diag.span_label(err.span, label);
             }
 
             if let Some((suggestions, msg, applicability)) = err.suggestion {
                 if suggestions.is_empty() {
-                    diag.help(msg);
+                    diag = diag.help(msg);
                     continue;
                 }
-                diag.multipart_suggestion(msg, suggestions, applicability);
+                diag = diag.multipart_suggestion(msg, suggestions, applicability);
             }
 
             if let Some(candidates) = &err.candidates {
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
             } else {
                 if ns == TypeNS {
-                    let mut err = if crate_private_reexport {
+                    let err = if crate_private_reexport {
                         self.tcx.sess.create_err(CannotBeReexportedCratePublicNS {
                             span: import.span,
                             ident,
@@ -1268,12 +1268,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // exclude decl_macro
                             if self.get_macro_by_def_id(def_id).macro_rules =>
                         {
-                            err.subdiagnostic(ConsiderAddingMacroExport {
+                            err = err.subdiagnostic(ConsiderAddingMacroExport {
                                 span: binding.span,
                             });
                         }
                         _ => {
-                            err.subdiagnostic(ConsiderMarkingAsPub {
+                            err = err.subdiagnostic(ConsiderMarkingAsPub {
                                 span: import.span,
                                 ident,
                             });

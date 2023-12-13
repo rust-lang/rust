@@ -29,7 +29,7 @@ pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
             parse_meta(sess, attr)
-                .map_err(|mut err| {
+                .map_err(|err| {
                     err.emit();
                 })
                 .ok();
@@ -56,11 +56,11 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     let res = match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
-                                let mut err = sess.span_diagnostic.struct_span_err(
+                                let err = sess.span_diagnostic.struct_span_err(
                                     expr.span,
                                     "suffixed literals are not allowed in attributes",
-                                );
-                                err.help(
+                                )
+                                .help(
                                     "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), \
                                     use an unsuffixed version (`1`, `1.0`, etc.)",
                                 );
@@ -91,7 +91,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     let msg = format!("attribute value must be a literal");
                     let mut err = sess.span_diagnostic.struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err = expr.kind {
-                        err.downgrade_to_delayed_bug();
+                        err = err.downgrade_to_delayed_bug();
                     }
                     return Err(err);
                 }
@@ -139,7 +139,7 @@ pub fn check_builtin_attribute(
 ) {
     match parse_meta(sess, attr) {
         Ok(meta) => check_builtin_meta_item(sess, &meta, attr.style, name, template),
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
         }
     }

@@ -158,7 +158,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
                     for gate in missing_secondary {
                         let note =
                             format!("add `#![feature({gate})]` to the crate attributes to enable",);
-                        err.help(note);
+                        err = err.help(note);
                     }
                 }
 

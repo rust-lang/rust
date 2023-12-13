@@ -223,7 +223,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
 
                     let code = nested.parse::<syn::LitStr>()?;
                     tokens.extend(quote! {
-                        #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
+                        #diag = #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                     });
                 } else {
                     span_err(path.span().unwrap(), "unknown argument")
@@ -267,7 +267,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {
-            #diag.set_arg(
+            #diag = #diag.set_arg(
                 stringify!(#ident),
                 #field_binding
             );
@@ -336,7 +336,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                         report_error_if_not_applied_to_span(attr, &info)?;
 
                         return Ok(quote! {
-                            #diag.set_span(#binding);
+                            #diag = #diag.set_span(#binding);
                         });
                     }
                     DiagnosticDeriveKind::LintDiagnostic => {
@@ -350,11 +350,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 if FieldInnerTy::from_type(&info.binding.ast().ty).will_iterate() {
                     let DiagnosticDeriveKind::Diagnostic { handler } = &self.parent.kind else {
                         // No eager translation for lints.
-                        return Ok(quote! { #diag.subdiagnostic(#binding); });
+                        return Ok(quote! { #diag = #diag.subdiagnostic(#binding); });
                     };
                     return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
                 } else {
-                    return Ok(quote! { #diag.subdiagnostic(#binding); });
+                    return Ok(quote! { #diag = #diag.subdiagnostic(#binding); });
                 }
             }
             (Meta::List(meta_list), "subdiagnostic") => {
@@ -466,7 +466,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         let diag = &self.parent.diag;
         let fn_name = format_ident!("span_{}", kind);
         quote! {
-            #diag.#fn_name(
+            #diag = #diag.#fn_name(
                 #field_binding,
                 crate::fluent_generated::#fluent_attr_identifier
             );
@@ -478,7 +478,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
     fn add_subdiagnostic(&self, kind: &Ident, fluent_attr_identifier: Path) -> TokenStream {
         let diag = &self.parent.diag;
         quote! {
-            #diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
+            #diag = #diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
         }
     }
 

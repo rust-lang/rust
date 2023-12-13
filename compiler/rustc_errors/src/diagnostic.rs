@@ -91,11 +91,7 @@ where
 #[rustc_diagnostic_item = "DecorateLint"]
 pub trait DecorateLint<'a, G: EmissionGuarantee> {
     /// Decorate and emit a lint.
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut DiagnosticBuilder<'a, G>,
-    ) -> &'b mut DiagnosticBuilder<'a, G>;
-
+    fn decorate_lint(self, diag: DiagnosticBuilder<'a, G>) -> DiagnosticBuilder<'a, G>;
     fn msg(&self) -> DiagnosticMessage;
 }
 
@@ -332,6 +328,7 @@ impl Diagnostic {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
+    // njn: should these ones be `self -> Self`?
     pub fn downgrade_to_delayed_bug(&mut self) -> &mut Self {
         assert!(
             self.is_error(),

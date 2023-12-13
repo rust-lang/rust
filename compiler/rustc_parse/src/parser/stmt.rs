@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     // Public for rustfmt usage.
     pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|mut e| {
+        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
@@ -302,7 +302,8 @@ impl<'a> Parser<'a> {
                 Ok(ty) => (None, Some(ty)),
                 Err(mut err) => {
                     if let Ok(snip) = self.span_to_snippet(pat.span) {
-                        err.span_label(pat.span, format!("while parsing the type for `{snip}`"));
+                        err = err
+                            .span_label(pat.span, format!("while parsing the type for `{snip}`"));
                     }
                     // we use noexpect here because we don't actually expect Eq to be here
                     // but we are still checking for it in order to be able to handle it if
@@ -327,7 +328,7 @@ impl<'a> Parser<'a> {
                 // init parsed, ty parsed
                 init
             }
-            (Ok(init), Some((_, colon_sp, mut err))) => {
+            (Ok(init), Some((_, colon_sp, err))) => {
                 // init parsed, ty error
                 // Could parse the type as if it were the initializer, it is likely there was a
                 // typo in the code: `:` instead of `=`. Add suggestion and emit the error.
@@ -336,8 +337,8 @@ impl<'a> Parser<'a> {
                     "use `=` if you meant to assign",
                     " =",
                     Applicability::MachineApplicable,
-                );
-                err.emit();
+                )
+                .emit();
                 // As this was parsed successfully, continue as if the code has been fixed for the
                 // rest of the file. It will still fail due to the emitted error, but we avoid
                 // extra noise.
@@ -482,7 +483,7 @@ impl<'a> Parser<'a> {
                 } else {
                     stmt.span
                 };
-                e.multipart_suggestion(
+                e = e.multipart_suggestion(
                     "try placing this code inside a block",
                     vec![
                         (stmt_span.shrink_to_lo(), "{ ".to_string()),
@@ -498,8 +499,7 @@ impl<'a> Parser<'a> {
             }
             _ => {}
         }
-        e.span_label(sp, "expected `{`");
-        e
+        e.span_label(sp, "expected `{`")
     }
 
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
@@ -576,7 +576,7 @@ impl<'a> Parser<'a> {
                         {
                             // FIXME(hkmatsumoto): Might be better to trigger
                             // this only when parsing an index expression.
-                            err.span_suggestion_verbose(
+                            err = err.span_suggestion_verbose(
                                 self.token.span,
                                 "you might have meant a range expression",
                                 "..",
@@ -587,7 +587,7 @@ impl<'a> Parser<'a> {
                             // and we can suggest a path separator
                             self.bump();
                             if self.token.span.lo() == self.prev_token.span.hi() {
-                                err.span_suggestion_verbose(
+                                err = err.span_suggestion_verbose(
                                     self.prev_token.span,
                                     "maybe write a path separator here",
                                     "::",
@@ -596,7 +596,7 @@ impl<'a> Parser<'a> {
                             }
                             if self.sess.unstable_features.is_nightly_build() {
                                 // FIXME(Nilstrieb): Remove this again after a few months.
-                                err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
+                                err = err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
                             }
                         }
                     }
@@ -662,7 +662,7 @@ impl<'a> Parser<'a> {
                     match expect_result {
                         // Recover from parser, skip type error to avoid extra errors.
                         Ok(true) => true,
-                        Err(mut e) => {
+                        Err(e) => {
                             if self.recover_colon_as_semi() {
                                 // recover_colon_as_semi has already emitted a nicer error.
                                 e.delay_as_bug();
@@ -715,7 +715,7 @@ impl<'a> Parser<'a> {
                                 _ => {}
                             }
 
-                            if let Err(mut e) =
+                            if let Err(e) =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
                             {
                                 if recover.no() {

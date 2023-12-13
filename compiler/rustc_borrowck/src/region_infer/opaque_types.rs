@@ -422,7 +422,7 @@ fn check_opaque_type_parameter_valid(
                 .sess
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
                 .span_note(spans, format!("{descr} used multiple times"))
-                .emit());
+                .emit1());
         }
     }
 

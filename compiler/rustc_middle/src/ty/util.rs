@@ -369,7 +369,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.sess
                     .struct_span_err(self.def_span(item_id), "multiple drop impls found")
                     .span_note(self.def_span(old_item_id), "other impl here")
-                    .delay_as_bug();
+                    .delay_as_bug1();
             }
 
             dtor_candidate = Some((*item_id, self.constness(impl_did)));

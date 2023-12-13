@@ -148,19 +148,18 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             kind,
             expected_str,
             found_str,
-        );
-
-        err.span_label(span, format!("expected {kind} that takes {expected_str}"));
+        )
+        .span_label(span, format!("expected {kind} that takes {expected_str}"));
 
         if let Some(found_span) = found_span {
-            err.span_label(found_span, format!("takes {found_str}"));
+            err = err.span_label(found_span, format!("takes {found_str}"));
 
             // Suggest to take and ignore the arguments with expected_args_length `_`s if
             // found arguments is empty (assume the user just wants to ignore args in this case).
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
                 let underscores = vec!["_"; expected_args.len()].join(", ");
-                err.span_suggestion_verbose(
+                err = err.span_suggestion_verbose(
                     closure_arg_span.unwrap_or(found_span),
                     format!(
                         "consider changing the closure to take and ignore the expected argument{}",
@@ -178,7 +177,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                         .map(|(name, _)| name.to_owned())
                         .collect::<Vec<String>>()
                         .join(", ");
-                    err.span_suggestion_verbose(
+                    err = err.span_suggestion_verbose(
                         found_span,
                         "change the closure to take multiple arguments instead of a single tuple",
                         format!("|{sugg}|"),
@@ -217,7 +216,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                         String::new()
                     },
                 );
-                err.span_suggestion_verbose(
+                err = err.span_suggestion_verbose(
                     found_span,
                     "change the closure to accept a tuple instead of individual arguments",
                     sugg,

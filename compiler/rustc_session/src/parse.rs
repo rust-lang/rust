@@ -148,12 +148,11 @@ pub fn feature_warn_issue(
         name: lint.name_lower(),
         has_future_breakage: false,
         is_force_warn: false,
-    });
-    err.warn(lint.desc);
-    err.note(format!("for more information, see {}", future_incompatible.reference));
-
+    })
+    .warn(lint.desc)
+    .note(format!("for more information, see {}", future_incompatible.reference))
     // A later feature_err call can steal and cancel this warning.
-    err.stash(span, StashKey::EarlySyntaxWarning);
+    .stash(span, StashKey::EarlySyntaxWarning);
 }
 
 /// Adds the diagnostics for a feature to an existing error.
