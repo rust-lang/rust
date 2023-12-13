@@ -52,7 +52,13 @@ print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         upvar `.arg`: 1024 bytes
 print-type-size type: `std::mem::ManuallyDrop<bool>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body@$DIR/async-awaiting-fut.rs:6:17: 6:19}>`: 1 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 1 bytes
 print-type-size type: `std::mem::MaybeUninit<bool>`: 1 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 1 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 1 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body@$DIR/async-awaiting-fut.rs:6:17: 6:19}>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 1 bytes
