@@ -672,7 +672,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let mir_hir_id = self.mir_hir_id();
 
-        let (return_span, mir_description, hir_ty) = match hir.get(mir_hir_id) {
+        let (return_span, mir_description, hir_ty) = match tcx.hir_node(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, body, fn_decl_span, .. }),
                 ..
@@ -689,7 +689,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         hir::CoroutineSource::Closure => " of async closure",
                         hir::CoroutineSource::Fn => {
                             let parent_item =
-                                hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
                             let output = &parent_item
                                 .fn_decl()
                                 .expect("coroutine lowered from async fn should be in fn")
@@ -706,7 +706,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         hir::CoroutineSource::Closure => " of gen closure",
                         hir::CoroutineSource::Fn => {
                             let parent_item =
-                                hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
                             let output = &parent_item
                                 .fn_decl()
                                 .expect("coroutine lowered from gen fn should be in fn")
@@ -721,7 +721,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         hir::CoroutineSource::Closure => " of async gen closure",
                         hir::CoroutineSource::Fn => {
                             let parent_item =
-                                hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
                             let output = &parent_item
                                 .fn_decl()
                                 .expect("coroutine lowered from async gen fn should be in fn")
@@ -841,7 +841,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let type_name =
             self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;
 
-        let yield_span = match tcx.hir().get(self.mir_hir_id()) {
+        let yield_span = match tcx.hir_node(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..

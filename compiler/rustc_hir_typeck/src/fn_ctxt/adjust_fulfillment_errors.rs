@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let hir = self.tcx.hir();
-        let (expr, qpath) = match hir.get(hir_id) {
+        let (expr, qpath) = match self.tcx.hir_node(hir_id) {
             hir::Node::Expr(expr) => {
                 if self.closure_span_overlaps_error(error, expr.span) {
                     return false;
@@ -454,7 +454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .find_ancestor_in_same_ctxt(error.obligation.cause.span)
                 .unwrap_or(arg.span);
 
-            if let hir::Node::Expr(arg_expr) = self.tcx.hir().get(arg.hir_id) {
+            if let hir::Node::Expr(arg_expr) = self.tcx.hir_node(arg.hir_id) {
                 // This is more specific than pointing at the entire argument.
                 self.blame_specific_expr_if_possible(error, arg_expr)
             }

@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         {
             let parent = cx.tcx.hir().get_parent_item(hir_id).def_id;
             if parent != CRATE_DEF_ID {
-                if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent) {
+                if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(parent) {
                     if let hir::ItemKind::Trait(..) = &item.kind {
                         return;
                     }

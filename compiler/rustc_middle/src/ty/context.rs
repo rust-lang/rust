@@ -1174,7 +1174,7 @@ impl<'tcx> TyCtxt<'tcx> {
             break (scope, ty::BrNamed(def_id.into(), self.item_name(def_id.into())));
         };
 
-        let is_impl_item = match self.hir().find_by_def_id(suitable_region_binding_scope) {
+        let is_impl_item = match self.opt_hir_node_by_def_id(suitable_region_binding_scope) {
             Some(Node::Item(..) | Node::TraitItem(..)) => false,
             Some(Node::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
@@ -1217,8 +1217,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 None,
                 hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. }, )) = hir_output.kind
             && let Some(local_id) = def_id.as_local()
-            && let Some(alias_ty) = self.hir().get_by_def_id(local_id).alias_ty() // it is type alias
-            && let Some(alias_generics) = self.hir().get_by_def_id(local_id).generics()
+            && let Some(alias_ty) = self.hir_node_by_def_id(local_id).alias_ty() // it is type alias
+            && let Some(alias_generics) = self.hir_node_by_def_id(local_id).generics()
         {
             v.visit_ty(alias_ty);
             if !v.0.is_empty() {
@@ -2137,7 +2137,7 @@ impl<'tcx> TyCtxt<'tcx> {
         loop {
             let parent = self.local_parent(rpit_lifetime_param_def_id);
             let hir::OpaqueTy { lifetime_mapping, .. } =
-                self.hir().get_by_def_id(parent).expect_item().expect_opaque_ty();
+                self.hir_node_by_def_id(parent).expect_item().expect_opaque_ty();
 
             let Some((lifetime, _)) = lifetime_mapping
                 .iter()
@@ -2221,8 +2221,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl_raw(self, def_id: DefId) -> bool {
         let Some(local_def_id) = def_id.as_local() else { return false };
-        let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        let node = self.hir().get(hir_id);
+        let node = self.hir_node_by_def_id(local_def_id);
 
         matches!(
             node,

@@ -1694,7 +1694,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let ret_msg = "return a value for the case when the loop has zero elements to iterate on";
         let ret_ty_msg =
             "otherwise consider changing the return type to account for that possibility";
-        if let Some(node) = hir.find(item.into())
+        if let Some(node) = tcx.opt_hir_node(item.into())
             && let Some(body_id) = node.body_id()
             && let Some(sig) = node.fn_sig()
             && let hir::ExprKind::Block(block, _) = hir.body(body_id).value.kind
@@ -1776,7 +1776,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
         let parent_id = fcx.tcx.hir().parent_id(id);
-        let parent = fcx.tcx.hir().get(parent_id);
+        let parent = fcx.tcx.hir_node(parent_id);
         if let Some(expr) = expression
             && let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
@@ -1835,7 +1835,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         }
 
         let parent_id = fcx.tcx.hir().get_parent_item(id);
-        let parent_item = fcx.tcx.hir().get_by_def_id(parent_id.def_id);
+        let parent_item = fcx.tcx.hir_node_by_def_id(parent_id.def_id);
 
         if let (Some(expr), Some(_), Some((fn_id, fn_decl, _, _))) =
             (expression, blk_id, fcx.get_node_fn_decl(parent_item))

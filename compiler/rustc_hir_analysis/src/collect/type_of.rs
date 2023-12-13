@@ -20,10 +20,10 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     use rustc_middle::ty::Ty;
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-    let Node::AnonConst(_) = tcx.hir().get(hir_id) else { panic!() };
+    let Node::AnonConst(_) = tcx.hir_node(hir_id) else { panic!() };
 
     let parent_node_id = tcx.hir().parent_id(hir_id);
-    let parent_node = tcx.hir().get(parent_node_id);
+    let parent_node = tcx.hir_node(parent_node_id);
 
     let (generics, arg_idx) = match parent_node {
         // Easy case: arrays repeat expressions.
@@ -61,7 +61,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         }
 
         Node::TypeBinding(binding @ &TypeBinding { hir_id: binding_id, .. })
-            if let Node::TraitRef(trait_ref) = tcx.hir().get(tcx.hir().parent_id(binding_id)) =>
+            if let Node::TraitRef(trait_ref) = tcx.hir_node(tcx.hir().parent_id(binding_id)) =>
         {
             let Some(trait_def_id) = trait_ref.trait_def_id() else {
                 return Ty::new_error_with_message(
@@ -354,7 +354,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let output = match tcx.hir().get(hir_id) {
+    let output = match tcx.hir_node(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
@@ -517,8 +517,7 @@ pub(super) fn type_of_opaque(
     if let Some(def_id) = def_id.as_local() {
         use rustc_hir::*;
 
-        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        Ok(ty::EarlyBinder::bind(match tcx.hir().get(hir_id) {
+        Ok(ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id) {
             Node::Item(item) => match item.kind {
                 ItemKind::OpaqueTy(OpaqueTy {
                     origin: hir::OpaqueTyOrigin::TyAlias { .. },

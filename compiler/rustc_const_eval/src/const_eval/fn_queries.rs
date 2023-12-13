@@ -33,7 +33,7 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// return if it has a `const` modifier. If it is an intrinsic, report whether said intrinsic
 /// has a `rustc_const_{un,}stable` attribute. Otherwise, return `Constness::NotConst`.
 fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
-    let node = tcx.hir().get_by_def_id(def_id);
+    let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
         hir::Node::Ctor(_)

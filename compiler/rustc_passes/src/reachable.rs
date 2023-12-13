@@ -115,7 +115,7 @@ impl<'tcx> ReachableContext<'tcx> {
             return false;
         };
 
-        match self.tcx.hir().find_by_def_id(def_id) {
+        match self.tcx.opt_hir_node_by_def_id(def_id) {
             Some(Node::Item(item)) => match item.kind {
                 hir::ItemKind::Fn(..) => item_might_be_inlined(self.tcx, def_id.into()),
                 _ => false,
@@ -146,7 +146,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 continue;
             }
 
-            if let Some(ref item) = self.tcx.hir().find_by_def_id(search_item) {
+            if let Some(ref item) = self.tcx.opt_hir_node_by_def_id(search_item) {
                 self.propagate_node(item, search_item);
             }
         }

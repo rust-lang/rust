@@ -69,7 +69,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv
 fn is_child_of_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let map = cx.tcx.hir();
     if let Some(parent_id) = map.opt_parent_id(expr.hir_id)
-        && let Some(parent) = map.find(parent_id)
+        && let Some(parent) = cx.tcx.opt_hir_node(parent_id)
     {
         let expr = match parent {
             Node::Block(block) => {
