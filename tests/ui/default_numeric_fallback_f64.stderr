@@ -86,12 +86,6 @@ LL |             let y = 1.;
    |                     ^^ help: consider adding suffix: `1.0_f64`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_f64.rs:78:9
-   |
-LL |         1.
-   |         ^^ help: consider adding suffix: `1.0_f64`
-
-error: default numeric fallback might occur
   --> $DIR/default_numeric_fallback_f64.rs:84:27
    |
 LL |         let f = || -> _ { 1. };
@@ -147,5 +141,5 @@ LL |         inline!(let x = 22.;);
    |
    = note: this error originates in the macro `__inline_mac_fn_internal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 24 previous errors
+error: aborting due to 23 previous errors
 

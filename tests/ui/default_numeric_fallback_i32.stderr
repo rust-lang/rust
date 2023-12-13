@@ -98,12 +98,6 @@ LL |             let y = 1;
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:79:9
-   |
-LL |         1
-   |         ^ help: consider adding suffix: `1_i32`
-
-error: default numeric fallback might occur
   --> $DIR/default_numeric_fallback_i32.rs:85:27
    |
 LL |         let f = || -> _ { 1 };
@@ -159,5 +153,23 @@ LL |         inline!(let x = 22;);
    |
    = note: this error originates in the macro `__inline_mac_fn_internal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 26 previous errors
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback_i32.rs:217:29
+   |
+LL |         let data_i32 = vec![1, 2, 3];
+   |                             ^ help: consider adding suffix: `1_i32`
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback_i32.rs:217:32
+   |
+LL |         let data_i32 = vec![1, 2, 3];
+   |                                ^ help: consider adding suffix: `2_i32`
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback_i32.rs:217:35
+   |
+LL |         let data_i32 = vec![1, 2, 3];
+   |                                   ^ help: consider adding suffix: `3_i32`
+
+error: aborting due to 28 previous errors
 

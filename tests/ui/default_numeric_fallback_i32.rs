@@ -186,4 +186,36 @@ fn check_expect_suppression() {
     let x = 21;
 }
 
+mod type_already_infered {
+    // Should NOT lint if bound to return type
+    fn ret_i32() -> i32 {
+        1
+    }
+
+    // Should NOT lint if bound to return type
+    fn ret_if_i32(b: bool) -> i32 {
+        if b { 100 } else { 0 }
+    }
+
+    // Should NOT lint if bound to return type
+    fn ret_i32_tuple() -> (i32, i32) {
+        (0, 1)
+    }
+
+    // Should NOT lint if bound to return type
+    fn ret_stmt(b: bool) -> (i32, i32) {
+        if b {
+            return (0, 1);
+        }
+        (0, 0)
+    }
+
+    #[allow(clippy::useless_vec)]
+    fn vec_macro() {
+        // Should NOT lint in `vec!` call if the type was already stated
+        let data_i32: Vec<i32> = vec![1, 2, 3];
+        let data_i32 = vec![1, 2, 3];
+    }
+}
+
 fn main() {}
