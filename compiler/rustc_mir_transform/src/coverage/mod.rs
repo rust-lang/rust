@@ -43,8 +43,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         // be transformed, so it should never see promoted MIR.
         assert!(mir_source.promoted.is_none());
 
-        let is_fn_like =
-            tcx.hir_node_by_def_id(mir_source.def_id().expect_local()).fn_kind().is_some();
+        let def_id = mir_source.def_id().expect_local();
 
         // Only instrument functions, methods, and closures (not constants since they are evaluated
         // at compile time by Miri).
@@ -53,8 +52,8 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
         // be tricky if const expressions have no corresponding statements in the enclosing MIR.
         // Closures are carved out by their initial `Assign` statement.)
-        if !is_fn_like {
-            trace!("InstrumentCoverage skipped for {:?} (not an fn-like)", mir_source.def_id());
+        if !tcx.def_kind(def_id).is_fn_like() {
+            trace!("InstrumentCoverage skipped for {def_id:?} (not an fn-like)");
             return;
         }
 
@@ -66,14 +65,13 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             _ => {}
         }
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(mir_source.def_id());
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+        if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
             return;
         }
 
-        trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage starting for {def_id:?}");
         Instrumentor::new(tcx, mir_body).inject_counters();
-        trace!("InstrumentCoverage done for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage done for {def_id:?}");
     }
 }
 
