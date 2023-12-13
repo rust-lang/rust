@@ -1379,6 +1379,8 @@ pub struct CheckCfg {
     pub exhaustive_values: bool,
     /// All the expected values for a config name
     pub expecteds: FxHashMap<Symbol, ExpectedValues<Symbol>>,
+    /// Well known names (only used for diagnostics purposes)
+    pub well_known_names: FxHashSet<Symbol>,
 }
 
 pub enum ExpectedValues<T> {
@@ -1431,9 +1433,10 @@ impl CheckCfg {
         };
 
         macro_rules! ins {
-            ($name:expr, $values:expr) => {
+            ($name:expr, $values:expr) => {{
+                self.well_known_names.insert($name);
                 self.expecteds.entry($name).or_insert_with($values)
-            };
+            }};
         }
 
         // Symbols are inserted in alphabetical order as much as possible.
