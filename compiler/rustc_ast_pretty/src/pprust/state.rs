@@ -758,7 +758,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Colon => ":".into(),
             token::ModSep => "::".into(),
             token::RArrow => "->".into(),
-            token::LArrow => "<-".into(),
             token::FatArrow => "=>".into(),
             token::OpenDelim(Delimiter::Parenthesis) => "(".into(),
             token::CloseDelim(Delimiter::Parenthesis) => ")".into(),

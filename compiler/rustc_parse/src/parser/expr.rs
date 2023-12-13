@@ -214,10 +214,6 @@ impl<'a> Parser<'a> {
                 self.err_dotdotdot_syntax(self.token.span);
             }
 
-            if self.token == token::LArrow {
-                self.err_larrow_operator(self.token.span);
-            }
-
             self.bump();
             if op.node.is_comparison() {
                 if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
@@ -3581,10 +3577,6 @@ impl<'a> Parser<'a> {
 
     fn err_dotdotdot_syntax(&self, span: Span) {
         self.sess.emit_err(errors::DotDotDot { span });
-    }
-
-    fn err_larrow_operator(&self, span: Span) {
-        self.sess.emit_err(errors::LeftArrowOperator { span });
     }
 
     fn mk_assign_op(&self, binop: BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ExprKind {

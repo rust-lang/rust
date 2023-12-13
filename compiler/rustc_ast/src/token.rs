@@ -274,8 +274,6 @@ pub enum TokenKind {
     ModSep,
     /// `->`
     RArrow,
-    /// `<-`
-    LArrow,
     /// `=>`
     FatArrow,
     /// `#`
@@ -376,7 +374,6 @@ impl TokenKind {
             DotDotDot => (Dot, DotDot),
             ModSep => (Colon, Colon),
             RArrow => (BinOp(Minus), Gt),
-            LArrow => (Lt, BinOp(Minus)),
             FatArrow => (Eq, Gt),
             _ => return None,
         })
@@ -435,7 +432,7 @@ impl Token {
         match self.kind {
             Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | BinOp(_)
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
-            | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
+            | ModSep | RArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | Eof => false,
@@ -780,7 +777,6 @@ impl Token {
                 Eq => Le,
                 Lt => BinOp(Shl),
                 Le => BinOpEq(Shl),
-                BinOp(Minus) => LArrow,
                 _ => return None,
             },
             Gt => match joint.kind {
@@ -820,9 +816,9 @@ impl Token {
             },
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
-            | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
+            | DotDotEq | Comma | Semi | ModSep | RArrow | FatArrow | Pound | Dollar | Question
+            | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | Lifetime(..)
+            | Interpolated(..) | DocComment(..) | Eof => return None,
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))

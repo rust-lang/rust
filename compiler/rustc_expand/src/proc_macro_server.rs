@@ -195,7 +195,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Colon => op(":"),
                 ModSep => op("::"),
                 RArrow => op("->"),
-                LArrow => op("<-"),
                 FatArrow => op("=>"),
                 Pound => op("#"),
                 Dollar => op("$"),
