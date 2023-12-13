@@ -78,7 +78,9 @@ pub fn hir_stats(tcx: TyCtxt<'_>, write_to_stderr: bool) {
     tcx.hir().walk_toplevel_module(&mut collector);
     tcx.hir().walk_attributes(&mut collector);
 
-    if let Some(path) = metrics_path() {
+    if let Some(path) = metrics_path()
+        && false
+    {
         collector.store(path, "hir-stats");
     }
     if write_to_stderr {
@@ -92,8 +94,8 @@ pub fn ast_stats(krate: &ast::Crate, title: &str, prefix: &str, write_to_stderr:
     let mut collector =
         StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
-    if false
-        && let Some(path) = metrics_path()
+    if let Some(path) = metrics_path()
+        && false
     {
         collector.store(path, prefix);
     }
