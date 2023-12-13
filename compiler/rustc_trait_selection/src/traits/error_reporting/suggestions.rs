@@ -2167,7 +2167,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             })
             .collect();
         err.multipart_suggestion(
-            format!("consider wrapping the function in a closure"),
+            "consider wrapping the function in a closure",
             vec![
                 (arg.span.shrink_to_lo(), format!("|{}| ", closure_names.join(", "))),
                 (arg.span.shrink_to_hi(), format!("({})", call_names.join(", "))),
