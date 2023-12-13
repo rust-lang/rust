@@ -421,10 +421,10 @@ impl std::str::FromStr for SplitDebuginfo {
 impl SplitDebuginfo {
     /// Returns the default `-Csplit-debuginfo` value for the current target. See the comment for
     /// `rust.split-debuginfo` in `config.example.toml`.
-    fn default_for_platform(target: &str) -> Self {
+    fn default_for_platform(target: TargetSelection) -> Self {
         if target.contains("apple") {
             SplitDebuginfo::Unpacked
-        } else if target.contains("windows") {
+        } else if target.is_windows() {
             SplitDebuginfo::Packed
         } else {
             SplitDebuginfo::Off
@@ -526,6 +526,10 @@ impl TargetSelection {
 
     pub fn is_msvc(&self) -> bool {
         self.contains("msvc")
+    }
+
+    pub fn is_windows(&self) -> bool {
+        self.contains("windows")
     }
 }
 
@@ -1595,7 +1599,7 @@ impl Config {
                 .as_deref()
                 .map(SplitDebuginfo::from_str)
                 .map(|v| v.expect("invalid value for rust.split_debuginfo"))
-                .unwrap_or(SplitDebuginfo::default_for_platform(&config.build.triple));
+                .unwrap_or(SplitDebuginfo::default_for_platform(config.build));
             optimize = optimize_toml;
             omit_git_hash = omit_git_hash_toml;
             config.rust_new_symbol_mangling = new_symbol_mangling;

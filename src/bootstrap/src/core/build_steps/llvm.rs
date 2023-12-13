@@ -283,7 +283,7 @@ impl Step for Llvm {
         };
 
         builder.update_submodule(&Path::new("src").join("llvm-project"));
-        if builder.llvm_link_shared() && target.contains("windows") {
+        if builder.llvm_link_shared() && target.is_windows() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -361,7 +361,7 @@ impl Step for Llvm {
         // Disable zstd to avoid a dependency on libzstd.so.
         cfg.define("LLVM_ENABLE_ZSTD", "OFF");
 
-        if !target.contains("windows") {
+        if !target.is_windows() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
@@ -607,7 +607,7 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "DragonFly");
         } else if target.contains("freebsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
-        } else if target.contains("windows") {
+        } else if target.is_windows() {
             cfg.define("CMAKE_SYSTEM_NAME", "Windows");
         } else if target.contains("haiku") {
             cfg.define("CMAKE_SYSTEM_NAME", "Haiku");
@@ -772,7 +772,7 @@ fn configure_cmake(
         && !target.contains("netbsd")
         && !target.contains("solaris")
     {
-        if target.contains("apple") || target.contains("windows") {
+        if target.contains("apple") || target.is_windows() {
             ldflags.push_all("-static-libstdc++");
         } else {
             ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
@@ -1295,7 +1295,7 @@ impl Step for Libunwind {
                 cfg.define("__LIBUNWIND_IS_NATIVE_ONLY", None);
                 cfg.define("NDEBUG", None);
             }
-            if self.target.contains("windows") {
+            if self.target.is_windows() {
                 cfg.define("_LIBUNWIND_HIDE_SYMBOLS", "1");
                 cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
             }

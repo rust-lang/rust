@@ -49,7 +49,7 @@ pub use t;
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    if target.contains("windows") {
+    if target.is_windows() {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")
@@ -72,7 +72,7 @@ pub fn is_debug_info(name: &str) -> bool {
 /// Returns the corresponding relative library directory that the compiler's
 /// dylibs will be found in.
 pub fn libdir(target: TargetSelection) -> &'static str {
-    if target.contains("windows") { "bin" } else { "lib" }
+    if target.is_windows() { "bin" } else { "lib" }
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
@@ -191,7 +191,7 @@ pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
             || target.contains("aarch64")
             || target.contains("s390x")
             || target.contains("riscv64gc")
-    } else if target.contains("darwin") || target.contains("windows") {
+    } else if target.contains("darwin") || target.is_windows() {
         target.contains("x86_64")
     } else {
         false
@@ -519,7 +519,7 @@ pub fn linker_flags(
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
                 "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(builder.config.lld_mode, target.is_msvc())
+                lld_flag_no_threads(builder.config.lld_mode, target.is_windows())
             ));
         }
     }
