@@ -1575,12 +1575,8 @@ impl HandlerInner {
 
     #[track_caller]
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
-        self.emit_diag_at_span(Diagnostic::new(Bug, msg.into()), sp);
+        self.emit_diagnostic(Diagnostic::new(Bug, msg.into()).set_span(sp));
         panic::panic_any(ExplicitBug);
-    }
-
-    fn emit_diag_at_span(&mut self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
-        self.emit_diagnostic(diag.set_span(sp));
     }
 
     fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
