@@ -1,4 +1,5 @@
 // compile-flags: -C debuginfo=2
+// ignore-tidy-linelength
 
 #![allow(dead_code)]
 
@@ -13,7 +14,8 @@ mod module {
         C { x: u32 },
     }
 
-    // CHECK: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "CrateFooEnum"{{.*}}flags: DIFlagProtected{{.*}})
+    // NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "CrateFooEnum"{{.*}}flags: DIFlagProtected{{.*}})
+    // MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<crate_enum::module::CrateFooEnum>"{{.*}}flags: DIFlagProtected{{.*}})
     pub fn use_everything() {
         black_box(CrateFooEnum::A);
     }

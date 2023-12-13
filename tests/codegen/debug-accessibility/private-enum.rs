@@ -1,4 +1,5 @@
 // compile-flags: -C debuginfo=2
+// ignore-tidy-linelength
 
 #![allow(dead_code)]
 
@@ -12,7 +13,8 @@ enum PrivateFooEnum {
     C { x: u32 },
 }
 
-// CHECK: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "PrivateFooEnum"{{.*}}flags: DIFlagPrivate{{.*}})
+// NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "PrivateFooEnum"{{.*}}flags: DIFlagPrivate{{.*}})
+// MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<private_enum::PrivateFooEnum>"{{.*}}flags: DIFlagPrivate{{.*}})
 
 fn main() {
     black_box(PrivateFooEnum::A);
