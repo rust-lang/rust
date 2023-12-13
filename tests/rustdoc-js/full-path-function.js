@@ -4,16 +4,16 @@ const EXPECTED = [
     {
         'query': 'sac -> usize',
         'others': [
-            { 'path': 'full_path_function::b::Sac', 'name': 'bar' },
             { 'path': 'full_path_function::b::Sac', 'name': 'len' },
             { 'path': 'full_path_function::sac::Sac', 'name': 'len' },
+            { 'path': 'full_path_function::b::Sac', 'name': 'bar' },
         ],
     },
     {
         'query': 'b::sac -> usize',
         'others': [
-            { 'path': 'full_path_function::b::Sac', 'name': 'bar' },
             { 'path': 'full_path_function::b::Sac', 'name': 'len' },
+            { 'path': 'full_path_function::b::Sac', 'name': 'bar' },
         ],
     },
     {
