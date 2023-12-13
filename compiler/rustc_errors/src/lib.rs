@@ -977,6 +977,13 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Note, msg)
     }
 
+    /// Construct a builder at the `Bug` level with the `msg`.
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn struct_bug(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
+        DiagnosticBuilder::new(self, Level::Bug, msg)
+    }
+
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
@@ -1101,27 +1108,26 @@ impl Handler {
 
     #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        DiagnosticBuilder::<FatalError>::new(self, Fatal, msg).emit().raise()
+        self.struct_fatal(msg).emit()
     }
 
     #[rustc_lint_diagnostics]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        DiagnosticBuilder::<ErrorGuaranteed>::new(self, Error { lint: false }, msg).emit()
+        self.struct_err(msg).emit()
     }
 
     #[rustc_lint_diagnostics]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
-        DiagnosticBuilder::<()>::new(self, Warning(None), msg).emit();
+        self.struct_warn(msg).emit()
     }
 
     #[rustc_lint_diagnostics]
     pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
-        DiagnosticBuilder::<()>::new(self, Note, msg).emit();
+        self.struct_note(msg).emit()
     }
 
     pub fn bug(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        DiagnosticBuilder::<diagnostic_builder::Bug>::new(self, Bug, msg).emit();
-        panic::panic_any(ExplicitBug);
+        self.struct_bug(msg).emit()
     }
 
     #[inline]
