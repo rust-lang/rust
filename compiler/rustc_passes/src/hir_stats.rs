@@ -92,7 +92,9 @@ pub fn ast_stats(krate: &ast::Crate, title: &str, prefix: &str, write_to_stderr:
     let mut collector =
         StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
-    if let Some(path) = metrics_path() {
+    if false
+        && let Some(path) = metrics_path()
+    {
         collector.store(path, prefix);
     }
     if write_to_stderr {
