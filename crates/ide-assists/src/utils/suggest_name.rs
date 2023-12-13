@@ -58,6 +58,32 @@ const USELESS_METHODS: &[&str] = &[
     "into_future",
 ];
 
+pub(crate) fn for_unique_generic_name(
+    name: &str,
+    existing_params: &ast::GenericParamList,
+) -> SmolStr {
+    let param_names = existing_params
+        .generic_params()
+        .map(|param| match param {
+            ast::GenericParam::TypeParam(t) => t.name().unwrap().to_string(),
+            p => p.to_string(),
+        })
+        .collect_vec();
+    let mut name = name.to_string();
+    let base_len = name.len();
+    // 4*len bytes for base, and 2 bytes for 2 digits
+    name.reserve(4 * base_len + 2);
+
+    let mut count = 0;
+    while param_names.contains(&name) {
+        name.truncate(base_len);
+        name.push_str(&count.to_string());
+        count += 1;
+    }
+
+    name.into()
+}
+
 pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
     let c = ty
         .type_bound_list()

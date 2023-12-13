@@ -2,22 +2,25 @@ use std::ops::Not;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::convert_param_list_to_arg_list,
+    utils::{convert_param_list_to_arg_list, suggest_name},
 };
 use either::Either;
 use hir::{db::HirDatabase, HasVisibility};
 use ide_db::{
     assists::{AssistId, GroupLabel},
     path_transform::PathTransform,
+    FxHashMap, FxHashSet,
 };
+use itertools::Itertools;
 use syntax::{
     ast::{
         self,
         edit::{self, AstNodeEdit},
-        make, AssocItem, HasGenericParams, HasName, HasVisibility as astHasVisibility, Path,
+        make, AssocItem, GenericArgList, GenericParamList, HasGenericParams, HasName,
+        HasTypeBounds, HasVisibility as astHasVisibility, Path,
     },
     ted::{self, Position},
-    AstNode, NodeOrToken, SyntaxKind,
+    AstNode, NodeOrToken, SmolStr, SyntaxKind,
 };
 
 // Assist: generate_delegate_trait
@@ -77,7 +80,7 @@ use syntax::{
 //     }
 //
 //     fn method_(&mut self) -> bool {
-//         <A as SomeTrait>::method_( &mut self.a )
+//         <A as SomeTrait>::method_(&mut self.a)
 //     }
 // }
 // ```
@@ -98,6 +101,7 @@ pub(crate) fn generate_delegate_trait(acc: &mut Assists, ctx: &AssistContext<'_>
 }
 
 /// A utility object that represents a struct's field.
+#[derive(Debug)]
 struct Field {
     name: String,
     ty: ast::Type,
@@ -111,44 +115,33 @@ impl Field {
         f: Either<ast::RecordField, (ast::TupleField, ast::TupleFieldList)>,
     ) -> Option<Field> {
         let db = ctx.sema.db;
-        let name: String;
-        let range: syntax::TextRange;
-        let ty: ast::Type;
 
         let module = ctx.sema.to_module_def(ctx.file_id())?;
 
-        match f {
+        let (name, range, ty) = match f {
             Either::Left(f) => {
-                name = f.name()?.to_string();
-                ty = f.ty()?;
-                range = f.syntax().text_range();
+                let name = f.name()?.to_string();
+                (name, f.syntax().text_range(), f.ty()?)
             }
             Either::Right((f, l)) => {
-                name = l.fields().position(|it| it == f)?.to_string();
-                ty = f.ty()?;
-                range = f.syntax().text_range();
+                let name = l.fields().position(|it| it == f)?.to_string();
+                (name, f.syntax().text_range(), f.ty()?)
             }
         };
 
         let hir_ty = ctx.sema.resolve_type(&ty)?;
         let type_impls = hir::Impl::all_for_type(db, hir_ty.clone());
         let mut impls = Vec::with_capacity(type_impls.len());
-        let type_param = hir_ty.as_type_param(db);
 
-        if let Some(tp) = type_param {
+        if let Some(tp) = hir_ty.as_type_param(db) {
             for tb in tp.trait_bounds(db) {
-                impls.push(Delegee::Bound(BoundCase(tb)));
+                impls.push(Delegee::Bound(tb));
             }
         };
 
         for imp in type_impls {
-            match imp.trait_(db) {
-                Some(tr) => {
-                    if tr.is_visible_from(db, module) {
-                        impls.push(Delegee::Impls(ImplCase(tr, imp)))
-                    }
-                }
-                None => (),
+            if let Some(tr) = imp.trait_(db).filter(|tr| tr.is_visible_from(db, module)) {
+                impls.push(Delegee::Impls(tr, imp))
             }
         }
 
@@ -161,19 +154,17 @@ impl Field {
 /// actually implements the trait and the second way is when the field
 /// has a bound type parameter. We handle these cases in different ways
 /// hence the enum.
+#[derive(Debug)]
 enum Delegee {
-    Bound(BoundCase),
-    Impls(ImplCase),
+    Bound(hir::Trait),
+    Impls(hir::Trait, hir::Impl),
 }
-
-struct BoundCase(hir::Trait);
-struct ImplCase(hir::Trait, hir::Impl);
 
 impl Delegee {
     fn signature(&self, db: &dyn HirDatabase) -> String {
         let mut s = String::new();
 
-        let (Delegee::Bound(BoundCase(it)) | Delegee::Impls(ImplCase(it, _))) = self;
+        let (Delegee::Bound(it) | Delegee::Impls(it, _)) = self;
 
         for m in it.module(db).path_to_root(db).iter().rev() {
             if let Some(name) = m.name(db) {
@@ -200,25 +191,33 @@ impl Struct {
 
     pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
         let db = ctx.db();
+
         for delegee in &field.impls {
+            let trait_ = match delegee {
+                Delegee::Bound(b) => b,
+                Delegee::Impls(i, _) => i,
+            };
+
+            // Skip trait that has `Self` type, which cannot be delegated
+            //
+            // See [`test_self_ty`]
+            if has_self_type(*trait_, ctx).is_some() {
+                continue;
+            }
+
             // FIXME :  We can omit already implemented impl_traits
             // But we don't know what the &[hir::Type] argument should look like.
-
-            // let trait_ = match delegee {
-            //     Delegee::Bound(b) => b.0,
-            //     Delegee::Impls(i) => i.1,
-            // };
-
             // if self.hir_ty.impls_trait(db, trait_, &[]) {
             //     continue;
             // }
             let signature = delegee.signature(db);
+
             let Some(delegate) = generate_impl(ctx, self, &field.ty, &field.name, delegee) else {
                 continue;
             };
 
             acc.add_group(
-                &GroupLabel("Delegate trait impl for field...".to_owned()),
+                &GroupLabel(format!("Generate delegate impls for field `{}`", field.name)),
                 AssistId("generate_delegate_trait", ide_db::assists::AssistKind::Generate),
                 format!("Generate delegate impl `{}` for `{}`", signature, field.name),
                 field.range,
@@ -241,46 +240,40 @@ fn generate_impl(
     delegee: &Delegee,
 ) -> Option<ast::Impl> {
     let delegate: ast::Impl;
-    let source: ast::Impl;
-    let genpar: Option<ast::GenericParamList>;
     let db = ctx.db();
-    let base_path = make::path_from_text(&field_ty.to_string().as_str());
-    let s_path = make::ext::ident_path(&strukt.name.to_string());
+    let ast_strukt = &strukt.strukt;
+    let strukt_ty = make::ty_path(make::ext::ident_path(&strukt.name.to_string()));
 
     match delegee {
         Delegee::Bound(delegee) => {
-            let in_file = ctx.sema.source(delegee.0.to_owned())?;
-            let source: ast::Trait = in_file.value;
+            let bound_def = ctx.sema.source(delegee.to_owned())?.value;
+            let bound_params = bound_def.generic_param_list();
+            let strukt_params = ast_strukt.generic_param_list();
 
             delegate = make::impl_trait(
-                delegee.0.is_unsafe(db),
-                None,
-                None,
-                strukt.strukt.generic_param_list(),
-                None,
-                delegee.0.is_auto(db),
-                make::ty(&delegee.0.name(db).to_smol_str()),
-                make::ty_path(s_path),
-                source.where_clause(),
-                strukt.strukt.where_clause(),
+                delegee.is_unsafe(db),
+                bound_params.clone(),
+                bound_params.map(|params| params.to_generic_args()),
+                strukt_params.clone(),
+                strukt_params.map(|params| params.to_generic_args()),
+                delegee.is_auto(db),
+                make::ty(&delegee.name(db).to_smol_str()),
+                strukt_ty,
+                bound_def.where_clause(),
+                ast_strukt.where_clause(),
                 None,
             )
             .clone_for_update();
 
-            genpar = source.generic_param_list();
-            let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
-            let gen_args: String =
-                genpar.map_or_else(String::new, |params| params.to_generic_args().to_string());
-
             // Goto link : https://doc.rust-lang.org/reference/paths.html#qualified-paths
             let qualified_path_type = make::path_from_text(&format!(
-                "<{} as {}{}>",
-                base_path.to_string(),
-                delegee.0.name(db).to_smol_str(),
-                gen_args.to_string()
+                "<{} as {}>",
+                field_ty.to_string(),
+                delegate.trait_()?.to_string()
             ));
 
-            match source.assoc_item_list() {
+            let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
+            match bound_def.assoc_item_list() {
                 Some(ai) => {
                     ai.assoc_items()
                         .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
@@ -295,64 +288,392 @@ fn generate_impl(
                 None => {}
             };
 
-            let target = ctx.sema.scope(strukt.strukt.syntax())?;
-            let source = ctx.sema.scope(source.syntax())?;
-
-            let transform =
-                PathTransform::trait_impl(&target, &source, delegee.0, delegate.clone());
+            let target_scope = ctx.sema.scope(strukt.strukt.syntax())?;
+            let source_scope = ctx.sema.scope(bound_def.syntax())?;
+            let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
             transform.apply(&delegate.syntax());
         }
-        Delegee::Impls(delegee) => {
-            let in_file = ctx.sema.source(delegee.1.to_owned())?;
-            source = in_file.value;
+        Delegee::Impls(trait_, old_impl) => {
+            let old_impl = ctx.sema.source(old_impl.to_owned())?.value;
+
+            // `old_trait_args` contains names of generic args for trait in `old_impl`
+            let old_trait_args = old_impl
+                .trait_()?
+                .generic_arg_list()
+                .map(|l| l.generic_args().map(|arg| arg.to_string()))
+                .map_or_else(|| FxHashSet::default(), |it| it.collect());
+
+            let old_impl_params = old_impl.generic_param_list();
+
+            // Resolve conflicts with generic parameters in strukt.
+            // These generics parameters will also be used in `field_ty` and `where_clauses`,
+            // so we should substitude arguments in them as well.
+            let (renamed_strukt_params, field_ty, ty_where_clause) = if let Some(strukt_params) =
+                resolve_conflicts_for_strukt(ast_strukt, old_impl_params.as_ref())
+            {
+                let strukt_args = strukt_params.to_generic_args();
+                let field_ty =
+                    subst_name_in_strukt(ctx, ast_strukt, field_ty, strukt_args.clone())?;
+                let wc = ast_strukt
+                    .where_clause()
+                    .and_then(|wc| Some(subst_name_in_strukt(ctx, ast_strukt, &wc, strukt_args)?));
+                (Some(strukt_params), field_ty, wc)
+            } else {
+                (None, field_ty.clone_for_update(), None)
+            };
+
+            // Some generics used in `field_ty` may be instantiated, so they are no longer
+            // `generics`. We should remove them from generics params, and use the rest params.
+            let trait_gen_params =
+                remove_instantiated_params(&old_impl.self_ty()?, old_impl_params, &old_trait_args);
+
+            // Generate generic args that applied to current impl, this step will also remove unused params
+            let args_for_impl =
+                get_args_for_impl(&old_impl, &field_ty, &trait_gen_params, &old_trait_args);
+
+            let mut trait_gen_args = old_impl.trait_()?.generic_arg_list();
+            if let Some(arg_list) = &mut trait_gen_args {
+                *arg_list = arg_list.clone_for_update();
+                transform_impl(ctx, ast_strukt, &old_impl, &args_for_impl, &arg_list.syntax())?;
+            }
+
+            let mut type_gen_args =
+                renamed_strukt_params.clone().map(|params| params.to_generic_args());
+            if let Some(type_args) = &mut type_gen_args {
+                *type_args = type_args.clone_for_update();
+                transform_impl(ctx, ast_strukt, &old_impl, &args_for_impl, &type_args.syntax())?;
+            }
+
+            let path_type = make::ty(&trait_.name(db).to_smol_str()).clone_for_update();
+            transform_impl(ctx, ast_strukt, &old_impl, &args_for_impl, &path_type.syntax())?;
+
             delegate = make::impl_trait(
-                delegee.0.is_unsafe(db),
-                source.generic_param_list(),
-                None,
-                None,
-                None,
-                delegee.0.is_auto(db),
-                make::ty(&delegee.0.name(db).to_smol_str()),
-                make::ty_path(s_path),
-                source.where_clause(),
-                strukt.strukt.where_clause(),
+                trait_.is_unsafe(db),
+                trait_gen_params,
+                trait_gen_args,
+                renamed_strukt_params,
+                type_gen_args,
+                trait_.is_auto(db),
+                path_type,
+                strukt_ty,
+                old_impl.where_clause().map(|wc| wc.clone_for_update()),
+                ty_where_clause,
                 None,
             )
             .clone_for_update();
-            genpar = source.generic_param_list();
-            let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
-            let gen_args: String =
-                genpar.map_or_else(String::new, |params| params.to_generic_args().to_string());
 
             // Goto link : https://doc.rust-lang.org/reference/paths.html#qualified-paths
             let qualified_path_type = make::path_from_text(&format!(
-                "<{} as {}{}>",
-                base_path.to_string().as_str(),
-                delegee.0.name(db).to_smol_str(),
-                gen_args.to_string().as_str()
+                "<{} as {}>",
+                field_ty.to_string(),
+                delegate.trait_()?.to_string()
             ));
 
-            source
+            let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
+            for item in old_impl
                 .get_or_create_assoc_item_list()
                 .assoc_items()
                 .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
-                .for_each(|item| {
-                    let assoc = process_assoc_item(item, qualified_path_type.clone(), &field_name);
-                    if let Some(assoc) = assoc {
-                        delegate_assoc_items.add_item(assoc);
-                    }
-                });
+            {
+                let assoc = process_assoc_item(
+                    transform_assoc_item(ctx, ast_strukt, &old_impl, &args_for_impl, item)?,
+                    qualified_path_type.clone(),
+                    &field_name,
+                )?;
 
-            let target = ctx.sema.scope(strukt.strukt.syntax())?;
-            let source = ctx.sema.scope(source.syntax())?;
+                delegate_assoc_items.add_item(assoc);
+            }
 
-            let transform =
-                PathTransform::trait_impl(&target, &source, delegee.0, delegate.clone());
-            transform.apply(&delegate.syntax());
+            // Remove unused where clauses
+            if let Some(wc) = delegate.where_clause() {
+                remove_useless_where_clauses(&delegate, wc)?;
+            }
         }
     }
 
     Some(delegate)
+}
+
+fn transform_assoc_item(
+    ctx: &AssistContext<'_>,
+    strukt: &ast::Struct,
+    old_impl: &ast::Impl,
+    args: &Option<GenericArgList>,
+    item: AssocItem,
+) -> Option<AssocItem> {
+    let source_scope = ctx.sema.scope(&item.syntax()).unwrap();
+    let target_scope = ctx.sema.scope(&strukt.syntax())?;
+    let hir_old_impl = ctx.sema.to_impl_def(old_impl)?;
+    let item = item.clone_for_update();
+    let transform = args.as_ref().map_or_else(
+        || PathTransform::generic_transformation(&target_scope, &source_scope),
+        |args| {
+            PathTransform::impl_transformation(
+                &target_scope,
+                &source_scope,
+                hir_old_impl,
+                args.clone(),
+            )
+        },
+    );
+    transform.apply(&item.syntax());
+    Some(item)
+}
+
+fn transform_impl(
+    ctx: &AssistContext<'_>,
+    strukt: &ast::Struct,
+    old_impl: &ast::Impl,
+    args: &Option<GenericArgList>,
+    syntax: &syntax::SyntaxNode,
+) -> Option<()> {
+    let source_scope = ctx.sema.scope(&old_impl.self_ty()?.syntax())?;
+    let target_scope = ctx.sema.scope(&strukt.syntax())?;
+    let hir_old_impl = ctx.sema.to_impl_def(old_impl)?;
+
+    let transform = args.as_ref().map_or_else(
+        || PathTransform::generic_transformation(&target_scope, &source_scope),
+        |args| {
+            PathTransform::impl_transformation(
+                &target_scope,
+                &source_scope,
+                hir_old_impl,
+                args.clone(),
+            )
+        },
+    );
+
+    transform.apply(&syntax);
+    Some(())
+}
+
+fn remove_instantiated_params(
+    self_ty: &ast::Type,
+    old_impl_params: Option<GenericParamList>,
+    old_trait_args: &FxHashSet<String>,
+) -> Option<GenericParamList> {
+    match self_ty {
+        ast::Type::PathType(path_type) => {
+            old_impl_params.and_then(|gpl| {
+                // Remove generic parameters in field_ty (which is instantiated).
+                let new_gpl = gpl.clone_for_update();
+
+                path_type
+                    .path()?
+                    .segments()
+                    .filter_map(|seg| seg.generic_arg_list())
+                    .flat_map(|it| it.generic_args())
+                    // However, if the param is also used in the trait arguments, it shouldn't be removed.
+                    .filter(|arg| !old_trait_args.contains(&arg.to_string()))
+                    .for_each(|arg| {
+                        new_gpl.remove_generic_arg(&arg);
+                    });
+                (new_gpl.generic_params().count() > 0).then_some(new_gpl)
+            })
+        }
+        _ => old_impl_params,
+    }
+}
+
+fn remove_useless_where_clauses(delegate: &ast::Impl, wc: ast::WhereClause) -> Option<()> {
+    let trait_args =
+        delegate.trait_()?.generic_arg_list().map(|trait_args| trait_args.generic_args());
+    let strukt_args =
+        delegate.self_ty()?.generic_arg_list().map(|strukt_args| strukt_args.generic_args());
+    let used_generic_names = match (trait_args, strukt_args) {
+        (None, None) => None,
+        (None, Some(y)) => Some(y.map(|arg| arg.to_string()).collect::<FxHashSet<_>>()),
+        (Some(x), None) => Some(x.map(|arg| arg.to_string()).collect::<FxHashSet<_>>()),
+        (Some(x), Some(y)) => Some(x.chain(y).map(|arg| arg.to_string()).collect::<FxHashSet<_>>()),
+    };
+
+    // Keep clauses that have generic clauses after substitution, and remove the rest
+    if let Some(used_generic_names) = used_generic_names {
+        wc.predicates()
+            .filter(|pred| {
+                pred.syntax()
+                    .descendants_with_tokens()
+                    .filter_map(|e| e.into_token())
+                    .find(|e| {
+                        e.kind() == SyntaxKind::IDENT && used_generic_names.contains(&e.to_string())
+                    })
+                    .is_none()
+            })
+            .for_each(|pred| {
+                wc.remove_predicate(pred);
+            });
+    } else {
+        wc.predicates().for_each(|pred| wc.remove_predicate(pred));
+    }
+
+    if wc.predicates().count() == 0 {
+        // Remove useless whitespaces
+        wc.syntax()
+            .siblings_with_tokens(syntax::Direction::Prev)
+            .skip(1)
+            .take_while(|node_or_tok| node_or_tok.kind() == SyntaxKind::WHITESPACE)
+            .for_each(|ws| ted::remove(ws));
+        wc.syntax()
+            .siblings_with_tokens(syntax::Direction::Next)
+            .skip(1)
+            .take_while(|node_or_tok| node_or_tok.kind() == SyntaxKind::WHITESPACE)
+            .for_each(|ws| ted::remove(ws));
+        ted::insert(
+            ted::Position::after(wc.syntax()),
+            NodeOrToken::Token(make::token(SyntaxKind::WHITESPACE)),
+        );
+        // Remove where clause
+        ted::remove(wc.syntax());
+    }
+
+    Some(())
+}
+
+fn get_args_for_impl(
+    old_impl: &ast::Impl,
+    field_ty: &ast::Type,
+    trait_params: &Option<GenericParamList>,
+    old_trait_args: &FxHashSet<String>,
+) -> Option<ast::GenericArgList> {
+    // Generate generic args that should be apply to current impl
+    //
+    // For exmaple, if we have `impl<A, B, C> Trait for B<A>`, and `b: B<T>` in `S<T>`,
+    // then the generic `A` should be renamed to `T`. While the last two generic args
+    // doesn't change, it renames <B, C>. So we apply `<T, B C>` as generic arguments
+    // to impl.
+    let old_impl_params = old_impl.generic_param_list();
+    let self_ty = old_impl.self_ty();
+
+    if let (Some(old_impl_gpl), Some(self_ty)) = (old_impl_params, self_ty) {
+        // Make pair of the arguments of `field_ty` and `old_strukt_args` to
+        // get the list for substitution
+        let mut arg_substs = FxHashMap::default();
+
+        match field_ty {
+            field_ty @ ast::Type::PathType(_) => {
+                let field_args = field_ty.generic_arg_list();
+                if let (Some(field_args), Some(old_impl_args)) =
+                    (field_args, self_ty.generic_arg_list())
+                {
+                    field_args.generic_args().zip(old_impl_args.generic_args()).for_each(
+                        |(field_arg, impl_arg)| {
+                            arg_substs.entry(impl_arg.to_string()).or_insert(field_arg);
+                        },
+                    )
+                }
+            }
+            _ => {}
+        }
+
+        let args = old_impl_gpl
+            .to_generic_args()
+            .generic_args()
+            .map(|old_arg| {
+                arg_substs.get(&old_arg.to_string()).map_or_else(
+                    || old_arg.clone(),
+                    |replace_with| {
+                        // The old_arg will be replaced, so it becomes redundant
+                        let old_arg_name = old_arg.to_string();
+                        if old_trait_args.contains(&old_arg_name) {
+                            // However, we should check type bounds and where clauses on old_arg,
+                            // if it has type bound, we should keep the type bound.
+                            // match trait_params.and_then(|params| params.remove_generic_arg(&old_arg)) {
+                            //     Some(ast::GenericParam::TypeParam(ty)) => {
+                            //         ty.type_bound_list().and_then(|bounds| )
+                            //     }
+                            //     _ => {}
+                            // }
+                            if let Some(params) = trait_params {
+                                params.remove_generic_arg(&old_arg);
+                            }
+                        }
+                        replace_with.clone()
+                    },
+                )
+            })
+            .collect_vec();
+        args.is_empty().not().then(|| make::generic_arg_list(args.into_iter()))
+    } else {
+        None
+    }
+}
+
+fn subst_name_in_strukt<N>(
+    ctx: &AssistContext<'_>,
+    strukt: &ast::Struct,
+    item: &N,
+    args: GenericArgList,
+) -> Option<N>
+where
+    N: ast::AstNode,
+{
+    let hir_strukt = ctx.sema.to_struct_def(strukt)?;
+    let hir_adt = hir::Adt::from(hir_strukt);
+
+    let item = item.clone_for_update();
+    let item_scope = ctx.sema.scope(item.syntax())?;
+    let transform = PathTransform::adt_transformation(&item_scope, &item_scope, hir_adt, args);
+    transform.apply(&item.syntax());
+    Some(item)
+}
+
+fn has_self_type(trait_: hir::Trait, ctx: &AssistContext<'_>) -> Option<()> {
+    let trait_source = ctx.sema.source(trait_)?.value;
+    trait_source
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(|e| e.into_token())
+        .find(|e| e.kind() == SyntaxKind::SELF_TYPE_KW)
+        .map(|_| ())
+}
+
+fn resolve_conflicts_for_strukt(
+    strukt: &ast::Struct,
+    old_impl_params: Option<&ast::GenericParamList>,
+) -> Option<ast::GenericParamList> {
+    match (strukt.generic_param_list(), old_impl_params) {
+        (Some(old_strukt_params), Some(old_impl_params)) => {
+            let params = make::generic_param_list(std::iter::empty()).clone_for_update();
+
+            for old_strukt_param in old_strukt_params.generic_params() {
+                // Get old name from `strukt``
+                let mut name = SmolStr::from(match &old_strukt_param {
+                    ast::GenericParam::ConstParam(c) => c.name()?.to_string(),
+                    ast::GenericParam::LifetimeParam(l) => {
+                        l.lifetime()?.lifetime_ident_token()?.to_string()
+                    }
+                    ast::GenericParam::TypeParam(t) => t.name()?.to_string(),
+                });
+
+                // The new name cannot be conflicted with generics in trait, and the renamed names.
+                name = suggest_name::for_unique_generic_name(&name, old_impl_params);
+                name = suggest_name::for_unique_generic_name(&name, &params);
+                match old_strukt_param {
+                    ast::GenericParam::ConstParam(c) => {
+                        if let Some(const_ty) = c.ty() {
+                            let const_param = make::const_param(make::name(&name), const_ty);
+                            params.add_generic_param(ast::GenericParam::ConstParam(
+                                const_param.clone_for_update(),
+                            ));
+                        }
+                    }
+                    p @ ast::GenericParam::LifetimeParam(_) => {
+                        params.add_generic_param(p.clone_for_update());
+                    }
+                    ast::GenericParam::TypeParam(t) => {
+                        let type_bounds = t.type_bound_list();
+                        let type_param = make::type_param(make::name(&name), type_bounds);
+                        params.add_generic_param(ast::GenericParam::TypeParam(
+                            type_param.clone_for_update(),
+                        ));
+                    }
+                }
+            }
+            Some(params)
+        }
+        (Some(old_strukt_gpl), None) => Some(old_strukt_gpl),
+        _ => None,
+    }
 }
 
 fn process_assoc_item(
@@ -381,10 +702,14 @@ fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option
     // <Base as Trait<GenArgs>>::ConstName;
     // FIXME : We can't rely on `make::path_qualified` for now but it would be nice to replace the following with it.
     // make::path_qualified(qual_path_ty, path_expr_segment.as_single_segment().unwrap());
-    let qualpath = qualpath(qual_path_ty, path_expr_segment);
-    let inner =
-        make::item_const(item.visibility(), item.name()?, item.ty()?, make::expr_path(qualpath))
-            .clone_for_update();
+    let qualified_path = qualified_path(qual_path_ty, path_expr_segment);
+    let inner = make::item_const(
+        item.visibility(),
+        item.name()?,
+        item.ty()?,
+        make::expr_path(qualified_path),
+    )
+    .clone_for_update();
 
     Some(AssocItem::Const(inner))
 }
@@ -395,7 +720,7 @@ fn func_assoc_item(
     base_name: &str,
 ) -> Option<AssocItem> {
     let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
-    let qualpath = qualpath(qual_path_ty, path_expr_segment);
+    let qualified_path = qualified_path(qual_path_ty, path_expr_segment);
 
     let call = match item.param_list() {
         // Methods and funcs should be handled separately.
@@ -413,31 +738,33 @@ fn func_assoc_item(
 
                 let param_count = l.params().count();
                 let args = convert_param_list_to_arg_list(l).clone_for_update();
-
+                let pos_after_l_paren = Position::after(args.l_paren_token()?);
                 if param_count > 0 {
                     // Add SelfParam and a TOKEN::COMMA
-                    ted::insert_all(
-                        Position::after(args.l_paren_token()?),
+                    ted::insert_all_raw(
+                        pos_after_l_paren,
                         vec![
                             NodeOrToken::Node(tail_expr_self.syntax().clone_for_update()),
-                            NodeOrToken::Token(make::token(SyntaxKind::WHITESPACE)),
                             NodeOrToken::Token(make::token(SyntaxKind::COMMA)),
+                            NodeOrToken::Token(make::token(SyntaxKind::WHITESPACE)),
                         ],
                     );
                 } else {
                     // Add SelfParam only
-                    ted::insert(
-                        Position::after(args.l_paren_token()?),
+                    ted::insert_raw(
+                        pos_after_l_paren,
                         NodeOrToken::Node(tail_expr_self.syntax().clone_for_update()),
                     );
                 }
 
-                make::expr_call(make::expr_path(qualpath), args)
+                make::expr_call(make::expr_path(qualified_path), args)
             }
-            None => make::expr_call(make::expr_path(qualpath), convert_param_list_to_arg_list(l)),
+            None => {
+                make::expr_call(make::expr_path(qualified_path), convert_param_list_to_arg_list(l))
+            }
         },
         None => make::expr_call(
-            make::expr_path(qualpath),
+            make::expr_path(qualified_path),
             convert_param_list_to_arg_list(make::param_list(None, Vec::new())),
         ),
     }
@@ -463,8 +790,8 @@ fn func_assoc_item(
 
 fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<AssocItem> {
     let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
-    let qualpath = qualpath(qual_path_ty, path_expr_segment);
-    let ty = make::ty_path(qualpath);
+    let qualified_path = qualified_path(qual_path_ty, path_expr_segment);
+    let ty = make::ty_path(qualified_path);
     let ident = item.name()?.to_string();
 
     let alias = make::ty_alias(
@@ -479,7 +806,7 @@ fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<Ass
     Some(AssocItem::TypeAlias(alias))
 }
 
-fn qualpath(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Path {
+fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Path {
     make::path_from_text(&format!("{}::{}", qual_path_ty.to_string(), path_expr_seg.to_string()))
 }
 
@@ -506,6 +833,29 @@ struct S(Base);
 impl Trait for S {}
 trait Trait {}
 impl Trait for Base {}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_self_ty() {
+        // trait whith `Self` type cannot be delegated
+        //
+        // See the function `fn f() -> Self`.
+        // It should be `fn f() -> Base` in `Base`, and `fn f() -> S` in `S`
+        check_assist_not_applicable(
+            generate_delegate_trait,
+            r#"
+struct Base(());
+struct S(B$0ase);
+trait Trait {
+    fn f() -> Self;
+}
+impl Trait for Base {
+    fn f() -> Base {
+        Base(())
+    }
+}
 "#,
         );
     }
@@ -628,7 +978,7 @@ unsafe impl Trait for S {
     }
 
     unsafe fn a_method(&self) {
-        <Base as Trait>::a_method( &self.base )
+        <Base as Trait>::a_method(&self.base)
     }
 }
 
@@ -669,6 +1019,235 @@ impl<T> AnotherTrait for S<T>
 where
     T: AnotherTrait,
 {}"#,
+        );
+    }
+
+    #[test]
+    fn test_fields_with_generics() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+struct B<T> {
+    a: T
+}
+
+trait Trait<T> {
+    fn f(a: T);
+}
+
+impl<T1, T2> Trait<T1> for B<T2> {
+    fn f(a: T1) -> T2 { self.a }
+}
+
+struct A {}
+struct S {
+    b$0 : B<A>,
+}"#,
+            r#"
+struct B<T> {
+    a: T
+}
+
+trait Trait<T> {
+    fn f(a: T);
+}
+
+impl<T1, T2> Trait<T1> for B<T2> {
+    fn f(a: T1) -> T2 { self.a }
+}
+
+struct A {}
+struct S {
+    b : B<A>,
+}
+
+impl<T1> Trait<T1> for S {
+    fn f(a: T1) -> A {
+        <B<A> as Trait<T1>>::f(a)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generics_with_conflict_names() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+struct B<T> {
+    a: T
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T, T0> Trait<T> for B<T0> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T> {
+    b : $0B<T>,
+}"#,
+            r#"
+struct B<T> {
+    a: T
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T, T0> Trait<T> for B<T0> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T> {
+    b : B<T>,
+}
+
+impl<T, T1> Trait<T> for S<T1> {
+    fn f(&self, a: T) -> T {
+        <B<T1> as Trait<T>>::f(&self.b, a)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_lifetime_with_conflict_names() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+struct B<'a, T> {
+    a: &'a T
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<'a, T, T0> Trait<T> for B<'a, T0> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<'a, T> {
+    b : $0B<'a, T>,
+}"#,
+            r#"
+struct B<'a, T> {
+    a: &'a T
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<'a, T, T0> Trait<T> for B<'a, T0> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<'a, T> {
+    b : B<'a, T>,
+}
+
+impl<'a, T, T1> Trait<T> for S<'a, T1> {
+    fn f(&self, a: T) -> T {
+        <B<'a, T1> as Trait<T>>::f(&self.b, a)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_multiple_generics() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+struct B<T1, T2> {
+    a: T1,
+    b: T2
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T, T0> Trait<T> for B<T, T0> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T> {
+    b :$0 B<i32, T>,
+}"#,
+            r#"
+struct B<T1, T2> {
+    a: T1,
+    b: T2
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T, T0> Trait<T> for B<T, T0> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T> {
+    b : B<i32, T>,
+}
+
+impl<T1> Trait<i32> for S<T1> {
+    fn f(&self, a: i32) -> i32 {
+        <B<i32, T1> as Trait<i32>>::f(&self.b, a)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generics_multiplex() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+struct B<T> {
+    a: T
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T> Trait<T> for B<T> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T> {
+    b : $0B<T>,
+}"#,
+            r#"
+struct B<T> {
+    a: T
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T> Trait<T> for B<T> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T> {
+    b : B<T>,
+}
+
+impl<T0> Trait<T0> for S<T0> {
+    fn f(&self, a: T0) -> T0 {
+        <B<T0> as Trait<T0>>::f(&self.b, a)
+    }
+}"#,
         );
     }
 
@@ -719,7 +1298,7 @@ impl<'a, T, const C: usize> Trait<'a, T, C> for S {
     }
 
     fn assoc_method(&self, p: ()) {
-        <Base as Trait<'a, T, C>>::assoc_method( &self.field , p)
+        <Base as Trait<'a, T, C>>::assoc_method(&self.field, p)
     }
 }
 
@@ -789,7 +1368,7 @@ where
     }
 
     fn assoc_method(&self, p: ()) {
-        <Base as Trait<'b, C, D>>::assoc_method( &self.field , p)
+        <Base as Trait<'b, C, D>>::assoc_method(&self.field, p)
     }
 }
 
@@ -875,7 +1454,7 @@ where
     }
 
     fn assoc_method(&self, p: ()) {
-        <Base as Trait<'b, A, B>>::assoc_method( &self.field , p)
+        <Base as Trait<'b, A, B>>::assoc_method(&self.field, p)
     }
 }
 
@@ -920,6 +1499,132 @@ impl<T> AnotherTrait for S<T>
 where
     T: AnotherTrait,
 {}"#,
+        );
+    }
+
+    #[test]
+    fn test_type_bound_with_generics_1() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+trait AnotherTrait {}
+struct B<T, T1>
+where
+    T1: AnotherTrait
+{
+    a: T,
+    b: T1
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T, T0, T1: AnotherTrait> Trait<T> for B<T0, T1> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T, T1>
+where
+    T1: AnotherTrait
+{
+    b : $0B<T, T1>,
+}"#,
+            r#"
+trait AnotherTrait {}
+struct B<T, T1>
+where
+    T1: AnotherTrait
+{
+    a: T,
+    b: T1
+}
+
+trait Trait<T> {
+    fn f(&self, a: T) -> T;
+}
+
+impl<T, T0, T1: AnotherTrait> Trait<T> for B<T0, T1> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T, T1>
+where
+    T1: AnotherTrait
+{
+    b : B<T, T1>,
+}
+
+impl<T, T2, T10> Trait<T> for S<T2, T10>
+where
+    T10: AnotherTrait
+{
+    fn f(&self, a: T) -> T {
+        <B<T2, T10> as Trait<T>>::f(&self.b, a)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_type_bound_with_generics_2() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+trait AnotherTrait {}
+struct B<T1>
+where
+    T1: AnotherTrait
+{
+    b: T1
+}
+
+trait Trait<T1> {
+    fn f(&self, a: T1) -> T1;
+}
+
+impl<T, T1: AnotherTrait> Trait<T> for B<T1> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T>
+where
+    T: AnotherTrait
+{
+    b : $0B<T>,
+}"#,
+            r#"
+trait AnotherTrait {}
+struct B<T1>
+where
+    T1: AnotherTrait
+{
+    b: T1
+}
+
+trait Trait<T1> {
+    fn f(&self, a: T1) -> T1;
+}
+
+impl<T, T1: AnotherTrait> Trait<T> for B<T1> {
+    fn f(&self, a: T) -> T { a }
+}
+
+struct S<T>
+where
+    T: AnotherTrait
+{
+    b : B<T>,
+}
+
+impl<T, T0> Trait<T> for S<T0>
+where
+    T0: AnotherTrait
+{
+    fn f(&self, a: T) -> T {
+        <B<T0> as Trait<T>>::f(&self.b, a)
+    }
+}"#,
         );
     }
 
@@ -975,7 +1680,7 @@ impl SomeTrait for B {
     }
 
     fn method_(&mut self) -> bool {
-        <A as SomeTrait>::method_( &mut self.a )
+        <A as SomeTrait>::method_(&mut self.a)
     }
 }
 "#,
@@ -1043,7 +1748,7 @@ impl some_module::SomeTrait for B {
     }
 
     fn method_(&mut self) -> bool {
-        <some_module::A as some_module::SomeTrait>::method_( &mut self.a )
+        <some_module::A as some_module::SomeTrait>::method_(&mut self.a)
     }
 }"#,
         )
