@@ -70,6 +70,10 @@ struct StatCollector<'k> {
 }
 
 pub fn hir_stats(tcx: TyCtxt<'_>, write_to_stderr: bool) {
+    let _ = metrics_path();
+    if !write_to_stderr {
+        return;
+    }
     let mut collector = StatCollector {
         krate: Some(tcx.hir()),
         nodes: FxHashMap::default(),
@@ -91,6 +95,10 @@ pub fn hir_stats(tcx: TyCtxt<'_>, write_to_stderr: bool) {
 pub fn ast_stats(krate: &ast::Crate, title: &str, prefix: &str, write_to_stderr: bool) {
     use rustc_ast::visit::Visitor;
 
+    let _ = metrics_path();
+    if !write_to_stderr {
+        return;
+    }
     let mut collector =
         StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
