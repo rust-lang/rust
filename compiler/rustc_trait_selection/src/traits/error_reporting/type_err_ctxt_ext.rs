@@ -1069,7 +1069,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if !self.tcx.is_diagnostic_item(sym::Result, def.did()) {
                 return None;
             }
-            Some(arg.as_type()?)
+            arg.as_type()
         };
 
         let mut suggested = false;

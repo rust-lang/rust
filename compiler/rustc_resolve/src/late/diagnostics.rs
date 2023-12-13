@@ -1829,13 +1829,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             )
             .iter()
             .filter_map(|candidate| candidate.did)
-            .filter(|did| {
+            .find(|did| {
                 self.r
                     .tcx
                     .get_attrs(*did, sym::rustc_diagnostic_item)
                     .any(|attr| attr.value_str() == Some(sym::Default))
-            })
-            .next();
+            });
         let Some(default_trait) = default_trait else {
             return;
         };
@@ -1880,11 +1879,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         };
 
         fields.is_some_and(|fields| {
-            fields
-                .iter()
-                .filter(|vis| !self.r.is_accessible_from(**vis, self.parent_scope.module))
-                .next()
-                .is_some()
+            fields.iter().any(|vis| !self.r.is_accessible_from(*vis, self.parent_scope.module))
         })
     }
 
@@ -2178,7 +2173,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let (span, text) = match path.segments.first() {
                     Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
                         // a special case for #117894
-                        let name = name.strip_prefix("_").unwrap_or(name);
+                        let name = name.strip_prefix('_').unwrap_or(name);
                         (ident_span, format!("let {name}"))
                     }
                     _ => (ident_span.shrink_to_lo(), "let ".to_string()),

@@ -2452,7 +2452,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             if !suggs.is_empty() {
                 err.multipart_suggestion_verbose(
-                    format!("{msg}"),
+                    msg,
                     suggs,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );

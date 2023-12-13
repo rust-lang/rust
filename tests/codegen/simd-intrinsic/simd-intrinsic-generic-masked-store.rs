@@ -20,7 +20,7 @@ extern "platform-intrinsic" {
 // CHECK-LABEL: @store_f32x2
 #[no_mangle]
 pub unsafe fn store_f32x2(mask: Vec2<i32>, pointer: *mut f32, values: Vec2<f32>) {
-    // CHECK: call void @llvm.masked.store.v2f32.p0(<2 x float> {{.*}}, ptr {{.*}}, i32 {{.*}}, <2 x i1> {{.*}})
+    // CHECK: call void @llvm.masked.store.v2f32.p0(<2 x float> {{.*}}, ptr {{.*}}, i32 4, <2 x i1> {{.*}})
     simd_masked_store(mask, pointer, values)
 }
 

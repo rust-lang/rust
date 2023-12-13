@@ -1,4 +1,4 @@
-error: unknown attribute `compile-fail`. Did you mean `compile_fail`?
+error: unknown attribute `compile-fail`
  --> $DIR/check-attr-test.rs:5:1
   |
 5 | / /// foo
@@ -8,6 +8,7 @@ error: unknown attribute `compile-fail`. Did you mean `compile_fail`?
 9 | | /// ```
   | |_______^
   |
+  = help: there is an attribute with a similar name: `compile_fail`
   = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
 note: the lint level is defined here
  --> $DIR/check-attr-test.rs:3:9
@@ -15,7 +16,7 @@ note: the lint level is defined here
 3 | #![deny(rustdoc::invalid_codeblock_attributes)]
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unknown attribute `compilefail`. Did you mean `compile_fail`?
+error: unknown attribute `compilefail`
  --> $DIR/check-attr-test.rs:5:1
   |
 5 | / /// foo
@@ -25,9 +26,10 @@ error: unknown attribute `compilefail`. Did you mean `compile_fail`?
 9 | | /// ```
   | |_______^
   |
+  = help: there is an attribute with a similar name: `compile_fail`
   = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
 
-error: unknown attribute `comPile_fail`. Did you mean `compile_fail`?
+error: unknown attribute `comPile_fail`
  --> $DIR/check-attr-test.rs:5:1
   |
 5 | / /// foo
@@ -37,9 +39,10 @@ error: unknown attribute `comPile_fail`. Did you mean `compile_fail`?
 9 | | /// ```
   | |_______^
   |
+  = help: there is an attribute with a similar name: `compile_fail`
   = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
 
-error: unknown attribute `should-panic`. Did you mean `should_panic`?
+error: unknown attribute `should-panic`
   --> $DIR/check-attr-test.rs:12:1
    |
 12 | / /// bar
@@ -49,9 +52,10 @@ error: unknown attribute `should-panic`. Did you mean `should_panic`?
 16 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `should_panic`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
 
-error: unknown attribute `shouldpanic`. Did you mean `should_panic`?
+error: unknown attribute `shouldpanic`
   --> $DIR/check-attr-test.rs:12:1
    |
 12 | / /// bar
@@ -61,9 +65,10 @@ error: unknown attribute `shouldpanic`. Did you mean `should_panic`?
 16 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `should_panic`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
 
-error: unknown attribute `shOuld_panic`. Did you mean `should_panic`?
+error: unknown attribute `shOuld_panic`
   --> $DIR/check-attr-test.rs:12:1
    |
 12 | / /// bar
@@ -73,9 +78,10 @@ error: unknown attribute `shOuld_panic`. Did you mean `should_panic`?
 16 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `should_panic`
    = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
 
-error: unknown attribute `no-run`. Did you mean `no_run`?
+error: unknown attribute `no-run`
   --> $DIR/check-attr-test.rs:19:1
    |
 19 | / /// foobar
@@ -85,9 +91,10 @@ error: unknown attribute `no-run`. Did you mean `no_run`?
 23 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `no_run`
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `norun`. Did you mean `no_run`?
+error: unknown attribute `norun`
   --> $DIR/check-attr-test.rs:19:1
    |
 19 | / /// foobar
@@ -97,9 +104,10 @@ error: unknown attribute `norun`. Did you mean `no_run`?
 23 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `no_run`
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `nO_run`. Did you mean `no_run`?
+error: unknown attribute `nO_run`
   --> $DIR/check-attr-test.rs:19:1
    |
 19 | / /// foobar
@@ -109,9 +117,10 @@ error: unknown attribute `nO_run`. Did you mean `no_run`?
 23 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `no_run`
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `test-harness`. Did you mean `test_harness`?
+error: unknown attribute `test-harness`
   --> $DIR/check-attr-test.rs:26:1
    |
 26 | / /// b
@@ -121,9 +130,10 @@ error: unknown attribute `test-harness`. Did you mean `test_harness`?
 30 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `test_harness`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: unknown attribute `testharness`. Did you mean `test_harness`?
+error: unknown attribute `testharness`
   --> $DIR/check-attr-test.rs:26:1
    |
 26 | / /// b
@@ -133,9 +143,10 @@ error: unknown attribute `testharness`. Did you mean `test_harness`?
 30 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `test_harness`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: unknown attribute `tesT_harness`. Did you mean `test_harness`?
+error: unknown attribute `tesT_harness`
   --> $DIR/check-attr-test.rs:26:1
    |
 26 | / /// b
@@ -145,6 +156,7 @@ error: unknown attribute `tesT_harness`. Did you mean `test_harness`?
 30 | | /// ```
    | |_______^
    |
+   = help: there is an attribute with a similar name: `test_harness`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
 error: aborting due to 12 previous errors
