@@ -52,7 +52,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::RawTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticId, ErrorGuaranteed, Level};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -414,10 +414,12 @@ enum TupleArgumentsFlag {
 
 fn fatally_break_rust(tcx: TyCtxt<'_>) {
     let handler = tcx.sess.diagnostic();
-    handler.span_bug_no_panic(
-        MultiSpan::new(),
+    // We normally use `handler.bug()` for bugs, but this is an exceptional case, so we do this
+    // instead to avoid an abort.
+    handler.emit_diagnostic(&mut Diagnostic::new(
+        Level::Bug,
         "It looks like you're trying to break rust; would you like some ICE?",
-    );
+    ));
     handler.note("the compiler expectedly panicked. this is a feature.");
     handler.note(
         "we would appreciate a joke overview: \

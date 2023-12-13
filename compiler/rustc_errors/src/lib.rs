@@ -1082,11 +1082,6 @@ impl Handler {
     }
 
     #[track_caller]
-    pub fn span_bug_no_panic(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
-        self.emit_diag_at_span(Diagnostic::new(Bug, msg), span);
-    }
-
-    #[track_caller]
     #[rustc_lint_diagnostics]
     pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.emit_diag_at_span(Diagnostic::new(Note, msg), span);
