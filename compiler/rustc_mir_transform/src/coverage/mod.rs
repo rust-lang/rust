@@ -13,7 +13,6 @@ use self::spans::CoverageSpans;
 
 use crate::MirPass;
 
-use rustc_data_structures::sync::Lrc;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
@@ -317,8 +316,6 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
     // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
     // to HIR for it.
 
-    let source_map = tcx.sess.source_map();
-
     let hir_node = tcx.hir_node_by_def_id(def_id);
     let (_, fn_body_id) =
         hir::map::associated_body(hir_node).expect("HIR node is a function with body");
@@ -326,14 +323,20 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let body_span = get_body_span(tcx, hir_body, def_id);
 
-    let source_file = source_map.lookup_source_file(body_span.lo());
-    let fn_sig_span = match hir_node.fn_sig().filter(|fn_sig| {
-        fn_sig.span.eq_ctxt(body_span)
-            && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
-    }) {
-        Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
-        None => body_span.shrink_to_lo(),
-    };
+    // The actual signature span is only used if it has the same context and
+    // filename as the body.
+    let maybe_fn_sig_span = hir_node.fn_sig().map(|fn_sig| fn_sig.span);
+    let fn_sig_span = maybe_fn_sig_span
+        .filter(|&fn_sig_span| {
+            let source_map = tcx.sess.source_map();
+            let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
+
+            fn_sig_span.eq_ctxt(body_span) && file_idx(fn_sig_span) == file_idx(body_span)
+        })
+        // If so, extend it to the start of the body span.
+        .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()))
+        // Otherwise, create a dummy signature span at the start of the body.
+        .unwrap_or_else(|| body_span.shrink_to_lo());
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
