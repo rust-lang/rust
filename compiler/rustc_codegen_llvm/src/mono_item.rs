@@ -123,6 +123,17 @@ impl CodegenCx<'_, '_> {
             return false;
         }
 
+        // Match clang by only supporting COFF and ELF for now.
+        if self.tcx.sess.target.is_like_osx {
+            return false;
+        }
+
+        // With pie relocation model calls of functions defined in the translation
+        // unit can use copy relocations.
+        if self.tcx.sess.relocation_model() == RelocModel::Pie && !is_declaration {
+            return true;
+        }
+
         // Thread-local variables generally don't support copy relocations.
         let is_thread_local_var = llvm::LLVMIsAGlobalVariable(llval)
             .is_some_and(|v| llvm::LLVMIsThreadLocal(v) == llvm::True);
@@ -130,18 +141,12 @@ impl CodegenCx<'_, '_> {
             return false;
         }
 
-        // Match clang by only supporting COFF and ELF for now.
-        if self.tcx.sess.target.is_like_osx {
-            return false;
+        // Respect the direct-access-external-data to override default behavior if present.
+        if let Some(direct) = self.tcx.sess.direct_access_external_data() {
+            return direct;
         }
 
         // Static relocation model should force copy relocations everywhere.
-        if self.tcx.sess.relocation_model() == RelocModel::Static {
-            return true;
-        }
-
-        // With pie relocation model calls of functions defined in the translation
-        // unit can use copy relocations.
-        self.tcx.sess.relocation_model() == RelocModel::Pie && !is_declaration
+        self.tcx.sess.relocation_model() == RelocModel::Static
     }
 }

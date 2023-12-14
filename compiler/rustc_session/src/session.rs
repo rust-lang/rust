@@ -793,6 +793,13 @@ impl Session {
         self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
+    pub fn direct_access_external_data(&self) -> Option<bool> {
+        self.opts
+            .unstable_opts
+            .direct_access_external_data
+            .or(self.target.direct_access_external_data)
+    }
+
     pub fn split_debuginfo(&self) -> SplitDebuginfo {
         self.opts.cg.split_debuginfo.unwrap_or(self.target.split_debuginfo)
     }

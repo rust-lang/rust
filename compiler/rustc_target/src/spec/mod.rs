@@ -1885,6 +1885,8 @@ pub struct TargetOptions {
     /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
     /// -mattr=$features`.
     pub features: StaticCow<str>,
+    /// Direct or use GOT indirect to reference external data symbols
+    pub direct_access_external_data: Option<bool>,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
     /// Whether dynamic linking can export TLS globals. Defaults to true.
@@ -2279,6 +2281,7 @@ impl Default for TargetOptions {
             asm_args: cvs![],
             cpu: "generic".into(),
             features: "".into(),
+            direct_access_external_data: None,
             dynamic_linking: false,
             dll_tls_export: true,
             only_cdylib: false,
@@ -2573,6 +2576,12 @@ impl Target {
                         return Err("Not a valid DWARF version number".into());
                     }
                     base.$key_name = s as u32;
+                }
+            } );
+            ($key_name:ident, Option<bool>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
+                    base.$key_name = Some(s);
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
@@ -3003,6 +3012,7 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(direct_access_external_data, Option<bool>);
         key!(dll_tls_export, bool);
         key!(only_cdylib, bool);
         key!(executables, bool);
@@ -3257,6 +3267,7 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(direct_access_external_data);
         target_option_val!(dll_tls_export);
         target_option_val!(only_cdylib);
         target_option_val!(executables);
