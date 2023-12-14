@@ -56,6 +56,7 @@
     - [RISC-V](notification-groups/risc-v.md)
     - [Windows](notification-groups/windows.md)
 - [Licenses](./licenses.md)
+- [Editions](guides/editions.md)
 
 # High-level Compiler Architecture
 
@@ -183,10 +184,6 @@
 - [LLVM Source-Based Code Coverage](./llvm-coverage-instrumentation.md)
 - [Sanitizers Support](./sanitizers.md)
 - [Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
-
-# General Guides
-
-- [Editions](guides/editions.md)
 
 ---
 
