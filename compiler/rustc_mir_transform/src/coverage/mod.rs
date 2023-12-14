@@ -314,13 +314,20 @@ struct ExtractedHirInfo {
 }
 
 fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHirInfo {
+    // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
+    // to HIR for it.
+
     let source_map = tcx.sess.source_map();
-    let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
+
+    let hir_node = tcx.hir_node_by_def_id(def_id);
+    let (_, fn_body_id) =
+        hir::map::associated_body(hir_node).expect("HIR node is a function with body");
+    let hir_body = tcx.hir().body(fn_body_id);
 
     let body_span = get_body_span(tcx, hir_body, def_id);
 
     let source_file = source_map.lookup_source_file(body_span.lo());
-    let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
+    let fn_sig_span = match hir_node.fn_sig().filter(|fn_sig| {
         fn_sig.span.eq_ctxt(body_span)
             && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
     }) {
@@ -331,18 +338,6 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
     ExtractedHirInfo { function_source_hash, fn_sig_span, body_span }
-}
-
-fn fn_sig_and_body(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-) -> (Option<&rustc_hir::FnSig<'_>>, &rustc_hir::Body<'_>) {
-    // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
-    // to HIR for it.
-    let hir_node = tcx.hir_node_by_def_id(def_id);
-    let (_, fn_body_id) =
-        hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    (hir_node.fn_sig(), tcx.hir().body(fn_body_id))
 }
 
 fn get_body_span<'tcx>(
