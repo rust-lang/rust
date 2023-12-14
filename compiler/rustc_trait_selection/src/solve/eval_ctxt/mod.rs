@@ -378,7 +378,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         //
         // This assert was removed as it did not hold for goals constraining
         // an inference variable to a recursive alias, e.g. in
-        // tests/ui/traits/new-solver/overflow/recursive-self-normalization.rs.
+        // tests/ui/traits/next-solver/overflow/recursive-self-normalization.rs.
         //
         // Once we have decided on how to handle trait-system-refactor-initiative#75,
         // we should re-add an assert here.

@@ -1006,13 +1006,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // FIXME(-Znext-solver): A bit dubious that we're only registering
         // predefined opaques in the typeck root.
         if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
-            checker.register_predefined_opaques_in_new_solver();
+            checker.register_predefined_opaques_for_next_solver();
         }
 
         checker
     }
 
-    pub(super) fn register_predefined_opaques_in_new_solver(&mut self) {
+    pub(super) fn register_predefined_opaques_for_next_solver(&mut self) {
         // OK to use the identity arguments for each opaque type key, since
         // we remap opaques from HIR typeck back to their definition params.
         let opaques: Vec<_> = self

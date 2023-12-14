@@ -3,7 +3,7 @@
 
 #![feature(type_alias_impl_trait)]
 
-// Similar to tests/ui/traits/new-solver/tait-eq-proj.rs
+// Similar to tests/ui/traits/next-solver/tait-eq-proj.rs
 // but check the alias-sub relation in the other direction.
 
 type Tait = impl Iterator<Item = impl Sized>;

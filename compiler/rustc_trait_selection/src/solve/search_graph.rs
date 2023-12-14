@@ -38,7 +38,7 @@ struct StackEntry<'tcx> {
     /// If we were to use that result when later trying to prove another cycle
     /// participant, we can end up with unstable query results.
     ///
-    /// See tests/ui/new-solver/coinduction/incompleteness-unstable-result.rs for
+    /// See tests/ui/next-solver/coinduction/incompleteness-unstable-result.rs for
     /// an example of where this is needed.
     cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
 }
@@ -237,7 +237,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     // in unstable results due to incompleteness.
                     //
                     // However, a test for this would be an even more complex version of
-                    // tests/ui/traits/new-solver/coinduction/incompleteness-unstable-result.rs.
+                    // tests/ui/traits/next-solver/coinduction/incompleteness-unstable-result.rs.
                     // I did not bother to write such a test and we have no regression test
                     // for this. It would be good to have such a test :)
                     #[allow(rustc::potential_query_instability)]
@@ -248,7 +248,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 // until we reach a fixpoint. It is not enough to simply retry the
                 // `root` goal of this cycle.
                 //
-                // See tests/ui/traits/new-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
+                // See tests/ui/traits/next-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
                 // for an example.
                 self.stack[stack_depth].has_been_used = true;
                 return if let Some(result) = self.stack[stack_depth].provisional_result {

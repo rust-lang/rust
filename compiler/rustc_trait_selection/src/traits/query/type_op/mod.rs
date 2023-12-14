@@ -89,7 +89,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     /// make sure to feed it predefined opaque types and the defining anchor
     /// and that would require duplicating all of the tcx queries. Instead,
     /// just perform these ops locally.
-    fn perform_locally_in_new_solver(
+    fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution>;
@@ -149,7 +149,7 @@ where
         if infcx.next_trait_solver() {
             return Ok(scrape_region_constraints(
                 infcx,
-                |ocx| QueryTypeOp::perform_locally_in_new_solver(ocx, self),
+                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self),
                 "query type op",
                 span,
             )?
