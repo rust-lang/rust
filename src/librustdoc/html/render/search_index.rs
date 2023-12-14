@@ -488,7 +488,7 @@ pub(crate) fn build_index<'tcx>(
 
     // Collect the index into a string
     format!(
-        r#""{}":{}"#,
+        r#"["{}",{}]"#,
         krate.name(tcx),
         serde_json::to_string(&CrateData {
             doc: crate_doc,
