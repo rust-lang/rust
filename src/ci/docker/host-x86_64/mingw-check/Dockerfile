@@ -52,7 +52,7 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 0 library/test && \
            /scripts/validate-toolstate.sh && \
            /scripts/validate-error-codes.sh && \
-           reuse lint && \
+           reuse --include-submodules lint && \
            # Runs checks to ensure that there are no ES5 issues in our JS code.
            es-check es6 ../src/librustdoc/html/static/js/*.js && \
            eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js && \

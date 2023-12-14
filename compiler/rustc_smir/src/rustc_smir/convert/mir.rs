@@ -707,7 +707,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
                 let id = tables.intern_const(*self);
                 Const::new(kind, ty, id)
             }
-            mir::Const::Val(val, ty) if matches!(val, mir::ConstValue::ZeroSized) => {
+            mir::Const::Val(mir::ConstValue::ZeroSized, ty) => {
                 let ty = ty.stable(tables);
                 let id = tables.intern_const(*self);
                 Const::new(ConstantKind::ZeroSized, ty, id)

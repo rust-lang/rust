@@ -101,11 +101,10 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                         self.tcx.impl_trait_ref(impl_def_id).map(|r| (impl_def_id, r))
                     })
                     .map(|(impl_def_id, imp)| (impl_def_id, imp.skip_binder()))
-                    .filter(|(_, imp)| match imp.self_ty().peel_refs().kind() {
+                    .find(|(_, imp)| match imp.self_ty().peel_refs().kind() {
                         ty::Adt(i_def, _) if i_def.did() == def.did() => true,
                         _ => false,
                     })
-                    .next()
             {
                 let mut fulfill_cx = FulfillmentCtxt::new(self);
                 // We get all obligations from the impl to talk about specific

@@ -1,4 +1,4 @@
-use crate::spec::{base, RelocModel, Target, TargetOptions};
+use crate::spec::{base, RelocModel, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let base = base::solid::opts("asp3");
@@ -13,6 +13,7 @@ pub fn target() -> Target {
             relocation_model: RelocModel::Static,
             disable_redzone: true,
             max_atomic_width: Some(128),
+            stack_probes: StackProbeType::Inline,
             ..base
         },
     }

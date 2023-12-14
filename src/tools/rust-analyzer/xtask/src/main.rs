@@ -8,7 +8,7 @@
 //! This binary is integrated into the `cargo` command line by using an alias in
 //! `.cargo/config`.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 mod flags;
 

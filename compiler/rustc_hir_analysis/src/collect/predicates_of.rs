@@ -135,7 +135,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let node = tcx.hir().get(hir_id);
+    let node = tcx.hir_node(hir_id);
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
@@ -337,7 +337,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
         let opaque_ty_id = tcx.hir().parent_id(hir_id);
-        let opaque_ty_node = tcx.hir().get(opaque_ty_id);
+        let opaque_ty_node = tcx.hir_node(opaque_ty_id);
         let Node::Ty(&Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node else {
             bug!("unexpected {opaque_ty_node:?}")
         };
@@ -413,7 +413,7 @@ fn const_evaluatable_predicates_of(
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let node = tcx.hir().get(hir_id);
+    let node = tcx.hir_node(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
     if let hir::Node::Item(item) = node
@@ -633,7 +633,7 @@ pub(super) fn implied_predicates_with_filter(
 
     let trait_hir_id = tcx.local_def_id_to_hir_id(trait_def_id);
 
-    let Node::Item(item) = tcx.hir().get(trait_hir_id) else {
+    let Node::Item(item) = tcx.hir_node(trait_hir_id) else {
         bug!("trait_node_id {} is not an item", trait_hir_id);
     };
 
@@ -713,7 +713,7 @@ pub(super) fn type_param_predicates(
     let mut extend = None;
 
     let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
-    let ast_generics = match tcx.hir().get(item_hir_id) {
+    let ast_generics = match tcx.hir_node(item_hir_id) {
         Node::TraitItem(item) => item.generics,
 
         Node::ImplItem(item) => item.generics,

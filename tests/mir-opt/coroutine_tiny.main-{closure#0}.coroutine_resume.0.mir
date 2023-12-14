@@ -55,6 +55,9 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:20:16: 20:24
         StorageLive(_7);
         _7 = ();
         _0 = CoroutineState::<(), ()>::Yielded(move _7);
+        StorageDead(_4);
+        StorageDead(_6);
+        StorageDead(_7);
         discriminant((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:16: 20:24}))) = 3;
         return;
     }

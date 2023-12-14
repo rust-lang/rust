@@ -444,21 +444,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // reported on the binding definition (#56607).
                             return;
                         }
-                        let (post_message, pre_message, type_def, file_note) = self
+                        let mut file = None;
+                        let (post_message, pre_message, type_def) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
-                                let (t, file) = self.tcx.short_ty_string(t);
+                                let t = self.tcx.short_ty_string(t, &mut file);
                                 (
                                     format!(" in `{t}`"),
                                     format!("within `{t}`, "),
                                     s.map(|s| (format!("within this `{t}`"), s)),
-                                    file.map(|file| format!(
-                                        "the full trait has been written to '{}'",
-                                        file.display(),
-                                    ))
                                 )
                             })
                             .unwrap_or_default();
+                        let file_note = file.map(|file| format!(
+                            "the full trait has been written to '{}'",
+                            file.display(),
+                        ));
 
                         let OnUnimplementedNote {
                             message,
@@ -547,6 +548,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
 
                         let explanation = get_explanation_based_on_obligation(
+                            self.tcx,
                             &obligation,
                             trait_ref,
                             &trait_predicate,
@@ -984,13 +986,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
             obligation.cause.code()
-            && let Some(Node::Expr(arg)) = self.tcx.hir().find(*arg_hir_id)
+            && let Some(Node::Expr(arg)) = self.tcx.opt_hir_node(*arg_hir_id)
             && let arg = arg.peel_borrows()
             && let hir::ExprKind::Path(hir::QPath::Resolved(
                 None,
                 hir::Path { res: hir::def::Res::Local(hir_id), .. },
             )) = arg.kind
-            && let Some(Node::Pat(pat)) = self.tcx.hir().find(*hir_id)
+            && let Some(Node::Pat(pat)) = self.tcx.opt_hir_node(*hir_id)
             && let Some(preds) = self.reported_trait_errors.borrow().get(&pat.span)
             && preds.contains(&obligation.predicate)
         {
@@ -1028,7 +1030,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
-        let body_id = match self.tcx.hir().find(hir_id) {
+        let body_id = match self.tcx.opt_hir_node(hir_id) {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
                 body_id
             }
@@ -1069,7 +1071,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if !self.tcx.is_diagnostic_item(sym::Result, def.did()) {
                 return None;
             }
-            Some(arg.as_type()?)
+            arg.as_type()
         };
 
         let mut suggested = false;
@@ -1154,7 +1156,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
-                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
+                && let Some(hir::Node::Pat(binding)) = self.tcx.opt_hir_node(*hir_id)
                 && let Some(parent) = self.tcx.hir().find_parent(binding.hir_id)
             {
                 // We've reached the root of the method call chain...
@@ -2499,7 +2501,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 ident: trait_name,
                                 kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs),
                                 ..
-                            })) = self.tcx.hir().find_by_def_id(local_def_id)
+                            })) = self.tcx.opt_hir_node_by_def_id(local_def_id)
                             && let Some(method_ref) = trait_item_refs
                                 .iter()
                                 .find(|item_ref| item_ref.ident == *assoc_item_name)
@@ -3525,20 +3527,30 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
-                let ty::ConstKind::Unevaluated(uv) = ct.kind() else {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => {
+                    let mut err =
+                        self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
+                    let const_span = self.tcx.def_span(uv.def);
+                    match self.tcx.sess.source_map().span_to_snippet(const_span) {
+                            Ok(snippet) => err.help(format!(
+                                "try adding a `where` bound using this expression: `where [(); {snippet}]:`"
+                            )),
+                            _ => err.help("consider adding a `where` bound using this expression"),
+                        };
+                    Some(err)
+                }
+                ty::ConstKind::Expr(_) => {
+                    let err = self
+                        .tcx
+                        .sess
+                        .struct_span_err(span, format!("unconstrained generic constant `{ct}`"));
+                    Some(err)
+                }
+                _ => {
                     bug!("const evaluatable failed for non-unevaluated const `{ct:?}`");
-                };
-                let mut err = self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
-                let const_span = self.tcx.def_span(uv.def);
-                match self.tcx.sess.source_map().span_to_snippet(const_span) {
-                    Ok(snippet) => err.help(format!(
-                        "try adding a `where` bound using this expression: `where [(); {snippet}]:`"
-                    )),
-                    _ => err.help("consider adding a `where` bound using this expression"),
-                };
-                Some(err)
-            }
+                }
+            },
             _ => {
                 span_bug!(
                     span,

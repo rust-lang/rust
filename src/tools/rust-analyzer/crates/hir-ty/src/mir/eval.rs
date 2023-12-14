@@ -21,7 +21,7 @@ use hir_def::{
     AdtId, ConstId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
     StaticId, VariantId,
 };
-use hir_expand::{mod_path::ModPath, InFile};
+use hir_expand::{mod_path::ModPath, HirFileIdExt, InFile};
 use intern::Interned;
 use la_arena::ArenaMap;
 use rustc_hash::{FxHashMap, FxHashSet};

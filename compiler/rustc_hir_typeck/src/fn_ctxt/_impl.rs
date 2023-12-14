@@ -994,7 +994,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
-            let parent = self.tcx.hir().get(blk_id);
+            let parent = self.tcx.hir_node(blk_id);
             self.get_node_fn_decl(parent)
                 .map(|(fn_id, fn_decl, _, is_main)| (fn_id, fn_decl, is_main))
         })

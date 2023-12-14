@@ -230,7 +230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = kind
                             && let hir::def::Res::Local(hir_id) = path.res
-                            && let Some(hir::Node::Pat(b)) = self.tcx.hir().find(hir_id)
+                            && let Some(hir::Node::Pat(b)) = self.tcx.opt_hir_node(hir_id)
                             && let Some(hir::Node::Param(p)) = self.tcx.hir().find_parent(b.hir_id)
                             && let Some(node) = self.tcx.hir().find_parent(p.hir_id)
                             && let Some(decl) = node.fn_decl()
@@ -262,7 +262,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         rcvr_expr: &hir::Expr<'tcx>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let (ty_str, _ty_file) = self.tcx.short_ty_string(rcvr_ty);
+        let mut file = None;
+        let ty_str = self.tcx.short_ty_string(rcvr_ty, &mut file);
         let mut err = struct_span_err!(
             self.tcx.sess,
             rcvr_expr.span,
@@ -280,6 +281,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "a writer is needed before this format string",
             );
         };
+        if let Some(file) = file {
+            err.note(format!("the full type name has been written to '{}'", file.display()));
+        }
 
         err
     }
@@ -299,11 +303,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let ((mut ty_str, ty_file), short_ty_str) =
+        let mut ty_file = None;
+        let (mut ty_str, short_ty_str) =
             if trait_missing_method && let ty::Dynamic(predicates, _, _) = rcvr_ty.kind() {
-                ((predicates.to_string(), None), with_forced_trimmed_paths!(predicates.to_string()))
+                (predicates.to_string(), with_forced_trimmed_paths!(predicates.to_string()))
             } else {
-                (tcx.short_ty_string(rcvr_ty), with_forced_trimmed_paths!(rcvr_ty.to_string()))
+                (
+                    tcx.short_ty_string(rcvr_ty, &mut ty_file),
+                    with_forced_trimmed_paths!(rcvr_ty.to_string()),
+                )
             };
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
@@ -605,16 +613,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let (ty::Param(_), ty::PredicateKind::Clause(ty::ClauseKind::Trait(p))) =
                         (self_ty.kind(), parent_pred.kind().skip_binder())
                     {
-                        let hir = self.tcx.hir();
                         let node = match p.trait_ref.self_ty().kind() {
                             ty::Param(_) => {
                                 // Account for `fn` items like in `issue-35677.rs` to
                                 // suggest restricting its type params.
-                                Some(hir.get_by_def_id(self.body_id))
+                                Some(self.tcx.hir_node_by_def_id(self.body_id))
                             }
-                            ty::Adt(def, _) => {
-                                def.did().as_local().map(|def_id| hir.get_by_def_id(def_id))
-                            }
+                            ty::Adt(def, _) => def
+                                .did()
+                                .as_local()
+                                .map(|def_id| self.tcx.hir_node_by_def_id(def_id)),
                             _ => None,
                         };
                         if let Some(hir::Node::Item(hir::Item { kind, .. })) = node
@@ -1952,7 +1960,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         visitor.visit_body(body);
 
         let parent = self.tcx.hir().parent_id(seg1.hir_id);
-        if let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent)
+        if let Some(Node::Expr(call_expr)) = self.tcx.opt_hir_node(parent)
             && let Some(expr) = visitor.result
             && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
         {
@@ -2869,11 +2877,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let id = item
                                     .def_id
                                     .as_local()
-                                    .map(|def_id| self.tcx.local_def_id_to_hir_id(def_id));
+                                    .map(|def_id| self.tcx.hir_node_by_def_id(def_id));
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
                                     kind: hir::TraitItemKind::Fn(fn_sig, method),
                                     ..
-                                })) = id.map(|id| self.tcx.hir().get(id))
+                                })) = id
                                 {
                                     let self_first_arg = match method {
                                         hir::TraitFn::Required([ident, ..]) => {
@@ -2963,7 +2971,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Get the `hir::Param` to verify whether it already has any bounds.
                     // We do this to avoid suggesting code that ends up as `T: FooBar`,
                     // instead we suggest `T: Foo + Bar` in that case.
-                    match hir.get(id) {
+                    match self.tcx.hir_node(id) {
                         Node::GenericParam(param) => {
                             enum Introducer {
                                 Plus,
@@ -3183,7 +3191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let parent = self.tcx.hir().parent_id(expr.hir_id);
-        if let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent)
+        if let Some(Node::Expr(call_expr)) = self.tcx.opt_hir_node(parent)
             && let hir::ExprKind::MethodCall(
                 hir::PathSegment { ident: method_name, .. },
                 self_expr,

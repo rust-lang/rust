@@ -7,7 +7,8 @@
 // For example, `-C target-cpu=cortex-a53`.
 
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target, TargetOptions,
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType, Target,
+    TargetOptions,
 };
 
 pub fn target() -> Target {
@@ -24,6 +25,7 @@ pub fn target() -> Target {
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
+        stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
         ..Default::default()
     };

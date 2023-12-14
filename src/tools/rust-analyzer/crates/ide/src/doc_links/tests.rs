@@ -1,4 +1,4 @@
-use std::ffi::OsStr;
+use std::{ffi::OsStr, iter};
 
 use expect_test::{expect, Expect};
 use hir::Semantics;
@@ -63,10 +63,12 @@ fn check_doc_links(ra_fixture: &str) {
     let defs = extract_definitions_from_docs(&docs);
     let actual: Vec<_> = defs
         .into_iter()
-        .map(|(_, link, ns)| {
+        .flat_map(|(_, link, ns)| {
             let def = resolve_doc_path_for_def(sema.db, cursor_def, &link, ns)
                 .unwrap_or_else(|| panic!("Failed to resolve {link}"));
-            let nav_target = def.try_to_nav(sema.db).unwrap();
+            def.try_to_nav(sema.db).unwrap().into_iter().zip(iter::repeat(link))
+        })
+        .map(|(nav_target, link)| {
             let range =
                 FileRange { file_id: nav_target.file_id, range: nav_target.focus_or_full_range() };
             (range, link)

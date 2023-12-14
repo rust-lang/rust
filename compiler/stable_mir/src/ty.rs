@@ -214,38 +214,62 @@ impl TyKind {
         if let TyKind::RigidTy(inner) = self { Some(inner) } else { None }
     }
 
+    #[inline]
     pub fn is_unit(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Tuple(data)) if data.is_empty())
     }
 
+    #[inline]
     pub fn is_bool(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Bool))
     }
 
+    #[inline]
+    pub fn is_char(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Char))
+    }
+
+    #[inline]
     pub fn is_trait(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Dynamic(_, _, DynKind::Dyn)))
     }
 
+    #[inline]
     pub fn is_enum(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Enum)
     }
 
+    #[inline]
     pub fn is_struct(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Struct)
     }
 
+    #[inline]
     pub fn is_union(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Union)
     }
 
+    #[inline]
+    pub fn is_adt(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(..)))
+    }
+
+    #[inline]
+    pub fn is_ref(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Ref(..)))
+    }
+
+    #[inline]
     pub fn is_fn(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::FnDef(..)))
     }
 
+    #[inline]
     pub fn is_fn_ptr(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::FnPtr(..)))
     }
 
+    #[inline]
     pub fn is_primitive(&self) -> bool {
         matches!(
             self,
@@ -257,6 +281,84 @@ impl TyKind {
                     | RigidTy::Float(_)
             )
         )
+    }
+
+    #[inline]
+    pub fn is_float(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Float(_)))
+    }
+
+    #[inline]
+    pub fn is_integral(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Int(_) | RigidTy::Uint(_)))
+    }
+
+    #[inline]
+    pub fn is_numeric(&self) -> bool {
+        self.is_integral() || self.is_float()
+    }
+
+    #[inline]
+    pub fn is_signed(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Int(_)))
+    }
+
+    #[inline]
+    pub fn is_str(&self) -> bool {
+        *self == TyKind::RigidTy(RigidTy::Str)
+    }
+
+    #[inline]
+    pub fn is_slice(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Slice(_)))
+    }
+
+    #[inline]
+    pub fn is_array(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Array(..)))
+    }
+
+    #[inline]
+    pub fn is_mutable_ptr(&self) -> bool {
+        matches!(
+            self,
+            TyKind::RigidTy(RigidTy::RawPtr(_, Mutability::Mut))
+                | TyKind::RigidTy(RigidTy::Ref(_, _, Mutability::Mut))
+        )
+    }
+
+    #[inline]
+    pub fn is_raw_ptr(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::RawPtr(..)))
+    }
+
+    /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
+    #[inline]
+    pub fn is_any_ptr(&self) -> bool {
+        self.is_ref() || self.is_raw_ptr() || self.is_fn_ptr()
+    }
+
+    #[inline]
+    pub fn is_coroutine(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Coroutine(..)))
+    }
+
+    #[inline]
+    pub fn is_closure(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Closure(..)))
+    }
+
+    #[inline]
+    pub fn is_box(&self) -> bool {
+        match self {
+            TyKind::RigidTy(RigidTy::Adt(def, _)) => def.is_box(),
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_simd(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.is_simd())
     }
 
     pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
@@ -300,12 +402,12 @@ impl TyKind {
         }
     }
 
-    /// Get the function signature for function like types (Fn, FnPtr, Closure, Coroutine)
-    /// FIXME(closure)
+    /// Get the function signature for function like types (Fn, FnPtr, and Closure)
     pub fn fn_sig(&self) -> Option<PolyFnSig> {
         match self {
             TyKind::RigidTy(RigidTy::FnDef(def, args)) => Some(with(|cx| cx.fn_sig(*def, args))),
             TyKind::RigidTy(RigidTy::FnPtr(sig)) => Some(sig.clone()),
+            TyKind::RigidTy(RigidTy::Closure(_def, args)) => Some(with(|cx| cx.closure_sig(args))),
             _ => None,
         }
     }
@@ -479,6 +581,10 @@ impl AdtDef {
 
     pub fn is_box(&self) -> bool {
         with(|cx| cx.adt_is_box(*self))
+    }
+
+    pub fn is_simd(&self) -> bool {
+        with(|cx| cx.adt_is_simd(*self))
     }
 
     /// The number of variants in this ADT.
@@ -738,6 +844,7 @@ pub enum Abi {
     RiscvInterruptS,
 }
 
+/// A binder represents a possibly generic type and its bound vars.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Binder<T> {
     pub value: T,
@@ -745,6 +852,16 @@ pub struct Binder<T> {
 }
 
 impl<T> Binder<T> {
+    /// Create a new binder with the given bound vars.
+    pub fn bind_with_vars(value: T, bound_vars: Vec<BoundVariableKind>) -> Self {
+        Binder { value, bound_vars }
+    }
+
+    /// Create a new binder with no bounded variable.
+    pub fn dummy(value: T) -> Self {
+        Binder { value, bound_vars: vec![] }
+    }
+
     pub fn skip_binder(self) -> T {
         self.value
     }

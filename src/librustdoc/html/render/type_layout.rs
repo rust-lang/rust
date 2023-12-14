@@ -79,6 +79,7 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
             TypeLayoutSize { is_unsized, is_uninhabited, size }
         });
 
-        Ok(TypeLayout { variants, type_layout_size }.render_into(f).unwrap())
+        TypeLayout { variants, type_layout_size }.render_into(f).unwrap();
+        Ok(())
     })
 }

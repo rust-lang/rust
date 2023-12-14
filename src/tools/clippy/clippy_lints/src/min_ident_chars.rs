@@ -91,7 +91,7 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
         let node = if hir_id.local_id == ItemLocalId::from_u32(0) {
             // In this case, we can just use `find`, `Owner`'s `node` field is private anyway so we can't
             // reimplement it even if we wanted to
-            cx.tcx.hir().find(hir_id)
+            cx.tcx.opt_hir_node(hir_id)
         } else {
             let Some(owner) = cx.tcx.hir_owner_nodes(hir_id.owner).as_owner() else {
                 return;

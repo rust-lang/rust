@@ -17,7 +17,7 @@ use super::FulfillmentCtxt;
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
-pub(crate) fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+pub fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
@@ -31,7 +31,7 @@ pub(crate) fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
 /// Additionally takes a list of universes which represents the binders which have been
 /// entered before passing `value` to the function. This is currently needed for
 /// `normalize_erasing_regions`, which skips binders as it walks through a type.
-pub(crate) fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+pub fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
     universes: Vec<Option<UniverseIndex>>,

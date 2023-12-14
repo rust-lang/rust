@@ -8,7 +8,7 @@ use ide_db::{
 use syntax::{ast, AstNode, AstPtr};
 use text_edit::TextEdit;
 
-use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{adjusted_display_range_new, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-field
 //
@@ -22,15 +22,24 @@ pub(crate) fn unresolved_field(
     } else {
         ""
     };
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
+    Diagnostic::new(
         DiagnosticCode::RustcHardError("E0559"),
         format!(
             "no field `{}` on type `{}`{method_suffix}",
             d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
-        d.expr.clone().map(|it| it.into()),
+        adjusted_display_range_new(ctx, d.expr, &|expr| {
+            Some(
+                match expr {
+                    ast::Expr::MethodCallExpr(it) => it.name_ref(),
+                    ast::Expr::FieldExpr(it) => it.name_ref(),
+                    _ => None,
+                }?
+                .syntax()
+                .text_range(),
+            )
+        }),
     )
     .with_fixes(fixes(ctx, d))
     .experimental()
@@ -79,7 +88,7 @@ mod tests {
             r#"
 fn main() {
     ().foo;
- // ^^^^^^ error: no field `foo` on type `()`
+    // ^^^ error: no field `foo` on type `()`
 }
 "#,
         );
@@ -95,7 +104,7 @@ impl Foo {
 }
 fn foo() {
     Foo.bar;
- // ^^^^^^^ 💡 error: no field `bar` on type `Foo`, but a method with a similar name exists
+     // ^^^ 💡 error: no field `bar` on type `Foo`, but a method with a similar name exists
 }
 "#,
         );
@@ -112,7 +121,7 @@ trait Bar {
 impl Bar for Foo {}
 fn foo() {
     Foo.bar;
- // ^^^^^^^ 💡 error: no field `bar` on type `Foo`, but a method with a similar name exists
+     // ^^^ 💡 error: no field `bar` on type `Foo`, but a method with a similar name exists
 }
 "#,
         );
@@ -131,7 +140,7 @@ impl Bar for Foo {
 }
 fn foo() {
     Foo.bar;
- // ^^^^^^^ 💡 error: no field `bar` on type `Foo`, but a method with a similar name exists
+     // ^^^ 💡 error: no field `bar` on type `Foo`, but a method with a similar name exists
 }
 "#,
         );

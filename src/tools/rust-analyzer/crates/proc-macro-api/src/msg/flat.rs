@@ -37,12 +37,26 @@
 
 use std::collections::{HashMap, VecDeque};
 
+use base_db::span::SpanData;
+use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    msg::ENCODE_CLOSE_SPAN_VERSION,
-    tt::{self, TokenId},
-};
+use crate::msg::ENCODE_CLOSE_SPAN_VERSION;
+
+type SpanDataIndexMap = IndexSet<SpanData>;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TokenId(pub u32);
+
+impl std::fmt::Debug for TokenId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl tt::Span for TokenId {
+    const DUMMY: Self = TokenId(!0);
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FlatTree {
@@ -55,33 +69,38 @@ pub struct FlatTree {
 }
 
 struct SubtreeRepr {
-    open: tt::TokenId,
-    close: tt::TokenId,
+    open: TokenId,
+    close: TokenId,
     kind: tt::DelimiterKind,
     tt: [u32; 2],
 }
 
 struct LiteralRepr {
-    id: tt::TokenId,
+    id: TokenId,
     text: u32,
 }
 
 struct PunctRepr {
-    id: tt::TokenId,
+    id: TokenId,
     char: char,
     spacing: tt::Spacing,
 }
 
 struct IdentRepr {
-    id: tt::TokenId,
+    id: TokenId,
     text: u32,
 }
 
 impl FlatTree {
-    pub fn new(subtree: &tt::Subtree, version: u32) -> FlatTree {
+    pub fn new(
+        subtree: &tt::Subtree<SpanData>,
+        version: u32,
+        span_data_table: &mut SpanDataIndexMap,
+    ) -> FlatTree {
         let mut w = Writer {
             string_table: HashMap::new(),
             work: VecDeque::new(),
+            span_data_table,
 
             subtree: Vec::new(),
             literal: Vec::new(),
@@ -92,7 +111,7 @@ impl FlatTree {
         };
         w.write(subtree);
 
-        return FlatTree {
+        FlatTree {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 write_vec(w.subtree, SubtreeRepr::write_with_close_span)
             } else {
@@ -103,15 +122,44 @@ impl FlatTree {
             ident: write_vec(w.ident, IdentRepr::write),
             token_tree: w.token_tree,
             text: w.text,
-        };
-
-        fn write_vec<T, F: Fn(T) -> [u32; N], const N: usize>(xs: Vec<T>, f: F) -> Vec<u32> {
-            xs.into_iter().flat_map(f).collect()
         }
     }
 
-    pub fn to_subtree(self, version: u32) -> tt::Subtree {
-        return Reader {
+    pub fn new_raw(subtree: &tt::Subtree<TokenId>, version: u32) -> FlatTree {
+        let mut w = Writer {
+            string_table: HashMap::new(),
+            work: VecDeque::new(),
+            span_data_table: &mut (),
+
+            subtree: Vec::new(),
+            literal: Vec::new(),
+            punct: Vec::new(),
+            ident: Vec::new(),
+            token_tree: Vec::new(),
+            text: Vec::new(),
+        };
+        w.write(subtree);
+
+        FlatTree {
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                write_vec(w.subtree, SubtreeRepr::write_with_close_span)
+            } else {
+                write_vec(w.subtree, SubtreeRepr::write)
+            },
+            literal: write_vec(w.literal, LiteralRepr::write),
+            punct: write_vec(w.punct, PunctRepr::write),
+            ident: write_vec(w.ident, IdentRepr::write),
+            token_tree: w.token_tree,
+            text: w.text,
+        }
+    }
+
+    pub fn to_subtree_resolved(
+        self,
+        version: u32,
+        span_data_table: &SpanDataIndexMap,
+    ) -> tt::Subtree<SpanData> {
+        Reader {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 read_vec(self.subtree, SubtreeRepr::read_with_close_span)
             } else {
@@ -122,16 +170,38 @@ impl FlatTree {
             ident: read_vec(self.ident, IdentRepr::read),
             token_tree: self.token_tree,
             text: self.text,
+            span_data_table,
         }
-        .read();
-
-        fn read_vec<T, F: Fn([u32; N]) -> T, const N: usize>(xs: Vec<u32>, f: F) -> Vec<T> {
-            let mut chunks = xs.chunks_exact(N);
-            let res = chunks.by_ref().map(|chunk| f(chunk.try_into().unwrap())).collect();
-            assert!(chunks.remainder().is_empty());
-            res
-        }
+        .read()
     }
+
+    pub fn to_subtree_unresolved(self, version: u32) -> tt::Subtree<TokenId> {
+        Reader {
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                read_vec(self.subtree, SubtreeRepr::read_with_close_span)
+            } else {
+                read_vec(self.subtree, SubtreeRepr::read)
+            },
+            literal: read_vec(self.literal, LiteralRepr::read),
+            punct: read_vec(self.punct, PunctRepr::read),
+            ident: read_vec(self.ident, IdentRepr::read),
+            token_tree: self.token_tree,
+            text: self.text,
+            span_data_table: &(),
+        }
+        .read()
+    }
+}
+
+fn read_vec<T, F: Fn([u32; N]) -> T, const N: usize>(xs: Vec<u32>, f: F) -> Vec<T> {
+    let mut chunks = xs.chunks_exact(N);
+    let res = chunks.by_ref().map(|chunk| f(chunk.try_into().unwrap())).collect();
+    assert!(chunks.remainder().is_empty());
+    res
+}
+
+fn write_vec<T, F: Fn(T) -> [u32; N], const N: usize>(xs: Vec<T>, f: F) -> Vec<u32> {
+    xs.into_iter().flat_map(f).collect()
 }
 
 impl SubtreeRepr {
@@ -152,7 +222,7 @@ impl SubtreeRepr {
             3 => tt::DelimiterKind::Bracket,
             other => panic!("bad kind {other}"),
         };
-        SubtreeRepr { open: TokenId(open), close: TokenId::UNSPECIFIED, kind, tt: [lo, len] }
+        SubtreeRepr { open: TokenId(open), close: TokenId(!0), kind, tt: [lo, len] }
     }
     fn write_with_close_span(self) -> [u32; 5] {
         let kind = match self.kind {
@@ -211,9 +281,36 @@ impl IdentRepr {
     }
 }
 
-struct Writer<'a> {
-    work: VecDeque<(usize, &'a tt::Subtree)>,
+trait Span: Copy {
+    type Table;
+    fn token_id_of(table: &mut Self::Table, s: Self) -> TokenId;
+    fn span_for_token_id(table: &Self::Table, id: TokenId) -> Self;
+}
+
+impl Span for TokenId {
+    type Table = ();
+    fn token_id_of((): &mut Self::Table, token_id: Self) -> TokenId {
+        token_id
+    }
+
+    fn span_for_token_id((): &Self::Table, id: TokenId) -> Self {
+        id
+    }
+}
+impl Span for SpanData {
+    type Table = IndexSet<SpanData>;
+    fn token_id_of(table: &mut Self::Table, span: Self) -> TokenId {
+        TokenId(table.insert_full(span).0 as u32)
+    }
+    fn span_for_token_id(table: &Self::Table, id: TokenId) -> Self {
+        *table.get_index(id.0 as usize).unwrap_or_else(|| &table[0])
+    }
+}
+
+struct Writer<'a, 'span, S: Span> {
+    work: VecDeque<(usize, &'a tt::Subtree<S>)>,
     string_table: HashMap<&'a str, u32>,
+    span_data_table: &'span mut S::Table,
 
     subtree: Vec<SubtreeRepr>,
     literal: Vec<LiteralRepr>,
@@ -223,15 +320,19 @@ struct Writer<'a> {
     text: Vec<String>,
 }
 
-impl<'a> Writer<'a> {
-    fn write(&mut self, root: &'a tt::Subtree) {
+impl<'a, 'span, S: Span> Writer<'a, 'span, S> {
+    fn write(&mut self, root: &'a tt::Subtree<S>) {
         self.enqueue(root);
         while let Some((idx, subtree)) = self.work.pop_front() {
             self.subtree(idx, subtree);
         }
     }
 
-    fn subtree(&mut self, idx: usize, subtree: &'a tt::Subtree) {
+    fn token_id_of(&mut self, span: S) -> TokenId {
+        S::token_id_of(self.span_data_table, span)
+    }
+
+    fn subtree(&mut self, idx: usize, subtree: &'a tt::Subtree<S>) {
         let mut first_tt = self.token_tree.len();
         let n_tt = subtree.token_trees.len();
         self.token_tree.resize(first_tt + n_tt, !0);
@@ -248,22 +349,21 @@ impl<'a> Writer<'a> {
                     tt::Leaf::Literal(lit) => {
                         let idx = self.literal.len() as u32;
                         let text = self.intern(&lit.text);
-                        self.literal.push(LiteralRepr { id: lit.span, text });
+                        let id = self.token_id_of(lit.span);
+                        self.literal.push(LiteralRepr { id, text });
                         idx << 2 | 0b01
                     }
                     tt::Leaf::Punct(punct) => {
                         let idx = self.punct.len() as u32;
-                        self.punct.push(PunctRepr {
-                            char: punct.char,
-                            spacing: punct.spacing,
-                            id: punct.span,
-                        });
+                        let id = self.token_id_of(punct.span);
+                        self.punct.push(PunctRepr { char: punct.char, spacing: punct.spacing, id });
                         idx << 2 | 0b10
                     }
                     tt::Leaf::Ident(ident) => {
                         let idx = self.ident.len() as u32;
                         let text = self.intern(&ident.text);
-                        self.ident.push(IdentRepr { id: ident.span, text });
+                        let id = self.token_id_of(ident.span);
+                        self.ident.push(IdentRepr { id, text });
                         idx << 2 | 0b11
                     }
                 },
@@ -273,10 +373,10 @@ impl<'a> Writer<'a> {
         }
     }
 
-    fn enqueue(&mut self, subtree: &'a tt::Subtree) -> u32 {
+    fn enqueue(&mut self, subtree: &'a tt::Subtree<S>) -> u32 {
         let idx = self.subtree.len();
-        let open = subtree.delimiter.open;
-        let close = subtree.delimiter.close;
+        let open = self.token_id_of(subtree.delimiter.open);
+        let close = self.token_id_of(subtree.delimiter.close);
         let delimiter_kind = subtree.delimiter.kind;
         self.subtree.push(SubtreeRepr { open, close, kind: delimiter_kind, tt: [!0, !0] });
         self.work.push_back((idx, subtree));
@@ -293,23 +393,29 @@ impl<'a> Writer<'a> {
     }
 }
 
-struct Reader {
+struct Reader<'span, S: Span> {
     subtree: Vec<SubtreeRepr>,
     literal: Vec<LiteralRepr>,
     punct: Vec<PunctRepr>,
     ident: Vec<IdentRepr>,
     token_tree: Vec<u32>,
     text: Vec<String>,
+    span_data_table: &'span S::Table,
 }
 
-impl Reader {
-    pub(crate) fn read(self) -> tt::Subtree {
-        let mut res: Vec<Option<tt::Subtree>> = vec![None; self.subtree.len()];
+impl<'span, S: Span> Reader<'span, S> {
+    pub(crate) fn read(self) -> tt::Subtree<S> {
+        let mut res: Vec<Option<tt::Subtree<S>>> = vec![None; self.subtree.len()];
+        let read_span = |id| S::span_for_token_id(self.span_data_table, id);
         for i in (0..self.subtree.len()).rev() {
             let repr = &self.subtree[i];
             let token_trees = &self.token_tree[repr.tt[0] as usize..repr.tt[1] as usize];
             let s = tt::Subtree {
-                delimiter: tt::Delimiter { open: repr.open, close: repr.close, kind: repr.kind },
+                delimiter: tt::Delimiter {
+                    open: read_span(repr.open),
+                    close: read_span(repr.close),
+                    kind: repr.kind,
+                },
                 token_trees: token_trees
                     .iter()
                     .copied()
@@ -324,7 +430,7 @@ impl Reader {
                                 let repr = &self.literal[idx];
                                 tt::Leaf::Literal(tt::Literal {
                                     text: self.text[repr.text as usize].as_str().into(),
-                                    span: repr.id,
+                                    span: read_span(repr.id),
                                 })
                                 .into()
                             }
@@ -333,7 +439,7 @@ impl Reader {
                                 tt::Leaf::Punct(tt::Punct {
                                     char: repr.char,
                                     spacing: repr.spacing,
-                                    span: repr.id,
+                                    span: read_span(repr.id),
                                 })
                                 .into()
                             }
@@ -341,7 +447,7 @@ impl Reader {
                                 let repr = &self.ident[idx];
                                 tt::Leaf::Ident(tt::Ident {
                                     text: self.text[repr.text as usize].as_str().into(),
-                                    span: repr.id,
+                                    span: read_span(repr.id),
                                 })
                                 .into()
                             }

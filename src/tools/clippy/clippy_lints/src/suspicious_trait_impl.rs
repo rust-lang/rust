@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
             && let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id
-            && let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get_by_def_id(parent_fn)
+            && let hir::Node::ImplItem(impl_item) = cx.tcx.hir_node_by_def_id(parent_fn)
             && let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind
             && let body = cx.tcx.hir().body(body_id)
             && let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id

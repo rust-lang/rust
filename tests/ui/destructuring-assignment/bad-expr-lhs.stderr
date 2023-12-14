@@ -30,15 +30,7 @@ LL |     (1, 2) = (3, 4);
    |         |
    |         cannot assign to this expression
 
-error[E0070]: invalid left-hand side of assignment
-  --> $DIR/bad-expr-lhs.rs:8:10
-   |
-LL |     None = Some(3);
-   |     ---- ^
-   |     |
-   |     cannot assign to this expression
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0067, E0070.
 For more information about an error, try `rustc --explain E0067`.

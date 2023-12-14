@@ -1,5 +1,6 @@
 use hir::{
-    Adt, AsAssocItem, HasSource, HirDisplay, Module, PathResolution, Semantics, Type, TypeInfo,
+    Adt, AsAssocItem, HasSource, HirDisplay, HirFileIdExt, Module, PathResolution, Semantics, Type,
+    TypeInfo,
 };
 use ide_db::{
     base_db::FileId,
@@ -510,7 +511,7 @@ fn assoc_fn_target_info(
 }
 
 fn get_insert_offset(target: &GeneratedFunctionTarget) -> TextSize {
-    match &target {
+    match target {
         GeneratedFunctionTarget::BehindItem(it) => it.text_range().end(),
         GeneratedFunctionTarget::InEmptyItemList(it) => it.text_range().start() + TextSize::of('{'),
     }

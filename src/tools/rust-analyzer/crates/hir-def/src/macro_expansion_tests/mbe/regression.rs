@@ -1004,3 +1004,29 @@ fn main() {
 "##]],
     );
 }
+
+#[test]
+fn eager_concat_bytes_panic() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat_bytes {}
+
+fn main() {
+    let x = concat_bytes!(2);
+}
+
+"#,
+        expect![[r#"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat_bytes {}
+
+fn main() {
+    let x = /* error: unexpected token in input */[];
+}
+
+"#]],
+    );
+}

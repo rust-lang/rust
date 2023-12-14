@@ -83,6 +83,9 @@ fn all_diagnostic_items(tcx: TyCtxt<'_>, (): ()) -> DiagnosticItems {
 
     // Collect diagnostic items in other crates.
     for &cnum in tcx.crates(()).iter().chain(std::iter::once(&LOCAL_CRATE)) {
+        // We are collecting many DiagnosticItems hash maps into one
+        // DiagnosticItems hash map. The iteration order does not matter.
+        #[allow(rustc::potential_query_instability)]
         for (&name, &def_id) in &tcx.diagnostic_items(cnum).name_to_id {
             collect_item(tcx, &mut items, name, def_id);
         }

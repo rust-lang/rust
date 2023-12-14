@@ -62,7 +62,11 @@ pub(super) fn hints(
                         match_ast! {
                             match expr {
                                 ast::BlockExpr(x) => x.stmt_list().and_then(|x| x.r_curly_token()).map(|x| x.text_range()).unwrap_or_else(|| expr.text_range()),
-                                _ => expr.text_range(),
+                                // make the inlay hint appear after the semicolon if there is
+                                _ => {
+                                    let nearest_semicolon = nearest_token_after_node(expr, syntax::SyntaxKind::SEMICOLON);
+                                    nearest_semicolon.map(|x| x.text_range()).unwrap_or_else(|| expr.text_range())
+                                },
                             }
                         }
                     }
@@ -95,7 +99,7 @@ pub(super) fn hints(
             label.append_str(")");
             acc.push(InlayHint {
                 range,
-                position: InlayHintPosition::Before,
+                position: InlayHintPosition::After,
                 pad_left: true,
                 pad_right: true,
                 kind: InlayKind::Drop,
@@ -107,6 +111,16 @@ pub(super) fn hints(
     }
 
     Some(())
+}
+
+fn nearest_token_after_node(
+    node: &syntax::SyntaxNode,
+    token_type: syntax::SyntaxKind,
+) -> Option<syntax::SyntaxToken> {
+    node.siblings_with_tokens(syntax::Direction::Next)
+        .filter_map(|it| it.as_token().map(|it| it.clone()))
+        .filter(|it| it.kind() == token_type)
+        .next()
 }
 
 #[cfg(test)]
@@ -129,7 +143,7 @@ mod tests {
         let x = X;
         if 2 == 5 {
             return;
-          //^^^^^^ drop(x)
+                //^ drop(x)
         }
     }
   //^ drop(x)
@@ -176,7 +190,7 @@ mod tests {
         let x = X;
         let t_opt = Some(2);
         let t = t_opt?;
-              //^^^^^^ drop(x)
+                    //^ drop(x)
         Some(())
     }
   //^ drop(x)

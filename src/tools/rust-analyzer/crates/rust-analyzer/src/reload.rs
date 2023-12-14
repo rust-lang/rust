@@ -437,28 +437,22 @@ impl GlobalState {
             if self.config.expand_proc_macros() {
                 tracing::info!("Spawning proc-macro servers");
 
-                // FIXME: use `Arc::from_iter` when it becomes available
-                self.proc_macro_clients = Arc::from(
-                    self.workspaces
-                        .iter()
-                        .map(|ws| {
-                            let path = match self.config.proc_macro_srv() {
-                                Some(path) => path,
-                                None => ws.find_sysroot_proc_macro_srv()?,
-                            };
+                self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
+                    let path = match self.config.proc_macro_srv() {
+                        Some(path) => path,
+                        None => ws.find_sysroot_proc_macro_srv()?,
+                    };
 
-                            tracing::info!("Using proc-macro server at {path}");
-                            ProcMacroServer::spawn(path.clone()).map_err(|err| {
-                                tracing::error!(
-                                    "Failed to run proc-macro server from path {path}, error: {err:?}",
-                                );
-                                anyhow::format_err!(
-                                    "Failed to run proc-macro server from path {path}, error: {err:?}",
-                                )
-                            })
-                        })
-                        .collect::<Vec<_>>(),
-                )
+                    tracing::info!("Using proc-macro server at {path}");
+                    ProcMacroServer::spawn(path.clone()).map_err(|err| {
+                        tracing::error!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        );
+                        anyhow::format_err!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        )
+                    })
+                }))
             };
         }
 

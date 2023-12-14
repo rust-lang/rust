@@ -2,115 +2,98 @@
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::fmt;
 
 use stdx::impl_from;
 
 pub use smol_str::SmolStr;
+pub use text_size::{TextRange, TextSize};
 
-/// Represents identity of the token.
-///
-/// For hygiene purposes, we need to track which expanded tokens originated from
-/// which source tokens. We do it by assigning an distinct identity to each
-/// source token and making sure that identities are preserved during macro
-/// expansion.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TokenId(pub u32);
-
-impl fmt::Debug for TokenId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct SpanData<Anchor, Ctx> {
+    /// The text range of this span, relative to the anchor.
+    /// We need the anchor for incrementality, as storing absolute ranges will require
+    /// recomputation on every change in a file at all times.
+    pub range: TextRange,
+    pub anchor: Anchor,
+    /// The syntax context of the span.
+    pub ctx: Ctx,
 }
 
-impl TokenId {
-    pub const UNSPECIFIED: TokenId = TokenId(!0);
-    pub const fn unspecified() -> TokenId {
-        Self::UNSPECIFIED
-    }
+impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
+    #[allow(deprecated)]
+    const DUMMY: Self = SpanData {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: Anchor::DUMMY,
+        ctx: Ctx::DUMMY,
+    };
 }
 
-pub mod token_id {
-    pub use crate::{DelimiterKind, Spacing, TokenId};
-    pub type Span = crate::TokenId;
-    pub type Subtree = crate::Subtree<Span>;
-    pub type Punct = crate::Punct<Span>;
-    pub type Delimiter = crate::Delimiter<Span>;
-    pub type Leaf = crate::Leaf<Span>;
-    pub type Ident = crate::Ident<Span>;
-    pub type Literal = crate::Literal<Span>;
-    pub type TokenTree = crate::TokenTree<Span>;
-    pub mod buffer {
-        pub type TokenBuffer<'a> = crate::buffer::TokenBuffer<'a, super::Span>;
-        pub type Cursor<'a> = crate::buffer::Cursor<'a, super::Span>;
-        pub type TokenTreeRef<'a> = crate::buffer::TokenTreeRef<'a, super::Span>;
-    }
-
-    impl Delimiter {
-        pub const UNSPECIFIED: Self = Self {
-            open: TokenId::UNSPECIFIED,
-            close: TokenId::UNSPECIFIED,
-            kind: DelimiterKind::Invisible,
-        };
-        pub const fn unspecified() -> Self {
-            Self::UNSPECIFIED
-        }
-    }
-    impl Subtree {
-        pub const fn empty() -> Self {
-            Subtree { delimiter: Delimiter::unspecified(), token_trees: vec![] }
-        }
-    }
-    impl TokenTree {
-        pub const fn empty() -> Self {
-            Self::Subtree(Subtree::empty())
-        }
-    }
-
-    impl Subtree {
-        pub fn visit_ids(&mut self, f: &mut impl FnMut(TokenId) -> TokenId) {
-            self.delimiter.open = f(self.delimiter.open);
-            self.delimiter.close = f(self.delimiter.close);
-            self.token_trees.iter_mut().for_each(|tt| match tt {
-                crate::TokenTree::Leaf(leaf) => match leaf {
-                    crate::Leaf::Literal(it) => it.span = f(it.span),
-                    crate::Leaf::Punct(it) => it.span = f(it.span),
-                    crate::Leaf::Ident(it) => it.span = f(it.span),
-                },
-                crate::TokenTree::Subtree(s) => s.visit_ids(f),
-            })
-        }
-    }
+pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
+    // FIXME: Should not exist. Dummy spans will always be wrong if they leak somewhere. Instead,
+    // the call site or def site spans should be used in relevant places, its just that we don't
+    // expose those everywhere in the yet.
+    const DUMMY: Self;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SyntaxContext(pub u32);
+// FIXME: Should not exist
+pub trait SpanAnchor:
+    std::fmt::Debug + Copy + Sized + Eq + Copy + fmt::Debug + std::hash::Hash
+{
+    #[deprecated(note = "this should not exist")]
+    const DUMMY: Self;
+}
 
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-// pub struct Span {
-//     pub id: TokenId,
-//     pub ctx: SyntaxContext,
-// }
-// pub type Span = (TokenId, SyntaxContext);
+// FIXME: Should not exist
+pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
+    #[deprecated(note = "this should not exist")]
+    const DUMMY: Self;
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TokenTree<Span> {
-    Leaf(Leaf<Span>),
-    Subtree(Subtree<Span>),
+pub enum TokenTree<S> {
+    Leaf(Leaf<S>),
+    Subtree(Subtree<S>),
 }
-impl_from!(Leaf<Span>, Subtree<Span> for TokenTree);
+impl_from!(Leaf<S>, Subtree<S> for TokenTree);
+impl<S: Span> TokenTree<S> {
+    pub const fn empty(span: S) -> Self {
+        Self::Subtree(Subtree {
+            delimiter: Delimiter::invisible_spanned(span),
+            token_trees: vec![],
+        })
+    }
+
+    pub fn subtree_or_wrap(self) -> Subtree<S> {
+        match self {
+            TokenTree::Leaf(_) => {
+                Subtree { delimiter: Delimiter::DUMMY_INVISIBLE, token_trees: vec![self] }
+            }
+            TokenTree::Subtree(s) => s,
+        }
+    }
+    pub fn subtree_or_wrap2(self, span: DelimSpan<S>) -> Subtree<S> {
+        match self {
+            TokenTree::Leaf(_) => Subtree {
+                delimiter: Delimiter::invisible_delim_spanned(span),
+                token_trees: vec![self],
+            },
+            TokenTree::Subtree(s) => s,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Leaf<Span> {
-    Literal(Literal<Span>),
-    Punct(Punct<Span>),
-    Ident(Ident<Span>),
+pub enum Leaf<S> {
+    Literal(Literal<S>),
+    Punct(Punct<S>),
+    Ident(Ident<S>),
 }
 
-impl<Span> Leaf<Span> {
-    pub fn span(&self) -> &Span {
+impl<S> Leaf<S> {
+    pub fn span(&self) -> &S {
         match self {
             Leaf::Literal(it) => &it.span,
             Leaf::Punct(it) => &it.span,
@@ -118,19 +101,72 @@ impl<Span> Leaf<Span> {
         }
     }
 }
-impl_from!(Literal<Span>, Punct<Span>, Ident<Span> for Leaf);
+impl_from!(Literal<S>, Punct<S>, Ident<S> for Leaf);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Subtree<Span> {
-    pub delimiter: Delimiter<Span>,
-    pub token_trees: Vec<TokenTree<Span>>,
+pub struct Subtree<S> {
+    pub delimiter: Delimiter<S>,
+    pub token_trees: Vec<TokenTree<S>>,
+}
+
+impl<S: Span> Subtree<S> {
+    pub const fn empty(span: DelimSpan<S>) -> Self {
+        Subtree { delimiter: Delimiter::invisible_delim_spanned(span), token_trees: vec![] }
+    }
+
+    pub fn visit_ids(&mut self, f: &mut impl FnMut(S) -> S) {
+        self.delimiter.open = f(self.delimiter.open);
+        self.delimiter.close = f(self.delimiter.close);
+        self.token_trees.iter_mut().for_each(|tt| match tt {
+            crate::TokenTree::Leaf(leaf) => match leaf {
+                crate::Leaf::Literal(it) => it.span = f(it.span),
+                crate::Leaf::Punct(it) => it.span = f(it.span),
+                crate::Leaf::Ident(it) => it.span = f(it.span),
+            },
+            crate::TokenTree::Subtree(s) => s.visit_ids(f),
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct DelimSpan<S> {
+    pub open: S,
+    pub close: S,
+}
+
+impl<S: Span> DelimSpan<S> {
+    // FIXME should not exist
+    pub const DUMMY: Self = Self { open: S::DUMMY, close: S::DUMMY };
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Delimiter<Span> {
-    pub open: Span,
-    pub close: Span,
+pub struct Delimiter<S> {
+    pub open: S,
+    pub close: S,
     pub kind: DelimiterKind,
+}
+
+impl<S: Span> Delimiter<S> {
+    // FIXME should not exist
+    pub const DUMMY_INVISIBLE: Self =
+        Self { open: S::DUMMY, close: S::DUMMY, kind: DelimiterKind::Invisible };
+
+    // FIXME should not exist
+    pub const fn dummy_invisible() -> Self {
+        Self::DUMMY_INVISIBLE
+    }
+
+    pub const fn invisible_spanned(span: S) -> Self {
+        Delimiter { open: span, close: span, kind: DelimiterKind::Invisible }
+    }
+
+    pub const fn invisible_delim_spanned(span: DelimSpan<S>) -> Self {
+        Delimiter { open: span.open, close: span.close, kind: DelimiterKind::Invisible }
+    }
+
+    pub fn delim_span(&self) -> DelimSpan<S> {
+        DelimSpan { open: self.open, close: self.close }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -142,16 +178,16 @@ pub enum DelimiterKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Literal<Span> {
+pub struct Literal<S> {
     pub text: SmolStr,
-    pub span: Span,
+    pub span: S,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Punct<Span> {
+pub struct Punct<S> {
     pub char: char,
     pub spacing: Spacing,
-    pub span: Span,
+    pub span: S,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -162,9 +198,9 @@ pub enum Spacing {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// Identifier or keyword. Unlike rustc, we keep "r#" prefix when it represents a raw identifier.
-pub struct Ident<Span> {
+pub struct Ident<S> {
     pub text: SmolStr,
-    pub span: Span,
+    pub span: S,
 }
 
 impl<S> Ident<S> {
@@ -173,9 +209,9 @@ impl<S> Ident<S> {
     }
 }
 
-fn print_debug_subtree<Span: fmt::Debug>(
+fn print_debug_subtree<S: fmt::Debug>(
     f: &mut fmt::Formatter<'_>,
-    subtree: &Subtree<Span>,
+    subtree: &Subtree<S>,
     level: usize,
 ) -> fmt::Result {
     let align = "  ".repeat(level);
@@ -203,9 +239,9 @@ fn print_debug_subtree<Span: fmt::Debug>(
     Ok(())
 }
 
-fn print_debug_token<Span: fmt::Debug>(
+fn print_debug_token<S: fmt::Debug>(
     f: &mut fmt::Formatter<'_>,
-    tkn: &TokenTree<Span>,
+    tkn: &TokenTree<S>,
     level: usize,
 ) -> fmt::Result {
     let align = "  ".repeat(level);
@@ -231,13 +267,13 @@ fn print_debug_token<Span: fmt::Debug>(
     Ok(())
 }
 
-impl<Span: fmt::Debug> fmt::Debug for Subtree<Span> {
+impl<S: fmt::Debug> fmt::Debug for Subtree<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         print_debug_subtree(f, self, 0)
     }
 }
 
-impl<Span> fmt::Display for TokenTree<Span> {
+impl<S> fmt::Display for TokenTree<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TokenTree::Leaf(it) => fmt::Display::fmt(it, f),
@@ -246,7 +282,7 @@ impl<Span> fmt::Display for TokenTree<Span> {
     }
 }
 
-impl<Span> fmt::Display for Subtree<Span> {
+impl<S> fmt::Display for Subtree<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (l, r) = match self.delimiter.kind {
             DelimiterKind::Parenthesis => ("(", ")"),
@@ -274,7 +310,7 @@ impl<Span> fmt::Display for Subtree<Span> {
     }
 }
 
-impl<Span> fmt::Display for Leaf<Span> {
+impl<S> fmt::Display for Leaf<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Leaf::Ident(it) => fmt::Display::fmt(it, f),
@@ -284,25 +320,25 @@ impl<Span> fmt::Display for Leaf<Span> {
     }
 }
 
-impl<Span> fmt::Display for Ident<Span> {
+impl<S> fmt::Display for Ident<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.text, f)
     }
 }
 
-impl<Span> fmt::Display for Literal<Span> {
+impl<S> fmt::Display for Literal<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.text, f)
     }
 }
 
-impl<Span> fmt::Display for Punct<Span> {
+impl<S> fmt::Display for Punct<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.char, f)
     }
 }
 
-impl<Span> Subtree<Span> {
+impl<S> Subtree<S> {
     /// Count the number of tokens recursively
     pub fn count(&self) -> usize {
         let children_count = self
@@ -318,7 +354,7 @@ impl<Span> Subtree<Span> {
     }
 }
 
-impl<Span> Subtree<Span> {
+impl<S> Subtree<S> {
     /// A simple line string used for debugging
     pub fn as_debug_string(&self) -> String {
         let delim = match self.delimiter.kind {
@@ -366,8 +402,8 @@ impl<Span> Subtree<Span> {
 
 pub mod buffer;
 
-pub fn pretty<Span>(tkns: &[TokenTree<Span>]) -> String {
-    fn tokentree_to_text<Span>(tkn: &TokenTree<Span>) -> String {
+pub fn pretty<S>(tkns: &[TokenTree<S>]) -> String {
+    fn tokentree_to_text<S>(tkn: &TokenTree<S>) -> String {
         match tkn {
             TokenTree::Leaf(Leaf::Ident(ident)) => ident.text.clone().into(),
             TokenTree::Leaf(Leaf::Literal(literal)) => literal.text.clone().into(),

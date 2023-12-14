@@ -793,7 +793,7 @@ fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
 /// When this is done, suggest using `Self` instead.
 fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
     let (trait_name, trait_def_id) =
-        match tcx.hir().get_by_def_id(tcx.hir().get_parent_item(item.hir_id()).def_id) {
+        match tcx.hir_node_by_def_id(tcx.hir().get_parent_item(item.hir_id()).def_id) {
             hir::Node::Item(item) => match item.kind {
                 hir::ItemKind::Trait(..) => (item.ident, item.owner_id),
                 _ => return,
@@ -1019,7 +1019,7 @@ fn check_type_defn<'tcx>(
             for field in &variant.fields {
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
-                    tcx.hir().get_by_def_id(field_id).expect_field();
+                    tcx.hir_node_by_def_id(field_id).expect_field();
                 let ty = wfcx.normalize(
                     hir_ty.span,
                     None,
@@ -1057,7 +1057,7 @@ fn check_type_defn<'tcx>(
                 let last = idx == variant.fields.len() - 1;
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
-                    tcx.hir().get_by_def_id(field_id).expect_field();
+                    tcx.hir_node_by_def_id(field_id).expect_field();
                 let ty = wfcx.normalize(
                     hir_ty.span,
                     None,
@@ -1882,7 +1882,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             // Match the existing behavior.
             if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
                 let pred = self.normalize(span, None, pred);
-                let hir_node = tcx.hir().find_by_def_id(self.body_def_id);
+                let hir_node = tcx.opt_hir_node_by_def_id(self.body_def_id);
 
                 // only use the span of the predicate clause (#90869)
 

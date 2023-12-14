@@ -238,8 +238,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Next, make sure that we have no type expectation.
-        let Some(ret) = hir
-            .find_by_def_id(self.body_id)
+        let Some(ret) = self
+            .tcx
+            .opt_hir_node_by_def_id(self.body_id)
             .and_then(|owner| owner.fn_decl())
             .map(|decl| decl.output.span())
         else {
@@ -317,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
         sp: Span,
     ) -> Option<(Span, String)> {
-        let node = self.tcx.hir().get(hir_id);
+        let node = self.tcx.hir_node(hir_id);
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
             let parent = self.tcx.hir().get_parent(self.tcx.hir().parent_id(block.hir_id));

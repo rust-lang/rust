@@ -1,9 +1,10 @@
-use crate::spec::{base, Target};
+use crate::spec::{base, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = base::teeos::opts();
     base.features = "+strict-align,+neon,+fp-armv8".into();
     base.max_atomic_width = Some(128);
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "aarch64-unknown-none".into(),

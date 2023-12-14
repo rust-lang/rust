@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, Target, TargetOptions};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, StackProbeType, Target, TargetOptions,
+};
 
 const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding_linker_script.ld");
 
@@ -16,6 +18,7 @@ pub fn target() -> Target {
             link_script: Some(LINKER_SCRIPT.into()),
             os: "horizon".into(),
             max_atomic_width: Some(128),
+            stack_probes: StackProbeType::Inline,
             panic_strategy: PanicStrategy::Abort,
             position_independent_executables: true,
             dynamic_linking: true,

@@ -30,7 +30,7 @@ impl<'tcx> IntoKind for Const<'tcx> {
     type Kind = ConstKind<'tcx>;
 
     fn kind(self) -> ConstKind<'tcx> {
-        self.kind().clone()
+        self.kind()
     }
 }
 
@@ -41,7 +41,8 @@ impl<'tcx> ConstTy<TyCtxt<'tcx>> for Const<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct ConstData<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: ConstKind<'tcx>,
@@ -166,7 +167,7 @@ impl<'tcx> Const<'tcx> {
     /// becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug")]
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
-        let body_id = match tcx.hir().get_by_def_id(def) {
+        let body_id = match tcx.hir_node_by_def_id(def) {
             hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
                 tcx.def_span(def.to_def_id()),
@@ -442,7 +443,7 @@ impl<'tcx> Const<'tcx> {
 }
 
 pub fn const_param_default(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Const<'_>> {
-    let default_def_id = match tcx.hir().get_by_def_id(def_id) {
+    let default_def_id = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::GenericParam(hir::GenericParam {
             kind: hir::GenericParamKind::Const { default: Some(ac), .. },
             ..

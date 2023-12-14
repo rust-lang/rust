@@ -1,0 +1,71 @@
+warning: unexpected `cfg` condition name: `featur`
+  --> $DIR/diagnotics.rs:7:7
+   |
+LL | #[cfg(featur)]
+   |       ^^^^^^ help: there is a config with a similar name: `feature`
+   |
+   = help: expected values for `feature` are: `foo`
+   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `featur`
+  --> $DIR/diagnotics.rs:11:7
+   |
+LL | #[cfg(featur = "foo")]
+   |       ^^^^^^^^^^^^^^
+   |
+   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
+help: there is a config with a similar name and value
+   |
+LL | #[cfg(feature = "foo")]
+   |       ~~~~~~~
+
+warning: unexpected `cfg` condition name: `featur`
+  --> $DIR/diagnotics.rs:15:7
+   |
+LL | #[cfg(featur = "fo")]
+   |       ^^^^^^^^^^^^^
+   |
+   = help: expected values for `feature` are: `foo`
+   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
+help: there is a config with a similar name and different values
+   |
+LL | #[cfg(feature = "foo")]
+   |       ~~~~~~~~~~~~~~~
+
+warning: unexpected `cfg` condition name: `no_value`
+  --> $DIR/diagnotics.rs:22:7
+   |
+LL | #[cfg(no_value)]
+   |       ^^^^^^^^ help: there is a config with a similar name: `no_values`
+   |
+   = help: consider using a Cargo feature instead or adding `println!("cargo:rustc-check-cfg=cfg(no_value)");` to the top of a `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `no_value`
+  --> $DIR/diagnotics.rs:26:7
+   |
+LL | #[cfg(no_value = "foo")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead or adding `println!("cargo:rustc-check-cfg=cfg(no_value, values(\"foo\"))");` to the top of a `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
+help: there is a config with a similar name and no value
+   |
+LL | #[cfg(no_values)]
+   |       ~~~~~~~~~
+
+warning: unexpected `cfg` condition value: `bar`
+  --> $DIR/diagnotics.rs:30:7
+   |
+LL | #[cfg(no_values = "bar")]
+   |       ^^^^^^^^^--------
+   |                |
+   |                help: remove the value
+   |
+   = note: no expected value for `no_values`
+   = help: consider using a Cargo feature instead or adding `println!("cargo:rustc-check-cfg=cfg(no_values, values(\"bar\"))");` to the top of a `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
+
+warning: 6 warnings emitted
+

@@ -435,7 +435,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            st Bar
+            st Bar     Bar
             kw crate::
             kw self::
         "#]],
@@ -450,7 +450,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            st Foo
+            st Foo     Foo
             kw crate::
             kw self::
         "#]],

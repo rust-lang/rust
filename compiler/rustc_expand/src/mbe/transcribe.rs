@@ -440,7 +440,7 @@ fn lockstep_iter_size(
 ///   declared inside a single repetition and the index `1` implies two nested repetitions.
 fn count_repetitions<'a>(
     cx: &ExtCtxt<'a>,
-    depth_opt: Option<usize>,
+    depth_user: usize,
     mut matched: &NamedMatch,
     repeats: &[(usize, usize)],
     sp: &DelimSpan,
@@ -449,37 +449,45 @@ fn count_repetitions<'a>(
     // (or at the top-level of `matched` if no depth is given).
     fn count<'a>(
         cx: &ExtCtxt<'a>,
-        declared_lhs_depth: usize,
-        depth_opt: Option<usize>,
+        depth_curr: usize,
+        depth_max: usize,
         matched: &NamedMatch,
         sp: &DelimSpan,
     ) -> PResult<'a, usize> {
         match matched {
-            MatchedTokenTree(_) | MatchedNonterminal(_) => {
-                if declared_lhs_depth == 0 {
-                    return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
-                }
-                match depth_opt {
-                    None => Ok(1),
-                    Some(_) => Err(out_of_bounds_err(cx, declared_lhs_depth, sp.entire(), "count")),
-                }
-            }
+            MatchedTokenTree(_) | MatchedNonterminal(_) => Ok(1),
             MatchedSeq(named_matches) => {
-                let new_declared_lhs_depth = declared_lhs_depth + 1;
-                match depth_opt {
-                    None => named_matches
+                if depth_curr == depth_max {
+                    Ok(named_matches.len())
+                } else {
+                    named_matches
                         .iter()
-                        .map(|elem| count(cx, new_declared_lhs_depth, None, elem, sp))
-                        .sum(),
-                    Some(0) => Ok(named_matches.len()),
-                    Some(depth) => named_matches
-                        .iter()
-                        .map(|elem| count(cx, new_declared_lhs_depth, Some(depth - 1), elem, sp))
-                        .sum(),
+                        .map(|elem| count(cx, depth_curr + 1, depth_max, elem, sp))
+                        .sum()
                 }
             }
         }
     }
+
+    /// Maximum depth
+    fn depth(counter: usize, matched: &NamedMatch) -> usize {
+        match matched {
+            MatchedTokenTree(_) | MatchedNonterminal(_) => counter,
+            MatchedSeq(named_matches) => {
+                let rslt = counter + 1;
+                if let Some(elem) = named_matches.first() { depth(rslt, elem) } else { rslt }
+            }
+        }
+    }
+
+    let depth_max = depth(0, matched)
+        .checked_sub(1)
+        .and_then(|el| el.checked_sub(repeats.len()))
+        .unwrap_or_default();
+    if depth_user > depth_max {
+        return Err(out_of_bounds_err(cx, depth_max + 1, sp.entire(), "count"));
+    }
+
     // `repeats` records all of the nested levels at which we are currently
     // matching meta-variables. The meta-var-expr `count($x)` only counts
     // matches that occur in this "subtree" of the `NamedMatch` where we
@@ -491,7 +499,12 @@ fn count_repetitions<'a>(
             matched = &ads[idx];
         }
     }
-    count(cx, 0, depth_opt, matched, sp)
+
+    if let MatchedTokenTree(_) | MatchedNonterminal(_) = matched {
+        return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
+    }
+
+    count(cx, depth_user, depth_max, matched, sp)
 }
 
 /// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]
@@ -523,7 +536,7 @@ fn out_of_bounds_err<'a>(
         )
     } else {
         format!(
-            "depth parameter on meta-variable expression `{ty}` \
+            "depth parameter of meta-variable expression `{ty}` \
              must be less than {max}"
         )
     };
@@ -545,9 +558,9 @@ fn transcribe_metavar_expr<'a>(
         span
     };
     match *expr {
-        MetaVarExpr::Count(original_ident, depth_opt) => {
+        MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
-            let count = count_repetitions(cx, depth_opt, matched, repeats, sp)?;
+            let count = count_repetitions(cx, depth, matched, repeats, sp)?;
             let tt = TokenTree::token_alone(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
                 visited_span(),

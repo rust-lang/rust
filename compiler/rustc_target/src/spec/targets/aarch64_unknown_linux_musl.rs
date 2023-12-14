@@ -1,10 +1,11 @@
-use crate::spec::{base, SanitizerSet, Target, TargetOptions};
+use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.max_atomic_width = Some(128);
     base.supports_xray = true;
     base.features = "+v8a".into();
+    base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
         | SanitizerSet::LEAK

@@ -137,10 +137,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             // is from the 'of_trait' field of the enclosing impl
 
             let parent = self.tcx.hir().get_parent(self.path_segment.hir_id);
-            let parent_item = self
-                .tcx
-                .hir()
-                .get_by_def_id(self.tcx.hir().get_parent_item(self.path_segment.hir_id).def_id);
+            let parent_item = self.tcx.hir_node_by_def_id(
+                self.tcx.hir().get_parent_item(self.path_segment.hir_id).def_id,
+            );
 
             // Get the HIR id of the trait ref
             let hir::Node::TraitRef(hir::TraitRef { hir_ref_id: trait_ref_id, .. }) = parent else {
@@ -774,7 +773,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         );
 
         if let Some(parent_node) = self.tcx.hir().opt_parent_id(self.path_segment.hir_id)
-            && let Some(parent_node) = self.tcx.hir().find(parent_node)
+            && let Some(parent_node) = self.tcx.opt_hir_node(parent_node)
             && let hir::Node::Expr(expr) = parent_node
         {
             match &expr.kind {

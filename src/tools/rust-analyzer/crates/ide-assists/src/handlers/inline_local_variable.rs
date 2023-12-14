@@ -2,7 +2,7 @@ use hir::{PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
     defs::Definition,
-    search::{FileReference, UsageSearchResult},
+    search::{FileReference, FileReferenceNode, UsageSearchResult},
     RootDatabase,
 };
 use syntax::{
@@ -63,7 +63,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let wrap_in_parens = references
         .into_iter()
         .filter_map(|FileReference { range, name, .. }| match name {
-            ast::NameLike::NameRef(name) => Some((range, name)),
+            FileReferenceNode::NameRef(name) => Some((range, name)),
             _ => None,
         })
         .map(|(range, name_ref)| {

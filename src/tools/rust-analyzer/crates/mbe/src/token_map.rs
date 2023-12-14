@@ -2,123 +2,75 @@
 
 use std::hash::Hash;
 
-use parser::{SyntaxKind, T};
+use stdx::{always, itertools::Itertools};
 use syntax::{TextRange, TextSize};
+use tt::Span;
 
-use crate::syntax_bridge::SyntheticTokenId;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-enum TokenTextRange {
-    Token(TextRange),
-    Delimiter(TextRange),
+/// Maps absolute text ranges for the corresponding file to the relevant span data.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct SpanMap<S: Span> {
+    spans: Vec<(TextSize, S)>,
 }
 
-impl TokenTextRange {
-    fn by_kind(self, kind: SyntaxKind) -> Option<TextRange> {
-        match self {
-            TokenTextRange::Token(it) => Some(it),
-            TokenTextRange::Delimiter(it) => match kind {
-                T!['{'] | T!['('] | T!['['] => Some(TextRange::at(it.start(), 1.into())),
-                T!['}'] | T![')'] | T![']'] => {
-                    Some(TextRange::at(it.end() - TextSize::of('}'), 1.into()))
-                }
-                _ => None,
-            },
-        }
+impl<S: Span> SpanMap<S> {
+    /// Creates a new empty [`SpanMap`].
+    pub fn empty() -> Self {
+        Self { spans: Vec::new() }
     }
-}
 
-/// Maps `tt::TokenId` to the relative range of the original token.
-#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
-pub struct TokenMap {
-    /// Maps `tt::TokenId` to the *relative* source range.
-    entries: Vec<(tt::TokenId, TokenTextRange)>,
-    pub synthetic_entries: Vec<(tt::TokenId, SyntheticTokenId)>,
-}
+    /// Finalizes the [`SpanMap`], shrinking its backing storage and validating that the offsets are
+    /// in order.
+    pub fn finish(&mut self) {
+        always!(
+            self.spans.iter().tuple_windows().all(|(a, b)| a.0 < b.0),
+            "spans are not in order"
+        );
+        self.spans.shrink_to_fit();
+    }
 
-impl TokenMap {
-    pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
-        let &(token_id, _) = self.entries.iter().find(|(_, range)| match range {
-            TokenTextRange::Token(it) => *it == relative_range,
-            TokenTextRange::Delimiter(it) => {
-                let open = TextRange::at(it.start(), 1.into());
-                let close = TextRange::at(it.end() - TextSize::of('}'), 1.into());
-                open == relative_range || close == relative_range
+    /// Pushes a new span onto the [`SpanMap`].
+    pub fn push(&mut self, offset: TextSize, span: S) {
+        if cfg!(debug_assertions) {
+            if let Some(&(last_offset, _)) = self.spans.last() {
+                assert!(
+                    last_offset < offset,
+                    "last_offset({last_offset:?}) must be smaller than offset({offset:?})"
+                );
             }
-        })?;
-        Some(token_id)
-    }
-
-    pub fn ranges_by_token(
-        &self,
-        token_id: tt::TokenId,
-        kind: SyntaxKind,
-    ) -> impl Iterator<Item = TextRange> + '_ {
-        self.entries
-            .iter()
-            .filter(move |&&(tid, _)| tid == token_id)
-            .filter_map(move |(_, range)| range.by_kind(kind))
-    }
-
-    pub fn synthetic_token_id(&self, token_id: tt::TokenId) -> Option<SyntheticTokenId> {
-        self.synthetic_entries.iter().find(|(tid, _)| *tid == token_id).map(|(_, id)| *id)
-    }
-
-    pub fn first_range_by_token(
-        &self,
-        token_id: tt::TokenId,
-        kind: SyntaxKind,
-    ) -> Option<TextRange> {
-        self.ranges_by_token(token_id, kind).next()
-    }
-
-    pub(crate) fn shrink_to_fit(&mut self) {
-        self.entries.shrink_to_fit();
-        self.synthetic_entries.shrink_to_fit();
-    }
-
-    pub(crate) fn insert(&mut self, token_id: tt::TokenId, relative_range: TextRange) {
-        self.entries.push((token_id, TokenTextRange::Token(relative_range)));
-    }
-
-    pub(crate) fn insert_synthetic(&mut self, token_id: tt::TokenId, id: SyntheticTokenId) {
-        self.synthetic_entries.push((token_id, id));
-    }
-
-    pub(crate) fn insert_delim(
-        &mut self,
-        token_id: tt::TokenId,
-        open_relative_range: TextRange,
-        close_relative_range: TextRange,
-    ) -> usize {
-        let res = self.entries.len();
-        let cover = open_relative_range.cover(close_relative_range);
-
-        self.entries.push((token_id, TokenTextRange::Delimiter(cover)));
-        res
-    }
-
-    pub(crate) fn update_close_delim(&mut self, idx: usize, close_relative_range: TextRange) {
-        let (_, token_text_range) = &mut self.entries[idx];
-        if let TokenTextRange::Delimiter(dim) = token_text_range {
-            let cover = dim.cover(close_relative_range);
-            *token_text_range = TokenTextRange::Delimiter(cover);
         }
+        self.spans.push((offset, span));
     }
 
-    pub(crate) fn remove_delim(&mut self, idx: usize) {
-        // FIXME: This could be accidentally quadratic
-        self.entries.remove(idx);
-    }
-
-    pub fn entries(&self) -> impl Iterator<Item = (tt::TokenId, TextRange)> + '_ {
-        self.entries.iter().filter_map(|&(tid, tr)| match tr {
-            TokenTextRange::Token(range) => Some((tid, range)),
-            TokenTextRange::Delimiter(_) => None,
+    /// Returns all [`TextRange`]s that correspond to the given span.
+    ///
+    /// Note this does a linear search through the entire backing vector.
+    pub fn ranges_with_span(&self, span: S) -> impl Iterator<Item = TextRange> + '_ {
+        // FIXME: This should ignore the syntax context!
+        self.spans.iter().enumerate().filter_map(move |(idx, &(end, s))| {
+            if s != span {
+                return None;
+            }
+            let start = idx.checked_sub(1).map_or(TextSize::new(0), |prev| self.spans[prev].0);
+            Some(TextRange::new(start, end))
         })
     }
 
-    pub fn filter(&mut self, id: impl Fn(tt::TokenId) -> bool) {
-        self.entries.retain(|&(tid, _)| id(tid));
+    /// Returns the span at the given position.
+    pub fn span_at(&self, offset: TextSize) -> S {
+        let entry = self.spans.partition_point(|&(it, _)| it <= offset);
+        self.spans[entry].1
+    }
+
+    /// Returns the spans associated with the given range.
+    /// In other words, this will return all spans that correspond to all offsets within the given range.
+    pub fn spans_for_range(&self, range: TextRange) -> impl Iterator<Item = S> + '_ {
+        let (start, end) = (range.start(), range.end());
+        let start_entry = self.spans.partition_point(|&(it, _)| it <= start);
+        let end_entry = self.spans[start_entry..].partition_point(|&(it, _)| it <= end); // FIXME: this might be wrong?
+        (&self.spans[start_entry..][..end_entry]).iter().map(|&(_, s)| s)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (TextSize, S)> + '_ {
+        self.spans.iter().copied()
     }
 }

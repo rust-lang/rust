@@ -328,6 +328,7 @@ fn augment_references_with_imports(
     references
         .iter()
         .filter_map(|FileReference { range, name, .. }| {
+            let name = name.clone().into_name_like()?;
             ctx.sema.scope(name.syntax()).map(|scope| (*range, name, scope.module()))
         })
         .map(|(range, name, ref_module)| {
@@ -455,6 +456,7 @@ fn add_enum_def(
         .iter()
         .flat_map(|(_, refs)| refs)
         .filter_map(|FileReference { name, .. }| {
+            let name = name.clone().into_name_like()?;
             ctx.sema.scope(name.syntax()).map(|scope| scope.module())
         })
         .any(|module| module.nearest_non_block_module(ctx.db()) != *target_module);

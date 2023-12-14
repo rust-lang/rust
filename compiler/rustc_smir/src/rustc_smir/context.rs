@@ -157,7 +157,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
                 (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
             })
             .into_iter()
-            .filter_map(|c| c)
+            .flatten()
             .collect();
         crates
     }
@@ -213,10 +213,22 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         def.internal(&mut *tables).is_box()
     }
 
+    fn adt_is_simd(&self, def: AdtDef) -> bool {
+        let mut tables = self.0.borrow_mut();
+        def.internal(&mut *tables).repr().simd()
+    }
+
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
         let mut tables = self.0.borrow_mut();
         let def_id = def.0.internal(&mut *tables);
         let sig = tables.tcx.fn_sig(def_id).instantiate(tables.tcx, args.internal(&mut *tables));
+        sig.stable(&mut *tables)
+    }
+
+    fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig {
+        let mut tables = self.0.borrow_mut();
+        let args_ref = args.internal(&mut *tables);
+        let sig = args_ref.as_closure().sig();
         sig.stable(&mut *tables)
     }
 

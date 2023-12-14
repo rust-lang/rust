@@ -2,7 +2,9 @@
 // or `StackProbeType::InlineOrCall` when running on newer LLVM.
 
 // compile-flags: -C no-prepopulate-passes
-// revisions: powerpc powerpc64 powerpc64le s390x i686 x86_64
+// revisions: aarch64 powerpc powerpc64 powerpc64le s390x i686 x86_64
+//[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//[aarch64] needs-llvm-components: aarch64
 //[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
 //[powerpc] needs-llvm-components: powerpc
 //[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu

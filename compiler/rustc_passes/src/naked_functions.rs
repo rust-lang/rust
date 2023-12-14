@@ -35,7 +35,7 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
             continue;
         }
 
-        let (fn_header, body_id) = match tcx.hir().get_by_def_id(def_id) {
+        let (fn_header, body_id) = match tcx.hir_node_by_def_id(def_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })
             | hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)),

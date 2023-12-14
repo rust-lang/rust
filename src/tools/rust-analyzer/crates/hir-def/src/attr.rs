@@ -421,6 +421,7 @@ impl AttrsWithOwner {
                     RawAttrs::from_attrs_owner(
                         db.upcast(),
                         src.with_value(&src.value[it.local_id()]),
+                        db.span_map(src.file_id).as_ref(),
                     )
                 }
                 GenericParamId::TypeParamId(it) => {
@@ -428,11 +429,16 @@ impl AttrsWithOwner {
                     RawAttrs::from_attrs_owner(
                         db.upcast(),
                         src.with_value(&src.value[it.local_id()]),
+                        db.span_map(src.file_id).as_ref(),
                     )
                 }
                 GenericParamId::LifetimeParamId(it) => {
                     let src = it.parent.child_source(db);
-                    RawAttrs::from_attrs_owner(db.upcast(), src.with_value(&src.value[it.local_id]))
+                    RawAttrs::from_attrs_owner(
+                        db.upcast(),
+                        src.with_value(&src.value[it.local_id]),
+                        db.span_map(src.file_id).as_ref(),
+                    )
                 }
             },
             AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),

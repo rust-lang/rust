@@ -1,4 +1,3 @@
-//~ ERROR overflow
 // compile-flags: -Ztrait-solver=next
 
 trait Foo1 {
@@ -15,6 +14,7 @@ fn needs_bar<S: Bar>() {}
 fn test<T: Foo1<Assoc1 = <T as Foo2>::Assoc2> + Foo2<Assoc2 = <T as Foo1>::Assoc1>>() {
     needs_bar::<T::Assoc1>();
     //~^ ERROR overflow evaluating the requirement `<T as Foo1>::Assoc1: Bar`
+    //~| ERROR overflow evaluating the requirement `<T as Foo2>::Assoc2`
 }
 
 fn main() {}

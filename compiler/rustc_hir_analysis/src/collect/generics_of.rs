@@ -16,7 +16,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-    let node = tcx.hir().get(hir_id);
+    let node = tcx.hir_node(hir_id);
     let parent_def_id = match node {
         Node::ImplItem(_)
         | Node::TraitItem(_)

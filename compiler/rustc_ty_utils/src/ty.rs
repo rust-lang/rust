@@ -74,7 +74,7 @@ fn sized_constraint_for_ty<'tcx>(
 }
 
 fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
-    match tcx.hir().get_by_def_id(def_id) {
+    match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
         hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
@@ -300,7 +300,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
-    let node = tcx.hir().get_by_def_id(def_id);
+    let node = tcx.hir_node_by_def_id(def_id);
     node.fn_sig().map_or(ty::Asyncness::No, |sig| match sig.header.asyncness {
         hir::IsAsync::Async(_) => ty::Asyncness::Yes,
         hir::IsAsync::NotAsync => ty::Asyncness::No,

@@ -1,4 +1,4 @@
-use crate::spec::{base, SanitizerSet, Target, TargetOptions};
+use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -9,6 +9,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a".into(),
             max_atomic_width: Some(128),
+            stack_probes: StackProbeType::Inline,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
                 | SanitizerSet::MEMORY

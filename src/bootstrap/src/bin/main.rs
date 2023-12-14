@@ -5,7 +5,6 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-#[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use std::io::Write;
 #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use std::process;

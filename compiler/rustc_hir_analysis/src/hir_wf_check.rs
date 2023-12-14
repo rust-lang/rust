@@ -122,7 +122,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     // We will walk 'into' this type to try to find
     // a more precise span for our predicate.
     let tys = match loc {
-        WellFormedLoc::Ty(_) => match hir.get(hir_id) {
+        WellFormedLoc::Ty(_) => match tcx.hir_node(hir_id) {
             hir::Node::ImplItem(item) => match item.kind {
                 hir::ImplItemKind::Type(ty) => vec![ty],
                 hir::ImplItemKind::Const(ty, _) => vec![ty],

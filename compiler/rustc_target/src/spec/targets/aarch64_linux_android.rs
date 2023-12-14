@@ -1,4 +1,4 @@
-use crate::spec::{base, SanitizerSet, Target, TargetOptions};
+use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 // See https://developer.android.com/ndk/guides/abis.html#arm64-v8a
 // for target ABI requirements.
@@ -14,6 +14,7 @@ pub fn target() -> Target {
             // As documented in https://developer.android.com/ndk/guides/cpu-features.html
             // the neon (ASIMD) and FP must exist on all android aarch64 targets.
             features: "+v8a,+neon,+fp-armv8".into(),
+            stack_probes: StackProbeType::Inline,
             supported_sanitizers: SanitizerSet::CFI
                 | SanitizerSet::HWADDRESS
                 | SanitizerSet::MEMTAG

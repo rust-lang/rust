@@ -38,7 +38,7 @@
 //! [`Handle`]: loader::Handle
 //! [`Entries`]: loader::Entry
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 mod anchored_path;
 pub mod file_set;
@@ -60,7 +60,22 @@ pub use paths::{AbsPath, AbsPathBuf};
 ///
 /// Most functions in rust-analyzer use this when they need to refer to a file.
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct FileId(pub u32);
+pub struct FileId(u32);
+
+impl FileId {
+    /// Think twice about using this outside of tests. If this ends up in a wrong place it will cause panics!
+    pub const BOGUS: FileId = FileId(0xe4e4e);
+
+    #[inline]
+    pub fn from_raw(raw: u32) -> FileId {
+        FileId(raw)
+    }
+
+    #[inline]
+    pub fn index(self) -> u32 {
+        self.0
+    }
+}
 
 /// safe because `FileId` is a newtype of `u32`
 impl nohash_hasher::IsEnabled for FileId {}

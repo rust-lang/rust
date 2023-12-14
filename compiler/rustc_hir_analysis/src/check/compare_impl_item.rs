@@ -2181,7 +2181,7 @@ pub(super) fn check_type_bounds<'tcx>(
     let impl_ty_span = if impl_ty.is_impl_trait_in_trait() {
         tcx.def_span(impl_ty_def_id)
     } else {
-        match tcx.hir().get_by_def_id(impl_ty_def_id) {
+        match tcx.hir_node_by_def_id(impl_ty_def_id) {
             hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Type(_, Some(ty)),
                 ..

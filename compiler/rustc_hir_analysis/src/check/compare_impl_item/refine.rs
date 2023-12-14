@@ -278,7 +278,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
     }
 
     let (span, impl_return_span, pre, post) =
-        match tcx.hir().get_by_def_id(impl_m_def_id.expect_local()).fn_decl().unwrap().output {
+        match tcx.hir_node_by_def_id(impl_m_def_id.expect_local()).fn_decl().unwrap().output {
             hir::FnRetTy::DefaultReturn(span) => (tcx.def_span(impl_m_def_id), span, "-> ", " "),
             hir::FnRetTy::Return(ty) => (ty.span, ty.span, "", ""),
         };

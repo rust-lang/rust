@@ -127,7 +127,7 @@ fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 
     if let Some(def_id) = def_id.as_local() {
-        primary_body_of(tcx.hir().get_by_def_id(def_id)).is_some()
+        primary_body_of(tcx.hir_node_by_def_id(def_id)).is_some()
     } else {
         false
     }
@@ -166,7 +166,7 @@ fn typeck_with_fallback<'tcx>(
     }
 
     let id = tcx.local_def_id_to_hir_id(def_id);
-    let node = tcx.hir().get(id);
+    let node = tcx.hir_node(id);
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
@@ -201,7 +201,7 @@ fn typeck_with_fallback<'tcx>(
                 span,
             }))
         } else if let Node::AnonConst(_) = node {
-            match tcx.hir().get(tcx.hir().parent_id(id)) {
+            match tcx.hir_node(tcx.hir().parent_id(id)) {
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
                     if anon_const.hir_id == id =>
                 {
@@ -282,8 +282,6 @@ fn typeck_with_fallback<'tcx>(
     }
 
     fcx.check_asms();
-
-    fcx.infcx.skip_region_resolution();
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 

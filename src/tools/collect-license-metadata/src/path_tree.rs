@@ -4,7 +4,7 @@
 //! passes over the tree to remove redundant information.
 
 use crate::licenses::{License, LicenseId, LicensesInterner};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 #[derive(serde::Serialize)]
@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 pub(crate) enum Node<L> {
     Root { children: Vec<Node<L>> },
     Directory { name: PathBuf, children: Vec<Node<L>>, license: Option<L> },
+    CondensedDirectory { name: PathBuf, licenses: Vec<L> },
     File { name: PathBuf, license: L },
     Group { files: Vec<PathBuf>, directories: Vec<PathBuf>, license: L },
     Empty,
@@ -57,9 +58,9 @@ impl Node<LicenseId> {
                         Node::Directory { name, mut children, license: None } => {
                             directories.entry(name).or_insert_with(Vec::new).append(&mut children);
                         }
-                        file @ Node::File { .. } => {
-                            files.push(file);
-                        }
+                        file @ Node::File { .. } => files.push(file),
+                        // Propagate condensed directories as-is.
+                        condensed @ Node::CondensedDirectory { .. } => files.push(condensed),
                         Node::Empty => {}
                         Node::Root { .. } => {
                             panic!("can't have a root inside another element");
@@ -86,6 +87,7 @@ impl Node<LicenseId> {
             }
             Node::Empty => {}
             Node::File { .. } => {}
+            Node::CondensedDirectory { .. } => {}
             Node::Group { .. } => {
                 panic!("Group should not be present at this stage");
             }
@@ -132,6 +134,7 @@ impl Node<LicenseId> {
                 }
             }
             Node::File { .. } => {}
+            Node::CondensedDirectory { .. } => {}
             Node::Group { .. } => panic!("group should not be present at this stage"),
             Node::Empty => {}
         }
@@ -174,6 +177,9 @@ impl Node<LicenseId> {
                             Node::Directory { name: child_child_name, .. } => {
                                 *child_child_name = child_name.join(&child_child_name);
                             }
+                            Node::CondensedDirectory { name: child_child_name, .. } => {
+                                *child_child_name = child_name.join(&child_child_name);
+                            }
                             Node::File { name: child_child_name, .. } => {
                                 *child_child_name = child_name.join(&child_child_name);
                             }
@@ -188,6 +194,7 @@ impl Node<LicenseId> {
             }
             Node::Empty => {}
             Node::File { .. } => {}
+            Node::CondensedDirectory { .. } => {}
             Node::Group { .. } => panic!("Group should not be present at this stage"),
         }
     }
@@ -255,6 +262,7 @@ impl Node<LicenseId> {
                 }
             }
             Node::File { .. } => {}
+            Node::CondensedDirectory { .. } => {}
             Node::Group { .. } => panic!("FileGroup should not be present at this stage"),
             Node::Empty => {}
         }
@@ -270,6 +278,7 @@ impl Node<LicenseId> {
                 }
                 children.retain(|child| !matches!(child, Node::Empty));
             }
+            Node::CondensedDirectory { .. } => {}
             Node::Group { .. } => {}
             Node::File { .. } => {}
             Node::Empty => {}
@@ -293,7 +302,24 @@ pub(crate) fn build(mut input: Vec<(PathBuf, LicenseId)>) -> Node<LicenseId> {
     // Ensure reproducibility of all future steps.
     input.sort();
 
-    for (path, license) in input {
+    let mut condensed_directories = BTreeMap::new();
+    'outer: for (path, license) in input {
+        // Files in condensed directories are handled separately.
+        for (condensed_directory, allowed_file) in super::CONDENSED_DIRECTORIES {
+            if path.starts_with(condensed_directory) {
+                if path.as_path() == Path::new(allowed_file) {
+                    // The licence on our allowed file is used to represent the entire directory
+                    condensed_directories
+                        .entry(*condensed_directory)
+                        .or_insert_with(BTreeSet::new)
+                        .insert(license);
+                } else {
+                    // don't add the file
+                }
+                continue 'outer;
+            }
+        }
+
         let mut node = Node::File { name: path.file_name().unwrap().into(), license };
         for component in path.parent().unwrap_or_else(|| Path::new(".")).components().rev() {
             node = Node::Directory {
@@ -303,6 +329,22 @@ pub(crate) fn build(mut input: Vec<(PathBuf, LicenseId)>) -> Node<LicenseId> {
             };
         }
 
+        children.push(node);
+    }
+
+    for (path, licenses) in condensed_directories {
+        let path = Path::new(path);
+        let mut node = Node::CondensedDirectory {
+            name: path.file_name().unwrap().into(),
+            licenses: licenses.iter().copied().collect(),
+        };
+        for component in path.parent().unwrap_or_else(|| Path::new(".")).components().rev() {
+            node = Node::Directory {
+                name: component.as_os_str().into(),
+                children: vec![node],
+                license: None,
+            };
+        }
         children.push(node);
     }
 
@@ -334,6 +376,10 @@ pub(crate) fn expand_interned_licenses(
         Node::Group { files, directories, license } => {
             Node::Group { files, directories, license: interner.resolve(license) }
         }
+        Node::CondensedDirectory { name, licenses } => Node::CondensedDirectory {
+            name,
+            licenses: licenses.into_iter().map(|license| interner.resolve(license)).collect(),
+        },
         Node::Empty => Node::Empty,
     }
 }
