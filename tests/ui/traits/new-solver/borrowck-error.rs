@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 use std::collections::HashMap;
 

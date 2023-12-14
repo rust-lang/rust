@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // edition: 2021
 // revisions: pass fail
 //[pass] check-pass

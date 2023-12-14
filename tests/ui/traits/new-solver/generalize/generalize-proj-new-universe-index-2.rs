@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // known-bug: trait-system-refactor-initiative#60
 
 // Generalizing a projection containing an inference variable

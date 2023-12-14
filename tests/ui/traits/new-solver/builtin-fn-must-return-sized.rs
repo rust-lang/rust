@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]

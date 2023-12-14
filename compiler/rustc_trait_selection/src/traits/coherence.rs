@@ -855,7 +855,7 @@ where
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        // Need to lazily normalize here in with `-Ztrait-solver=next-coherence`.
+        // Need to lazily normalize here in with `-Znext-solver=coherence`.
         let ty = match (self.lazily_normalize_ty)(ty) {
             Ok(ty) => ty,
             Err(err) => return ControlFlow::Break(OrphanCheckEarlyExit::NormalizationFailure(err)),
@@ -1069,7 +1069,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                 let lazily_normalize_ty = |ty: Ty<'tcx>| {
                     let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx);
                     if matches!(ty.kind(), ty::Alias(..)) {
-                        // FIXME(-Ztrait-solver=next-coherence): we currently don't
+                        // FIXME(-Znext-solver=coherence): we currently don't
                         // normalize opaque types here, resulting in diverging behavior
                         // for TAITs.
                         match infcx

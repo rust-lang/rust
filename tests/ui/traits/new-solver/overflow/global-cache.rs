@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 // Check that we consider the reached depth of global cache
 // entries when detecting overflow. We would otherwise be unstable

@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // check-pass
 
 // Checks that we don't explode when we assemble >1 candidate for a goal.

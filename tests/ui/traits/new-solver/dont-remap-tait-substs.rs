@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // check-pass
 
 // Makes sure we don't prepopulate the MIR typeck of `define`

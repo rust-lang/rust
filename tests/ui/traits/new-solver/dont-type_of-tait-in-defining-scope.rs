@@ -1,5 +1,5 @@
 // revisions: is_send not_send
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 //[is_send] check-pass
 
 #![feature(type_alias_impl_trait)]

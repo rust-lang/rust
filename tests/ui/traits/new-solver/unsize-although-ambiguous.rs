@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 use std::fmt::Display;
 

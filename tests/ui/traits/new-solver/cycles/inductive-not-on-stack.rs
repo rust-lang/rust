@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 #![feature(rustc_attrs, trivial_bounds)]
 
 // We have to be careful here:

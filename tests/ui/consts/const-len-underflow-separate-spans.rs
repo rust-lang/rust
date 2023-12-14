@@ -3,7 +3,7 @@
 // overall context for what caused the evaluation.
 
 // revisions: old next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 const ONE: usize = 1;
 const TWO: usize = 2;

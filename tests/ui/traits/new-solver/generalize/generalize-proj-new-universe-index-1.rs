@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // check-pass
 
 // A minimization of an ambiguity when using typenum. See

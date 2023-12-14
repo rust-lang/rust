@@ -422,7 +422,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
                 }
                 ty::PredicateKind::ConstEquate(_, _) => {
-                    bug!("ConstEquate should not be emitted when `-Ztrait-solver=next` is active")
+                    bug!("ConstEquate should not be emitted when `-Znext-solver` is active")
                 }
                 ty::PredicateKind::NormalizesTo(predicate) => {
                     self.compute_normalizes_to_goal(Goal { param_env, predicate })

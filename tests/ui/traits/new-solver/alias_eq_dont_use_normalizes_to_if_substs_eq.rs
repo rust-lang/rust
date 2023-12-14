@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 // check-pass
 // (should not pass, should be turned into a coherence-only test)

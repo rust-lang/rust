@@ -2543,10 +2543,10 @@ impl<'test> TestCx<'test> {
                 rustc.args(&["-Zpolonius"]);
             }
             Some(CompareMode::NextSolver) => {
-                rustc.args(&["-Ztrait-solver=next"]);
+                rustc.args(&["-Znext-solver"]);
             }
             Some(CompareMode::NextSolverCoherence) => {
-                rustc.args(&["-Ztrait-solver=next-coherence"]);
+                rustc.args(&["-Znext-solver=coherence"]);
             }
             Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);

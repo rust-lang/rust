@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 trait Foo: Bar<i32> + Bar<u32> {}
 

@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 // This currently hangs if we do not erase constraints from
 // overflow.

@@ -1,5 +1,5 @@
 // [no_self_infer] check-pass
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // revisions: self_infer no_self_infer
 
 // checks that the new solver is smart enough to infer `?0 = U` when solving:
@@ -7,7 +7,7 @@
 // with `normalizes-to(<Vec<U> as Trait>::Assoc, u8)` in the paramenv even when
 // there is a separate `Vec<T>: Trait` bound  in the paramenv.
 //
-// FIXME(-Ztrait-solver=next)
+// FIXME(-Znext-solver)
 // This could also compile for `normalizes-to(<?0 as Trait>::Assoc, u8)` but
 // we currently immediately consider a goal ambiguous if the self type is an
 // inference variable.

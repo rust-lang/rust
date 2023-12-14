@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 // check that a `alias-eq(<?a as TraitB>::Assoc, <?b as TraitB>::Assoc)` goal fails
 // during coherence. We must not incorrectly constrain `?a` and `?b` to be

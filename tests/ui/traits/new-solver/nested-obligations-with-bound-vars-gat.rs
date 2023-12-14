@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // Issue 96230
 
 use std::fmt::Debug;

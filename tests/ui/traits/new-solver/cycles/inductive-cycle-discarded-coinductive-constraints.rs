@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 #![feature(rustc_attrs, marker_trait_attr)]
 #[rustc_coinductive]
 trait Trait {}

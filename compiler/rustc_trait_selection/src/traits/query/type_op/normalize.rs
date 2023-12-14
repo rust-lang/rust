@@ -29,7 +29,7 @@ where
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {
-        // FIXME(-Ztrait-solver=next): shouldn't be using old normalizer
+        // FIXME(-Znext-solver): shouldn't be using old normalizer
         Ok(ocx.normalize(&ObligationCause::dummy(), key.param_env, key.value.value))
     }
 }

@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 // check-pass
 
 // This tests checks that we update results in the provisional cache when

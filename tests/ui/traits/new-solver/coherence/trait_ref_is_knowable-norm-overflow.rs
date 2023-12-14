@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 // Coherence should handle overflow while normalizing for
 // `trait_ref_is_knowable` correctly.

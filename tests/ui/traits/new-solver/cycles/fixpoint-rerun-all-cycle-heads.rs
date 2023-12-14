@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
 // Check that we correctly rerun the trait solver for heads of cycles,

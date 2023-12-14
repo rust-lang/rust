@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
 // Test that having both an inductive and a coinductive cycle

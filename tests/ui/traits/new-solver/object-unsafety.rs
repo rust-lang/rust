@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 trait Setup {
     type From: Copy;
@@ -17,7 +17,7 @@ pub fn copy_any<T>(t: &T) -> T {
     //~| ERROR the type `<dyn Setup<From = T> as Setup>::From` is not well-formed
     //~| ERROR the size for values of type `<dyn Setup<From = T> as Setup>::From` cannot be known at compilation time
 
-    // FIXME(-Ztrait-solver=next): These error messages are horrible and some of them
+    // FIXME(-Znext-solver): These error messages are horrible and some of them
     // are even simple fallout from previous error.
 }
 

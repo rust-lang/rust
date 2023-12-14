@@ -1,6 +1,6 @@
 // revisions: current next
 // compile-flags: -Zverbose
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 // normalize-stderr-test "DefId\([^\)]+\)" -> "DefId(..)"
 
 #![feature(rustc_attrs)]

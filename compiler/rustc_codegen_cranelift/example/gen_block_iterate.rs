@@ -1,7 +1,7 @@
 // Copied from https://github.com/rust-lang/rust/blob/46455dc65069387f2dc46612f13fd45452ab301a/tests/ui/coroutine/gen_block_iterate.rs
 // revisions: next old
 //compile-flags: --edition 2024 -Zunstable-options
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 // run-pass
 #![feature(gen_blocks)]
 

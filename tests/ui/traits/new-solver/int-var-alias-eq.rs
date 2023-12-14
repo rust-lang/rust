@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 // HIR typeck ends up equating `<?0i as Add>::Output == ?0i`.
 // Want to make sure that we emit an alias-eq goal for this,

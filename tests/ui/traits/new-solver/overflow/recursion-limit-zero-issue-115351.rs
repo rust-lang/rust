@@ -2,7 +2,7 @@
 //~| ERROR overflow evaluating the requirement `Self: Trait`
 
 // This is a non-regression test for issue #115351, where a recursion limit of 0 caused an ICE.
-// compile-flags: -Ztrait-solver=next --crate-type=lib
+// compile-flags: -Znext-solver --crate-type=lib
 // check-fail
 
 #![recursion_limit = "0"]

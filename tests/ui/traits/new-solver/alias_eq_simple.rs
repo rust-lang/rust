@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -Ztrait-solver=next
+// compile-flags: -Znext-solver
 
 // test that the new solver can handle `alias-eq(<i32 as TraitB>::Assoc, u32)`
 

@@ -1,5 +1,5 @@
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 //[next] known-bug: trait-system-refactor-initiative#71
 //[current] check-pass
 

@@ -1,6 +1,6 @@
 // check-pass
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 use std::ops::Deref;
 
