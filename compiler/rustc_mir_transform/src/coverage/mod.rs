@@ -324,14 +324,16 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
     let body_span = get_body_span(tcx, hir_body, def_id);
 
     // The actual signature span is only used if it has the same context and
-    // filename as the body.
+    // filename as the body, and precedes the body.
     let maybe_fn_sig_span = hir_node.fn_sig().map(|fn_sig| fn_sig.span);
     let fn_sig_span = maybe_fn_sig_span
         .filter(|&fn_sig_span| {
             let source_map = tcx.sess.source_map();
             let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
 
-            fn_sig_span.eq_ctxt(body_span) && file_idx(fn_sig_span) == file_idx(body_span)
+            fn_sig_span.eq_ctxt(body_span)
+                && fn_sig_span.hi() <= body_span.lo()
+                && file_idx(fn_sig_span) == file_idx(body_span)
         })
         // If so, extend it to the start of the body span.
         .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()))
