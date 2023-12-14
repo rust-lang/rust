@@ -159,7 +159,7 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
     {
         let offset = metadata_symbol.address() as usize;
         // The offset specifies the location of rustc metadata in the .info section of XCOFF.
-        // Each string stored in .info section of XCOFF is preceded by a 4-byte lenght field.
+        // Each string stored in .info section of XCOFF is preceded by a 4-byte length field.
         if offset < 4 {
             return Err(format!("Invalid metadata symbol offset: {offset}"));
         }
@@ -480,7 +480,10 @@ pub fn create_wrapper_file(
             file.section_mut(section).flags =
                 SectionFlags::Xcoff { s_flags: xcoff::STYP_INFO as u32 };
             // Encode string stored in .info section of XCOFF.
-            let len = data.len() as u32;
+            // FIXME: The length of data here is not guaranteed to fit in a u32.
+            // We may have to split the data into multiple pieces in order to
+            // store in .info section.
+            let len: u32 = data.len().try_into().unwrap();
             let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
             // Add a symbol referring to the data in .info section.
             file.add_symbol(Symbol {
