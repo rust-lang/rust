@@ -16,7 +16,7 @@ use crate::infer::{InferCtxt, RegionVariableOrigin};
 /// Attempts to generalize `term` for the type variable `for_vid`.
 /// This checks for cycles -- that is, whether the type `term`
 /// references `for_vid`.
-pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Relate<'tcx>>(
+pub fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Relate<'tcx>>(
     infcx: &InferCtxt<'tcx>,
     delegate: &mut D,
     term: T,
@@ -54,7 +54,7 @@ pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>>
 
 /// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
 /// in the generalizer code.
-pub(super) trait GeneralizerDelegate<'tcx> {
+pub trait GeneralizerDelegate<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn forbid_inference_vars() -> bool;
@@ -64,7 +64,7 @@ pub(super) trait GeneralizerDelegate<'tcx> {
     fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
 }
 
-pub(super) struct CombineDelegate<'cx, 'tcx> {
+pub struct CombineDelegate<'cx, 'tcx> {
     pub infcx: &'cx InferCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub span: Span,
@@ -515,7 +515,7 @@ where
 /// not only the generalized type, but also a bool flag
 /// indicating whether further WF checks are needed.
 #[derive(Debug)]
-pub(super) struct Generalization<T> {
+pub struct Generalization<T> {
     /// When generalizing `<?0 as Trait>::Assoc` or
     /// `<T as Bar<<?0 as Foo>::Assoc>>::Assoc`
     /// for `?0` generalization returns an inference
@@ -524,7 +524,7 @@ pub(super) struct Generalization<T> {
     /// This has to be handled wotj care as it can
     /// otherwise very easily result in infinite
     /// recursion.
-    pub(super) value_may_be_infer: T,
+    pub value_may_be_infer: T,
 
     /// If true, then the generalized type may not be well-formed,
     /// even if the source type is well-formed, so we should add an
@@ -551,5 +551,5 @@ pub(super) struct Generalization<T> {
     /// will force the calling code to check that `WF(Foo<?C, ?D>)`
     /// holds, which in turn implies that `?C::Item == ?D`. So once
     /// `?C` is constrained, that should suffice to restrict `?D`.
-    pub(super) needs_wf: bool,
+    pub needs_wf: bool,
 }

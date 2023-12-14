@@ -18,10 +18,10 @@
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
 use super::combine::ObligationEmittingRelation;
-use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use super::{DefineOpaqueTypes, InferCtxt};
-
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::{DefineOpaqueTypes, InferCtxt};
 use crate::traits::ObligationCause;
+
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};

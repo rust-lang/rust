@@ -1,8 +1,8 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt};
+use crate::infer::relate::combine::CombineFields;
 use crate::infer::CombinedSnapshot;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
