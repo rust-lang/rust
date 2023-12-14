@@ -32,7 +32,7 @@ use crate::lints::{
 };
 use crate::pat::DeconstructedPat;
 #[cfg(feature = "rustc")]
-use crate::rustc::RustcCtxt;
+use crate::rustc::RustcMatchCheckCtxt;
 #[cfg(feature = "rustc")]
 use crate::usefulness::{compute_match_usefulness, ValidityConstraint};
 
@@ -90,7 +90,7 @@ pub use rustc_data_structures::captures::Captures;
 /// useful, and runs some lints.
 #[cfg(feature = "rustc")]
 pub fn analyze_match<'p, 'tcx>(
-    cx: &RustcCtxt<'p, 'tcx>,
+    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
 ) -> rustc::UsefulnessReport<'p, 'tcx> {

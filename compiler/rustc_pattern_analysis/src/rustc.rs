@@ -25,19 +25,23 @@ use crate::MatchCx;
 use crate::constructor::Constructor::*;
 
 // Re-export rustc-specific versions of all these types.
-pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcCtxt<'p, 'tcx>>;
-pub type ConstructorSet<'p, 'tcx> = crate::constructor::ConstructorSet<RustcCtxt<'p, 'tcx>>;
-pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<'p, RustcCtxt<'p, 'tcx>>;
-pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcCtxt<'p, 'tcx>>;
-pub(crate) type PatCtxt<'a, 'p, 'tcx> = crate::usefulness::PatCtxt<'a, 'p, RustcCtxt<'p, 'tcx>>;
+pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type ConstructorSet<'p, 'tcx> =
+    crate::constructor::ConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type DeconstructedPat<'p, 'tcx> =
+    crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub(crate) type PatCtxt<'a, 'p, 'tcx> =
+    crate::usefulness::PatCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type SplitConstructorSet<'p, 'tcx> =
-    crate::constructor::SplitConstructorSet<RustcCtxt<'p, 'tcx>>;
+    crate::constructor::SplitConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type Usefulness = crate::usefulness::Usefulness<Span>;
-pub type UsefulnessReport<'p, 'tcx> = crate::usefulness::UsefulnessReport<'p, RustcCtxt<'p, 'tcx>>;
-pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcCtxt<'p, 'tcx>>;
+pub type UsefulnessReport<'p, 'tcx> =
+    crate::usefulness::UsefulnessReport<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcMatchCheckCtxt<'p, 'tcx>>;
 
 #[derive(Clone)]
-pub struct RustcCtxt<'p, 'tcx> {
+pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
@@ -61,13 +65,13 @@ pub struct RustcCtxt<'p, 'tcx> {
     pub known_valid_scrutinee: bool,
 }
 
-impl<'p, 'tcx> fmt::Debug for RustcCtxt<'p, 'tcx> {
+impl<'p, 'tcx> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RustcCtxt").finish()
+        f.debug_struct("RustcMatchCheckCtxt").finish()
     }
 }
 
-impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
+impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     pub(crate) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
     }
@@ -152,7 +156,8 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         cx.dropless_arena.alloc_from_iter(once(args.type_at(0)))
                     } else {
-                        let variant = &adt.variant(RustcCtxt::variant_index_for_adt(&ctor, *adt));
+                        let variant =
+                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
                         cx.dropless_arena.alloc_from_iter(tys)
                     }
@@ -197,7 +202,8 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         1
                     } else {
-                        let variant = &adt.variant(RustcCtxt::variant_index_for_adt(&ctor, *adt));
+                        let variant =
+                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         self.list_variant_nonhidden_fields(ty, variant).count()
                     }
                 }
@@ -428,7 +434,8 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
                             PatKind::Variant { variant_index, .. } => Variant(variant_index),
                             _ => bug!(),
                         };
-                        let variant = &adt.variant(RustcCtxt::variant_index_for_adt(&ctor, *adt));
+                        let variant =
+                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
@@ -687,7 +694,8 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
                 ty::Adt(adt_def, args) => {
-                    let variant_index = RustcCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
+                    let variant_index =
+                        RustcMatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
                     let variant = &adt_def.variant(variant_index);
                     let subpatterns = cx
                         .list_variant_nonhidden_fields(pat.ty(), variant)
@@ -782,13 +790,14 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
                     write!(f, "box {subpattern:?}")
                 }
                 ty::Adt(..) | ty::Tuple(..) => {
-                    let variant = match pat.ty().kind() {
-                        ty::Adt(adt, _) => {
-                            Some(adt.variant(RustcCtxt::variant_index_for_adt(pat.ctor(), *adt)))
-                        }
-                        ty::Tuple(_) => None,
-                        _ => unreachable!(),
-                    };
+                    let variant =
+                        match pat.ty().kind() {
+                            ty::Adt(adt, _) => Some(adt.variant(
+                                RustcMatchCheckCtxt::variant_index_for_adt(pat.ctor(), *adt),
+                            )),
+                            ty::Tuple(_) => None,
+                            _ => unreachable!(),
+                        };
 
                     if let Some(variant) = variant {
                         write!(f, "{}", variant.name)?;
@@ -853,7 +862,7 @@ impl<'p, 'tcx> RustcCtxt<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> MatchCx for RustcCtxt<'p, 'tcx> {
+impl<'p, 'tcx> MatchCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type Ty = Ty<'tcx>;
     type Span = Span;
     type VariantIdx = VariantIdx;

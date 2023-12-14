@@ -13,7 +13,8 @@ use crate::errors::{
     OverlappingRangeEndpoints, Uncovered,
 };
 use crate::rustc::{
-    Constructor, DeconstructedPat, MatchArm, PatCtxt, RustcCtxt, SplitConstructorSet, WitnessPat,
+    Constructor, DeconstructedPat, MatchArm, PatCtxt, RustcMatchCheckCtxt, SplitConstructorSet,
+    WitnessPat,
 };
 use crate::MatchCx;
 
@@ -55,10 +56,10 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
         // If the type is opaque and it is revealed anywhere in the column, we take the revealed
         // version. Otherwise we could encounter constructors for the revealed type and crash.
         let first_ty = self.patterns[0].ty();
-        if RustcCtxt::is_opaque_ty(first_ty) {
+        if RustcMatchCheckCtxt::is_opaque_ty(first_ty) {
             for pat in &self.patterns {
                 let ty = pat.ty();
-                if !RustcCtxt::is_opaque_ty(ty) {
+                if !RustcMatchCheckCtxt::is_opaque_ty(ty) {
                     return Some(ty);
                 }
             }
@@ -125,7 +126,7 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
 /// in a given column.
 #[instrument(level = "debug", skip(cx, wildcard_arena), ret)]
 fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
-    cx: &RustcCtxt<'p, 'tcx>,
+    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
     column: &PatternColumn<'a, 'p, 'tcx>,
     wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) -> Vec<WitnessPat<'p, 'tcx>> {
@@ -173,7 +174,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
 }
 
 pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
-    cx: &RustcCtxt<'p, 'tcx>,
+    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     pat_column: &PatternColumn<'a, 'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
@@ -227,7 +228,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
 /// Traverse the patterns to warn the user about ranges that overlap on their endpoints.
 #[instrument(level = "debug", skip(cx, wildcard_arena))]
 pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
-    cx: &RustcCtxt<'p, 'tcx>,
+    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
     column: &PatternColumn<'a, 'p, 'tcx>,
     wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) {

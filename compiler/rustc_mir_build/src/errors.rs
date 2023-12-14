@@ -6,7 +6,7 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
-use rustc_pattern_analysis::{errors::Uncovered, rustc::RustcCtxt};
+use rustc_pattern_analysis::{errors::Uncovered, rustc::RustcMatchCheckCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -454,7 +454,7 @@ pub enum UnusedUnsafeEnclosing {
 }
 
 pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
-    pub cx: &'m RustcCtxt<'p, 'tcx>,
+    pub cx: &'m RustcMatchCheckCtxt<'p, 'tcx>,
     pub expr_span: Span,
     pub span: Span,
     pub ty: Ty<'tcx>,
