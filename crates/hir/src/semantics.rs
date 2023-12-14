@@ -948,10 +948,10 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
         let ctx = LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
-        let ty = hir_ty::TyLoweringContext::new(
+        let ty = hir_ty::TyLoweringContext::new_maybe_unowned(
             self.db,
             &analyze.resolver,
-            analyze.resolver.module().into(),
+            analyze.resolver.type_owner(),
         )
         .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))

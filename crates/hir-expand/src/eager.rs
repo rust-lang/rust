@@ -88,7 +88,7 @@ pub fn expand_eager_macro_input(
     let loc = MacroCallLoc {
         def,
         krate,
-        eager: Some(Box::new(EagerCallInfo { arg: Arc::new(subtree), arg_id, error: err.clone() })),
+        eager: Some(Arc::new(EagerCallInfo { arg: Arc::new(subtree), arg_id, error: err.clone() })),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
         call_site,
     };

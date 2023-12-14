@@ -106,11 +106,6 @@ impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = profile::span("file_item_tree_query").detail(|| format!("{file_id:?}"));
         let syntax = db.parse_or_expand(file_id);
-        if never!(syntax.kind() == SyntaxKind::ERROR, "{:?} from {:?} {}", file_id, syntax, syntax)
-        {
-            // FIXME: not 100% sure why these crop up, but return an empty tree to avoid a panic
-            return Default::default();
-        }
 
         let ctx = lower::Ctx::new(db, file_id);
         let mut top_attrs = None;
@@ -129,6 +124,9 @@ impl ItemTree {
                     ctx.lower_macro_stmts(stmts)
                 },
                 _ => {
+                    if never!(syntax.kind() == SyntaxKind::ERROR, "{:?} from {:?} {}", file_id, syntax, syntax) {
+                        return Default::default();
+                    }
                     panic!("cannot create item tree for file {file_id:?} from {syntax:?} {syntax}");
                 },
             }
