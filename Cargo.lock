@@ -1545,6 +1545,7 @@ dependencies = [
  "triomphe",
  "vfs",
  "vfs-notify",
+ "walkdir",
  "winapi",
  "xflags",
  "xshell",
