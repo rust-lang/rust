@@ -266,8 +266,7 @@ pub struct IntRange {
 
 impl IntRange {
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
-    #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
-    pub(crate) fn is_singleton(&self) -> bool {
+    pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
         // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
         self.lo.plus_one() == self.hi

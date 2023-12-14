@@ -82,14 +82,11 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     /// This returns one column per field of the constructor. They usually all have the same length
     /// (the number of patterns in `self` that matched `ctor`), except that we expand or-patterns
     /// which may change the lengths.
-    fn specialize<'b>(
+    fn specialize(
         &self,
-        pcx: &'b PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'a, 'p, 'tcx>,
         ctor: &Constructor<'p, 'tcx>,
-    ) -> Vec<PatternColumn<'b, 'p, 'tcx>>
-    where
-        'a: 'b,
-    {
+    ) -> Vec<PatternColumn<'a, 'p, 'tcx>> {
         let arity = ctor.arity(pcx);
         if arity == 0 {
             return Vec::new();
