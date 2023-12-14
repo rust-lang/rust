@@ -755,13 +755,14 @@ pub enum PrintKind {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum TraitSolver {
-    /// Classic trait solver in `rustc_trait_selection::traits::select`
-    Classic,
-    /// Experimental trait solver in `rustc_trait_selection::solve`
-    Next,
-    /// Use the new trait solver during coherence
-    NextCoherence,
+pub struct NextSolverConfig {
+    /// Whether the new trait solver should be enabled in coherence.
+    pub coherence: bool,
+    /// Whether the new trait solver should be enabled everywhere.
+    /// This is only `true` if `coherence` is also enabled.
+    pub globally: bool,
+    /// Whether to dump proof trees after computing a proof tree.
+    pub dump_tree: DumpSolverProofTree,
 }
 
 #[derive(Default, Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -3220,10 +3221,10 @@ pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
         ErrorOutputType, FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType,
-        OutputTypes, Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
-        WasiExecModel,
+        LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy, OptLevel,
+        OutFileName, OutputType, OutputTypes, Polonius, RemapPathScopeComponents, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        TrimmedDefPaths, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3326,7 +3327,7 @@ pub(crate) mod dep_tracking {
         BranchProtection,
         OomStrategy,
         LanguageIdentifier,
-        TraitSolver,
+        NextSolverConfig,
         Polonius,
         InliningThreshold,
         FunctionReturn,

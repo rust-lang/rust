@@ -200,9 +200,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let result = f(&mut ecx);
 
         let tree = ecx.inspect.finalize();
-        if let (Some(tree), DumpSolverProofTree::Always) =
-            (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
-        {
+        if let (Some(tree), DumpSolverProofTree::Always) = (
+            &tree,
+            infcx.tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default(),
+        ) {
             let mut lock = std::io::stdout().lock();
             let _ = lock.write_fmt(format_args!("{tree:?}\n"));
             let _ = lock.flush();

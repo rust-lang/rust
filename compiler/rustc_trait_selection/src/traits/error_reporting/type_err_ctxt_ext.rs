@@ -37,7 +37,7 @@ use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
     TypeVisitable, TypeVisitableExt,
 };
-use rustc_session::config::{DumpSolverProofTree, TraitSolver};
+use rustc_session::config::DumpSolverProofTree;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
@@ -370,7 +370,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        if tcx.sess.opts.unstable_opts.dump_solver_proof_tree == DumpSolverProofTree::OnError {
+        if tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default()
+            == DumpSolverProofTree::OnError
+        {
             dump_proof_tree(root_obligation, self.infcx);
         }
 
@@ -812,23 +814,20 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
                         let ty = self.resolve_vars_if_possible(ty);
-                        match self.tcx.sess.opts.unstable_opts.trait_solver {
-                            TraitSolver::Classic => {
-                                // WF predicates cannot themselves make
-                                // errors. They can only block due to
-                                // ambiguity; otherwise, they always
-                                // degenerate into other obligations
-                                // (which may fail).
-                                span_bug!(span, "WF predicate not satisfied for {:?}", ty);
-                            }
-                            TraitSolver::Next | TraitSolver::NextCoherence => {
-                                // FIXME: we'll need a better message which takes into account
-                                // which bounds actually failed to hold.
-                                self.tcx.sess.struct_span_err(
-                                    span,
-                                    format!("the type `{ty}` is not well-formed"),
-                                )
-                            }
+                        if self.tcx.sess.opts.unstable_opts.next_solver.is_some() {
+                            // FIXME: we'll need a better message which takes into account
+                            // which bounds actually failed to hold.
+                            self.tcx.sess.struct_span_err(
+                                span,
+                                format!("the type `{ty}` is not well-formed"),
+                            )
+                        } else {
+                            // WF predicates cannot themselves make
+                            // errors. They can only block due to
+                            // ambiguity; otherwise, they always
+                            // degenerate into other obligations
+                            // (which may fail).
+                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                         }
                     }
 
@@ -1562,7 +1561,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) {
-        if self.tcx.sess.opts.unstable_opts.dump_solver_proof_tree == DumpSolverProofTree::OnError {
+        if self.tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default()
+            == DumpSolverProofTree::OnError
+        {
             dump_proof_tree(&error.root_obligation, self.infcx);
         }
 
