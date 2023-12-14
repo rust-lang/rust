@@ -1,5 +1,5 @@
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 trait Foo: Bar<i32> + Bar<u32> {}
 trait Bar<T> {

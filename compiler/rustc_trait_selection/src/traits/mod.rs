@@ -315,7 +315,7 @@ pub fn normalize_param_env_or_error<'tcx>(
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
             //
-            // FIXME(-Ztrait-solver=next): remove this hack since we have deferred projection equality
+            // FIXME(-Znext-solver): remove this hack since we have deferred projection equality
             predicate.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
@@ -386,7 +386,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
 /// Normalize a type and process all resulting obligations, returning any errors.
 ///
-/// FIXME(-Ztrait-solver=next): This should be replaced by `At::deeply_normalize`
+/// FIXME(-Znext-solver): This should be replaced by `At::deeply_normalize`
 /// which has the same behavior with the new solver. Because using a separate
 /// fulfillment context worsens caching in the old solver, `At::deeply_normalize`
 /// is still lazy with the old solver as it otherwise negatively impacts perf.

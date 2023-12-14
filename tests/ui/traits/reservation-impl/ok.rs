@@ -4,7 +4,7 @@
 // but still.
 
 // revisions: old next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 #![feature(rustc_attrs)]
 

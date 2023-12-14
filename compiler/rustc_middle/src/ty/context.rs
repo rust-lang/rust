@@ -2240,15 +2240,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.trait_solver == rustc_session::config::TraitSolver::Next
+        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.globally)
     }
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
-        matches!(
-            self.sess.opts.unstable_opts.trait_solver,
-            rustc_session::config::TraitSolver::Next
-                | rustc_session::config::TraitSolver::NextCoherence
-        )
+        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.coherence)
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

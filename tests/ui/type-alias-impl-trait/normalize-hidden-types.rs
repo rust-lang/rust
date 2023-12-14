@@ -1,7 +1,7 @@
 // Regression test for #112691
 //
 // revisions: current next
-// [next] compile-flags: -Ztrait-solver=next
+// [next] compile-flags: -Znext-solver
 // [next] check-pass
 // [current]: known-bug: #112691
 

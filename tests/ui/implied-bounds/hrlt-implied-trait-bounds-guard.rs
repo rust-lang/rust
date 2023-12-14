@@ -1,5 +1,5 @@
 // A test exploiting the bug behind #25860 except with
-// implied trait bounds which currently don't exist without `-Ztrait-solver=chalk`.
+// implied trait bounds which currently don't exist.
 use std::marker::PhantomData;
 struct Foo<'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
 where

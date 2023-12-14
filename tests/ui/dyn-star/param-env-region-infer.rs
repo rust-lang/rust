@@ -1,7 +1,7 @@
 // revisions: current
 // incremental
 
-// FIXME(-Ztrait-solver=next): THis currently results in unstable query results:
+// FIXME(-Znext-solver): THis currently results in unstable query results:
 // `normalizes-to(opaque, opaque)` changes from `Maybe(Ambiguous)` to `Maybe(Overflow)`
 // once the hidden type of the opaque is already defined to be itself.
 

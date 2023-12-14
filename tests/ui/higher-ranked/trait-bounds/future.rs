@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 // edition:2021
 // revisions: classic next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 //[next] check-pass
 //[classic] known-bug: #112347
 //[classic] build-fail
