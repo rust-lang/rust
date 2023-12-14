@@ -4,6 +4,7 @@
     const_maybe_uninit_as_mut_ptr,
     const_mut_refs,
     convert_float_to_int,
+    core_intrinsics,
     decl_macro,
     inline_const,
     intra_doc_pointers,

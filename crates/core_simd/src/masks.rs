@@ -175,7 +175,10 @@ where
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
         // Safety: the caller must confirm this invariant
-        unsafe { Self(mask_impl::Mask::from_int_unchecked(value)) }
+        unsafe {
+            core::intrinsics::assume(<T as Sealed>::valid(value));
+            Self(mask_impl::Mask::from_int_unchecked(value))
+        }
     }
 
     /// Converts a vector of integers to a mask, where 0 represents `false` and -1
