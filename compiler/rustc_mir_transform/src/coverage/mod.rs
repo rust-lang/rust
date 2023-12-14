@@ -24,7 +24,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{ExpnKind, SourceFile, Span, Symbol};
+use rustc_span::{ExpnKind, Span, Symbol};
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
@@ -69,7 +69,6 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 struct Instrumentor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
-    source_file: Lrc<SourceFile>,
     fn_sig_span: Span,
     body_span: Span,
     function_source_hash: u64,
@@ -109,7 +108,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         Self {
             tcx,
             mir_body,
-            source_file,
             fn_sig_span,
             body_span,
             function_source_hash,
@@ -160,9 +158,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let source_map = self.tcx.sess.source_map();
         let body_span = self.body_span;
 
+        let source_file = source_map.lookup_source_file(body_span.lo());
         use rustc_session::RemapFileNameExt;
         let file_name =
-            Symbol::intern(&self.source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
+            Symbol::intern(&source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
 
         let mut mappings = Vec::new();
 
