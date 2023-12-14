@@ -78,30 +78,11 @@ struct Instrumentor<'a, 'tcx> {
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
-        let source_map = tcx.sess.source_map();
-        let def_id = mir_body.source.def_id();
-        let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
+        let hir_info @ ExtractedHirInfo { function_source_hash, fn_sig_span, body_span } =
+            extract_hir_info(tcx, mir_body);
 
-        let body_span = get_body_span(tcx, hir_body, mir_body);
+        debug!(?hir_info, "instrumenting {:?}", mir_body.source.def_id());
 
-        let source_file = source_map.lookup_source_file(body_span.lo());
-        let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
-            fn_sig.span.eq_ctxt(body_span)
-                && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
-        }) {
-            Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
-            None => body_span.shrink_to_lo(),
-        };
-
-        debug!(
-            "instrumenting {}: {:?}, fn sig span: {:?}, body span: {:?}",
-            if tcx.is_closure(def_id) { "closure" } else { "function" },
-            def_id,
-            fn_sig_span,
-            body_span
-        );
-
-        let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
         let coverage_counters = CoverageCounters::new(&basic_coverage_blocks);
 
@@ -117,15 +98,12 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     fn inject_counters(&'a mut self) {
-        let fn_sig_span = self.fn_sig_span;
-        let body_span = self.body_span;
-
         ////////////////////////////////////////////////////
         // Compute coverage spans from the `CoverageGraph`.
         let coverage_spans = CoverageSpans::generate_coverage_spans(
             self.mir_body,
-            fn_sig_span,
-            body_span,
+            self.fn_sig_span,
+            self.body_span,
             &self.basic_coverage_blocks,
         );
 
@@ -327,6 +305,35 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     true
 }
 
+/// Function information extracted from HIR by the coverage instrumentor.
+#[derive(Debug)]
+struct ExtractedHirInfo {
+    function_source_hash: u64,
+    fn_sig_span: Span,
+    body_span: Span,
+}
+
+fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> ExtractedHirInfo {
+    let source_map = tcx.sess.source_map();
+    let def_id = mir_body.source.def_id();
+    let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
+
+    let body_span = get_body_span(tcx, hir_body, mir_body);
+
+    let source_file = source_map.lookup_source_file(body_span.lo());
+    let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
+        fn_sig.span.eq_ctxt(body_span)
+            && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
+    }) {
+        Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
+        None => body_span.shrink_to_lo(),
+    };
+
+    let function_source_hash = hash_mir_source(tcx, hir_body);
+
+    ExtractedHirInfo { function_source_hash, fn_sig_span, body_span }
+}
+
 fn fn_sig_and_body(
     tcx: TyCtxt<'_>,
     def_id: DefId,
@@ -342,7 +349,7 @@ fn fn_sig_and_body(
 fn get_body_span<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_body: &rustc_hir::Body<'tcx>,
-    mir_body: &mut mir::Body<'tcx>,
+    mir_body: &mir::Body<'tcx>,
 ) -> Span {
     let mut body_span = hir_body.value.span;
     let def_id = mir_body.source.def_id();
