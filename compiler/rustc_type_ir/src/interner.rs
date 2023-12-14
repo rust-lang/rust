@@ -86,15 +86,6 @@ pub trait Interner: Sized {
     fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
     fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
     fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
-
-    // FIXME: these could be consolidated into some "WellKnownTraits" thing like chalk does.
-    fn fn_def_id(self) -> Self::DefId;
-    fn fn_mut_def_id(self) -> Self::DefId;
-    fn fn_once_def_id(self) -> Self::DefId;
-
-    fn i8_type(self) -> Self::Ty;
-    fn i16_type(self) -> Self::Ty;
-    fn i32_type(self) -> Self::Ty;
 }
 
 /// Common capabilities of placeholder kinds

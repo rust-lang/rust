@@ -394,27 +394,6 @@ impl ClosureKind {
     pub fn extends(self, other: ClosureKind) -> bool {
         self <= other
     }
-
-    /// Converts `self` to a `DefId` of the corresponding trait.
-    ///
-    /// Note: the inverse of this function is `TyCtxt::fn_trait_kind_from_def_id`.
-    pub fn to_def_id<I: Interner>(self, interner: I) -> I::DefId {
-        match self {
-            ClosureKind::Fn => interner.fn_def_id(),
-            ClosureKind::FnMut => interner.fn_mut_def_id(),
-            ClosureKind::FnOnce => interner.fn_once_def_id(),
-        }
-    }
-
-    /// Returns the representative scalar type for this closure kind.
-    /// See `Ty::to_opt_closure_kind` for more details.
-    pub fn to_ty<I: Interner>(self, interner: I) -> I::Ty {
-        match self {
-            ClosureKind::Fn => interner.i8_type(),
-            ClosureKind::FnMut => interner.i16_type(),
-            ClosureKind::FnOnce => interner.i32_type(),
-        }
-    }
 }
 
 impl fmt::Display for ClosureKind {

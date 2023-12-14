@@ -2811,6 +2811,15 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Inverse of [`Ty::to_opt_closure_kind`].
+    pub fn from_closure_kind(tcx: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn => tcx.types.i8,
+            ty::ClosureKind::FnMut => tcx.types.i16,
+            ty::ClosureKind::FnOnce => tcx.types.i32,
+        }
+    }
+
     /// Fast path helper for testing if a type is `Sized`.
     ///
     /// Returning true means the type is known to be sized. Returning

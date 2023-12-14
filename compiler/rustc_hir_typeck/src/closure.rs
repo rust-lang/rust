@@ -141,7 +141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?sig, ?opt_kind);
 
         let closure_kind_ty = match opt_kind {
-            Some(kind) => kind.to_ty(self.tcx),
+            Some(kind) => Ty::from_closure_kind(self.tcx, kind),
 
             // Create a type variable (for now) to represent the closure kind.
             // It will be unified during the upvar inference phase (`upvar.rs`)

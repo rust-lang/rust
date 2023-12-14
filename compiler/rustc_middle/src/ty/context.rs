@@ -151,30 +151,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::Const {
         Const::new_bound(self, debruijn, var, ty)
     }
-
-    fn fn_def_id(self) -> Self::DefId {
-        self.require_lang_item(hir::LangItem::Fn, None)
-    }
-
-    fn fn_mut_def_id(self) -> Self::DefId {
-        self.require_lang_item(hir::LangItem::FnMut, None)
-    }
-
-    fn fn_once_def_id(self) -> Self::DefId {
-        self.require_lang_item(hir::LangItem::FnOnce, None)
-    }
-
-    fn i8_type(self) -> Self::Ty {
-        self.types.i8
-    }
-
-    fn i16_type(self) -> Self::Ty {
-        self.types.i16
-    }
-
-    fn i32_type(self) -> Self::Ty {
-        self.types.i32
-    }
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
