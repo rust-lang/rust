@@ -68,6 +68,9 @@ pub mod ext {
     pub fn expr_ty_new(ty: &ast::Type) -> ast::Expr {
         expr_from_text(&format!("{ty}::new()"))
     }
+    pub fn expr_self() -> ast::Expr {
+        expr_from_text("self")
+    }
 
     pub fn zero_number() -> ast::Expr {
         expr_from_text("0")
