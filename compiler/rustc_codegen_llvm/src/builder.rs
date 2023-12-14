@@ -7,7 +7,6 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use cstr::cstr;
 use libc::{c_char, c_uint};
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -27,7 +26,6 @@ use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::iter;
 use std::ops::Deref;
 use std::ptr;
@@ -47,13 +45,10 @@ impl Drop for Builder<'_, '_, '_> {
     }
 }
 
-// FIXME(eddyb) use a checked constructor when they become `const fn`.
-const EMPTY_C_STR: &CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") };
-
 /// Empty string, to be used where LLVM expects an instruction name, indicating
 /// that the instruction is to be left unnamed (i.e. numbered, in textual IR).
 // FIXME(eddyb) pass `&CStr` directly to FFI once it's a thin pointer.
-const UNNAMED: *const c_char = EMPTY_C_STR.as_ptr();
+const UNNAMED: *const c_char = c"".as_ptr();
 
 impl<'ll, 'tcx> BackendTypes for Builder<'_, 'll, 'tcx> {
     type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
@@ -1012,14 +1007,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn cleanup_pad(&mut self, parent: Option<&'ll Value>, args: &[&'ll Value]) -> Funclet<'ll> {
-        let name = cstr!("cleanuppad");
         let ret = unsafe {
             llvm::LLVMBuildCleanupPad(
                 self.llbuilder,
                 parent,
                 args.as_ptr(),
                 args.len() as c_uint,
-                name.as_ptr(),
+                c"cleanuppad".as_ptr(),
             )
         };
         Funclet::new(ret.expect("LLVM does not have support for cleanuppad"))
@@ -1033,14 +1027,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn catch_pad(&mut self, parent: &'ll Value, args: &[&'ll Value]) -> Funclet<'ll> {
-        let name = cstr!("catchpad");
         let ret = unsafe {
             llvm::LLVMBuildCatchPad(
                 self.llbuilder,
                 parent,
                 args.as_ptr(),
                 args.len() as c_uint,
-                name.as_ptr(),
+                c"catchpad".as_ptr(),
             )
         };
         Funclet::new(ret.expect("LLVM does not have support for catchpad"))
@@ -1052,14 +1045,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unwind: Option<&'ll BasicBlock>,
         handlers: &[&'ll BasicBlock],
     ) -> &'ll Value {
-        let name = cstr!("catchswitch");
         let ret = unsafe {
             llvm::LLVMBuildCatchSwitch(
                 self.llbuilder,
                 parent,
                 unwind,
                 handlers.len() as c_uint,
-                name.as_ptr(),
+                c"catchswitch".as_ptr(),
             )
         };
         let ret = ret.expect("LLVM does not have support for catchswitch");

@@ -916,6 +916,7 @@ fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
     cgcx.opts.target_triple.triple().contains("-aix")
 }
 
+//FIXME use c string literals here too
 pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static str {
     if target_is_apple(cgcx) {
         "__LLVM,__bitcode\0"
@@ -994,7 +995,7 @@ unsafe fn embed_bitcode(
         let llglobal = llvm::LLVMAddGlobal(
             llmod,
             common::val_ty(llconst),
-            "rustc.embedded.module\0".as_ptr().cast(),
+            c"rustc.embedded.module".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
 
@@ -1007,15 +1008,15 @@ unsafe fn embed_bitcode(
         let llglobal = llvm::LLVMAddGlobal(
             llmod,
             common::val_ty(llconst),
-            "rustc.embedded.cmdline\0".as_ptr().cast(),
+            c"rustc.embedded.cmdline".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
         let section = if is_apple {
-            "__LLVM,__cmdline\0"
+            c"__LLVM,__cmdline"
         } else if is_aix {
-            ".info\0"
+            c".info"
         } else {
-            ".llvmcmd\0"
+            c".llvmcmd"
         };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
