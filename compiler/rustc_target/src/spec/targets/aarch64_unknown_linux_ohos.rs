@@ -1,5 +1,5 @@
 use crate::spec::SanitizerSet;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_ohos::opts();
@@ -14,6 +14,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+reserve-x18".into(),
             mcount: "\u{1}_mcount".into(),
+            stack_probes: StackProbeType::Inline,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
                 | SanitizerSet::LEAK

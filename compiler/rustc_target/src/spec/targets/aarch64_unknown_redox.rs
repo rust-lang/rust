@@ -1,8 +1,9 @@
-use crate::spec::{base, Target};
+use crate::spec::{base, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = base::redox::opts();
     base.max_atomic_width = Some(128);
+    base.stack_probes = StackProbeType::Inline;
     base.features = "+v8a".into();
 
     Target {

@@ -1,4 +1,4 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -9,6 +9,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
             max_atomic_width: Some(128),
+            stack_probes: StackProbeType::Inline,
             ..base::hermit::opts()
         },
     }
