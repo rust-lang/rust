@@ -176,6 +176,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
+use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AssocKind, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable,
@@ -921,6 +922,21 @@ fn visit_instance_use<'tcx>(
     debug!("visit_item_use({:?}, is_direct_call={:?})", instance, is_direct_call);
     if !should_codegen_locally(tcx, &instance) {
         return;
+    }
+
+    // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
+    // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
+    // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
+    // codegen a call to that function without generating code for the function itself.
+    if let ty::InstanceDef::Intrinsic(def_id) = instance.def {
+        let name = tcx.item_name(def_id);
+        if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
+            let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
+            let panic_instance = Instance::mono(tcx, def_id);
+            if should_codegen_locally(tcx, &panic_instance) {
+                output.push(create_fn_mono_item(tcx, panic_instance, source));
+            }
+        }
     }
 
     match instance.def {
