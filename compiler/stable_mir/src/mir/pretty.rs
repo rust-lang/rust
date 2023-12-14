@@ -58,18 +58,31 @@ pub fn pretty_statement(statement: &StatementKind) -> String {
             pretty.push_str(format!("        _{} = ", place.local).as_str());
             pretty.push_str(format!("{}", &pretty_rvalue(rval)).as_str());
         }
-        StatementKind::FakeRead(_, _) => todo!(),
-        StatementKind::SetDiscriminant { .. } => todo!(),
-        StatementKind::Deinit(_) => todo!(),
-        StatementKind::StorageLive(_) => todo!(),
-        StatementKind::StorageDead(_) => todo!(),
-        StatementKind::Retag(_, _) => todo!(),
-        StatementKind::PlaceMention(_) => todo!(),
-        StatementKind::AscribeUserType { .. } => todo!(),
-        StatementKind::Coverage(_) => todo!(),
-        StatementKind::Intrinsic(_) => todo!(),
-        StatementKind::ConstEvalCounter => (),
-        StatementKind::Nop => (),
+        // FIXME: Add rest of the statements
+        StatementKind::FakeRead(_, _) => return format!("StatementKind::FakeRead:Unimplemented"),
+        StatementKind::SetDiscriminant { .. } => {
+            return format!("StatementKind::SetDiscriminant:Unimplemented");
+        }
+        StatementKind::Deinit(_) => return format!("StatementKind::Deinit:Unimplemented"),
+        StatementKind::StorageLive(_) => {
+            return format!("StatementKind::StorageLive:Unimplemented");
+        }
+        StatementKind::StorageDead(_) => {
+            return format!("StatementKind::StorageDead:Unimplemented");
+        }
+        StatementKind::Retag(_, _) => return format!("StatementKind::Retag:Unimplemented"),
+        StatementKind::PlaceMention(_) => {
+            return format!("StatementKind::PlaceMention:Unimplemented");
+        }
+        StatementKind::AscribeUserType { .. } => {
+            return format!("StatementKind::AscribeUserType:Unimplemented");
+        }
+        StatementKind::Coverage(_) => return format!("StatementKind::Coverage:Unimplemented"),
+        StatementKind::Intrinsic(_) => return format!("StatementKind::Intrinsic:Unimplemented"),
+        StatementKind::ConstEvalCounter => {
+            return format!("StatementKind::ConstEvalCounter:Unimplemented");
+        }
+        StatementKind::Nop => return format!("StatementKind::Nop:Unimplemented"),
     }
     pretty
 }
@@ -355,7 +368,7 @@ pub fn pretty_rvalue(rval: &Rvalue) -> String {
             pretty.push_str(" ");
             pretty.push_str(&pretty_ty(cnst.ty().kind()));
         }
-        Rvalue::ShallowInitBox(_, _) => todo!(),
+        Rvalue::ShallowInitBox(_, _) => (),
         Rvalue::ThreadLocalRef(item) => {
             pretty.push_str("thread_local_ref");
             pretty.push_str(format!("{:#?}", item).as_str());
