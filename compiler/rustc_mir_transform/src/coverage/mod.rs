@@ -22,7 +22,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, Span, Symbol};
 
@@ -79,7 +79,7 @@ struct Instrumentor<'a, 'tcx> {
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
         let hir_info @ ExtractedHirInfo { function_source_hash, fn_sig_span, body_span } =
-            extract_hir_info(tcx, mir_body);
+            extract_hir_info(tcx, mir_body.source.def_id().expect_local());
 
         debug!(?hir_info, "instrumenting {:?}", mir_body.source.def_id());
 
@@ -313,12 +313,11 @@ struct ExtractedHirInfo {
     body_span: Span,
 }
 
-fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> ExtractedHirInfo {
+fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHirInfo {
     let source_map = tcx.sess.source_map();
-    let def_id = mir_body.source.def_id();
     let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
 
-    let body_span = get_body_span(tcx, hir_body, mir_body);
+    let body_span = get_body_span(tcx, hir_body, def_id);
 
     let source_file = source_map.lookup_source_file(body_span.lo());
     let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
@@ -336,11 +335,11 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> Extr
 
 fn fn_sig_and_body(
     tcx: TyCtxt<'_>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> (Option<&rustc_hir::FnSig<'_>>, &rustc_hir::Body<'_>) {
     // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
     // to HIR for it.
-    let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
+    let hir_node = tcx.hir_node_by_def_id(def_id);
     let (_, fn_body_id) =
         hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     (hir_node.fn_sig(), tcx.hir().body(fn_body_id))
@@ -349,12 +348,11 @@ fn fn_sig_and_body(
 fn get_body_span<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_body: &rustc_hir::Body<'tcx>,
-    mir_body: &mir::Body<'tcx>,
+    def_id: LocalDefId,
 ) -> Span {
     let mut body_span = hir_body.value.span;
-    let def_id = mir_body.source.def_id();
 
-    if tcx.is_closure(def_id) {
+    if tcx.is_closure(def_id.to_def_id()) {
         // If the MIR function is a closure, and if the closure body span
         // starts from a macro, but it's content is not in that macro, try
         // to find a non-macro callsite, and instrument the spans there
