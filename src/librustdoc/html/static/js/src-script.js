@@ -118,10 +118,10 @@ function createSrcSidebar() {
     title.className = "title";
     title.innerText = "Files";
     sidebar.appendChild(title);
-    Object.keys(srcIndex).forEach(key => {
-        srcIndex[key][NAME_OFFSET] = key;
-        hasFoundFile = createDirEntry(srcIndex[key], sidebar, "", hasFoundFile);
-    });
+    for (const [key, source] of srcIndex) {
+        source[NAME_OFFSET] = key;
+        hasFoundFile = createDirEntry(source, sidebar, "", hasFoundFile);
+    }
 
     container.appendChild(sidebar);
     // Focus on the current file in the source files sidebar.
