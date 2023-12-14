@@ -121,6 +121,8 @@ impl<'k> StatCollector<'k> {
     }
 
     fn print(&self, title: &str, prefix: &str) {
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
         nodes.sort_by_key(|(_, node)| node.stats.count * node.stats.size);
 
@@ -147,6 +149,8 @@ impl<'k> StatCollector<'k> {
                 to_readable_str(node.stats.size)
             );
             if !node.subnodes.is_empty() {
+                // We will soon sort, so the initial order does not matter.
+                #[allow(rustc::potential_query_instability)]
                 let mut subnodes: Vec<_> = node.subnodes.iter().collect();
                 subnodes.sort_by_key(|(_, subnode)| subnode.count * subnode.size);
 

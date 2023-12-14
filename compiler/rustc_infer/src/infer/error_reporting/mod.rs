@@ -891,7 +891,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
                 // don't suggest wrapping either blocks in `if .. {} else {}`
                 let is_empty_arm = |id| {
-                    let hir::Node::Block(blk) = self.tcx.hir().get(id) else {
+                    let hir::Node::Block(blk) = self.tcx.hir_node(id) else {
                         return false;
                     };
                     if blk.expr.is_some() || !blk.stmts.is_empty() {
@@ -1743,7 +1743,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        if let Some((expected, found, exp_p, found_p)) = expected_found {
+        if let Some((expected, found, path)) = expected_found {
             let (expected_label, found_label, exp_found) = match exp_found {
                 Mismatch::Variable(ef) => (
                     ef.expected.prefix_string(self.tcx),
@@ -1869,40 +1869,31 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
                 TypeError::Sorts(values) => {
                     let extra = expected == found;
-                    let sort_string = |ty: Ty<'tcx>, path: Option<PathBuf>| {
-                        let mut s = match (extra, ty.kind()) {
-                            (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
-                                let sm = self.tcx.sess.source_map();
-                                let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
-                                format!(
-                                    " (opaque type at <{}:{}:{}>)",
-                                    sm.filename_for_diagnostics(&pos.file.name),
-                                    pos.line,
-                                    pos.col.to_usize() + 1,
-                                )
-                            }
-                            (true, ty::Alias(ty::Projection, proj))
-                                if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
-                            {
-                                let sm = self.tcx.sess.source_map();
-                                let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
-                                format!(
-                                    " (trait associated opaque type at <{}:{}:{}>)",
-                                    sm.filename_for_diagnostics(&pos.file.name),
-                                    pos.line,
-                                    pos.col.to_usize() + 1,
-                                )
-                            }
-                            (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
-                            (false, _) => "".to_string(),
-                        };
-                        if let Some(path) = path {
-                            s.push_str(&format!(
-                                "\nthe full type name has been written to '{}'",
-                                path.display(),
-                            ));
+                    let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
+                        (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
+                            let sm = self.tcx.sess.source_map();
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
+                            format!(
+                                " (opaque type at <{}:{}:{}>)",
+                                sm.filename_for_diagnostics(&pos.file.name),
+                                pos.line,
+                                pos.col.to_usize() + 1,
+                            )
                         }
-                        s
+                        (true, ty::Alias(ty::Projection, proj))
+                            if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
+                        {
+                            let sm = self.tcx.sess.source_map();
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
+                            format!(
+                                " (trait associated opaque type at <{}:{}:{}>)",
+                                sm.filename_for_diagnostics(&pos.file.name),
+                                pos.line,
+                                pos.col.to_usize() + 1,
+                            )
+                        }
+                        (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
+                        (false, _) => "".to_string(),
                     };
                     if !(values.expected.is_simple_text(self.tcx)
                         && values.found.is_simple_text(self.tcx))
@@ -1933,9 +1924,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     expected,
                                     &found_label,
                                     found,
-                                    &sort_string(values.expected, exp_p),
-                                    &sort_string(values.found, found_p),
+                                    &sort_string(values.expected),
+                                    &sort_string(values.found),
                                 );
+                                if let Some(path) = path {
+                                    diag.note(format!(
+                                        "the full type name has been written to '{}'",
+                                        path.display(),
+                                    ));
+                                }
                             }
                         }
                     }
@@ -2007,7 +2004,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             diag.span_note(span, "this closure does not fulfill the lifetime requirements");
             self.suggest_for_all_lifetime_closure(
                 span,
-                self.tcx.hir().get_by_def_id(def_id),
+                self.tcx.hir_node_by_def_id(def_id),
                 &exp_found,
                 diag,
             );
@@ -2101,7 +2098,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if let &(MatchExpressionArm(box MatchExpressionArmCause { source, .. })
         | BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
-            && let Some((expected_ty, found_ty, _, _)) = self.values_str(trace.values)
+            && let Some((expected_ty, found_ty, _)) = self.values_str(trace.values)
         {
             suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
                 found: found_ty.content(),
@@ -2121,7 +2118,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let TypeError::FixedArraySize(sz) = terr else {
             return None;
         };
-        let tykind = match hir.find_by_def_id(trace.cause.body_id) {
+        let tykind = match self.tcx.opt_hir_node_by_def_id(trace.cause.body_id) {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
                 let body = hir.body(*body_id);
                 struct LetVisitor<'v> {
@@ -2219,8 +2216,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn values_str(
         &self,
         values: ValuePairs<'tcx>,
-    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>, Option<PathBuf>)>
-    {
+    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>)> {
         match values {
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
             infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
@@ -2233,7 +2229,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     found: exp_found.found.print_trait_sugared(),
                 };
                 match self.expected_found_str(pretty_exp_found) {
-                    Some((expected, found, _, _)) if expected == found => {
+                    Some((expected, found, _)) if expected == found => {
                         self.expected_found_str(exp_found)
                     }
                     ret => ret,
@@ -2245,7 +2241,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return None;
                 }
                 let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
-                Some((exp, fnd, None, None))
+                Some((exp, fnd, None))
             }
         }
     }
@@ -2253,8 +2249,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn expected_found_str_term(
         &self,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
-    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>, Option<PathBuf>)>
-    {
+    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
@@ -2269,24 +2264,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let len = self.tcx.sess().diagnostic_width() + 40;
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
-                let mut exp_p = None;
-                let mut fnd_p = None;
+                let mut path = None;
                 if exp_s.len() > len {
-                    let (exp_s, exp_path) = self.tcx.short_ty_string(expected);
+                    let exp_s = self.tcx.short_ty_string(expected, &mut path);
                     exp = DiagnosticStyledString::highlighted(exp_s);
-                    exp_p = exp_path;
                 }
                 if fnd_s.len() > len {
-                    let (fnd_s, fnd_path) = self.tcx.short_ty_string(found);
+                    let fnd_s = self.tcx.short_ty_string(found, &mut path);
                     fnd = DiagnosticStyledString::highlighted(fnd_s);
-                    fnd_p = fnd_path;
                 }
-                (exp, fnd, exp_p, fnd_p)
+                (exp, fnd, path)
             }
             _ => (
                 DiagnosticStyledString::highlighted(exp_found.expected.to_string()),
                 DiagnosticStyledString::highlighted(exp_found.found.to_string()),
-                None,
                 None,
             ),
         })
@@ -2296,8 +2287,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn expected_found_str<T: fmt::Display + TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         exp_found: ty::error::ExpectedFound<T>,
-    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>, Option<PathBuf>)>
-    {
+    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
@@ -2306,7 +2296,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         Some((
             DiagnosticStyledString::highlighted(exp_found.expected.to_string()),
             DiagnosticStyledString::highlighted(exp_found.found.to_string()),
-            None,
             None,
         ))
     }
@@ -2452,7 +2441,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             if !suggs.is_empty() {
                 err.multipart_suggestion_verbose(
-                    format!("{msg}"),
+                    msg,
                     suggs,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
@@ -2591,8 +2580,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         if let infer::Subtype(ref sup_trace) = sup_origin
             && let infer::Subtype(ref sub_trace) = sub_origin
-            && let Some((sup_expected, sup_found, _, _)) = self.values_str(sup_trace.values)
-            && let Some((sub_expected, sub_found, _, _)) = self.values_str(sub_trace.values)
+            && let Some((sup_expected, sup_found, _)) = self.values_str(sup_trace.values)
+            && let Some((sub_expected, sub_found, _)) = self.values_str(sub_trace.values)
             && sub_expected == sup_expected
             && sub_found == sup_found
         {
@@ -2997,7 +2986,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Given a [`hir::HirId`] for a block, get the span of its last expression
     /// or statement, peeling off any inner blocks.
     pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
-        match self.tcx.hir().get(hir_id) {
+        match self.tcx.hir_node(hir_id) {
             hir::Node::Block(blk) => self.find_block_span(blk),
             // The parser was in a weird state if either of these happen, but
             // it's better not to panic.

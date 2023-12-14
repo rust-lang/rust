@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_gnu::opts();
@@ -13,6 +13,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             abi: "ilp32".into(),
             features: "+v8a,+outline-atomics".into(),
+            stack_probes: StackProbeType::Inline,
             mcount: "\u{1}_mcount".into(),
             endian: Endian::Big,
             ..base

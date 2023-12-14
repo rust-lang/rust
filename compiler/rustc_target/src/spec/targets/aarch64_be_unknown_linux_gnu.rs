@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -10,6 +10,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a,+outline-atomics".into(),
             max_atomic_width: Some(128),
+            stack_probes: StackProbeType::Inline,
             mcount: "\u{1}_mcount".into(),
             endian: Endian::Big,
             ..base::linux_gnu::opts()

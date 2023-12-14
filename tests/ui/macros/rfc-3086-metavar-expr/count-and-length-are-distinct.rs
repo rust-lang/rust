@@ -10,11 +10,11 @@ fn main() {
                 $(
                     // inner-most repetition
                     $(
-                        ${ignore(l)} ${index()}, ${length()},
+                        ${ignore($l)} ${index()}, ${length()},
                     )*
-                    ${count(l)}, ${index()}, ${length()},
+                    ${count($l)}, ${index()}, ${length()},
                 )*
-                ${count(l)},
+                ${count($l)},
             ]
         };
     }
@@ -72,30 +72,30 @@ fn main() {
             &[
                 $( $( $(
                     &[
-                        ${ignore(i)} ${count(i, 0)},
+                        ${ignore($i)} ${count($i, 0)},
                     ][..],
                 )* )* )*
 
                 $( $(
                     &[
-                        ${ignore(i)} ${count(i, 0)},
-                        ${ignore(i)} ${count(i, 1)},
+                        ${ignore($i)} ${count($i, 0)},
+                        ${ignore($i)} ${count($i, 1)},
                     ][..],
                 )* )*
 
                 $(
                     &[
-                        ${ignore(i)} ${count(i, 0)},
-                        ${ignore(i)} ${count(i, 1)},
-                        ${ignore(i)} ${count(i, 2)},
+                        ${ignore($i)} ${count($i, 0)},
+                        ${ignore($i)} ${count($i, 1)},
+                        ${ignore($i)} ${count($i, 2)},
                     ][..],
                 )*
 
                 &[
-                    ${count(i, 0)},
-                    ${count(i, 1)},
-                    ${count(i, 2)},
-                    ${count(i, 3)},
+                    ${count($i, 0)},
+                    ${count($i, 1)},
+                    ${count($i, 2)},
+                    ${count($i, 3)},
                 ][..]
             ][..]
         }
@@ -133,23 +133,23 @@ fn main() {
             &[7][..],
 
             // (a b c) (d e f)
-            &[2, 6][..],
+            &[6, 2][..],
             // (g h) (i j k l m)
-            &[2, 7][..],
+            &[7, 2][..],
             // (n)
             &[1, 1][..],
             // (o) (p q) (r s)
-            &[3, 5][..],
+            &[5, 3][..],
             // (t u v w x y z)
-            &[1, 7][..],
+            &[7, 1][..],
 
             // [ (a b c) (d e f) ]
             // [ (g h) (i j k l m) ]
             // [ (n) ]
-            &[3, 5, 14][..],
+            &[14, 5, 3][..],
             // [ (o) (p q) (r s) ]
             // [ (t u v w x y z) ]
-            &[2, 4, 12][..],
+            &[12, 4, 2][..],
 
             // {
             //     [ (a b c) (d e f) ]
@@ -160,7 +160,7 @@ fn main() {
             //     [ (o) (p q) (r s) ]
             //     [ (t u v w x y z) ]
             // }
-            &[2, 5, 9, 26][..]
+            &[26, 9, 5, 2][..]
         ][..]
     );
 
@@ -170,31 +170,31 @@ fn main() {
             &[
                 $( $( $( $(
                     &[
-                        ${ignore(i)} ${length(3)},
-                        ${ignore(i)} ${length(2)},
-                        ${ignore(i)} ${length(1)},
-                        ${ignore(i)} ${length(0)},
+                        ${ignore($i)} ${length(3)},
+                        ${ignore($i)} ${length(2)},
+                        ${ignore($i)} ${length(1)},
+                        ${ignore($i)} ${length(0)},
                     ][..],
                 )* )* )* )*
 
                 $( $( $(
                     &[
-                        ${ignore(i)} ${length(2)},
-                        ${ignore(i)} ${length(1)},
-                        ${ignore(i)} ${length(0)},
+                        ${ignore($i)} ${length(2)},
+                        ${ignore($i)} ${length(1)},
+                        ${ignore($i)} ${length(0)},
                     ][..],
                 )* )* )*
 
                 $( $(
                     &[
-                        ${ignore(i)} ${length(1)},
-                        ${ignore(i)} ${length(0)},
+                        ${ignore($i)} ${length(1)},
+                        ${ignore($i)} ${length(0)},
                     ][..],
                 )* )*
 
                 $(
                     &[
-                        ${ignore(i)} ${length(0)},
+                        ${ignore($i)} ${length(0)},
                     ][..],
                 )*
             ][..]

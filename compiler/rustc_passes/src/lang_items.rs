@@ -155,7 +155,7 @@ impl<'tcx> LanguageItemCollector<'tcx> {
         // have minimum requirements.
 
         if let hir::Node::Item(hir::Item { kind, span: item_span, .. }) =
-            self.tcx.hir().get_by_def_id(item_def_id)
+            self.tcx.hir_node_by_def_id(item_def_id)
         {
             let (actual_num, generics_span) = match kind.generics() {
                 Some(generics) => (

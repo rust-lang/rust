@@ -32,7 +32,7 @@ pub(crate) enum UndoLog<'tcx> {
 }
 
 macro_rules! impl_from {
-    ($($ctor: ident ($ty: ty),)*) => {
+    ($($ctor:ident ($ty:ty),)*) => {
         $(
         impl<'tcx> From<$ty> for UndoLog<'tcx> {
             fn from(x: $ty) -> Self {
@@ -50,8 +50,6 @@ impl_from! {
 
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
     TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
-    TypeVariables(sv::UndoLog<type_variable::Delegate>),
-    TypeVariables(type_variable::Instantiate),
 
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
 
@@ -139,6 +137,8 @@ impl<'tcx> InferCtxtInner<'tcx> {
             let undo = self.undo_log.logs.pop().unwrap();
             self.reverse(undo);
         }
+
+        self.type_variable_storage.finalize_rollback();
 
         if self.undo_log.num_open_snapshots == 1 {
             // After the root snapshot the undo log should be empty.

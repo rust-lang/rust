@@ -1,16 +1,17 @@
 //! Proc macro ABI
 
 use libloading::Library;
-use proc_macro_api::{ProcMacroKind, RustCInfo};
+use proc_macro::bridge;
+use proc_macro_api::{msg::TokenId, ProcMacroKind, RustCInfo};
 
 use crate::{dylib::LoadProcMacroDylibError, server::SYMBOL_INTERNER, tt};
 
 pub(crate) struct ProcMacros {
-    exported_macros: Vec<proc_macro::bridge::client::ProcMacro>,
+    exported_macros: Vec<bridge::client::ProcMacro>,
 }
 
-impl From<proc_macro::bridge::PanicMessage> for crate::PanicMessage {
-    fn from(p: proc_macro::bridge::PanicMessage) -> Self {
+impl From<bridge::PanicMessage> for crate::PanicMessage {
+    fn from(p: bridge::PanicMessage) -> Self {
         Self { message: p.as_str().map(|s| s.to_string()) }
     }
 }
@@ -31,9 +32,8 @@ impl ProcMacros {
         info: RustCInfo,
     ) -> Result<ProcMacros, LoadProcMacroDylibError> {
         if info.version_string == crate::RUSTC_VERSION_STRING {
-            let macros = unsafe {
-                lib.get::<&&[proc_macro::bridge::client::ProcMacro]>(symbol_name.as_bytes())
-            }?;
+            let macros =
+                unsafe { lib.get::<&&[bridge::client::ProcMacro]>(symbol_name.as_bytes()) }?;
 
             return Ok(Self { exported_macros: macros.to_vec() });
         }
@@ -45,6 +45,9 @@ impl ProcMacros {
         macro_name: &str,
         macro_body: &tt::Subtree,
         attributes: Option<&tt::Subtree>,
+        def_site: TokenId,
+        call_site: TokenId,
+        mixed_site: TokenId,
     ) -> Result<tt::Subtree, crate::PanicMessage> {
         let parsed_body = crate::server::TokenStream::with_subtree(macro_body.clone());
 
@@ -54,58 +57,76 @@ impl ProcMacros {
 
         for proc_macro in &self.exported_macros {
             match proc_macro {
-                proc_macro::bridge::client::ProcMacro::CustomDerive {
-                    trait_name, client, ..
-                } if *trait_name == macro_name => {
-                    let res = client.run(
-                        &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
-                        parsed_body,
-                        true,
-                    );
-                    return res.map(|it| it.into_subtree()).map_err(crate::PanicMessage::from);
-                }
-                proc_macro::bridge::client::ProcMacro::Bang { name, client }
-                    if *name == macro_name =>
+                bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
+                    if *trait_name == macro_name =>
                 {
                     let res = client.run(
-                        &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
+                        &bridge::server::SameThread,
+                        crate::server::RustAnalyzer {
+                            interner: &SYMBOL_INTERNER,
+                            call_site,
+                            def_site,
+                            mixed_site,
+                        },
                         parsed_body,
-                        true,
+                        false,
                     );
-                    return res.map(|it| it.into_subtree()).map_err(crate::PanicMessage::from);
+                    return res
+                        .map(|it| it.into_subtree(call_site))
+                        .map_err(crate::PanicMessage::from);
                 }
-                proc_macro::bridge::client::ProcMacro::Attr { name, client }
-                    if *name == macro_name =>
-                {
+                bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
-                        &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
+                        &bridge::server::SameThread,
+                        crate::server::RustAnalyzer {
+                            interner: &SYMBOL_INTERNER,
+                            call_site,
+                            def_site,
+                            mixed_site,
+                        },
+                        parsed_body,
+                        false,
+                    );
+                    return res
+                        .map(|it| it.into_subtree(call_site))
+                        .map_err(crate::PanicMessage::from);
+                }
+                bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
+                    let res = client.run(
+                        &bridge::server::SameThread,
+                        crate::server::RustAnalyzer {
+                            interner: &SYMBOL_INTERNER,
+
+                            call_site,
+                            def_site,
+                            mixed_site,
+                        },
                         parsed_attributes,
                         parsed_body,
-                        true,
+                        false,
                     );
-                    return res.map(|it| it.into_subtree()).map_err(crate::PanicMessage::from);
+                    return res
+                        .map(|it| it.into_subtree(call_site))
+                        .map_err(crate::PanicMessage::from);
                 }
                 _ => continue,
             }
         }
 
-        Err(proc_macro::bridge::PanicMessage::String("Nothing to expand".to_string()).into())
+        Err(bridge::PanicMessage::String("Nothing to expand".to_string()).into())
     }
 
     pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         self.exported_macros
             .iter()
             .map(|proc_macro| match proc_macro {
-                proc_macro::bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
+                bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
                     (trait_name.to_string(), ProcMacroKind::CustomDerive)
                 }
-                proc_macro::bridge::client::ProcMacro::Bang { name, .. } => {
+                bridge::client::ProcMacro::Bang { name, .. } => {
                     (name.to_string(), ProcMacroKind::FuncLike)
                 }
-                proc_macro::bridge::client::ProcMacro::Attr { name, .. } => {
+                bridge::client::ProcMacro::Attr { name, .. } => {
                     (name.to_string(), ProcMacroKind::Attr)
                 }
             })

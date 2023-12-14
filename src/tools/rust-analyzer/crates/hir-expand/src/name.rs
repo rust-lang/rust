@@ -470,6 +470,7 @@ pub mod known {
     pub const SELF_TYPE: super::Name = super::Name::new_inline("Self");
 
     pub const STATIC_LIFETIME: super::Name = super::Name::new_inline("'static");
+    pub const DOLLAR_CRATE: super::Name = super::Name::new_inline("$crate");
 
     #[macro_export]
     macro_rules! name {

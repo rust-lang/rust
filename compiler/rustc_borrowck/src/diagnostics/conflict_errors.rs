@@ -18,7 +18,7 @@ use rustc_middle::mir::{
     PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
     VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
+use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty, TyCtxt};
 use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
@@ -398,7 +398,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
                 let hir_id = hir.parent_id(expr.hir_id);
-                if let Some(parent) = hir.find(hir_id) {
+                if let Some(parent) = self.infcx.tcx.opt_hir_node(hir_id) {
                     let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                         && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                         && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
@@ -413,7 +413,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         (None, &[][..], 0)
                     };
                     if let Some(def_id) = def_id
-                        && let Some(node) = hir.find(self.infcx.tcx.local_def_id_to_hir_id(def_id))
+                        && let Some(node) = self
+                            .infcx
+                            .tcx
+                            .opt_hir_node(self.infcx.tcx.local_def_id_to_hir_id(def_id))
                         && let Some(fn_sig) = node.fn_sig()
                         && let Some(ident) = node.ident()
                         && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
@@ -1317,7 +1320,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
 
-        let Some(body_id) = hir.get(self.mir_hir_id()).body_id() else { return };
+        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
         let typeck_results = tcx.typeck(self.mir_def_id());
 
         struct ExprFinder<'hir> {
@@ -1509,7 +1512,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let local_ty = self.body.local_decls[local].ty;
 
         // Get the body the error happens in
-        let Some(body_id) = hir.get(self.mir_hir_id()).body_id() else { return };
+        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
 
         let body_expr = hir.body(body_id).value;
 
@@ -1558,7 +1561,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Check that the parent of the closure is a method call,
         // with receiver matching with local's type (modulo refs)
         let parent = hir.parent_id(closure_expr.hir_id);
-        if let hir::Node::Expr(parent) = hir.get(parent) {
+        if let hir::Node::Expr(parent) = tcx.hir_node(parent) {
             if let hir::ExprKind::MethodCall(_, recv, ..) = parent.kind {
                 let recv_ty = typeck_results.expr_ty(recv);
 
@@ -1635,15 +1638,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         issued_spans: &UseSpans<'tcx>,
     ) {
         let UseSpans::ClosureUse { capture_kind_span, .. } = issued_spans else { return };
-        let hir = self.infcx.tcx.hir();
 
-        struct ExpressionFinder<'hir> {
+        struct ExpressionFinder<'tcx> {
             capture_span: Span,
             closure_change_spans: Vec<Span>,
             closure_arg_span: Option<Span>,
             in_closure: bool,
             suggest_arg: String,
-            hir: rustc_middle::hir::map::Map<'hir>,
+            tcx: TyCtxt<'tcx>,
             closure_local_id: Option<hir::HirId>,
             closure_call_changes: Vec<(Span, String)>,
         }
@@ -1657,7 +1659,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         fn_decl: hir::FnDecl { inputs, .. },
                         ..
                     }) = e.kind
-                        && let Some(hir::Node::Expr(body)) = self.hir.find(body.hir_id)
+                        && let Some(hir::Node::Expr(body)) = self.tcx.opt_hir_node(body.hir_id)
                     {
                         self.suggest_arg = "this: &Self".to_string();
                         if inputs.len() > 0 {
@@ -1722,8 +1724,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(hir::Node::ImplItem(hir::ImplItem {
             kind: hir::ImplItemKind::Fn(_fn_sig, body_id),
             ..
-        })) = hir.find(self.mir_hir_id())
-            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
+        })) = self.infcx.tcx.opt_hir_node(self.mir_hir_id())
+            && let Some(hir::Node::Expr(expr)) = self.infcx.tcx.opt_hir_node(body_id.hir_id)
         {
             let mut finder = ExpressionFinder {
                 capture_span: *capture_kind_span,
@@ -1733,7 +1735,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 suggest_arg: String::new(),
                 closure_local_id: None,
                 closure_call_changes: vec![],
-                hir,
+                tcx: self.infcx.tcx,
             };
             finder.visit_expr(expr);
 
@@ -2294,7 +2296,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let proper_span = proper_span.source_callsite();
                 if let Some(scope) = self.body.source_scopes.get(source_info.scope)
                     && let ClearCrossCrate::Set(scope_data) = &scope.local_data
-                    && let Some(node) = self.infcx.tcx.hir().find(scope_data.lint_root)
+                    && let Some(node) = self.infcx.tcx.opt_hir_node(scope_data.lint_root)
                     && let Some(id) = node.body_id()
                     && let hir::ExprKind::Block(block, _) = self.infcx.tcx.hir().body(id).value.kind
                 {

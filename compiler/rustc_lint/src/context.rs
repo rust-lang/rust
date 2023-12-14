@@ -706,9 +706,13 @@ pub trait LintContext {
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
                     let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().copied().collect();
+                    let is_from_cargo = std::env::var_os("CARGO").is_some();
+                    let mut is_feature_cfg = name == sym::feature;
 
+                    if is_feature_cfg && is_from_cargo {
+                        db.help("consider defining some features in `Cargo.toml`");
                     // Suggest the most probable if we found one
-                    if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
+                    } else if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
                         if let Some(ExpectedValues::Some(best_match_values)) =
                             sess.parse_sess.check_config.expecteds.get(&best_match) {
                             let mut possibilities = best_match_values.iter()
@@ -741,8 +745,8 @@ pub trait LintContext {
                         } else {
                             db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
                         }
-                    } else if name == sym::feature && std::env::var_os("CARGO").is_some() {
-                        db.help("consider defining some features in `Cargo.toml`");
+
+                        is_feature_cfg |= best_match == sym::feature;
                     } else if !possibilities.is_empty() {
                         let mut possibilities = possibilities.iter()
                             .map(Symbol::as_str)
@@ -756,6 +760,23 @@ pub trait LintContext {
                         // once.
                         db.help_once(format!("expected names are: `{possibilities}`"));
                     }
+
+                    let inst = if let Some((value, _value_span)) = value {
+                        let pre = if is_from_cargo { "\\" } else { "" };
+                        format!("cfg({name}, values({pre}\"{value}{pre}\"))")
+                    } else {
+                        format!("cfg({name})")
+                    };
+
+                    if is_from_cargo {
+                        if !is_feature_cfg {
+                            db.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));
+                        }
+                        db.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
+                    } else {
+                        db.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+                        db.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
+                    }
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
                     let Some(ExpectedValues::Some(values)) = &sess.parse_sess.check_config.expecteds.get(&name) else {
@@ -767,6 +788,7 @@ pub trait LintContext {
                         .copied()
                         .flatten()
                         .collect();
+                    let is_from_cargo = std::env::var_os("CARGO").is_some();
 
                     // Show the full list if all possible values for a given name, but don't do it
                     // for names as the possibilities could be very long
@@ -787,6 +809,8 @@ pub trait LintContext {
                                 db.span_suggestion(value_span, "there is a expected value with a similar name", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
 
                             }
+                        } else if name == sym::feature && is_from_cargo {
+                            db.help(format!("consider defining `{name}` as feature in `Cargo.toml`"));
                         } else if let &[first_possibility] = &possibilities[..] {
                             db.span_suggestion(name_span.shrink_to_hi(), "specify a config value", format!(" = \"{first_possibility}\""), Applicability::MaybeIncorrect);
                         }
@@ -795,6 +819,27 @@ pub trait LintContext {
                         if let Some((_value, value_span)) = value {
                             db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
                         }
+                    }
+
+                    let inst = if let Some((value, _value_span)) = value {
+                        let pre = if is_from_cargo { "\\" } else { "" };
+                        format!("cfg({name}, values({pre}\"{value}{pre}\"))")
+                    } else {
+                        format!("cfg({name})")
+                    };
+
+                    if is_from_cargo {
+                        if name == sym::feature {
+                            if let Some((value, _value_span)) = value {
+                                db.help(format!("consider adding `{value}` as a feature in `Cargo.toml`"));
+                            }
+                        } else {
+                            db.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));
+                        }
+                        db.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
+                    } else {
+                        db.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+                        db.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
                     }
                 },
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {

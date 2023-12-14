@@ -43,7 +43,9 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="module crate_root library">proc_macros</span><span class="operator">::</span><span class="macro library">mirror</span><span class="macro_bang">!</span> <span class="brace macro">{</span>
+<pre><code><span class="keyword">use</span> <span class="module crate_root library">proc_macros</span><span class="operator">::</span><span class="brace">{</span><span class="function library">mirror</span><span class="comma">,</span> <span class="function library">identity</span><span class="comma">,</span> <span class="derive library">DeriveIdentity</span><span class="brace">}</span><span class="semicolon">;</span>
+
+<span class="macro library">mirror</span><span class="macro_bang">!</span> <span class="brace macro">{</span>
     <span class="brace macro">{</span>
         <span class="comma macro">,</span><span class="builtin_type macro">i32</span> <span class="colon macro">:</span><span class="field declaration macro public">x</span> <span class="keyword macro">pub</span>
         <span class="comma macro">,</span><span class="builtin_type macro">i32</span> <span class="colon macro">:</span><span class="field declaration macro public">y</span> <span class="keyword macro">pub</span>
@@ -90,17 +92,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">concat</span> <span class="brace">{</span><span class="brace">}</span>
-<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">include</span> <span class="brace">{</span><span class="brace">}</span>
-<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">format_args</span> <span class="brace">{</span><span class="brace">}</span>
 
-<span class="macro">include</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="none macro">concat</span><span class="punctuation macro">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"foo/"</span><span class="comma macro">,</span> <span class="string_literal macro">"foo.rs"</span><span class="parenthesis macro">)</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
+<span class="macro default_library library">include</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="none macro">concat</span><span class="punctuation macro">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"foo/"</span><span class="comma macro">,</span> <span class="string_literal macro">"foo.rs"</span><span class="parenthesis macro">)</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="macro">format_args</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"Hello, </span><span class="format_specifier">{</span><span class="format_specifier">}</span><span class="string_literal macro">!"</span><span class="comma macro">,</span> <span class="numeric_literal macro">92</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
+    <span class="macro default_library library">format_args</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"Hello, </span><span class="format_specifier">{</span><span class="format_specifier">}</span><span class="string_literal macro">!"</span><span class="comma macro">,</span> <span class="numeric_literal macro">92</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
     <span class="macro">dont_color_me_braces</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
     <span class="macro">noop</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="macro macro">noop</span><span class="macro_bang macro">!</span><span class="parenthesis macro">(</span><span class="numeric_literal macro">1</span><span class="parenthesis macro">)</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>

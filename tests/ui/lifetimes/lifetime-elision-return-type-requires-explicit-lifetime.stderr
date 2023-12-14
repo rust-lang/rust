@@ -5,10 +5,15 @@ LL | fn f() -> &isize {
    |           ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL | fn f() -> &'static isize {
    |            +++++++
+help: instead, you are more likely to want to return an owned value
+   |
+LL - fn f() -> &isize {
+LL + fn f() -> isize {
+   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:7:33
@@ -41,10 +46,19 @@ LL | fn i(_x: isize) -> &isize {
    |                    ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL | fn i(_x: isize) -> &'static isize {
    |                     +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL | fn i(_x: &isize) -> &isize {
+   |          +
+help: ...or alternatively, you might want to return an owned value
+   |
+LL - fn i(_x: isize) -> &isize {
+LL + fn i(_x: isize) -> isize {
+   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:34:24
@@ -53,10 +67,19 @@ LL | fn j(_x: StaticStr) -> &isize {
    |                        ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL | fn j(_x: StaticStr) -> &'static isize {
    |                         +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL | fn j(_x: &StaticStr) -> &isize {
+   |          +
+help: ...or alternatively, you might want to return an owned value
+   |
+LL - fn j(_x: StaticStr) -> &isize {
+LL + fn j(_x: StaticStr) -> isize {
+   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:40:49

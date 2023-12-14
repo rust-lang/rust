@@ -1,6 +1,6 @@
 //! A collection of tools for profiling rust-analyzer.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 mod stop_watch;
 mod memory_usage;

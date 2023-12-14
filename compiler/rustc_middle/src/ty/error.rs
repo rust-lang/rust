@@ -345,33 +345,35 @@ impl<'tcx> TyCtxt<'tcx> {
         short
     }
 
-    pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
+    pub fn short_ty_string(self, ty: Ty<'tcx>, path: &mut Option<PathBuf>) -> String {
         let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
             cx.pretty_print_type(ty)
         })
         .expect("could not write to `String`");
 
         if !self.sess.opts.unstable_opts.write_long_types_to_disk {
-            return (regular, None);
+            return regular;
         }
 
         let width = self.sess.diagnostic_width();
         let length_limit = width.saturating_sub(30);
         if regular.len() <= width {
-            return (regular, None);
+            return regular;
         }
         let short = self.ty_string_with_limit(ty, length_limit);
         if regular == short {
-            return (regular, None);
+            return regular;
         }
-        // Multiple types might be shortened in a single error, ensure we create a file for each.
+        // Ensure we create an unique file for the type passed in when we create a file.
         let mut s = DefaultHasher::new();
         ty.hash(&mut s);
         let hash = s.finish();
-        let path = self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None);
-        match std::fs::write(&path, &regular) {
-            Ok(_) => (short, Some(path)),
-            Err(_) => (regular, None),
+        *path = Some(path.take().unwrap_or_else(|| {
+            self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None)
+        }));
+        match std::fs::write(path.as_ref().unwrap(), &format!("{regular}\n")) {
+            Ok(_) => short,
+            Err(_) => regular,
         }
     }
 }

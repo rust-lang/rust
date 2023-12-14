@@ -5,10 +5,15 @@ LL | fn elision<T: Fn() -> &i32>() {
    |                       ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL | fn elision<T: Fn() -> &'static i32>() {
    |                        +++++++
+help: instead, you are more likely to want to return an owned value
+   |
+LL - fn elision<T: Fn() -> &i32>() {
+LL + fn elision<T: Fn() -> i32>() {
+   |
 
 error: aborting due to 1 previous error
 

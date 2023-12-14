@@ -80,7 +80,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
 
     // check if parent is trait impl
     if let Some(parent_def_id) = cx.tcx.opt_local_parent(def_id)
-        && let Some(parent_node) = cx.tcx.hir().find_by_def_id(parent_def_id)
+        && let Some(parent_node) = cx.tcx.opt_hir_node_by_def_id(parent_def_id)
         && matches!(
             parent_node,
             hir::Node::Item(hir::Item {

@@ -10,6 +10,7 @@ use self::ConstKind::*;
 #[derive(derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
+    Copy(bound = ""),
     PartialOrd(bound = ""),
     PartialOrd = "feature_allow_slow_enum",
     Ord(bound = ""),

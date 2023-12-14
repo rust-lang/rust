@@ -2,16 +2,34 @@ error[E0658]: gen blocks are experimental
   --> $DIR/feature-gate-gen_blocks.rs:5:5
    |
 LL |     gen {};
-   |     ^^^^^
+   |     ^^^
    |
    = note: see issue #117078 <https://github.com/rust-lang/rust/issues/117078> for more information
    = help: add `#![feature(gen_blocks)]` to the crate attributes to enable
 
 error[E0658]: gen blocks are experimental
-  --> $DIR/feature-gate-gen_blocks.rs:13:5
+  --> $DIR/feature-gate-gen_blocks.rs:12:5
+   |
+LL |     async gen {};
+   |     ^^^^^^^^^
+   |
+   = note: see issue #117078 <https://github.com/rust-lang/rust/issues/117078> for more information
+   = help: add `#![feature(gen_blocks)]` to the crate attributes to enable
+
+error[E0658]: gen blocks are experimental
+  --> $DIR/feature-gate-gen_blocks.rs:22:5
    |
 LL |     gen {};
-   |     ^^^^^
+   |     ^^^
+   |
+   = note: see issue #117078 <https://github.com/rust-lang/rust/issues/117078> for more information
+   = help: add `#![feature(gen_blocks)]` to the crate attributes to enable
+
+error[E0658]: gen blocks are experimental
+  --> $DIR/feature-gate-gen_blocks.rs:25:5
+   |
+LL |     async gen {};
+   |     ^^^^^^^^^
    |
    = note: see issue #117078 <https://github.com/rust-lang/rust/issues/117078> for more information
    = help: add `#![feature(gen_blocks)]` to the crate attributes to enable
@@ -22,7 +40,13 @@ error[E0282]: type annotations needed
 LL |     gen {};
    |         ^^ cannot infer type
 
-error: aborting due to 3 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/feature-gate-gen_blocks.rs:12:15
+   |
+LL |     async gen {};
+   |               ^^ cannot infer type
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0282, E0658.
 For more information about an error, try `rustc --explain E0282`.

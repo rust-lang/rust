@@ -748,7 +748,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                     if let hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::OpaqueTy { .. }, ..
-                    }) = self.tcx.hir().get(parent_id)
+                    }) = self.tcx.hir_node(parent_id)
                     {
                         let mut err = self.tcx.sess.struct_span_err(
                             lifetime.ident.span,
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
 fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectLifetimeDefault {
     debug_assert_eq!(tcx.def_kind(param_def_id), DefKind::TyParam);
-    let hir::Node::GenericParam(param) = tcx.hir().get_by_def_id(param_def_id) else {
+    let hir::Node::GenericParam(param) = tcx.hir_node_by_def_id(param_def_id) else {
         bug!("expected GenericParam for object_lifetime_default");
     };
     match param.source {
@@ -1305,7 +1305,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 def = ResolvedArg::Error(guar);
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir().body_owner(body_id);
-                match self.tcx.hir().get(fn_id) {
+                match self.tcx.hir_node(fn_id) {
                     Node::Item(hir::Item { owner_id, kind: hir::ItemKind::Fn(..), .. })
                     | Node::TraitItem(hir::TraitItem {
                         owner_id,
@@ -2122,7 +2122,7 @@ pub fn deny_non_region_late_bound(
     let mut first = true;
 
     for (var, arg) in bound_vars {
-        let Node::GenericParam(param) = tcx.hir().get_by_def_id(*var) else {
+        let Node::GenericParam(param) = tcx.hir_node_by_def_id(*var) else {
             bug!();
         };
 

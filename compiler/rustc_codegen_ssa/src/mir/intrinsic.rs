@@ -4,8 +4,8 @@ use super::FunctionCx;
 use crate::common::IntPredicate;
 use crate::errors;
 use crate::errors::InvalidMonomorphization;
-use crate::glue;
 use crate::meth;
+use crate::size_of_val;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -88,21 +88,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::va_end => bx.va_end(args[0].immediate()),
             sym::size_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (llsize, _) = glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
-                    llsize
-                } else {
-                    bx.const_usize(bx.layout_of(tp_ty).size.bytes())
-                }
+                let meta =
+                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                llsize
             }
             sym::min_align_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (_, llalign) = glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
-                    llalign
-                } else {
-                    bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
-                }
+                let meta =
+                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                llalign
             }
             sym::vtable_size | sym::vtable_align => {
                 let vtable = args[0].immediate();

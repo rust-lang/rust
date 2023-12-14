@@ -345,8 +345,7 @@ fn associated_type_for_impl_trait_in_impl(
     let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
 
     let decl = tcx
-        .hir()
-        .find_by_def_id(impl_fn_def_id)
+        .opt_hir_node_by_def_id(impl_fn_def_id)
         .expect("expected item")
         .fn_decl()
         .expect("expected decl");

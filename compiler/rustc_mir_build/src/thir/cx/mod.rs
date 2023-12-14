@@ -110,7 +110,7 @@ impl<'tcx> Cx<'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Box<Pat<'tcx>> {
-        let p = match self.tcx.hir().get(p.hir_id) {
+        let p = match self.tcx.hir_node(p.hir_id) {
             Node::Pat(p) => p,
             node => bug!("pattern became {:?}", node),
         };

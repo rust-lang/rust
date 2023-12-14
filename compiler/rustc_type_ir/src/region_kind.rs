@@ -115,6 +115,7 @@ use self::RegionKind::*;
 #[derive(derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
+    Copy(bound = ""),
     PartialOrd(bound = ""),
     PartialOrd = "feature_allow_slow_enum",
     Ord(bound = ""),
@@ -187,18 +188,6 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
         ReErased => 6,
         ReError(_) => 7,
     }
-}
-
-// This is manually implemented because a derive would require `I: Copy`
-impl<I: Interner> Copy for RegionKind<I>
-where
-    I::EarlyParamRegion: Copy,
-    I::BoundRegion: Copy,
-    I::LateParamRegion: Copy,
-    I::InferRegion: Copy,
-    I::PlaceholderRegion: Copy,
-    I::ErrorGuaranteed: Copy,
-{
 }
 
 // This is manually implemented because a derive would require `I: PartialEq`

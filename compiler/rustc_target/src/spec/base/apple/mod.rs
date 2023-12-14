@@ -1,8 +1,8 @@
 use std::{borrow::Cow, env};
 
 use crate::spec::{add_link_args, add_link_args_iter};
-use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs};
-use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, Target, TargetOptions};
+use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs, LinkerFlavor, Lld};
+use crate::spec::{SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions};
 
 #[cfg(test)]
 mod tests;
@@ -81,6 +81,14 @@ impl Arch {
             Arm64_sim => "apple-a12",
         }
     }
+
+    fn stack_probes(self) -> StackProbeType {
+        match self {
+            Armv7k | Armv7s => StackProbeType::None,
+            Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h | X86_64_sim
+            | X86_64_macabi | Arm64_macabi | Arm64_sim => StackProbeType::Inline,
+        }
+    }
 }
 
 fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
@@ -147,6 +155,7 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         eh_frame_header: false,
+        stack_probes: arch.stack_probes(),
 
         debuginfo_kind: DebuginfoKind::DwarfDsym,
         // The historical default for macOS targets is to run `dsymutil` which

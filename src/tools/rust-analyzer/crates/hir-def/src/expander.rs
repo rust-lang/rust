@@ -4,21 +4,21 @@ use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
-    attrs::RawAttrs, hygiene::Hygiene, mod_path::ModPath, ExpandError, ExpandResult, HirFileId,
-    InFile, MacroCallId, UnresolvedMacro,
+    attrs::RawAttrs, mod_path::ModPath, span::SpanMap, ExpandError, ExpandResult, HirFileId,
+    InFile, MacroCallId,
 };
 use limit::Limit;
 use syntax::{ast, Parse, SyntaxNode};
 
 use crate::{
     attr::Attrs, db::DefDatabase, lower::LowerCtx, macro_id_to_def_id, path::Path, AsMacroCall,
-    MacroId, ModuleId,
+    MacroId, ModuleId, UnresolvedMacro,
 };
 
 #[derive(Debug)]
 pub struct Expander {
     cfg_options: CfgOptions,
-    hygiene: Hygiene,
+    span_map: SpanMap,
     krate: CrateId,
     pub(crate) current_file_id: HirFileId,
     pub(crate) module: ModuleId,
@@ -41,7 +41,7 @@ impl Expander {
             recursion_depth: 0,
             recursion_limit,
             cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
-            hygiene: Hygiene::new(db.upcast(), current_file_id),
+            span_map: db.span_map(current_file_id),
             krate: module.krate,
         }
     }
@@ -94,8 +94,8 @@ impl Expander {
         ExpandResult { value: Some(InFile::new(macro_file.into(), value.0)), err: error.or(err) }
     }
 
-    pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
-        self.hygiene = Hygiene::new(db.upcast(), mark.file_id);
+    pub fn exit(&mut self, mut mark: Mark) {
+        self.span_map = mark.span_map;
         self.current_file_id = mark.file_id;
         if self.recursion_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
@@ -110,7 +110,7 @@ impl Expander {
     }
 
     pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
-        LowerCtx::new(db, &self.hygiene, self.current_file_id)
+        LowerCtx::new(db, self.span_map.clone(), self.current_file_id)
     }
 
     pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
@@ -118,7 +118,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, &self.hygiene))
+        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, self.span_map.as_ref()))
     }
 
     pub(crate) fn cfg_options(&self) -> &CfgOptions {
@@ -130,8 +130,8 @@ impl Expander {
     }
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::new(db, &self.hygiene, self.current_file_id);
-        Path::from_src(path, &ctx)
+        let ctx = LowerCtx::new(db, self.span_map.clone(), self.current_file_id);
+        Path::from_src(&ctx, path)
     }
 
     fn within_limit<F, T: ast::AstNode>(
@@ -174,10 +174,11 @@ impl Expander {
                     let parse = value.cast::<T>()?;
 
                     self.recursion_depth += 1;
-                    self.hygiene = Hygiene::new(db.upcast(), file_id);
+                    let old_span_map = std::mem::replace(&mut self.span_map, db.span_map(file_id));
                     let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
                     let mark = Mark {
                         file_id: old_file_id,
+                        span_map: old_span_map,
                         bomb: DropBomb::new("expansion mark dropped"),
                     };
                     Some((mark, parse))
@@ -190,5 +191,6 @@ impl Expander {
 #[derive(Debug)]
 pub struct Mark {
     file_id: HirFileId,
+    span_map: SpanMap,
     bomb: DropBomb,
 }

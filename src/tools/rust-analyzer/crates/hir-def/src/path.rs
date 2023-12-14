@@ -96,8 +96,8 @@ pub enum GenericArg {
 impl Path {
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
-    pub fn from_src(path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path> {
-        lower::lower_path(path, ctx)
+    pub fn from_src(ctx: &LowerCtx<'_>, path: ast::Path) -> Option<Path> {
+        lower::lower_path(ctx, path)
     }
 
     /// Converts a known mod path to `Path`.

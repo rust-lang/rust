@@ -21,7 +21,7 @@ extern "platform-intrinsic" {
 #[no_mangle]
 pub unsafe fn load_f32x2(mask: Vec2<i32>, pointer: *const f32,
                          values: Vec2<f32>) -> Vec2<f32> {
-    // CHECK: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 {{.*}}, <2 x i1> {{.*}}, <2 x float> {{.*}})
+    // CHECK: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 4, <2 x i1> {{.*}}, <2 x float> {{.*}})
     simd_masked_load(mask, pointer, values)
 }
 

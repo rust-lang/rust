@@ -219,7 +219,7 @@ fn late_report_deprecation(
     }
     let method_span = method_span.unwrap_or(span);
     tcx.struct_span_lint_hir(lint, hir_id, method_span, message, |diag| {
-        if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
+        if let hir::Node::Expr(_) = tcx.hir_node(hir_id) {
             let kind = tcx.def_descr(def_id);
             deprecation_suggestion(diag, kind, suggestion, method_span);
         }

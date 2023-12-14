@@ -2000,3 +2000,15 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn rustc_test_issue_52437() {
+    check_types(
+        r#"
+    fn main() {
+        let x = [(); &(&'static: loop { |x| {}; }) as *const _ as usize]
+          //^ [(); _]
+    }
+    "#,
+    );
+}

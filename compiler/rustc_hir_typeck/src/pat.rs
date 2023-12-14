@@ -720,7 +720,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let PatKind::Binding(_, _, binding, ..) = inner.kind
         {
             let binding_parent_id = tcx.hir().parent_id(pat.hir_id);
-            let binding_parent = tcx.hir().get(binding_parent_id);
+            let binding_parent = tcx.hir_node(binding_parent_id);
             debug!(?inner, ?pat, ?binding_parent);
 
             let mutability = match mutbl {
@@ -941,7 +941,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Const(_, _, body_id),
                     ..
-                })) => match self.tcx.hir().get(body_id.hir_id) {
+                })) => match self.tcx.hir_node(body_id.hir_id) {
                     hir::Node::Expr(expr) => {
                         if hir::is_range_literal(expr) {
                             let span = self.tcx.hir().span(body_id.hir_id);

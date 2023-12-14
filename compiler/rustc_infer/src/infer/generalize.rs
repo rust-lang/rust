@@ -295,7 +295,7 @@ where
                                 ty::Covariant | ty::Contravariant => (),
                             }
 
-                            let origin = *inner.type_variables().var_origin(vid);
+                            let origin = inner.type_variables().var_origin(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
                             let u = Ty::new_var(self.tcx(), new_var_id);

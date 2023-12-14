@@ -1,6 +1,6 @@
 //! Exports a few trivial procedural macros for testing.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 

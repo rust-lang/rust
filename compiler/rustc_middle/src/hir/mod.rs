@@ -195,7 +195,7 @@ pub fn provide(providers: &mut Providers) {
         | Node::ForeignItem(&ForeignItem {
             kind: ForeignItemKind::Fn(_, idents, _),
             ..
-        }) = hir.get(hir_id)
+        }) = tcx.hir_node(hir_id)
         {
             idents
         } else {

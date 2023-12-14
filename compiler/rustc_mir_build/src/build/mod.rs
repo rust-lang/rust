@@ -572,7 +572,7 @@ fn construct_const<'a, 'tcx>(
     let hir_id = tcx.local_def_id_to_hir_id(def);
 
     // Figure out what primary body this item has.
-    let (span, const_ty_span) = match tcx.hir().get(hir_id) {
+    let (span, const_ty_span) = match tcx.hir_node(hir_id) {
         Node::Item(hir::Item {
             kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _, _),
             span,

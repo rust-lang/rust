@@ -8,7 +8,7 @@ use crate::Interner;
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
@@ -35,18 +35,6 @@ pub enum ClauseKind<I: Interner> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(I::Const),
-}
-
-impl<I: Interner> Copy for ClauseKind<I>
-where
-    I::Ty: Copy,
-    I::Const: Copy,
-    I::GenericArg: Copy,
-    I::TraitPredicate: Copy,
-    I::ProjectionPredicate: Copy,
-    I::TypeOutlivesPredicate: Copy,
-    I::RegionOutlivesPredicate: Copy,
-{
 }
 
 impl<I: Interner> PartialEq for ClauseKind<I> {
@@ -120,7 +108,13 @@ where
 }
 
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
@@ -167,19 +161,6 @@ pub enum PredicateKind<I: Interner> {
     ///
     /// Only used for new solver
     AliasRelate(I::Term, I::Term, AliasRelationDirection),
-}
-
-impl<I: Interner> Copy for PredicateKind<I>
-where
-    I::DefId: Copy,
-    I::Const: Copy,
-    I::GenericArgs: Copy,
-    I::Term: Copy,
-    I::CoercePredicate: Copy,
-    I::SubtypePredicate: Copy,
-    I::NormalizesTo: Copy,
-    ClauseKind<I>: Copy,
-{
 }
 
 impl<I: Interner> TypeFoldable<I> for PredicateKind<I>

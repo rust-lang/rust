@@ -1090,7 +1090,7 @@ fn report<'tcx>(
                 if parent_id == data.first_expr.hir_id {
                     return;
                 }
-                (cx.tcx.hir().get(parent_id).expect_expr().span, true)
+                (cx.tcx.hir_node(parent_id).expect_expr().span, true)
             } else {
                 (expr.span, false)
             };

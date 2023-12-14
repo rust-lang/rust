@@ -2245,8 +2245,8 @@ impl GenericArgs {
     }
     pub(crate) fn bindings<'a>(&'a self) -> Box<dyn Iterator<Item = TypeBinding> + 'a> {
         match self {
-            &GenericArgs::AngleBracketed { ref bindings, .. } => Box::new(bindings.iter().cloned()),
-            &GenericArgs::Parenthesized { ref output, .. } => Box::new(
+            GenericArgs::AngleBracketed { bindings, .. } => Box::new(bindings.iter().cloned()),
+            GenericArgs::Parenthesized { output, .. } => Box::new(
                 output
                     .as_ref()
                     .map(|ty| TypeBinding {
@@ -2270,8 +2270,8 @@ impl<'a> IntoIterator for &'a GenericArgs {
     type Item = GenericArg;
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            &GenericArgs::AngleBracketed { ref args, .. } => Box::new(args.iter().cloned()),
-            &GenericArgs::Parenthesized { ref inputs, .. } => {
+            GenericArgs::AngleBracketed { args, .. } => Box::new(args.iter().cloned()),
+            GenericArgs::Parenthesized { inputs, .. } => {
                 Box::new(inputs.iter().cloned().map(GenericArg::Type))
             }
         }
