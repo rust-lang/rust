@@ -585,11 +585,6 @@ impl Handler {
         self
     }
 
-    pub fn treat_err_as_bug(mut self, treat_err_as_bug: NonZeroUsize) -> Self {
-        self.inner.get_mut().flags.treat_err_as_bug = Some(treat_err_as_bug);
-        self
-    }
-
     pub fn with_flags(mut self, flags: HandlerFlags) -> Self {
         self.inner.get_mut().flags = flags;
         self
