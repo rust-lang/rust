@@ -275,6 +275,7 @@ pub(crate) struct CrateRoot {
     debugger_visualizers: LazyArray<DebuggerVisualizerFile>,
 
     exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
+    is_mir_only: bool,
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,

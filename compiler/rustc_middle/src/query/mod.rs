@@ -2371,6 +2371,11 @@ rustc_queries! {
         desc { "estimating codegen size of `{}`", key }
         cache_on_disk_if { true }
     }
+
+    query mir_only_crates(_: ()) -> &'tcx [CrateNum] {
+        eval_always
+        desc { "fetching all foreign crates built in mir-only mode" }
+    }
 }
 
 rustc_query_append! { define_callbacks! }
