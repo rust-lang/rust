@@ -814,7 +814,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
                         let ty = self.resolve_vars_if_possible(ty);
-                        if self.tcx.sess.opts.unstable_opts.next_solver.is_some() {
+                        if self.next_trait_solver() {
                             // FIXME: we'll need a better message which takes into account
                             // which bounds actually failed to hold.
                             self.tcx.sess.struct_span_err(
