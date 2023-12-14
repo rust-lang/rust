@@ -1552,6 +1552,8 @@ options! {
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
+    default_hidden_visibility: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "overrides the `default_hidden_visibility` setting of the target"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
