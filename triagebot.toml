@@ -441,6 +441,14 @@ cc = ["@rust-lang/miri"]
 message = "Some changes occurred in need_type_info.rs"
 cc = ["@lcnr"]
 
+[mentions."compiler/rustc_middle/src/ty/relate.rs"]
+message = "Type relation code was changed"
+cc = ["@compiler-errors", "@lcnr"]
+
+[mentions."compiler/rustc_infer/src/infer/relate"]
+message = "Type relation code was changed"
+cc = ["@compiler-errors", "@lcnr"]
+
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri engine"
 cc = ["@rust-lang/miri"]
