@@ -59,7 +59,6 @@ pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod fudge;
-mod higher_ranked;
 mod lexical_region_resolve;
 pub mod nll_relate;
 pub mod opaque_types;

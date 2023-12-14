@@ -3,9 +3,10 @@
 //! and heuristics in the compiler).
 
 pub(super) mod combine;
-pub(super) mod equate;
+mod equate;
 pub(super) mod generalize;
-pub(super) mod glb;
-pub(super) mod lattice;
-pub(super) mod lub;
-pub(super) mod sub;
+mod glb;
+mod higher_ranked;
+mod lattice;
+mod lub;
+mod sub;
