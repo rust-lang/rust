@@ -13,8 +13,8 @@ use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::Body;
 use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
-    LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, FnSig,
+    GenericArgs, LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
 use stable_mir::{Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
@@ -324,7 +324,16 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn instance_ty(&self, def: InstanceDef) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        instance.ty(tables.tcx, ParamEnv::empty()).stable(&mut *tables)
+        instance.ty(tables.tcx, ParamEnv::reveal_all()).stable(&mut *tables)
+    }
+
+    fn instance_sig(&self, def: InstanceDef) -> FnSig {
+        let mut tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        let ty = instance.ty(tables.tcx, ParamEnv::reveal_all());
+        let sig = if ty.is_fn() { ty.fn_sig(tables.tcx) } else { instance.args.as_closure().sig() };
+        // Erase late bound regions.
+        tables.tcx.instantiate_bound_regions_with_erased(sig).stable(&mut *tables)
     }
 
     fn instance_def_id(&self, def: InstanceDef) -> stable_mir::DefId {

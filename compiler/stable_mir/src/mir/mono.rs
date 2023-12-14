@@ -117,7 +117,7 @@ impl Instance {
 
     /// Get this function signature with all types already instantiated.
     pub fn fn_sig(&self) -> FnSig {
-        self.ty().kind().fn_sig().unwrap().skip_binder()
+        with(|cx| cx.instance_sig(self.def))
     }
 
     /// Check whether this instance is an empty shim.
