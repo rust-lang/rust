@@ -502,7 +502,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 None,
             );
         }
-        self.sess().span_diagnostic.emit_diagnostic(&mut diag);
+        self.sess().span_diagnostic.emit_diagnostic(diag);
     }
 }
 

@@ -926,8 +926,8 @@ impl<D: Deps> DepGraphData<D> {
 
             let handle = qcx.dep_context().sess().diagnostic();
 
-            for mut diagnostic in side_effects.diagnostics {
-                handle.emit_diagnostic(&mut diagnostic);
+            for diagnostic in side_effects.diagnostics {
+                handle.emit_diagnostic(diagnostic);
             }
         }
     }

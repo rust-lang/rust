@@ -1054,7 +1054,7 @@ impl Handler {
         }
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         diagnostic.set_span(sp);
-        inner.emit_diagnostic(&mut diagnostic).unwrap()
+        inner.emit_diagnostic(diagnostic).unwrap()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
@@ -1064,7 +1064,7 @@ impl Handler {
 
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         if inner.flags.report_delayed_bugs {
-            inner.emit_diagnostic(&mut diagnostic);
+            inner.emit_diagnostic_without_consuming(&mut diagnostic);
         }
         let backtrace = std::backtrace::Backtrace::capture();
         inner.good_path_delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
@@ -1072,7 +1072,9 @@ impl Handler {
 
     #[track_caller]
     pub fn span_bug_no_panic(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
-        self.emit_diagnostic(Diagnostic::new(Bug, msg).set_span(span));
+        let mut diag = Diagnostic::new(Bug, msg);
+        diag.set_span(span);
+        self.emit_diagnostic(diag);
     }
 
     #[track_caller]
@@ -1185,10 +1187,10 @@ impl Handler {
                 DiagnosticMessage::Str(warnings),
             )),
             (_, 0) => {
-                inner.emit_diagnostic(&mut Diagnostic::new(Fatal, errors));
+                inner.emit_diagnostic(Diagnostic::new(Fatal, errors));
             }
             (_, _) => {
-                inner.emit_diagnostic(&mut Diagnostic::new(Fatal, format!("{errors}; {warnings}")));
+                inner.emit_diagnostic(Diagnostic::new(Fatal, format!("{errors}; {warnings}")));
             }
         }
 
@@ -1255,8 +1257,17 @@ impl Handler {
         self.inner.borrow_mut().emitter.emit_diagnostic(&db);
     }
 
-    pub fn emit_diagnostic(&self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
-        self.inner.borrow_mut().emit_diagnostic(diagnostic)
+    pub fn emit_diagnostic(&self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
+        self.emit_diagnostic_without_consuming(&mut diagnostic)
+    }
+
+    // It's unfortunate this exists. `emit_diagnostic` is preferred, because it
+    // consumes the diagnostic, thus ensuring it is emitted just once.
+    pub(crate) fn emit_diagnostic_without_consuming(
+        &self,
+        diagnostic: &mut Diagnostic,
+    ) -> Option<ErrorGuaranteed> {
+        self.inner.borrow_mut().emit_diagnostic_without_consuming(diagnostic)
     }
 
     pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
@@ -1370,7 +1381,7 @@ impl Handler {
                 // Here the diagnostic is given back to `emit_diagnostic` where it was first
                 // intercepted. Now it should be processed as usual, since the unstable expectation
                 // id is now stable.
-                inner.emit_diagnostic(&mut diag);
+                inner.emit_diagnostic(diag);
             }
         }
 
@@ -1412,7 +1423,7 @@ impl HandlerInner {
         let has_errors = self.has_errors();
         let diags = self.stashed_diagnostics.drain(..).map(|x| x.1).collect::<Vec<_>>();
         let mut reported = None;
-        for mut diag in diags {
+        for diag in diags {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
                 if matches!(diag.level, Level::Error { lint: true }) {
@@ -1432,14 +1443,20 @@ impl HandlerInner {
                     }
                 }
             }
-            let reported_this = self.emit_diagnostic(&mut diag);
+            let reported_this = self.emit_diagnostic(diag);
             reported = reported.or(reported_this);
         }
         reported
     }
 
-    // FIXME(eddyb) this should ideally take `diagnostic` by value.
-    fn emit_diagnostic(&mut self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
+    fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
+        self.emit_diagnostic_without_consuming(&mut diagnostic)
+    }
+
+    fn emit_diagnostic_without_consuming(
+        &mut self,
+        diagnostic: &mut Diagnostic,
+    ) -> Option<ErrorGuaranteed> {
         if matches!(diagnostic.level, Level::Error { .. } | Level::Fatal) && self.treat_err_as_bug()
         {
             diagnostic.level = Level::Bug;
@@ -1576,12 +1593,14 @@ impl HandlerInner {
 
     #[track_caller]
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.emit_diagnostic(Diagnostic::new(Bug, msg).set_span(sp));
+        let mut diag = Diagnostic::new(Bug, msg);
+        diag.set_span(sp);
+        self.emit_diagnostic(diag);
         panic::panic_any(ExplicitBug);
     }
 
     fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
-        self.emit_diagnostic(&mut Diagnostic::new(FailureNote, msg));
+        self.emit_diagnostic(Diagnostic::new(FailureNote, msg));
     }
 
     fn flush_delayed(
@@ -1613,7 +1632,7 @@ impl HandlerInner {
             if no_bugs {
                 // Put the overall explanation before the `DelayedBug`s, to
                 // frame them better (e.g. separate warnings from them).
-                self.emit_diagnostic(&mut Diagnostic::new(Bug, explanation));
+                self.emit_diagnostic(Diagnostic::new(Bug, explanation));
                 no_bugs = false;
             }
 
@@ -1628,7 +1647,7 @@ impl HandlerInner {
             }
             bug.level = Level::Bug;
 
-            self.emit_diagnostic(&mut bug);
+            self.emit_diagnostic(bug);
         }
 
         // Panic with `DelayedBugPanic` to avoid "unexpected panic" messages.
