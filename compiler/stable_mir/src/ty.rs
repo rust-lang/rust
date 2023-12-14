@@ -6,6 +6,7 @@ use super::{
 use crate::crate_def::CrateDef;
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::target::MachineInfo;
+use crate::ty::UintTy::U8;
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
@@ -22,9 +23,7 @@ impl Debug for Ty {
 /// Constructors for `Ty`.
 impl Ty {
     /// Create a new type from a given kind.
-    ///
-    /// Note that not all types may be supported at this point.
-    fn from_rigid_kind(kind: RigidTy) -> Ty {
+    pub fn from_rigid_kind(kind: RigidTy) -> Ty {
         with(|cx| cx.new_rigid_ty(kind))
     }
 
@@ -76,6 +75,11 @@ impl Ty {
     /// Create a type representing `bool`.
     pub fn bool_ty() -> Ty {
         Ty::from_rigid_kind(RigidTy::Bool)
+    }
+
+    /// Create a type representing `u8`.
+    pub fn u8_ty() -> Ty {
+        Ty::from_rigid_kind(RigidTy::Uint(U8))
     }
 }
 

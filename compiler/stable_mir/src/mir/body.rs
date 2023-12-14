@@ -22,6 +22,11 @@ pub struct Body {
 
     /// Debug information pertaining to user variables, including captures.
     pub var_debug_info: Vec<VarDebugInfo>,
+
+    /// Mark an argument (which must be a tuple) as getting passed as its individual components.
+    ///
+    /// This is used for the "rust-call" ABI such as closures.
+    pub(super) spread_arg: Option<Local>,
 }
 
 pub type BasicBlockIdx = usize;
@@ -36,6 +41,7 @@ impl Body {
         locals: LocalDecls,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo>,
+        spread_arg: Option<Local>,
     ) -> Self {
         // If locals doesn't contain enough entries, it can lead to panics in
         // `ret_local`, `arg_locals`, and `inner_locals`.
@@ -43,7 +49,7 @@ impl Body {
             locals.len() > arg_count,
             "A Body must contain at least a local for the return value and each of the function's arguments"
         );
-        Self { blocks, locals, arg_count, var_debug_info }
+        Self { blocks, locals, arg_count, var_debug_info, spread_arg }
     }
 
     /// Return local that holds this function's return value.
@@ -75,6 +81,11 @@ impl Body {
         self.locals.get(local)
     }
 
+    /// Get an iterator for all local declarations.
+    pub fn local_decls(&self) -> impl Iterator<Item = (Local, &LocalDecl)> {
+        self.locals.iter().enumerate()
+    }
+
     pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         writeln!(w, "{}", function_body(self))?;
         self.blocks
@@ -97,6 +108,10 @@ impl Body {
             })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(())
+    }
+
+    pub fn spread_arg(&self) -> Option<Local> {
+        self.spread_arg
     }
 }
 
@@ -248,6 +263,57 @@ pub enum AssertMessage {
     MisalignedPointerDereference { required: Operand, found: Operand },
 }
 
+impl AssertMessage {
+    pub fn description(&self) -> Result<&'static str, Error> {
+        match self {
+            AssertMessage::Overflow(BinOp::Add, _, _) => Ok("attempt to add with overflow"),
+            AssertMessage::Overflow(BinOp::Sub, _, _) => Ok("attempt to subtract with overflow"),
+            AssertMessage::Overflow(BinOp::Mul, _, _) => Ok("attempt to multiply with overflow"),
+            AssertMessage::Overflow(BinOp::Div, _, _) => Ok("attempt to divide with overflow"),
+            AssertMessage::Overflow(BinOp::Rem, _, _) => {
+                Ok("attempt to calculate the remainder with overflow")
+            }
+            AssertMessage::OverflowNeg(_) => Ok("attempt to negate with overflow"),
+            AssertMessage::Overflow(BinOp::Shr, _, _) => Ok("attempt to shift right with overflow"),
+            AssertMessage::Overflow(BinOp::Shl, _, _) => Ok("attempt to shift left with overflow"),
+            AssertMessage::Overflow(op, _, _) => Err(error!("`{:?}` cannot overflow", op)),
+            AssertMessage::DivisionByZero(_) => Ok("attempt to divide by zero"),
+            AssertMessage::RemainderByZero(_) => {
+                Ok("attempt to calculate the remainder with a divisor of zero")
+            }
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Coroutine) => {
+                Ok("coroutine resumed after completion")
+            }
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Async(_)) => {
+                Ok("`async fn` resumed after completion")
+            }
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Gen(_)) => {
+                Ok("`async gen fn` resumed after completion")
+            }
+            AssertMessage::ResumedAfterReturn(CoroutineKind::AsyncGen(_)) => {
+                Ok("`gen fn` should just keep returning `AssertMessage::None` after completion")
+            }
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Coroutine) => {
+                Ok("coroutine resumed after panicking")
+            }
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Async(_)) => {
+                Ok("`async fn` resumed after panicking")
+            }
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Gen(_)) => {
+                Ok("`async gen fn` resumed after panicking")
+            }
+            AssertMessage::ResumedAfterPanic(CoroutineKind::AsyncGen(_)) => {
+                Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking")
+            }
+
+            AssertMessage::BoundsCheck { .. } => Ok("index out of bounds"),
+            AssertMessage::MisalignedPointerDereference { .. } => {
+                Ok("misaligned pointer dereference")
+            }
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BinOp {
     Add,
@@ -325,6 +391,7 @@ pub enum CoroutineKind {
     Async(CoroutineSource),
     Coroutine,
     Gen(CoroutineSource),
+    AsyncGen(CoroutineSource),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
