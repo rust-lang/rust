@@ -1033,7 +1033,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new_with_code(Warning(None), Some(code), msg), span);
     }
 
-    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
+    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
@@ -1045,7 +1045,7 @@ impl Handler {
     pub fn span_delayed_bug(
         &self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<String>,
+        msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
         let mut inner = self.inner.borrow_mut();
 
@@ -1056,10 +1056,10 @@ impl Handler {
             inner.err_count + inner.lint_err_count + inner.delayed_bug_count() + 1 >= c.get()
         }) {
             // FIXME: don't abort here if report_delayed_bugs is off
-            inner.span_bug(sp, msg.into());
+            inner.span_bug(sp, msg);
         }
-        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg.into());
-        diagnostic.set_span(sp.into());
+        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
+        diagnostic.set_span(sp);
         inner.emit_diagnostic(&mut diagnostic).unwrap()
     }
 
@@ -1589,8 +1589,8 @@ impl HandlerInner {
     }
 
     #[track_caller]
-    fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
-        self.emit_diagnostic(Diagnostic::new(Bug, msg.into()).set_span(sp));
+    fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
+        self.emit_diagnostic(Diagnostic::new(Bug, msg).set_span(sp));
         panic::panic_any(ExplicitBug);
     }
 

@@ -632,7 +632,7 @@ impl Session {
     pub fn span_delayed_bug<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: impl Into<String>,
+        msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
         self.diagnostic().span_delayed_bug(sp, msg)
     }
