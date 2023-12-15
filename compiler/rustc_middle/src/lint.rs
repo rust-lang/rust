@@ -253,29 +253,10 @@ pub fn explain_lint_level_source(
 /// - [`TyCtxt::struct_lint_node`]
 /// - `LintContext::lookup`
 ///
-/// ## `decorate` signature
+/// ## `decorate`
 ///
-/// The return value of `decorate` is ignored by this function. So what is the
-/// point of returning `&'b mut DiagnosticBuilder<'a, ()>`?
-///
-/// There are 2 reasons for this signature.
-///
-/// First of all, it prevents accidental use of `.emit()` -- it's clear that the
-/// builder will be later used and shouldn't be emitted right away (this is
-/// especially important because the old API expected you to call `.emit()` in
-/// the closure).
-///
-/// Second of all, it makes the most common case of adding just a single label
-/// /suggestion much nicer, since [`DiagnosticBuilder`] methods return
-/// `&mut DiagnosticBuilder`, you can just chain methods, without needed
-/// awkward `{ ...; }`:
-/// ```ignore pseudo-code
-/// struct_lint_level(
-///     ...,
-///     |lint| lint.span_label(sp, "lbl")
-///     //          ^^^^^^^^^^^^^^^^^^^^^ returns `&mut DiagnosticBuilder` by default
-/// )
-/// ```
+/// It is not intended to call `emit`/`cancel` on the `DiagnosticBuilder` passed
+/// in the `decorate` callback.
 #[track_caller]
 pub fn struct_lint_level(
     sess: &Session,

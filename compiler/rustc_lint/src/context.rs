@@ -520,9 +520,6 @@ pub trait LintContext {
     /// Emit a lint at the appropriate level, with an optional associated span and an existing
     /// diagnostic.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed
-    /// explanation.
-    ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn lookup_with_diagnostics(
@@ -984,8 +981,6 @@ pub trait LintContext {
     // set the span in their `decorate` function (preferably using set_span).
     /// Emit a lint at the appropriate level, with an optional associated span.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
-    ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn lookup<S: Into<MultiSpan>>(
@@ -1011,8 +1006,6 @@ pub trait LintContext {
 
     /// Emit a lint at the appropriate level, with an associated span.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
-    ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn struct_span_lint<S: Into<MultiSpan>>(
@@ -1034,8 +1027,6 @@ pub trait LintContext {
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
