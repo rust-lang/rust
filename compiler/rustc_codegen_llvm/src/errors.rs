@@ -107,7 +107,8 @@ impl IntoDiagnostic<'_, FatalError> for ParseTargetMachineConfig<'_> {
         let (message, _) = diag.styled_message().first().expect("`LlvmError` with no message");
         let message = handler.eagerly_translate_to_string(message.clone(), diag.args());
 
-        let mut diag = handler.struct_diagnostic(fluent::codegen_llvm_parse_target_machine_config);
+        let mut diag =
+            handler.struct_almost_fatal(fluent::codegen_llvm_parse_target_machine_config);
         diag.set_arg("error", message);
         diag
     }

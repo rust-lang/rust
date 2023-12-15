@@ -512,7 +512,7 @@ pub fn report_msg<'tcx>(
         }
     }
 
-    handler.emit_diagnostic(&mut err);
+    handler.emit_diagnostic(err);
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
