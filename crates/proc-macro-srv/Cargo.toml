@@ -34,7 +34,7 @@ proc-macro-api.workspace = true
 expect-test = "1.4.0"
 
 # used as proc macro test targets
-proc-macro-test.workspace = true
+proc-macro-test.path = "./proc-macro-test"
 
 [features]
 sysroot-abi = []
