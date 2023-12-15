@@ -9630,9 +9630,9 @@ The tracking issue for this feature is: [#81944]
         label: "waker_getters",
         description: r##"# `waker_getters`
 
-The tracking issue for this feature is: [#87021]
+The tracking issue for this feature is: [#96992]
 
-[#87021]: https://github.com/rust-lang/rust/issues/87021
+[#96992]: https://github.com/rust-lang/rust/issues/96992
 
 ------------------------
 "##,
