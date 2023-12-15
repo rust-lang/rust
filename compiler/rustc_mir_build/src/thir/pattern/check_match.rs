@@ -9,7 +9,7 @@ use crate::errors::*;
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -948,7 +948,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     err.note(format!("the matched value is of type `{}`", scrut_ty));
 
     if !is_empty_match {
-        let mut non_exhaustive_tys = FxHashSet::default();
+        let mut non_exhaustive_tys = FxIndexSet::default();
         // Look at the first witness.
         collect_non_exhaustive_tys(cx, &witnesses[0], &mut non_exhaustive_tys);
 
@@ -1104,7 +1104,7 @@ fn joined_uncovered_patterns<'p, 'tcx>(
 fn collect_non_exhaustive_tys<'tcx>(
     cx: &MatchCheckCtxt<'_, 'tcx>,
     pat: &WitnessPat<'tcx>,
-    non_exhaustive_tys: &mut FxHashSet<Ty<'tcx>>,
+    non_exhaustive_tys: &mut FxIndexSet<Ty<'tcx>>,
 ) {
     if matches!(pat.ctor(), Constructor::NonExhaustive) {
         non_exhaustive_tys.insert(pat.ty());
