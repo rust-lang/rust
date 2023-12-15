@@ -32,11 +32,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         None
     }
 
-    fn root_lt_var(&self, vid: I::InferRegion) -> I::InferRegion {
-        vid
-    }
-
-    fn probe_lt_var(&self, _vid: I::InferRegion) -> Option<I::Region> {
+    fn opportunistic_resolve_lt_var(&self, _vid: I::InferRegion) -> Option<I::Region> {
         None
     }
 
