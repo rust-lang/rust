@@ -205,7 +205,7 @@ impl CStr {
     /// * The memory pointed to by `ptr` must contain a valid nul terminator at the
     ///   end of the string.
     ///
-    /// * `ptr` must be [valid] for reads of bytes up to and including the null terminator.
+    /// * `ptr` must be [valid] for reads of bytes up to and including the nul terminator.
     ///   This means in particular:
     ///
     ///     * The entire memory range of this `CStr` must be contained within a single allocated object!
@@ -415,7 +415,7 @@ impl CStr {
             let mut i = bytes.len().saturating_sub(1);
             assert!(!bytes.is_empty() && bytes[i] == 0, "input was not nul-terminated");
 
-            // Ending null byte exists, skip to the rest.
+            // Ending nul byte exists, skip to the rest.
             while i != 0 {
                 i -= 1;
                 let byte = bytes[i];
