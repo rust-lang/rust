@@ -1,5 +1,5 @@
 Function name: unicode::main
-Raw bytes (67): 0x[01, 01, 09, 01, 05, 03, 05, 1e, 0d, 22, 09, 03, 05, 11, 1b, 1e, 0d, 22, 09, 03, 05, 09, 01, 0e, 01, 00, 0b, 05, 01, 09, 00, 0b, 03, 00, 0f, 00, 18, 05, 00, 19, 00, 24, 22, 02, 08, 00, 13, 09, 00, 17, 00, 22, 11, 00, 23, 02, 06, 1b, 02, 06, 00, 07, 17, 02, 05, 01, 02]
+Raw bytes (67): 0x[01, 01, 09, 01, 05, 03, 05, 1e, 0d, 22, 09, 03, 05, 11, 1b, 1e, 0d, 22, 09, 03, 05, 09, 01, 0e, 01, 00, 0b, 05, 01, 09, 00, 0c, 03, 00, 10, 00, 1b, 05, 00, 1c, 00, 28, 22, 02, 08, 00, 25, 09, 00, 29, 00, 46, 11, 00, 47, 02, 06, 1b, 02, 06, 00, 07, 17, 02, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 9
@@ -14,34 +14,34 @@ Number of expressions: 9
 - expression 8 operands: lhs = Expression(0, Add), rhs = Counter(1)
 Number of file 0 mappings: 9
 - Code(Counter(0)) at (prev + 14, 1) to (start + 0, 11)
-- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 11)
-- Code(Expression(0, Add)) at (prev + 0, 15) to (start + 0, 24)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Expression(0, Add)) at (prev + 0, 16) to (start + 0, 27)
     = (c0 + c1)
-- Code(Counter(1)) at (prev + 0, 25) to (start + 0, 36)
-- Code(Expression(8, Sub)) at (prev + 2, 8) to (start + 0, 19)
+- Code(Counter(1)) at (prev + 0, 28) to (start + 0, 40)
+- Code(Expression(8, Sub)) at (prev + 2, 8) to (start + 0, 37)
     = ((c0 + c1) - c1)
-- Code(Counter(2)) at (prev + 0, 23) to (start + 0, 34)
-- Code(Counter(4)) at (prev + 0, 35) to (start + 2, 6)
+- Code(Counter(2)) at (prev + 0, 41) to (start + 0, 70)
+- Code(Counter(4)) at (prev + 0, 71) to (start + 2, 6)
 - Code(Expression(6, Add)) at (prev + 2, 6) to (start + 0, 7)
     = ((((c0 + c1) - c1) - c2) + c3)
 - Code(Expression(5, Add)) at (prev + 2, 5) to (start + 1, 2)
     = (c4 + ((((c0 + c1) - c1) - c2) + c3))
 
 Function name: unicode::サビ
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 1e, 12, 00, 14]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 1e, 14, 00, 18]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 30, 18) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 30, 20) to (start + 0, 24)
 
 Function name: unicode::他 (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 1e, 15, 00, 1f]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 1e, 19, 00, 25]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 30, 21) to (start + 0, 31)
+- Code(Zero) at (prev + 30, 25) to (start + 0, 37)
 
 Function name: unicode::申し訳ございません
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 18, 01, 02, 02]

@@ -1,5 +1,5 @@
 // edition: 2021
-// ignore-mode-coverage-run - `llvm-cov` fails due to incorrectly-split UTF-8
+// ignore-windows - we can't force `llvm-cov` to use ANSI escapes on Windows
 // llvm-cov-flags: --use-color
 
 // Check that column numbers are denoted in bytes, so that they don't cause
