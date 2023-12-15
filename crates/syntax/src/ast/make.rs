@@ -248,8 +248,11 @@ pub fn impl_(
 
     let gen_params = generic_params.map_or_else(String::new, |it| it.to_string());
 
+    let body_newline =
+        if where_clause.is_some() && body.is_none() { "\n".to_string() } else { String::new() };
+
     let where_clause = match where_clause {
-        Some(pr) => pr.to_string(),
+        Some(pr) => format!("\n{pr}\n"),
         None => " ".to_string(),
     };
 
@@ -258,7 +261,9 @@ pub fn impl_(
         None => String::new(),
     };
 
-    ast_from_text(&format!("impl{gen_params} {path_type}{gen_args}{where_clause}{{{body}}}"))
+    ast_from_text(&format!(
+        "impl{gen_params} {path_type}{gen_args}{where_clause}{{{body_newline}{body}}}"
+    ))
 }
 
 pub fn impl_trait(
@@ -284,6 +289,13 @@ pub fn impl_trait(
 
     let is_negative = if is_negative { "! " } else { "" };
 
+    let body_newline =
+        if (ty_where_clause.is_some() || trait_where_clause.is_some()) && body.is_none() {
+            "\n".to_string()
+        } else {
+            String::new()
+        };
+
     let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
         .map_or_else(|| " ".to_string(), |wc| format!("\n{}\n", wc));
 
@@ -292,7 +304,7 @@ pub fn impl_trait(
         None => String::new(),
     };
 
-    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body}}}"))
+    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body_newline}{body}}}"))
 }
 
 pub fn impl_trait_type(bounds: ast::TypeBoundList) -> ast::ImplTraitType {

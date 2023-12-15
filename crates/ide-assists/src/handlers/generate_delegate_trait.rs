@@ -956,7 +956,8 @@ where
 impl<T> AnotherTrait for S<T>
 where
     T: AnotherTrait,
-{}"#,
+{
+}"#,
         );
     }
 
@@ -1446,7 +1447,8 @@ where
 impl<T> AnotherTrait for S<T>
 where
     T: AnotherTrait,
-{}"#,
+{
+}"#,
         );
     }
 
