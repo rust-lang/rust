@@ -4783,8 +4783,14 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
     };
 
     let future = tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
-    let Some(hir::GenericBound::LangItemTrait(_, _, _, generics)) = future.bounds.get(0) else {
-        // `async fn` should always lower to a lang item bound... but don't ICE.
+    let [hir::GenericBound::Trait(trait_ref, _)] = future.bounds else {
+        // `async fn` should always lower to a single bound... but don't ICE.
+        return None;
+    };
+    let Some(hir::PathSegment { args: Some(generics), .. }) =
+        trait_ref.trait_ref.path.segments.last()
+    else {
+        // desugaring to a single path segment for `Future<...>`.
         return None;
     };
     let Some(hir::TypeBindingKind::Equality { term: hir::Term::Ty(future_output_ty) }) =
