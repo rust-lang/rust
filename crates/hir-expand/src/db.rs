@@ -20,7 +20,7 @@ use crate::{
     attrs::{collect_attrs, RawAttrs},
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
-    fixup::{self, SyntaxFixupUndoInfo},
+    fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
     hygiene::{apply_mark, SyntaxContextData, Transparency},
     span::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
@@ -421,6 +421,15 @@ fn macro_arg(
                     syntax::NodeOrToken::Token(_) => true,
                 });
                 fixups.remove.extend(censor);
+                {
+                    let mut tt = mbe::syntax_node_to_token_tree_modified(
+                        &syntax,
+                        map.as_ref(),
+                        fixups.append.clone(),
+                        fixups.remove.clone(),
+                    );
+                    reverse_fixups(&mut tt, &fixups.undo_info);
+                }
                 (
                     mbe::syntax_node_to_token_tree_modified(
                         &syntax,

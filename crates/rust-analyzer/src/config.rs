@@ -1354,6 +1354,7 @@ impl Config {
         }
     }
 
+    // FIXME: This should be an AbsolutePathBuf
     fn target_dir_from_config(&self) -> Option<PathBuf> {
         self.data.rust_analyzerTargetDir.as_ref().and_then(|target_dir| match target_dir {
             TargetDirectory::UseSubdirectory(yes) if *yes => {
