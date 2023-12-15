@@ -769,6 +769,14 @@ impl Clone for LocalWaker {
     }
 }
 
+#[unstable(feature = "local_waker", issue = "118959")]
+impl AsRef<LocalWaker> for Waker {
+    fn as_ref(&self) -> &LocalWaker {
+        // SAFETY: LocalWaker is just Waker without thread safety
+        unsafe { transmute(self) }
+    }
+}
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl fmt::Debug for LocalWaker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
