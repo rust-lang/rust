@@ -238,7 +238,7 @@ impl<'a> Context<'a> {
     }
     /// Returns a reference to the [`LocalWaker`] for the current task.
     #[inline]
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn local_waker(&self) -> &'a LocalWaker {
         &self.local_waker
@@ -247,7 +247,7 @@ impl<'a> Context<'a> {
     /// otherwise it returns `None`.
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn try_waker(&self) -> Option<&'a Waker> {
         self.waker
     }
@@ -282,7 +282,7 @@ impl fmt::Debug for Context<'_> {
 /// assert_eq!(poll, Poll::Ready(20));
 ///
 /// ```
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 #[derive(Debug)]
 pub struct ContextBuilder<'a> {
     waker: Option<&'a Waker>,
@@ -293,7 +293,7 @@ impl<'a> ContextBuilder<'a> {
     /// Create a ContextBuilder from a Waker.
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn from_waker(waker: &'a Waker) -> Self {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
@@ -303,7 +303,7 @@ impl<'a> ContextBuilder<'a> {
     /// Create a ContextBuilder from a LocalWaker.
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn from_local_waker(local_waker: &'a LocalWaker) -> Self {
         Self { local_waker, waker: None }
     }
@@ -312,14 +312,14 @@ impl<'a> ContextBuilder<'a> {
 
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn waker(self, waker: &'a Waker) -> Self {
         Self { waker: Some(waker), ..self }
     }
 
     /// This method is used to set the value for the local waker on `Context`.
     #[inline]
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn local_waker(self, local_waker: &'a LocalWaker) -> Self {
         Self { local_waker, ..self }
@@ -327,7 +327,7 @@ impl<'a> ContextBuilder<'a> {
 
     /// Builds the `Context`.
     #[inline]
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn build(self) -> Context<'a> {
         let ContextBuilder { waker, local_waker } = self;
@@ -370,7 +370,7 @@ impl<'a> ContextBuilder<'a> {
 /// with_waker(async { /* ... */ }, &Waker::noop()).await;
 /// # }
 /// ```
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 impl<'a> From<&mut Context<'a>> for ContextBuilder<'a> {
     #[inline]
     fn from(value: &mut Context<'a>) -> Self {
@@ -623,19 +623,19 @@ impl fmt::Debug for Waker {
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`local_waker`]: core::task::Context::local_waker
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 #[repr(transparent)]
 pub struct LocalWaker {
     waker: RawWaker,
 }
 
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 impl Unpin for LocalWaker {}
 
 impl LocalWaker {
     /// Creates a new `LocalWaker` from [`RawWaker`].
     ///
-    /// The behavior of the returned `Waker` is undefined if the contract defined
+    /// The behavior of the returned `LocalWaker` is undefined if the contract defined
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
     /// Therefore this method is unsafe.
     #[inline]
@@ -651,7 +651,7 @@ impl LocalWaker {
     /// As long as the executor keeps running and the task is not finished, it is
     /// guaranteed that each invocation of [`wake()`](Self::wake) (or
     /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
-    /// [`poll()`] of the task to which this `Waker` belongs. This makes
+    /// [`poll()`] of the task to which this `LocalWaker` belongs. This makes
     /// it possible to temporarily yield to other tasks while running potentially
     /// unbounded processing loops.
     ///
@@ -749,7 +749,7 @@ impl LocalWaker {
         unsafe { (self.waker.vtable.wake_by_ref)(self.waker.data) }
     }
 }
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 impl Clone for LocalWaker {
     #[inline]
     fn clone(&self) -> Self {

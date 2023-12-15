@@ -3,16 +3,18 @@
 //! Types and Traits for working with asynchronous tasks.
 //!
 //! **Note**: Some of the types in this module are only available
-//! on platforms that support atomic loads and stores of pointers. 
-//! This may be detected at compile time using 
+//! on platforms that support atomic loads and stores of pointers.
+//! This may be detected at compile time using
 //! `#[cfg(target_has_atomic = "ptr")]`.
 
+use crate::rc::Rc;
 use core::mem::ManuallyDrop;
 use core::task::{LocalWaker, RawWaker, RawWakerVTable};
-use crate::rc::Rc;
 
 #[cfg(target_has_atomic = "ptr")]
-use core::{task::Waker, sync::Arc};
+use crate::sync::Arc;
+#[cfg(target_has_atomic = "ptr")]
+use core::task::Waker;
 
 /// The implementation of waking a task on an executor.
 ///
@@ -174,7 +176,7 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 /// and poll them. When a task is woken, it will put itself back on the run queue to be polled by the executor.
 ///
 /// **Note:** A real world example would interlieve poll calls with calls to an io reactor to wait for events instead
-/// of spinning on a loop. 
+/// of spinning on a loop.
 ///
 /// ```rust
 /// #![feature(local_waker)]
@@ -242,10 +244,10 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 /// });
 /// ```
 ///
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 pub trait LocalWake {
     /// Wake this task.
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     fn wake(self: Rc<Self>);
 
     /// Wake this task without consuming the local waker.
@@ -255,13 +257,13 @@ pub trait LocalWake {
     /// [`Rc`] and calls [`wake`] on the clone.
     ///
     /// [`wake`]: Rc::wake
-    #[unstable(feature = "local_waker", issue = "none")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     fn wake_by_ref(self: &Rc<Self>) {
         self.clone().wake();
     }
 }
 
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 impl<W: LocalWake + 'static> From<Rc<W>> for LocalWaker {
     /// Use a `Wake`-able type as a `LocalWaker`.
     ///
@@ -273,7 +275,7 @@ impl<W: LocalWake + 'static> From<Rc<W>> for LocalWaker {
     }
 }
 #[allow(ineffective_unstable_trait_impl)]
-#[unstable(feature = "local_waker", issue = "none")]
+#[unstable(feature = "local_waker", issue = "118959")]
 impl<W: LocalWake + 'static> From<Rc<W>> for RawWaker {
     /// Use a `Wake`-able type as a `RawWaker`.
     ///
