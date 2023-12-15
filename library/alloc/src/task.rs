@@ -256,7 +256,7 @@ pub trait LocalWake {
     /// waker, it should override this method. By default, it clones the
     /// [`Rc`] and calls [`wake`] on the clone.
     ///
-    /// [`wake`]: Rc::wake
+    /// [`wake`]: LocalWaker::wake
     #[unstable(feature = "local_waker", issue = "118959")]
     fn wake_by_ref(self: &Rc<Self>) {
         self.clone().wake();
