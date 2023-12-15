@@ -574,7 +574,6 @@ fn emit_implied_wf_lint<'tcx>(
                     Applicability::MaybeIncorrect,
                 );
             }
-            lint
         },
     );
 }

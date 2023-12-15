@@ -522,7 +522,7 @@ fn lint_auto_trait_impl<'tcx>(
                 format!(
                     "try using the same sequence of generic parameters as the {self_descr} definition",
                 ),
-            )
+            );
         },
     );
 }

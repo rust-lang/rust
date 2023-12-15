@@ -1849,8 +1849,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lint.note(format!(
             "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
         ));
-
-        lint
     });
     }
 

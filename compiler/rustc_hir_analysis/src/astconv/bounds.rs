@@ -134,17 +134,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         only_self_bounds,
                     );
                 }
-                &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
-                    self.instantiate_lang_item_trait_ref(
-                        lang_item,
-                        span,
-                        hir_id,
-                        args,
-                        param_ty,
-                        bounds,
-                        only_self_bounds,
-                    );
-                }
                 hir::GenericBound::Outlives(lifetime) => {
                     let region = self.ast_region_to_region(lifetime, None);
                     bounds.push_region_bound(

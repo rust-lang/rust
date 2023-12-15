@@ -1075,10 +1075,6 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
         GenericBound::Trait(ref typ, _modifier) => {
             visitor.visit_poly_trait_ref(typ);
         }
-        GenericBound::LangItemTrait(_, _span, hir_id, args) => {
-            visitor.visit_id(hir_id);
-            visitor.visit_generic_args(args);
-        }
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
     }
 }

@@ -184,22 +184,6 @@ fn clean_generic_bound<'tcx>(
 ) -> Option<GenericBound> {
     Some(match *bound {
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
-        hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
-            let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
-
-            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(cx.tcx, def_id));
-
-            let generic_args = clean_generic_args(generic_args, cx);
-            let GenericArgs::AngleBracketed { bindings, .. } = generic_args else {
-                bug!("clean: parenthesized `GenericBound::LangItemTrait`");
-            };
-
-            let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, bindings);
-            GenericBound::TraitBound(
-                PolyTrait { trait_, generic_params: vec![] },
-                hir::TraitBoundModifier::None,
-            )
-        }
         hir::GenericBound::Trait(ref t, modifier) => {
             // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
             if modifier == hir::TraitBoundModifier::MaybeConst

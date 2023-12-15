@@ -678,36 +678,57 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         )
     }
 
-    fn instantiate_poly_trait_ref_inner(
+    /// Given a trait bound like `Debug`, applies that trait bound the given self-type to construct
+    /// a full trait reference. The resulting trait reference is returned. This may also generate
+    /// auxiliary bounds, which are added to `bounds`.
+    ///
+    /// Example:
+    ///
+    /// ```ignore (illustrative)
+    /// poly_trait_ref = Iterator<Item = u32>
+    /// self_ty = Foo
+    /// ```
+    ///
+    /// this would return `Foo: Iterator` and add `<Foo as Iterator>::Item = u32` into `bounds`.
+    ///
+    /// **A note on binders:** against our usual convention, there is an implied binder around
+    /// the `self_ty` and `poly_trait_ref` parameters here. So they may reference bound regions.
+    /// If for example you had `for<'a> Foo<'a>: Bar<'a>`, then the `self_ty` would be `Foo<'a>`
+    /// where `'a` is a bound region at depth 0. Similarly, the `poly_trait_ref` would be
+    /// `Bar<'a>`. The returned poly-trait-ref will have this binder instantiated explicitly,
+    /// however.
+    #[instrument(level = "debug", skip(self, span, constness, bounds, speculative))]
+    pub(crate) fn instantiate_poly_trait_ref(
         &self,
-        hir_id: hir::HirId,
+        trait_ref: &hir::TraitRef<'_>,
         span: Span,
-        binding_span: Option<Span>,
         constness: ty::BoundConstness,
         polarity: ty::ImplPolarity,
+        self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
-        trait_ref_span: Span,
-        trait_def_id: DefId,
-        trait_segment: &hir::PathSegment<'_>,
-        args: &GenericArgs<'_>,
-        infer_args: bool,
-        self_ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
     ) -> GenericArgCountResult {
+        let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
+        let trait_segment = trait_ref.path.segments.last().unwrap();
+        let args = trait_segment.args();
+
+        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
+        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
+
         let (generic_args, arg_count) = self.create_args_for_ast_path(
-            trait_ref_span,
+            trait_ref.path.span,
             trait_def_id,
             &[],
             trait_segment,
             args,
-            infer_args,
+            trait_segment.infer_args,
             Some(self_ty),
             constness,
         );
 
         let tcx = self.tcx();
-        let bound_vars = tcx.late_bound_vars(hir_id);
+        let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
         debug!(?bound_vars);
 
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
@@ -735,13 +756,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             // Specify type to assert that error was already reported in `Err` case.
             let _: Result<_, ErrorGuaranteed> = self.add_predicates_for_ast_type_binding(
-                hir_id,
+                trait_ref.hir_ref_id,
                 poly_trait_ref,
                 binding,
                 bounds,
                 speculative,
                 &mut dup_bindings,
-                binding_span.unwrap_or(binding.span),
+                binding.span,
                 constness,
                 only_self_bounds,
                 polarity,
@@ -750,102 +771,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         arg_count
-    }
-
-    /// Given a trait bound like `Debug`, applies that trait bound the given self-type to construct
-    /// a full trait reference. The resulting trait reference is returned. This may also generate
-    /// auxiliary bounds, which are added to `bounds`.
-    ///
-    /// Example:
-    ///
-    /// ```ignore (illustrative)
-    /// poly_trait_ref = Iterator<Item = u32>
-    /// self_ty = Foo
-    /// ```
-    ///
-    /// this would return `Foo: Iterator` and add `<Foo as Iterator>::Item = u32` into `bounds`.
-    ///
-    /// **A note on binders:** against our usual convention, there is an implied bounder around
-    /// the `self_ty` and `poly_trait_ref` parameters here. So they may reference bound regions.
-    /// If for example you had `for<'a> Foo<'a>: Bar<'a>`, then the `self_ty` would be `Foo<'a>`
-    /// where `'a` is a bound region at depth 0. Similarly, the `poly_trait_ref` would be
-    /// `Bar<'a>`. The returned poly-trait-ref will have this binder instantiated explicitly,
-    /// however.
-    #[instrument(level = "debug", skip(self, span, constness, bounds, speculative))]
-    pub(crate) fn instantiate_poly_trait_ref(
-        &self,
-        trait_ref: &hir::TraitRef<'_>,
-        span: Span,
-        constness: ty::BoundConstness,
-        polarity: ty::ImplPolarity,
-        self_ty: Ty<'tcx>,
-        bounds: &mut Bounds<'tcx>,
-        speculative: bool,
-        only_self_bounds: OnlySelfBounds,
-    ) -> GenericArgCountResult {
-        let hir_id = trait_ref.hir_ref_id;
-        let binding_span = None;
-        let trait_ref_span = trait_ref.path.span;
-        let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
-        let trait_segment = trait_ref.path.segments.last().unwrap();
-        let args = trait_segment.args();
-        let infer_args = trait_segment.infer_args;
-
-        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
-        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
-
-        self.instantiate_poly_trait_ref_inner(
-            hir_id,
-            span,
-            binding_span,
-            constness,
-            polarity,
-            bounds,
-            speculative,
-            trait_ref_span,
-            trait_def_id,
-            trait_segment,
-            args,
-            infer_args,
-            self_ty,
-            only_self_bounds,
-        )
-    }
-
-    pub(crate) fn instantiate_lang_item_trait_ref(
-        &self,
-        lang_item: hir::LangItem,
-        span: Span,
-        hir_id: hir::HirId,
-        args: &GenericArgs<'_>,
-        self_ty: Ty<'tcx>,
-        bounds: &mut Bounds<'tcx>,
-        only_self_bounds: OnlySelfBounds,
-    ) {
-        let binding_span = Some(span);
-        let constness = ty::BoundConstness::NotConst;
-        let speculative = false;
-        let trait_ref_span = span;
-        let trait_def_id = self.tcx().require_lang_item(lang_item, Some(span));
-        let trait_segment = &hir::PathSegment::invalid();
-        let infer_args = false;
-
-        self.instantiate_poly_trait_ref_inner(
-            hir_id,
-            span,
-            binding_span,
-            constness,
-            ty::ImplPolarity::Positive,
-            bounds,
-            speculative,
-            trait_ref_span,
-            trait_def_id,
-            trait_segment,
-            args,
-            infer_args,
-            self_ty,
-            only_self_bounds,
-        );
     }
 
     fn ast_path_to_mono_trait_ref(
@@ -1509,8 +1434,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
                         Applicability::MachineApplicable,
                     );
-
-                    lint
                 },
             );
         }

@@ -429,7 +429,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_param_bound(&mut self, b: &'v hir::GenericBound<'v>) {
         record_variants!(
             (self, b, b, Id::None, hir, GenericBound, GenericBound),
-            [Trait, LangItemTrait, Outlives]
+            [Trait, Outlives]
         );
         hir_visit::walk_param_bound(self, b)
     }

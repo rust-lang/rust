@@ -578,7 +578,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     hir_id,
                     no_sanitize_span,
                     "`no_sanitize` will have no effect after inlining",
-                    |lint| lint.span_note(inline_span, "inlining requested here"),
+                    |lint| {
+                        lint.span_note(inline_span, "inlining requested here");
+                    },
                 )
             }
         }

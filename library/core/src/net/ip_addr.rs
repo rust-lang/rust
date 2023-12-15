@@ -1437,7 +1437,7 @@ impl Ipv6Addr {
     /// - The [unspecified address] ([`is_unspecified`](Ipv6Addr::is_unspecified))
     /// - The [loopback address] ([`is_loopback`](Ipv6Addr::is_loopback))
     /// - IPv4-mapped addresses
-    /// - Addresses reserved for benchmarking
+    /// - Addresses reserved for benchmarking ([`is_benchmarking`](Ipv6Addr::is_benchmarking))
     /// - Addresses reserved for documentation ([`is_documentation`](Ipv6Addr::is_documentation))
     /// - Unique local addresses ([`is_unique_local`](Ipv6Addr::is_unique_local))
     /// - Unicast addresses with link-local scope ([`is_unicast_link_local`](Ipv6Addr::is_unicast_link_local))
