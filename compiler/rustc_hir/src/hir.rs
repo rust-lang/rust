@@ -2815,7 +2815,7 @@ impl TraitRef<'_> {
         match self.path.res {
             Res::Def(DefKind::Trait | DefKind::TraitAlias, did) => Some(did),
             Res::Err => None,
-            _ => unreachable!(),
+            res => panic!("{res:?} did not resolve to a trait or trait alias"),
         }
     }
 }

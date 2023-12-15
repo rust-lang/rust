@@ -336,7 +336,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::InlineAsmOperand::Const { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
                         | hir::InlineAsmOperand::SymStatic { .. } => {
-                            unreachable!()
+                            unreachable!("{op:?} is not a register operand");
                         }
                     };
 
@@ -380,7 +380,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     {
                                         reg_sym.as_str()
                                     } else {
-                                        unreachable!();
+                                        unreachable!("{op:?} is not a register operand");
                                     }
                                 };
 

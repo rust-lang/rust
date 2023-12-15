@@ -492,8 +492,9 @@ impl<'tcx> ConstToPat<'tcx> {
                 PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
             }
             ty::FnPtr(..) => {
-                // Valtree construction would never succeed for these, so this is unreachable.
-                unreachable!()
+                unreachable!(
+                    "Valtree construction would never succeed for FnPtr, so this is unreachable."
+                )
             }
             _ => {
                 let err = InvalidPattern { span, non_sm_ty: ty };

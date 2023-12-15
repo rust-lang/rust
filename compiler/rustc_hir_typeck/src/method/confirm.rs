@@ -415,7 +415,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             )
                             .into()
                     }
-                    _ => unreachable!(),
+                    (kind, arg) => {
+                        bug!("mismatched method arg kind {kind:?} in turbofish: {arg:?}")
+                    }
                 }
             }
 

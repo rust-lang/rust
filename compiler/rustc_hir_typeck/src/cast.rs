@@ -149,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum CastError {
     ErrorGuaranteed(ErrorGuaranteed),
 
@@ -271,7 +271,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         match e {
                             CastError::NeedViaPtr => "a raw pointer",
                             CastError::NeedViaThinPtr => "a thin pointer",
-                            _ => bug!(),
+                            e => unreachable!("control flow means we should never encounter a {e:?}"),
                         }
                     ));
                 }
@@ -288,13 +288,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.cast_ty,
                     fcx,
                 )
-                .help(format!(
-                    "cast through {} first",
-                    match e {
-                        CastError::NeedViaInt => "an integer",
-                        _ => bug!(),
-                    }
-                ))
+                .help("cast through an integer first")
                 .emit();
             }
             CastError::IllegalCast => {
@@ -534,7 +528,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let unknown_cast_to = match e {
                     CastError::UnknownCastPtrKind => true,
                     CastError::UnknownExprPtrKind => false,
-                    _ => bug!(),
+                    e => unreachable!("control flow means we should never encounter a {e:?}"),
                 };
                 let (span, sub) = if unknown_cast_to {
                     (self.cast_span, errors::CastUnknownPointerSub::To(self.cast_span))

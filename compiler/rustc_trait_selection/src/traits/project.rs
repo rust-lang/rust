@@ -191,7 +191,9 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
                 match (current, candidate) {
                     (ParamEnv(..), ParamEnv(..)) => convert_to_ambiguous = (),
                     (ParamEnv(..), _) => return false,
-                    (_, ParamEnv(..)) => unreachable!(),
+                    (_, ParamEnv(..)) => bug!(
+                        "should never prefer non-param-env candidates over param-env candidates"
+                    ),
                     (_, _) => convert_to_ambiguous = (),
                 }
             }
@@ -2080,10 +2082,11 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Coroutine(_, args, _) = self_ty.kind() else {
+        unreachable!(
+            "expected coroutine self type for built-in coroutine candidate, found {self_ty}"
+        )
     };
     let coroutine_sig = args.as_coroutine().sig();
     let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
@@ -2113,7 +2116,10 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     } else if name == sym::Yield {
         yield_ty
     } else {
-        bug!()
+        span_bug!(
+            tcx.def_span(obligation.predicate.def_id),
+            "unexpected associated type: `Coroutine::{name}`"
+        );
     };
 
     let predicate = ty::ProjectionPredicate {
@@ -2131,10 +2137,11 @@ fn confirm_future_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Coroutine(_, args, _) = self_ty.kind() else {
+        unreachable!(
+            "expected coroutine self type for built-in async future candidate, found {self_ty}"
+        )
     };
     let coroutine_sig = args.as_coroutine().sig();
     let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
@@ -2174,10 +2181,9 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Coroutine(_, args, _) = self_ty.kind() else {
+        unreachable!("expected coroutine self type for built-in gen candidate, found {self_ty}")
     };
     let gen_sig = args.as_coroutine().sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
@@ -2341,9 +2347,9 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Closure(_, args) = selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Closure(_, args) = self_ty.kind() else {
+        unreachable!("expected closure self type for closure candidate, found {self_ty}")
     };
     let closure_sig = args.as_closure().sig();
     let Normalized { value: closure_sig, obligations } = normalize_with_depth(

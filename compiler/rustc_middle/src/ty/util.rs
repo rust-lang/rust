@@ -421,13 +421,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let impl_args = match *self.type_of(impl_def_id).instantiate_identity().kind() {
             ty::Adt(def_, args) if def_ == def => args,
-            _ => bug!(),
+            _ => span_bug!(self.def_span(impl_def_id), "expected ADT for self type of `Drop` impl"),
         };
 
-        let item_args = match *self.type_of(def.did()).instantiate_identity().kind() {
-            ty::Adt(def_, args) if def_ == def => args,
-            _ => bug!(),
-        };
+        let item_args = ty::GenericArgs::identity_for_item(self, def.did());
 
         let result = iter::zip(item_args, impl_args)
             .filter(|&(_, k)| {

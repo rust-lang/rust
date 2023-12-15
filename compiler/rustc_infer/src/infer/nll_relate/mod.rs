@@ -247,7 +247,9 @@ where
         let (a, b) = match (a.kind(), b.kind()) {
             (&ty::Alias(ty::Opaque, ..), _) => (a, generalize(b, false)?),
             (_, &ty::Alias(ty::Opaque, ..)) => (generalize(a, true)?, b),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "expected at least one opaque type in `relate_opaques`, got {a} and {b}."
+            ),
         };
         let cause = ObligationCause::dummy_with_span(self.delegate.span());
         let obligations = self
@@ -707,7 +709,9 @@ where
             ),
             // FIXME(deferred_projection_equality): Implement this when we trigger it.
             // Probably just need to do nothing here.
-            ty::Variance::Bivariant => unreachable!(),
+            ty::Variance::Bivariant => {
+                unreachable!("cannot defer an alias-relate goal with Bivariant variance (yet?)")
+            }
         })]);
     }
 }
