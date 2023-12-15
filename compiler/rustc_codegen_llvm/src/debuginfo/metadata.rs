@@ -977,6 +977,27 @@ fn build_field_di_node<'ll, 'tcx>(
     }
 }
 
+/// Returns the `DIFlags` corresponding to the visibility of the item identified by `did`.
+///
+/// `DIFlags::Flag{Public,Protected,Private}` correspond to `DW_AT_accessibility`
+/// (public/protected/private) aren't exactly right for Rust, but neither is `DW_AT_visibility`
+/// (local/exported/qualified), and there's no way to set `DW_AT_visibility` in LLVM's API.
+fn visibility_di_flags<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    did: DefId,
+    type_did: DefId,
+) -> DIFlags {
+    let parent_did = cx.tcx.parent(type_did);
+    let visibility = cx.tcx.visibility(did);
+    match visibility {
+        Visibility::Public => DIFlags::FlagPublic,
+        // Private fields have a restricted visibility of the module containing the type.
+        Visibility::Restricted(did) if did == parent_did => DIFlags::FlagPrivate,
+        // `pub(crate)`/`pub(super)` visibilities are any other restricted visibility.
+        Visibility::Restricted(..) => DIFlags::FlagProtected,
+    }
+}
+
 /// Creates the debuginfo node for a Rust struct type. Maybe be a regular struct or a tuple-struct.
 fn build_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -1000,7 +1021,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             &compute_debuginfo_type_name(cx.tcx, struct_type, false),
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
-            DIFlags::FlagZero,
+            visibility_di_flags(cx, adt_def.did(), adt_def.did()),
         ),
         // Fields:
         |cx, owner| {
@@ -1023,7 +1044,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         &field_name[..],
                         (field_layout.size, field_layout.align.abi),
                         struct_type_and_layout.fields.offset(i),
-                        DIFlags::FlagZero,
+                        visibility_di_flags(cx, f.did, adt_def.did()),
                         type_di_node(cx, field_layout.ty),
                     )
                 })

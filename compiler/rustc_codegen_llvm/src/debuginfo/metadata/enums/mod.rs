@@ -250,6 +250,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
     variant_index: VariantIdx,
     variant_def: &VariantDef,
     variant_layout: TyAndLayout<'tcx>,
+    di_flags: DIFlags,
 ) -> &'ll DIType {
     debug_assert_eq!(variant_layout.ty, enum_type_and_layout.ty);
 
@@ -267,7 +268,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_type_and_layout),
             Some(enum_type_di_node),
-            DIFlags::FlagZero,
+            di_flags,
         ),
         |cx, struct_type_di_node| {
             (0..variant_layout.fields.count())
@@ -289,7 +290,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                         &field_name,
                         (field_layout.size, field_layout.align.abi),
                         variant_layout.fields.offset(field_index),
-                        DIFlags::FlagZero,
+                        di_flags,
                         type_di_node(cx, field_layout.ty),
                     )
                 })
