@@ -204,11 +204,14 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                 res = Err(err.emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match (tcx.impl_polarity(def_id), impl_.polarity) {
-                (ty::ImplPolarity::Positive, _) => {
+            match tcx.impl_polarity(def_id) {
+                ty::ImplPolarity::Positive => {
                     res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
                 }
-                (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
+                ty::ImplPolarity::Negative => {
+                    let ast::ImplPolarity::Negative(span) = impl_.polarity else {
+                        bug!("impl_polarity query disagrees with impl's polarity in AST");
+                    };
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
                     if let hir::Defaultness::Default { .. } = impl_.defaultness {
                         let mut spans = vec![span];
@@ -222,10 +225,9 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                         .emit());
                     }
                 }
-                (ty::ImplPolarity::Reservation, _) => {
+                ty::ImplPolarity::Reservation => {
                     // FIXME: what amount of WF checking do we need for reservation impls?
                 }
-                _ => unreachable!(),
             }
             res
         }
@@ -1068,9 +1070,14 @@ fn check_type_defn<'tcx>(
                         hir_ty.span,
                         wfcx.body_def_id,
                         traits::FieldSized {
-                            adt_kind: match item_adt_kind(&item.kind) {
-                                Some(i) => i,
-                                None => bug!(),
+                            adt_kind: match &item.kind {
+                                ItemKind::Struct(..) => AdtKind::Struct,
+                                ItemKind::Union(..) => AdtKind::Union,
+                                ItemKind::Enum(..) => AdtKind::Enum,
+                                kind => span_bug!(
+                                    item.span,
+                                    "should be wfchecking an ADT, got {kind:?}"
+                                ),
                             },
                             span: hir_ty.span,
                             last,
@@ -1302,7 +1309,9 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         | GenericParamDefKind::Const { has_default, .. } => {
             has_default && def.index >= generics.parent_count as u32
         }
-        GenericParamDefKind::Lifetime => unreachable!(),
+        GenericParamDefKind::Lifetime => {
+            span_bug!(tcx.def_span(def.def_id), "lifetime params can have no default")
+        }
     };
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
@@ -1750,15 +1759,15 @@ fn check_variances_for_type_defn<'tcx>(
             }
         }
         ItemKind::TyAlias(..) => {
-            if tcx.type_alias_is_lazy(item.owner_id) {
-                if tcx.type_of(item.owner_id).skip_binder().references_error() {
-                    return;
-                }
-            } else {
-                bug!();
+            assert!(
+                tcx.type_alias_is_lazy(item.owner_id),
+                "should not be computing variance of non-weak type alias"
+            );
+            if tcx.type_of(item.owner_id).skip_binder().references_error() {
+                return;
             }
         }
-        _ => bug!(),
+        kind => span_bug!(item.span, "cannot compute the variances of {kind:?}"),
     }
 
     let ty_predicates = tcx.predicates_of(item.owner_id);

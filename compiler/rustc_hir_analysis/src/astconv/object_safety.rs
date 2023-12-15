@@ -73,7 +73,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 | ty::ClauseKind::ConstArgHasType(..)
                 | ty::ClauseKind::WellFormed(_)
                 | ty::ClauseKind::ConstEvaluatable(_) => {
-                    bug!()
+                    span_bug!(span, "did not expect {pred} clause in object bounds");
                 }
             }
         }

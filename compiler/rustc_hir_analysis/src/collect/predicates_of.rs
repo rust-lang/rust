@@ -296,7 +296,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                         hir::GenericBound::Outlives(lt) => {
                             (icx.astconv().ast_region_to_region(lt, None), lt.ident.span)
                         }
-                        _ => bug!(),
+                        bound => {
+                            span_bug!(
+                                bound.span(),
+                                "lifetime param bounds must be outlives, but found {bound:?}"
+                            )
+                        }
                     };
                     let pred = ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                         .to_predicate(tcx);

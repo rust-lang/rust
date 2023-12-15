@@ -477,7 +477,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             ty::Const::new_misc_error(tcx, ty).into()
                         }
                     }
-                    _ => unreachable!(),
+                    (kind, arg) => span_bug!(
+                        self.span,
+                        "mismatched path argument for kind {kind:?}: found arg {arg:?}"
+                    ),
                 }
             }
 
@@ -1946,7 +1949,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     "s",
                 ),
                 [only] => (only.to_string(), ""),
-                [] => unreachable!(),
+                [] => unreachable!("expected at least one generic to prohibit"),
             };
             let last_span = *arg_spans.last().unwrap();
             let span: MultiSpan = arg_spans.into();
@@ -2555,8 +2558,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if let Some(i) = (param.index as usize).checked_sub(generics.count() - lifetimes.len())
             {
                 // Resolve our own lifetime parameters.
-                let GenericParamDefKind::Lifetime { .. } = param.kind else { bug!() };
-                let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else { bug!() };
+                let GenericParamDefKind::Lifetime { .. } = param.kind else {
+                    span_bug!(
+                        tcx.def_span(param.def_id),
+                        "only expected lifetime for opaque's own generics, got {:?}",
+                        param.kind
+                    );
+                };
+                let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else {
+                    bug!(
+                        "expected lifetime argument for param {param:?}, found {:?}",
+                        &lifetimes[i]
+                    )
+                };
                 self.ast_region_to_region(lifetime, None).into()
             } else {
                 tcx.mk_param_from_def(param)

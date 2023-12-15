@@ -1086,8 +1086,14 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
             _ => return Ok(region),
         }
 
-        let e = if let Some(region) = self.map.get(&region) {
-            if let ty::ReEarlyParam(e) = region.kind() { e } else { bug!() }
+        let e = if let Some(id_region) = self.map.get(&region) {
+            if let ty::ReEarlyParam(e) = id_region.kind() {
+                e
+            } else {
+                bug!(
+                    "expected to map region {region} to early-bound identity region, but got {id_region}"
+                );
+            }
         } else {
             let guar = match region.kind() {
                 ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
@@ -1710,92 +1716,87 @@ fn compare_synthetic_generics<'tcx>(
                 trait_m.name
             );
             err.span_label(trait_span, "declaration in trait here");
-            match (impl_synthetic, trait_synthetic) {
+            if impl_synthetic {
                 // The case where the impl method uses `impl Trait` but the trait method uses
                 // explicit generics
-                (true, false) => {
-                    err.span_label(impl_span, "expected generic parameter, found `impl Trait`");
-                    let _: Option<_> = try {
-                        // try taking the name from the trait impl
-                        // FIXME: this is obviously suboptimal since the name can already be used
-                        // as another generic argument
-                        let new_name = tcx.opt_item_name(trait_def_id)?;
-                        let trait_m = trait_m.def_id.as_local()?;
-                        let trait_m = tcx.hir().expect_trait_item(trait_m);
+                err.span_label(impl_span, "expected generic parameter, found `impl Trait`");
+                let _: Option<_> = try {
+                    // try taking the name from the trait impl
+                    // FIXME: this is obviously suboptimal since the name can already be used
+                    // as another generic argument
+                    let new_name = tcx.opt_item_name(trait_def_id)?;
+                    let trait_m = trait_m.def_id.as_local()?;
+                    let trait_m = tcx.hir().expect_trait_item(trait_m);
 
-                        let impl_m = impl_m.def_id.as_local()?;
-                        let impl_m = tcx.hir().expect_impl_item(impl_m);
+                    let impl_m = impl_m.def_id.as_local()?;
+                    let impl_m = tcx.hir().expect_impl_item(impl_m);
 
-                        // in case there are no generics, take the spot between the function name
-                        // and the opening paren of the argument list
-                        let new_generics_span = tcx.def_ident_span(impl_def_id)?.shrink_to_hi();
-                        // in case there are generics, just replace them
-                        let generics_span =
-                            impl_m.generics.span.substitute_dummy(new_generics_span);
-                        // replace with the generics from the trait
-                        let new_generics =
-                            tcx.sess.source_map().span_to_snippet(trait_m.generics.span).ok()?;
+                    // in case there are no generics, take the spot between the function name
+                    // and the opening paren of the argument list
+                    let new_generics_span = tcx.def_ident_span(impl_def_id)?.shrink_to_hi();
+                    // in case there are generics, just replace them
+                    let generics_span = impl_m.generics.span.substitute_dummy(new_generics_span);
+                    // replace with the generics from the trait
+                    let new_generics =
+                        tcx.sess.source_map().span_to_snippet(trait_m.generics.span).ok()?;
 
-                        err.multipart_suggestion(
-                            "try changing the `impl Trait` argument to a generic parameter",
-                            vec![
-                                // replace `impl Trait` with `T`
-                                (impl_span, new_name.to_string()),
-                                // replace impl method generics with trait method generics
-                                // This isn't quite right, as users might have changed the names
-                                // of the generics, but it works for the common case
-                                (generics_span, new_generics),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        );
-                    };
-                }
+                    err.multipart_suggestion(
+                        "try changing the `impl Trait` argument to a generic parameter",
+                        vec![
+                            // replace `impl Trait` with `T`
+                            (impl_span, new_name.to_string()),
+                            // replace impl method generics with trait method generics
+                            // This isn't quite right, as users might have changed the names
+                            // of the generics, but it works for the common case
+                            (generics_span, new_generics),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                };
+            } else {
                 // The case where the trait method uses `impl Trait`, but the impl method uses
                 // explicit generics.
-                (false, true) => {
-                    err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
-                    let _: Option<_> = try {
-                        let impl_m = impl_m.def_id.as_local()?;
-                        let impl_m = tcx.hir().expect_impl_item(impl_m);
-                        let (sig, _) = impl_m.expect_fn();
-                        let input_tys = sig.decl.inputs;
+                err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
+                let _: Option<_> = try {
+                    let impl_m = impl_m.def_id.as_local()?;
+                    let impl_m = tcx.hir().expect_impl_item(impl_m);
+                    let (sig, _) = impl_m.expect_fn();
+                    let input_tys = sig.decl.inputs;
 
-                        struct Visitor(Option<Span>, hir::def_id::LocalDefId);
-                        impl<'v> intravisit::Visitor<'v> for Visitor {
-                            fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
-                                intravisit::walk_ty(self, ty);
-                                if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind
-                                    && let Res::Def(DefKind::TyParam, def_id) = path.res
-                                    && def_id == self.1.to_def_id()
-                                {
-                                    self.0 = Some(ty.span);
-                                }
+                    struct Visitor(Option<Span>, hir::def_id::LocalDefId);
+                    impl<'v> intravisit::Visitor<'v> for Visitor {
+                        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                            intravisit::walk_ty(self, ty);
+                            if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind
+                                && let Res::Def(DefKind::TyParam, def_id) = path.res
+                                && def_id == self.1.to_def_id()
+                            {
+                                self.0 = Some(ty.span);
                             }
                         }
+                    }
 
-                        let mut visitor = Visitor(None, impl_def_id);
-                        for ty in input_tys {
-                            intravisit::Visitor::visit_ty(&mut visitor, ty);
-                        }
-                        let span = visitor.0?;
+                    let mut visitor = Visitor(None, impl_def_id);
+                    for ty in input_tys {
+                        intravisit::Visitor::visit_ty(&mut visitor, ty);
+                    }
+                    let span = visitor.0?;
 
-                        let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
-                        let bounds = bounds.first()?.span().to(bounds.last()?.span());
-                        let bounds = tcx.sess.source_map().span_to_snippet(bounds).ok()?;
+                    let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
+                    let bounds = bounds.first()?.span().to(bounds.last()?.span());
+                    let bounds = tcx.sess.source_map().span_to_snippet(bounds).ok()?;
 
-                        err.multipart_suggestion(
-                            "try removing the generic parameter and using `impl Trait` instead",
-                            vec![
-                                // delete generic parameters
-                                (impl_m.generics.span, String::new()),
-                                // replace param usage with `impl Trait`
-                                (span, format!("impl {bounds}")),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        );
-                    };
-                }
-                _ => unreachable!(),
+                    err.multipart_suggestion(
+                        "try removing the generic parameter and using `impl Trait` instead",
+                        vec![
+                            // delete generic parameters
+                            (impl_m.generics.span, String::new()),
+                            // replace param usage with `impl Trait`
+                            (span, format!("impl {bounds}")),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                };
             }
             error_found = Some(err.emit_unless(delay));
         }
@@ -1859,7 +1860,9 @@ fn compare_generic_param_kinds<'tcx>(
             // this is exhaustive so that anyone adding new generic param kinds knows
             // to make sure this error is reported for them.
             (Const { .. }, Const { .. }) | (Type { .. }, Type { .. }) => false,
-            (Lifetime { .. }, _) | (_, Lifetime { .. }) => unreachable!(),
+            (Lifetime { .. }, _) | (_, Lifetime { .. }) => {
+                bug!("lifetime params are expected to be filtered by `ty_const_params_of`")
+            }
         } {
             let param_impl_span = tcx.def_span(param_impl.def_id);
             let param_trait_span = tcx.def_span(param_trait.def_id);
@@ -1883,7 +1886,10 @@ fn compare_generic_param_kinds<'tcx>(
                     )
                 }
                 Type { .. } => format!("{prefix} type parameter"),
-                Lifetime { .. } => unreachable!(),
+                Lifetime { .. } => span_bug!(
+                    tcx.def_span(param.def_id),
+                    "lifetime params are expected to be filtered by `ty_const_params_of`"
+                ),
             };
 
             let trait_header_span = tcx.def_ident_span(tcx.parent(trait_item.def_id)).unwrap();
@@ -2187,7 +2193,10 @@ pub(super) fn check_type_bounds<'tcx>(
                 ..
             }) => ty.span,
             hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Type(ty), .. }) => ty.span,
-            _ => bug!(),
+            item => span_bug!(
+                tcx.def_span(impl_ty_def_id),
+                "cannot call `check_type_bounds` on item: {item:?}",
+            ),
         }
     };
     let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl_ty_def_id)?;
