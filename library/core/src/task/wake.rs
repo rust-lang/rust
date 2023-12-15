@@ -713,7 +713,7 @@ impl LocalWaker {
     /// Get a reference to the underlying [`RawWaker`].
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "87021")]
+    #[unstable(feature = "waker_getters", issue = "96992")]
     pub fn as_raw(&self) -> &RawWaker {
         &self.waker
     }
