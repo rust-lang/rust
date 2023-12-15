@@ -141,42 +141,6 @@ pub(super) mod token_stream {
             ::tt::pretty(&self.token_trees)
         }
     }
-
-    fn subtree_replace_spans_with_call_site<S: Copy>(
-        subtree: tt::Subtree<S>,
-        call_site: S,
-    ) -> tt::Subtree<S> {
-        tt::Subtree {
-            delimiter: tt::Delimiter { open: call_site, close: call_site, ..subtree.delimiter },
-            token_trees: subtree
-                .token_trees
-                .into_iter()
-                .map(|it| token_tree_replace_spans_with_call_site(it, call_site))
-                .collect(),
-        }
-    }
-
-    fn token_tree_replace_spans_with_call_site<S: Copy>(
-        tt: tt::TokenTree<S>,
-        call_site: S,
-    ) -> tt::TokenTree<S> {
-        match tt {
-            tt::TokenTree::Leaf(leaf) => {
-                tt::TokenTree::Leaf(leaf_replace_spans_with_call_site(leaf, call_site))
-            }
-            tt::TokenTree::Subtree(subtree) => {
-                tt::TokenTree::Subtree(subtree_replace_spans_with_call_site(subtree, call_site))
-            }
-        }
-    }
-
-    fn leaf_replace_spans_with_call_site<S: Copy>(leaf: tt::Leaf<S>, call_site: S) -> tt::Leaf<S> {
-        match leaf {
-            tt::Leaf::Literal(lit) => tt::Leaf::Literal(tt::Literal { span: call_site, ..lit }),
-            tt::Leaf::Punct(punct) => tt::Leaf::Punct(tt::Punct { span: call_site, ..punct }),
-            tt::Leaf::Ident(ident) => tt::Leaf::Ident(tt::Ident { span: call_site, ..ident }),
-        }
-    }
 }
 
 impl<S> TokenStreamBuilder<S> {

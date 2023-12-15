@@ -34,7 +34,7 @@ use std::{
 use proc_macro_api::{
     msg::{
         self, deserialize_span_data_index_map, serialize_span_data_index_map, ExpnGlobals,
-        SpanDataIndexMap, SpanMode, TokenId, CURRENT_API_VERSION,
+        SpanMode, TokenId, CURRENT_API_VERSION,
     },
     ProcMacroKind,
 };

@@ -13,8 +13,6 @@ use crate::server::{
     Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
-    pub use proc_macro_api::msg::TokenId;
-
     pub use ::tt::*;
 
     pub type Subtree = ::tt::Subtree<super::Span>;
@@ -24,11 +22,7 @@ mod tt {
     pub type Punct = ::tt::Punct<super::Span>;
     pub type Ident = ::tt::Ident<super::Span>;
 }
-type Group = tt::Subtree;
-type TokenTree = tt::TokenTree;
-type Punct = tt::Punct;
-type Spacing = tt::Spacing;
-type Literal = tt::Literal;
+
 type TokenStream = crate::server::TokenStream<Span>;
 
 #[derive(Clone)]
@@ -96,14 +90,14 @@ impl server::TokenStream for RaSpanServer {
     ) -> Self::TokenStream {
         match tree {
             bridge::TokenTree::Group(group) => {
-                let group = Group {
+                let group = tt::Subtree {
                     delimiter: delim_to_internal(group.delimiter, group.span),
                     token_trees: match group.stream {
                         Some(stream) => stream.into_iter().collect(),
                         None => Vec::new(),
                     },
                 };
-                let tree = TokenTree::from(group);
+                let tree = tt::TokenTree::from(group);
                 Self::TokenStream::from_iter(iter::once(tree))
             }
 
@@ -113,7 +107,7 @@ impl server::TokenStream for RaSpanServer {
                     if ident.is_raw { ::tt::SmolStr::from_iter(["r#", &text]) } else { text };
                 let ident: tt::Ident = tt::Ident { text, span: ident.span };
                 let leaf = tt::Leaf::from(ident);
-                let tree = TokenTree::from(leaf);
+                let tree = tt::TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
             }
 
@@ -124,19 +118,21 @@ impl server::TokenStream for RaSpanServer {
                 });
 
                 let literal = tt::Literal { text, span: literal.0.span };
-                let leaf = tt::Leaf::from(literal);
-                let tree = TokenTree::from(leaf);
+                let leaf: ::tt::Leaf<
+                    ::tt::SpanData<base_db::span::SpanAnchor, base_db::span::SyntaxContextId>,
+                > = tt::Leaf::from(literal);
+                let tree = tt::TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
             }
 
             bridge::TokenTree::Punct(p) => {
                 let punct = tt::Punct {
                     char: p.ch as char,
-                    spacing: if p.joint { Spacing::Joint } else { Spacing::Alone },
+                    spacing: if p.joint { tt::Spacing::Joint } else { tt::Spacing::Alone },
                     span: p.span,
                 };
                 let leaf = tt::Leaf::from(punct);
-                let tree = TokenTree::from(leaf);
+                let tree = tt::TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
             }
         }
@@ -208,7 +204,7 @@ impl server::TokenStream for RaSpanServer {
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
                     bridge::TokenTree::Punct(bridge::Punct {
                         ch: punct.char as u8,
-                        joint: punct.spacing == Spacing::Joint,
+                        joint: punct.spacing == tt::Spacing::Joint,
                         span: punct.span,
                     })
                 }

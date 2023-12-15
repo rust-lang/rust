@@ -5,7 +5,7 @@ use base_db::{
     FileId,
 };
 use expect_test::Expect;
-use proc_macro_api::msg::{SpanDataIndexMap, TokenId};
+use proc_macro_api::msg::TokenId;
 use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
