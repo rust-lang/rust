@@ -26,12 +26,12 @@ define-function: (
         assert-css: (".item-table .keyword", {"color": |keyword|}, ALL)
         // Checking sidebar elements.
         assert-css: (
-            ".sidebar-elems a:not(.current)",
+            ".sidebar-elems li:not(.current) a",
             {"color": |sidebar|, "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
             ALL,
         )
         assert-css: (
-            ".sidebar-elems a.current",
+            ".sidebar-elems li.current a",
             {
                 "color": |sidebar_current|,
                 "background-color": |sidebar_current_background|,

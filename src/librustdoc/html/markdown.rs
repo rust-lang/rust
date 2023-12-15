@@ -2013,6 +2013,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("themeStyle".into(), 1);
     map.insert("settings-menu".into(), 1);
     map.insert("help-button".into(), 1);
+    map.insert("sidebar-button".into(), 1);
     map.insert("main-content".into(), 1);
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);
