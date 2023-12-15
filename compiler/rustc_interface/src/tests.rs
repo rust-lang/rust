@@ -6,10 +6,9 @@ use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
     DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
     FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
-    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirSpanview, OomStrategy, Options,
-    OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius,
-    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, TraitSolver,
-    WasiExecModel,
+    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirSpanview, NextSolverConfig,
+    OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -748,6 +747,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
     tracked!(debug_macros, true);
+    tracked!(default_hidden_visibility, Some(true));
     tracked!(dep_info_omit_d_target, true);
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
@@ -780,6 +780,10 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, false);
+    tracked!(
+        next_solver,
+        Some(NextSolverConfig { coherence: true, globally: false, dump_tree: Default::default() })
+    );
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);
@@ -821,7 +825,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(thir_unsafeck, true);
     tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
-    tracked!(trait_solver, TraitSolver::NextCoherence);
     tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));

@@ -265,7 +265,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             GenerateProofTree::Never => ProofTreeBuilder::new_noop(),
             GenerateProofTree::IfEnabled => {
                 let opts = &tcx.sess.opts.unstable_opts;
-                match opts.dump_solver_proof_tree {
+                match opts.next_solver.map(|c| c.dump_tree).unwrap_or_default() {
                     DumpSolverProofTree::Always => ProofTreeBuilder::new_root(),
                     // `OnError` is handled by reevaluating goals in error
                     // reporting with `GenerateProofTree::Yes`.

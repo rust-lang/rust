@@ -1,5 +1,5 @@
 // revisions: old next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 //[old] check-pass
 //[next] known-bug: #109764
 

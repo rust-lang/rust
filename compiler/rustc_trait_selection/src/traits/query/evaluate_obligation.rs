@@ -72,7 +72,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 let mut fulfill_cx = crate::solve::FulfillmentCtxt::new(self);
                 fulfill_cx.register_predicate_obligation(self, obligation.clone());
                 // True errors
-                // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?
+                // FIXME(-Znext-solver): Overflows are reported as ambig here, is that OK?
                 if !fulfill_cx.select_where_possible(self).is_empty() {
                     Ok(EvaluationResult::EvaluatedToErr)
                 } else if !fulfill_cx.select_all_or_error(self).is_empty() {

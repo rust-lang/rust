@@ -80,10 +80,6 @@ const longItemTypes = [
 const TY_GENERIC = itemTypes.indexOf("generic");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
-function hasOwnPropertyRustdoc(obj, property) {
-    return Object.prototype.hasOwnProperty.call(obj, property);
-}
-
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
     let iter = 0;
@@ -1074,7 +1070,7 @@ function initSearch(rawSearchIndex) {
 
         if (elem &&
             elem.value !== "all crates" &&
-            hasOwnPropertyRustdoc(rawSearchIndex, elem.value)
+            rawSearchIndex.has(elem.value)
         ) {
             return elem.value;
         }
@@ -2524,11 +2520,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
 
         let crates = "";
-        const crates_list = Object.keys(rawSearchIndex);
-        if (crates_list.length > 1) {
+        if (rawSearchIndex.size > 1) {
             crates = " in&nbsp;<div id=\"crate-search-div\"><select id=\"crate-search\">" +
                 "<option value=\"all crates\">all crates</option>";
-            for (const c of crates_list) {
+            for (const c of rawSearchIndex.keys()) {
                 crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
             }
             crates += "</select></div>";
@@ -2945,81 +2940,70 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // Function type fingerprints are 128-bit bloom filters that are used to
         // estimate the distance between function and query.
         // This loop counts the number of items to allocate a fingerprint for.
-        for (const crate in rawSearchIndex) {
-            if (!hasOwnPropertyRustdoc(rawSearchIndex, crate)) {
-                continue;
-            }
+        for (const crate of rawSearchIndex.values()) {
             // Each item gets an entry in the fingerprint array, and the crate
             // does, too
-            id += rawSearchIndex[crate].t.length + 1;
+            id += crate.t.length + 1;
         }
         functionTypeFingerprint = new Uint32Array((id + 1) * 4);
 
         // This loop actually generates the search item indexes, including
         // normalized names, type signature objects and fingerprints, and aliases.
         id = 0;
-        for (const crate in rawSearchIndex) {
-            if (!hasOwnPropertyRustdoc(rawSearchIndex, crate)) {
-                continue;
-            }
-
-            let crateSize = 0;
-
-            /**
-             * The raw search data for a given crate. `n`, `t`, `d`, `i`, and `f`
-             * are arrays with the same length. `q`, `a`, and `c` use a sparse
-             * representation for compactness.
-             *
-             * `n[i]` contains the name of an item.
-             *
-             * `t[i]` contains the type of that item
-             * (as a string of characters that represent an offset in `itemTypes`).
-             *
-             * `d[i]` contains the description of that item.
-             *
-             * `q` contains the full paths of the items. For compactness, it is a set of
-             * (index, path) pairs used to create a map. If a given index `i` is
-             * not present, this indicates "same as the last index present".
-             *
-             * `i[i]` contains an item's parent, usually a module. For compactness,
-             * it is a set of indexes into the `p` array.
-             *
-             * `f[i]` contains function signatures, or `0` if the item isn't a function.
-             * Functions are themselves encoded as arrays. The first item is a list of
-             * types representing the function's inputs, and the second list item is a list
-             * of types representing the function's output. Tuples are flattened.
-             * Types are also represented as arrays; the first item is an index into the `p`
-             * array, while the second is a list of types representing any generic parameters.
-             *
-             * b[i] contains an item's impl disambiguator. This is only present if an item
-             * is defined in an impl block and, the impl block's type has more than one associated
-             * item with the same name.
-             *
-             * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
-             * points into the n/t/d/q/i/f arrays.
-             *
-             * `doc` contains the description of the crate.
-             *
-             * `p` is a list of path/type pairs. It is used for parents and function parameters.
-             *
-             * `c` is an array of item indices that are deprecated.
-             *
-             * @type {{
-             *   doc: string,
-             *   a: Object,
-             *   n: Array<string>,
-             *   t: String,
-             *   d: Array<string>,
-             *   q: Array<[Number, string]>,
-             *   i: Array<Number>,
-             *   f: Array<RawFunctionSearchType>,
-             *   p: Array<Object>,
-             *   b: Array<[Number, String]>,
-             *   c: Array<Number>
-             * }}
-             */
-            const crateCorpus = rawSearchIndex[crate];
-
+        /**
+         * The raw search data for a given crate. `n`, `t`, `d`, `i`, and `f`
+         * are arrays with the same length. `q`, `a`, and `c` use a sparse
+         * representation for compactness.
+         *
+         * `n[i]` contains the name of an item.
+         *
+         * `t[i]` contains the type of that item
+         * (as a string of characters that represent an offset in `itemTypes`).
+         *
+         * `d[i]` contains the description of that item.
+         *
+         * `q` contains the full paths of the items. For compactness, it is a set of
+         * (index, path) pairs used to create a map. If a given index `i` is
+         * not present, this indicates "same as the last index present".
+         *
+         * `i[i]` contains an item's parent, usually a module. For compactness,
+         * it is a set of indexes into the `p` array.
+         *
+         * `f[i]` contains function signatures, or `0` if the item isn't a function.
+         * Functions are themselves encoded as arrays. The first item is a list of
+         * types representing the function's inputs, and the second list item is a list
+         * of types representing the function's output. Tuples are flattened.
+         * Types are also represented as arrays; the first item is an index into the `p`
+         * array, while the second is a list of types representing any generic parameters.
+         *
+         * b[i] contains an item's impl disambiguator. This is only present if an item
+         * is defined in an impl block and, the impl block's type has more than one associated
+         * item with the same name.
+         *
+         * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
+         * points into the n/t/d/q/i/f arrays.
+         *
+         * `doc` contains the description of the crate.
+         *
+         * `p` is a list of path/type pairs. It is used for parents and function parameters.
+         *
+         * `c` is an array of item indices that are deprecated.
+         *
+         * @type {{
+         *   doc: string,
+         *   a: Object,
+         *   n: Array<string>,
+         *   t: String,
+         *   d: Array<string>,
+         *   q: Array<[Number, string]>,
+         *   i: Array<Number>,
+         *   f: Array<RawFunctionSearchType>,
+         *   p: Array<Object>,
+         *   b: Array<[Number, String]>,
+         *   c: Array<Number>
+         * }}
+         */
+        for (const [crate, crateCorpus] of rawSearchIndex) {
             searchWords.push(crate);
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
@@ -3145,14 +3129,13 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id += 1;
                 searchIndex.push(row);
                 lastPath = row.path;
-                crateSize += 1;
             }
 
             if (aliases) {
                 const currentCrateAliases = new Map();
                 ALIASES.set(crate, currentCrateAliases);
                 for (const alias_name in aliases) {
-                    if (!hasOwnPropertyRustdoc(aliases, alias_name)) {
+                    if (!Object.prototype.hasOwnProperty.call(aliases, alias_name)) {
                         continue;
                     }
 
@@ -3168,7 +3151,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     }
                 }
             }
-            currentIndex += crateSize;
+            currentIndex += itemTypes.length;
         }
         return searchWords;
     }
@@ -3377,7 +3360,7 @@ if (typeof window !== "undefined") {
 } else {
     // Running in Node, not a browser. Run initSearch just to produce the
     // exports.
-    initSearch({});
+    initSearch(new Map());
 }
 
 

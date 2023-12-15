@@ -2,7 +2,7 @@
 //
 // revisions: pass pass_next fail
 // [pass] check-pass
-// [pass_next] compile-flags: -Ztrait-solver=next
+// [pass_next] compile-flags: -Znext-solver
 // [pass_next] check-pass
 // [fail] check-fail
 

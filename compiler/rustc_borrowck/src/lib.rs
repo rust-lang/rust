@@ -2502,8 +2502,8 @@ mod error {
             if !self.errors.buffered.is_empty() {
                 self.errors.buffered.sort_by_key(|diag| diag.sort_span);
 
-                for mut diag in self.errors.buffered.drain(..) {
-                    self.infcx.tcx.sess.diagnostic().emit_diagnostic(&mut diag);
+                for diag in self.errors.buffered.drain(..) {
+                    self.infcx.tcx.sess.diagnostic().emit_diagnostic(diag);
                 }
             }
 

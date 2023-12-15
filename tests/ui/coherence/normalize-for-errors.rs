@@ -1,5 +1,5 @@
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 struct MyType;
 trait MyTrait<S> {}

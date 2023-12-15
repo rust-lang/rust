@@ -2094,7 +2094,11 @@ pub struct TargetOptions {
     pub no_builtins: bool,
 
     /// The default visibility for symbols in this target should be "hidden"
-    /// rather than "default"
+    /// rather than "default".
+    ///
+    /// This value typically shouldn't be accessed directly, but through
+    /// the `rustc_session::Session::default_hidden_visibility` method, which
+    /// allows `rustc` users to override this setting using cmdline flags.
     pub default_hidden_visibility: bool,
 
     /// Whether a .debug_gdb_scripts section will be added to the output object file

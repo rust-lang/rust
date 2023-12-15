@@ -3,7 +3,7 @@
 
 // check-pass
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 #![feature(impl_trait_in_assoc_type)]
 
 trait UnwrapItemsExt<'a, const C: usize> {

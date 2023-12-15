@@ -1145,7 +1145,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.sess.diagnostic().span_err(sp, msg);
     }
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<String>) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
         self.sess.diagnostic().span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {

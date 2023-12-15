@@ -22,7 +22,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            // FIXME(-Ztrait-solver=next): correctly handle
+            // FIXME(-Znext-solver): correctly handle
             // overflow here.
             for _ in 0..256 {
                 let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, alias) = *ty.kind() else {

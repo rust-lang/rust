@@ -453,7 +453,7 @@ impl<'a> IntoDiagnostic<'a> for EnvNotDefinedWithUserMessage {
             rustc::untranslatable_diagnostic,
             reason = "cannot translate user-provided messages"
         )]
-        let mut diag = handler.struct_diagnostic(self.msg_from_user.to_string());
+        let mut diag = handler.struct_err(self.msg_from_user.to_string());
         diag.set_span(self.span);
         diag
     }
@@ -804,7 +804,7 @@ pub(crate) struct AsmClobberNoReg {
 impl<'a> IntoDiagnostic<'a> for AsmClobberNoReg {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut diag =
-            handler.struct_diagnostic(crate::fluent_generated::builtin_macros_asm_clobber_no_reg);
+            handler.struct_err(crate::fluent_generated::builtin_macros_asm_clobber_no_reg);
         diag.set_span(self.spans.clone());
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = handler.eagerly_translate_to_string(

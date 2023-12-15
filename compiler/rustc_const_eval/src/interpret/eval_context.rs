@@ -686,14 +686,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(layout.fields.count() > 0);
                 trace!("DST layout: {:?}", layout);
 
-                let sized_size = layout.fields.offset(layout.fields.count() - 1);
+                let unsized_offset_unadjusted = layout.fields.offset(layout.fields.count() - 1);
                 let sized_align = layout.align.abi;
-                trace!(
-                    "DST {} statically sized prefix size: {:?} align: {:?}",
-                    layout.ty,
-                    sized_size,
-                    sized_align
-                );
 
                 // Recurse to get the size of the dynamically sized field (must be
                 // the last field). Can't have foreign types here, how would we
@@ -707,36 +701,35 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     return Ok(None);
                 };
 
-                // FIXME (#26403, #27023): We should be adding padding
-                // to `sized_size` (to accommodate the `unsized_align`
-                // required of the unsized field that follows) before
-                // summing it with `sized_size`. (Note that since #26403
-                // is unfixed, we do not yet add the necessary padding
-                // here. But this is where the add would go.)
+                // # First compute the dynamic alignment
 
-                // Return the sum of sizes and max of aligns.
-                let size = sized_size + unsized_size; // `Size` addition
-
-                // Packed types ignore the alignment of their fields.
+                // Packed type alignment needs to be capped.
                 if let ty::Adt(def, _) = layout.ty.kind() {
-                    if def.repr().packed() {
-                        unsized_align = sized_align;
+                    if let Some(packed) = def.repr().pack {
+                        unsized_align = unsized_align.min(packed);
                     }
                 }
 
                 // Choose max of two known alignments (combined value must
                 // be aligned according to more restrictive of the two).
-                let align = sized_align.max(unsized_align);
+                let full_align = sized_align.max(unsized_align);
 
-                // Issue #27023: must add any necessary padding to `size`
-                // (to make it a multiple of `align`) before returning it.
-                let size = size.align_to(align);
+                // # Then compute the dynamic size
+
+                let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
+                let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
+
+                // Just for our sanitiy's sake, assert that this is equal to what codegen would compute.
+                assert_eq!(
+                    full_size,
+                    (unsized_offset_unadjusted + unsized_size).align_to(full_align)
+                );
 
                 // Check if this brought us over the size limit.
-                if size > self.max_size_of_val() {
+                if full_size > self.max_size_of_val() {
                     throw_ub!(InvalidMeta(InvalidMetaKind::TooBig));
                 }
-                Ok(Some((size, align)))
+                Ok(Some((full_size, full_align)))
             }
             ty::Dynamic(_, _, ty::Dyn) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;

@@ -51,8 +51,8 @@ macro_rules! panictry_buffer {
         match $e {
             Ok(e) => e,
             Err(errs) => {
-                for mut e in errs {
-                    $handler.emit_diagnostic(&mut e);
+                for e in errs {
+                    $handler.emit_diagnostic(e);
                 }
                 FatalError.raise()
             }
@@ -165,8 +165,8 @@ fn try_file_to_source_file(
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>) -> Lrc<SourceFile> {
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
-        Err(mut d) => {
-            sess.span_diagnostic.emit_diagnostic(&mut d);
+        Err(d) => {
+            sess.span_diagnostic.emit_diagnostic(d);
             FatalError.raise();
         }
     }

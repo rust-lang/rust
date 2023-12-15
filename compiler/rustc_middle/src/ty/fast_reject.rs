@@ -62,7 +62,7 @@ pub enum TreatParams {
     ///
     /// N.B. during deep rejection, this acts identically to `ForLookup`.
     ///
-    /// FIXME(-Ztrait-solver=next): Remove this variant and cleanup
+    /// FIXME(-Znext-solver): Remove this variant and cleanup
     /// the code.
     NextSolverLookup,
 }

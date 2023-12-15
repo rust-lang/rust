@@ -1,6 +1,6 @@
 // check-pass
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 struct Test {
     func: Box<dyn FnMut() + 'static>,

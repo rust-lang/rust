@@ -445,7 +445,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        // FIXME(-Ztrait-solver=next): Implement this when we get const working in the new solver
+        // FIXME(-Znext-solver): Implement this when we get const working in the new solver
 
         // `Destruct` is automatically implemented for every type in
         // non-const environments.
