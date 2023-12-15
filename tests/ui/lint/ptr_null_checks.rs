@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(ptr_from_ref)]
-
 use std::ptr;
 
 extern "C" fn c_fn() {}
