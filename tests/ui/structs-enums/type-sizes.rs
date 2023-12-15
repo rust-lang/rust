@@ -4,7 +4,6 @@
 #![allow(dead_code)]
 #![feature(never_type)]
 #![feature(pointer_is_aligned)]
-#![feature(ptr_from_ref)]
 #![feature(strict_provenance)]
 
 use std::mem::size_of;

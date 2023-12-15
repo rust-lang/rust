@@ -1,7 +1,5 @@
 // check-fail
 
-#![feature(ptr_from_ref)]
-
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as
     // in C, the default is mutable pointers.

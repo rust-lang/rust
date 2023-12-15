@@ -146,12 +146,8 @@ function createSrcSidebar() {
     }
 }
 
-const lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
-
-function highlightSrcLines(match) {
-    if (typeof match === "undefined") {
-        match = window.location.hash.match(lineNumbersRegex);
-    }
+function highlightSrcLines() {
+    const match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
     if (!match) {
         return;
     }
@@ -233,12 +229,7 @@ const handleSrcHighlight = (function() {
     };
 }());
 
-window.addEventListener("hashchange", () => {
-    const match = window.location.hash.match(lineNumbersRegex);
-    if (match) {
-        return highlightSrcLines(match);
-    }
-});
+window.addEventListener("hashchange", highlightSrcLines);
 
 onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
     el.addEventListener("click", handleSrcHighlight);

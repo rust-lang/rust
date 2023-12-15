@@ -1,32 +1,31 @@
-//! Greatest lower bound. See [`lattice`].
+//! Least upper bound. See [`lattice`].
 
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::lattice::{self, LatticeDir};
-use super::Subtype;
-use super::{DefineOpaqueTypes, InferCtxt};
-
+use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 use crate::traits::{ObligationCause, PredicateObligations};
+
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
-/// "Greatest lower bound" (common subtype)
-pub struct Glb<'combine, 'infcx, 'tcx> {
+/// "Least upper bound" (common supertype)
+pub struct Lub<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
+impl<'combine, 'infcx, 'tcx> Lub<'combine, 'infcx, 'tcx> {
     pub fn new(
         fields: &'combine mut CombineFields<'infcx, 'tcx>,
         a_is_expected: bool,
-    ) -> Glb<'combine, 'infcx, 'tcx> {
-        Glb { fields, a_is_expected }
+    ) -> Lub<'combine, 'infcx, 'tcx> {
+        Lub { fields, a_is_expected }
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
+impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
-        "Glb"
+        "Lub"
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -53,7 +52,7 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a),
-            ty::Contravariant => self.fields.lub(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.fields.glb(self.a_is_expected).relate(a, b),
         }
     }
 
@@ -68,9 +67,9 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
 
-        let origin = Subtype(Box::new(self.fields.trace.clone()));
-        // GLB(&'static u8, &'a u8) == &RegionLUB('static, 'a) u8 == &'static u8
-        Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().lub_regions(
+        let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
+        // LUB(&'static u8, &'a u8) == &RegionGLB('static, 'a) u8 == &'a u8
+        Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().glb_regions(
             self.tcx(),
             origin,
             a,
@@ -94,14 +93,14 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        // GLB of a binder and itself is just itself
+        // LUB of a binder and itself is just itself
         if a == b {
             return Ok(a);
         }
 
         debug!("binders(a={:?}, b={:?})", a, b);
         if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
-            // When higher-ranked types are involved, computing the GLB is
+            // When higher-ranked types are involved, computing the LUB is
             // very challenging, switch to invariance. This is obviously
             // overly conservative but works ok in practice.
             self.relate_with_variance(
@@ -117,7 +116,7 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
     }
 }
 
-impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 'tcx> {
+impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 'tcx> {
     fn infcx(&self) -> &'infcx InferCtxt<'tcx> {
         self.fields.infcx
     }
@@ -128,8 +127,8 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
 
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub(self.a_is_expected);
-        sub.relate(v, a)?;
-        sub.relate(v, b)?;
+        sub.relate(a, v)?;
+        sub.relate(b, v)?;
         Ok(())
     }
 
@@ -138,13 +137,13 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
     }
 }
 
-impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
+impl<'tcx> ObligationEmittingRelation<'tcx> for Lub<'_, '_, 'tcx> {
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.fields.register_predicates(obligations);
     }
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        self.fields.register_obligations(obligations);
+        self.fields.register_obligations(obligations)
     }
 
     fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
