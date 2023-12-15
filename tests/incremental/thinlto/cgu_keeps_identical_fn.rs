@@ -13,17 +13,17 @@
 #![rustc_expected_cgu_reuse(
     module = "cgu_keeps_identical_fn-foo",
     cfg = "cfail3",
-    kind = "post-lto"
+    kind = "no"
 )]
 #![rustc_expected_cgu_reuse(
     module = "cgu_keeps_identical_fn-bar",
     cfg = "cfail2",
-    kind = "post-lto"
+    kind = "no"
 )]
 #![rustc_expected_cgu_reuse(
     module = "cgu_keeps_identical_fn-bar",
     cfg = "cfail3",
-    kind = "post-lto"
+    kind = "no"
 )]
 
 mod foo {

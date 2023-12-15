@@ -13,21 +13,21 @@
                             kind="no")]
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-foo",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="no")]
 
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-bar",
                             cfg="cfail2",
-                            kind="pre-lto")]
+                            kind="no")]
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-bar",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="no")]
 
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-baz",
                             cfg="cfail2",
-                            kind="post-lto")]
+                            kind="no")]
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-baz",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="no")]
 mod foo {
 
     #[cfg(cfail1)]
