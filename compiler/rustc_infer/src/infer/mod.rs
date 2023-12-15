@@ -5,7 +5,7 @@ pub use self::BoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
-pub use combine::ObligationEmittingRelation;
+pub use relate::combine::ObligationEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
@@ -43,7 +43,6 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cell::{Cell, RefCell};
 use std::fmt;
 
-use self::combine::CombineFields;
 use self::error_reporting::TypeErrCtxt;
 use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
@@ -51,29 +50,23 @@ use self::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use self::region_constraints::{
     RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
 };
+pub use self::relate::combine::CombineFields;
+pub use self::relate::nll as nll_relate;
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
 pub mod canonical;
-mod combine;
-mod equate;
 pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod fudge;
-mod generalize;
-mod glb;
-mod higher_ranked;
-pub mod lattice;
 mod lexical_region_resolve;
-mod lub;
-pub mod nll_relate;
 pub mod opaque_types;
 pub mod outlives;
 mod projection;
 pub mod region_constraints;
+mod relate;
 pub mod resolve;
-mod sub;
 pub mod type_variable;
 mod undo_log;
 

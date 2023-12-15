@@ -1,8 +1,6 @@
-use crate::infer::DefineOpaqueTypes;
-use crate::traits::PredicateObligations;
-
 use super::combine::{CombineFields, ObligationEmittingRelation};
-use super::Subtype;
+use crate::infer::{DefineOpaqueTypes, SubregionOrigin};
+use crate::traits::PredicateObligations;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::GenericArgsRef;
@@ -133,7 +131,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
-        let origin = Subtype(Box::new(self.fields.trace.clone()));
+        let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
         self.fields
             .infcx
             .inner

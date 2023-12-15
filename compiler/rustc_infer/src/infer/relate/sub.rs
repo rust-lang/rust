@@ -1,7 +1,7 @@
 use super::combine::CombineFields;
-use super::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
-
+use crate::infer::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
 use crate::traits::{Obligation, PredicateObligations};
+
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::TyVar;

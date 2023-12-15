@@ -30,8 +30,8 @@ use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 
-use crate::infer::combine::ObligationEmittingRelation;
-use crate::infer::generalize::{self, Generalization};
+use super::combine::ObligationEmittingRelation;
+use super::generalize::{self, Generalization};
 use crate::infer::InferCtxt;
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::{Obligation, PredicateObligations};
