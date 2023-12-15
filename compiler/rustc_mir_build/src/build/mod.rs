@@ -210,6 +210,12 @@ struct Builder<'a, 'tcx> {
     /// finish building it.
     guard_context: Vec<GuardFrame>,
 
+    /// Temporaries with fixed indexes. Used so that if-let guards on arms
+    /// with an or-pattern are only created once.
+    fixed_temps: FxHashMap<ExprId, Local>,
+    /// Scope of temporaries that should be deduplicated using [Self::fixed_temps].
+    fixed_temps_scope: Option<region::Scope>,
+
     /// Maps `HirId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: FxHashMap<LocalVarId, LocalsForNode>,
@@ -752,6 +758,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
             guard_context: vec![],
+            fixed_temps: Default::default(),
+            fixed_temps_scope: None,
             in_scope_unsafe: safety,
             local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
             canonical_user_type_annotations: IndexVec::new(),

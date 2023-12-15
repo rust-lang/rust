@@ -396,6 +396,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_scope = (arm.scope, arm_source_info);
                 let match_scope = self.local_scope();
                 self.in_scope(arm_scope, arm.lint_level, |this| {
+                    let old_dedup_scope =
+                        mem::replace(&mut this.fixed_temps_scope, Some(arm.scope));
+
                     // `try_to_place` may fail if it is unable to resolve the given
                     // `PlaceBuilder` inside a closure. In this case, we don't want to include
                     // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
@@ -426,6 +429,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((arm, match_scope)),
                         false,
                     );
+
+                    this.fixed_temps_scope = old_dedup_scope;
 
                     if let Some(source_scope) = scope {
                         this.source_scope = source_scope;

@@ -343,6 +343,17 @@ fn if_let_guard(a: &Allocator, c: bool, d: i32) {
     }
 }
 
+fn if_let_guard_2(a: &Allocator, num: i32) {
+    let d = a.alloc();
+    match num {
+        #[allow(irrefutable_let_patterns)]
+        1 | 2 if let Ptr(ref _idx, _) = a.alloc() => {
+            a.alloc();
+        }
+        _ => {}
+    }
+}
+
 fn panic_after_return(a: &Allocator) -> Ptr<'_> {
     // Panic in the drop of `p` or `q` can leak
     let exceptions = vec![8, 9];
@@ -514,6 +525,9 @@ fn main() {
     run_test(|a| if_let_guard(a, false, 0));
     run_test(|a| if_let_guard(a, false, 1));
     run_test(|a| if_let_guard(a, false, 2));
+    run_test(|a| if_let_guard_2(a, 0));
+    run_test(|a| if_let_guard_2(a, 1));
+    run_test(|a| if_let_guard_2(a, 2));
 
     run_test(|a| {
         panic_after_return(a);

@@ -179,10 +179,10 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
 fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     let prev_cx = visitor.cx;
 
-    visitor.enter_scope(Scope { id: arm.hir_id.local_id, data: ScopeData::Node });
-    visitor.cx.var_parent = visitor.cx.parent;
+    visitor.terminating_scopes.insert(arm.hir_id.local_id);
 
-    visitor.terminating_scopes.insert(arm.body.hir_id.local_id);
+    visitor.enter_node_scope_with_dtor(arm.hir_id.local_id);
+    visitor.cx.var_parent = visitor.cx.parent;
 
     if let Some(hir::Guard::If(expr)) = arm.guard {
         visitor.terminating_scopes.insert(expr.hir_id.local_id);

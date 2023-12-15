@@ -43,7 +43,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let expr_ty = expr.ty;
-        let temp = {
+        let deduplicate_temps =
+            this.fixed_temps_scope.is_some() && this.fixed_temps_scope == temp_lifetime;
+        let temp = if deduplicate_temps && let Some(temp_index) = this.fixed_temps.get(&expr_id) {
+            *temp_index
+        } else {
             let mut local_decl = LocalDecl::new(expr_ty, expr_span);
             if mutability.is_not() {
                 local_decl = local_decl.immutable();
@@ -72,6 +76,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             **local_decl.local_info.as_mut().assert_crate_local() = local_info;
             this.local_decls.push(local_decl)
         };
+        if deduplicate_temps {
+            this.fixed_temps.insert(expr_id, temp);
+        }
         let temp_place = Place::from(temp);
 
         match expr.kind {
