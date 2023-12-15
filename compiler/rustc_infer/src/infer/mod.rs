@@ -51,6 +51,7 @@ use self::region_constraints::{
     RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
 };
 pub use self::relate::combine::CombineFields;
+pub use self::relate::nll as nll_relate;
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
@@ -60,7 +61,6 @@ pub mod free_regions;
 mod freshen;
 mod fudge;
 mod lexical_region_resolve;
-pub mod nll_relate;
 pub mod opaque_types;
 pub mod outlives;
 mod projection;
