@@ -5,7 +5,9 @@
 
 use rustc_middle::ty;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
-use rustc_middle::ty::{GenericPredicates, Instance, ParamEnv, ScalarInt, ValTree};
+use rustc_middle::ty::{
+    GenericPredicates, Instance, ParamEnv, ScalarInt, TypeVisitableExt, ValTree,
+};
 use rustc_span::def_id::LOCAL_CRATE;
 use stable_mir::compiler_interface::Context;
 use stable_mir::mir::alloc::GlobalAlloc;
@@ -324,7 +326,8 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn instance_ty(&self, def: InstanceDef) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        instance.ty(tables.tcx, ParamEnv::empty()).stable(&mut *tables)
+        assert!(!instance.has_non_region_param(), "{instance:?} needs further substitution");
+        instance.ty(tables.tcx, ParamEnv::reveal_all()).stable(&mut *tables)
     }
 
     fn instance_def_id(&self, def: InstanceDef) -> stable_mir::DefId {
