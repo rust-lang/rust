@@ -42,8 +42,15 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
             let init = cx.expr_or_init(e);
             let orig_cast = if init.span != e.span { Some(init.span) } else { None };
 
+            // small cache to avoid recomputing needlesly computing peel_casts of init
+            let mut peel_casts = {
+                let mut peel_casts_cache = None;
+                move || *peel_casts_cache.get_or_insert_with(|| peel_casts(cx, init))
+            };
+
             if matches!(pat, PatternKind::Borrow { mutbl: Mutability::Mut } | PatternKind::Assign)
-                && let Some(ty_has_interior_mutability) = is_cast_from_ref_to_mut_ptr(cx, init)
+                && let Some(ty_has_interior_mutability) =
+                    is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
             {
                 let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
 
@@ -65,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
             }
 
             if let Some((from_ty_layout, to_ty_layout, e_alloc)) =
-                is_cast_to_bigger_memory_layout(cx, init)
+                is_cast_to_bigger_memory_layout(cx, init, &mut peel_casts)
             {
                 cx.emit_span_lint(
                     INVALID_REFERENCE_CASTING,
@@ -141,6 +148,7 @@ fn borrow_or_assign<'tcx>(
 fn is_cast_from_ref_to_mut_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     orig_expr: &'tcx Expr<'tcx>,
+    mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
 ) -> Option<bool> {
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
@@ -149,7 +157,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
         return None;
     }
 
-    let (e, need_check_freeze) = peel_casts(cx, orig_expr);
+    let (e, need_check_freeze) = peel_casts();
 
     let start_ty = cx.typeck_results().node_type(e.hir_id);
     if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
@@ -171,6 +179,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
 fn is_cast_to_bigger_memory_layout<'tcx>(
     cx: &LateContext<'tcx>,
     orig_expr: &'tcx Expr<'tcx>,
+    mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
 ) -> Option<(TyAndLayout<'tcx>, TyAndLayout<'tcx>, Expr<'tcx>)> {
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
@@ -178,7 +187,7 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
         return None;
     };
 
-    let (e, _) = peel_casts(cx, orig_expr);
+    let (e, _) = peel_casts();
     let start_ty = cx.typeck_results().node_type(e.hir_id);
 
     let ty::Ref(_, inner_start_ty, _) = start_ty.kind() else {
