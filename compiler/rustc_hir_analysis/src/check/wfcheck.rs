@@ -994,15 +994,6 @@ fn check_associated_item(
     })
 }
 
-fn item_adt_kind(kind: &ItemKind<'_>) -> Option<AdtKind> {
-    match kind {
-        ItemKind::Struct(..) => Some(AdtKind::Struct),
-        ItemKind::Union(..) => Some(AdtKind::Union),
-        ItemKind::Enum(..) => Some(AdtKind::Enum),
-        _ => None,
-    }
-}
-
 /// In a type definition, we check that to ensure that the types of the fields are well-formed.
 fn check_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,

@@ -149,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum CastError {
     ErrorGuaranteed(ErrorGuaranteed),
 
