@@ -6,7 +6,7 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::usefulness::PatCtxt;
+use crate::usefulness::PlaceCtxt;
 use crate::{Captures, MatchCx};
 
 use self::Constructor::*;
@@ -77,7 +77,7 @@ impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
     pub(crate) fn specialize<'a>(
         &self,
-        pcx: &PatCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'a, 'p, Cx>,
         other_ctor: &Constructor<Cx>,
     ) -> SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]> {
         let wildcard_sub_tys = || {
@@ -178,7 +178,7 @@ impl<Cx: MatchCx> WitnessPat<Cx> {
     /// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
-    pub(crate) fn wild_from_ctor(pcx: &PatCtxt<'_, '_, Cx>, ctor: Constructor<Cx>) -> Self {
+    pub(crate) fn wild_from_ctor(pcx: &PlaceCtxt<'_, '_, Cx>, ctor: Constructor<Cx>) -> Self {
         let field_tys = pcx.cx.ctor_sub_tys(&ctor, pcx.ty);
         let fields = field_tys.iter().map(|ty| Self::wildcard(*ty)).collect();
         Self::new(ctor, fields, pcx.ty)

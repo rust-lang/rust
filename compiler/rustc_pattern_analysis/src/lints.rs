@@ -13,7 +13,7 @@ use crate::errors::{
     OverlappingRangeEndpoints, Uncovered,
 };
 use crate::rustc::{
-    Constructor, DeconstructedPat, MatchArm, PatCtxt, RustcMatchCheckCtxt, SplitConstructorSet,
+    Constructor, DeconstructedPat, MatchArm, PlaceCtxt, RustcMatchCheckCtxt, SplitConstructorSet,
     WitnessPat,
 };
 use crate::MatchCx;
@@ -68,7 +68,7 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     }
 
     /// Do constructor splitting on the constructors of the column.
-    fn analyze_ctors(&self, pcx: &PatCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'p, 'tcx> {
+    fn analyze_ctors(&self, pcx: &PlaceCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'p, 'tcx> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
         pcx.cx.ctors_for_ty(pcx.ty).split(pcx, column_ctors)
     }
@@ -84,7 +84,7 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     /// which may change the lengths.
     fn specialize(
         &self,
-        pcx: &PatCtxt<'a, 'p, 'tcx>,
+        pcx: &PlaceCtxt<'a, 'p, 'tcx>,
         ctor: &Constructor<'p, 'tcx>,
     ) -> Vec<PatternColumn<'a, 'p, 'tcx>> {
         let arity = ctor.arity(pcx);
@@ -130,7 +130,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return Vec::new();
     };
-    let pcx = &PatCtxt::new_dummy(cx, ty, wildcard_arena);
+    let pcx = &PlaceCtxt::new_dummy(cx, ty, wildcard_arena);
 
     let set = column.analyze_ctors(pcx);
     if set.present.is_empty() {
@@ -232,7 +232,7 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return;
     };
-    let pcx = &PatCtxt::new_dummy(cx, ty, wildcard_arena);
+    let pcx = &PlaceCtxt::new_dummy(cx, ty, wildcard_arena);
 
     let set = column.analyze_ctors(pcx);
 

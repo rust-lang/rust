@@ -162,7 +162,7 @@ use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
-use crate::usefulness::PatCtxt;
+use crate::usefulness::PlaceCtxt;
 use crate::MatchCx;
 
 /// Whether we have seen a constructor in the column or not.
@@ -717,7 +717,7 @@ impl<Cx: MatchCx> Constructor<Cx> {
 
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
-    pub(crate) fn arity(&self, pcx: &PatCtxt<'_, '_, Cx>) -> usize {
+    pub(crate) fn arity(&self, pcx: &PlaceCtxt<'_, '_, Cx>) -> usize {
         pcx.cx.ctor_arity(self, pcx.ty)
     }
 
@@ -726,7 +726,7 @@ impl<Cx: MatchCx> Constructor<Cx> {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(crate) fn is_covered_by<'p>(&self, pcx: &PatCtxt<'_, 'p, Cx>, other: &Self) -> bool {
+    pub(crate) fn is_covered_by<'p>(&self, pcx: &PlaceCtxt<'_, 'p, Cx>, other: &Self) -> bool {
         match (self, other) {
             (Wildcard, _) => pcx
                 .cx
@@ -859,7 +859,7 @@ impl<Cx: MatchCx> ConstructorSet<Cx> {
     #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
     pub(crate) fn split<'a>(
         &self,
-        pcx: &PatCtxt<'_, '_, Cx>,
+        pcx: &PlaceCtxt<'_, '_, Cx>,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
     ) -> SplitConstructorSet<Cx>
     where
@@ -1008,7 +1008,7 @@ impl<Cx: MatchCx> ConstructorSet<Cx> {
         // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
         // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
         if !pcx.cx.is_exhaustive_patterns_feature_on()
-            && !(pcx.is_top_level && matches!(self, Self::NoConstructors))
+            && !(pcx.is_scrutinee && matches!(self, Self::NoConstructors))
         {
             // Treat all missing constructors as nonempty.
             // This clears `missing_empty`.

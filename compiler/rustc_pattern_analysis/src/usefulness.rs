@@ -575,35 +575,35 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
 }
 
+/// Context that provides information local to a place under investigation.
 #[derive(Clone)]
-pub(crate) struct PatCtxt<'a, 'p, Cx: MatchCx> {
+pub(crate) struct PlaceCtxt<'a, 'p, Cx: MatchCx> {
     pub(crate) cx: &'a Cx,
-    /// Type of the current column under investigation.
-    pub(crate) ty: Cx::Ty,
-    /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
-    /// subpattern.
-    pub(crate) is_top_level: bool,
     /// An arena to store the wildcards we produce during analysis.
     pub(crate) wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
+    /// Type of the place under investigation.
+    pub(crate) ty: Cx::Ty,
+    /// Whether the place is the original scrutinee place, as opposed to a subplace of it.
+    pub(crate) is_scrutinee: bool,
 }
 
-impl<'a, 'p, Cx: MatchCx> PatCtxt<'a, 'p, Cx> {
-    /// A `PatCtxt` when code other than `is_useful` needs one.
+impl<'a, 'p, Cx: MatchCx> PlaceCtxt<'a, 'p, Cx> {
+    /// A `PlaceCtxt` when code other than `is_useful` needs one.
     #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
     pub(crate) fn new_dummy(
         cx: &'a Cx,
         ty: Cx::Ty,
         wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
     ) -> Self {
-        PatCtxt { cx, ty, is_top_level: false, wildcard_arena }
+        PlaceCtxt { cx, ty, is_scrutinee: false, wildcard_arena }
     }
 }
 
-impl<'a, 'p, Cx: MatchCx> Copy for PatCtxt<'a, 'p, Cx> {}
+impl<'a, 'p, Cx: MatchCx> Copy for PlaceCtxt<'a, 'p, Cx> {}
 
-impl<'a, 'p, Cx: MatchCx> fmt::Debug for PatCtxt<'a, 'p, Cx> {
+impl<'a, 'p, Cx: MatchCx> fmt::Debug for PlaceCtxt<'a, 'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PatCtxt").field("ty", &self.ty).finish()
+        f.debug_struct("PlaceCtxt").field("ty", &self.ty).finish()
     }
 }
 
@@ -714,7 +714,7 @@ impl<'a, 'p, Cx: MatchCx> PatStack<'a, 'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PatCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
     ) -> PatStack<'a, 'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
@@ -785,7 +785,7 @@ impl<'a, 'p, Cx: MatchCx> MatrixRow<'a, 'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PatCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
         parent_row: usize,
     ) -> MatrixRow<'a, 'p, Cx> {
@@ -914,7 +914,7 @@ impl<'a, 'p, Cx: MatchCx> Matrix<'a, 'p, Cx> {
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: &PatCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
     ) -> Matrix<'a, 'p, Cx> {
         let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
@@ -1064,7 +1064,7 @@ impl<Cx: MatchCx> WitnessStack<Cx> {
     /// pats: [(false, "foo"), _, true]
     /// result: [Enum::Variant { a: (false, "foo"), b: _ }, true]
     /// ```
-    fn apply_constructor(&mut self, pcx: &PatCtxt<'_, '_, Cx>, ctor: &Constructor<Cx>) {
+    fn apply_constructor(&mut self, pcx: &PlaceCtxt<'_, '_, Cx>, ctor: &Constructor<Cx>) {
         let len = self.0.len();
         let arity = ctor.arity(pcx);
         let fields = self.0.drain((len - arity)..).rev().collect();
@@ -1114,7 +1114,7 @@ impl<Cx: MatchCx> WitnessMatrix<Cx> {
     /// Reverses specialization by `ctor`. See the section on `unspecialize` at the top of the file.
     fn apply_constructor(
         &mut self,
-        pcx: &PatCtxt<'_, '_, Cx>,
+        pcx: &PlaceCtxt<'_, '_, Cx>,
         missing_ctors: &[Constructor<Cx>],
         ctor: &Constructor<Cx>,
         report_individual_missing_ctors: bool,
@@ -1202,7 +1202,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PatCtxt { cx, ty, is_top_level, wildcard_arena };
+    let pcx = &PlaceCtxt { cx, ty, is_scrutinee: is_top_level, wildcard_arena };
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
