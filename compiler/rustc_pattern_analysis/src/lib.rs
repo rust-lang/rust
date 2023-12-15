@@ -36,6 +36,19 @@ use crate::rustc::RustcMatchCheckCtxt;
 #[cfg(feature = "rustc")]
 use crate::usefulness::{compute_match_usefulness, ValidityConstraint};
 
+// It's not possible to only enable the `typed_arena` dependency when the `rustc` feature is off, so
+// we use another feature instead. The crate won't compile if one of these isn't enabled.
+#[cfg(feature = "rustc")]
+pub(crate) use rustc_arena::TypedArena;
+#[cfg(feature = "stable")]
+pub(crate) use typed_arena::Arena as TypedArena;
+
+pub trait Captures<'a> {}
+impl<'a, T: ?Sized> Captures<'a> for T {}
+
+/// Context that provides type information about constructors.
+///
+/// Most of the crate is parameterized on a type that implements this trait.
 pub trait MatchCx: Sized + Clone + fmt::Debug {
     /// The type of a pattern.
     type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
@@ -71,10 +84,20 @@ pub trait MatchCx: Sized + Clone + fmt::Debug {
     fn bug(&self, fmt: fmt::Arguments<'_>) -> !;
 }
 
+/// Context that provides information global to a match.
+#[derive(Clone)]
+pub struct MatchCtxt<'a, 'p, Cx: MatchCx> {
+    /// The context for type information.
+    pub tycx: &'a Cx,
+    /// An arena to store the wildcards we produce during analysis.
+    pub wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
+}
+
+impl<'a, 'p, Cx: MatchCx> Copy for MatchCtxt<'a, 'p, Cx> {}
+
 /// The arm of a match expression.
 #[derive(Clone, Debug)]
 pub struct MatchArm<'p, Cx: MatchCx> {
-    /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
     pub pat: &'p DeconstructedPat<'p, Cx>,
     pub has_guard: bool,
     pub arm_data: Cx::ArmData,
@@ -82,31 +105,30 @@ pub struct MatchArm<'p, Cx: MatchCx> {
 
 impl<'p, Cx: MatchCx> Copy for MatchArm<'p, Cx> {}
 
-pub trait Captures<'a> {}
-impl<'a, T: ?Sized> Captures<'a> for T {}
-
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.
 #[cfg(feature = "rustc")]
 pub fn analyze_match<'p, 'tcx>(
-    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
+    tycx: &RustcMatchCheckCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
 ) -> rustc::UsefulnessReport<'p, 'tcx> {
     // Arena to store the extra wildcards we construct during analysis.
-    let wildcard_arena = cx.pattern_arena;
+    let wildcard_arena = tycx.pattern_arena;
+    let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
+    let cx = MatchCtxt { tycx, wildcard_arena };
+
+    let report = compute_match_usefulness(cx, arms, scrut_ty, scrut_validity);
+
     let pat_column = PatternColumn::new(arms);
 
-    let scrut_validity = ValidityConstraint::from_bool(cx.known_valid_scrutinee);
-    let report = compute_match_usefulness(cx, arms, scrut_ty, scrut_validity, wildcard_arena);
-
     // Lint on ranges that overlap on their endpoints, which is likely a mistake.
-    lint_overlapping_range_endpoints(cx, &pat_column, wildcard_arena);
+    lint_overlapping_range_endpoints(cx, &pat_column);
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
-    if cx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
-        lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty, wildcard_arena)
+    if tycx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
+        lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty)
     }
 
     report

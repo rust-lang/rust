@@ -555,16 +555,9 @@
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
-// It's not possible to only enable the `typed_arena` dependency when the `rustc` feature is off, so
-// we use another feature instead. The crate won't compile if one of these isn't enabled.
-#[cfg(feature = "rustc")]
-use rustc_arena::TypedArena;
-#[cfg(feature = "stable")]
-use typed_arena::Arena as TypedArena;
-
 use crate::constructor::{Constructor, ConstructorSet};
 use crate::pat::{DeconstructedPat, WitnessPat};
-use crate::{Captures, MatchArm, MatchCx};
+use crate::{Captures, MatchArm, MatchCtxt, MatchCx, TypedArena};
 
 use self::ValidityConstraint::*;
 
@@ -578,9 +571,7 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
 /// Context that provides information local to a place under investigation.
 #[derive(Clone)]
 pub(crate) struct PlaceCtxt<'a, 'p, Cx: MatchCx> {
-    pub(crate) cx: &'a Cx,
-    /// An arena to store the wildcards we produce during analysis.
-    pub(crate) wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
+    pub(crate) mcx: MatchCtxt<'a, 'p, Cx>,
     /// Type of the place under investigation.
     pub(crate) ty: Cx::Ty,
     /// Whether the place is the original scrutinee place, as opposed to a subplace of it.
@@ -590,12 +581,18 @@ pub(crate) struct PlaceCtxt<'a, 'p, Cx: MatchCx> {
 impl<'a, 'p, Cx: MatchCx> PlaceCtxt<'a, 'p, Cx> {
     /// A `PlaceCtxt` when code other than `is_useful` needs one.
     #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
-    pub(crate) fn new_dummy(
-        cx: &'a Cx,
-        ty: Cx::Ty,
-        wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
-    ) -> Self {
-        PlaceCtxt { cx, ty, is_scrutinee: false, wildcard_arena }
+    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, 'p, Cx>, ty: Cx::Ty) -> Self {
+        PlaceCtxt { mcx, ty, is_scrutinee: false }
+    }
+
+    pub(crate) fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
+        self.mcx.tycx.ctor_arity(ctor, self.ty)
+    }
+    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<Cx>) -> &[Cx::Ty] {
+        self.mcx.tycx.ctor_sub_tys(ctor, self.ty)
+    }
+    pub(crate) fn ctors_for_ty(&self) -> ConstructorSet<Cx> {
+        self.mcx.tycx.ctors_for_ty(self.ty)
     }
 }
 
@@ -1176,11 +1173,10 @@ impl<Cx: MatchCx> WitnessMatrix<Cx> {
 /// - unspecialization, where we lift the results from the previous step into results for this step
 ///     (using `apply_constructor` and by updating `row.useful` for each parent row).
 /// This is all explained at the top of the file.
-#[instrument(level = "debug", skip(cx, is_top_level, wildcard_arena), ret)]
+#[instrument(level = "debug", skip(mcx, is_top_level), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
-    cx: &'a Cx,
+    mcx: MatchCtxt<'a, 'p, Cx>,
     matrix: &mut Matrix<'a, 'p, Cx>,
-    wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
     is_top_level: bool,
 ) -> WitnessMatrix<Cx> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
@@ -1202,7 +1198,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PlaceCtxt { cx, ty, is_scrutinee: is_top_level, wildcard_arena };
+    let pcx = &PlaceCtxt { mcx, ty, is_scrutinee: is_top_level };
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
@@ -1211,7 +1207,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let ctors_for_ty = &cx.ctors_for_ty(ty);
+    let ctors_for_ty = pcx.ctors_for_ty();
     let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. }); // For diagnostics.
     let split_set = ctors_for_ty.split(pcx, ctors);
     let all_missing = split_set.present.is_empty();
@@ -1245,7 +1241,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
         // Dig into rows that match `ctor`.
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_usefulness(cx, &mut spec_matrix, wildcard_arena, false)
+            compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
         });
 
         let counts_for_exhaustiveness = match ctor {
@@ -1307,17 +1303,15 @@ pub struct UsefulnessReport<'p, Cx: MatchCx> {
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
-#[instrument(skip(cx, arms, wildcard_arena), level = "debug")]
+#[instrument(skip(cx, arms), level = "debug")]
 pub fn compute_match_usefulness<'p, Cx: MatchCx>(
-    cx: &Cx,
+    cx: MatchCtxt<'_, 'p, Cx>,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
-    wildcard_arena: &TypedArena<DeconstructedPat<'p, Cx>>,
 ) -> UsefulnessReport<'p, Cx> {
-    let mut matrix = Matrix::new(wildcard_arena, arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses =
-        compute_exhaustiveness_and_usefulness(cx, &mut matrix, wildcard_arena, true);
+    let mut matrix = Matrix::new(cx.wildcard_arena, arms, scrut_ty, scrut_validity);
+    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix, true);
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms

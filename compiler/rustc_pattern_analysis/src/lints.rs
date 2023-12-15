@@ -1,4 +1,3 @@
-use rustc_arena::TypedArena;
 use smallvec::SmallVec;
 
 use rustc_data_structures::captures::Captures;
@@ -13,8 +12,8 @@ use crate::errors::{
     OverlappingRangeEndpoints, Uncovered,
 };
 use crate::rustc::{
-    Constructor, DeconstructedPat, MatchArm, PlaceCtxt, RustcMatchCheckCtxt, SplitConstructorSet,
-    WitnessPat,
+    Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RustcMatchCheckCtxt,
+    SplitConstructorSet, WitnessPat,
 };
 use crate::MatchCx;
 
@@ -70,7 +69,7 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     /// Do constructor splitting on the constructors of the column.
     fn analyze_ctors(&self, pcx: &PlaceCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'p, 'tcx> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
-        pcx.cx.ctors_for_ty(pcx.ty).split(pcx, column_ctors)
+        pcx.ctors_for_ty().split(pcx, column_ctors)
     }
 
     fn iter<'b>(&'b self) -> impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>> + Captures<'b> {
@@ -121,16 +120,15 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
 
 /// Traverse the patterns to collect any variants of a non_exhaustive enum that fail to be mentioned
 /// in a given column.
-#[instrument(level = "debug", skip(cx, wildcard_arena), ret)]
+#[instrument(level = "debug", skip(cx), ret)]
 fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
-    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
+    cx: MatchCtxt<'a, 'p, 'tcx>,
     column: &PatternColumn<'a, 'p, 'tcx>,
-    wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) -> Vec<WitnessPat<'p, 'tcx>> {
     let Some(ty) = column.head_ty() else {
         return Vec::new();
     };
-    let pcx = &PlaceCtxt::new_dummy(cx, ty, wildcard_arena);
+    let pcx = &PlaceCtxt::new_dummy(cx, ty);
 
     let set = column.analyze_ctors(pcx);
     if set.present.is_empty() {
@@ -141,7 +139,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     }
 
     let mut witnesses = Vec::new();
-    if cx.is_foreign_non_exhaustive_enum(ty) {
+    if cx.tycx.is_foreign_non_exhaustive_enum(ty) {
         witnesses.extend(
             set.missing
                 .into_iter()
@@ -157,7 +155,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
         let wild_pat = WitnessPat::wild_from_ctor(pcx, ctor);
         for (i, col_i) in specialized_columns.iter().enumerate() {
             // Compute witnesses for each column.
-            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i, wildcard_arena);
+            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i);
             // For each witness, we build a new pattern in the shape of `ctor(_, _, wit, _, _)`,
             // adding enough wildcards to match `arity`.
             for wit in wits_for_col_i {
@@ -171,29 +169,29 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
 }
 
 pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
-    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
+    cx: MatchCtxt<'a, 'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     pat_column: &PatternColumn<'a, 'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
-    wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) {
+    let rcx: &RustcMatchCheckCtxt<'_, '_> = cx.tycx;
     if !matches!(
-        cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, cx.match_lint_level).0,
+        rcx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, rcx.match_lint_level).0,
         rustc_session::lint::Level::Allow
     ) {
-        let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column, wildcard_arena);
+        let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column);
         if !witnesses.is_empty() {
             // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
             // is not exhaustive enough.
             //
             // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
-            cx.tcx.emit_spanned_lint(
+            rcx.tcx.emit_spanned_lint(
                 NON_EXHAUSTIVE_OMITTED_PATTERNS,
-                cx.match_lint_level,
-                cx.scrut_span,
+                rcx.match_lint_level,
+                rcx.scrut_span,
                 NonExhaustiveOmittedPattern {
                     scrut_ty,
-                    uncovered: Uncovered::new(cx.scrut_span, cx, witnesses),
+                    uncovered: Uncovered::new(rcx.scrut_span, rcx, witnesses),
                 },
             );
         }
@@ -203,17 +201,17 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
         // usage of the lint.
         for arm in arms {
             let (lint_level, lint_level_source) =
-                cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.arm_data);
+                rcx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.arm_data);
             if !matches!(lint_level, rustc_session::lint::Level::Allow) {
                 let decorator = NonExhaustiveOmittedPatternLintOnArm {
                     lint_span: lint_level_source.span(),
-                    suggest_lint_on_match: cx.whole_match_span.map(|span| span.shrink_to_lo()),
+                    suggest_lint_on_match: rcx.whole_match_span.map(|span| span.shrink_to_lo()),
                     lint_level: lint_level.as_str(),
                     lint_name: "non_exhaustive_omitted_patterns",
                 };
 
                 use rustc_errors::DecorateLint;
-                let mut err = cx.tcx.sess.struct_span_warn(*arm.pat.data(), "");
+                let mut err = rcx.tcx.sess.struct_span_warn(*arm.pat.data(), "");
                 err.set_primary_message(decorator.msg());
                 decorator.decorate_lint(&mut err);
                 err.emit();
@@ -223,30 +221,30 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
 }
 
 /// Traverse the patterns to warn the user about ranges that overlap on their endpoints.
-#[instrument(level = "debug", skip(cx, wildcard_arena))]
+#[instrument(level = "debug", skip(cx))]
 pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
-    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
+    cx: MatchCtxt<'a, 'p, 'tcx>,
     column: &PatternColumn<'a, 'p, 'tcx>,
-    wildcard_arena: &TypedArena<DeconstructedPat<'p, 'tcx>>,
 ) {
     let Some(ty) = column.head_ty() else {
         return;
     };
-    let pcx = &PlaceCtxt::new_dummy(cx, ty, wildcard_arena);
+    let pcx = &PlaceCtxt::new_dummy(cx, ty);
+    let rcx: &RustcMatchCheckCtxt<'_, '_> = cx.tycx;
 
     let set = column.analyze_ctors(pcx);
 
     if matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_)) {
         let emit_lint = |overlap: &IntRange, this_span: Span, overlapped_spans: &[Span]| {
-            let overlap_as_pat = cx.hoist_pat_range(overlap, ty);
+            let overlap_as_pat = rcx.hoist_pat_range(overlap, ty);
             let overlaps: Vec<_> = overlapped_spans
                 .iter()
                 .copied()
                 .map(|span| Overlap { range: overlap_as_pat.clone(), span })
                 .collect();
-            cx.tcx.emit_spanned_lint(
+            rcx.tcx.emit_spanned_lint(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                cx.match_lint_level,
+                rcx.match_lint_level,
                 this_span,
                 OverlappingRangeEndpoints { overlap: overlaps, range: this_span },
             );
@@ -291,7 +289,7 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
         // Recurse into the fields.
         for ctor in set.present {
             for col in column.specialize(pcx, &ctor) {
-                lint_overlapping_range_endpoints(cx, &col, wildcard_arena);
+                lint_overlapping_range_endpoints(cx, &col);
             }
         }
     }

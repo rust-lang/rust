@@ -718,7 +718,7 @@ impl<Cx: MatchCx> Constructor<Cx> {
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
     pub(crate) fn arity(&self, pcx: &PlaceCtxt<'_, '_, Cx>) -> usize {
-        pcx.cx.ctor_arity(self, pcx.ty)
+        pcx.ctor_arity(self)
     }
 
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
@@ -729,7 +729,8 @@ impl<Cx: MatchCx> Constructor<Cx> {
     pub(crate) fn is_covered_by<'p>(&self, pcx: &PlaceCtxt<'_, 'p, Cx>, other: &Self) -> bool {
         match (self, other) {
             (Wildcard, _) => pcx
-                .cx
+                .mcx
+                .tycx
                 .bug(format_args!("Constructor splitting should not have returned `Wildcard`")),
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -771,7 +772,7 @@ impl<Cx: MatchCx> Constructor<Cx> {
             (Opaque(self_id), Opaque(other_id)) => self_id == other_id,
             (Opaque(..), _) | (_, Opaque(..)) => false,
 
-            _ => pcx.cx.bug(format_args!(
+            _ => pcx.mcx.tycx.bug(format_args!(
                 "trying to compare incompatible constructors {self:?} and {other:?}"
             )),
         }
@@ -1007,7 +1008,7 @@ impl<Cx: MatchCx> ConstructorSet<Cx> {
         // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
         // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
         // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
-        if !pcx.cx.is_exhaustive_patterns_feature_on()
+        if !pcx.mcx.tycx.is_exhaustive_patterns_feature_on()
             && !(pcx.is_scrutinee && matches!(self, Self::NoConstructors))
         {
             // Treat all missing constructors as nonempty.

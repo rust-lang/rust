@@ -81,10 +81,10 @@ impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
         other_ctor: &Constructor<Cx>,
     ) -> SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]> {
         let wildcard_sub_tys = || {
-            let tys = pcx.cx.ctor_sub_tys(other_ctor, pcx.ty);
+            let tys = pcx.ctor_sub_tys(other_ctor);
             tys.iter()
                 .map(|ty| DeconstructedPat::wildcard(*ty, Cx::PatData::default()))
-                .map(|pat| pcx.wildcard_arena.alloc(pat) as &_)
+                .map(|pat| pcx.mcx.wildcard_arena.alloc(pat) as &_)
                 .collect()
         };
         match (&self.ctor, other_ctor) {
@@ -179,7 +179,7 @@ impl<Cx: MatchCx> WitnessPat<Cx> {
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(pcx: &PlaceCtxt<'_, '_, Cx>, ctor: Constructor<Cx>) -> Self {
-        let field_tys = pcx.cx.ctor_sub_tys(&ctor, pcx.ty);
+        let field_tys = pcx.ctor_sub_tys(&ctor);
         let fields = field_tys.iter().map(|ty| Self::wildcard(*ty)).collect();
         Self::new(ctor, fields, pcx.ty)
     }
