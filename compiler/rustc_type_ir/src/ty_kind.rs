@@ -4,6 +4,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use std::fmt;
 
+use crate::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::Interner;
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
@@ -158,7 +160,7 @@ pub enum TyKind<I: Interner> {
     Slice(I::Ty),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(I::TypeAndMut),
+    RawPtr(TypeAndMut<I>),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
@@ -410,8 +412,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
-            RawPtr(p) => {
-                let (ty, mutbl) = I::ty_and_mut_to_parts(*p);
+            RawPtr(TypeAndMut { ty, mutbl }) => {
                 match mutbl {
                     Mutability::Mut => write!(f, "*mut "),
                     Mutability::Not => write!(f, "*const "),
@@ -829,5 +830,44 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
             }
             _ => write!(f, "{:?}", this.data),
         }
+    }
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    PartialOrd(bound = ""),
+    Ord(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = ""),
+    Debug(bound = "")
+)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub struct TypeAndMut<I: Interner> {
+    pub ty: I::Ty,
+    pub mutbl: Mutability,
+}
+
+impl<I: Interner> TypeFoldable<I> for TypeAndMut<I>
+where
+    I::Ty: TypeFoldable<I>,
+{
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(TypeAndMut {
+            ty: self.ty.try_fold_with(folder)?,
+            mutbl: self.mutbl.try_fold_with(folder)?,
+        })
+    }
+}
+
+impl<I: Interner> TypeVisitable<I> for TypeAndMut<I>
+where
+    I::Ty: TypeVisitable<I>,
+{
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> std::ops::ControlFlow<V::BreakTy> {
+        self.ty.visit_with(visitor)?;
+        self.mutbl.visit_with(visitor)
     }
 }

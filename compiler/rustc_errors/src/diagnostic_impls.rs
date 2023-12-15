@@ -378,3 +378,9 @@ pub struct IndicateAnonymousLifetime {
     pub count: usize,
     pub suggestion: String,
 }
+
+impl IntoDiagnosticArg for type_ir::ClosureKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(self.as_str().into())
+    }
+}
