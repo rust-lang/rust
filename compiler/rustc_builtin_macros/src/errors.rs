@@ -7,6 +7,7 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_requires_cfg_pattern)]
+#[must_use]
 pub(crate) struct RequiresCfgPattern {
     #[primary_span]
     #[label]
@@ -15,6 +16,7 @@ pub(crate) struct RequiresCfgPattern {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_expected_one_cfg_pattern)]
+#[must_use]
 pub(crate) struct OneCfgPattern {
     #[primary_span]
     pub(crate) span: Span,
@@ -22,6 +24,7 @@ pub(crate) struct OneCfgPattern {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_alloc_error_must_be_fn)]
+#[must_use]
 pub(crate) struct AllocErrorMustBeFn {
     #[primary_span]
     pub(crate) span: Span,
@@ -29,6 +32,7 @@ pub(crate) struct AllocErrorMustBeFn {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_assert_requires_boolean)]
+#[must_use]
 pub(crate) struct AssertRequiresBoolean {
     #[primary_span]
     #[label]
@@ -37,6 +41,7 @@ pub(crate) struct AssertRequiresBoolean {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_assert_requires_expression)]
+#[must_use]
 pub(crate) struct AssertRequiresExpression {
     #[primary_span]
     pub(crate) span: Span,
@@ -46,6 +51,7 @@ pub(crate) struct AssertRequiresExpression {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_assert_missing_comma)]
+#[must_use]
 pub(crate) struct AssertMissingComma {
     #[primary_span]
     pub(crate) span: Span,
@@ -67,6 +73,7 @@ pub(crate) enum CfgAccessibleInvalid {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_cfg_accessible_indeterminate)]
+#[must_use]
 pub(crate) struct CfgAccessibleIndeterminate {
     #[primary_span]
     pub(crate) span: Span,
@@ -75,6 +82,7 @@ pub(crate) struct CfgAccessibleIndeterminate {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_missing_literal)]
 #[note]
+#[must_use]
 pub(crate) struct ConcatMissingLiteral {
     #[primary_span]
     pub(crate) spans: Vec<Span>,
@@ -82,6 +90,7 @@ pub(crate) struct ConcatMissingLiteral {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytestr)]
+#[must_use]
 pub(crate) struct ConcatBytestr {
     #[primary_span]
     pub(crate) span: Span,
@@ -89,6 +98,7 @@ pub(crate) struct ConcatBytestr {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_c_str_lit)]
+#[must_use]
 pub(crate) struct ConcatCStrLit {
     #[primary_span]
     pub(crate) span: Span,
@@ -96,6 +106,7 @@ pub(crate) struct ConcatCStrLit {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_export_macro_rules)]
+#[must_use]
 pub(crate) struct ExportMacroRules {
     #[primary_span]
     pub(crate) span: Span,
@@ -103,6 +114,7 @@ pub(crate) struct ExportMacroRules {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_proc_macro)]
+#[must_use]
 pub(crate) struct ProcMacro {
     #[primary_span]
     pub(crate) span: Span,
@@ -110,6 +122,7 @@ pub(crate) struct ProcMacro {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_invalid_crate_attribute)]
+#[must_use]
 pub(crate) struct InvalidCrateAttr {
     #[primary_span]
     pub(crate) span: Span,
@@ -117,6 +130,7 @@ pub(crate) struct InvalidCrateAttr {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_non_abi)]
+#[must_use]
 pub(crate) struct NonABI {
     #[primary_span]
     pub(crate) span: Span,
@@ -124,6 +138,7 @@ pub(crate) struct NonABI {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_trace_macros)]
+#[must_use]
 pub(crate) struct TraceMacros {
     #[primary_span]
     pub(crate) span: Span,
@@ -131,6 +146,7 @@ pub(crate) struct TraceMacros {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_bench_sig)]
+#[must_use]
 pub(crate) struct BenchSig {
     #[primary_span]
     pub(crate) span: Span,
@@ -138,6 +154,7 @@ pub(crate) struct BenchSig {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_arg_non_lifetime)]
+#[must_use]
 pub(crate) struct TestArgNonLifetime {
     #[primary_span]
     pub(crate) span: Span,
@@ -145,6 +162,7 @@ pub(crate) struct TestArgNonLifetime {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_should_panic)]
+#[must_use]
 pub(crate) struct ShouldPanic {
     #[primary_span]
     pub(crate) span: Span,
@@ -152,6 +170,7 @@ pub(crate) struct ShouldPanic {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_args)]
+#[must_use]
 pub(crate) struct TestArgs {
     #[primary_span]
     pub(crate) span: Span,
@@ -159,6 +178,7 @@ pub(crate) struct TestArgs {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_alloc_must_statics)]
+#[must_use]
 pub(crate) struct AllocMustStatics {
     #[primary_span]
     pub(crate) span: Span,
@@ -166,6 +186,7 @@ pub(crate) struct AllocMustStatics {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
+#[must_use]
 pub(crate) struct ConcatBytesInvalid {
     #[primary_span]
     pub(crate) span: Span,
@@ -210,6 +231,7 @@ pub(crate) enum ConcatBytesInvalidSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_oob)]
+#[must_use]
 pub(crate) struct ConcatBytesOob {
     #[primary_span]
     pub(crate) span: Span,
@@ -217,6 +239,7 @@ pub(crate) struct ConcatBytesOob {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_non_u8)]
+#[must_use]
 pub(crate) struct ConcatBytesNonU8 {
     #[primary_span]
     pub(crate) span: Span,
@@ -225,6 +248,7 @@ pub(crate) struct ConcatBytesNonU8 {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_missing_literal)]
 #[note]
+#[must_use]
 pub(crate) struct ConcatBytesMissingLiteral {
     #[primary_span]
     pub(crate) spans: Vec<Span>,
@@ -232,6 +256,7 @@ pub(crate) struct ConcatBytesMissingLiteral {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_array)]
+#[must_use]
 pub(crate) struct ConcatBytesArray {
     #[primary_span]
     pub(crate) span: Span,
@@ -242,6 +267,7 @@ pub(crate) struct ConcatBytesArray {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_bad_repeat)]
+#[must_use]
 pub(crate) struct ConcatBytesBadRepeat {
     #[primary_span]
     pub(crate) span: Span,
@@ -249,6 +275,7 @@ pub(crate) struct ConcatBytesBadRepeat {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_idents_missing_args)]
+#[must_use]
 pub(crate) struct ConcatIdentsMissingArgs {
     #[primary_span]
     pub(crate) span: Span,
@@ -256,6 +283,7 @@ pub(crate) struct ConcatIdentsMissingArgs {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_idents_missing_comma)]
+#[must_use]
 pub(crate) struct ConcatIdentsMissingComma {
     #[primary_span]
     pub(crate) span: Span,
@@ -263,6 +291,7 @@ pub(crate) struct ConcatIdentsMissingComma {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_idents_ident_args)]
+#[must_use]
 pub(crate) struct ConcatIdentsIdentArgs {
     #[primary_span]
     pub(crate) span: Span,
@@ -270,6 +299,7 @@ pub(crate) struct ConcatIdentsIdentArgs {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_bad_derive_target, code = "E0774")]
+#[must_use]
 pub(crate) struct BadDeriveTarget {
     #[primary_span]
     #[label]
@@ -280,10 +310,12 @@ pub(crate) struct BadDeriveTarget {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_tests_not_support)]
+#[must_use]
 pub(crate) struct TestsNotSupport {}
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_unexpected_lit, code = "E0777")]
+#[must_use]
 pub(crate) struct BadDeriveLit {
     #[primary_span]
     #[label]
@@ -302,6 +334,7 @@ pub(crate) enum BadDeriveLitHelp {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_derive_path_args_list)]
+#[must_use]
 pub(crate) struct DerivePathArgsList {
     #[suggestion(code = "", applicability = "machine-applicable")]
     #[primary_span]
@@ -310,6 +343,7 @@ pub(crate) struct DerivePathArgsList {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_derive_path_args_value)]
+#[must_use]
 pub(crate) struct DerivePathArgsValue {
     #[suggestion(code = "", applicability = "machine-applicable")]
     #[primary_span]
@@ -319,6 +353,7 @@ pub(crate) struct DerivePathArgsValue {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_no_default_variant)]
 #[help]
+#[must_use]
 pub(crate) struct NoDefaultVariant {
     #[primary_span]
     pub(crate) span: Span,
@@ -342,6 +377,7 @@ pub(crate) struct NoDefaultVariantSugg {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_multiple_defaults)]
 #[note]
+#[must_use]
 pub(crate) struct MultipleDefaults {
     #[primary_span]
     pub(crate) span: Span,
@@ -368,6 +404,7 @@ pub(crate) struct MultipleDefaultsSugg {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_non_unit_default)]
 #[help]
+#[must_use]
 pub(crate) struct NonUnitDefault {
     #[primary_span]
     pub(crate) span: Span,
@@ -376,6 +413,7 @@ pub(crate) struct NonUnitDefault {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_non_exhaustive_default)]
 #[help]
+#[must_use]
 pub(crate) struct NonExhaustiveDefault {
     #[primary_span]
     pub(crate) span: Span,
@@ -386,6 +424,7 @@ pub(crate) struct NonExhaustiveDefault {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_multiple_default_attrs)]
 #[note]
+#[must_use]
 pub(crate) struct MultipleDefaultAttrs {
     #[primary_span]
     pub(crate) span: Span,
@@ -413,6 +452,7 @@ pub(crate) struct MultipleDefaultAttrsSugg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_default_arg)]
+#[must_use]
 pub(crate) struct DefaultHasArg {
     #[primary_span]
     #[suggestion(code = "#[default]", style = "hidden", applicability = "maybe-incorrect")]
@@ -421,6 +461,7 @@ pub(crate) struct DefaultHasArg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_derive_macro_call)]
+#[must_use]
 pub(crate) struct DeriveMacroCall {
     #[primary_span]
     pub(crate) span: Span,
@@ -428,6 +469,7 @@ pub(crate) struct DeriveMacroCall {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_cannot_derive_union)]
+#[must_use]
 pub(crate) struct DeriveUnion {
     #[primary_span]
     pub(crate) span: Span,
@@ -435,6 +477,7 @@ pub(crate) struct DeriveUnion {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_env_takes_args)]
+#[must_use]
 pub(crate) struct EnvTakesArgs {
     #[primary_span]
     pub(crate) span: Span,
@@ -481,6 +524,7 @@ pub(crate) enum EnvNotDefined<'a> {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_requires_string)]
+#[must_use]
 pub(crate) struct FormatRequiresString {
     #[primary_span]
     pub(crate) span: Span,
@@ -488,6 +532,7 @@ pub(crate) struct FormatRequiresString {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_duplicate_arg)]
+#[must_use]
 pub(crate) struct FormatDuplicateArg {
     #[primary_span]
     pub(crate) span: Span,
@@ -500,6 +545,7 @@ pub(crate) struct FormatDuplicateArg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_positional_after_named)]
+#[must_use]
 pub(crate) struct PositionalAfterNamed {
     #[primary_span]
     #[label]
@@ -510,6 +556,7 @@ pub(crate) struct PositionalAfterNamed {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_string_invalid)]
+#[must_use]
 pub(crate) struct InvalidFormatString {
     #[primary_span]
     #[label]
@@ -568,6 +615,7 @@ pub(crate) enum InvalidFormatStringSuggestion {
 #[diag(builtin_macros_format_no_arg_named)]
 #[note]
 #[note(builtin_macros_note2)]
+#[must_use]
 pub(crate) struct FormatNoArgNamed {
     #[primary_span]
     pub(crate) span: Span,
@@ -577,6 +625,7 @@ pub(crate) struct FormatNoArgNamed {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_unknown_trait)]
 #[note]
+#[must_use]
 pub(crate) struct FormatUnknownTrait<'a> {
     #[primary_span]
     pub(crate) span: Span,
@@ -601,6 +650,7 @@ pub struct FormatUnknownTraitSugg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_unused_arg)]
+#[must_use]
 pub(crate) struct FormatUnusedArg {
     #[primary_span]
     #[label(builtin_macros_format_unused_arg)]
@@ -626,6 +676,7 @@ impl AddToDiagnostic for FormatUnusedArg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_unused_args)]
+#[must_use]
 pub(crate) struct FormatUnusedArgs {
     #[primary_span]
     pub(crate) unused: Vec<Span>,
@@ -637,6 +688,7 @@ pub(crate) struct FormatUnusedArgs {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_pos_mismatch)]
+#[must_use]
 pub(crate) struct FormatPositionalMismatch {
     #[primary_span]
     pub(crate) span: MultiSpan,
@@ -648,6 +700,7 @@ pub(crate) struct FormatPositionalMismatch {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_redundant_args)]
+#[must_use]
 pub(crate) struct FormatRedundantArgs {
     #[primary_span]
     pub(crate) span: MultiSpan,
@@ -669,6 +722,7 @@ pub(crate) struct FormatRedundantArgsSugg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_case_non_item)]
+#[must_use]
 pub(crate) struct TestCaseNonItem {
     #[primary_span]
     pub(crate) span: Span,
@@ -676,6 +730,7 @@ pub(crate) struct TestCaseNonItem {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_bad_fn)]
+#[must_use]
 pub(crate) struct TestBadFn {
     #[primary_span]
     pub(crate) span: Span,
@@ -686,6 +741,7 @@ pub(crate) struct TestBadFn {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_explicit_register_name)]
+#[must_use]
 pub(crate) struct AsmExplicitRegisterName {
     #[primary_span]
     pub(crate) span: Span,
@@ -693,6 +749,7 @@ pub(crate) struct AsmExplicitRegisterName {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_mutually_exclusive)]
+#[must_use]
 pub(crate) struct AsmMutuallyExclusive {
     #[primary_span]
     pub(crate) spans: Vec<Span>,
@@ -702,6 +759,7 @@ pub(crate) struct AsmMutuallyExclusive {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_pure_combine)]
+#[must_use]
 pub(crate) struct AsmPureCombine {
     #[primary_span]
     pub(crate) spans: Vec<Span>,
@@ -709,6 +767,7 @@ pub(crate) struct AsmPureCombine {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_pure_no_output)]
+#[must_use]
 pub(crate) struct AsmPureNoOutput {
     #[primary_span]
     pub(crate) spans: Vec<Span>,
@@ -716,6 +775,7 @@ pub(crate) struct AsmPureNoOutput {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_modifier_invalid)]
+#[must_use]
 pub(crate) struct AsmModifierInvalid {
     #[primary_span]
     pub(crate) span: Span,
@@ -723,6 +783,7 @@ pub(crate) struct AsmModifierInvalid {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_requires_template)]
+#[must_use]
 pub(crate) struct AsmRequiresTemplate {
     #[primary_span]
     pub(crate) span: Span,
@@ -730,6 +791,7 @@ pub(crate) struct AsmRequiresTemplate {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_expected_comma)]
+#[must_use]
 pub(crate) struct AsmExpectedComma {
     #[primary_span]
     #[label]
@@ -738,6 +800,7 @@ pub(crate) struct AsmExpectedComma {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_underscore_input)]
+#[must_use]
 pub(crate) struct AsmUnderscoreInput {
     #[primary_span]
     pub(crate) span: Span,
@@ -745,6 +808,7 @@ pub(crate) struct AsmUnderscoreInput {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_sym_no_path)]
+#[must_use]
 pub(crate) struct AsmSymNoPath {
     #[primary_span]
     pub(crate) span: Span,
@@ -752,6 +816,7 @@ pub(crate) struct AsmSymNoPath {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_expected_other)]
+#[must_use]
 pub(crate) struct AsmExpectedOther {
     #[primary_span]
     #[label(builtin_macros_asm_expected_other)]
@@ -761,6 +826,7 @@ pub(crate) struct AsmExpectedOther {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_duplicate_arg)]
+#[must_use]
 pub(crate) struct AsmDuplicateArg {
     #[primary_span]
     #[label(builtin_macros_arg)]
@@ -772,6 +838,7 @@ pub(crate) struct AsmDuplicateArg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_pos_after)]
+#[must_use]
 pub(crate) struct AsmPositionalAfter {
     #[primary_span]
     #[label(builtin_macros_pos)]
@@ -784,6 +851,7 @@ pub(crate) struct AsmPositionalAfter {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_noreturn)]
+#[must_use]
 pub(crate) struct AsmNoReturn {
     #[primary_span]
     pub(crate) outputs_sp: Vec<Span>,
@@ -791,6 +859,7 @@ pub(crate) struct AsmNoReturn {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_global_asm_clobber_abi)]
+#[must_use]
 pub(crate) struct GlobalAsmClobberAbi {
     #[primary_span]
     pub(crate) spans: Vec<Span>,
@@ -822,6 +891,7 @@ impl<'a> IntoDiagnostic<'a> for AsmClobberNoReg {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_opt_already_provided)]
+#[must_use]
 pub(crate) struct AsmOptAlreadyprovided {
     #[primary_span]
     #[label]
@@ -833,6 +903,7 @@ pub(crate) struct AsmOptAlreadyprovided {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_runner_invalid)]
+#[must_use]
 pub(crate) struct TestRunnerInvalid {
     #[primary_span]
     pub(crate) span: Span,
@@ -840,6 +911,7 @@ pub(crate) struct TestRunnerInvalid {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_runner_nargs)]
+#[must_use]
 pub(crate) struct TestRunnerNargs {
     #[primary_span]
     pub(crate) span: Span,
@@ -847,6 +919,7 @@ pub(crate) struct TestRunnerNargs {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_expected_register_class_or_explicit_register)]
+#[must_use]
 pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,

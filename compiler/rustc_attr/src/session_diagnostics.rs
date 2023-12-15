@@ -12,6 +12,7 @@ use crate::UnsupportedLiteralReason;
 
 #[derive(Diagnostic)]
 #[diag(attr_expected_one_cfg_pattern, code = "E0536")]
+#[must_use]
 pub(crate) struct ExpectedOneCfgPattern {
     #[primary_span]
     pub span: Span,
@@ -19,6 +20,7 @@ pub(crate) struct ExpectedOneCfgPattern {
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_predicate, code = "E0537")]
+#[must_use]
 pub(crate) struct InvalidPredicate {
     #[primary_span]
     pub span: Span,
@@ -28,6 +30,7 @@ pub(crate) struct InvalidPredicate {
 
 #[derive(Diagnostic)]
 #[diag(attr_multiple_item, code = "E0538")]
+#[must_use]
 pub(crate) struct MultipleItem {
     #[primary_span]
     pub span: Span,
@@ -37,6 +40,7 @@ pub(crate) struct MultipleItem {
 
 #[derive(Diagnostic)]
 #[diag(attr_incorrect_meta_item, code = "E0539")]
+#[must_use]
 pub(crate) struct IncorrectMetaItem {
     #[primary_span]
     pub span: Span,
@@ -67,6 +71,7 @@ impl<'a> IntoDiagnostic<'a> for UnknownMetaItem<'_> {
 
 #[derive(Diagnostic)]
 #[diag(attr_missing_since, code = "E0542")]
+#[must_use]
 pub(crate) struct MissingSince {
     #[primary_span]
     pub span: Span,
@@ -74,6 +79,7 @@ pub(crate) struct MissingSince {
 
 #[derive(Diagnostic)]
 #[diag(attr_missing_note, code = "E0543")]
+#[must_use]
 pub(crate) struct MissingNote {
     #[primary_span]
     pub span: Span,
@@ -81,6 +87,7 @@ pub(crate) struct MissingNote {
 
 #[derive(Diagnostic)]
 #[diag(attr_multiple_stability_levels, code = "E0544")]
+#[must_use]
 pub(crate) struct MultipleStabilityLevels {
     #[primary_span]
     pub span: Span,
@@ -88,6 +95,7 @@ pub(crate) struct MultipleStabilityLevels {
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_issue_string, code = "E0545")]
+#[must_use]
 pub(crate) struct InvalidIssueString {
     #[primary_span]
     pub span: Span,
@@ -146,6 +154,7 @@ impl InvalidIssueStringCause {
 
 #[derive(Diagnostic)]
 #[diag(attr_missing_feature, code = "E0546")]
+#[must_use]
 pub(crate) struct MissingFeature {
     #[primary_span]
     pub span: Span,
@@ -153,6 +162,7 @@ pub(crate) struct MissingFeature {
 
 #[derive(Diagnostic)]
 #[diag(attr_non_ident_feature, code = "E0546")]
+#[must_use]
 pub(crate) struct NonIdentFeature {
     #[primary_span]
     pub span: Span,
@@ -160,6 +170,7 @@ pub(crate) struct NonIdentFeature {
 
 #[derive(Diagnostic)]
 #[diag(attr_missing_issue, code = "E0547")]
+#[must_use]
 pub(crate) struct MissingIssue {
     #[primary_span]
     pub span: Span,
@@ -169,6 +180,7 @@ pub(crate) struct MissingIssue {
 // It is more similar to `IncorrectReprFormatGeneric`.
 #[derive(Diagnostic)]
 #[diag(attr_incorrect_repr_format_packed_one_or_zero_arg, code = "E0552")]
+#[must_use]
 pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
     #[primary_span]
     pub span: Span,
@@ -176,6 +188,7 @@ pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_repr_hint_no_paren, code = "E0552")]
+#[must_use]
 pub(crate) struct InvalidReprHintNoParen {
     #[primary_span]
     pub span: Span,
@@ -185,6 +198,7 @@ pub(crate) struct InvalidReprHintNoParen {
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_repr_hint_no_value, code = "E0552")]
+#[must_use]
 pub(crate) struct InvalidReprHintNoValue {
     #[primary_span]
     pub span: Span,
@@ -230,6 +244,7 @@ impl<'a> IntoDiagnostic<'a> for UnsupportedLiteral {
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_repr_align_need_arg, code = "E0589")]
+#[must_use]
 pub(crate) struct InvalidReprAlignNeedArg {
     #[primary_span]
     #[suggestion(code = "align(...)", applicability = "has-placeholders")]
@@ -238,6 +253,7 @@ pub(crate) struct InvalidReprAlignNeedArg {
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_repr_generic, code = "E0589")]
+#[must_use]
 pub(crate) struct InvalidReprGeneric<'a> {
     #[primary_span]
     pub span: Span,
@@ -248,6 +264,7 @@ pub(crate) struct InvalidReprGeneric<'a> {
 
 #[derive(Diagnostic)]
 #[diag(attr_incorrect_repr_format_align_one_arg, code = "E0693")]
+#[must_use]
 pub(crate) struct IncorrectReprFormatAlignOneArg {
     #[primary_span]
     pub span: Span,
@@ -255,6 +272,7 @@ pub(crate) struct IncorrectReprFormatAlignOneArg {
 
 #[derive(Diagnostic)]
 #[diag(attr_incorrect_repr_format_generic, code = "E0693")]
+#[must_use]
 pub(crate) struct IncorrectReprFormatGeneric<'a> {
     #[primary_span]
     pub span: Span,
@@ -306,6 +324,7 @@ impl<'a> IncorrectReprFormatGenericCause<'a> {
 
 #[derive(Diagnostic)]
 #[diag(attr_rustc_promotable_pairing, code = "E0717")]
+#[must_use]
 pub(crate) struct RustcPromotablePairing {
     #[primary_span]
     pub span: Span,
@@ -313,6 +332,7 @@ pub(crate) struct RustcPromotablePairing {
 
 #[derive(Diagnostic)]
 #[diag(attr_rustc_allowed_unstable_pairing, code = "E0789")]
+#[must_use]
 pub(crate) struct RustcAllowedUnstablePairing {
     #[primary_span]
     pub span: Span,
@@ -320,6 +340,7 @@ pub(crate) struct RustcAllowedUnstablePairing {
 
 #[derive(Diagnostic)]
 #[diag(attr_cfg_predicate_identifier)]
+#[must_use]
 pub(crate) struct CfgPredicateIdentifier {
     #[primary_span]
     pub span: Span,
@@ -327,6 +348,7 @@ pub(crate) struct CfgPredicateIdentifier {
 
 #[derive(Diagnostic)]
 #[diag(attr_deprecated_item_suggestion)]
+#[must_use]
 pub(crate) struct DeprecatedItemSuggestion {
     #[primary_span]
     pub span: Span,
@@ -340,6 +362,7 @@ pub(crate) struct DeprecatedItemSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(attr_expected_single_version_literal)]
+#[must_use]
 pub(crate) struct ExpectedSingleVersionLiteral {
     #[primary_span]
     pub span: Span,
@@ -347,6 +370,7 @@ pub(crate) struct ExpectedSingleVersionLiteral {
 
 #[derive(Diagnostic)]
 #[diag(attr_expected_version_literal)]
+#[must_use]
 pub(crate) struct ExpectedVersionLiteral {
     #[primary_span]
     pub span: Span,
@@ -354,6 +378,7 @@ pub(crate) struct ExpectedVersionLiteral {
 
 #[derive(Diagnostic)]
 #[diag(attr_expects_feature_list)]
+#[must_use]
 pub(crate) struct ExpectsFeatureList {
     #[primary_span]
     pub span: Span,
@@ -363,6 +388,7 @@ pub(crate) struct ExpectsFeatureList {
 
 #[derive(Diagnostic)]
 #[diag(attr_expects_features)]
+#[must_use]
 pub(crate) struct ExpectsFeatures {
     #[primary_span]
     pub span: Span,
@@ -372,6 +398,7 @@ pub(crate) struct ExpectsFeatures {
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_since)]
+#[must_use]
 pub(crate) struct InvalidSince {
     #[primary_span]
     pub span: Span,
@@ -379,6 +406,7 @@ pub(crate) struct InvalidSince {
 
 #[derive(Diagnostic)]
 #[diag(attr_soft_no_args)]
+#[must_use]
 pub(crate) struct SoftNoArgs {
     #[primary_span]
     pub span: Span,
@@ -386,6 +414,7 @@ pub(crate) struct SoftNoArgs {
 
 #[derive(Diagnostic)]
 #[diag(attr_unknown_version_literal)]
+#[must_use]
 pub(crate) struct UnknownVersionLiteral {
     #[primary_span]
     pub span: Span,

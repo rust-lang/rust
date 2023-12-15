@@ -19,6 +19,7 @@ use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
 #[diag(passes_incorrect_do_not_recommend_location)]
+#[must_use]
 pub struct IncorrectDoNotRecommendLocation {
     #[primary_span]
     pub span: Span,
@@ -56,6 +57,7 @@ pub struct IgnoredInlineAttrConstants;
 
 #[derive(Diagnostic)]
 #[diag(passes_inline_not_fn_or_closure, code = "E0518")]
+#[must_use]
 pub struct InlineNotFnOrClosure {
     #[primary_span]
     pub attr_span: Span,
@@ -77,6 +79,7 @@ pub struct IgnoredCoverageFnDefn;
 
 #[derive(Diagnostic)]
 #[diag(passes_coverage_not_coverable, code = "E0788")]
+#[must_use]
 pub struct IgnoredCoverageNotCoverable {
     #[primary_span]
     pub attr_span: Span,
@@ -86,6 +89,7 @@ pub struct IgnoredCoverageNotCoverable {
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]
+#[must_use]
 pub struct AttrShouldBeAppliedToFn {
     #[primary_span]
     pub attr_span: Span,
@@ -96,6 +100,7 @@ pub struct AttrShouldBeAppliedToFn {
 
 #[derive(Diagnostic)]
 #[diag(passes_naked_tracked_caller, code = "E0736")]
+#[must_use]
 pub struct NakedTrackedCaller {
     #[primary_span]
     pub attr_span: Span,
@@ -103,6 +108,7 @@ pub struct NakedTrackedCaller {
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn, code = "E0739")]
+#[must_use]
 pub struct TrackedCallerWrongLocation {
     #[primary_span]
     pub attr_span: Span,
@@ -113,6 +119,7 @@ pub struct TrackedCallerWrongLocation {
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_struct_enum, code = "E0701")]
+#[must_use]
 pub struct NonExhaustiveWrongLocation {
     #[primary_span]
     pub attr_span: Span,
@@ -122,6 +129,7 @@ pub struct NonExhaustiveWrongLocation {
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_trait)]
+#[must_use]
 pub struct AttrShouldBeAppliedToTrait {
     #[primary_span]
     pub attr_span: Span,
@@ -135,6 +143,7 @@ pub struct TargetFeatureOnStatement;
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_static)]
+#[must_use]
 pub struct AttrShouldBeAppliedToStatic {
     #[primary_span]
     pub attr_span: Span,
@@ -144,6 +153,7 @@ pub struct AttrShouldBeAppliedToStatic {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_expect_str)]
+#[must_use]
 pub struct DocExpectStr<'a> {
     #[primary_span]
     pub attr_span: Span,
@@ -152,6 +162,7 @@ pub struct DocExpectStr<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_empty)]
+#[must_use]
 pub struct DocAliasEmpty<'a> {
     #[primary_span]
     pub span: Span,
@@ -160,6 +171,7 @@ pub struct DocAliasEmpty<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_bad_char)]
+#[must_use]
 pub struct DocAliasBadChar<'a> {
     #[primary_span]
     pub span: Span,
@@ -169,6 +181,7 @@ pub struct DocAliasBadChar<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_start_end)]
+#[must_use]
 pub struct DocAliasStartEnd<'a> {
     #[primary_span]
     pub span: Span,
@@ -177,6 +190,7 @@ pub struct DocAliasStartEnd<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_bad_location)]
+#[must_use]
 pub struct DocAliasBadLocation<'a> {
     #[primary_span]
     pub span: Span,
@@ -186,6 +200,7 @@ pub struct DocAliasBadLocation<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_not_an_alias)]
+#[must_use]
 pub struct DocAliasNotAnAlias<'a> {
     #[primary_span]
     pub span: Span,
@@ -201,6 +216,7 @@ pub struct DocAliasDuplicated {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_not_string_literal)]
+#[must_use]
 pub struct DocAliasNotStringLiteral {
     #[primary_span]
     pub span: Span,
@@ -208,6 +224,7 @@ pub struct DocAliasNotStringLiteral {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_malformed)]
+#[must_use]
 pub struct DocAliasMalformed {
     #[primary_span]
     pub span: Span,
@@ -215,6 +232,7 @@ pub struct DocAliasMalformed {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_keyword_empty_mod)]
+#[must_use]
 pub struct DocKeywordEmptyMod {
     #[primary_span]
     pub span: Span,
@@ -222,6 +240,7 @@ pub struct DocKeywordEmptyMod {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_keyword_not_mod)]
+#[must_use]
 pub struct DocKeywordNotMod {
     #[primary_span]
     pub span: Span,
@@ -229,6 +248,7 @@ pub struct DocKeywordNotMod {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_keyword_invalid_ident)]
+#[must_use]
 pub struct DocKeywordInvalidIdent {
     #[primary_span]
     pub span: Span,
@@ -237,6 +257,7 @@ pub struct DocKeywordInvalidIdent {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_fake_variadic_not_valid)]
+#[must_use]
 pub struct DocFakeVariadicNotValid {
     #[primary_span]
     pub span: Span,
@@ -244,6 +265,7 @@ pub struct DocFakeVariadicNotValid {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_keyword_only_impl)]
+#[must_use]
 pub struct DocKeywordOnlyImpl {
     #[primary_span]
     pub span: Span,
@@ -252,6 +274,7 @@ pub struct DocKeywordOnlyImpl {
 #[derive(Diagnostic)]
 #[diag(passes_doc_inline_conflict)]
 #[help]
+#[must_use]
 pub struct DocKeywordConflict {
     #[primary_span]
     pub spans: MultiSpan,
@@ -288,6 +311,7 @@ pub struct DocMaskedNotExternCrateSelf {
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_attr_not_crate_level)]
+#[must_use]
 pub struct DocAttrNotCrateLevel<'a> {
     #[primary_span]
     pub span: Span,
@@ -344,6 +368,7 @@ pub struct DocInvalid;
 
 #[derive(Diagnostic)]
 #[diag(passes_pass_by_value)]
+#[must_use]
 pub struct PassByValue {
     #[primary_span]
     pub attr_span: Span,
@@ -353,6 +378,7 @@ pub struct PassByValue {
 
 #[derive(Diagnostic)]
 #[diag(passes_allow_incoherent_impl)]
+#[must_use]
 pub struct AllowIncoherentImpl {
     #[primary_span]
     pub attr_span: Span,
@@ -362,6 +388,7 @@ pub struct AllowIncoherentImpl {
 
 #[derive(Diagnostic)]
 #[diag(passes_has_incoherent_inherent_impl)]
+#[must_use]
 pub struct HasIncoherentInherentImpl {
     #[primary_span]
     pub attr_span: Span,
@@ -371,6 +398,7 @@ pub struct HasIncoherentInherentImpl {
 
 #[derive(Diagnostic)]
 #[diag(passes_both_ffi_const_and_pure, code = "E0757")]
+#[must_use]
 pub struct BothFfiConstAndPure {
     #[primary_span]
     pub attr_span: Span,
@@ -378,6 +406,7 @@ pub struct BothFfiConstAndPure {
 
 #[derive(Diagnostic)]
 #[diag(passes_ffi_pure_invalid_target, code = "E0755")]
+#[must_use]
 pub struct FfiPureInvalidTarget {
     #[primary_span]
     pub attr_span: Span,
@@ -385,6 +414,7 @@ pub struct FfiPureInvalidTarget {
 
 #[derive(Diagnostic)]
 #[diag(passes_ffi_const_invalid_target, code = "E0756")]
+#[must_use]
 pub struct FfiConstInvalidTarget {
     #[primary_span]
     pub attr_span: Span,
@@ -392,6 +422,7 @@ pub struct FfiConstInvalidTarget {
 
 #[derive(Diagnostic)]
 #[diag(passes_ffi_returns_twice_invalid_target, code = "E0724")]
+#[must_use]
 pub struct FfiReturnsTwiceInvalidTarget {
     #[primary_span]
     pub attr_span: Span,
@@ -413,6 +444,7 @@ pub struct MustUseNoEffect {
 
 #[derive(Diagnostic)]
 #[diag(passes_must_not_suspend)]
+#[must_use]
 pub struct MustNotSuspend {
     #[primary_span]
     pub attr_span: Span,
@@ -450,6 +482,7 @@ pub struct LinkName<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_no_link)]
+#[must_use]
 pub struct NoLink {
     #[primary_span]
     pub attr_span: Span,
@@ -459,6 +492,7 @@ pub struct NoLink {
 
 #[derive(Diagnostic)]
 #[diag(passes_export_name)]
+#[must_use]
 pub struct ExportName {
     #[primary_span]
     pub attr_span: Span,
@@ -468,6 +502,7 @@ pub struct ExportName {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_layout_scalar_valid_range_not_struct)]
+#[must_use]
 pub struct RustcLayoutScalarValidRangeNotStruct {
     #[primary_span]
     pub attr_span: Span,
@@ -477,6 +512,7 @@ pub struct RustcLayoutScalarValidRangeNotStruct {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_layout_scalar_valid_range_arg)]
+#[must_use]
 pub struct RustcLayoutScalarValidRangeArg {
     #[primary_span]
     pub attr_span: Span,
@@ -484,6 +520,7 @@ pub struct RustcLayoutScalarValidRangeArg {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_only)]
+#[must_use]
 pub struct RustcLegacyConstGenericsOnly {
     #[primary_span]
     pub attr_span: Span,
@@ -493,6 +530,7 @@ pub struct RustcLegacyConstGenericsOnly {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_index)]
+#[must_use]
 pub struct RustcLegacyConstGenericsIndex {
     #[primary_span]
     pub attr_span: Span,
@@ -502,6 +540,7 @@ pub struct RustcLegacyConstGenericsIndex {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_index_exceed)]
+#[must_use]
 pub struct RustcLegacyConstGenericsIndexExceed {
     #[primary_span]
     #[label]
@@ -511,6 +550,7 @@ pub struct RustcLegacyConstGenericsIndexExceed {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_index_negative)]
+#[must_use]
 pub struct RustcLegacyConstGenericsIndexNegative {
     #[primary_span]
     pub invalid_args: Vec<Span>,
@@ -518,6 +558,7 @@ pub struct RustcLegacyConstGenericsIndexNegative {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_dirty_clean)]
+#[must_use]
 pub struct RustcDirtyClean {
     #[primary_span]
     pub span: Span,
@@ -553,6 +594,7 @@ pub struct NoMangle {
 
 #[derive(Diagnostic)]
 #[diag(passes_repr_ident, code = "E0565")]
+#[must_use]
 pub struct ReprIdent {
     #[primary_span]
     pub span: Span,
@@ -560,6 +602,7 @@ pub struct ReprIdent {
 
 #[derive(Diagnostic)]
 #[diag(passes_repr_conflicting, code = "E0566")]
+#[must_use]
 pub struct ReprConflicting {
     #[primary_span]
     pub hint_spans: Vec<Span>,
@@ -571,6 +614,7 @@ pub struct ReprConflictingLint;
 
 #[derive(Diagnostic)]
 #[diag(passes_used_static)]
+#[must_use]
 pub struct UsedStatic {
     #[primary_span]
     pub span: Span,
@@ -578,6 +622,7 @@ pub struct UsedStatic {
 
 #[derive(Diagnostic)]
 #[diag(passes_used_compiler_linker)]
+#[must_use]
 pub struct UsedCompilerLinker {
     #[primary_span]
     pub spans: Vec<Span>,
@@ -585,6 +630,7 @@ pub struct UsedCompilerLinker {
 
 #[derive(Diagnostic)]
 #[diag(passes_allow_internal_unstable)]
+#[must_use]
 pub struct AllowInternalUnstable {
     #[primary_span]
     pub attr_span: Span,
@@ -594,6 +640,7 @@ pub struct AllowInternalUnstable {
 
 #[derive(Diagnostic)]
 #[diag(passes_debug_visualizer_placement)]
+#[must_use]
 pub struct DebugVisualizerPlacement {
     #[primary_span]
     pub span: Span,
@@ -604,6 +651,7 @@ pub struct DebugVisualizerPlacement {
 #[note(passes_note_1)]
 #[note(passes_note_2)]
 #[note(passes_note_3)]
+#[must_use]
 pub struct DebugVisualizerInvalid {
     #[primary_span]
     pub span: Span,
@@ -611,6 +659,7 @@ pub struct DebugVisualizerInvalid {
 
 #[derive(Diagnostic)]
 #[diag(passes_debug_visualizer_unreadable)]
+#[must_use]
 pub struct DebugVisualizerUnreadable<'a> {
     #[primary_span]
     pub span: Span,
@@ -620,6 +669,7 @@ pub struct DebugVisualizerUnreadable<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_allow_const_fn_unstable)]
+#[must_use]
 pub struct RustcAllowConstFnUnstable {
     #[primary_span]
     pub attr_span: Span,
@@ -629,6 +679,7 @@ pub struct RustcAllowConstFnUnstable {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_safe_intrinsic)]
+#[must_use]
 pub struct RustcSafeIntrinsic {
     #[primary_span]
     pub attr_span: Span,
@@ -638,6 +689,7 @@ pub struct RustcSafeIntrinsic {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_std_internal_symbol)]
+#[must_use]
 pub struct RustcStdInternalSymbol {
     #[primary_span]
     pub attr_span: Span,
@@ -647,6 +699,7 @@ pub struct RustcStdInternalSymbol {
 
 #[derive(Diagnostic)]
 #[diag(passes_link_ordinal)]
+#[must_use]
 pub struct LinkOrdinal {
     #[primary_span]
     pub attr_span: Span,
@@ -654,6 +707,7 @@ pub struct LinkOrdinal {
 
 #[derive(Diagnostic)]
 #[diag(passes_confusables)]
+#[must_use]
 pub struct Confusables {
     #[primary_span]
     pub attr_span: Span,
@@ -661,6 +715,7 @@ pub struct Confusables {
 
 #[derive(Diagnostic)]
 #[diag(passes_empty_confusables)]
+#[must_use]
 pub(crate) struct EmptyConfusables {
     #[primary_span]
     pub span: Span,
@@ -668,6 +723,7 @@ pub(crate) struct EmptyConfusables {
 
 #[derive(Diagnostic)]
 #[diag(passes_incorrect_meta_item, code = "E0539")]
+#[must_use]
 pub(crate) struct IncorrectMetaItem {
     #[primary_span]
     pub span: Span,
@@ -686,6 +742,7 @@ pub(crate) struct IncorrectMetaItemSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(passes_stability_promotable)]
+#[must_use]
 pub struct StabilityPromotable {
     #[primary_span]
     pub attr_span: Span,
@@ -738,6 +795,7 @@ pub struct Unused {
 
 #[derive(Diagnostic)]
 #[diag(passes_non_exported_macro_invalid_attrs, code = "E0518")]
+#[must_use]
 pub struct NonExportedMacroInvalidAttrs {
     #[primary_span]
     #[label]
@@ -757,6 +815,7 @@ pub struct UnusedDuplicate {
 
 #[derive(Diagnostic)]
 #[diag(passes_unused_multiple)]
+#[must_use]
 pub struct UnusedMultiple {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
@@ -768,6 +827,7 @@ pub struct UnusedMultiple {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_lint_opt_ty)]
+#[must_use]
 pub struct RustcLintOptTy {
     #[primary_span]
     pub attr_span: Span,
@@ -777,6 +837,7 @@ pub struct RustcLintOptTy {
 
 #[derive(Diagnostic)]
 #[diag(passes_rustc_lint_opt_deny_field_access)]
+#[must_use]
 pub struct RustcLintOptDenyFieldAccess {
     #[primary_span]
     pub attr_span: Span,
@@ -786,6 +847,7 @@ pub struct RustcLintOptDenyFieldAccess {
 
 #[derive(Diagnostic)]
 #[diag(passes_collapse_debuginfo)]
+#[must_use]
 pub struct CollapseDebuginfo {
     #[primary_span]
     pub attr_span: Span,
@@ -802,6 +864,7 @@ pub struct DeprecatedAnnotationHasNoEffect {
 
 #[derive(Diagnostic)]
 #[diag(passes_unknown_external_lang_item, code = "E0264")]
+#[must_use]
 pub struct UnknownExternLangItem {
     #[primary_span]
     pub span: Span,
@@ -810,18 +873,21 @@ pub struct UnknownExternLangItem {
 
 #[derive(Diagnostic)]
 #[diag(passes_missing_panic_handler)]
+#[must_use]
 pub struct MissingPanicHandler;
 
 #[derive(Diagnostic)]
 #[diag(passes_missing_lang_item)]
 #[note]
 #[help]
+#[must_use]
 pub struct MissingLangItem {
     pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
 #[diag(passes_lang_item_fn_with_target_feature)]
+#[must_use]
 pub struct LangItemWithTargetFeature {
     #[primary_span]
     pub attr_span: Span,
@@ -832,6 +898,7 @@ pub struct LangItemWithTargetFeature {
 
 #[derive(Diagnostic)]
 #[diag(passes_lang_item_on_incorrect_target, code = "E0718")]
+#[must_use]
 pub struct LangItemOnIncorrectTarget {
     #[primary_span]
     #[label]
@@ -843,6 +910,7 @@ pub struct LangItemOnIncorrectTarget {
 
 #[derive(Diagnostic)]
 #[diag(passes_unknown_lang_item, code = "E0522")]
+#[must_use]
 pub struct UnknownLangItem {
     #[primary_span]
     #[label]
@@ -892,6 +960,7 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
 
 #[derive(Diagnostic)]
 #[diag(passes_duplicate_diagnostic_item_in_crate)]
+#[must_use]
 pub struct DuplicateDiagnosticItemInCrate {
     #[primary_span]
     pub duplicate_span: Option<Span>,
@@ -906,6 +975,7 @@ pub struct DuplicateDiagnosticItemInCrate {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_abi)]
+#[must_use]
 pub struct LayoutAbi {
     #[primary_span]
     pub span: Span,
@@ -914,6 +984,7 @@ pub struct LayoutAbi {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_align)]
+#[must_use]
 pub struct LayoutAlign {
     #[primary_span]
     pub span: Span,
@@ -922,6 +993,7 @@ pub struct LayoutAlign {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_size)]
+#[must_use]
 pub struct LayoutSize {
     #[primary_span]
     pub span: Span,
@@ -930,6 +1002,7 @@ pub struct LayoutSize {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_homogeneous_aggregate)]
+#[must_use]
 pub struct LayoutHomogeneousAggregate {
     #[primary_span]
     pub span: Span,
@@ -938,6 +1011,7 @@ pub struct LayoutHomogeneousAggregate {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_of)]
+#[must_use]
 pub struct LayoutOf {
     #[primary_span]
     pub span: Span,
@@ -947,6 +1021,7 @@ pub struct LayoutOf {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_invalid_attribute)]
+#[must_use]
 pub struct LayoutInvalidAttribute {
     #[primary_span]
     pub span: Span,
@@ -954,6 +1029,7 @@ pub struct LayoutInvalidAttribute {
 
 #[derive(Diagnostic)]
 #[diag(passes_abi_of)]
+#[must_use]
 pub struct AbiOf {
     #[primary_span]
     pub span: Span,
@@ -963,6 +1039,7 @@ pub struct AbiOf {
 
 #[derive(Diagnostic)]
 #[diag(passes_abi_ne)]
+#[must_use]
 pub struct AbiNe {
     #[primary_span]
     pub span: Span,
@@ -972,6 +1049,7 @@ pub struct AbiNe {
 
 #[derive(Diagnostic)]
 #[diag(passes_abi_invalid_attribute)]
+#[must_use]
 pub struct AbiInvalidAttribute {
     #[primary_span]
     pub span: Span,
@@ -979,6 +1057,7 @@ pub struct AbiInvalidAttribute {
 
 #[derive(Diagnostic)]
 #[diag(passes_unrecognized_field)]
+#[must_use]
 pub struct UnrecognizedField {
     #[primary_span]
     pub span: Span,
@@ -987,6 +1066,7 @@ pub struct UnrecognizedField {
 
 #[derive(Diagnostic)]
 #[diag(passes_feature_stable_twice, code = "E0711")]
+#[must_use]
 pub struct FeatureStableTwice {
     #[primary_span]
     pub span: Span,
@@ -997,6 +1077,7 @@ pub struct FeatureStableTwice {
 
 #[derive(Diagnostic)]
 #[diag(passes_feature_previously_declared, code = "E0711")]
+#[must_use]
 pub struct FeaturePreviouslyDeclared<'a, 'b> {
     #[primary_span]
     pub span: Span,
@@ -1065,6 +1146,7 @@ impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_continue_labeled_block, code = "E0696")]
+#[must_use]
 pub struct ContinueLabeledBlock {
     #[primary_span]
     #[label]
@@ -1075,6 +1157,7 @@ pub struct ContinueLabeledBlock {
 
 #[derive(Diagnostic)]
 #[diag(passes_break_inside_closure, code = "E0267")]
+#[must_use]
 pub struct BreakInsideClosure<'a> {
     #[primary_span]
     #[label]
@@ -1086,6 +1169,7 @@ pub struct BreakInsideClosure<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_break_inside_async_block, code = "E0267")]
+#[must_use]
 pub struct BreakInsideAsyncBlock<'a> {
     #[primary_span]
     #[label]
@@ -1097,6 +1181,7 @@ pub struct BreakInsideAsyncBlock<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_outside_loop, code = "E0268")]
+#[must_use]
 pub struct OutsideLoop<'a> {
     #[primary_span]
     #[label]
@@ -1117,6 +1202,7 @@ pub struct OutsideLoopSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(passes_unlabeled_in_labeled_block, code = "E0695")]
+#[must_use]
 pub struct UnlabeledInLabeledBlock<'a> {
     #[primary_span]
     #[label]
@@ -1126,6 +1212,7 @@ pub struct UnlabeledInLabeledBlock<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_unlabeled_cf_in_while_condition, code = "E0590")]
+#[must_use]
 pub struct UnlabeledCfInWhileCondition<'a> {
     #[primary_span]
     #[label]
@@ -1135,6 +1222,7 @@ pub struct UnlabeledCfInWhileCondition<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_cannot_inline_naked_function)]
+#[must_use]
 pub struct CannotInlineNakedFunction {
     #[primary_span]
     pub span: Span,
@@ -1146,6 +1234,7 @@ pub struct UndefinedNakedFunctionAbi;
 
 #[derive(Diagnostic)]
 #[diag(passes_no_patterns)]
+#[must_use]
 pub struct NoPatterns {
     #[primary_span]
     pub span: Span,
@@ -1154,6 +1243,7 @@ pub struct NoPatterns {
 #[derive(Diagnostic)]
 #[diag(passes_params_not_allowed)]
 #[help]
+#[must_use]
 pub struct ParamsNotAllowed {
     #[primary_span]
     pub span: Span,
@@ -1188,6 +1278,7 @@ impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
 
 #[derive(Diagnostic)]
 #[diag(passes_naked_functions_operands, code = "E0787")]
+#[must_use]
 pub struct NakedFunctionsOperands {
     #[primary_span]
     pub unsupported_operands: Vec<Span>,
@@ -1195,6 +1286,7 @@ pub struct NakedFunctionsOperands {
 
 #[derive(Diagnostic)]
 #[diag(passes_naked_functions_asm_options, code = "E0787")]
+#[must_use]
 pub struct NakedFunctionsAsmOptions {
     #[primary_span]
     pub span: Span,
@@ -1203,6 +1295,7 @@ pub struct NakedFunctionsAsmOptions {
 
 #[derive(Diagnostic)]
 #[diag(passes_naked_functions_must_use_noreturn, code = "E0787")]
+#[must_use]
 pub struct NakedFunctionsMustUseNoreturn {
     #[primary_span]
     pub span: Span,
@@ -1212,6 +1305,7 @@ pub struct NakedFunctionsMustUseNoreturn {
 
 #[derive(Diagnostic)]
 #[diag(passes_attr_only_on_main)]
+#[must_use]
 pub struct AttrOnlyOnMain {
     #[primary_span]
     pub span: Span,
@@ -1220,6 +1314,7 @@ pub struct AttrOnlyOnMain {
 
 #[derive(Diagnostic)]
 #[diag(passes_attr_only_on_root_main)]
+#[must_use]
 pub struct AttrOnlyOnRootMain {
     #[primary_span]
     pub span: Span,
@@ -1228,6 +1323,7 @@ pub struct AttrOnlyOnRootMain {
 
 #[derive(Diagnostic)]
 #[diag(passes_attr_only_in_functions)]
+#[must_use]
 pub struct AttrOnlyInFunctions {
     #[primary_span]
     pub span: Span,
@@ -1236,6 +1332,7 @@ pub struct AttrOnlyInFunctions {
 
 #[derive(Diagnostic)]
 #[diag(passes_multiple_rustc_main, code = "E0137")]
+#[must_use]
 pub struct MultipleRustcMain {
     #[primary_span]
     pub span: Span,
@@ -1247,6 +1344,7 @@ pub struct MultipleRustcMain {
 
 #[derive(Diagnostic)]
 #[diag(passes_multiple_start_functions, code = "E0138")]
+#[must_use]
 pub struct MultipleStartFunctions {
     #[primary_span]
     pub span: Span,
@@ -1258,6 +1356,7 @@ pub struct MultipleStartFunctions {
 
 #[derive(Diagnostic)]
 #[diag(passes_extern_main)]
+#[must_use]
 pub struct ExternMain {
     #[primary_span]
     pub span: Span,
@@ -1265,6 +1364,7 @@ pub struct ExternMain {
 
 #[derive(Diagnostic)]
 #[diag(passes_unix_sigpipe_values)]
+#[must_use]
 pub struct UnixSigpipeValues {
     #[primary_span]
     pub span: Span,
@@ -1395,6 +1495,7 @@ impl IntoDiagnostic<'_> for DuplicateLangItem {
 
 #[derive(Diagnostic)]
 #[diag(passes_incorrect_target, code = "E0718")]
+#[must_use]
 pub struct IncorrectTarget<'a> {
     #[primary_span]
     pub span: Span,
@@ -1423,6 +1524,7 @@ pub struct OnlyHasEffectOn {
 
 #[derive(Diagnostic)]
 #[diag(passes_object_lifetime_err)]
+#[must_use]
 pub struct ObjectLifetimeErr {
     #[primary_span]
     pub span: Span,
@@ -1432,6 +1534,7 @@ pub struct ObjectLifetimeErr {
 #[derive(Diagnostic)]
 #[diag(passes_unrecognized_repr_hint, code = "E0552")]
 #[help]
+#[must_use]
 pub struct UnrecognizedReprHint {
     #[primary_span]
     pub span: Span,
@@ -1478,6 +1581,7 @@ pub enum AttrApplication {
 
 #[derive(Diagnostic)]
 #[diag(passes_transparent_incompatible, code = "E0692")]
+#[must_use]
 pub struct TransparentIncompatible {
     #[primary_span]
     pub hint_spans: Vec<Span>,
@@ -1486,6 +1590,7 @@ pub struct TransparentIncompatible {
 
 #[derive(Diagnostic)]
 #[diag(passes_deprecated_attribute, code = "E0549")]
+#[must_use]
 pub struct DeprecatedAttribute {
     #[primary_span]
     pub span: Span,
@@ -1493,6 +1598,7 @@ pub struct DeprecatedAttribute {
 
 #[derive(Diagnostic)]
 #[diag(passes_useless_stability)]
+#[must_use]
 pub struct UselessStability {
     #[primary_span]
     #[label]
@@ -1503,6 +1609,7 @@ pub struct UselessStability {
 
 #[derive(Diagnostic)]
 #[diag(passes_cannot_stabilize_deprecated)]
+#[must_use]
 pub struct CannotStabilizeDeprecated {
     #[primary_span]
     #[label]
@@ -1513,6 +1620,7 @@ pub struct CannotStabilizeDeprecated {
 
 #[derive(Diagnostic)]
 #[diag(passes_missing_stability_attr)]
+#[must_use]
 pub struct MissingStabilityAttr<'a> {
     #[primary_span]
     pub span: Span,
@@ -1521,6 +1629,7 @@ pub struct MissingStabilityAttr<'a> {
 
 #[derive(Diagnostic)]
 #[diag(passes_missing_const_stab_attr)]
+#[must_use]
 pub struct MissingConstStabAttr<'a> {
     #[primary_span]
     pub span: Span,
@@ -1530,6 +1639,7 @@ pub struct MissingConstStabAttr<'a> {
 #[derive(Diagnostic)]
 #[diag(passes_trait_impl_const_stable)]
 #[note]
+#[must_use]
 pub struct TraitImplConstStable {
     #[primary_span]
     pub span: Span,
@@ -1537,6 +1647,7 @@ pub struct TraitImplConstStable {
 
 #[derive(Diagnostic)]
 #[diag(passes_feature_only_on_nightly, code = "E0554")]
+#[must_use]
 pub struct FeatureOnlyOnNightly {
     #[primary_span]
     pub span: Span,
@@ -1545,6 +1656,7 @@ pub struct FeatureOnlyOnNightly {
 
 #[derive(Diagnostic)]
 #[diag(passes_unknown_feature, code = "E0635")]
+#[must_use]
 pub struct UnknownFeature {
     #[primary_span]
     pub span: Span,
@@ -1553,6 +1665,7 @@ pub struct UnknownFeature {
 
 #[derive(Diagnostic)]
 #[diag(passes_implied_feature_not_exist)]
+#[must_use]
 pub struct ImpliedFeatureNotExist {
     #[primary_span]
     pub span: Span,
@@ -1562,6 +1675,7 @@ pub struct ImpliedFeatureNotExist {
 
 #[derive(Diagnostic)]
 #[diag(passes_duplicate_feature_err, code = "E0636")]
+#[must_use]
 pub struct DuplicateFeatureErr {
     #[primary_span]
     pub span: Span,
@@ -1569,6 +1683,7 @@ pub struct DuplicateFeatureErr {
 }
 #[derive(Diagnostic)]
 #[diag(passes_missing_const_err)]
+#[must_use]
 pub struct MissingConstErr {
     #[primary_span]
     #[help]
@@ -1635,6 +1750,7 @@ pub struct ChangeFieldsToBeOfUnitType {
 
 #[derive(Diagnostic)]
 #[diag(passes_proc_macro_bad_sig)]
+#[must_use]
 pub(crate) struct ProcMacroBadSig {
     #[primary_span]
     pub span: Span,
@@ -1643,6 +1759,7 @@ pub(crate) struct ProcMacroBadSig {
 
 #[derive(Diagnostic)]
 #[diag(passes_skipping_const_checks)]
+#[must_use]
 pub struct SkippingConstChecks {
     #[primary_span]
     pub span: Span,

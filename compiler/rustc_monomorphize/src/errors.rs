@@ -8,6 +8,7 @@ use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_recursion_limit)]
+#[must_use]
 pub struct RecursionLimit {
     #[primary_span]
     pub span: Span,
@@ -23,6 +24,7 @@ pub struct RecursionLimit {
 #[derive(Diagnostic)]
 #[diag(monomorphize_type_length_limit)]
 #[help(monomorphize_consider_type_length_limit)]
+#[must_use]
 pub struct TypeLengthLimit {
     #[primary_span]
     pub span: Span,
@@ -35,6 +37,7 @@ pub struct TypeLengthLimit {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_no_optimized_mir)]
+#[must_use]
 pub struct NoOptimizedMir {
     #[note]
     pub span: Span,
@@ -77,6 +80,7 @@ pub struct LargeAssignmentsLint {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_symbol_already_defined)]
+#[must_use]
 pub struct SymbolAlreadyDefined {
     #[primary_span]
     pub span: Option<Span>,
@@ -85,12 +89,14 @@ pub struct SymbolAlreadyDefined {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_couldnt_dump_mono_stats)]
+#[must_use]
 pub struct CouldntDumpMonoStats {
     pub error: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_encountered_error_while_instantiating)]
+#[must_use]
 pub struct EncounteredErrorWhileInstantiating {
     #[primary_span]
     pub span: Span,
@@ -99,6 +105,7 @@ pub struct EncounteredErrorWhileInstantiating {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_unknown_cgu_collection_mode)]
+#[must_use]
 pub struct UnknownCguCollectionMode<'a> {
     pub mode: &'a str,
 }

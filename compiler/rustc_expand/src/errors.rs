@@ -7,6 +7,7 @@ use std::borrow::Cow;
 
 #[derive(Diagnostic)]
 #[diag(expand_expr_repeat_no_syntax_vars)]
+#[must_use]
 pub(crate) struct NoSyntaxVarsExprRepeat {
     #[primary_span]
     pub span: Span,
@@ -14,6 +15,7 @@ pub(crate) struct NoSyntaxVarsExprRepeat {
 
 #[derive(Diagnostic)]
 #[diag(expand_must_repeat_once)]
+#[must_use]
 pub(crate) struct MustRepeatOnce {
     #[primary_span]
     pub span: Span,
@@ -21,6 +23,7 @@ pub(crate) struct MustRepeatOnce {
 
 #[derive(Diagnostic)]
 #[diag(expand_count_repetition_misplaced)]
+#[must_use]
 pub(crate) struct CountRepetitionMisplaced {
     #[primary_span]
     pub span: Span,
@@ -28,6 +31,7 @@ pub(crate) struct CountRepetitionMisplaced {
 
 #[derive(Diagnostic)]
 #[diag(expand_meta_var_expr_unrecognized_var)]
+#[must_use]
 pub(crate) struct MetaVarExprUnrecognizedVar {
     #[primary_span]
     pub span: Span,
@@ -36,6 +40,7 @@ pub(crate) struct MetaVarExprUnrecognizedVar {
 
 #[derive(Diagnostic)]
 #[diag(expand_var_still_repeating)]
+#[must_use]
 pub(crate) struct VarStillRepeating {
     #[primary_span]
     pub span: Span,
@@ -44,6 +49,7 @@ pub(crate) struct VarStillRepeating {
 
 #[derive(Diagnostic)]
 #[diag(expand_meta_var_dif_seq_matchers)]
+#[must_use]
 pub(crate) struct MetaVarsDifSeqMatchers {
     #[primary_span]
     pub span: Span,
@@ -52,6 +58,7 @@ pub(crate) struct MetaVarsDifSeqMatchers {
 
 #[derive(Diagnostic)]
 #[diag(expand_resolve_relative_path)]
+#[must_use]
 pub(crate) struct ResolveRelativePath {
     #[primary_span]
     pub span: Span,
@@ -60,6 +67,7 @@ pub(crate) struct ResolveRelativePath {
 
 #[derive(Diagnostic)]
 #[diag(expand_macro_const_stability)]
+#[must_use]
 pub(crate) struct MacroConstStability {
     #[primary_span]
     #[label]
@@ -70,6 +78,7 @@ pub(crate) struct MacroConstStability {
 
 #[derive(Diagnostic)]
 #[diag(expand_macro_body_stability)]
+#[must_use]
 pub(crate) struct MacroBodyStability {
     #[primary_span]
     #[label]
@@ -80,6 +89,7 @@ pub(crate) struct MacroBodyStability {
 
 #[derive(Diagnostic)]
 #[diag(expand_attr_no_arguments)]
+#[must_use]
 pub(crate) struct AttrNoArguments {
     #[primary_span]
     pub span: Span,
@@ -87,6 +97,7 @@ pub(crate) struct AttrNoArguments {
 
 #[derive(Diagnostic)]
 #[diag(expand_not_a_meta_item)]
+#[must_use]
 pub(crate) struct NotAMetaItem {
     #[primary_span]
     pub span: Span,
@@ -94,6 +105,7 @@ pub(crate) struct NotAMetaItem {
 
 #[derive(Diagnostic)]
 #[diag(expand_only_one_word)]
+#[must_use]
 pub(crate) struct OnlyOneWord {
     #[primary_span]
     pub span: Span,
@@ -101,6 +113,7 @@ pub(crate) struct OnlyOneWord {
 
 #[derive(Diagnostic)]
 #[diag(expand_cannot_be_name_of_macro)]
+#[must_use]
 pub(crate) struct CannotBeNameOfMacro<'a> {
     #[primary_span]
     pub span: Span,
@@ -110,6 +123,7 @@ pub(crate) struct CannotBeNameOfMacro<'a> {
 
 #[derive(Diagnostic)]
 #[diag(expand_arg_not_attributes)]
+#[must_use]
 pub(crate) struct ArgumentNotAttributes {
     #[primary_span]
     pub span: Span,
@@ -117,6 +131,7 @@ pub(crate) struct ArgumentNotAttributes {
 
 #[derive(Diagnostic)]
 #[diag(expand_attributes_wrong_form)]
+#[must_use]
 pub(crate) struct AttributesWrongForm {
     #[primary_span]
     pub span: Span,
@@ -124,6 +139,7 @@ pub(crate) struct AttributesWrongForm {
 
 #[derive(Diagnostic)]
 #[diag(expand_attribute_meta_item)]
+#[must_use]
 pub(crate) struct AttributeMetaItem {
     #[primary_span]
     pub span: Span,
@@ -131,6 +147,7 @@ pub(crate) struct AttributeMetaItem {
 
 #[derive(Diagnostic)]
 #[diag(expand_attribute_single_word)]
+#[must_use]
 pub(crate) struct AttributeSingleWord {
     #[primary_span]
     pub span: Span,
@@ -138,6 +155,7 @@ pub(crate) struct AttributeSingleWord {
 
 #[derive(Diagnostic)]
 #[diag(expand_helper_attribute_name_invalid)]
+#[must_use]
 pub(crate) struct HelperAttributeNameInvalid {
     #[primary_span]
     pub span: Span,
@@ -146,6 +164,7 @@ pub(crate) struct HelperAttributeNameInvalid {
 
 #[derive(Diagnostic)]
 #[diag(expand_expected_comma_in_list)]
+#[must_use]
 pub(crate) struct ExpectedCommaInList {
     #[primary_span]
     pub span: Span,
@@ -153,6 +172,7 @@ pub(crate) struct ExpectedCommaInList {
 
 #[derive(Diagnostic)]
 #[diag(expand_only_one_argument)]
+#[must_use]
 pub(crate) struct OnlyOneArgument<'a> {
     #[primary_span]
     pub span: Span,
@@ -161,6 +181,7 @@ pub(crate) struct OnlyOneArgument<'a> {
 
 #[derive(Diagnostic)]
 #[diag(expand_takes_no_arguments)]
+#[must_use]
 pub(crate) struct TakesNoArguments<'a> {
     #[primary_span]
     pub span: Span,
@@ -169,6 +190,7 @@ pub(crate) struct TakesNoArguments<'a> {
 
 #[derive(Diagnostic)]
 #[diag(expand_feature_removed, code = "E0557")]
+#[must_use]
 pub(crate) struct FeatureRemoved<'a> {
     #[primary_span]
     #[label]
@@ -185,6 +207,7 @@ pub(crate) struct FeatureRemovedReason<'a> {
 
 #[derive(Diagnostic)]
 #[diag(expand_feature_not_allowed, code = "E0725")]
+#[must_use]
 pub(crate) struct FeatureNotAllowed {
     #[primary_span]
     pub span: Span,
@@ -194,6 +217,7 @@ pub(crate) struct FeatureNotAllowed {
 #[derive(Diagnostic)]
 #[diag(expand_recursion_limit_reached)]
 #[help]
+#[must_use]
 pub(crate) struct RecursionLimitReached<'a> {
     #[primary_span]
     pub span: Span,
@@ -204,6 +228,7 @@ pub(crate) struct RecursionLimitReached<'a> {
 
 #[derive(Diagnostic)]
 #[diag(expand_malformed_feature_attribute, code = "E0556")]
+#[must_use]
 pub(crate) struct MalformedFeatureAttribute {
     #[primary_span]
     pub span: Span,
@@ -228,6 +253,7 @@ pub(crate) enum MalformedFeatureAttributeHelp {
 
 #[derive(Diagnostic)]
 #[diag(expand_remove_expr_not_supported)]
+#[must_use]
 pub(crate) struct RemoveExprNotSupported {
     #[primary_span]
     pub span: Span,
@@ -269,6 +295,7 @@ pub(crate) enum InvalidCfg {
 
 #[derive(Diagnostic)]
 #[diag(expand_wrong_fragment_kind)]
+#[must_use]
 pub(crate) struct WrongFragmentKind<'a> {
     #[primary_span]
     pub span: Span,
@@ -278,6 +305,7 @@ pub(crate) struct WrongFragmentKind<'a> {
 
 #[derive(Diagnostic)]
 #[diag(expand_unsupported_key_value)]
+#[must_use]
 pub(crate) struct UnsupportedKeyValue {
     #[primary_span]
     pub span: Span,
@@ -286,6 +314,7 @@ pub(crate) struct UnsupportedKeyValue {
 #[derive(Diagnostic)]
 #[diag(expand_incomplete_parse)]
 #[note]
+#[must_use]
 pub(crate) struct IncompleteParse<'a> {
     #[primary_span]
     pub span: Span,
@@ -308,6 +337,7 @@ pub(crate) struct IncompleteParse<'a> {
 
 #[derive(Diagnostic)]
 #[diag(expand_remove_node_not_supported)]
+#[must_use]
 pub(crate) struct RemoveNodeNotSupported {
     #[primary_span]
     pub span: Span,
@@ -316,6 +346,7 @@ pub(crate) struct RemoveNodeNotSupported {
 
 #[derive(Diagnostic)]
 #[diag(expand_module_circular)]
+#[must_use]
 pub(crate) struct ModuleCircular {
     #[primary_span]
     pub span: Span,
@@ -324,6 +355,7 @@ pub(crate) struct ModuleCircular {
 
 #[derive(Diagnostic)]
 #[diag(expand_module_in_block)]
+#[must_use]
 pub(crate) struct ModuleInBlock {
     #[primary_span]
     pub span: Span,
@@ -343,6 +375,7 @@ pub(crate) struct ModuleInBlockName {
 #[diag(expand_module_file_not_found, code = "E0583")]
 #[help]
 #[note]
+#[must_use]
 pub(crate) struct ModuleFileNotFound {
     #[primary_span]
     pub span: Span,
@@ -354,6 +387,7 @@ pub(crate) struct ModuleFileNotFound {
 #[derive(Diagnostic)]
 #[diag(expand_module_multiple_candidates, code = "E0761")]
 #[help]
+#[must_use]
 pub(crate) struct ModuleMultipleCandidates {
     #[primary_span]
     pub span: Span,
@@ -364,6 +398,7 @@ pub(crate) struct ModuleMultipleCandidates {
 
 #[derive(Diagnostic)]
 #[diag(expand_trace_macro)]
+#[must_use]
 pub struct TraceMacro {
     #[primary_span]
     pub span: Span,
@@ -371,6 +406,7 @@ pub struct TraceMacro {
 
 #[derive(Diagnostic)]
 #[diag(expand_proc_macro_panicked)]
+#[must_use]
 pub(crate) struct ProcMacroPanicked {
     #[primary_span]
     pub span: Span,
@@ -386,6 +422,7 @@ pub(crate) struct ProcMacroPanickedHelp {
 
 #[derive(Diagnostic)]
 #[diag(expand_proc_macro_derive_tokens)]
+#[must_use]
 pub struct ProcMacroDeriveTokens {
     #[primary_span]
     pub span: Span,
@@ -393,6 +430,7 @@ pub struct ProcMacroDeriveTokens {
 
 #[derive(Diagnostic)]
 #[diag(expand_duplicate_matcher_binding)]
+#[must_use]
 pub struct DuplicateMatcherBinding {
     #[primary_span]
     #[label]

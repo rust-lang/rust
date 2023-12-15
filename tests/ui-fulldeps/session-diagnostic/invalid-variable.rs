@@ -17,4 +17,5 @@ rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
 #[derive(Diagnostic)]
 #[diag(no_crate_bad_reference)]
+#[must_use]
 struct BadRef;

@@ -28,66 +28,78 @@ impl<'a> IntoDiagnostic<'a> for FeatureGateError {
 
 #[derive(Subdiagnostic)]
 #[note(session_feature_diagnostic_for_issue)]
+#[must_use]
 pub struct FeatureDiagnosticForIssue {
     pub n: NonZeroU32,
 }
 
 #[derive(Subdiagnostic)]
 #[help(session_feature_diagnostic_help)]
+#[must_use]
 pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
 }
 
 #[derive(Subdiagnostic)]
 #[help(session_cli_feature_diagnostic_help)]
+#[must_use]
 pub struct CliFeatureDiagnosticHelp {
     pub feature: Symbol,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_not_circumvent_feature)]
+#[must_use]
 pub struct NotCircumventFeature;
 
 #[derive(Diagnostic)]
 #[diag(session_linker_plugin_lto_windows_not_supported)]
+#[must_use]
 pub struct LinkerPluginToWindowsNotSupported;
 
 #[derive(Diagnostic)]
 #[diag(session_profile_use_file_does_not_exist)]
+#[must_use]
 pub struct ProfileUseFileDoesNotExist<'a> {
     pub path: &'a std::path::Path,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_profile_sample_use_file_does_not_exist)]
+#[must_use]
 pub struct ProfileSampleUseFileDoesNotExist<'a> {
     pub path: &'a std::path::Path,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_target_requires_unwind_tables)]
+#[must_use]
 pub struct TargetRequiresUnwindTables;
 
 #[derive(Diagnostic)]
 #[diag(session_instrumentation_not_supported)]
+#[must_use]
 pub struct InstrumentationNotSupported {
     pub us: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizer_not_supported)]
+#[must_use]
 pub struct SanitizerNotSupported {
     pub us: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizers_not_supported)]
+#[must_use]
 pub struct SanitizersNotSupported {
     pub us: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_cannot_mix_and_match_sanitizers)]
+#[must_use]
 pub struct CannotMixAndMatchSanitizers {
     pub first: String,
     pub second: String,
@@ -95,44 +107,54 @@ pub struct CannotMixAndMatchSanitizers {
 
 #[derive(Diagnostic)]
 #[diag(session_cannot_enable_crt_static_linux)]
+#[must_use]
 pub struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizer_cfi_requires_lto)]
+#[must_use]
 pub struct SanitizerCfiRequiresLto;
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizer_cfi_requires_single_codegen_unit)]
+#[must_use]
 pub struct SanitizerCfiRequiresSingleCodegenUnit;
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizer_cfi_canonical_jump_tables_requires_cfi)]
+#[must_use]
 pub struct SanitizerCfiCanonicalJumpTablesRequiresCfi;
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizer_cfi_generalize_pointers_requires_cfi)]
+#[must_use]
 pub struct SanitizerCfiGeneralizePointersRequiresCfi;
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizer_cfi_normalize_integers_requires_cfi)]
+#[must_use]
 pub struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
 #[diag(session_split_lto_unit_requires_lto)]
+#[must_use]
 pub struct SplitLtoUnitRequiresLto;
 
 #[derive(Diagnostic)]
 #[diag(session_unstable_virtual_function_elimination)]
+#[must_use]
 pub struct UnstableVirtualFunctionElimination;
 
 #[derive(Diagnostic)]
 #[diag(session_unsupported_dwarf_version)]
+#[must_use]
 pub struct UnsupportedDwarfVersion {
     pub dwarf_version: u32,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_target_stack_protector_not_supported)]
+#[must_use]
 pub struct StackProtectorNotSupportedForTarget<'a> {
     pub stack_protector: StackProtector,
     pub target_triple: &'a TargetTriple,
@@ -140,22 +162,26 @@ pub struct StackProtectorNotSupportedForTarget<'a> {
 
 #[derive(Diagnostic)]
 #[diag(session_branch_protection_requires_aarch64)]
+#[must_use]
 pub(crate) struct BranchProtectionRequiresAArch64;
 
 #[derive(Diagnostic)]
 #[diag(session_split_debuginfo_unstable_platform)]
+#[must_use]
 pub struct SplitDebugInfoUnstablePlatform {
     pub debuginfo: SplitDebuginfo,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_file_is_not_writeable)]
+#[must_use]
 pub struct FileIsNotWriteable<'a> {
     pub file: &'a std::path::Path,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_file_write_fail)]
+#[must_use]
 pub(crate) struct FileWriteFail<'a> {
     pub path: &'a std::path::Path,
     pub err: String,
@@ -163,6 +189,7 @@ pub(crate) struct FileWriteFail<'a> {
 
 #[derive(Diagnostic)]
 #[diag(session_crate_name_does_not_match)]
+#[must_use]
 pub struct CrateNameDoesNotMatch {
     #[primary_span]
     pub span: Span,
@@ -172,12 +199,14 @@ pub struct CrateNameDoesNotMatch {
 
 #[derive(Diagnostic)]
 #[diag(session_crate_name_invalid)]
+#[must_use]
 pub struct CrateNameInvalid<'a> {
     pub s: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_crate_name_empty)]
+#[must_use]
 pub struct CrateNameEmpty {
     #[primary_span]
     pub span: Option<Span>,
@@ -185,6 +214,7 @@ pub struct CrateNameEmpty {
 
 #[derive(Diagnostic)]
 #[diag(session_invalid_character_in_create_name)]
+#[must_use]
 pub struct InvalidCharacterInCrateName {
     #[primary_span]
     pub span: Option<Span>,
@@ -217,6 +247,7 @@ impl ExprParenthesesNeeded {
 
 #[derive(Diagnostic)]
 #[diag(session_skipping_const_checks)]
+#[must_use]
 pub struct SkippingConstChecks {
     #[subdiagnostic]
     pub unleashed_features: Vec<UnleashedFeatureHelp>,
@@ -239,6 +270,7 @@ pub enum UnleashedFeatureHelp {
 
 #[derive(Diagnostic)]
 #[diag(session_invalid_literal_suffix)]
+#[must_use]
 pub(crate) struct InvalidLiteralSuffix<'a> {
     #[primary_span]
     #[label]
@@ -251,6 +283,7 @@ pub(crate) struct InvalidLiteralSuffix<'a> {
 #[derive(Diagnostic)]
 #[diag(session_invalid_int_literal_width)]
 #[help]
+#[must_use]
 pub(crate) struct InvalidIntLiteralWidth {
     #[primary_span]
     pub span: Span,
@@ -260,6 +293,7 @@ pub(crate) struct InvalidIntLiteralWidth {
 #[derive(Diagnostic)]
 #[diag(session_invalid_num_literal_base_prefix)]
 #[note]
+#[must_use]
 pub(crate) struct InvalidNumLiteralBasePrefix {
     #[primary_span]
     #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
@@ -270,6 +304,7 @@ pub(crate) struct InvalidNumLiteralBasePrefix {
 #[derive(Diagnostic)]
 #[diag(session_invalid_num_literal_suffix)]
 #[help]
+#[must_use]
 pub(crate) struct InvalidNumLiteralSuffix {
     #[primary_span]
     #[label]
@@ -280,6 +315,7 @@ pub(crate) struct InvalidNumLiteralSuffix {
 #[derive(Diagnostic)]
 #[diag(session_invalid_float_literal_width)]
 #[help]
+#[must_use]
 pub(crate) struct InvalidFloatLiteralWidth {
     #[primary_span]
     pub span: Span,
@@ -289,6 +325,7 @@ pub(crate) struct InvalidFloatLiteralWidth {
 #[derive(Diagnostic)]
 #[diag(session_invalid_float_literal_suffix)]
 #[help]
+#[must_use]
 pub(crate) struct InvalidFloatLiteralSuffix {
     #[primary_span]
     #[label]
@@ -299,6 +336,7 @@ pub(crate) struct InvalidFloatLiteralSuffix {
 #[derive(Diagnostic)]
 #[diag(session_int_literal_too_large)]
 #[note]
+#[must_use]
 pub(crate) struct IntLiteralTooLarge {
     #[primary_span]
     pub span: Span,
@@ -307,6 +345,7 @@ pub(crate) struct IntLiteralTooLarge {
 
 #[derive(Diagnostic)]
 #[diag(session_hexadecimal_float_literal_not_supported)]
+#[must_use]
 pub(crate) struct HexadecimalFloatLiteralNotSupported {
     #[primary_span]
     #[label(session_not_supported)]
@@ -315,6 +354,7 @@ pub(crate) struct HexadecimalFloatLiteralNotSupported {
 
 #[derive(Diagnostic)]
 #[diag(session_octal_float_literal_not_supported)]
+#[must_use]
 pub(crate) struct OctalFloatLiteralNotSupported {
     #[primary_span]
     #[label(session_not_supported)]
@@ -323,6 +363,7 @@ pub(crate) struct OctalFloatLiteralNotSupported {
 
 #[derive(Diagnostic)]
 #[diag(session_binary_float_literal_not_supported)]
+#[must_use]
 pub(crate) struct BinaryFloatLiteralNotSupported {
     #[primary_span]
     #[label(session_not_supported)]
@@ -331,6 +372,7 @@ pub(crate) struct BinaryFloatLiteralNotSupported {
 
 #[derive(Diagnostic)]
 #[diag(session_nul_in_c_str)]
+#[must_use]
 pub(crate) struct NulInCStr {
     #[primary_span]
     pub span: Span,
@@ -425,6 +467,7 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
 
 #[derive(Diagnostic)]
 #[diag(session_optimization_fuel_exhausted)]
+#[must_use]
 pub struct OptimisationFuelExhausted {
     pub msg: String,
 }
@@ -432,6 +475,7 @@ pub struct OptimisationFuelExhausted {
 #[derive(Diagnostic)]
 #[diag(session_incompatible_linker_flavor)]
 #[note]
+#[must_use]
 pub struct IncompatibleLinkerFlavor {
     pub flavor: &'static str,
     pub compatible_list: String,
@@ -439,14 +483,17 @@ pub struct IncompatibleLinkerFlavor {
 
 #[derive(Diagnostic)]
 #[diag(session_function_return_requires_x86_or_x86_64)]
+#[must_use]
 pub(crate) struct FunctionReturnRequiresX86OrX8664;
 
 #[derive(Diagnostic)]
 #[diag(session_function_return_thunk_extern_requires_non_large_code_model)]
+#[must_use]
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 
 #[derive(Diagnostic)]
 #[diag(session_failed_to_create_profiler)]
+#[must_use]
 pub struct FailedToCreateProfiler {
     pub err: String,
 }

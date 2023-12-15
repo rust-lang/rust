@@ -7,6 +7,7 @@ use crate::diagnostics::RegionName;
 
 #[derive(Diagnostic)]
 #[diag(borrowck_move_unsized, code = "E0161")]
+#[must_use]
 pub(crate) struct MoveUnsized<'tcx> {
     pub ty: Ty<'tcx>,
     #[primary_span]
@@ -16,6 +17,7 @@ pub(crate) struct MoveUnsized<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(borrowck_higher_ranked_lifetime_error)]
+#[must_use]
 pub(crate) struct HigherRankedLifetimeError {
     #[subdiagnostic]
     pub cause: Option<HigherRankedErrorCause>,
@@ -33,6 +35,7 @@ pub(crate) enum HigherRankedErrorCause {
 
 #[derive(Diagnostic)]
 #[diag(borrowck_higher_ranked_subtype_error)]
+#[must_use]
 pub(crate) struct HigherRankedSubtypeError {
     #[primary_span]
     pub span: Span,
@@ -40,6 +43,7 @@ pub(crate) struct HigherRankedSubtypeError {
 
 #[derive(Diagnostic)]
 #[diag(borrowck_generic_does_not_live_long_enough)]
+#[must_use]
 pub(crate) struct GenericDoesNotLiveLongEnough {
     pub kind: String,
     #[primary_span]
@@ -56,6 +60,7 @@ pub(crate) struct VarNeedNotMut {
 #[diag(borrowck_var_cannot_escape_closure)]
 #[note]
 #[note(borrowck_cannot_escape)]
+#[must_use]
 pub(crate) struct FnMutError {
     #[primary_span]
     pub span: Span,
@@ -103,6 +108,7 @@ pub(crate) enum FnMutReturnTypeErr {
 
 #[derive(Diagnostic)]
 #[diag(borrowck_lifetime_constraints_error)]
+#[must_use]
 pub(crate) struct LifetimeOutliveErr {
     #[primary_span]
     pub span: Span,
@@ -282,6 +288,7 @@ pub(crate) enum CaptureVarCause {
 
 #[derive(Diagnostic)]
 #[diag(borrowck_cannot_move_when_borrowed, code = "E0505")]
+#[must_use]
 pub(crate) struct MoveBorrow<'a> {
     pub place: &'a str,
     pub borrow_place: &'a str,
@@ -295,6 +302,7 @@ pub(crate) struct MoveBorrow<'a> {
 
 #[derive(Diagnostic)]
 #[diag(borrowck_opaque_type_non_generic_param, code = "E0792")]
+#[must_use]
 pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
     pub ty: GenericArg<'tcx>,
     pub kind: &'a str,
@@ -455,6 +463,7 @@ pub(crate) enum TypeNoCopy<'a, 'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(borrowck_simd_shuffle_last_const)]
+#[must_use]
 pub(crate) struct SimdShuffleLastConst {
     #[primary_span]
     pub span: Span,

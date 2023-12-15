@@ -13,6 +13,7 @@ use rustc_span::Span;
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_ctarget_feature_prefix)]
 #[note]
+#[must_use]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
     pub feature: &'a str,
 }
@@ -20,6 +21,7 @@ pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_ctarget_feature)]
 #[note]
+#[must_use]
 pub(crate) struct UnknownCTargetFeature<'a> {
     pub feature: &'a str,
     #[subdiagnostic]
@@ -29,6 +31,7 @@ pub(crate) struct UnknownCTargetFeature<'a> {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unstable_ctarget_feature)]
 #[note]
+#[must_use]
 pub(crate) struct UnstableCTargetFeature<'a> {
     pub feature: &'a str,
 }
@@ -43,6 +46,7 @@ pub(crate) enum PossibleFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_creating_import_library)]
+#[must_use]
 pub(crate) struct ErrorCreatingImportLibrary<'a> {
     pub lib_name: &'a str,
     pub error: String,
@@ -50,6 +54,7 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_symbol_already_defined)]
+#[must_use]
 pub(crate) struct SymbolAlreadyDefined<'a> {
     #[primary_span]
     pub span: Span,
@@ -58,28 +63,33 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_invalid_minimum_alignment_not_power_of_two)]
+#[must_use]
 pub(crate) struct InvalidMinimumAlignmentNotPowerOfTwo {
     pub align: u64,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_invalid_minimum_alignment_too_large)]
+#[must_use]
 pub(crate) struct InvalidMinimumAlignmentTooLarge {
     pub align: u64,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_sanitizer_memtag_requires_mte)]
+#[must_use]
 pub(crate) struct SanitizerMemtagRequiresMte;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_writing_def_file)]
+#[must_use]
 pub(crate) struct ErrorWritingDEFFile {
     pub error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_calling_dlltool)]
+#[must_use]
 pub(crate) struct ErrorCallingDllTool<'a> {
     pub dlltool_path: Cow<'a, str>,
     pub error: std::io::Error,
@@ -87,6 +97,7 @@ pub(crate) struct ErrorCallingDllTool<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_dlltool_fail_import_library)]
+#[must_use]
 pub(crate) struct DlltoolFailImportLibrary<'a> {
     pub dlltool_path: Cow<'a, str>,
     pub dlltool_args: String,
@@ -97,6 +108,7 @@ pub(crate) struct DlltoolFailImportLibrary<'a> {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_dynamic_linking_with_lto)]
 #[note]
+#[must_use]
 pub(crate) struct DynamicLinkingWithLTO;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
@@ -139,18 +151,22 @@ impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_disallowed)]
+#[must_use]
 pub(crate) struct LtoDisallowed;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_dylib)]
+#[must_use]
 pub(crate) struct LtoDylib;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_proc_macro)]
+#[must_use]
 pub(crate) struct LtoProcMacro;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
+#[must_use]
 pub(crate) struct LtoBitcodeFromRlib {
     pub llvm_err: String,
 }
@@ -210,6 +226,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_from_llvm_optimization_diag)]
+#[must_use]
 pub(crate) struct FromLlvmOptimizationDiag<'a> {
     pub filename: &'a str,
     pub line: std::ffi::c_uint,
@@ -221,12 +238,14 @@ pub(crate) struct FromLlvmOptimizationDiag<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_from_llvm_diag)]
+#[must_use]
 pub(crate) struct FromLlvmDiag {
     pub message: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_write_bytecode)]
+#[must_use]
 pub(crate) struct WriteBytecode<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
@@ -234,12 +253,14 @@ pub(crate) struct WriteBytecode<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_copy_bitcode)]
+#[must_use]
 pub(crate) struct CopyBitcode {
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_debuginfo_compression)]
+#[must_use]
 pub struct UnknownCompression {
     pub algorithm: &'static str,
 }

@@ -11,6 +11,7 @@ use crate::fluent_generated as fluent;
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_unknown_ctarget_feature_prefix)]
 #[note]
+#[must_use]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
     pub feature: &'a str,
 }
@@ -18,6 +19,7 @@ pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_unknown_ctarget_feature)]
 #[note]
+#[must_use]
 pub(crate) struct UnknownCTargetFeature<'a> {
     pub feature: &'a str,
     #[subdiagnostic]
@@ -46,10 +48,12 @@ impl IntoDiagnosticArg for ExitCode {
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_lto_not_supported)]
+#[must_use]
 pub(crate) struct LTONotSupported;
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_unwinding_inline_asm)]
+#[must_use]
 pub(crate) struct UnwindingInlineAsm {
     #[primary_span]
     pub span: Span,
@@ -57,6 +61,7 @@ pub(crate) struct UnwindingInlineAsm {
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_invalid_minimum_alignment)]
+#[must_use]
 pub(crate) struct InvalidMinimumAlignment {
     pub err: String,
 }
@@ -64,6 +69,7 @@ pub(crate) struct InvalidMinimumAlignment {
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_tied_target_features)]
 #[help]
+#[must_use]
 pub(crate) struct TiedTargetFeatures {
     #[primary_span]
     pub span: Span,
@@ -72,6 +78,7 @@ pub(crate) struct TiedTargetFeatures {
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_copy_bitcode)]
+#[must_use]
 pub(crate) struct CopyBitcode {
     pub err: std::io::Error,
 }
@@ -79,24 +86,29 @@ pub(crate) struct CopyBitcode {
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_dynamic_linking_with_lto)]
 #[note]
+#[must_use]
 pub(crate) struct DynamicLinkingWithLTO;
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_load_bitcode)]
+#[must_use]
 pub(crate) struct LoadBitcode {
     name: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_lto_disallowed)]
+#[must_use]
 pub(crate) struct LtoDisallowed;
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_lto_dylib)]
+#[must_use]
 pub(crate) struct LtoDylib;
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_lto_bitcode_from_rlib)]
+#[must_use]
 pub(crate) struct LtoBitcodeFromRlib {
     pub gcc_err: String,
 }

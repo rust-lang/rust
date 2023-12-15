@@ -37,6 +37,7 @@ pub(crate) enum ConstMutate {
 #[note]
 #[note(mir_transform_note_ub)]
 #[help]
+#[must_use]
 pub(crate) struct UnalignedPackedRef {
     #[primary_span]
     pub span: Span,

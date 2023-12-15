@@ -23,6 +23,7 @@ rustc_fluent_macro::fluent_messages! { "./diagnostics.ftl" }
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example)]
+#[must_use]
 struct DeriveDiagnostic {
     #[primary_span]
     span: Span,

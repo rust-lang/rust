@@ -2,20 +2,24 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_unable_to_read)]
+#[must_use]
 pub(crate) struct RlinkUnableToRead {
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_wrong_file_type)]
+#[must_use]
 pub(crate) struct RLinkWrongFileType;
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_empty_version_number)]
+#[must_use]
 pub(crate) struct RLinkEmptyVersionNumber;
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_encoding_version_mismatch)]
+#[must_use]
 pub(crate) struct RLinkEncodingVersionMismatch {
     pub version_array: String,
     pub rlink_version: u32,
@@ -23,6 +27,7 @@ pub(crate) struct RLinkEncodingVersionMismatch {
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_rustc_version_mismatch)]
+#[must_use]
 pub(crate) struct RLinkRustcVersionMismatch<'a> {
     pub rustc_version: String,
     pub current_version: &'a str,
@@ -30,24 +35,29 @@ pub(crate) struct RLinkRustcVersionMismatch<'a> {
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_no_a_file)]
+#[must_use]
 pub(crate) struct RlinkNotAFile;
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice)]
+#[must_use]
 pub(crate) struct Ice;
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_bug_report)]
+#[must_use]
 pub(crate) struct IceBugReport<'a> {
     pub bug_report_url: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_bug_report_internal_feature)]
+#[must_use]
 pub(crate) struct IceBugReportInternalFeature;
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_version)]
+#[must_use]
 pub(crate) struct IceVersion<'a> {
     pub version: &'a str,
     pub triple: &'a str,
@@ -55,12 +65,14 @@ pub(crate) struct IceVersion<'a> {
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_path)]
+#[must_use]
 pub(crate) struct IcePath {
     pub path: std::path::PathBuf,
 }
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_path_error)]
+#[must_use]
 pub(crate) struct IcePathError {
     pub path: std::path::PathBuf,
     pub error: String,
@@ -76,10 +88,12 @@ pub(crate) struct IcePathErrorEnv {
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_flags)]
+#[must_use]
 pub(crate) struct IceFlags {
     pub flags: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_exclude_cargo_defaults)]
+#[must_use]
 pub(crate) struct IceExcludeCargoDefaults;

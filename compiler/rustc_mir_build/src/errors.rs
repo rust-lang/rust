@@ -140,6 +140,7 @@ pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_unsafe_fn_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct CallToUnsafeFunctionRequiresUnsafe<'a> {
     #[primary_span]
     #[label]
@@ -152,6 +153,7 @@ pub struct CallToUnsafeFunctionRequiresUnsafe<'a> {
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_unsafe_fn_requires_unsafe_nameless, code = "E0133")]
 #[note]
+#[must_use]
 pub struct CallToUnsafeFunctionRequiresUnsafeNameless {
     #[primary_span]
     #[label]
@@ -163,6 +165,7 @@ pub struct CallToUnsafeFunctionRequiresUnsafeNameless {
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
 #[note]
+#[must_use]
 pub struct CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     #[primary_span]
     #[label]
@@ -178,6 +181,7 @@ pub struct CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     code = "E0133"
 )]
 #[note]
+#[must_use]
 pub struct CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -189,6 +193,7 @@ pub struct CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed {
 #[derive(Diagnostic)]
 #[diag(mir_build_inline_assembly_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct UseOfInlineAssemblyRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -200,6 +205,7 @@ pub struct UseOfInlineAssemblyRequiresUnsafe {
 #[derive(Diagnostic)]
 #[diag(mir_build_inline_assembly_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
 #[note]
+#[must_use]
 pub struct UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -211,6 +217,7 @@ pub struct UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
 #[derive(Diagnostic)]
 #[diag(mir_build_initializing_type_with_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct InitializingTypeWithRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -225,6 +232,7 @@ pub struct InitializingTypeWithRequiresUnsafe {
     code = "E0133"
 )]
 #[note]
+#[must_use]
 pub struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -236,6 +244,7 @@ pub struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
 #[derive(Diagnostic)]
 #[diag(mir_build_mutable_static_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct UseOfMutableStaticRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -247,6 +256,7 @@ pub struct UseOfMutableStaticRequiresUnsafe {
 #[derive(Diagnostic)]
 #[diag(mir_build_mutable_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
 #[note]
+#[must_use]
 pub struct UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -258,6 +268,7 @@ pub struct UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
 #[derive(Diagnostic)]
 #[diag(mir_build_extern_static_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct UseOfExternStaticRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -269,6 +280,7 @@ pub struct UseOfExternStaticRequiresUnsafe {
 #[derive(Diagnostic)]
 #[diag(mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
 #[note]
+#[must_use]
 pub struct UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -280,6 +292,7 @@ pub struct UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
 #[derive(Diagnostic)]
 #[diag(mir_build_deref_raw_pointer_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct DerefOfRawPointerRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -291,6 +304,7 @@ pub struct DerefOfRawPointerRequiresUnsafe {
 #[derive(Diagnostic)]
 #[diag(mir_build_deref_raw_pointer_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
 #[note]
+#[must_use]
 pub struct DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -302,6 +316,7 @@ pub struct DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
 #[derive(Diagnostic)]
 #[diag(mir_build_union_field_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct AccessToUnionFieldRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -313,6 +328,7 @@ pub struct AccessToUnionFieldRequiresUnsafe {
 #[derive(Diagnostic)]
 #[diag(mir_build_union_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
 #[note]
+#[must_use]
 pub struct AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -324,6 +340,7 @@ pub struct AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
 #[derive(Diagnostic)]
 #[diag(mir_build_mutation_of_layout_constrained_field_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct MutationOfLayoutConstrainedFieldRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -338,6 +355,7 @@ pub struct MutationOfLayoutConstrainedFieldRequiresUnsafe {
     code = "E0133"
 )]
 #[note]
+#[must_use]
 pub struct MutationOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -349,6 +367,7 @@ pub struct MutationOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllow
 #[derive(Diagnostic)]
 #[diag(mir_build_borrow_of_layout_constrained_field_requires_unsafe, code = "E0133")]
 #[note]
+#[must_use]
 pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafe {
     #[primary_span]
     #[label]
@@ -363,6 +382,7 @@ pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafe {
     code = "E0133"
 )]
 #[note]
+#[must_use]
 pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
@@ -374,6 +394,7 @@ pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_fn_with_requires_unsafe, code = "E0133")]
 #[help]
+#[must_use]
 pub struct CallToFunctionWithRequiresUnsafe<'a> {
     #[primary_span]
     #[label]
@@ -392,6 +413,7 @@ pub struct CallToFunctionWithRequiresUnsafe<'a> {
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_fn_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
 #[help]
+#[must_use]
 pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     #[primary_span]
     #[label]
@@ -539,6 +561,7 @@ pub struct NonExhaustiveMatchAllArmsGuarded;
 
 #[derive(Diagnostic)]
 #[diag(mir_build_static_in_pattern, code = "E0158")]
+#[must_use]
 pub struct StaticInPattern {
     #[primary_span]
     pub span: Span,
@@ -546,6 +569,7 @@ pub struct StaticInPattern {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_assoc_const_in_pattern, code = "E0158")]
+#[must_use]
 pub struct AssocConstInPattern {
     #[primary_span]
     pub span: Span,
@@ -553,6 +577,7 @@ pub struct AssocConstInPattern {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_const_param_in_pattern, code = "E0158")]
+#[must_use]
 pub struct ConstParamInPattern {
     #[primary_span]
     pub span: Span,
@@ -560,6 +585,7 @@ pub struct ConstParamInPattern {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_const_path, code = "E0080")]
+#[must_use]
 pub struct NonConstPath {
     #[primary_span]
     pub span: Span,
@@ -576,6 +602,7 @@ pub struct UnreachablePattern {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_const_pattern_depends_on_generic_parameter)]
+#[must_use]
 pub struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
     pub span: Span,
@@ -583,6 +610,7 @@ pub struct ConstPatternDependsOnGenericParameter {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_could_not_eval_const_pattern)]
+#[must_use]
 pub struct CouldNotEvalConstPattern {
     #[primary_span]
     pub span: Span,
@@ -590,6 +618,7 @@ pub struct CouldNotEvalConstPattern {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper, code = "E0030")]
+#[must_use]
 pub struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
     #[primary_span]
     #[label]
@@ -600,6 +629,7 @@ pub struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_literal_in_range_out_of_bounds)]
+#[must_use]
 pub struct LiteralOutOfRange<'tcx> {
     #[primary_span]
     #[label]
@@ -611,6 +641,7 @@ pub struct LiteralOutOfRange<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_lower_range_bound_must_be_less_than_upper, code = "E0579")]
+#[must_use]
 pub struct LowerRangeBoundMustBeLessThanUpper {
     #[primary_span]
     pub span: Span,
@@ -675,6 +706,7 @@ pub struct IrrefutableLetPatternsWhileLet {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_borrow_of_moved_value)]
+#[must_use]
 pub struct BorrowOfMovedValue<'tcx> {
     #[primary_span]
     #[label]
@@ -690,6 +722,7 @@ pub struct BorrowOfMovedValue<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_multiple_mut_borrows)]
+#[must_use]
 pub struct MultipleMutBorrows {
     #[primary_span]
     pub span: Span,
@@ -699,6 +732,7 @@ pub struct MultipleMutBorrows {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_already_borrowed)]
+#[must_use]
 pub struct AlreadyBorrowed {
     #[primary_span]
     pub span: Span,
@@ -708,6 +742,7 @@ pub struct AlreadyBorrowed {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_already_mut_borrowed)]
+#[must_use]
 pub struct AlreadyMutBorrowed {
     #[primary_span]
     pub span: Span,
@@ -717,6 +752,7 @@ pub struct AlreadyMutBorrowed {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_moved_while_borrowed)]
+#[must_use]
 pub struct MovedWhileBorrowed {
     #[primary_span]
     pub span: Span,
@@ -748,6 +784,7 @@ pub enum Conflict {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_union_pattern)]
+#[must_use]
 pub struct UnionPattern {
     #[primary_span]
     pub span: Span,
@@ -756,6 +793,7 @@ pub struct UnionPattern {
 #[derive(Diagnostic)]
 #[diag(mir_build_type_not_structural)]
 #[note(mir_build_type_not_structural_tip)]
+#[must_use]
 #[note(mir_build_type_not_structural_more_info)]
 pub struct TypeNotStructural<'tcx> {
     #[primary_span]
@@ -765,6 +803,7 @@ pub struct TypeNotStructural<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_invalid_pattern)]
+#[must_use]
 pub struct InvalidPattern<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -773,6 +812,7 @@ pub struct InvalidPattern<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_unsized_pattern)]
+#[must_use]
 pub struct UnsizedPattern<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -811,6 +851,7 @@ pub struct NonPartialEqMatch<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = "E0005")]
+#[must_use]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]
     pub span: Span,
@@ -915,6 +956,7 @@ pub enum MiscPatternSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_rustc_box_attribute_error)]
+#[must_use]
 pub struct RustcBoxAttributeError {
     #[primary_span]
     pub span: Span,

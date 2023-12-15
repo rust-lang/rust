@@ -22,4 +22,5 @@ extern crate rustc_session;
 #[derive(Diagnostic)]
 #[diag(compiletest_example, code = "E0123")]
 //~^ ERROR diagnostic slug and crate name do not match
+#[must_use]
 struct Hello {}

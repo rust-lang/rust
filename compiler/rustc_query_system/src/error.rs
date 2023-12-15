@@ -46,6 +46,7 @@ pub struct CycleUsage {
 
 #[derive(Diagnostic)]
 #[diag(query_system_cycle, code = "E0391")]
+#[must_use]
 pub struct Cycle {
     #[primary_span]
     pub span: Span,
@@ -64,6 +65,7 @@ pub struct Cycle {
 
 #[derive(Diagnostic)]
 #[diag(query_system_reentrant)]
+#[must_use]
 pub struct Reentrant;
 
 #[derive(Diagnostic)]
@@ -71,6 +73,7 @@ pub struct Reentrant;
 #[help]
 #[note(query_system_increment_compilation_note1)]
 #[note(query_system_increment_compilation_note2)]
+#[must_use]
 pub struct IncrementCompilation {
     pub run_cmd: String,
     pub dep_node: String,
@@ -79,6 +82,7 @@ pub struct IncrementCompilation {
 #[derive(Diagnostic)]
 #[help]
 #[diag(query_system_query_overflow)]
+#[must_use]
 pub struct QueryOverflow {
     #[primary_span]
     pub span: Option<Span>,

@@ -29,6 +29,7 @@ struct NotIntoDiagnosticArg;
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example)]
+#[must_use]
 struct Test {
     #[primary_span]
     span: Span,

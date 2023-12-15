@@ -6,6 +6,7 @@ use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(lint_overruled_attribute, code = "E0453")]
+#[must_use]
 pub struct OverruledAttribute<'a> {
     #[primary_span]
     pub span: Span,
@@ -49,6 +50,7 @@ impl AddToDiagnostic for OverruledAttributeSub {
 
 #[derive(Diagnostic)]
 #[diag(lint_malformed_attribute, code = "E0452")]
+#[must_use]
 pub struct MalformedAttribute {
     #[primary_span]
     pub span: Span,
@@ -68,6 +70,7 @@ pub enum MalformedAttributeSub {
 
 #[derive(Diagnostic)]
 #[diag(lint_unknown_tool_in_scoped_lint, code = "E0710")]
+#[must_use]
 pub struct UnknownToolInScopedLint {
     #[primary_span]
     pub span: Option<Span>,
@@ -79,6 +82,7 @@ pub struct UnknownToolInScopedLint {
 
 #[derive(Diagnostic)]
 #[diag(lint_builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
+#[must_use]
 pub struct BuiltinEllipsisInclusiveRangePatterns {
     #[primary_span]
     pub span: Span,
@@ -96,12 +100,14 @@ pub struct RequestedLevel<'a> {
 
 #[derive(Diagnostic)]
 #[diag(lint_unsupported_group, code = "E0602")]
+#[must_use]
 pub struct UnsupportedGroup {
     pub lint_group: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(lint_check_name_unknown_tool, code = "E0602")]
+#[must_use]
 pub struct CheckNameUnknownTool<'a> {
     pub tool_name: Symbol,
     #[subdiagnostic]
