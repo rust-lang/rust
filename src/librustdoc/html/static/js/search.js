@@ -3354,9 +3354,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
 if (typeof window !== "undefined") {
     window.initSearch = initSearch;
-    if (window.searchIndex !== undefined) {
-        initSearch(window.searchIndex);
-    }
+    runSearchIfFullyLoaded();
 } else {
     // Running in Node, not a browser. Run initSearch just to produce the
     // exports.

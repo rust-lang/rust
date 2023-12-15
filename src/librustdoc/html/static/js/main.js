@@ -188,6 +188,7 @@ function preLoadCss(cssUrl) {
     function loadScript(url) {
         const script = document.createElement("script");
         script.src = url;
+        script.setAttribute('async', '');
         document.head.append(script);
     }
 

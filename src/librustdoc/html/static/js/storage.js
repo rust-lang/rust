@@ -61,6 +61,15 @@ function onEach(arr, func) {
     return false;
 }
 
+let nbSearchScriptLoaded = 0;
+// eslint-disable-next-line no-unused-vars
+function runSearchIfFullyLoaded() {
+    nbSearchScriptLoaded += 1;
+    if (nbSearchScriptLoaded === 2) {
+        window.initSearch(window.searchIndex);
+    }
+}
+
 /**
  * Turn an HTMLCollection or a NodeList into an Array, then run a callback
  * for every element. This is useful because iterating over an HTMLCollection
