@@ -114,6 +114,7 @@
         {% endif %}
         {{ sidebar|safe }}
     </nav> {# #}
+    <div class="sidebar-resizer"></div>
     <main> {# #}
         {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
             <nav class="sub"> {# #}
@@ -128,6 +129,11 @@
                 {% endif %}
                 <form class="search-form"> {# #}
                     <span></span> {# This empty span is a hacky fix for Safari - See #93184 #}
+                    {% if page.css_class != "src" %}
+                    <div id="sidebar-button" tabindex="-1"> {# #}
+                        <a href="{{page.root_path|safe}}{{layout.krate|safe}}/all.html" title="show sidebar"></a> {# #}
+                    </div> {# #}
+                    {% endif %}
                     <input {#+ #}
                         class="search-input" {#+ #}
                         name="search" {#+ #}
@@ -136,8 +142,8 @@
                         spellcheck="false" {#+ #}
                         placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {#+ #}
                         type="search"> {# #}
-                    <div id="help-button" title="help" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}help.html">?</a> {# #}
+                    <div id="help-button" tabindex="-1"> {# #}
+                        <a href="{{page.root_path|safe}}help.html" title="help">?</a> {# #}
                     </div> {# #}
                     <div id="settings-menu" tabindex="-1"> {# #}
                         <a href="{{page.root_path|safe}}settings.html" title="settings"> {# #}
