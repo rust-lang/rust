@@ -328,8 +328,8 @@ pub(super) fn write_shared(
         v.push_str(
             r#"\
 ]'));
-if (typeof window !== 'undefined' && window.initSearch) {window.initSearch(searchIndex)};
-if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
+if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
+else if (window.initSearch) window.initSearch(searchIndex);
 "#,
         );
         Ok(v.into_bytes())
