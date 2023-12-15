@@ -3,7 +3,7 @@
 //! suggestions from rustc if you get anything slightly wrong in here, and overall
 //! helps with clarity as we're also referring to `char` intentionally in here.
 
-use crate::fmt::{self, Write};
+use crate::fmt;
 use crate::mem::transmute;
 
 /// One of the 128 Unicode characters from U+0000 through U+007F,
@@ -474,7 +474,8 @@ impl AsciiChar {
     /// When passed the *number* `0`, `1`, …, `9`, returns the *character*
     /// `'0'`, `'1'`, …, `'9'` respectively.
     ///
-    /// If `d >= 10`, returns `None`.
+    /// If `d >= 10`, returns `None`.  To get a digit up to `d == 35`, use
+    /// [`from_digit`](Self::from_digit) instead.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
     pub const fn digit(d: u8) -> Option<Self> {
@@ -513,6 +514,37 @@ impl AsciiChar {
             let byte = b'0'.unchecked_add(d);
             Self::from_u8_unchecked(byte)
         }
+    }
+
+    /// Returns a *character* digit corresponding to given numeric value of
+    /// a digit.
+    ///
+    /// When passed the *number* `0`, `1`, …, `8`, `9`, `10`, …, `34`, `35`,
+    /// returns the *character* `'0'`, `'1'`, …, `'8'`, `'9'`, `'a'`, …, `'y'`,
+    /// `'z'` respectively.
+    ///
+    /// If `d >= 36`, returns `None`.  To get a digit only for `d < 10`, use
+    /// [`digit`](Self::digit) instead.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use core::ascii::Char;
+    ///
+    /// assert_eq!(Some(Char::Digit0), Char::from_digit(0));
+    /// assert_eq!(Some(Char::Digit9), Char::from_digit(9));
+    /// assert_eq!(Some(Char::SmallA), Char::from_digit(10));
+    /// assert_eq!(Some(Char::SmallF), Char::from_digit(15));
+    /// assert_eq!(Some(Char::SmallZ), Char::from_digit(35));
+    /// assert_eq!(None, Char::from_digit(36));
+    /// ```
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn from_digit(d: u32) -> Option<Self> {
+        const DIGITS: [AsciiChar; 36] =
+            *b"0123456789abcdefghijklmnopqrstuvwxyz".as_ascii().unwrap();
+        if d < 36 { Some(DIGITS[d as usize]) } else { None }
     }
 
     /// Gets this ASCII character as a byte.
@@ -567,12 +599,14 @@ impl fmt::Display for AsciiChar {
 #[unstable(feature = "ascii_char", issue = "110998")]
 impl fmt::Debug for AsciiChar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use AsciiChar::*;
+
         #[inline]
-        fn backslash(a: AsciiChar) -> ([AsciiChar; 4], u8) {
-            ([AsciiChar::ReverseSolidus, a, AsciiChar::Null, AsciiChar::Null], 2)
+        fn backslash(ch: AsciiChar) -> ([AsciiChar; 6], usize) {
+            ([Apostrophe, ReverseSolidus, ch, Apostrophe, Null, Null], 4)
         }
 
-        let (buf, len) = match self {
+        let (buf, len) = match *self {
             AsciiChar::Null => backslash(AsciiChar::Digit0),
             AsciiChar::CharacterTabulation => backslash(AsciiChar::SmallT),
             AsciiChar::CarriageReturn => backslash(AsciiChar::SmallR),
@@ -582,21 +616,15 @@ impl fmt::Debug for AsciiChar {
             _ => {
                 let byte = self.to_u8();
                 if !byte.is_ascii_control() {
-                    ([*self, AsciiChar::Null, AsciiChar::Null, AsciiChar::Null], 1)
+                    ([Apostrophe, *self, Apostrophe, Null, Null, Null], 3)
                 } else {
-                    const HEX_DIGITS: [AsciiChar; 16] = *b"0123456789abcdef".as_ascii().unwrap();
-
-                    let hi = HEX_DIGITS[usize::from(byte >> 4)];
-                    let lo = HEX_DIGITS[usize::from(byte & 0xf)];
-                    ([AsciiChar::ReverseSolidus, AsciiChar::SmallX, hi, lo], 4)
+                    let hi = Self::from_digit(u32::from(byte >> 4)).unwrap();
+                    let lo = Self::from_digit(u32::from(byte & 0xf)).unwrap();
+                    ([Apostrophe, ReverseSolidus, SmallX, hi, lo, Apostrophe], 6)
                 }
             }
         };
 
-        f.write_char('\'')?;
-        for byte in &buf[..len as usize] {
-            f.write_str(byte.as_str())?;
-        }
-        f.write_char('\'')
+        f.write_str(buf[..len].as_str())
     }
 }

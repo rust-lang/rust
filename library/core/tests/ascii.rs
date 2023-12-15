@@ -479,3 +479,41 @@ fn ascii_ctype_const() {
         is_ascii_control      => [false, false, false, false, false];
     }
 }
+
+#[test]
+fn test_ascii_from_digit() {
+    use core::ascii::Char;
+
+    for d in 0..10 {
+        let want = Char::from_u8(b'0' + d).unwrap();
+        assert_eq!(Some(want), Char::digit(d));
+        assert_eq!(Some(want), Char::from_digit(d.into()));
+    }
+
+    for d in 10..36 {
+        let want = Char::from_u8(b'a' + d - 10).unwrap();
+        assert_eq!(None, Char::digit(d));
+        assert_eq!(Some(want), Char::from_digit(d.into()));
+    }
+
+    for d in 36..=255 {
+        assert_eq!(None, Char::digit(d));
+        assert_eq!(None, Char::from_digit(d.into()));
+    }
+}
+
+#[test]
+fn test_ascii_char_fmt() {
+    use core::ascii::Char;
+
+    #[track_caller]
+    fn check(want_display: &str, want_debug: &str, ch: Char) {
+        assert_eq!(want_display, format!("{ch}"));
+        assert_eq!(want_debug, format!("{ch:?}"));
+    }
+
+    check("\0", "'\\0'", Char::Null);
+    check("\n", "'\\n'", Char::LineFeed);
+    check("\x07", "'\\x07'", Char::Bell);
+    check("a", "'a'", Char::SmallA);
+}

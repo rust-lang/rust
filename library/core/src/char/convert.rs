@@ -275,11 +275,13 @@ impl fmt::Display for CharTryFromError {
 pub(super) const fn from_digit(num: u32, radix: u32) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is too high (maximum 36)");
-    }
-    if num < radix {
-        let num = num as u8;
-        if num < 10 { Some((b'0' + num) as char) } else { Some((b'a' + num - 10) as char) }
-    } else {
+    } else if num >= radix {
         None
+    } else if let Some(chr) = crate::ascii::Char::from_digit(num) {
+        Some(chr.to_char())
+    } else {
+        // SAFETY: We’ve verified `num ≤ radix ≤ 36` and for those values
+        // ascii::Char::from_digit always returns Some.
+        unsafe { crate::hint::unreachable_unchecked() }
     }
 }
