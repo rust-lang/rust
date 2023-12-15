@@ -1,5 +1,3 @@
-use clean::AttributesExt;
-
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -465,16 +463,9 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
             clean::ImportItem(ref import) => {
                 let stab_tags = if let Some(import_def_id) = import.source.did {
-                    let ast_attrs = tcx.get_attrs_unchecked(import_def_id);
-                    let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs));
-
                     // Just need an item with the correct def_id and attrs
-                    let import_item = clean::Item {
-                        item_id: import_def_id.into(),
-                        attrs: import_attrs,
-                        cfg: ast_attrs.cfg(tcx, &cx.cache().hidden_cfg),
-                        ..myitem.clone()
-                    };
+                    let import_item =
+                        clean::Item { item_id: import_def_id.into(), ..myitem.clone() };
 
                     let stab_tags = Some(extra_info_tags(&import_item, item, tcx).to_string());
                     stab_tags
