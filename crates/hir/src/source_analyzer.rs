@@ -1165,8 +1165,9 @@ fn resolve_hir_path_qualifier(
     (|| {
         let (ty, unresolved) = match path.type_anchor() {
             Some(type_ref) => {
-                let (_, res) = TyLoweringContext::new(db, resolver, resolver.module().into())
-                    .lower_ty_ext(type_ref);
+                let (_, res) =
+                    TyLoweringContext::new_maybe_unowned(db, resolver, resolver.type_owner())
+                        .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {

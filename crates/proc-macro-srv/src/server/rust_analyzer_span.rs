@@ -143,6 +143,11 @@ impl server::TokenStream for RaSpanServer {
     }
 
     fn expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
+        // FIXME: requires db, more importantly this requires name resolution so we would need to
+        // eagerly expand this proc-macro, but we can't know that this proc-macro is eager until we
+        // expand it ...
+        // This calls for some kind of marker that a proc-macro wants to access this eager API,
+        // otherwise we need to treat every proc-macro eagerly / or not support this.
         Ok(self_.clone())
     }
 

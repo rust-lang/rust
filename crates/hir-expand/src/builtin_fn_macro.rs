@@ -776,7 +776,10 @@ fn quote_expand(
     _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     _tt: &tt::Subtree,
-    _span: SpanData,
+    span: SpanData,
 ) -> ExpandResult<tt::Subtree> {
-    ExpandResult::only_err(ExpandError::other("quote! is not implemented"))
+    ExpandResult::new(
+        tt::Subtree::empty(tt::DelimSpan { open: span, close: span }),
+        ExpandError::other("quote! is not implemented"),
+    )
 }
