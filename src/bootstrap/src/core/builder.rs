@@ -977,7 +977,7 @@ impl<'a> Builder<'a> {
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
     /// silently use the stage1 compiler instead of a stage2 compiler if one is
-    /// requested.
+    /// requested. This behaviour is ignored if `--stage` is explicitly set.
     ///
     /// Note that this does *not* have the side effect of creating
     /// `compiler(stage, host)`, unlike `compiler` above which does have such
@@ -992,7 +992,9 @@ impl<'a> Builder<'a> {
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        if self.build.force_use_stage2(stage) {
+        if self.config.explicit_stage {
+            self.compiler(stage, host)
+        } else if self.build.force_use_stage2(stage) {
             self.compiler(2, self.config.build)
         } else if self.build.force_use_stage1(stage, target) {
             self.compiler(1, self.config.build)

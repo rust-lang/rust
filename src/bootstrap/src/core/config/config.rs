@@ -184,6 +184,8 @@ pub struct Config {
 
     pub on_fail: Option<String>,
     pub stage: u32,
+    /// Indicates whether `--stage` was explicitly used or not.
+    pub explicit_stage: bool,
     pub keep_stage: Vec<u32>,
     pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
@@ -1216,6 +1218,7 @@ impl Config {
         config.incremental = flags.incremental;
         config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
         config.dump_bootstrap_shims = flags.dump_bootstrap_shims;
+        config.explicit_stage = flags.stage.is_some();
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
