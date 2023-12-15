@@ -849,7 +849,7 @@ impl<'a, 'p, Cx: MatchCx> Matrix<'a, 'p, Cx> {
         scrut_validity: ValidityConstraint,
     ) -> Self {
         let wild_pattern =
-            wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty, Cx::Span::default()));
+            wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty, Default::default()));
         let wildcard_row = PatStack::from_pattern(wild_pattern);
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
@@ -1287,11 +1287,11 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
 
 /// Indicates whether or not a given arm is useful.
 #[derive(Clone, Debug)]
-pub enum Usefulness<Span> {
+pub enum Usefulness<'p, Cx: MatchCx> {
     /// The arm is useful. This additionally carries a set of or-pattern branches that have been
     /// found to be redundant despite the overall arm being useful. Used only in the presence of
     /// or-patterns, otherwise it stays empty.
-    Useful(Vec<Span>),
+    Useful(Vec<&'p DeconstructedPat<'p, Cx>>),
     /// The arm is redundant and can be removed without changing the behavior of the match
     /// expression.
     Redundant,
@@ -1300,7 +1300,7 @@ pub enum Usefulness<Span> {
 /// The output of checking a match for exhaustiveness and arm usefulness.
 pub struct UsefulnessReport<'p, Cx: MatchCx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
-    pub arm_usefulness: Vec<(MatchArm<'p, Cx>, Usefulness<Cx::Span>)>,
+    pub arm_usefulness: Vec<(MatchArm<'p, Cx>, Usefulness<'p, Cx>)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
@@ -1327,7 +1327,7 @@ pub fn compute_match_usefulness<'p, Cx: MatchCx>(
             debug!(?arm);
             // We warn when a pattern is not useful.
             let usefulness = if arm.pat.is_useful() {
-                Usefulness::Useful(arm.pat.redundant_spans())
+                Usefulness::Useful(arm.pat.redundant_subpatterns())
             } else {
                 Usefulness::Redundant
             };

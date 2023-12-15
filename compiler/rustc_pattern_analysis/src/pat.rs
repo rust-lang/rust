@@ -26,23 +26,23 @@ pub struct DeconstructedPat<'p, Cx: MatchCx> {
     ctor: Constructor<Cx>,
     fields: &'p [DeconstructedPat<'p, Cx>],
     ty: Cx::Ty,
-    span: Cx::Span,
+    data: Cx::PatData,
     /// Whether removing this arm would change the behavior of the match expression.
     useful: Cell<bool>,
 }
 
 impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
-    pub fn wildcard(ty: Cx::Ty, span: Cx::Span) -> Self {
-        Self::new(Wildcard, &[], ty, span)
+    pub fn wildcard(ty: Cx::Ty, data: Cx::PatData) -> Self {
+        Self::new(Wildcard, &[], ty, data)
     }
 
     pub fn new(
         ctor: Constructor<Cx>,
         fields: &'p [DeconstructedPat<'p, Cx>],
         ty: Cx::Ty,
-        span: Cx::Span,
+        data: Cx::PatData,
     ) -> Self {
-        DeconstructedPat { ctor, fields, ty, span, useful: Cell::new(false) }
+        DeconstructedPat { ctor, fields, ty, data, useful: Cell::new(false) }
     }
 
     pub(crate) fn is_or_pat(&self) -> bool {
@@ -63,8 +63,8 @@ impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
     pub fn ty(&self) -> Cx::Ty {
         self.ty
     }
-    pub fn span(&self) -> &Cx::Span {
-        &self.span
+    pub fn data(&self) -> &Cx::PatData {
+        &self.data
     }
 
     pub fn iter_fields<'a>(
@@ -83,7 +83,7 @@ impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
         let wildcard_sub_tys = || {
             let tys = pcx.cx.ctor_sub_tys(other_ctor, pcx.ty);
             tys.iter()
-                .map(|ty| DeconstructedPat::wildcard(*ty, Cx::Span::default()))
+                .map(|ty| DeconstructedPat::wildcard(*ty, Cx::PatData::default()))
                 .map(|pat| pcx.wildcard_arena.alloc(pat) as &_)
                 .collect()
         };
@@ -113,8 +113,8 @@ impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
         }
     }
 
-    /// We keep track for each pattern if it was ever useful during the analysis. This is used
-    /// with `redundant_spans` to report redundant subpatterns arising from or patterns.
+    /// We keep track for each pattern if it was ever useful during the analysis. This is used with
+    /// `redundant_subpatterns` to report redundant subpatterns arising from or patterns.
     pub(crate) fn set_useful(&self) {
         self.useful.set(true)
     }
@@ -132,19 +132,19 @@ impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
         }
     }
 
-    /// Report the spans of subpatterns that were not useful, if any.
-    pub(crate) fn redundant_spans(&self) -> Vec<Cx::Span> {
-        let mut spans = Vec::new();
-        self.collect_redundant_spans(&mut spans);
-        spans
+    /// Report the subpatterns that were not useful, if any.
+    pub(crate) fn redundant_subpatterns(&self) -> Vec<&Self> {
+        let mut subpats = Vec::new();
+        self.collect_redundant_subpatterns(&mut subpats);
+        subpats
     }
-    fn collect_redundant_spans(&self, spans: &mut Vec<Cx::Span>) {
+    fn collect_redundant_subpatterns<'a>(&'a self, subpats: &mut Vec<&'a Self>) {
         // We don't look at subpatterns if we already reported the whole pattern as redundant.
         if !self.is_useful() {
-            spans.push(self.span.clone());
+            subpats.push(self);
         } else {
             for p in self.iter_fields() {
-                p.collect_redundant_spans(spans);
+                p.collect_redundant_subpatterns(subpats);
             }
         }
     }

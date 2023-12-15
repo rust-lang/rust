@@ -35,7 +35,7 @@ pub(crate) type PatCtxt<'a, 'p, 'tcx> =
     crate::usefulness::PatCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type SplitConstructorSet<'p, 'tcx> =
     crate::constructor::SplitConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type Usefulness = crate::usefulness::Usefulness<Span>;
+pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
     crate::usefulness::UsefulnessReport<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcMatchCheckCtxt<'p, 'tcx>>;
@@ -864,10 +864,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
 
 impl<'p, 'tcx> MatchCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type Ty = Ty<'tcx>;
-    type Span = Span;
     type VariantIdx = VariantIdx;
     type StrLit = Const<'tcx>;
     type ArmData = HirId;
+    type PatData = Span;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.tcx.features().exhaustive_patterns

@@ -37,14 +37,17 @@ use crate::rustc::RustcMatchCheckCtxt;
 use crate::usefulness::{compute_match_usefulness, ValidityConstraint};
 
 pub trait MatchCx: Sized + Clone + fmt::Debug {
+    /// The type of a pattern.
     type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
-    type Span: Clone + Default;
     /// The index of an enum variant.
     type VariantIdx: Clone + Idx;
     /// A string literal
     type StrLit: Clone + PartialEq + fmt::Debug;
     /// Extra data to store on a match arm.
     type ArmData: Copy + Clone + fmt::Debug;
+    /// Extra data to store on a pattern. `Default` needed when we create fictitious wildcard
+    /// patterns during analysis.
+    type PatData: Clone + Default;
 
     fn is_opaque_ty(ty: Self::Ty) -> bool;
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
