@@ -2677,10 +2677,7 @@ fn from_stderr(color: ColorConfig) -> Destination {
 /// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.
 ///
 /// See #36178.
-#[cfg(windows)]
-const BRIGHT_BLUE: Color = Color::Cyan;
-#[cfg(not(windows))]
-const BRIGHT_BLUE: Color = Color::Blue;
+const BRIGHT_BLUE: Color = if cfg!(windows) { Color::Cyan } else { Color::Blue };
 
 impl Style {
     fn color_spec(&self, lvl: Level) -> ColorSpec {
