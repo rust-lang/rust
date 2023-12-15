@@ -233,8 +233,8 @@ fn generate_getter_from_info(
                 .map(|conversion| {
                     cov_mark::hit!(convert_reference_type);
                     (
-                        conversion.convert_type(ctx.db()),
-                        conversion.getter(record_field_info.field_name.to_string()),
+                        conversion.convert_type(ctx.db()).to_string(),
+                        conversion.getter(record_field_info.field_name.to_string()).to_string(),
                     )
                 })
         })()

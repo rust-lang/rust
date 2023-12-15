@@ -718,8 +718,8 @@ enum ReferenceConversionType {
 }
 
 impl ReferenceConversion {
-    pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> String {
-        match self.conversion {
+    pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> ast::Type {
+        let ty = match self.conversion {
             ReferenceConversionType::Copy => self.ty.display(db).to_string(),
             ReferenceConversionType::AsRefStr => "&str".to_string(),
             ReferenceConversionType::AsRefSlice => {
@@ -745,21 +745,25 @@ impl ReferenceConversion {
                     type_arguments.next().unwrap().display(db).to_string();
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
-        }
+        };
+
+        make::ty(&ty)
     }
 
-    pub(crate) fn getter(&self, field_name: String) -> String {
+    pub(crate) fn getter(&self, field_name: String) -> ast::Expr {
+        let expr = make::expr_field(make::ext::expr_self(), &field_name);
+
         match self.conversion {
-            ReferenceConversionType::Copy => format!("self.{field_name}"),
+            ReferenceConversionType::Copy => expr,
             ReferenceConversionType::AsRefStr
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
             | ReferenceConversionType::Result => {
                 if self.impls_deref {
-                    format!("&self.{field_name}")
+                    make::expr_ref(expr, false)
                 } else {
-                    format!("self.{field_name}.as_ref()")
+                    make::expr_method_call(expr, make::name_ref("as_ref"), make::arg_list([]))
                 }
             }
         }
