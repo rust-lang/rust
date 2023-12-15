@@ -2,8 +2,8 @@
 //! the end of the file for details.
 
 use super::combine::CombineFields;
-use super::{HigherRankedType, InferCtxt};
 use crate::infer::CombinedSnapshot;
+use crate::infer::{HigherRankedType, InferCtxt};
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable};
