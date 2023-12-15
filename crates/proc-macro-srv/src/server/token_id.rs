@@ -1,3 +1,5 @@
+//! proc-macro server backend based on [`proc_macro_api::msg::TokenId`] as the backing span.
+//! This backend is rather inflexible, used by RustRover and older rust-analyzer versions.
 use std::{
     iter,
     ops::{Bound, Range},

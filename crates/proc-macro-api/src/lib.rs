@@ -21,8 +21,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     msg::{
-        flat::serialize_span_data_index_map, ExpandMacro, ExpnGlobals, FlatTree, PanicMessage,
-        HAS_GLOBAL_SPANS, RUST_ANALYZER_SPAN_SUPPORT,
+        deserialize_span_data_index_map, flat::serialize_span_data_index_map, ExpandMacro,
+        ExpnGlobals, FlatTree, PanicMessage, HAS_GLOBAL_SPANS, RUST_ANALYZER_SPAN_SUPPORT,
     },
     process::ProcMacroProcessSrv,
 };
@@ -186,6 +186,13 @@ impl ProcMacro {
             msg::Response::ExpandMacro(it) => {
                 Ok(it.map(|tree| FlatTree::to_subtree_resolved(tree, version, &span_data_table)))
             }
+            msg::Response::ExpandMacroExtended(it) => Ok(it.map(|resp| {
+                FlatTree::to_subtree_resolved(
+                    resp.tree,
+                    version,
+                    &deserialize_span_data_index_map(&resp.span_data_table),
+                )
+            })),
             _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
         }
     }

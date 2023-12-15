@@ -1,3 +1,9 @@
+//! proc-macro server backend based on rust-analyzer's internal span represention
+//! This backend is used solely by rust-analyzer as it ties into rust-analyzer internals.
+//!
+//! It is an unfortunate result of how the proc-macro API works that we need to look into the
+//! concrete representation of the spans, and as such, RustRover cannot make use of this unless they
+//! change their representation to be compatible with rust-analyzer's.
 use std::{
     collections::{HashMap, HashSet},
     iter,

@@ -26,10 +26,14 @@ pub const CURRENT_API_VERSION: u32 = RUST_ANALYZER_SPAN_SUPPORT;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros { dylib_path: PathBuf },
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(ExpandMacro),
-    SetSpanMode(SpanMode),
+    /// Since [`VERSION_CHECK_VERSION`]
     ApiVersionCheck {},
+    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    SetSpanMode(SpanMode),
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
@@ -41,11 +45,22 @@ pub enum SpanMode {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Result<FlatTree, PanicMessage>),
-    ExpandMacroSpans(Result<(FlatTree, Vec<u32>), PanicMessage>),
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ApiVersionCheck(u32),
+    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
     SetSpanMode(SpanMode),
+    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpandMacroExtended {
+    pub tree: FlatTree,
+    pub span_data_table: Vec<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

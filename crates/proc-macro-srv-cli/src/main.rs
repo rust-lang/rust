@@ -41,7 +41,12 @@ fn run() -> io::Result<()> {
             }
             msg::Request::ExpandMacro(task) => match srv.span_mode() {
                 msg::SpanMode::Id => msg::Response::ExpandMacro(srv.expand(task).map(|(it, _)| it)),
-                msg::SpanMode::RustAnalyzer => msg::Response::ExpandMacroSpans(srv.expand(task)),
+                msg::SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended(
+                    srv.expand(task).map(|(tree, span_data_table)| msg::ExpandMacroExtended {
+                        tree,
+                        span_data_table,
+                    }),
+                ),
             },
             msg::Request::ApiVersionCheck {} => {
                 msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
