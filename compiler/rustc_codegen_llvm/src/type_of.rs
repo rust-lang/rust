@@ -26,16 +26,8 @@ fn uncached_llvm_type<'a, 'tcx>(
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
-        Abi::ScalarPair(..) => {
-            return cx.type_struct(
-                &[
-                    layout.scalar_pair_element_llvm_type(cx, 0, false),
-                    layout.scalar_pair_element_llvm_type(cx, 1, false),
-                ],
-                false,
-            );
-        }
-        Abi::Uninhabited | Abi::Aggregate { .. } => {}
+        // Treat ScalarPair like a normal aggregate for the purposes of in-memory representation.
+        Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalarPair(..) => {}
     }
 
     let name = match layout.ty.kind() {
@@ -275,11 +267,25 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        if let Abi::Scalar(scalar) = self.abi {
-            if scalar.is_bool() {
-                return cx.type_i1();
+        match self.abi {
+            Abi::Scalar(scalar) => {
+                if scalar.is_bool() {
+                    return cx.type_i1();
+                }
             }
-        }
+            Abi::ScalarPair(..) => {
+                // An immediate pair always contains just the two elements, without any padding
+                // filler, as it should never be stored to memory.
+                return cx.type_struct(
+                    &[
+                        self.scalar_pair_element_llvm_type(cx, 0, true),
+                        self.scalar_pair_element_llvm_type(cx, 1, true),
+                    ],
+                    false,
+                );
+            }
+            _ => {}
+        };
         self.llvm_type(cx)
     }
 
