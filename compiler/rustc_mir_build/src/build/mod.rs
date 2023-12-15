@@ -640,7 +640,9 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         }
         DefKind::Closure if coroutine_kind.is_some() => {
             let coroutine_ty = tcx.type_of(def_id).instantiate_identity();
-            let ty::Coroutine(_, args, _) = coroutine_ty.kind() else { bug!() };
+            let ty::Coroutine(_, args, _) = coroutine_ty.kind() else {
+                bug!("expected type of coroutine-like closure to be a coroutine")
+            };
             let args = args.as_coroutine();
             let yield_ty = args.yield_ty();
             let return_ty = args.return_ty();
@@ -648,7 +650,9 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         }
         DefKind::Closure => {
             let closure_ty = tcx.type_of(def_id).instantiate_identity();
-            let ty::Closure(_, args) = closure_ty.kind() else { bug!() };
+            let ty::Closure(_, args) = closure_ty.kind() else {
+                bug!("expected type of closure to be a closure")
+            };
             let args = args.as_closure();
             let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), args.sig());
             let self_ty = match args.kind() {

@@ -942,8 +942,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let a_ty = self.infcx.shallow_resolve(predicate.self_ty());
         let b_ty = self.infcx.shallow_resolve(predicate.trait_ref.args.type_at(1));
 
-        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else { bug!() };
-        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else { bug!() };
+        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else {
+            bug!("expected `dyn` type in `confirm_trait_upcasting_unsize_candidate`")
+        };
+        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+            bug!("expected `dyn` type in `confirm_trait_upcasting_unsize_candidate`")
+        };
 
         let source_principal = a_data.principal().unwrap().with_self_ty(tcx, a_ty);
         let unnormalized_upcast_principal =

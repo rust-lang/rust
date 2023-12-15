@@ -256,7 +256,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     Err(NoSolution)
                 }
             }
-            ty::ImplPolarity::Reservation => bug!(),
+            // FIXME: Goal polarity should be split from impl polarity
+            ty::ImplPolarity::Reservation => {
+                bug!("we never expect a `Reservation` polarity in a trait goal")
+            }
         }
     }
 

@@ -2003,18 +2003,14 @@ impl<'a> State<'a> {
         });
         self.word("|");
 
-        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
-            return;
-        }
-
-        self.space_if_not_bol();
-        self.word_space("->");
         match decl.output {
             hir::FnRetTy::Return(ty) => {
+                self.space_if_not_bol();
+                self.word_space("->");
                 self.print_type(ty);
                 self.maybe_print_comment(ty.span.lo());
             }
-            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
+            hir::FnRetTy::DefaultReturn(..) => {}
         }
     }
 
@@ -2179,7 +2175,7 @@ impl<'a> State<'a> {
                             GenericBound::Outlives(lt) => {
                                 self.print_lifetime(lt);
                             }
-                            _ => panic!(),
+                            _ => panic!("unexpected bound on lifetime param: {bound:?}"),
                         }
 
                         if i != 0 {
@@ -2216,16 +2212,14 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_output(&mut self, decl: &hir::FnDecl<'_>) {
-        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
-            return;
-        }
-
-        self.space_if_not_bol();
-        self.ibox(INDENT_UNIT);
-        self.word_space("->");
         match decl.output {
-            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
-            hir::FnRetTy::Return(ty) => self.print_type(ty),
+            hir::FnRetTy::Return(ty) => {
+                self.space_if_not_bol();
+                self.ibox(INDENT_UNIT);
+                self.word_space("->");
+                self.print_type(ty);
+            }
+            hir::FnRetTy::DefaultReturn(..) => return,
         }
         self.end();
 

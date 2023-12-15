@@ -1300,7 +1300,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             what,
                         })
                     }
-                    _ => unreachable!(),
+                    kind => span_bug!(
+                        use_span,
+                        "did not expect to resolve lifetime to {}",
+                        kind.descr(param_def_id)
+                    ),
                 };
                 def = ResolvedArg::Error(guar);
             } else if let Some(body_id) = outermost_body {
@@ -1441,7 +1445,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             what,
                         })
                     }
-                    _ => unreachable!(),
+                    kind => span_bug!(
+                        use_span,
+                        "did not expect to resolve non-lifetime param to {}",
+                        kind.descr(param_def_id.to_def_id())
+                    ),
                 };
                 self.map.defs.insert(hir_id, ResolvedArg::Error(guar));
             } else {
@@ -2123,7 +2131,7 @@ pub fn deny_non_region_late_bound(
 
     for (var, arg) in bound_vars {
         let Node::GenericParam(param) = tcx.hir_node_by_def_id(*var) else {
-            bug!();
+            span_bug!(tcx.def_span(*var), "expected bound-var def-id to resolve to param");
         };
 
         let what = match param.kind {

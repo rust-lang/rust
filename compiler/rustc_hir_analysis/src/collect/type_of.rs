@@ -20,7 +20,13 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     use rustc_middle::ty::Ty;
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-    let Node::AnonConst(_) = tcx.hir_node(hir_id) else { panic!() };
+    let node = tcx.hir_node(hir_id);
+    let Node::AnonConst(_) = node else {
+        span_bug!(
+            tcx.def_span(def_id),
+            "expected anon const in `anon_const_type_of`, got {node:?}"
+        );
+    };
 
     let parent_node_id = tcx.hir().parent_id(hir_id);
     let parent_node = tcx.hir_node(parent_node_id);

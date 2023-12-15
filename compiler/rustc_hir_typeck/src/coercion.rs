@@ -1182,14 +1182,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.unsafety()))
                 }
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
-                _ => unreachable!(),
+                _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
             };
             let next_adjustment = match new_ty.kind() {
                 ty::Closure(..) => {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.unsafety()))
                 }
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
-                _ => unreachable!(),
+                _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
                 self.apply_adjustments(
@@ -1918,7 +1918,7 @@ where
 
 impl AsCoercionSite for ! {
     fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        unreachable!()
+        *self
     }
 }
 

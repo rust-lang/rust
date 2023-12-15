@@ -103,15 +103,19 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
-            (
-                ty::Alias(..),
-                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
-            )
-            | (
-                ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
-                ty::Alias(..),
-            ) if self.next_trait_solver() => {
-                bug!()
+            (ty::Alias(..), ty::Infer(ty::TyVar(_))) | (ty::Infer(ty::TyVar(_)), ty::Alias(..))
+                if self.next_trait_solver() =>
+            {
+                bug!(
+                    "We do not expect to encounter `TyVar` this late in combine \
+                    -- they should have been handled earlier"
+                )
+            }
+            (_, ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)))
+            | (ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)), _)
+                if self.next_trait_solver() =>
+            {
+                bug!("We do not expect to encounter `Fresh` variables in the new solver")
             }
 
             (_, ty::Alias(..)) | (ty::Alias(..), _) if self.next_trait_solver() => {

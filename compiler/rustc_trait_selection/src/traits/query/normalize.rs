@@ -285,7 +285,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     ty::Projection => tcx.normalize_projection_ty(c_data),
                     ty::Weak => tcx.normalize_weak_ty(c_data),
                     ty::Inherent => tcx.normalize_inherent_projection_ty(c_data),
-                    _ => unreachable!(),
+                    kind => unreachable!("did not expect {kind:?} due to match arm above"),
                 }?;
                 // We don't expect ambiguity.
                 if !result.value.is_proven() {

@@ -993,7 +993,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }) {
                         match e {
                             Error::Missing(expected_idx) => missing_idxs.push(expected_idx),
-                            _ => unreachable!(),
+                            _ => unreachable!(
+                                "control flow ensures that we should always get an `Error::Missing`"
+                            ),
                         }
                     }
 

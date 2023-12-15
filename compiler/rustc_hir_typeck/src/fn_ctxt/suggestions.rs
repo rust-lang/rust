@@ -2072,8 +2072,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Fn) => ("(".to_owned(), ")"),
                     None => (format!(" {{ {field_name}: "), " }"),
 
-                    // unit variants don't have fields
-                    Some(CtorKind::Const) => unreachable!(),
+                    Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
                 // Suggest constructor as deep into the block tree as possible.
