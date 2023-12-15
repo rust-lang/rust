@@ -200,9 +200,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let result = f(&mut ecx);
 
         let tree = ecx.inspect.finalize();
-        if let (Some(tree), DumpSolverProofTree::Always) =
-            (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
-        {
+        if let (Some(tree), DumpSolverProofTree::Always) = (
+            &tree,
+            infcx.tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default(),
+        ) {
             let mut lock = std::io::stdout().lock();
             let _ = lock.write_fmt(format_args!("{tree:?}\n"));
             let _ = lock.flush();
@@ -377,7 +378,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         //
         // This assert was removed as it did not hold for goals constraining
         // an inference variable to a recursive alias, e.g. in
-        // tests/ui/traits/new-solver/overflow/recursive-self-normalization.rs.
+        // tests/ui/traits/next-solver/overflow/recursive-self-normalization.rs.
         //
         // Once we have decided on how to handle trait-system-refactor-initiative#75,
         // we should re-add an assert here.
@@ -421,7 +422,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
                 }
                 ty::PredicateKind::ConstEquate(_, _) => {
-                    bug!("ConstEquate should not be emitted when `-Ztrait-solver=next` is active")
+                    bug!("ConstEquate should not be emitted when `-Znext-solver` is active")
                 }
                 ty::PredicateKind::NormalizesTo(predicate) => {
                     self.compute_normalizes_to_goal(Goal { param_env, predicate })

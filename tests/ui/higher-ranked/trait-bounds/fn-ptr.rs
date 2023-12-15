@@ -1,5 +1,5 @@
 // revisions: classic next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 //[next] check-pass
 
 fn ice()

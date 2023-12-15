@@ -67,7 +67,7 @@ pub trait NormalizeExt<'tcx> {
     /// same goals in both a temporary and the shared context which negatively impacts
     /// performance as these don't share caching.
     ///
-    /// FIXME(-Ztrait-solver=next): This has the same behavior as `traits::fully_normalize`
+    /// FIXME(-Znext-solver): This has the same behavior as `traits::fully_normalize`
     /// in the new solver, but because of performance reasons, we currently reuse an
     /// existing fulfillment context in the old solver. Once we also eagerly prove goals with
     /// the old solver or have removed the old solver, remove `traits::fully_normalize` and

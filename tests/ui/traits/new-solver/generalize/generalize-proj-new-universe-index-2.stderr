@@ -1,9 +1,0 @@
-error[E0284]: type annotations needed: cannot satisfy `<<Rigid as IdHigherRankedBound>::Assoc as WithAssoc<<Wrapper<Leaf> as Id>::Assoc>>::Assoc normalizes-to <<Leaf as WithAssoc<_>>::Assoc as Id>::Assoc`
-  --> $DIR/generalize-proj-new-universe-index-2.rs:74:5
-   |
-LL |     bound::<<Rigid as IdHigherRankedBound>::Assoc, <Wrapper<Leaf> as Id>::Assoc, _>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<<Rigid as IdHigherRankedBound>::Assoc as WithAssoc<<Wrapper<Leaf> as Id>::Assoc>>::Assoc normalizes-to <<Leaf as WithAssoc<_>>::Assoc as Id>::Assoc`
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0284`.

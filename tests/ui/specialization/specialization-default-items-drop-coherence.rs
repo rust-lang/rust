@@ -1,6 +1,6 @@
 // revisions: classic coherence next
-//[next] compile-flags: -Ztrait-solver=next
-//[coherence] compile-flags: -Ztrait-solver=next-coherence
+//[next] compile-flags: -Znext-solver
+//[coherence] compile-flags: -Znext-solver=coherence
 //[classic] check-pass
 //[classic] known-bug: #105782
 

@@ -6,7 +6,7 @@
 //! have a situation where the RPIT gets constrained outside its anchor.
 
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 //[next] check-pass
 
 //[current] known-bug: #108498

@@ -1,7 +1,7 @@
 // check-pass
 // issue: 114113
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 trait Mirror {
     type Assoc;

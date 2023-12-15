@@ -14,7 +14,7 @@ use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, MultiSpan, Noted, StashKey,
+    ErrorGuaranteed, IntoDiagnostic, MultiSpan, Noted, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -389,14 +389,5 @@ impl ParseSess {
     #[track_caller]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         self.span_diagnostic.struct_fatal(msg)
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_diagnostic<G: EmissionGuarantee>(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, G> {
-        self.span_diagnostic.struct_diagnostic(msg)
     }
 }

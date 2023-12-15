@@ -249,8 +249,8 @@ impl<'a> Parser<'a> {
         self.diagnostic().struct_span_err(sp, m)
     }
 
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: impl Into<String>) -> ! {
-        self.diagnostic().span_bug(sp, m)
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
+        self.diagnostic().span_bug(sp, msg)
     }
 
     pub(super) fn diagnostic(&self) -> &'a Handler {

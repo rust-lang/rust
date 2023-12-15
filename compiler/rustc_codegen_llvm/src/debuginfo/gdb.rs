@@ -30,14 +30,13 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_,
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
 pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Value {
-    let c_section_var_name = "__rustc_debug_gdb_scripts_section__\0";
-    let section_var_name = &c_section_var_name[..c_section_var_name.len() - 1];
+    let c_section_var_name = c"__rustc_debug_gdb_scripts_section__";
+    let section_var_name = c_section_var_name.to_str().unwrap();
 
     let section_var =
         unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, c_section_var_name.as_ptr().cast()) };
 
     section_var.unwrap_or_else(|| {
-        let section_name = b".debug_gdb_scripts\0";
         let mut section_contents = Vec::new();
 
         // Add the pretty printers for the standard library first.
@@ -70,7 +69,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '
             let section_var = cx
                 .define_global(section_var_name, llvm_type)
                 .unwrap_or_else(|| bug!("symbol `{}` is already defined", section_var_name));
-            llvm::LLVMSetSection(section_var, section_name.as_ptr().cast());
+            llvm::LLVMSetSection(section_var, c".debug_gdb_scripts".as_ptr().cast());
             llvm::LLVMSetInitializer(section_var, cx.const_bytes(section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddress(section_var, llvm::UnnamedAddr::Global);

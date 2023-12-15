@@ -101,7 +101,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// variable, then you'll get a new inference variable; if it is a
     /// universally quantified variable, you get a placeholder.
     ///
-    /// FIXME(-Ztrait-solver=next): This is public because it's used by the
+    /// FIXME(-Znext-solver): This is public because it's used by the
     /// new trait solver which has a different canonicalization routine.
     /// We should somehow deduplicate all of this.
     pub fn instantiate_canonical_var(

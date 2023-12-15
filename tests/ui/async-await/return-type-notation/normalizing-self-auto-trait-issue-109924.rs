@@ -1,7 +1,7 @@
 // revisions: current next
 //[current] known-bug: #109924
 //[next] check-pass
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 // edition:2021
 
 #![feature(return_type_notation)]

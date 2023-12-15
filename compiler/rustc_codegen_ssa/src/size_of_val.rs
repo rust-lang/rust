@@ -84,10 +84,13 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             debug!("DST {} layout: {:?}", t, layout);
 
             let i = layout.fields.count() - 1;
-            let sized_size = layout.fields.offset(i).bytes();
+            let unsized_offset_unadjusted = layout.fields.offset(i).bytes();
             let sized_align = layout.align.abi.bytes();
-            debug!("DST {} statically sized prefix size: {} align: {}", t, sized_size, sized_align);
-            let sized_size = bx.const_usize(sized_size);
+            debug!(
+                "DST {} offset of dyn field: {}, statically sized align: {}",
+                t, unsized_offset_unadjusted, sized_align
+            );
+            let unsized_offset_unadjusted = bx.const_usize(unsized_offset_unadjusted);
             let sized_align = bx.const_usize(sized_align);
 
             // Recurse to get the size of the dynamically sized field (must be
@@ -95,26 +98,26 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let field_ty = layout.field(bx, i).ty;
             let (unsized_size, mut unsized_align) = size_and_align_of_dst(bx, field_ty, info);
 
-            // FIXME (#26403, #27023): We should be adding padding
-            // to `sized_size` (to accommodate the `unsized_align`
-            // required of the unsized field that follows) before
-            // summing it with `sized_size`. (Note that since #26403
-            // is unfixed, we do not yet add the necessary padding
-            // here. But this is where the add would go.)
+            // # First compute the dynamic alignment
 
-            // Return the sum of sizes and max of aligns.
-            let size = bx.add(sized_size, unsized_size);
-
-            // Packed types ignore the alignment of their fields.
-            if let ty::Adt(def, _) = t.kind() {
-                if def.repr().packed() {
-                    unsized_align = sized_align;
+            // For packed types, we need to cap the alignment.
+            if let ty::Adt(def, _) = t.kind()
+                && let Some(packed) = def.repr().pack
+            {
+                if packed.bytes() == 1 {
+                    // We know this will be capped to 1.
+                    unsized_align = bx.const_usize(1);
+                } else {
+                    // We have to dynamically compute `min(unsized_align, packed)`.
+                    let packed = bx.const_usize(packed.bytes());
+                    let cmp = bx.icmp(IntPredicate::IntULT, unsized_align, packed);
+                    unsized_align = bx.select(cmp, unsized_align, packed);
                 }
             }
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
-            let align = match (
+            let full_align = match (
                 bx.const_to_opt_u128(sized_align, false),
                 bx.const_to_opt_u128(unsized_align, false),
             ) {
@@ -129,6 +132,19 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
             };
 
+            // # Then compute the dynamic size
+
+            // The full formula for the size would be:
+            // let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
+            // let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
+            // However, `unsized_size` is a multiple of `unsized_align`.
+            // Therefore, we can equivalently do the `align_to(unsized_align)` *after* adding `unsized_size`:
+            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(unsized_align).align_to(full_align);
+            // Furthermore, `align >= unsized_align`, and therefore we only need to do:
+            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
+
+            let full_size = bx.add(unsized_offset_unadjusted, unsized_size);
+
             // Issue #27023: must add any necessary padding to `size`
             // (to make it a multiple of `align`) before returning it.
             //
@@ -140,12 +156,12 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             //
             //   `(size + (align-1)) & -align`
             let one = bx.const_usize(1);
-            let addend = bx.sub(align, one);
-            let add = bx.add(size, addend);
-            let neg = bx.neg(align);
-            let size = bx.and(add, neg);
+            let addend = bx.sub(full_align, one);
+            let add = bx.add(full_size, addend);
+            let neg = bx.neg(full_align);
+            let full_size = bx.and(add, neg);
 
-            (size, align)
+            (full_size, full_align)
         }
         _ => bug!("size_and_align_of_dst: {t} not supported"),
     }

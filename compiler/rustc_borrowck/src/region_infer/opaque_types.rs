@@ -315,7 +315,7 @@ fn check_opaque_type_well_formed<'tcx>(
         parent_def_id = tcx.local_parent(parent_def_id);
     }
 
-    // FIXME(-Ztrait-solver=next): We probably should use `DefiningAnchor::Error`
+    // FIXME(-Znext-solver): We probably should use `DefiningAnchor::Error`
     // and prepopulate this `InferCtxt` with known opaque values, rather than
     // using the `Bind` anchor here. For now it's fine.
     let infcx = tcx

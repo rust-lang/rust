@@ -21,17 +21,20 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable;
 use rustc_type_ir::Canonical as IrCanonical;
 use rustc_type_ir::CanonicalVarInfo as IrCanonicalVarInfo;
 pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};
 use smallvec::SmallVec;
+use std::collections::hash_map::Entry;
 use std::ops::Index;
 
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
 use crate::ty::GenericArg;
-use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
+use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
 pub type Canonical<'tcx, V> = IrCanonical<TyCtxt<'tcx>, V>;
 
@@ -289,5 +292,64 @@ impl<'tcx> Index<BoundVar> for CanonicalVarValues<'tcx> {
 
     fn index(&self, value: BoundVar) -> &GenericArg<'tcx> {
         &self.var_values[value.as_usize()]
+    }
+}
+
+#[derive(Default)]
+pub struct CanonicalParamEnvCache<'tcx> {
+    map: Lock<
+        FxHashMap<
+            ty::ParamEnv<'tcx>,
+            (Canonical<'tcx, ty::ParamEnv<'tcx>>, &'tcx [GenericArg<'tcx>]),
+        >,
+    >,
+}
+
+impl<'tcx> CanonicalParamEnvCache<'tcx> {
+    /// Gets the cached canonical form of `key` or executes
+    /// `canonicalize_op` and caches the result if not present.
+    ///
+    /// `canonicalize_op` is intentionally not allowed to be a closure to
+    /// statically prevent it from capturing `InferCtxt` and resolving
+    /// inference variables, which invalidates the cache.
+    pub fn get_or_insert(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        key: ty::ParamEnv<'tcx>,
+        state: &mut OriginalQueryValues<'tcx>,
+        canonicalize_op: fn(
+            TyCtxt<'tcx>,
+            ty::ParamEnv<'tcx>,
+            &mut OriginalQueryValues<'tcx>,
+        ) -> Canonical<'tcx, ty::ParamEnv<'tcx>>,
+    ) -> Canonical<'tcx, ty::ParamEnv<'tcx>> {
+        if !key.has_type_flags(
+            TypeFlags::HAS_INFER | TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_FREE_REGIONS,
+        ) {
+            return Canonical {
+                max_universe: ty::UniverseIndex::ROOT,
+                variables: List::empty(),
+                value: key,
+            };
+        }
+
+        assert_eq!(state.var_values.len(), 0);
+        assert_eq!(state.universe_map.len(), 1);
+        debug_assert_eq!(&*state.universe_map, &[ty::UniverseIndex::ROOT]);
+
+        match self.map.borrow().entry(key) {
+            Entry::Occupied(e) => {
+                let (canonical, var_values) = e.get();
+                state.var_values.extend_from_slice(var_values);
+                canonical.clone()
+            }
+            Entry::Vacant(e) => {
+                let canonical = canonicalize_op(tcx, key, state);
+                let OriginalQueryValues { var_values, universe_map } = state;
+                assert_eq!(universe_map.len(), 1);
+                e.insert((canonical.clone(), tcx.arena.alloc_slice(var_values)));
+                canonical
+            }
+        }
     }
 }

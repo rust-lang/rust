@@ -1,5 +1,5 @@
 // revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 // run-pass
 
 #![feature(coroutines, coroutine_trait)]

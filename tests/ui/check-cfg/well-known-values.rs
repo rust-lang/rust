@@ -51,7 +51,8 @@
     //~^ WARN unexpected `cfg` condition value
     target_family = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
-    target_feature = "_UNEXPECTED_VALUE", // currently *any* values are "expected"
+    target_feature = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
     target_has_atomic = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
@@ -89,6 +90,9 @@ fn target_os_linux_misspell() {}
 
 #[cfg(target_os = "linux")]
 fn target_os_linux() {}
+
+#[cfg(target_feature = "crt-static")] // pure rustc feature
+fn target_feature() {}
 
 #[cfg(target_has_atomic = "8")]
 fn target_has_atomic_8() {}

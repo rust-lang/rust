@@ -5,7 +5,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_session::Limit;
-/// The trait solver cache used by `-Ztrait-solver=next`.
+/// The trait solver cache used by `-Znext-solver`.
 ///
 /// FIXME(@lcnr): link to some official documentation of how
 /// this works.

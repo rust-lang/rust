@@ -1,6 +1,6 @@
 // check that reservation impls are accounted for in negative reasoning.
 // revisions: old next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
 trait MyTrait {}

@@ -5,9 +5,6 @@ use crate::errors::{
 };
 use crate::llvm;
 use libc::c_int;
-use rustc_codegen_ssa::target_features::{
-    supported_target_features, tied_target_features, RUSTC_SPECIFIC_FEATURES,
-};
 use rustc_codegen_ssa::traits::PrintBackendInfo;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -17,6 +14,7 @@ use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
+use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::Path;
@@ -278,7 +276,7 @@ pub fn check_tied_features(
     features: &FxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
     if !features.is_empty() {
-        for tied in tied_target_features(sess) {
+        for tied in sess.target.tied_target_features() {
             // Tied features must be set to the same value, or not set at all
             let mut tied_iter = tied.iter();
             let enabled = features.get(tied_iter.next().unwrap());
@@ -294,7 +292,8 @@ pub fn check_tied_features(
 /// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    supported_target_features(sess)
+    sess.target
+        .supported_target_features()
         .iter()
         .filter_map(|&(feature, gate)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
@@ -362,7 +361,9 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
 fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &llvm::TargetMachine) {
     let mut llvm_target_features = llvm_target_features(tm);
     let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
-    let mut rustc_target_features = supported_target_features(sess)
+    let mut rustc_target_features = sess
+        .target
+        .supported_target_features()
         .iter()
         .map(|(feature, _gate)| {
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
@@ -515,7 +516,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     );
 
     // -Ctarget-features
-    let supported_features = supported_target_features(sess);
+    let supported_features = sess.target.supported_target_features();
     let mut featsmap = FxHashMap::default();
     let feats = sess
         .opts

@@ -2,12 +2,10 @@
 use gccjit::Context;
 use smallvec::{smallvec, SmallVec};
 
-use rustc_codegen_ssa::target_features::{
-    supported_target_features, tied_target_features, RUSTC_SPECIFIC_FEATURES,
-};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_session::Session;
+use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 
 use crate::errors::{PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature, UnknownCTargetFeaturePrefix};
 
@@ -44,7 +42,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     );
 
     // -Ctarget-features
-    let supported_features = supported_target_features(sess);
+    let supported_features = sess.target.supported_target_features();
     let mut featsmap = FxHashMap::default();
     let feats = sess.opts.cg.target_feature
         .split(',')
@@ -187,7 +185,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
 // Given a map from target_features to whether they are enabled or disabled,
 // ensure only valid combinations are allowed.
 pub fn check_tied_features(sess: &Session, features: &FxHashMap<&str, bool>) -> Option<&'static [&'static str]> {
-    for tied in tied_target_features(sess) {
+    for tied in sess.target.tied_target_features() {
         // Tied features must be set to the same value, or not set at all
         let mut tied_iter = tied.iter();
         let enabled = features.get(tied_iter.next().unwrap());

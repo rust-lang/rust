@@ -1795,8 +1795,7 @@ impl Config {
                 config.llvm_link_shared.set(Some(true));
             }
         } else {
-            config.llvm_from_ci = config.channel == "dev"
-                && crate::core::build_steps::llvm::is_ci_llvm_available(&config, false);
+            config.llvm_from_ci = config.parse_download_ci_llvm(None, false);
         }
 
         if let Some(t) = toml.target {
@@ -1969,7 +1968,7 @@ impl Config {
         config
     }
 
-    pub(crate) fn dry_run(&self) -> bool {
+    pub fn dry_run(&self) -> bool {
         match self.dry_run {
             DryRun::Disabled => false,
             DryRun::SelfCheck | DryRun::UserSelected => true,
@@ -2341,29 +2340,30 @@ impl Config {
         download_ci_llvm: Option<StringOrBool>,
         asserts: bool,
     ) -> bool {
+        let if_unchanged = || {
+            // Git is needed to track modifications here, but tarball source is not available.
+            // If not modified here or built through tarball source, we maintain consistency
+            // with '"if available"'.
+            if !self.rust_info.is_from_tarball()
+                && self
+                    .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+                    .is_none()
+            {
+                // there are some untracked changes in the the given paths.
+                false
+            } else {
+                llvm::is_ci_llvm_available(&self, asserts)
+            }
+        };
         match download_ci_llvm {
-            None => self.channel == "dev" && llvm::is_ci_llvm_available(&self, asserts),
+            None => self.channel == "dev" && if_unchanged(),
             Some(StringOrBool::Bool(b)) => b,
             // FIXME: "if-available" is deprecated. Remove this block later (around mid 2024)
             // to not break builds between the recent-to-old checkouts.
             Some(StringOrBool::String(s)) if s == "if-available" => {
                 llvm::is_ci_llvm_available(&self, asserts)
             }
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-                // Git is needed to track modifications here, but tarball source is not available.
-                // If not modified here or built through tarball source, we maintain consistency
-                // with '"if available"'.
-                if !self.rust_info.is_from_tarball()
-                    && self
-                        .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
-                        .is_none()
-                {
-                    // there are some untracked changes in the the given paths.
-                    false
-                } else {
-                    llvm::is_ci_llvm_available(&self, asserts)
-                }
-            }
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => if_unchanged(),
             Some(StringOrBool::String(other)) => {
                 panic!("unrecognized option for download-ci-llvm: {:?}", other)
             }

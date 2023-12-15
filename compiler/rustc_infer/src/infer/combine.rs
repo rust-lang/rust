@@ -172,7 +172,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // two const param's types are able to be equal has to go through a canonical query with the actual logic
             // in `rustc_trait_selection`.
             let canonical = self.canonicalize_query(
-                (relation.param_env(), a.ty(), b.ty()),
+                relation.param_env().and((a.ty(), b.ty())),
                 &mut OriginalQueryValues::default(),
             );
             self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
