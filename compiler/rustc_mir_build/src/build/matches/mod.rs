@@ -36,19 +36,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn then_else_break(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
         temp_scope_override: Option<region::Scope>,
         break_scope: region::Scope,
         variable_source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let this = self;
+        let expr = &this.thir[expr_id];
         let expr_span = expr.span;
 
         match expr.kind {
             ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
                 let lhs_then_block = unpack!(this.then_else_break(
                     block,
-                    &this.thir[lhs],
+                    lhs,
                     temp_scope_override,
                     break_scope,
                     variable_source_info,
@@ -56,7 +57,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let rhs_then_block = unpack!(this.then_else_break(
                     lhs_then_block,
-                    &this.thir[rhs],
+                    rhs,
                     temp_scope_override,
                     break_scope,
                     variable_source_info,
@@ -70,7 +71,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.in_if_then_scope(local_scope, expr_span, |this| {
                         this.then_else_break(
                             block,
-                            &this.thir[lhs],
+                            lhs,
                             temp_scope_override,
                             local_scope,
                             variable_source_info,
@@ -78,7 +79,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     });
                 let rhs_success_block = unpack!(this.then_else_break(
                     failure_block,
-                    &this.thir[rhs],
+                    rhs,
                     temp_scope_override,
                     break_scope,
                     variable_source_info,
@@ -97,7 +98,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                         this.then_else_break(
                             block,
-                            &this.thir[arg],
+                            arg,
                             temp_scope_override,
                             local_scope,
                             variable_source_info,
@@ -111,7 +112,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.in_scope(region_scope, lint_level, |this| {
                     this.then_else_break(
                         block,
-                        &this.thir[value],
+                        value,
                         temp_scope_override,
                         break_scope,
                         variable_source_info,
@@ -120,14 +121,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Use { source } => this.then_else_break(
                 block,
-                &this.thir[source],
+                source,
                 temp_scope_override,
                 break_scope,
                 variable_source_info,
             ),
             ExprKind::Let { expr, ref pat } => this.lower_let_expr(
                 block,
-                &this.thir[expr],
+                expr,
                 pat,
                 break_scope,
                 Some(variable_source_info.scope),
@@ -138,7 +139,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let temp_scope = temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
                 let place =
-                    unpack!(block = this.as_temp(block, Some(temp_scope), expr, mutability));
+                    unpack!(block = this.as_temp(block, Some(temp_scope), expr_id, mutability));
                 let operand = Operand::Move(Place::from(place));
 
                 let then_block = this.cfg.start_new_block();
@@ -208,14 +209,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn match_expr(
         &mut self,
         destination: Place<'tcx>,
-        span: Span,
         mut block: BasicBlock,
-        scrutinee: &Expr<'tcx>,
+        scrutinee_id: ExprId,
         arms: &[ArmId],
+        span: Span,
+        scrutinee_span: Span,
     ) -> BlockAnd<()> {
-        let scrutinee_span = scrutinee.span;
+        let scrutinee_span = scrutinee_span;
         let scrutinee_place =
-            unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
+            unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
 
         let mut arm_candidates = self.create_match_candidates(&scrutinee_place, arms);
 
@@ -223,7 +225,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut candidates =
             arm_candidates.iter_mut().map(|(_, candidate)| candidate).collect::<Vec<_>>();
 
-        let match_start_span = span.shrink_to_lo().to(scrutinee.span);
+        let match_start_span = span.shrink_to_lo().to(scrutinee_span);
 
         let fake_borrow_temps = self.lower_match_tree(
             block,
@@ -248,10 +250,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
-        scrutinee: &Expr<'tcx>,
+        scrutinee_id: ExprId,
         scrutinee_span: Span,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee));
+        let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee_id));
         if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
             let source_info = self.source_info(scrutinee_span);
             self.cfg.push_place_mention(block, source_info, scrutinee_place);
@@ -429,7 +431,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.source_scope = source_scope;
                     }
 
-                    this.expr_into_dest(destination, arm_block, &this.thir[arm.body])
+                    this.expr_into_dest(destination, arm_block, arm.body)
                 })
             })
             .collect();
@@ -538,14 +540,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         irrefutable_pat: &Pat<'tcx>,
-        initializer: &Expr<'tcx>,
+        initializer_id: ExprId,
     ) -> BlockAnd<()> {
         match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.expr_into_dest(place, block, initializer));
+                unpack!(block = self.expr_into_dest(place, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -576,7 +578,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.expr_into_dest(place, block, initializer));
+                unpack!(block = self.expr_into_dest(place, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -616,8 +618,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             _ => {
+                let initializer = &self.thir[initializer_id];
                 let place_builder =
-                    unpack!(block = self.lower_scrutinee(block, initializer, initializer.span));
+                    unpack!(block = self.lower_scrutinee(block, initializer_id, initializer.span));
                 self.place_into_pattern(block, irrefutable_pat, place_builder, true)
             }
         }
@@ -1839,15 +1842,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
         pat: &Pat<'tcx>,
         else_target: region::Scope,
         source_scope: Option<SourceScope>,
         span: Span,
         declare_bindings: bool,
     ) -> BlockAnd<()> {
-        let expr_span = expr.span;
-        let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
+        let expr_span = self.thir[expr_id].span;
+        let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
         let wildcard = Pat::wildcard_from_ty(pat.ty);
         let mut guard_candidate = Candidate::new(expr_place_builder.clone(), pat, false, self);
         let mut otherwise_candidate =
@@ -1873,7 +1876,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_info(pat.span),
             guard_candidate,
             &fake_borrow_temps,
-            expr.span,
+            expr_span,
             None,
             false,
         );
@@ -2036,8 +2039,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let (post_guard_block, otherwise_post_guard_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| match *guard {
                     Guard::If(e) => {
-                        let e = &this.thir[e];
-                        guard_span = e.span;
+                        guard_span = this.thir[e].span;
                         this.then_else_break(
                             block,
                             e,
@@ -2046,9 +2048,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.source_info(arm.span),
                         )
                     }
-                    Guard::IfLet(ref pat, scrutinee) => {
-                        let s = &this.thir[scrutinee];
-                        guard_span = s.span;
+                    Guard::IfLet(ref pat, s) => {
+                        guard_span = this.thir[s].span;
                         this.lower_let_expr(block, s, pat, match_scope, None, arm.span, false)
                     }
                 });
@@ -2342,7 +2343,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn ast_let_else(
         &mut self,
         mut block: BasicBlock,
-        init: &Expr<'tcx>,
+        init_id: ExprId,
         initializer_span: Span,
         else_block: BlockId,
         let_else_scope: &region::Scope,
@@ -2350,8 +2351,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<BasicBlock> {
         let else_block_span = self.thir[else_block].span;
         let (matching, failure) = self.in_if_then_scope(*let_else_scope, else_block_span, |this| {
-            let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
-            let pat = Pat { ty: init.ty, span: else_block_span, kind: PatKind::Wild };
+            let scrutinee = unpack!(block = this.lower_scrutinee(block, init_id, initializer_span));
+            let pat = Pat { ty: pattern.ty, span: else_block_span, kind: PatKind::Wild };
             let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false, this);
             let mut candidate = Candidate::new(scrutinee.clone(), pattern, false, this);
             let fake_borrow_temps = this.lower_match_tree(

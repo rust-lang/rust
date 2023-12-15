@@ -18,7 +18,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{
-    self, BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
+    self, BindingMode, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
@@ -539,7 +539,7 @@ fn construct_fn<'tcx>(
         let return_block =
             unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-                    builder.args_and_body(START_BLOCK, arguments, arg_scope, &thir[expr])
+                    builder.args_and_body(START_BLOCK, arguments, arg_scope, expr)
                 }))
             }));
         let source_info = builder.source_info(fn_end);
@@ -606,7 +606,7 @@ fn construct_const<'a, 'tcx>(
     );
 
     let mut block = START_BLOCK;
-    unpack!(block = builder.expr_into_dest(Place::return_place(), block, &thir[expr]));
+    unpack!(block = builder.expr_into_dest(Place::return_place(), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -865,8 +865,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         arguments: &IndexSlice<ParamId, Param<'tcx>>,
         argument_scope: region::Scope,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
     ) -> BlockAnd<()> {
+        let expr_span = self.thir[expr_id].span;
         // Allocate locals for the function arguments
         for (argument_index, param) in arguments.iter().enumerate() {
             let source_info =
@@ -899,7 +900,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
-                param.pat.as_ref().map_or(expr.span, |pat| pat.span),
+                param.pat.as_ref().map_or(expr_span, |pat| pat.span),
                 argument_scope,
                 local,
                 DropKind::Value,
@@ -941,8 +942,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 _ => {
                     scope = self.declare_bindings(
                         scope,
-                        expr.span,
-                        pat,
+                        expr_span,
+                        &pat,
                         None,
                         Some((Some(&place), span)),
                     );
@@ -958,7 +959,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_scope = source_scope;
         }
 
-        self.expr_into_dest(Place::return_place(), block, expr)
+        self.expr_into_dest(Place::return_place(), block, expr_id)
     }
 
     fn set_correct_source_scope_for_arg(
