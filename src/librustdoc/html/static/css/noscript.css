@@ -54,6 +54,8 @@ nav.sub {
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: none;
+	--toggle-border: #ccc;
+	--toggle-border-hover: #616161;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -157,6 +159,8 @@ nav.sub {
 		--code-attribute-color: #999;
 		--toggles-color: #999;
 		--toggle-filter: invert(100%);
+		--toggle-border: grey;
+		--toggle-border-hover: black;
 		--search-input-focused-border-color: #008dfd;
 		--copy-path-button-color: #999;
 		--copy-path-img-filter: invert(50%);
@@ -238,6 +242,14 @@ nav.sub {
 		--scrape-example-help-hover-color: #fff;
 		--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
+	}
+
+	/* Other themes give the toggle-all-docs button the same color as the rest of
+		the toolbar buttons. Dark theme makes it less bright and noticeable. */
+	:root button#toggle-all-docs {
+		background-color: transparent;
+		border-color: grey;
+		color: #ddd;
 	}
 /* End theme: dark */
 }

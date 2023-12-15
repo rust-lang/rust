@@ -151,7 +151,7 @@ h1, h2, h3, h4 {
 .main-heading {
 	display: flex;
 	flex-wrap: wrap;
-	padding-bottom: 6px;
+	padding: 9px 0 6px 0;
 	margin-bottom: 15px;
 }
 /* The only headings that get underlines are:
@@ -292,15 +292,6 @@ button {
 }
 
 /* end tweaks for normalize.css 8 */
-
-button#toggle-all-docs {
-	padding: 0;
-	background: none;
-	border: none;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
-}
 
 .rustdoc {
 	display: flex;
@@ -586,6 +577,11 @@ ul.block, .block li {
 	margin-bottom: 1rem;
 }
 
+.version {
+	/* same font style used in `.since` */
+	font-variant-numeric: oldstyle-nums;
+}
+
 .mobile-topbar {
 	display: none;
 }
@@ -677,7 +673,10 @@ ul.block, .block li {
 
 .out-of-band {
 	flex-grow: 0;
-	font-size: 1.125rem;
+	font-size: 1.25rem;
+	align-items: center;
+	display: flex;
+	gap: 0.25em;
 }
 
 .docblock code, .docblock-short code,
@@ -725,7 +724,7 @@ div.where {
 nav.sub {
 	flex-grow: 1;
 	flex-flow: row nowrap;
-	margin: 4px 0 25px 0;
+	margin: 4px 0 16px 0;
 	display: flex;
 	align-items: center;
 }
@@ -1132,6 +1131,8 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .since {
 	font-weight: normal;
 	font-size: initial;
+	/* align with the word "source" in all lowercase */
+	font-variant-numeric: oldstyle-nums;
 }
 
 .rightside {
@@ -1474,11 +1475,11 @@ a.tooltip:hover::after {
 	opacity: 1;
 }
 
-#settings-menu, #help-button {
+#settings-menu, #help-button, button#toggle-all-docs {
 	margin-left: 4px;
 	display: flex;
 }
-#settings-menu > a, #help-button > a {
+#settings-menu > a, #help-button > a, button#toggle-all-docs {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1490,11 +1491,21 @@ a.tooltip:hover::after {
 	   as an icon, it's okay to specify their sizes in pixels. */
 	font-size: 20px;
 	width: 33px;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
+#settings-menu > a:hover, #settings-menu > a:focus-visible,
+#help-button > a:hover, #help-button > a:focus-visible,
+button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	border-color: var(--settings-button-border-focus);
+}
+
+button#toggle-all-docs {
+	height: 34px;
+	margin-left: 16px;
+	float: right;
 }
 
 #copy-path {
@@ -1596,16 +1607,15 @@ details.toggle > summary.hideme > span {
 
 details.toggle > summary::before {
 	/* toggle plus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7M8.5 12V8.625v0V5"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="15" height="15" stroke="black" fill="none" \
+xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5h7M6.5 10.5V2.5"/></svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
-	width: 16px;
-	height: 16px;
+	width: 13px;
+	height: 13px;
+	border: solid 1px var(--toggle-border);
 	display: inline-block;
 	vertical-align: middle;
-	opacity: .5;
 	filter: var(--toggle-filter);
 }
 
@@ -1629,9 +1639,9 @@ details.toggle > summary.hideme::after {
 	content: "";
 }
 
-details.toggle > summary:focus::before,
+details.toggle > summary:focus-visible::before,
 details.toggle > summary:hover::before {
-	opacity: 1;
+	border: solid 1px var(--toggle-border-hover);
 }
 
 details.toggle > summary:focus-visible::before {
@@ -1677,9 +1687,8 @@ details.toggle[open] > summary.hideme > span {
 
 details.toggle[open] > summary::before {
 	/* toggle minus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="15" height="15" stroke="black" fill="none" \
+xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5h7"/></svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {
@@ -1737,10 +1746,15 @@ in src-script.js
 		flex-direction: column;
 	}
 
+	button#toggle-all-docs {
+		margin-top: -8px;
+	}
+
 	.out-of-band {
 		text-align: left;
 		margin-left: initial;
 		padding: initial;
+		display: block;
 	}
 
 	.out-of-band .since::before {
@@ -2196,6 +2210,8 @@ in src-script.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: none;
+	--toggle-border: #ccc;
+	--toggle-border-hover: #616161;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2298,6 +2314,8 @@ in src-script.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--toggle-border: grey;
+	--toggle-border-hover: black;
 	--search-input-focused-border-color: #008dfd;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2380,6 +2398,14 @@ in src-script.js
 	--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 }
+
+/* Other themes give the toggle-all-docs button the same color as the rest of
+	the toolbar buttons. Dark theme makes it less bright and noticeable. */
+:root[data-theme="dark"] button#toggle-all-docs {
+	background-color: transparent;
+	border-color: grey;
+	color: #ddd;
+}
 /* End theme: dark */
 
 /* Begin theme: ayu */
@@ -2407,6 +2433,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--toggle-border: grey;
+	--toggle-border-hover: black;
 	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);

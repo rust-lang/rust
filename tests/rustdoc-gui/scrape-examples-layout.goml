@@ -44,5 +44,5 @@ assert-position: (".scraped-example .code-wrapper .prev", {"y": 226 + |offset_y|
 
 // Then with mobile
 set-window-size: (600, 600)
-assert-position: (".scraped-example .code-wrapper", {"y": 308})
-assert-position: (".scraped-example .code-wrapper .prev", {"y": 308 + |offset_y|})
+assert-position: (".scraped-example .code-wrapper", {"y": 311})
+assert-position: (".scraped-example .code-wrapper .prev", {"y": 311 + |offset_y|})
