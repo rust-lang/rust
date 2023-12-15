@@ -619,6 +619,12 @@ impl SubdiagnosticVariant {
         let name = attr.path().segments.last().unwrap().ident.to_string();
         let name = name.as_str();
 
+        // We want diagnostic structs to be marked `#[must_use]`, so we must
+        // allow it as a no-op attr here.
+        if name == "must_use" {
+            return Ok(None);
+        }
+
         let mut kind = match name {
             "label" => SubdiagnosticKind::Label,
             "note" => SubdiagnosticKind::Note,
