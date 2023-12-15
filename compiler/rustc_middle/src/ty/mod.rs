@@ -473,7 +473,7 @@ impl<'tcx> IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
     fn kind(self) -> TyKind<'tcx> {
-        self.kind().clone()
+        *self.kind()
     }
 }
 
