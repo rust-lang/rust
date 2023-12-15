@@ -117,7 +117,7 @@ pub struct MacroCallLoc {
     pub krate: CrateId,
     /// Some if this is a macro call for an eager macro. Note that this is `None`
     /// for the eager input macro file.
-    eager: Option<Box<EagerCallInfo>>,
+    eager: Option<Arc<EagerCallInfo>>,
     pub kind: MacroCallKind,
     pub call_site: SyntaxContextId,
 }

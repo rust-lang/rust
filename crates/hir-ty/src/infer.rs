@@ -113,7 +113,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
             // FIXME(const-generic-body): We should not get the return type in this way.
             ctx.return_ty = c
                 .lookup(db.upcast())
-                .thing
+                .expected_ty
                 .box_any()
                 .downcast::<InTypeConstIdMetadata>()
                 .unwrap()

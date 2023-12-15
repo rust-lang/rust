@@ -222,11 +222,10 @@ impl GenericParams {
                 let module = loc.container.module(db);
                 let func_data = db.function_data(id);
 
-                // Don't create an `Expander` nor call `loc.source(db)` if not needed since this
-                // causes a reparse after the `ItemTree` has been created.
-                let mut expander = Lazy::new(|| {
-                    (module.def_map(db), Expander::new(db, loc.source(db).file_id, module))
-                });
+                // Don't create an `Expander` if not needed since this
+                // could cause a reparse after the `ItemTree` has been created due to the spanmap.
+                let mut expander =
+                    Lazy::new(|| (module.def_map(db), Expander::new(db, loc.id.file_id(), module)));
                 for param in func_data.params.iter() {
                     generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
                 }
