@@ -381,17 +381,13 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         self.probe_ty_var(vid).ok()
     }
 
-    fn root_lt_var(&self, vid: ty::RegionVid) -> ty::RegionVid {
-        self.root_region_var(vid)
-    }
-
-    fn probe_lt_var(&self, vid: ty::RegionVid) -> Option<ty::Region<'tcx>> {
+    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Option<ty::Region<'tcx>> {
         let re = self
             .inner
             .borrow_mut()
             .unwrap_region_constraints()
             .opportunistic_resolve_var(self.tcx, vid);
-        if re.is_var() { None } else { Some(re) }
+        if *re == ty::ReVar(vid) { None } else { Some(re) }
     }
 
     fn root_ct_var(&self, vid: ConstVid) -> ConstVid {
@@ -1365,10 +1361,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
-    }
-
-    pub fn root_region_var(&self, var: ty::RegionVid) -> ty::RegionVid {
-        self.inner.borrow_mut().unwrap_region_constraints().root_var(var)
     }
 
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {

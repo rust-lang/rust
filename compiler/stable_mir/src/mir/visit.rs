@@ -133,7 +133,7 @@ pub trait MirVisitor {
     }
 
     fn super_body(&mut self, body: &Body) {
-        let Body { blocks, locals: _, arg_count, var_debug_info } = body;
+        let Body { blocks, locals: _, arg_count, var_debug_info, spread_arg: _ } = body;
 
         for bb in blocks {
             self.visit_basic_block(bb);
