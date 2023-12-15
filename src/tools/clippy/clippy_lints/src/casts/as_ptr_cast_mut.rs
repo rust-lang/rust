@@ -10,8 +10,8 @@ use super::AS_PTR_CAST_MUT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>) {
     if let ty::RawPtr(
-        ptrty @ TypeAndMut {
-            mutbl: Mutability::Mut, ..
+        TypeAndMut {
+            mutbl: Mutability::Mut, ty: ptrty,
         },
     ) = cast_to.kind()
         && let ty::RawPtr(TypeAndMut {
@@ -34,7 +34,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             cx,
             AS_PTR_CAST_MUT,
             expr.span,
-            &format!("casting the result of `as_ptr` to *{ptrty}"),
+            &format!("casting the result of `as_ptr` to *mut {ptrty}"),
             "replace with",
             format!("{recv}.as_mut_ptr()"),
             applicability,

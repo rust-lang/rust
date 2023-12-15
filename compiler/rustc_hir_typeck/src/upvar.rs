@@ -261,7 +261,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Unify the (as yet unbound) type variable in the closure
             // args with the kind we inferred.
             let closure_kind_ty = closure_args.as_closure().kind_ty();
-            self.demand_eqtype(span, closure_kind.to_ty(self.tcx), closure_kind_ty);
+            self.demand_eqtype(
+                span,
+                Ty::from_closure_kind(self.tcx, closure_kind),
+                closure_kind_ty,
+            );
 
             // If we have an origin, store it.
             if let Some(mut origin) = origin {

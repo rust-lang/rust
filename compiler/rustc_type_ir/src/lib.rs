@@ -359,3 +359,45 @@ rustc_index::newtype_index! {
     #[gate_rustc_only]
     pub struct BoundVar {}
 }
+
+/// Represents the various closure traits in the language. This
+/// will determine the type of the environment (`self`, in the
+/// desugaring) argument that the closure expects.
+///
+/// You can get the environment type of a closure using
+/// `tcx.closure_env_ty()`.
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+pub enum ClosureKind {
+    // Warning: Ordering is significant here! The ordering is chosen
+    // because the trait Fn is a subtrait of FnMut and so in turn, and
+    // hence we order it so that Fn < FnMut < FnOnce.
+    Fn,
+    FnMut,
+    FnOnce,
+}
+
+impl ClosureKind {
+    /// This is the initial value used when doing upvar inference.
+    pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ClosureKind::Fn => "Fn",
+            ClosureKind::FnMut => "FnMut",
+            ClosureKind::FnOnce => "FnOnce",
+        }
+    }
+
+    /// Returns `true` if a type that impls this closure kind
+    /// must also implement `other`.
+    pub fn extends(self, other: ClosureKind) -> bool {
+        self <= other
+    }
+}
+
+impl fmt::Display for ClosureKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(f)
+    }
+}

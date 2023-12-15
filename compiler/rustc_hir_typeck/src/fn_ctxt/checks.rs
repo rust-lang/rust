@@ -2018,7 +2018,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let new_def_id = self.probe(|_| {
                         let trait_ref = ty::TraitRef::new(
                             self.tcx,
-                            call_kind.to_def_id(self.tcx),
+                            self.tcx.fn_trait_kind_to_def_id(call_kind)?,
                             [
                                 callee_ty,
                                 self.next_ty_var(TypeVariableOrigin {
