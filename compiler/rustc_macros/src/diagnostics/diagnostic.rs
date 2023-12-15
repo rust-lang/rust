@@ -30,6 +30,22 @@ impl<'a> DiagnosticDerive<'a> {
     pub(crate) fn into_tokens(self) -> TokenStream {
         let DiagnosticDerive { mut structure, mut builder } = self;
 
+        if matches!(structure.ast().data, syn::Data::Struct(_)) {
+            assert_eq!(structure.variants().len(), 1, "a struct can only have one variant");
+            if !structure.variants()[0]
+                .ast()
+                .attrs
+                .iter()
+                .any(|attr| attr.path().segments.last().unwrap().ident == "must_use")
+            {
+                span_err(
+                    structure.ast().span().unwrap(),
+                    "You must mark diagnostic structs with `#[must_use]`",
+                )
+                .emit();
+            }
+        }
+
         let slugs = RefCell::new(Vec::new());
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);

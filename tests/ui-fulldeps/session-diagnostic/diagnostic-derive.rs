@@ -916,3 +916,7 @@ struct SuggestionOnVec {
     //~^ ERROR `#[suggestion(...)]` is not a valid attribute
     sub: Vec<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag(no_crate_example)] //~ ERROR You must mark diagnostic structs with `#[must_use]`
+struct MissingMustUseAttr {}
