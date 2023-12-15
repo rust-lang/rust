@@ -37,4 +37,4 @@ expect-test = "1.4.0"
 proc-macro-test.path = "./proc-macro-test"
 
 [features]
-sysroot-abi = []
+sysroot-abi = ["proc-macro-test/sysroot-abi"]

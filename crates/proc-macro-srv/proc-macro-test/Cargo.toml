@@ -16,3 +16,6 @@ proc-macro-test-impl = { path = "imp", version = "0.0.0" }
 
 # local deps
 toolchain.path = "../../toolchain"
+
+[features]
+sysroot-abi = ["proc-macro-test-impl/sysroot-abi"]
