@@ -668,6 +668,29 @@ impl<T: Clone> Clone for Reverse<T> {
     }
 }
 
+/// A helper function for reverse ordering.
+///
+/// This function is a helper to be passed to functions like [`Vec::sort_by`], to
+/// sort in reverse order.
+///
+/// [`Vec::sort_by`]: ../../std/vec/struct.Vec.html#method.sort_by
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_by_reversed)]
+/// use core::cmp;
+///
+/// let mut v = vec![4, 6, 3, 1, 5, 2];
+/// v.sort_by(cmp::reversed);
+/// assert_eq!(v, vec![6, 5, 4, 3, 2, 1]);
+/// ```
+#[unstable(feature = "cmp_by_reversed", issue = "none")]
+#[inline]
+pub fn reversed<T: Ord>(a: &T, b: &T) -> Ordering {
+    a.cmp(b).reverse()
+}
+
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
 ///
 /// Implementations must be consistent with the [`PartialOrd`] implementation, and ensure
