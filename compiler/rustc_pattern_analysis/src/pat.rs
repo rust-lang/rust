@@ -7,7 +7,7 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
 use crate::usefulness::PlaceCtxt;
-use crate::{Captures, MatchCx};
+use crate::{Captures, TypeCx};
 
 use self::Constructor::*;
 
@@ -22,7 +22,7 @@ use self::Constructor::*;
 /// This happens if a private or `non_exhaustive` field is uninhabited, because the code mustn't
 /// observe that it is uninhabited. In that case that field is not included in `fields`. Care must
 /// be taken when converting to/from `thir::Pat`.
-pub struct DeconstructedPat<'p, Cx: MatchCx> {
+pub struct DeconstructedPat<'p, Cx: TypeCx> {
     ctor: Constructor<Cx>,
     fields: &'p [DeconstructedPat<'p, Cx>],
     ty: Cx::Ty,
@@ -31,7 +31,7 @@ pub struct DeconstructedPat<'p, Cx: MatchCx> {
     useful: Cell<bool>,
 }
 
-impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
+impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
     pub fn wildcard(ty: Cx::Ty, data: Cx::PatData) -> Self {
         Self::new(Wildcard, &[], ty, data)
     }
@@ -152,7 +152,7 @@ impl<'p, Cx: MatchCx> DeconstructedPat<'p, Cx> {
 
 /// This is mostly copied from the `Pat` impl. This is best effort and not good enough for a
 /// `Display` impl.
-impl<'p, Cx: MatchCx> fmt::Debug for DeconstructedPat<'p, Cx> {
+impl<'p, Cx: TypeCx> fmt::Debug for DeconstructedPat<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Cx::debug_pat(f, self)
     }
@@ -161,13 +161,13 @@ impl<'p, Cx: MatchCx> fmt::Debug for DeconstructedPat<'p, Cx> {
 /// Same idea as `DeconstructedPat`, except this is a fictitious pattern built up for diagnostics
 /// purposes. As such they don't use interning and can be cloned.
 #[derive(Debug, Clone)]
-pub struct WitnessPat<Cx: MatchCx> {
+pub struct WitnessPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
     pub(crate) fields: Vec<WitnessPat<Cx>>,
     ty: Cx::Ty,
 }
 
-impl<Cx: MatchCx> WitnessPat<Cx> {
+impl<Cx: TypeCx> WitnessPat<Cx> {
     pub(crate) fn new(ctor: Constructor<Cx>, fields: Vec<Self>, ty: Cx::Ty) -> Self {
         Self { ctor, fields, ty }
     }

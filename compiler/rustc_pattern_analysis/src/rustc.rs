@@ -20,7 +20,7 @@ use smallvec::SmallVec;
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::MatchCx;
+use crate::TypeCx;
 
 use crate::constructor::Constructor::*;
 
@@ -863,7 +863,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> MatchCx for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type Ty = Ty<'tcx>;
     type VariantIdx = VariantIdx;
     type StrLit = Const<'tcx>;

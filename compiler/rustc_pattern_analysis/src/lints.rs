@@ -15,7 +15,7 @@ use crate::rustc::{
     Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RustcMatchCheckCtxt,
     SplitConstructorSet, WitnessPat,
 };
-use crate::MatchCx;
+use crate::TypeCx;
 
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".

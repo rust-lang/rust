@@ -242,7 +242,7 @@
 //! Therefore `usefulness(tp_1, tp_2, tq)` returns the single witness-tuple `[Variant2(Some(true), 0)]`.
 //!
 //!
-//! Computing the set of constructors for a type is done in [`MatchCx::ctors_for_ty`]. See
+//! Computing the set of constructors for a type is done in [`TypeCx::ctors_for_ty`]. See
 //! the following sections for more accurate versions of the algorithm and corresponding links.
 //!
 //!
@@ -557,7 +557,7 @@ use std::fmt;
 
 use crate::constructor::{Constructor, ConstructorSet};
 use crate::pat::{DeconstructedPat, WitnessPat};
-use crate::{Captures, MatchArm, MatchCtxt, MatchCx, TypedArena};
+use crate::{Captures, MatchArm, MatchCtxt, TypeCx, TypedArena};
 
 use self::ValidityConstraint::*;
 
@@ -570,7 +570,7 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
 
 /// Context that provides information local to a place under investigation.
 #[derive(Clone)]
-pub(crate) struct PlaceCtxt<'a, 'p, Cx: MatchCx> {
+pub(crate) struct PlaceCtxt<'a, 'p, Cx: TypeCx> {
     pub(crate) mcx: MatchCtxt<'a, 'p, Cx>,
     /// Type of the place under investigation.
     pub(crate) ty: Cx::Ty,
@@ -578,7 +578,7 @@ pub(crate) struct PlaceCtxt<'a, 'p, Cx: MatchCx> {
     pub(crate) is_scrutinee: bool,
 }
 
-impl<'a, 'p, Cx: MatchCx> PlaceCtxt<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> PlaceCtxt<'a, 'p, Cx> {
     /// A `PlaceCtxt` when code other than `is_useful` needs one.
     #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
     pub(crate) fn new_dummy(mcx: MatchCtxt<'a, 'p, Cx>, ty: Cx::Ty) -> Self {
@@ -596,9 +596,9 @@ impl<'a, 'p, Cx: MatchCx> PlaceCtxt<'a, 'p, Cx> {
     }
 }
 
-impl<'a, 'p, Cx: MatchCx> Copy for PlaceCtxt<'a, 'p, Cx> {}
+impl<'a, 'p, Cx: TypeCx> Copy for PlaceCtxt<'a, 'p, Cx> {}
 
-impl<'a, 'p, Cx: MatchCx> fmt::Debug for PlaceCtxt<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> fmt::Debug for PlaceCtxt<'a, 'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PlaceCtxt").field("ty", &self.ty).finish()
     }
@@ -644,7 +644,7 @@ impl ValidityConstraint {
     ///
     /// Pending further opsem decisions, the current behavior is: validity is preserved, except
     /// inside `&` and union fields where validity is reset to `MaybeInvalid`.
-    fn specialize<Cx: MatchCx>(self, ctor: &Constructor<Cx>) -> Self {
+    fn specialize<Cx: TypeCx>(self, ctor: &Constructor<Cx>) -> Self {
         // We preserve validity except when we go inside a reference or a union field.
         if matches!(ctor, Constructor::Ref | Constructor::UnionField) {
             // Validity of `x: &T` does not imply validity of `*x: T`.
@@ -671,12 +671,12 @@ impl fmt::Display for ValidityConstraint {
 // - 'p coming from the input
 // - Cx global compilation context
 #[derive(Clone)]
-struct PatStack<'a, 'p, Cx: MatchCx> {
+struct PatStack<'a, 'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
     pats: SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]>,
 }
 
-impl<'a, 'p, Cx: MatchCx> PatStack<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> PatStack<'a, 'p, Cx> {
     fn from_pattern(pat: &'a DeconstructedPat<'p, Cx>) -> Self {
         PatStack { pats: smallvec![pat] }
     }
@@ -722,7 +722,7 @@ impl<'a, 'p, Cx: MatchCx> PatStack<'a, 'p, Cx> {
     }
 }
 
-impl<'a, 'p, Cx: MatchCx> fmt::Debug for PatStack<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> fmt::Debug for PatStack<'a, 'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We pretty-print similarly to the `Debug` impl of `Matrix`.
         write!(f, "+")?;
@@ -735,7 +735,7 @@ impl<'a, 'p, Cx: MatchCx> fmt::Debug for PatStack<'a, 'p, Cx> {
 
 /// A row of the matrix.
 #[derive(Clone)]
-struct MatrixRow<'a, 'p, Cx: MatchCx> {
+struct MatrixRow<'a, 'p, Cx: TypeCx> {
     // The patterns in the row.
     pats: PatStack<'a, 'p, Cx>,
     /// Whether the original arm had a guard. This is inherited when specializing.
@@ -750,7 +750,7 @@ struct MatrixRow<'a, 'p, Cx: MatchCx> {
     useful: bool,
 }
 
-impl<'a, 'p, Cx: MatchCx> MatrixRow<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> MatrixRow<'a, 'p, Cx> {
     fn is_empty(&self) -> bool {
         self.pats.is_empty()
     }
@@ -795,7 +795,7 @@ impl<'a, 'p, Cx: MatchCx> MatrixRow<'a, 'p, Cx> {
     }
 }
 
-impl<'a, 'p, Cx: MatchCx> fmt::Debug for MatrixRow<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> fmt::Debug for MatrixRow<'a, 'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.pats.fmt(f)
     }
@@ -812,7 +812,7 @@ impl<'a, 'p, Cx: MatchCx> fmt::Debug for MatrixRow<'a, 'p, Cx> {
 /// specializing `(,)` and `Some` on a pattern of type `(Option<u32>, bool)`, the first column of
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
-struct Matrix<'a, 'p, Cx: MatchCx> {
+struct Matrix<'a, 'p, Cx: TypeCx> {
     /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
@@ -824,7 +824,7 @@ struct Matrix<'a, 'p, Cx: MatchCx> {
     place_validity: SmallVec<[ValidityConstraint; 2]>,
 }
 
-impl<'a, 'p, Cx: MatchCx> Matrix<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
     fn expand_and_push(&mut self, row: MatrixRow<'a, 'p, Cx>) {
@@ -942,7 +942,7 @@ impl<'a, 'p, Cx: MatchCx> Matrix<'a, 'p, Cx> {
 /// + _     + [_, _, tail @ ..] +
 /// | ✓     | ?                 | // column validity
 /// ```
-impl<'a, 'p, Cx: MatchCx> fmt::Debug for Matrix<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> fmt::Debug for Matrix<'a, 'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -1033,9 +1033,9 @@ impl<'a, 'p, Cx: MatchCx> fmt::Debug for Matrix<'a, 'p, Cx> {
 ///
 /// See the top of the file for more detailed explanations and examples.
 #[derive(Debug, Clone)]
-struct WitnessStack<Cx: MatchCx>(Vec<WitnessPat<Cx>>);
+struct WitnessStack<Cx: TypeCx>(Vec<WitnessPat<Cx>>);
 
-impl<Cx: MatchCx> WitnessStack<Cx> {
+impl<Cx: TypeCx> WitnessStack<Cx> {
     /// Asserts that the witness contains a single pattern, and returns it.
     fn single_pattern(self) -> WitnessPat<Cx> {
         assert_eq!(self.0.len(), 1);
@@ -1080,9 +1080,9 @@ impl<Cx: MatchCx> WitnessStack<Cx> {
 /// Just as the `Matrix` starts with a single column, by the end of the algorithm, this has a single
 /// column, which contains the patterns that are missing for the match to be exhaustive.
 #[derive(Debug, Clone)]
-struct WitnessMatrix<Cx: MatchCx>(Vec<WitnessStack<Cx>>);
+struct WitnessMatrix<Cx: TypeCx>(Vec<WitnessStack<Cx>>);
 
-impl<Cx: MatchCx> WitnessMatrix<Cx> {
+impl<Cx: TypeCx> WitnessMatrix<Cx> {
     /// New matrix with no witnesses.
     fn empty() -> Self {
         WitnessMatrix(vec![])
@@ -1174,7 +1174,7 @@ impl<Cx: MatchCx> WitnessMatrix<Cx> {
 ///     (using `apply_constructor` and by updating `row.useful` for each parent row).
 /// This is all explained at the top of the file.
 #[instrument(level = "debug", skip(mcx, is_top_level), ret)]
-fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
+fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     mcx: MatchCtxt<'a, 'p, Cx>,
     matrix: &mut Matrix<'a, 'p, Cx>,
     is_top_level: bool,
@@ -1283,7 +1283,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: MatchCx>(
 
 /// Indicates whether or not a given arm is useful.
 #[derive(Clone, Debug)]
-pub enum Usefulness<'p, Cx: MatchCx> {
+pub enum Usefulness<'p, Cx: TypeCx> {
     /// The arm is useful. This additionally carries a set of or-pattern branches that have been
     /// found to be redundant despite the overall arm being useful. Used only in the presence of
     /// or-patterns, otherwise it stays empty.
@@ -1294,7 +1294,7 @@ pub enum Usefulness<'p, Cx: MatchCx> {
 }
 
 /// The output of checking a match for exhaustiveness and arm usefulness.
-pub struct UsefulnessReport<'p, Cx: MatchCx> {
+pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
     pub arm_usefulness: Vec<(MatchArm<'p, Cx>, Usefulness<'p, Cx>)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
@@ -1304,7 +1304,7 @@ pub struct UsefulnessReport<'p, Cx: MatchCx> {
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
 #[instrument(skip(cx, arms), level = "debug")]
-pub fn compute_match_usefulness<'p, Cx: MatchCx>(
+pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     cx: MatchCtxt<'_, 'p, Cx>,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
