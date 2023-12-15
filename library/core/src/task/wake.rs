@@ -787,3 +787,8 @@ impl fmt::Debug for LocalWaker {
             .finish()
     }
 }
+
+#[unstable(feature = "local_waker", issue = "118959")]
+impl !Send for LocalWaker {}
+#[unstable(feature = "local_waker", issue = "118959")]
+impl !Sync for LocalWaker {}
