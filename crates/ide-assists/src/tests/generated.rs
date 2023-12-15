@@ -1513,9 +1513,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> Ctx<T> {
-    $0
-}
+impl<T: Clone> Ctx<T> {$0}
 "#####,
     )
 }
@@ -1702,9 +1700,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> $0 for Ctx<T> {
-
-}
+impl<T: Clone> ${0:_} for Ctx<T> {}
 "#####,
     )
 }
