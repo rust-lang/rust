@@ -132,7 +132,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
-                let guar = handler.emit_diagnostic(&mut db.inner.diagnostic);
+                let guar = handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
 
                 // Only allow a guarantee if the `level` wasn't switched to a
                 // non-error - the field isn't `pub`, but the whole `Diagnostic`
@@ -181,7 +181,7 @@ impl EmissionGuarantee for () {
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
-                handler.emit_diagnostic(&mut db.inner.diagnostic);
+                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
             }
             // `.emit()` was previously called, disallowed from repeating it.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
@@ -207,7 +207,7 @@ impl EmissionGuarantee for Noted {
             // First `.emit()` call, the `&Handler` is still available.
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-                handler.emit_diagnostic(&mut db.inner.diagnostic);
+                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
             }
             // `.emit()` was previously called, disallowed from repeating it.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
@@ -236,7 +236,7 @@ impl EmissionGuarantee for Bug {
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
-                handler.emit_diagnostic(&mut db.inner.diagnostic);
+                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
             }
             // `.emit()` was previously called, disallowed from repeating it.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
@@ -260,7 +260,7 @@ impl EmissionGuarantee for ! {
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
-                handler.emit_diagnostic(&mut db.inner.diagnostic);
+                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
             }
             // `.emit()` was previously called, disallowed from repeating it.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
@@ -284,7 +284,7 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
-                handler.emit_diagnostic(&mut db.inner.diagnostic);
+                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
             }
             // `.emit()` was previously called, disallowed from repeating it.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
@@ -365,7 +365,9 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         }
     }
 
-    /// Emit the diagnostic.
+    /// Emit the diagnostic. Does not consume `self`, which may be surprising,
+    /// but there are various places that rely on continuing to use `self`
+    /// after calling `emit`.
     #[track_caller]
     pub fn emit(&mut self) -> G {
         G::diagnostic_builder_emit_producing_guarantee(self)
@@ -640,13 +642,13 @@ impl Drop for DiagnosticBuilderInner<'_> {
             // No `.emit()` or `.cancel()` calls.
             DiagnosticBuilderState::Emittable(handler) => {
                 if !panicking() {
-                    handler.emit_diagnostic(&mut Diagnostic::new(
+                    handler.emit_diagnostic(Diagnostic::new(
                         Level::Bug,
                         DiagnosticMessage::from(
                             "the following error was constructed but not emitted",
                         ),
                     ));
-                    handler.emit_diagnostic(&mut self.diagnostic);
+                    handler.emit_diagnostic_without_consuming(&mut self.diagnostic);
                     panic!("error was constructed but not emitted");
                 }
             }

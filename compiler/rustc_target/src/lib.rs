@@ -35,6 +35,7 @@ pub mod abi;
 pub mod asm;
 pub mod json;
 pub mod spec;
+pub mod target_features;
 
 #[cfg(test)]
 mod tests;

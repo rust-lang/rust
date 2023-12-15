@@ -254,7 +254,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "icu_provider_macros",
     "ident_case",
     "indexmap",
-    "instant",
     "intl-memoizer",
     "intl_pluralrules",
     "is-terminal",
