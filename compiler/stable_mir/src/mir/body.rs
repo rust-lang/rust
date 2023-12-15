@@ -4,6 +4,7 @@ use crate::ty::{
     VariantIdx,
 };
 use crate::{Error, Opaque, Span, Symbol};
+use std::borrow::Cow;
 use std::io;
 /// The SMIR representation of a single function.
 #[derive(Clone, Debug)]
@@ -264,51 +265,63 @@ pub enum AssertMessage {
 }
 
 impl AssertMessage {
-    pub fn description(&self) -> Result<&'static str, Error> {
+    pub fn description(&self) -> Result<Cow<'static, str>, Error> {
         match self {
-            AssertMessage::Overflow(BinOp::Add, _, _) => Ok("attempt to add with overflow"),
-            AssertMessage::Overflow(BinOp::Sub, _, _) => Ok("attempt to subtract with overflow"),
-            AssertMessage::Overflow(BinOp::Mul, _, _) => Ok("attempt to multiply with overflow"),
-            AssertMessage::Overflow(BinOp::Div, _, _) => Ok("attempt to divide with overflow"),
-            AssertMessage::Overflow(BinOp::Rem, _, _) => {
-                Ok("attempt to calculate the remainder with overflow")
+            AssertMessage::Overflow(BinOp::Add, _, _) => Ok("attempt to add with overflow".into()),
+            AssertMessage::Overflow(BinOp::Sub, _, _) => {
+                Ok("attempt to subtract with overflow".into())
             }
-            AssertMessage::OverflowNeg(_) => Ok("attempt to negate with overflow"),
-            AssertMessage::Overflow(BinOp::Shr, _, _) => Ok("attempt to shift right with overflow"),
-            AssertMessage::Overflow(BinOp::Shl, _, _) => Ok("attempt to shift left with overflow"),
+            AssertMessage::Overflow(BinOp::Mul, _, _) => {
+                Ok("attempt to multiply with overflow".into())
+            }
+            AssertMessage::Overflow(BinOp::Div, _, _) => {
+                Ok("attempt to divide with overflow".into())
+            }
+            AssertMessage::Overflow(BinOp::Rem, _, _) => {
+                Ok("attempt to calculate the remainder with overflow".into())
+            }
+            AssertMessage::OverflowNeg(_) => Ok("attempt to negate with overflow".into()),
+            AssertMessage::Overflow(BinOp::Shr, _, _) => {
+                Ok("attempt to shift right with overflow".into())
+            }
+            AssertMessage::Overflow(BinOp::Shl, _, _) => {
+                Ok("attempt to shift left with overflow".into())
+            }
             AssertMessage::Overflow(op, _, _) => Err(error!("`{:?}` cannot overflow", op)),
-            AssertMessage::DivisionByZero(_) => Ok("attempt to divide by zero"),
+            AssertMessage::DivisionByZero(_) => Ok("attempt to divide by zero".into()),
             AssertMessage::RemainderByZero(_) => {
-                Ok("attempt to calculate the remainder with a divisor of zero")
+                Ok("attempt to calculate the remainder with a divisor of zero".into())
             }
             AssertMessage::ResumedAfterReturn(CoroutineKind::Coroutine) => {
-                Ok("coroutine resumed after completion")
+                Ok("coroutine resumed after completion".into())
             }
             AssertMessage::ResumedAfterReturn(CoroutineKind::Async(_)) => {
-                Ok("`async fn` resumed after completion")
+                Ok("`async fn` resumed after completion".into())
             }
             AssertMessage::ResumedAfterReturn(CoroutineKind::Gen(_)) => {
-                Ok("`async gen fn` resumed after completion")
+                Ok("`async gen fn` resumed after completion".into())
             }
             AssertMessage::ResumedAfterReturn(CoroutineKind::AsyncGen(_)) => {
-                Ok("`gen fn` should just keep returning `AssertMessage::None` after completion")
+                Ok("`gen fn` should just keep returning `AssertMessage::None` after completion"
+                    .into())
             }
             AssertMessage::ResumedAfterPanic(CoroutineKind::Coroutine) => {
-                Ok("coroutine resumed after panicking")
+                Ok("coroutine resumed after panicking".into())
             }
             AssertMessage::ResumedAfterPanic(CoroutineKind::Async(_)) => {
-                Ok("`async fn` resumed after panicking")
+                Ok("`async fn` resumed after panicking".into())
             }
             AssertMessage::ResumedAfterPanic(CoroutineKind::Gen(_)) => {
-                Ok("`async gen fn` resumed after panicking")
+                Ok("`async gen fn` resumed after panicking".into())
             }
             AssertMessage::ResumedAfterPanic(CoroutineKind::AsyncGen(_)) => {
-                Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking")
+                Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking"
+                    .into())
             }
 
-            AssertMessage::BoundsCheck { .. } => Ok("index out of bounds"),
+            AssertMessage::BoundsCheck { .. } => Ok("index out of bounds".into()),
             AssertMessage::MisalignedPointerDereference { .. } => {
-                Ok("misaligned pointer dereference")
+                Ok("misaligned pointer dereference".into())
             }
         }
     }

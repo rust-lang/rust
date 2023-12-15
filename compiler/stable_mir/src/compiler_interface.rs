@@ -10,9 +10,9 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
 use crate::target::MachineInfo;
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, FnSig,
-    GenericArgs, GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy,
-    Span, TraitDecl, TraitDef, Ty, TyKind, VariantDef,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
+    GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl,
+    TraitDef, Ty, TyKind, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
@@ -120,9 +120,6 @@ pub trait Context {
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.
     fn instance_ty(&self, instance: InstanceDef) -> Ty;
-
-    /// Get the instance signature with .
-    fn instance_sig(&self, def: InstanceDef) -> FnSig;
 
     /// Get the instance.
     fn instance_def_id(&self, instance: InstanceDef) -> DefId;
