@@ -317,6 +317,12 @@ impl TyKind {
     }
 
     #[inline]
+    pub fn is_cstr(&self) -> bool {
+        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else { return false };
+        with(|cx| cx.adt_is_cstr(*def))
+    }
+
+    #[inline]
     pub fn is_slice(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Slice(_)))
     }
