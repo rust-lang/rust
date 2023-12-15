@@ -616,8 +616,6 @@ impl SubdiagnosticVariant {
             return Ok(None);
         }
 
-        let span = attr.span().unwrap();
-
         let name = attr.path().segments.last().unwrap().ident.to_string();
         let name = name.as_str();
 
@@ -666,6 +664,8 @@ impl SubdiagnosticVariant {
                 }
             }
         };
+
+        let span = attr.span().unwrap();
 
         let list = match &attr.meta {
             Meta::List(list) => {
