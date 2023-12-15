@@ -276,7 +276,6 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         lint.help(format!(
                             "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}`",
                         ));
-                        lint
                     },
                 );
             }

@@ -122,7 +122,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Applicability::MachineApplicable,
                         );
                         self.maybe_lint_blanket_trait_impl(self_ty, lint);
-                        lint
                     },
                 );
             }

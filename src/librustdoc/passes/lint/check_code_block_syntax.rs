@@ -131,8 +131,6 @@ fn check_rust_syntax(
         for message in buffer.messages.iter() {
             lint.note(message.clone());
         }
-
-        lint
     });
 }
 
