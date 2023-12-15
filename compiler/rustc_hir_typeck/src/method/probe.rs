@@ -1548,9 +1548,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     );
 
                     let candidate_obligations = impl_obligations
-                        .chain(norm_obligations.into_iter())
+                        .chain(norm_obligations)
                         .chain(ref_obligations.iter().cloned())
-                        .chain(normalization_obligations.into_iter());
+                        .chain(normalization_obligations);
 
                     // Evaluate those obligations to see if they might possibly hold.
                     for o in candidate_obligations {

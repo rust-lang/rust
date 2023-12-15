@@ -1579,7 +1579,7 @@ impl CheckCfg {
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
-    user_cfg.extend(default_configuration(sess).into_iter());
+    user_cfg.extend(default_configuration(sess));
     user_cfg
 }
 

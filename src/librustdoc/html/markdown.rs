@@ -1383,7 +1383,7 @@ impl LangString {
         };
 
         if custom_code_classes_in_docs {
-            call(&mut TagIterator::new(string, extra).into_iter())
+            call(&mut TagIterator::new(string, extra))
         } else {
             call(&mut tokens(string))
         }

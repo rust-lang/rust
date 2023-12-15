@@ -407,8 +407,7 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
         doc,
         main_body_opts(),
         Some(&mut broken_link_callback),
-    )
-    .into_iter();
+    );
     let mut links = Vec::new();
 
     while let Some(event) = event_iter.next() {

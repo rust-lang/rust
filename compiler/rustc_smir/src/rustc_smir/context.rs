@@ -158,7 +158,6 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
                 let crate_name = tables.tcx.crate_name(*crate_num).to_string();
                 (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
             })
-            .into_iter()
             .flatten()
             .collect();
         crates

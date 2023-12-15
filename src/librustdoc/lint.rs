@@ -33,7 +33,7 @@ where
     let lints = || {
         lint::builtin::HardwiredLints::get_lints()
             .into_iter()
-            .chain(rustc_lint::SoftLints::get_lints().into_iter())
+            .chain(rustc_lint::SoftLints::get_lints())
     };
 
     let lint_opts = lints()
@@ -46,7 +46,7 @@ where
                 filter_call(lint)
             }
         })
-        .chain(lint_opts.into_iter())
+        .chain(lint_opts)
         .collect::<Vec<_>>();
 
     let lint_caps = lints()

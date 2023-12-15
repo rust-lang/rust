@@ -1560,7 +1560,7 @@ impl Expr<'_> {
             ExprKind::Call(..) => ExprPrecedence::Call,
             ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
             ExprKind::Tup(_) => ExprPrecedence::Tup,
-            ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node.into()),
+            ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
@@ -1700,11 +1700,9 @@ impl Expr<'_> {
                 // them being used only for its side-effects.
                 base.can_have_side_effects()
             }
-            ExprKind::Struct(_, fields, init) => fields
-                .iter()
-                .map(|field| field.expr)
-                .chain(init.into_iter())
-                .any(|e| e.can_have_side_effects()),
+            ExprKind::Struct(_, fields, init) => {
+                fields.iter().map(|field| field.expr).chain(init).any(|e| e.can_have_side_effects())
+            }
 
             ExprKind::Array(args)
             | ExprKind::Tup(args)

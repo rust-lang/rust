@@ -956,11 +956,7 @@ impl Map {
             // The local is not tracked at all, so it does not alias anything.
             return;
         };
-        let elems = place
-            .projection
-            .iter()
-            .map(|&elem| elem.try_into())
-            .chain(tail_elem.map(Ok).into_iter());
+        let elems = place.projection.iter().map(|&elem| elem.try_into()).chain(tail_elem.map(Ok));
         for elem in elems {
             // A field aliases the parent place.
             if let Some(vi) = self.places[index].value_index {
