@@ -1304,13 +1304,8 @@ name = "proc-macro-test"
 version = "0.0.0"
 dependencies = [
  "cargo_metadata",
- "proc-macro-test-impl",
  "toolchain",
 ]
-
-[[package]]
-name = "proc-macro-test-impl"
-version = "0.0.0"
 
 [[package]]
 name = "proc-macro2"

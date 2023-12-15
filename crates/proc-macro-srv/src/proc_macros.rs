@@ -97,7 +97,7 @@ impl ProcMacros {
             }
         }
 
-        Err(bridge::PanicMessage::String("Nothing to expand".to_string()).into())
+        Err(bridge::PanicMessage::String(format!("proc-macro `{macro_name}` is missing")).into())
     }
 
     pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
