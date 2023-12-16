@@ -291,482 +291,15 @@ pub trait LayoutCalculator {
         // structs. (We have also handled univariant enums
         // that allow representation optimization.)
         assert!(is_enum);
-
-        // Until we've decided whether to use the tagged or
-        // niche filling LayoutS, we don't want to intern the
-        // variant layouts, so we can't store them in the
-        // overall LayoutS. Store the overall LayoutS
-        // and the variant LayoutSs here until then.
-        struct TmpLayout<FieldIdx: Idx, VariantIdx: Idx> {
-            layout: LayoutS<FieldIdx, VariantIdx>,
-            variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
-        }
-
-        let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
-            if dont_niche_optimize_enum {
-                return None;
-            }
-
-            if variants.len() < 2 {
-                return None;
-            }
-
-            let mut align = dl.aggregate_align;
-            let mut max_repr_align = repr.align;
-            let mut unadjusted_abi_align = align.abi;
-
-            let mut variant_layouts = variants
-                .iter_enumerated()
-                .map(|(j, v)| {
-                    let mut st = self.univariant(dl, v, repr, StructKind::AlwaysSized)?;
-                    st.variants = Variants::Single { index: j };
-
-                    align = align.max(st.align);
-                    max_repr_align = max_repr_align.max(st.max_repr_align);
-                    unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
-
-                    Some(st)
-                })
-                .collect::<Option<IndexVec<VariantIdx, _>>>()?;
-
-            let largest_variant_index = variant_layouts
-                .iter_enumerated()
-                .max_by_key(|(_i, layout)| layout.size.bytes())
-                .map(|(i, _layout)| i)?;
-
-            let all_indices = variants.indices();
-            let needs_disc =
-                |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
-            let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
-                ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
-
-            let count =
-                (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
-
-            // Find the field with the largest niche
-            let (field_index, niche, (niche_start, niche_scalar)) = variants[largest_variant_index]
-                .iter()
-                .enumerate()
-                .filter_map(|(j, field)| Some((j, field.largest_niche?)))
-                .max_by_key(|(_, niche)| niche.available(dl))
-                .and_then(|(j, niche)| Some((j, niche, niche.reserve(dl, count)?)))?;
-            let niche_offset =
-                niche.offset + variant_layouts[largest_variant_index].fields.offset(field_index);
-            let niche_size = niche.value.size(dl);
-            let size = variant_layouts[largest_variant_index].size.align_to(align.abi);
-
-            let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
-                if i == largest_variant_index {
-                    return true;
-                }
-
-                layout.largest_niche = None;
-
-                if layout.size <= niche_offset {
-                    // This variant will fit before the niche.
-                    return true;
-                }
-
-                // Determine if it'll fit after the niche.
-                let this_align = layout.align.abi;
-                let this_offset = (niche_offset + niche_size).align_to(this_align);
-
-                if this_offset + layout.size > size {
-                    return false;
-                }
-
-                // It'll fit, but we need to make some adjustments.
-                match layout.fields {
-                    FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                        for offset in offsets.iter_mut() {
-                            *offset += this_offset;
-                        }
-                    }
-                    FieldsShape::Primitive | FieldsShape::Array { .. } | FieldsShape::Union(..) => {
-                        panic!("Layout of fields should be Arbitrary for variants")
-                    }
-                }
-
-                // It can't be a Scalar or ScalarPair because the offset isn't 0.
-                if !layout.abi.is_uninhabited() {
-                    layout.abi = Abi::Aggregate { sized: true };
-                }
-                layout.size += this_offset;
-
-                true
-            });
-
-            if !all_variants_fit {
-                return None;
-            }
-
-            let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
-
-            let others_zst = variant_layouts
-                .iter_enumerated()
-                .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
-            let same_size = size == variant_layouts[largest_variant_index].size;
-            let same_align = align == variant_layouts[largest_variant_index].align;
-
-            let abi = if variant_layouts.iter().all(|v| v.abi.is_uninhabited()) {
-                Abi::Uninhabited
-            } else if same_size && same_align && others_zst {
-                match variant_layouts[largest_variant_index].abi {
-                    // When the total alignment and size match, we can use the
-                    // same ABI as the scalar variant with the reserved niche.
-                    Abi::Scalar(_) => Abi::Scalar(niche_scalar),
-                    Abi::ScalarPair(first, second) => {
-                        // Only the niche is guaranteed to be initialised,
-                        // so use union layouts for the other primitive.
-                        if niche_offset == Size::ZERO {
-                            Abi::ScalarPair(niche_scalar, second.to_union())
-                        } else {
-                            Abi::ScalarPair(first.to_union(), niche_scalar)
-                        }
-                    }
-                    _ => Abi::Aggregate { sized: true },
-                }
-            } else {
-                Abi::Aggregate { sized: true }
-            };
-
-            let layout = LayoutS {
-                variants: Variants::Multiple {
-                    tag: niche_scalar,
-                    tag_encoding: TagEncoding::Niche {
-                        untagged_variant: largest_variant_index,
-                        niche_variants,
-                        niche_start,
-                    },
-                    tag_field: 0,
-                    variants: IndexVec::new(),
-                },
-                fields: FieldsShape::Arbitrary {
-                    offsets: [niche_offset].into(),
-                    memory_index: [0].into(),
-                },
-                abi,
-                largest_niche,
-                size,
-                align,
-                max_repr_align,
-                unadjusted_abi_align,
-            };
-
-            Some(TmpLayout { layout, variants: variant_layouts })
-        };
-
-        let niche_filling_layout = calculate_niche_filling_layout();
-
-        let (mut min, mut max) = (i128::MAX, i128::MIN);
-        let discr_type = repr.discr_type();
-        let bits = Integer::from_attr(dl, discr_type).size().bits();
-        for (i, mut val) in discriminants {
-            if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
-                continue;
-            }
-            if discr_type.is_signed() {
-                // sign extend the raw representation to be an i128
-                val = (val << (128 - bits)) >> (128 - bits);
-            }
-            if val < min {
-                min = val;
-            }
-            if val > max {
-                max = val;
-            }
-        }
-        // We might have no inhabited variants, so pretend there's at least one.
-        if (min, max) == (i128::MAX, i128::MIN) {
-            min = 0;
-            max = 0;
-        }
-        assert!(min <= max, "discriminant range is {min}...{max}");
-        let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
-
-        let mut align = dl.aggregate_align;
-        let mut max_repr_align = repr.align;
-        let mut unadjusted_abi_align = align.abi;
-
-        let mut size = Size::ZERO;
-
-        // We're interested in the smallest alignment, so start large.
-        let mut start_align = Align::from_bytes(256).unwrap();
-        assert_eq!(Integer::for_align(dl, start_align), None);
-
-        // repr(C) on an enum tells us to make a (tag, union) layout,
-        // so we need to grow the prefix alignment to be at least
-        // the alignment of the union. (This value is used both for
-        // determining the alignment of the overall enum, and the
-        // determining the alignment of the payload after the tag.)
-        let mut prefix_align = min_ity.align(dl).abi;
-        if repr.c() {
-            for fields in variants {
-                for field in fields {
-                    prefix_align = prefix_align.max(field.align.abi);
-                }
-            }
-        }
-
-        // Create the set of structs that represent each variant.
-        let mut layout_variants = variants
-            .iter_enumerated()
-            .map(|(i, field_layouts)| {
-                let mut st = self.univariant(
-                    dl,
-                    field_layouts,
-                    repr,
-                    StructKind::Prefixed(min_ity.size(), prefix_align),
-                )?;
-                st.variants = Variants::Single { index: i };
-                // Find the first field we can't move later
-                // to make room for a larger discriminant.
-                for field_idx in st.fields.index_by_increasing_offset() {
-                    let field = &field_layouts[FieldIdx::new(field_idx)];
-                    if !field.is_1zst() {
-                        start_align = start_align.min(field.align.abi);
-                        break;
-                    }
-                }
-                size = cmp::max(size, st.size);
-                align = align.max(st.align);
-                max_repr_align = max_repr_align.max(st.max_repr_align);
-                unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
-                Some(st)
-            })
-            .collect::<Option<IndexVec<VariantIdx, _>>>()?;
-
-        // Align the maximum variant size to the largest alignment.
-        size = size.align_to(align.abi);
-
-        // FIXME(oli-obk): deduplicate and harden these checks
-        if size.bytes() >= dl.obj_size_bound() {
-            return None;
-        }
-
-        let typeck_ity = Integer::from_attr(dl, repr.discr_type());
-        if typeck_ity < min_ity {
-            // It is a bug if Layout decided on a greater discriminant size than typeck for
-            // some reason at this point (based on values discriminant can take on). Mostly
-            // because this discriminant will be loaded, and then stored into variable of
-            // type calculated by typeck. Consider such case (a bug): typeck decided on
-            // byte-sized discriminant, but layout thinks we need a 16-bit to store all
-            // discriminant values. That would be a bug, because then, in codegen, in order
-            // to store this 16-bit discriminant into 8-bit sized temporary some of the
-            // space necessary to represent would have to be discarded (or layout is wrong
-            // on thinking it needs 16 bits)
-            panic!(
-                "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
-            );
-            // However, it is fine to make discr type however large (as an optimisation)
-            // after this point – we’ll just truncate the value we load in codegen.
-        }
-
-        // Check to see if we should use a different type for the
-        // discriminant. We can safely use a type with the same size
-        // as the alignment of the first field of each variant.
-        // We increase the size of the discriminant to avoid LLVM copying
-        // padding when it doesn't need to. This normally causes unaligned
-        // load/stores and excessive memcpy/memset operations. By using a
-        // bigger integer size, LLVM can be sure about its contents and
-        // won't be so conservative.
-
-        // Use the initial field alignment
-        let mut ity = if repr.c() || repr.int.is_some() {
-            min_ity
-        } else {
-            Integer::for_align(dl, start_align).unwrap_or(min_ity)
-        };
-
-        // If the alignment is not larger than the chosen discriminant size,
-        // don't use the alignment as the final size.
-        if ity <= min_ity {
-            ity = min_ity;
-        } else {
-            // Patch up the variants' first few fields.
-            let old_ity_size = min_ity.size();
-            let new_ity_size = ity.size();
-            for variant in &mut layout_variants {
-                match variant.fields {
-                    FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                        for i in offsets {
-                            if *i <= old_ity_size {
-                                assert_eq!(*i, old_ity_size);
-                                *i = new_ity_size;
-                            }
-                        }
-                        // We might be making the struct larger.
-                        if variant.size <= old_ity_size {
-                            variant.size = new_ity_size;
-                        }
-                    }
-                    FieldsShape::Primitive | FieldsShape::Array { .. } | FieldsShape::Union(..) => {
-                        panic!("encountered a non-arbitrary layout during enum layout")
-                    }
-                }
-            }
-        }
-
-        let tag_mask = ity.size().unsigned_int_max();
-        let tag = Scalar::Initialized {
-            value: Primitive::Int(ity, signed),
-            valid_range: WrappingRange {
-                start: (min as u128 & tag_mask),
-                end: (max as u128 & tag_mask),
-            },
-        };
-        let mut abi = Abi::Aggregate { sized: true };
-
-        if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
-            abi = Abi::Uninhabited;
-        } else if tag.size(dl) == size {
-            // Make sure we only use scalar layout when the enum is entirely its
-            // own tag (i.e. it has no padding nor any non-ZST variant fields).
-            abi = Abi::Scalar(tag);
-        } else {
-            // Try to use a ScalarPair for all tagged enums.
-            // That's possible only if we can find a common primitive type for all variants.
-            let mut common_prim = None;
-            let mut common_prim_initialized_in_all_variants = true;
-            for (field_layouts, layout_variant) in iter::zip(variants, &layout_variants) {
-                let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
-                    panic!("encountered a non-arbitrary layout during enum layout");
-                };
-                // We skip *all* ZST here and later check if we are good in terms of alignment.
-                // This lets us handle some cases involving aligned ZST.
-                let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
-                let (field, offset) = match (fields.next(), fields.next()) {
-                    (None, None) => {
-                        common_prim_initialized_in_all_variants = false;
-                        continue;
-                    }
-                    (Some(pair), None) => pair,
-                    _ => {
-                        common_prim = None;
-                        break;
-                    }
-                };
-                let prim = match field.abi {
-                    Abi::Scalar(scalar) => {
-                        common_prim_initialized_in_all_variants &=
-                            matches!(scalar, Scalar::Initialized { .. });
-                        scalar.primitive()
-                    }
-                    _ => {
-                        common_prim = None;
-                        break;
-                    }
-                };
-                if let Some(pair) = common_prim {
-                    // This is pretty conservative. We could go fancier
-                    // by conflating things like i32 and u32, or even
-                    // realising that (u8, u8) could just cohabit with
-                    // u16 or even u32.
-                    if pair != (prim, offset) {
-                        common_prim = None;
-                        break;
-                    }
-                } else {
-                    common_prim = Some((prim, offset));
-                }
-            }
-            if let Some((prim, offset)) = common_prim {
-                let prim_scalar = if common_prim_initialized_in_all_variants {
-                    let size = prim.size(dl);
-                    assert!(size.bits() <= 128);
-                    Scalar::Initialized { value: prim, valid_range: WrappingRange::full(size) }
-                } else {
-                    // Common prim might be uninit.
-                    Scalar::Union { value: prim }
-                };
-                let pair = self.scalar_pair::<FieldIdx, VariantIdx>(tag, prim_scalar);
-                let pair_offsets = match pair.fields {
-                    FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                        assert_eq!(memory_index.raw, [0, 1]);
-                        offsets
-                    }
-                    _ => panic!("encountered a non-arbitrary layout during enum layout"),
-                };
-                if pair_offsets[FieldIdx::new(0)] == Size::ZERO
-                    && pair_offsets[FieldIdx::new(1)] == *offset
-                    && align == pair.align
-                    && size == pair.size
-                {
-                    // We can use `ScalarPair` only when it matches our
-                    // already computed layout (including `#[repr(C)]`).
-                    abi = pair.abi;
-                }
-            }
-        }
-
-        // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
-        // variants to ensure they are consistent. This is because a downcast is
-        // semantically a NOP, and thus should not affect layout.
-        if matches!(abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
-            for variant in &mut layout_variants {
-                // We only do this for variants with fields; the others are not accessed anyway.
-                // Also do not overwrite any already existing "clever" ABIs.
-                if variant.fields.count() > 0 && matches!(variant.abi, Abi::Aggregate { .. }) {
-                    variant.abi = abi;
-                    // Also need to bump up the size and alignment, so that the entire value fits
-                    // in here.
-                    variant.size = cmp::max(variant.size, size);
-                    variant.align.abi = cmp::max(variant.align.abi, align.abi);
-                }
-            }
-        }
-
-        let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
-
-        let tagged_layout = LayoutS {
-            variants: Variants::Multiple {
-                tag,
-                tag_encoding: TagEncoding::Direct,
-                tag_field: 0,
-                variants: IndexVec::new(),
-            },
-            fields: FieldsShape::Arbitrary {
-                offsets: [Size::ZERO].into(),
-                memory_index: [0].into(),
-            },
-            largest_niche,
-            abi,
-            align,
-            size,
-            max_repr_align,
-            unadjusted_abi_align,
-        };
-
-        let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
-
-        let mut best_layout = match (tagged_layout, niche_filling_layout) {
-            (tl, Some(nl)) => {
-                // Pick the smaller layout; otherwise,
-                // pick the layout with the larger niche; otherwise,
-                // pick tagged as it has simpler codegen.
-                use cmp::Ordering::*;
-                let niche_size = |tmp_l: &TmpLayout<FieldIdx, VariantIdx>| {
-                    tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
-                };
-                match (tl.layout.size.cmp(&nl.layout.size), niche_size(&tl).cmp(&niche_size(&nl))) {
-                    (Greater, _) => nl,
-                    (Equal, Less) => nl,
-                    _ => tl,
-                }
-            }
-            (tl, None) => tl,
-        };
-
-        // Now we can intern the variant layouts and store them in the enum layout.
-        best_layout.layout.variants = match best_layout.layout.variants {
-            Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
-                Variants::Multiple { tag, tag_encoding, tag_field, variants: best_layout.variants }
-            }
-            Variants::Single { .. } => {
-                panic!("encountered a single-variant enum during multi-variant layout")
-            }
-        };
-        Some(best_layout.layout)
+        layout_of_enum(
+            self,
+            repr,
+            variants,
+            discr_range_of_repr,
+            discriminants,
+            dont_niche_optimize_enum,
+            dl,
+        )
     }
 
     fn layout_of_union<
@@ -872,6 +405,493 @@ pub trait LayoutCalculator {
             unadjusted_abi_align,
         })
     }
+}
+
+fn layout_of_enum<'a, LC, FieldIdx: Idx, VariantIdx: Idx, F>(
+    layout_calc: &LC,
+    repr: &ReprOptions,
+    variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+    discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
+    discriminants: impl Iterator<Item = (VariantIdx, i128)>,
+    dont_niche_optimize_enum: bool,
+    dl: &TargetDataLayout,
+) -> Option<LayoutS<FieldIdx, VariantIdx>>
+where
+    LC: LayoutCalculator + ?Sized,
+    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+{
+    // Until we've decided whether to use the tagged or
+    // niche filling LayoutS, we don't want to intern the
+    // variant layouts, so we can't store them in the
+    // overall LayoutS. Store the overall LayoutS
+    // and the variant LayoutSs here until then.
+    struct TmpLayout<FieldIdx: Idx, VariantIdx: Idx> {
+        layout: LayoutS<FieldIdx, VariantIdx>,
+        variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
+    }
+
+    let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
+        if dont_niche_optimize_enum {
+            return None;
+        }
+
+        if variants.len() < 2 {
+            return None;
+        }
+
+        let mut align = dl.aggregate_align;
+        let mut max_repr_align = repr.align;
+        let mut unadjusted_abi_align = align.abi;
+
+        let mut variant_layouts = variants
+            .iter_enumerated()
+            .map(|(j, v)| {
+                let mut st = layout_calc.univariant(dl, v, repr, StructKind::AlwaysSized)?;
+                st.variants = Variants::Single { index: j };
+
+                align = align.max(st.align);
+                max_repr_align = max_repr_align.max(st.max_repr_align);
+                unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
+
+                Some(st)
+            })
+            .collect::<Option<IndexVec<VariantIdx, _>>>()?;
+
+        let largest_variant_index = variant_layouts
+            .iter_enumerated()
+            .max_by_key(|(_i, layout)| layout.size.bytes())
+            .map(|(i, _layout)| i)?;
+
+        let all_indices = variants.indices();
+        let needs_disc =
+            |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
+        let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
+            ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
+
+        let count =
+            (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
+
+        // Find the field with the largest niche
+        let (field_index, niche, (niche_start, niche_scalar)) = variants[largest_variant_index]
+            .iter()
+            .enumerate()
+            .filter_map(|(j, field)| Some((j, field.largest_niche?)))
+            .max_by_key(|(_, niche)| niche.available(dl))
+            .and_then(|(j, niche)| Some((j, niche, niche.reserve(dl, count)?)))?;
+        let niche_offset =
+            niche.offset + variant_layouts[largest_variant_index].fields.offset(field_index);
+        let niche_size = niche.value.size(dl);
+        let size = variant_layouts[largest_variant_index].size.align_to(align.abi);
+
+        let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
+            if i == largest_variant_index {
+                return true;
+            }
+
+            layout.largest_niche = None;
+
+            if layout.size <= niche_offset {
+                // This variant will fit before the niche.
+                return true;
+            }
+
+            // Determine if it'll fit after the niche.
+            let this_align = layout.align.abi;
+            let this_offset = (niche_offset + niche_size).align_to(this_align);
+
+            if this_offset + layout.size > size {
+                return false;
+            }
+
+            // It'll fit, but we need to make some adjustments.
+            match layout.fields {
+                FieldsShape::Arbitrary { ref mut offsets, .. } => {
+                    for offset in offsets.iter_mut() {
+                        *offset += this_offset;
+                    }
+                }
+                FieldsShape::Primitive | FieldsShape::Array { .. } | FieldsShape::Union(..) => {
+                    panic!("Layout of fields should be Arbitrary for variants")
+                }
+            }
+
+            // It can't be a Scalar or ScalarPair because the offset isn't 0.
+            if !layout.abi.is_uninhabited() {
+                layout.abi = Abi::Aggregate { sized: true };
+            }
+            layout.size += this_offset;
+
+            true
+        });
+
+        if !all_variants_fit {
+            return None;
+        }
+
+        let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
+
+        let others_zst = variant_layouts
+            .iter_enumerated()
+            .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
+        let same_size = size == variant_layouts[largest_variant_index].size;
+        let same_align = align == variant_layouts[largest_variant_index].align;
+
+        let abi = if variant_layouts.iter().all(|v| v.abi.is_uninhabited()) {
+            Abi::Uninhabited
+        } else if same_size && same_align && others_zst {
+            match variant_layouts[largest_variant_index].abi {
+                // When the total alignment and size match, we can use the
+                // same ABI as the scalar variant with the reserved niche.
+                Abi::Scalar(_) => Abi::Scalar(niche_scalar),
+                Abi::ScalarPair(first, second) => {
+                    // Only the niche is guaranteed to be initialised,
+                    // so use union layouts for the other primitive.
+                    if niche_offset == Size::ZERO {
+                        Abi::ScalarPair(niche_scalar, second.to_union())
+                    } else {
+                        Abi::ScalarPair(first.to_union(), niche_scalar)
+                    }
+                }
+                _ => Abi::Aggregate { sized: true },
+            }
+        } else {
+            Abi::Aggregate { sized: true }
+        };
+
+        let layout = LayoutS {
+            variants: Variants::Multiple {
+                tag: niche_scalar,
+                tag_encoding: TagEncoding::Niche {
+                    untagged_variant: largest_variant_index,
+                    niche_variants,
+                    niche_start,
+                },
+                tag_field: 0,
+                variants: IndexVec::new(),
+            },
+            fields: FieldsShape::Arbitrary {
+                offsets: [niche_offset].into(),
+                memory_index: [0].into(),
+            },
+            abi,
+            largest_niche,
+            size,
+            align,
+            max_repr_align,
+            unadjusted_abi_align,
+        };
+
+        Some(TmpLayout { layout, variants: variant_layouts })
+    };
+
+    let niche_filling_layout = calculate_niche_filling_layout();
+
+    let (mut min, mut max) = (i128::MAX, i128::MIN);
+    let discr_type = repr.discr_type();
+    let bits = Integer::from_attr(dl, discr_type).size().bits();
+    for (i, mut val) in discriminants {
+        if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
+            continue;
+        }
+        if discr_type.is_signed() {
+            // sign extend the raw representation to be an i128
+            val = (val << (128 - bits)) >> (128 - bits);
+        }
+        if val < min {
+            min = val;
+        }
+        if val > max {
+            max = val;
+        }
+    }
+    // We might have no inhabited variants, so pretend there's at least one.
+    if (min, max) == (i128::MAX, i128::MIN) {
+        min = 0;
+        max = 0;
+    }
+    assert!(min <= max, "discriminant range is {min}...{max}");
+    let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
+
+    let mut align = dl.aggregate_align;
+    let mut max_repr_align = repr.align;
+    let mut unadjusted_abi_align = align.abi;
+
+    let mut size = Size::ZERO;
+
+    // We're interested in the smallest alignment, so start large.
+    let mut start_align = Align::from_bytes(256).unwrap();
+    assert_eq!(Integer::for_align(dl, start_align), None);
+
+    // repr(C) on an enum tells us to make a (tag, union) layout,
+    // so we need to grow the prefix alignment to be at least
+    // the alignment of the union. (This value is used both for
+    // determining the alignment of the overall enum, and the
+    // determining the alignment of the payload after the tag.)
+    let mut prefix_align = min_ity.align(dl).abi;
+    if repr.c() {
+        for fields in variants {
+            for field in fields {
+                prefix_align = prefix_align.max(field.align.abi);
+            }
+        }
+    }
+
+    // Create the set of structs that represent each variant.
+    let mut layout_variants = variants
+        .iter_enumerated()
+        .map(|(i, field_layouts)| {
+            let mut st = layout_calc.univariant(
+                dl,
+                field_layouts,
+                repr,
+                StructKind::Prefixed(min_ity.size(), prefix_align),
+            )?;
+            st.variants = Variants::Single { index: i };
+            // Find the first field we can't move later
+            // to make room for a larger discriminant.
+            for field_idx in st.fields.index_by_increasing_offset() {
+                let field = &field_layouts[FieldIdx::new(field_idx)];
+                if !field.is_1zst() {
+                    start_align = start_align.min(field.align.abi);
+                    break;
+                }
+            }
+            size = cmp::max(size, st.size);
+            align = align.max(st.align);
+            max_repr_align = max_repr_align.max(st.max_repr_align);
+            unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
+            Some(st)
+        })
+        .collect::<Option<IndexVec<VariantIdx, _>>>()?;
+
+    // Align the maximum variant size to the largest alignment.
+    size = size.align_to(align.abi);
+
+    // FIXME(oli-obk): deduplicate and harden these checks
+    if size.bytes() >= dl.obj_size_bound() {
+        return None;
+    }
+
+    let typeck_ity = Integer::from_attr(dl, repr.discr_type());
+    if typeck_ity < min_ity {
+        // It is a bug if Layout decided on a greater discriminant size than typeck for
+        // some reason at this point (based on values discriminant can take on). Mostly
+        // because this discriminant will be loaded, and then stored into variable of
+        // type calculated by typeck. Consider such case (a bug): typeck decided on
+        // byte-sized discriminant, but layout thinks we need a 16-bit to store all
+        // discriminant values. That would be a bug, because then, in codegen, in order
+        // to store this 16-bit discriminant into 8-bit sized temporary some of the
+        // space necessary to represent would have to be discarded (or layout is wrong
+        // on thinking it needs 16 bits)
+        panic!(
+            "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
+        );
+        // However, it is fine to make discr type however large (as an optimisation)
+        // after this point – we’ll just truncate the value we load in codegen.
+    }
+
+    // Check to see if we should use a different type for the
+    // discriminant. We can safely use a type with the same size
+    // as the alignment of the first field of each variant.
+    // We increase the size of the discriminant to avoid LLVM copying
+    // padding when it doesn't need to. This normally causes unaligned
+    // load/stores and excessive memcpy/memset operations. By using a
+    // bigger integer size, LLVM can be sure about its contents and
+    // won't be so conservative.
+
+    // Use the initial field alignment
+    let mut ity = if repr.c() || repr.int.is_some() {
+        min_ity
+    } else {
+        Integer::for_align(dl, start_align).unwrap_or(min_ity)
+    };
+
+    // If the alignment is not larger than the chosen discriminant size,
+    // don't use the alignment as the final size.
+    if ity <= min_ity {
+        ity = min_ity;
+    } else {
+        // Patch up the variants' first few fields.
+        let old_ity_size = min_ity.size();
+        let new_ity_size = ity.size();
+        for variant in &mut layout_variants {
+            match variant.fields {
+                FieldsShape::Arbitrary { ref mut offsets, .. } => {
+                    for i in offsets {
+                        if *i <= old_ity_size {
+                            assert_eq!(*i, old_ity_size);
+                            *i = new_ity_size;
+                        }
+                    }
+                    // We might be making the struct larger.
+                    if variant.size <= old_ity_size {
+                        variant.size = new_ity_size;
+                    }
+                }
+                FieldsShape::Primitive | FieldsShape::Array { .. } | FieldsShape::Union(..) => {
+                    panic!("encountered a non-arbitrary layout during enum layout")
+                }
+            }
+        }
+    }
+
+    let tag_mask = ity.size().unsigned_int_max();
+    let tag = Scalar::Initialized {
+        value: Primitive::Int(ity, signed),
+        valid_range: WrappingRange {
+            start: (min as u128 & tag_mask),
+            end: (max as u128 & tag_mask),
+        },
+    };
+    let mut abi = Abi::Aggregate { sized: true };
+
+    if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
+        abi = Abi::Uninhabited;
+    } else if tag.size(dl) == size {
+        // Make sure we only use scalar layout when the enum is entirely its
+        // own tag (i.e. it has no padding nor any non-ZST variant fields).
+        abi = Abi::Scalar(tag);
+    } else {
+        // Try to use a ScalarPair for all tagged enums.
+        // That's possible only if we can find a common primitive type for all variants.
+        let mut common_prim = None;
+        let mut common_prim_initialized_in_all_variants = true;
+        for (field_layouts, layout_variant) in iter::zip(variants, &layout_variants) {
+            let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
+                panic!("encountered a non-arbitrary layout during enum layout");
+            };
+            // We skip *all* ZST here and later check if we are good in terms of alignment.
+            // This lets us handle some cases involving aligned ZST.
+            let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
+            let (field, offset) = match (fields.next(), fields.next()) {
+                (None, None) => {
+                    common_prim_initialized_in_all_variants = false;
+                    continue;
+                }
+                (Some(pair), None) => pair,
+                _ => {
+                    common_prim = None;
+                    break;
+                }
+            };
+            let prim = match field.abi {
+                Abi::Scalar(scalar) => {
+                    common_prim_initialized_in_all_variants &=
+                        matches!(scalar, Scalar::Initialized { .. });
+                    scalar.primitive()
+                }
+                _ => {
+                    common_prim = None;
+                    break;
+                }
+            };
+            if let Some(pair) = common_prim {
+                // This is pretty conservative. We could go fancier
+                // by conflating things like i32 and u32, or even
+                // realising that (u8, u8) could just cohabit with
+                // u16 or even u32.
+                if pair != (prim, offset) {
+                    common_prim = None;
+                    break;
+                }
+            } else {
+                common_prim = Some((prim, offset));
+            }
+        }
+        if let Some((prim, offset)) = common_prim {
+            let prim_scalar = if common_prim_initialized_in_all_variants {
+                let size = prim.size(dl);
+                assert!(size.bits() <= 128);
+                Scalar::Initialized { value: prim, valid_range: WrappingRange::full(size) }
+            } else {
+                // Common prim might be uninit.
+                Scalar::Union { value: prim }
+            };
+            let pair = layout_calc.scalar_pair::<FieldIdx, VariantIdx>(tag, prim_scalar);
+            let pair_offsets = match pair.fields {
+                FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                    assert_eq!(memory_index.raw, [0, 1]);
+                    offsets
+                }
+                _ => panic!("encountered a non-arbitrary layout during enum layout"),
+            };
+            if pair_offsets[FieldIdx::new(0)] == Size::ZERO
+                && pair_offsets[FieldIdx::new(1)] == *offset
+                && align == pair.align
+                && size == pair.size
+            {
+                // We can use `ScalarPair` only when it matches our
+                // already computed layout (including `#[repr(C)]`).
+                abi = pair.abi;
+            }
+        }
+    }
+
+    // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
+    // variants to ensure they are consistent. This is because a downcast is
+    // semantically a NOP, and thus should not affect layout.
+    if matches!(abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+        for variant in &mut layout_variants {
+            // We only do this for variants with fields; the others are not accessed anyway.
+            // Also do not overwrite any already existing "clever" ABIs.
+            if variant.fields.count() > 0 && matches!(variant.abi, Abi::Aggregate { .. }) {
+                variant.abi = abi;
+                // Also need to bump up the size and alignment, so that the entire value fits
+                // in here.
+                variant.size = cmp::max(variant.size, size);
+                variant.align.abi = cmp::max(variant.align.abi, align.abi);
+            }
+        }
+    }
+
+    let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
+
+    let tagged_layout = LayoutS {
+        variants: Variants::Multiple {
+            tag,
+            tag_encoding: TagEncoding::Direct,
+            tag_field: 0,
+            variants: IndexVec::new(),
+        },
+        fields: FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() },
+        largest_niche,
+        abi,
+        align,
+        size,
+        max_repr_align,
+        unadjusted_abi_align,
+    };
+
+    let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
+
+    let mut best_layout = match (tagged_layout, niche_filling_layout) {
+        (tl, Some(nl)) => {
+            // Pick the smaller layout; otherwise,
+            // pick the layout with the larger niche; otherwise,
+            // pick tagged as it has simpler codegen.
+            use cmp::Ordering::*;
+            let niche_size = |tmp_l: &TmpLayout<FieldIdx, VariantIdx>| {
+                tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
+            };
+            match (tl.layout.size.cmp(&nl.layout.size), niche_size(&tl).cmp(&niche_size(&nl))) {
+                (Greater, _) => nl,
+                (Equal, Less) => nl,
+                _ => tl,
+            }
+        }
+        (tl, None) => tl,
+    };
+
+    // Now we can intern the variant layouts and store them in the enum layout.
+    best_layout.layout.variants = match best_layout.layout.variants {
+        Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
+            Variants::Multiple { tag, tag_encoding, tag_field, variants: best_layout.variants }
+        }
+        Variants::Single { .. } => {
+            panic!("encountered a single-variant enum during multi-variant layout")
+        }
+    };
+    Some(best_layout.layout)
 }
 
 /// Determines towards which end of a struct layout optimizations will try to place the best niches.
