@@ -1,5 +1,3 @@
-#![deny(implied_bounds_entailment)]
-
 trait Project {
     type Ty;
 }
@@ -11,8 +9,7 @@ trait Trait {
 }
 impl Trait for () {
     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static str {
-        //~^ ERROR impl method assumes more implied bounds than the corresponding trait method
-        //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+        //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter 's in generic type due to conflicting requirements
         s
     }
 }

@@ -2,9 +2,7 @@ use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{
-    pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
@@ -50,13 +48,7 @@ pub(super) fn compare_impl_method<'tcx>(
 
     let _: Result<_, ErrorGuaranteed> = try {
         check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, false)?;
-        compare_method_predicate_entailment(
-            tcx,
-            impl_m,
-            trait_m,
-            impl_trait_ref,
-            CheckImpliedWfMode::Check,
-        )?;
+        compare_method_predicate_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
         refine::check_refining_return_position_impl_trait_in_trait(
             tcx,
             impl_m,
@@ -170,7 +162,6 @@ fn compare_method_predicate_entailment<'tcx>(
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
-    check_implied_wf: CheckImpliedWfMode,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_to_impl_args = impl_trait_ref.args;
 
@@ -317,7 +308,7 @@ fn compare_method_predicate_entailment<'tcx>(
         return Err(emitted);
     }
 
-    if check_implied_wf == CheckImpliedWfMode::Check && !(impl_sig, trait_sig).references_error() {
+    if !(impl_sig, trait_sig).references_error() {
         // Select obligations to make progress on inference before processing
         // the wf obligation below.
         // FIXME(-Znext-solver): Not needed when the hack below is removed.
@@ -333,8 +324,9 @@ fn compare_method_predicate_entailment<'tcx>(
         // trigger the lint. Instead, let's only consider type outlives and
         // region outlives obligations.
         //
-        // FIXME(-Znext-solver): Try removing this hack again once
-        // the new solver is stable.
+        // FIXME(-Znext-solver): Try removing this hack again once the new
+        // solver is stable. We should just be able to register a WF pred for
+        // the fn sig.
         let mut wf_args: smallvec::SmallVec<[_; 4]> =
             unnormalized_impl_sig.inputs_and_output.iter().map(|ty| ty.into()).collect();
         // Annoyingly, asking for the WF predicates of an array (with an unevaluated const (only?))
@@ -357,7 +349,7 @@ fn compare_method_predicate_entailment<'tcx>(
                     // We need to register Projection oblgiations too, because we may end up with
                     // an implied `X::Item: 'a`, which gets desugared into `X::Item = ?0`, `?0: 'a`.
                     // If we only register the region outlives obligation, this leads to an unconstrained var.
-                    // See `implied_bounds_entailment_alias_var` test.
+                    // See `implied_bounds_entailment_alias_var.rs` test.
                     ty::PredicateKind::Clause(
                         ty::ClauseKind::RegionOutlives(..)
                         | ty::ClauseKind::TypeOutlives(..)
@@ -378,26 +370,8 @@ fn compare_method_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        match check_implied_wf {
-            CheckImpliedWfMode::Check => {
-                let impl_m_hir_id = tcx.local_def_id_to_hir_id(impl_m_def_id);
-                return compare_method_predicate_entailment(
-                    tcx,
-                    impl_m,
-                    trait_m,
-                    impl_trait_ref,
-                    CheckImpliedWfMode::Skip,
-                )
-                .map(|()| {
-                    // If the skip-mode was successful, emit a lint.
-                    emit_implied_wf_lint(infcx.tcx, impl_m, impl_m_hir_id, vec![]);
-                });
-            }
-            CheckImpliedWfMode::Skip => {
-                let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
-                return Err(reported);
-            }
-        }
+        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(reported);
     }
 
     // Finally, resolve all regions. This catches wily misuses of
@@ -408,117 +382,12 @@ fn compare_method_predicate_entailment<'tcx>(
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        // FIXME(compiler-errors): This can be simplified when IMPLIED_BOUNDS_ENTAILMENT
-        // becomes a hard error (i.e. ideally we'd just call `resolve_regions_and_report_errors`
-        let impl_m_hir_id = tcx.local_def_id_to_hir_id(impl_m_def_id);
-        match check_implied_wf {
-            CheckImpliedWfMode::Check => {
-                return compare_method_predicate_entailment(
-                    tcx,
-                    impl_m,
-                    trait_m,
-                    impl_trait_ref,
-                    CheckImpliedWfMode::Skip,
-                )
-                .map(|()| {
-                    let bad_args = extract_bad_args_for_implies_lint(
-                        tcx,
-                        &errors,
-                        (trait_m, trait_sig),
-                        // Unnormalized impl sig corresponds to the HIR types written
-                        (impl_m, unnormalized_impl_sig),
-                        impl_m_hir_id,
-                    );
-                    // If the skip-mode was successful, emit a lint.
-                    emit_implied_wf_lint(tcx, impl_m, impl_m_hir_id, bad_args);
-                });
-            }
-            CheckImpliedWfMode::Skip => {
-                if infcx.tainted_by_errors().is_none() {
-                    infcx.err_ctxt().report_region_errors(impl_m_def_id, &errors);
-                }
-                return Err(tcx
-                    .sess
-                    .span_delayed_bug(rustc_span::DUMMY_SP, "error should have been emitted"));
-            }
-        }
+        return Err(infcx
+            .tainted_by_errors()
+            .unwrap_or_else(|| infcx.err_ctxt().report_region_errors(impl_m_def_id, &errors)));
     }
 
     Ok(())
-}
-
-fn extract_bad_args_for_implies_lint<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    errors: &[infer::RegionResolutionError<'tcx>],
-    (trait_m, trait_sig): (ty::AssocItem, ty::FnSig<'tcx>),
-    (impl_m, impl_sig): (ty::AssocItem, ty::FnSig<'tcx>),
-    hir_id: hir::HirId,
-) -> Vec<(Span, Option<String>)> {
-    let mut blame_generics = vec![];
-    for error in errors {
-        // Look for the subregion origin that contains an input/output type
-        let origin = match error {
-            infer::RegionResolutionError::ConcreteFailure(o, ..) => o,
-            infer::RegionResolutionError::GenericBoundFailure(o, ..) => o,
-            infer::RegionResolutionError::SubSupConflict(_, _, o, ..) => o,
-            infer::RegionResolutionError::UpperBoundUniverseConflict(.., o, _) => o,
-        };
-        // Extract (possible) input/output types from origin
-        match origin {
-            infer::SubregionOrigin::Subtype(trace) => {
-                if let Some((a, b)) = trace.values.ty() {
-                    blame_generics.extend([a, b]);
-                }
-            }
-            infer::SubregionOrigin::RelateParamBound(_, ty, _) => blame_generics.push(*ty),
-            infer::SubregionOrigin::ReferenceOutlivesReferent(ty, _) => blame_generics.push(*ty),
-            _ => {}
-        }
-    }
-
-    let fn_decl = tcx.hir().fn_decl_by_hir_id(hir_id).unwrap();
-    let opt_ret_ty = match fn_decl.output {
-        hir::FnRetTy::DefaultReturn(_) => None,
-        hir::FnRetTy::Return(ty) => Some(ty),
-    };
-
-    // Map late-bound regions from trait to impl, so the names are right.
-    let mapping = std::iter::zip(
-        tcx.fn_sig(trait_m.def_id).skip_binder().bound_vars(),
-        tcx.fn_sig(impl_m.def_id).skip_binder().bound_vars(),
-    )
-    .filter_map(|(impl_bv, trait_bv)| {
-        if let ty::BoundVariableKind::Region(impl_bv) = impl_bv
-            && let ty::BoundVariableKind::Region(trait_bv) = trait_bv
-        {
-            Some((impl_bv, trait_bv))
-        } else {
-            None
-        }
-    })
-    .collect();
-
-    // For each arg, see if it was in the "blame" of any of the region errors.
-    // If so, then try to produce a suggestion to replace the argument type with
-    // one from the trait.
-    let mut bad_args = vec![];
-    for (idx, (ty, hir_ty)) in
-        std::iter::zip(impl_sig.inputs_and_output, fn_decl.inputs.iter().chain(opt_ret_ty))
-            .enumerate()
-    {
-        let expected_ty = trait_sig.inputs_and_output[idx]
-            .fold_with(&mut RemapLateBound { tcx, mapping: &mapping });
-        if blame_generics.iter().any(|blame| ty.contains(*blame)) {
-            let expected_ty_sugg = expected_ty.to_string();
-            bad_args.push((
-                hir_ty.span,
-                // Only suggest something if it actually changed.
-                (expected_ty_sugg != ty.to_string()).then_some(expected_ty_sugg),
-            ));
-        }
-    }
-
-    bad_args
 }
 
 struct RemapLateBound<'a, 'tcx> {
@@ -542,52 +411,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
             r
         }
     }
-}
-
-fn emit_implied_wf_lint<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_m: ty::AssocItem,
-    hir_id: hir::HirId,
-    bad_args: Vec<(Span, Option<String>)>,
-) {
-    let span: MultiSpan = if bad_args.is_empty() {
-        tcx.def_span(impl_m.def_id).into()
-    } else {
-        bad_args.iter().map(|(span, _)| *span).collect::<Vec<_>>().into()
-    };
-    tcx.struct_span_lint_hir(
-        rustc_session::lint::builtin::IMPLIED_BOUNDS_ENTAILMENT,
-        hir_id,
-        span,
-        "impl method assumes more implied bounds than the corresponding trait method",
-        |lint| {
-            let bad_args: Vec<_> =
-                bad_args.into_iter().filter_map(|(span, sugg)| Some((span, sugg?))).collect();
-            if !bad_args.is_empty() {
-                lint.multipart_suggestion(
-                    format!(
-                        "replace {} type{} to make the impl signature compatible",
-                        pluralize!("this", bad_args.len()),
-                        pluralize!(bad_args.len())
-                    ),
-                    bad_args,
-                    Applicability::MaybeIncorrect,
-                );
-            }
-        },
-    );
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum CheckImpliedWfMode {
-    /// Checks implied well-formedness of the impl method. If it fails, we will
-    /// re-check with `Skip`, and emit a lint if it succeeds.
-    Check,
-    /// Skips checking implied well-formedness of the impl method, but will emit
-    /// a lint if the `compare_method_predicate_entailment` succeeded. This means that
-    /// the reason that we had failed earlier during `Check` was due to the impl
-    /// having stronger requirements than the trait.
-    Skip,
 }
 
 fn compare_asyncness<'tcx>(

@@ -1,5 +1,3 @@
-#![deny(implied_bounds_entailment)]
-
 use std::cell::RefCell;
 
 pub struct MessageListeners<'a> {
@@ -12,8 +10,7 @@ pub trait MessageListenersInterface {
 
 impl<'a> MessageListenersInterface for MessageListeners<'a> {
     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
-        //~^ ERROR impl method assumes more implied bounds than the corresponding trait method
-        //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+        //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter 'b in generic type due to conflicting requirements
         self
     }
 }
