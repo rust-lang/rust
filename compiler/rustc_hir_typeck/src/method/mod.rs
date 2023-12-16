@@ -182,8 +182,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
-        let pick =
-            self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
+        let probe_scope =
+            segment.res.opt_def_id().map_or(ProbeScope::TraitsInScope, ProbeScope::DefId);
+        let pick = self.lookup_probe(segment.ident, self_ty, call_expr, probe_scope)?;
 
         self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick, args);
 
@@ -202,12 +203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Ref(region, t_type, mutability) = self_ty.kind() {
                 let trait_type = Ty::new_ref(self.tcx, *region, *t_type, mutability.invert());
                 // We probe again to see if there might be a borrow mutability discrepancy.
-                match self.lookup_probe(
-                    segment.ident,
-                    trait_type,
-                    call_expr,
-                    ProbeScope::TraitsInScope,
-                ) {
+                match self.lookup_probe(segment.ident, trait_type, call_expr, probe_scope) {
                     Ok(ref new_pick) if pick.differs_from(new_pick) => {
                         needs_mut = new_pick.self_ty.ref_mutability() != self_ty.ref_mutability();
                     }
@@ -216,29 +212,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // We probe again, taking all traits into account (not only those in scope).
-            let candidates = match self.lookup_probe_for_diagnostic(
-                segment.ident,
-                self_ty,
-                call_expr,
-                ProbeScope::AllTraits,
-                None,
-            ) {
-                // If we find a different result the caller probably forgot to import a trait.
-                Ok(ref new_pick) if pick.differs_from(new_pick) => {
-                    vec![new_pick.item.container_id(self.tcx)]
+            let candidates = if probe_scope == ProbeScope::TraitsInScope {
+                match self.lookup_probe_for_diagnostic(
+                    segment.ident,
+                    self_ty,
+                    call_expr,
+                    ProbeScope::AllTraits,
+                    None,
+                ) {
+                    // If we find a different result the caller probably forgot to import a trait.
+                    Ok(ref new_pick) if pick.differs_from(new_pick) => {
+                        vec![new_pick.item.container_id(self.tcx)]
+                    }
+                    Err(Ambiguity(ref sources)) => sources
+                        .iter()
+                        .filter_map(|source| {
+                            match *source {
+                                // Note: this cannot come from an inherent impl,
+                                // because the first probing succeeded.
+                                CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
+                                CandidateSource::Trait(_) => None,
+                            }
+                        })
+                        .collect(),
+                    _ => Vec::new(),
                 }
-                Err(Ambiguity(ref sources)) => sources
-                    .iter()
-                    .filter_map(|source| {
-                        match *source {
-                            // Note: this cannot come from an inherent impl,
-                            // because the first probing succeeded.
-                            CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
-                            CandidateSource::Trait(_) => None,
-                        }
-                    })
-                    .collect(),
-                _ => Vec::new(),
+            } else {
+                Vec::new()
             };
 
             return Err(IllegalSizedBound { candidates, needs_mut, bound_span: span, self_expr });
@@ -255,13 +255,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         self_expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
-        let pick = self.lookup_probe_for_diagnostic(
-            segment.ident,
-            self_ty,
-            call_expr,
-            ProbeScope::TraitsInScope,
-            None,
-        )?;
+        let probe_scope =
+            segment.res.opt_def_id().map_or(ProbeScope::TraitsInScope, ProbeScope::DefId);
+
+        let pick =
+            self.lookup_probe_for_diagnostic(segment.ident, self_ty, call_expr, probe_scope, None)?;
 
         Ok(self
             .confirm_method_for_diagnostic(span, self_expr, call_expr, self_ty, &pick, segment)

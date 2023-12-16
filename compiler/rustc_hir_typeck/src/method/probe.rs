@@ -248,6 +248,9 @@ pub enum ProbeScope {
 
     // Assemble candidates coming from all traits.
     AllTraits,
+
+    // Consider only the given `DefId`.
+    DefId(DefId),
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -495,6 +498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe_cx.assemble_extension_candidates_for_traits_in_scope()
                 }
                 ProbeScope::AllTraits => probe_cx.assemble_extension_candidates_for_all_traits(),
+                ProbeScope::DefId(id) => probe_cx.assemble_extension_candidate_for_def_id(id),
             };
             op(probe_cx)
         })
@@ -917,6 +921,26 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id);
             }
         }
+    }
+
+    fn assemble_extension_candidate_for_def_id(&mut self, fn_id: DefId) {
+        let item: AssocItem = self.tcx.associated_item(fn_id);
+        let trait_def_id = item.trait_container(self.tcx).expect("method should have a trait");
+        let trait_args = self.fresh_args_for_item(self.span, trait_def_id);
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, trait_args);
+        let (xform_self_ty, xform_ret_ty) =
+            self.xform_self_ty(item, trait_ref.self_ty(), trait_args);
+
+        self.push_candidate(
+            Candidate {
+                xform_self_ty,
+                xform_ret_ty,
+                item,
+                import_ids: smallvec![],
+                kind: TraitCandidate(trait_ref),
+            },
+            false,
+        );
     }
 
     fn matches_return_type(
