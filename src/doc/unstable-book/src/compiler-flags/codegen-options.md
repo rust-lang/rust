@@ -30,3 +30,27 @@ the goal is for them to become stable, and preferred in practice over the existi
 - `unix-cc`: `unix` using a C/C++ compiler as the linker driver
 - `msvc-lld`: MSVC-style linker for Windows and UEFI, with LLD
 - `em-cc`: emscripten compiler frontend, similar to `wasm-lld-cc` with a different interface
+
+## link-self-contained
+
+This flag generally controls whether the linker will use libraries and objects shipped with Rust
+instead of those in the system. The stable boolean values for this flag are coarse-grained
+(everything or nothing), but there exists a set of unstable values with finer-grained control,
+`-Clink-self-contained` can accept a comma-separated list of components, individually enabled
+(`+component`) or disabled (`-component`):
+- `crto`: CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
+- `libc`: libc static library (e.g. on `musl`, `wasi` targets)
+- `unwind`: libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
+- `linker`: linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for
+  `rust-lld`)
+- `sanitizers`: sanitizer runtime libraries
+- `mingw`: other MinGW libs and Windows import libs
+
+Out of the above self-contained linking components, `linker` is the only one currently implemented
+(beyond parsing the CLI options).
+
+It refers to the LLD linker, built from the same LLVM revision used by rustc (named `rust-lld` to
+avoid naming conflicts), that is distributed via `rustup` with the compiler (and is used by default
+for the wasm targets). One can also opt-in to use it by combining this flag with an appropriate
+linker flavor: for example, `-Clinker-flavor=gnu-lld-cc -Clink-self-contained=+linker` will use the
+toolchain's `rust-lld` as the linker.
