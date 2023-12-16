@@ -77,6 +77,8 @@ impl LitKind {
                 // new symbol because the string in the LitKind is different to the
                 // string in the token.
                 let s = symbol.as_str();
+                // Vanilla strings are so common we optimize for the common case where no chars
+                // requiring special behaviour are present.
                 let symbol = if s.contains(['\\', '\r']) {
                     let mut buf = String::with_capacity(s.len());
                     let mut error = Ok(());
@@ -104,27 +106,20 @@ impl LitKind {
                 LitKind::Str(symbol, ast::StrStyle::Cooked)
             }
             token::StrRaw(n) => {
-                // Ditto.
-                let s = symbol.as_str();
-                let symbol =
-                    if s.contains('\r') {
-                        let mut buf = String::with_capacity(s.len());
-                        let mut error = Ok(());
-                        unescape_literal(s, Mode::RawStr, &mut |_, unescaped_char| {
-                            match unescaped_char {
-                                Ok(c) => buf.push(c),
-                                Err(err) => {
-                                    if err.is_fatal() {
-                                        error = Err(LitError::LexerError);
-                                    }
-                                }
+                // Raw strings have no escapes, so we only need to check for invalid chars, and we
+                // can reuse the symbol on success.
+                let mut error = Ok(());
+                unescape_literal(symbol.as_str(), Mode::RawStr, &mut |_, unescaped_char| {
+                    match unescaped_char {
+                        Ok(_) => {}
+                        Err(err) => {
+                            if err.is_fatal() {
+                                error = Err(LitError::LexerError);
                             }
-                        });
-                        error?;
-                        Symbol::intern(&buf)
-                    } else {
-                        symbol
-                    };
+                        }
+                    }
+                });
+                error?;
                 LitKind::Str(symbol, ast::StrStyle::Raw(n))
             }
             token::ByteStr => {
@@ -143,25 +138,19 @@ impl LitKind {
                 LitKind::ByteStr(buf.into(), StrStyle::Cooked)
             }
             token::ByteStrRaw(n) => {
+                // Raw strings have no escapes, so we only need to check for invalid chars, and we
+                // can convert the symbol directly to a `Lrc<u8>` on success.
                 let s = symbol.as_str();
-                let bytes = if s.contains('\r') {
-                    let mut buf = Vec::with_capacity(s.len());
-                    let mut error = Ok(());
-                    unescape_literal(s, Mode::RawByteStr, &mut |_, c| match c {
-                        Ok(c) => buf.push(byte_from_char(c)),
-                        Err(err) => {
-                            if err.is_fatal() {
-                                error = Err(LitError::LexerError);
-                            }
+                let mut error = Ok(());
+                unescape_literal(s, Mode::RawByteStr, &mut |_, c| match c {
+                    Ok(_) => {}
+                    Err(err) => {
+                        if err.is_fatal() {
+                            error = Err(LitError::LexerError);
                         }
-                    });
-                    error?;
-                    buf
-                } else {
-                    symbol.to_string().into_bytes()
-                };
-
-                LitKind::ByteStr(bytes.into(), StrStyle::Raw(n))
+                    }
+                });
+                LitKind::ByteStr(s.to_owned().into_bytes().into(), StrStyle::Raw(n))
             }
             token::CStr => {
                 let s = symbol.as_str();
@@ -172,7 +161,6 @@ impl LitKind {
                         error = Err(LitError::NulInCStr(span));
                     }
                     Ok(CStrUnit::Byte(b)) => buf.push(b),
-                    Ok(CStrUnit::Char(c)) if c.len_utf8() == 1 => buf.push(c as u8),
                     Ok(CStrUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }
@@ -187,18 +175,15 @@ impl LitKind {
                 LitKind::CStr(buf.into(), StrStyle::Cooked)
             }
             token::CStrRaw(n) => {
+                // Raw strings have no escapes, so we only need to check for invalid chars, and we
+                // can convert the symbol directly to a `Lrc<u8>` on success.
                 let s = symbol.as_str();
-                let mut buf = Vec::with_capacity(s.len());
                 let mut error = Ok(());
                 unescape_c_string(s, Mode::RawCStr, &mut |span, c| match c {
                     Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) => {
                         error = Err(LitError::NulInCStr(span));
                     }
-                    Ok(CStrUnit::Byte(b)) => buf.push(b),
-                    Ok(CStrUnit::Char(c)) if c.len_utf8() == 1 => buf.push(c as u8),
-                    Ok(CStrUnit::Char(c)) => {
-                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
-                    }
+                    Ok(_) => {}
                     Err(err) => {
                         if err.is_fatal() {
                             error = Err(LitError::LexerError);
@@ -206,6 +191,7 @@ impl LitKind {
                     }
                 });
                 error?;
+                let mut buf = s.to_owned().into_bytes();
                 buf.push(0);
                 LitKind::CStr(buf.into(), StrStyle::Raw(n))
             }
