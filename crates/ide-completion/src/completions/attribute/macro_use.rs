@@ -1,3 +1,4 @@
+//! Completion for macros in `#[macro_use(...)]`
 use hir::ModuleDef;
 use ide_db::SymbolKind;
 use syntax::ast;
