@@ -180,12 +180,6 @@ pub trait LayoutCalculator {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
 
-        let scalar_unit = |value: Primitive| {
-            let size = value.size(dl);
-            assert!(size.bits() <= 128);
-            Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
-        };
-
         let (present_first, present_second) = {
             let mut present_variants = variants
                 .iter_enumerated()
@@ -678,7 +672,9 @@ pub trait LayoutCalculator {
             }
             if let Some((prim, offset)) = common_prim {
                 let prim_scalar = if common_prim_initialized_in_all_variants {
-                    scalar_unit(prim)
+                    let size = prim.size(dl);
+                    assert!(size.bits() <= 128);
+                    Scalar::Initialized { value: prim, valid_range: WrappingRange::full(size) }
                 } else {
                     // Common prim might be uninit.
                     Scalar::Union { value: prim }
