@@ -47,14 +47,14 @@ define-function: (
         // Without hover or focus.
         assert-css: ("#src-sidebar-toggle > button", {"background-color": |background_toggle|})
         // With focus.
-        focus: "#src-sidebar-toggle > button"
+        focus: "#src-sidebar-toggle > button.collapse"
         assert-css: (
             "#src-sidebar-toggle > button:focus",
             {"background-color": |background_toggle_hover|},
         )
         focus: ".search-input"
         // With hover.
-        move-cursor-to: "#src-sidebar-toggle > button"
+        move-cursor-to: "#src-sidebar-toggle > button.collapse"
         assert-css: (
             "#src-sidebar-toggle > button:hover",
             {"background-color": |background_toggle_hover|},
