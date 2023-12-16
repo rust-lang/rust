@@ -907,7 +907,11 @@ impl CrateInfo {
                     lang_items::required(tcx, l).then_some(name)
                 })
                 .collect();
-            let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };
+            let prefix = match (target.is_like_windows, target.arch.as_ref()) {
+                (true, "x86") => "_",
+                (true, "arm64ec") => "#",
+                _ => "",
+            };
 
             // This loop only adds new items to values of the hash map, so the order in which we
             // iterate over the values is not important.

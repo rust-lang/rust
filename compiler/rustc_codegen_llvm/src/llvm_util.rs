@@ -201,7 +201,13 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 // which might lead to failures if the oldest tested / supported LLVM version
 // doesn't yet support the relevant intrinsics
 pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
-    let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
+    let arch = if sess.target.arch == "x86_64" {
+        "x86"
+    } else if sess.target.arch == "arm64ec" {
+        "aarch64"
+    } else {
+        &*sess.target.arch
+    };
     match (arch, s) {
         ("x86", "sse4.2") => {
             LLVMFeature::with_dependency("sse4.2", TargetFeatureFoldStrength::EnableOnly("crc32"))

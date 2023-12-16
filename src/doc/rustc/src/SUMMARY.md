@@ -18,6 +18,7 @@
     - [arm64e-apple-ios.md](platform-support/arm64e-apple-ios.md)
     - [arm64e-apple-darwin.md](platform-support/arm64e-apple-darwin.md)
     - [aarch64-apple-ios-sim](platform-support/aarch64-apple-ios-sim.md)
+    - [arm64ec-pc-windows-msvc](platform-support/arm64ec-pc-windows-msvc.md)
     - [\*-apple-tvos](platform-support/apple-tvos.md)
     - [\*-apple-watchos\*](platform-support/apple-watchos.md)
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
