@@ -727,7 +727,7 @@ pub(crate) fn clean_generics<'tcx>(
                     .into_iter()
                     .map(|(lifetime, bounds)| WherePredicate::RegionPredicate { lifetime, bounds }),
             )
-            .chain(eq_predicates.into_iter())
+            .chain(eq_predicates)
             .collect(),
     }
 }

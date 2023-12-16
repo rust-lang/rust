@@ -215,7 +215,7 @@ fn emit_malformed_attribute(
                 } else {
                     "the following are the possible correct uses"
                 },
-                suggestions.into_iter(),
+                suggestions,
                 Applicability::HasPlaceholders,
             )
             .emit();

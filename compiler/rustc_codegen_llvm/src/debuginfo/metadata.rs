@@ -607,7 +607,7 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
 
                     if let Ok(rel_path) = abs_path.strip_prefix(working_directory) {
                         (
-                            working_directory.to_string_lossy().into(),
+                            working_directory.to_string_lossy(),
                             rel_path.to_string_lossy().into_owned(),
                         )
                     } else {

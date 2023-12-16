@@ -923,7 +923,7 @@ impl<'a> Parser<'a> {
         );
         let where_predicates_split = before_where_clause.predicates.len();
         let mut predicates = before_where_clause.predicates;
-        predicates.extend(after_where_clause.predicates.into_iter());
+        predicates.extend(after_where_clause.predicates);
         let where_clause = WhereClause {
             has_where_token: before_where_clause.has_where_token
                 || after_where_clause.has_where_token,

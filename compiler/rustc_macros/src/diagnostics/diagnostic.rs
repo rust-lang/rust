@@ -175,9 +175,9 @@ impl<'a> LintDiagnosticDerive<'a> {
                 fn decorate_lint<'__b>(
                     self,
                     #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>
-                ) -> &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()> {
+                ) {
                     use rustc_errors::IntoDiagnosticArg;
-                    #implementation
+                    #implementation;
                 }
 
                 fn msg(&self) -> rustc_errors::DiagnosticMessage {
