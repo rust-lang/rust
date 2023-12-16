@@ -31,6 +31,22 @@ pub struct FeatureDiagnosticForIssue {
 }
 
 #[derive(Subdiagnostic)]
+#[note(session_feature_suggest_upgrade_compiler)]
+pub struct SuggestUpgradeCompiler {
+    version: &'static str,
+    date: &'static str,
+}
+
+impl SuggestUpgradeCompiler {
+    pub fn new() -> Self {
+        let version = option_env!("CFG_VERSION").unwrap_or("unknown");
+        let date = option_env!("CFG_VER_DATE").unwrap_or("unknown");
+
+        Self { version, date }
+    }
+}
+
+#[derive(Subdiagnostic)]
 #[help(session_feature_diagnostic_help)]
 pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
