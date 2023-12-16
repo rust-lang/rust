@@ -128,7 +128,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
                 &"build",
                 &"--release",
                 &"--target",
-                &config.target_triple,
+                &config.target,
             ],
             Some(start_dir),
             Some(&env),
@@ -138,7 +138,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         env.insert("RUSTFLAGS".to_string(), rustflags);
 
         run_command_with_output_and_env(
-            &[&"cargo", &"build", &"--target", &config.target_triple],
+            &[&"cargo", &"build", &"--target", &config.target],
             Some(start_dir),
             Some(&env),
         )?;

@@ -21,6 +21,7 @@ impl Channel {
 
 #[derive(Default, Debug)]
 pub struct ConfigInfo {
+    pub target: String,
     pub target_triple: String,
     pub host_triple: String,
     pub rustc_command: Vec<String>,
@@ -42,6 +43,13 @@ impl ConfigInfo {
         args: &mut impl Iterator<Item = String>,
     ) -> Result<bool, String> {
         match arg {
+            "--target" => {
+                if let Some(arg) = args.next() {
+                    self.target = arg;
+                } else {
+                    return Err("Expected a value after `--target`, found nothing".to_string());
+                }
+            }
             "--target-triple" => match args.next() {
                 Some(arg) if !arg.is_empty() => self.target_triple = arg.to_string(),
                 _ => {
@@ -112,6 +120,9 @@ impl ConfigInfo {
         }
         if self.target_triple.is_empty() {
             self.target_triple = self.host_triple.clone();
+        }
+        if self.target.is_empty() && !self.target_triple.is_empty() {
+            self.target = self.target_triple.clone();
         }
 
         let mut linker = None;
@@ -243,6 +254,7 @@ impl ConfigInfo {
         println!(
             "\
     --target-triple [arg]  : Set the target triple to [arg]
+    --target [arg]         : Set the target to [arg]
     --out-dir              : Location where the files will be generated
     --release              : Build in release mode
     --release-sysroot      : Build sysroot in release mode

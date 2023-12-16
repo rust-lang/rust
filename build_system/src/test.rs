@@ -482,7 +482,7 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &args.config_info.target_triple,
     ]);
     run_command_with_env(&command, None, Some(env))?;
-    // FIXME: the compiled binary is not run. Is it normal?
+    // FIXME: the compiled binary is not run.
 
     Ok(())
 }
