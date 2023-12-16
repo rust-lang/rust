@@ -419,6 +419,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::READ_LINE_WITHOUT_TRIM_INFO,
     crate::methods::REDUNDANT_AS_STR_INFO,
     crate::methods::REPEAT_ONCE_INFO,
+    crate::methods::RESULT_FILTER_MAP_INFO,
     crate::methods::RESULT_MAP_OR_INTO_OPTION_INFO,
     crate::methods::SEARCH_IS_SOME_INFO,
     crate::methods::SEEK_FROM_CURRENT_INFO,

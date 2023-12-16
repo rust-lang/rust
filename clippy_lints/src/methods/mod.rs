@@ -1175,7 +1175,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for indirect collection of populated `Option`
+    /// Checks for iterators of `Option`s using ``.filter(Option::is_some).map(Option::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
     ///
     /// ### Why is this bad?
     /// `Option` is like a collection of 0-1 things, so `flatten`
@@ -3752,6 +3753,29 @@ declare_clippy_lint! {
     "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for iterators of `Result`s using ``.filter(Result::is_ok).map(Result::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
+    ///
+    /// ### Why is this bad?
+    /// `Result` implements `IntoIterator<Item = T>`. This means that `Result` can be flattened
+    /// automatically without suspicious-looking `unwrap` calls.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::empty::<Result<i32, ()>>().filter(Result::is_ok).map(Result::unwrap);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::empty::<Result<i32, ()>>().flatten();
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub RESULT_FILTER_MAP,
+    complexity,
+    "filtering `Result` for `Ok` then force-unwrapping, which can be one type-safe operation"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3903,6 +3927,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     JOIN_ABSOLUTE_PATHS,
     OPTION_MAP_OR_ERR_OK,
+    RESULT_FILTER_MAP,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
