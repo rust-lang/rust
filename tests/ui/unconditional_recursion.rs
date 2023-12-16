@@ -1,6 +1,7 @@
 //@no-rustfix
 
 #![warn(clippy::unconditional_recursion)]
+#![allow(clippy::partialeq_ne_impl)]
 
 enum Foo {
     A,
@@ -122,6 +123,40 @@ impl PartialEq for S3 {
         self == self
     }
 }
+
+// There should be no warning here!
+#[derive(PartialEq)]
+enum E {
+    A,
+    B,
+}
+
+#[derive(PartialEq)]
+struct Bar<T: PartialEq>(T);
+
+struct S4;
+
+impl PartialEq for S4 {
+    fn eq(&self, other: &Self) -> bool {
+        // No warning here.
+        Bar(self) == Bar(other)
+    }
+}
+
+macro_rules! impl_partial_eq {
+    ($ty:ident) => {
+        impl PartialEq for $ty {
+            fn eq(&self, other: &Self) -> bool {
+                self == other
+            }
+        }
+    };
+}
+
+struct S5;
+
+impl_partial_eq!(S5);
+//~^ ERROR: function cannot return without recursing
 
 fn main() {
     // test code goes here

@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{get_parent_as_impl, get_trait_def_id, path_res};
+use clippy_utils::{get_trait_def_id, path_res};
 use rustc_ast::BinOpKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, FnDecl};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
@@ -66,22 +66,32 @@ impl<'tcx> LateLintPass<'tcx> for UnconditionalRecursion {
         method_span: Span,
         def_id: LocalDefId,
     ) {
-        // We don't check code generated from (proc) macro.
-        if method_span.from_expansion() {
-            return;
-        }
+        // If the function is a method...
         if let FnKind::Method(name, _) = kind
+            // That has two arguments.
             && let [self_arg, other_arg] = cx
                 .tcx
                 .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(def_id).skip_binder())
                 .inputs()
             && let Some(self_arg) = get_ty_def_id(*self_arg)
             && let Some(other_arg) = get_ty_def_id(*other_arg)
+            // The two arguments are of the same type.
             && self_arg == other_arg
             && let hir_id = cx.tcx.local_def_id_to_hir_id(def_id)
-            && let Some(impl_) = get_parent_as_impl(cx.tcx, hir_id)
+            && let Some((
+                _,
+                Node::Item(Item {
+                    kind: ItemKind::Impl(impl_),
+                    owner_id,
+                    ..
+                }),
+            )) = cx.tcx.hir().parent_iter(hir_id).next()
+            // We exclude `impl` blocks generated from rustc's proc macros.
+            && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
+            // It is a implementation of a trait.
             && let Some(trait_) = impl_.of_trait
             && let Some(trait_def_id) = trait_.trait_def_id()
+            // The trait is `PartialEq`.
             && Some(trait_def_id) == get_trait_def_id(cx, &["core", "cmp", "PartialEq"])
         {
             let to_check_op = if name.name == sym::eq {
