@@ -1,7 +1,7 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, walk_span_to_context};
-use clippy_utils::sugg::Sugg;
+use clippy_utils::sugg::{make_unop, Sugg};
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr};
 use clippy_utils::{higher, is_expn_of, is_trait_method};
@@ -17,8 +17,15 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
+    if let Some(higher::WhileLet {
+        let_pat,
+        let_expr,
+        let_span,
+        ..
+    }) = higher::WhileLet::hir(expr)
+    {
         find_method_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
+        find_if_let_true(cx, let_pat, let_expr, let_span);
     }
 }
 
@@ -34,26 +41,65 @@ pub(super) fn check_if_let<'tcx>(
     find_method_sugg_for_if_let(cx, expr, pat, scrutinee, "if", has_else);
 }
 
+/// Looks for:
+/// * `matches!(expr, true)`
+pub fn check_matches_true<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    arm: &'tcx Arm<'_>,
+    scrutinee: &'tcx Expr<'_>,
+) {
+    find_match_true(
+        cx,
+        arm.pat,
+        scrutinee,
+        expr.span.source_callsite(),
+        "using `matches!` to pattern match a bool",
+    );
+}
+
+/// Looks for any of:
+/// * `if let true = ...`
+/// * `if let false = ...`
+/// * `while let true = ...`
 fn find_if_let_true<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, scrutinee: &'tcx Expr<'_>, let_span: Span) {
+    find_match_true(cx, pat, scrutinee, let_span, "using `if let` to pattern match a bool");
+}
+
+/// Common logic between `find_if_let_true` and `check_matches_true`
+fn find_match_true<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    scrutinee: &'tcx Expr<'_>,
+    span: Span,
+    message: &str,
+) {
     if let PatKind::Lit(lit) = pat.kind
         && let ExprKind::Lit(lit) = lit.kind
-        && let LitKind::Bool(is_true) = lit.node
+        && let LitKind::Bool(pat_is_true) = lit.node
     {
-        let mut snip = snippet(cx, scrutinee.span, "..").into_owned();
+        let mut applicability = Applicability::MachineApplicable;
 
-        if !is_true {
-            // Invert condition for `if let false = ...`
-            snip.insert(0, '!');
+        let mut sugg = Sugg::hir_with_context(
+            cx,
+            scrutinee,
+            scrutinee.span.source_callsite().ctxt(),
+            "..",
+            &mut applicability,
+        );
+
+        if !pat_is_true {
+            sugg = make_unop("!", sugg);
         }
 
         span_lint_and_sugg(
             cx,
             REDUNDANT_PATTERN_MATCHING,
-            let_span,
-            "using `if let` to pattern match a boolean",
-            "consider using a regular `if` expression",
-            snip,
-            Applicability::MachineApplicable,
+            span,
+            message,
+            "consider using the condition directly",
+            sugg.to_string(),
+            applicability,
         );
     }
 }
