@@ -284,4 +284,19 @@ fn main() {
         {
         }
     }
+    // address of field when operand impl Drop
+    {
+        struct CustomDrop(String);
+
+        impl Drop for CustomDrop {
+            fn drop(&mut self) {}
+        }
+
+        fn check_str<P: AsRef<str>>(_to: P) {}
+
+        fn test() {
+            let owner = CustomDrop(String::default());
+            check_str(&owner.0); // Don't lint. `owner` can't be partially moved because it impl Drop
+        }
+    }
 }

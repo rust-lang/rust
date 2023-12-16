@@ -112,6 +112,10 @@ fn trivial_regex() {
 
     // #6005: unicode classes in bytes::Regex
     let a_byte_of_unicode = BRegex::new(r"\p{C}");
+
+    // start and end word boundry, introduced in regex 0.10
+    let _ = BRegex::new(r"\<word\>");
+    let _ = BRegex::new(r"\b{start}word\b{end}");
 }
 
 fn main() {

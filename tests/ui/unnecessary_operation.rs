@@ -7,6 +7,9 @@
 )]
 #![warn(clippy::unnecessary_operation)]
 
+use std::fmt::Display;
+use std::ops::Shl;
+
 struct Tuple(i32);
 struct Struct {
     field: i32,
@@ -50,6 +53,19 @@ fn get_drop_struct() -> DropStruct {
     DropStruct { field: 0 }
 }
 
+struct Cout;
+
+impl<T> Shl<T> for Cout
+where
+    T: Display,
+{
+    type Output = Self;
+    fn shl(self, rhs: T) -> Self::Output {
+        println!("{}", rhs);
+        self
+    }
+}
+
 fn main() {
     Tuple(get_number());
     Struct { field: get_number() };
@@ -91,4 +107,7 @@ fn main() {
         ($($e:expr),*) => {{ $($e;)* }}
     }
     use_expr!(isize::MIN / -(one() as isize), i8::MIN / -one());
+
+    // Issue #11885
+    Cout << 16;
 }

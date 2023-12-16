@@ -214,8 +214,17 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    let callee_id = cx.enclosing_body.map(|body| cx.tcx.hir().body_owner(body).owner.to_def_id());
-    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, trait_id, callee_id, args.iter().map(|&x| Some(x)))
+    let callee_id = cx
+        .enclosing_body
+        .map(|body| cx.tcx.hir().body_owner(body).owner.to_def_id());
+    implements_trait_with_env_from_iter(
+        cx.tcx,
+        cx.param_env,
+        ty,
+        trait_id,
+        callee_id,
+        args.iter().map(|&x| Some(x)),
+    )
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -227,7 +236,14 @@ pub fn implements_trait_with_env<'tcx>(
     callee_id: DefId,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env_from_iter(tcx, param_env, ty, trait_id, Some(callee_id), args.iter().map(|&x| Some(x)))
+    implements_trait_with_env_from_iter(
+        tcx,
+        param_env,
+        ty,
+        trait_id,
+        Some(callee_id),
+        args.iter().map(|&x| Some(x)),
+    )
 }
 
 /// Same as `implements_trait_from_env` but takes the arguments as an iterator.
@@ -248,19 +264,28 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     }
 
     let infcx = tcx.infer_ctxt().build();
-    let args = args.into_iter().map(|arg| {
-        arg.into().unwrap_or_else(|| {
-            let orig = TypeVariableOrigin {
-                kind: TypeVariableOriginKind::MiscVariable,
-                span: DUMMY_SP,
-            };
-            infcx.next_ty_var(orig).into()
+    let args = args
+        .into_iter()
+        .map(|arg| {
+            arg.into().unwrap_or_else(|| {
+                let orig = TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: DUMMY_SP,
+                };
+                infcx.next_ty_var(orig).into()
+            })
         })
-    }).collect::<Vec<_>>();
+        .collect::<Vec<_>>();
 
     // If an effect arg was not specified, we need to specify it.
-    let effect_arg = if tcx.generics_of(trait_id).host_effect_index.is_some_and(|x| args.get(x - 1).is_none()) {
-        Some(GenericArg::from(callee_id.map(|def_id| tcx.expected_host_effect_param_for_body(def_id)).unwrap_or(tcx.consts.true_)))
+    let effect_arg = if tcx
+        .generics_of(trait_id)
+        .host_effect_index
+        .is_some_and(|x| args.get(x - 1).is_none())
+    {
+        Some(GenericArg::from(callee_id.map_or(tcx.consts.true_, |def_id| {
+            tcx.expected_host_effect_param_for_body(def_id)
+        })))
     } else {
         None
     };
@@ -268,9 +293,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     let trait_ref = TraitRef::new(
         tcx,
         trait_id,
-        Some(GenericArg::from(ty))
-            .into_iter()
-            .chain(args).chain(effect_arg),
+        Some(GenericArg::from(ty)).into_iter().chain(args).chain(effect_arg),
     );
 
     debug_assert_matches!(

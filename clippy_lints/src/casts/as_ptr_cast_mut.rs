@@ -9,11 +9,10 @@ use rustc_middle::ty::{self, Ty, TypeAndMut};
 use super::AS_PTR_CAST_MUT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>) {
-    if let ty::RawPtr(
-        TypeAndMut {
-            mutbl: Mutability::Mut, ty: ptrty,
-        },
-    ) = cast_to.kind()
+    if let ty::RawPtr(TypeAndMut {
+        mutbl: Mutability::Mut,
+        ty: ptrty,
+    }) = cast_to.kind()
         && let ty::RawPtr(TypeAndMut {
             mutbl: Mutability::Not, ..
         }) = cx.typeck_results().node_type(cast_expr.hir_id).kind()

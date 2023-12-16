@@ -16,7 +16,7 @@ clippy_utils = { path = "../clippy_utils" }
 declare_clippy_lint = { path = "../declare_clippy_lint" }
 itertools = "0.11"
 quine-mc_cluskey = "0.2"
-regex-syntax = "0.7"
+regex-syntax = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
 tempfile = { version = "3.3.0", optional = true }

@@ -206,7 +206,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
-                && la.map_or(false, |la| la.is_async()) == ra.map_or(false, |ra| ra.is_async())
+                && la.map_or(false, CoroutineKind::is_async) == ra.map_or(false, CoroutineKind::is_async)
                 && lm == rm
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
@@ -564,13 +564,16 @@ pub fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {
 }
 
 fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool {
-    match (l, r) {
+    matches!(
+        (l, r),
         (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-        | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
-        | (Some(CoroutineKind::AsyncGen { .. }), Some(CoroutineKind::AsyncGen { .. })) => true,
-        (None, None) => true,
-        _ => false,
-    }
+            | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
+            | (
+                Some(CoroutineKind::AsyncGen { .. }),
+                Some(CoroutineKind::AsyncGen { .. })
+            )
+            | (None, None)
+    )
 }
 
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
