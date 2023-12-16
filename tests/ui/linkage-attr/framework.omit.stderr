@@ -1,0 +1,12 @@
+error: linking with `cc` failed: exit status: 1
+   |
+   = note: [linker command]
+   = note: ld: warning: search path '$TEST_BUILD_DIR/linkage-attr/framework.omit/auxiliary' not found
+           ld: Undefined symbols:
+             _CFRunLoopGetTypeID, referenced from:
+                 framework::main::HASH in framework.framework.HASH-cgu.0.rcgu.o
+           clang: error: linker command failed with exit code 1 (use -v to see invocation)
+           
+
+error: aborting due to 1 previous error
+
