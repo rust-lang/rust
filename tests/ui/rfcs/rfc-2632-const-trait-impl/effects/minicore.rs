@@ -1,12 +1,13 @@
 // check-pass
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]
 #![feature(fundamental)]
 #![feature(const_trait_impl, effects, const_mut_refs)]
 #![allow(internal_features)]
 #![no_std]
 #![no_core]
+#![stable(feature = "minicore", since = "1.0.0")]
 
 #[lang = "sized"]
 trait Sized {}
@@ -82,6 +83,7 @@ trait FnMut<Args: Tuple>: ~const FnOnce<Args> {
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
 trait FnOnce<Args: Tuple> {
+    #[lang = "fn_once_output"]
     type Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
@@ -93,7 +95,7 @@ struct ConstFnMutClosure<CapturedData, Function> {
 }
 
 #[lang = "tuple_trait"]
-pub trait Tuple {}
+trait Tuple {}
 
 macro_rules! impl_fn_mut_tuple {
     ($($var:ident)*) => {
@@ -509,3 +511,12 @@ trait StructuralPartialEq {}
 trait StructuralEq {}
 
 const fn drop<T: ~const Destruct>(_: T) {}
+
+extern "rust-intrinsic" {
+    #[rustc_const_stable(feature = "const_eval_select", since = "1.0.0")]
+    fn const_eval_select<ARG: Tuple, F, G, RET>(
+        arg: ARG,
+        called_in_const: F,
+        called_at_rt: G,
+    ) -> RET;
+}
