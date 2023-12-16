@@ -306,46 +306,44 @@ pub fn split_args(args: &str) -> Result<Vec<String>, String> {
     let args = args.trim();
     let mut iter = args.char_indices().peekable();
 
-    while iter.peek().is_some() {
-        while let Some((pos, c)) = iter.next() {
-            if c == ' ' {
-                out.push(args[start..pos].to_string());
-                let mut found_start = false;
-                while let Some((pos, c)) = iter.peek() {
-                    if *c != ' ' {
-                        start = *pos;
-                        found_start = true;
-                        break;
-                    } else {
-                        iter.next();
-                    }
+    while let Some((pos, c)) = iter.next() {
+        if c == ' ' {
+            out.push(args[start..pos].to_string());
+            let mut found_start = false;
+            while let Some((pos, c)) = iter.peek() {
+                if *c != ' ' {
+                    start = *pos;
+                    found_start = true;
+                    break;
+                } else {
+                    iter.next();
                 }
-                if !found_start {
-                    return Ok(out);
-                }
-            } else if c == '"' || c == '\'' {
-                let end = c;
-                let mut found_end = false;
-                while let Some((_, c)) = iter.next() {
-                    if c == end {
-                        found_end = true;
-                        break;
-                    } else if c == '\\' {
-                        // We skip the escaped character.
-                        iter.next();
-                    }
-                }
-                if !found_end {
-                    return Err(format!(
-                        "Didn't find `{}` at the end of `{}`",
-                        end,
-                        &args[start..]
-                    ));
-                }
-            } else if c == '\\' {
-                // We skip the escaped character.
-                iter.next();
             }
+            if !found_start {
+                return Ok(out);
+            }
+        } else if c == '"' || c == '\'' {
+            let end = c;
+            let mut found_end = false;
+            while let Some((_, c)) = iter.next() {
+                if c == end {
+                    found_end = true;
+                    break;
+                } else if c == '\\' {
+                    // We skip the escaped character.
+                    iter.next();
+                }
+            }
+            if !found_end {
+                return Err(format!(
+                    "Didn't find `{}` at the end of `{}`",
+                    end,
+                    &args[start..]
+                ));
+            }
+        } else if c == '\\' {
+            // We skip the escaped character.
+            iter.next();
         }
     }
     let s = args[start..].trim();
@@ -363,4 +361,27 @@ pub fn remove_file<P: AsRef<Path>>(file_path: &P) -> Result<(), String> {
             error
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_args() {
+        // Missing `"` at the end.
+        assert!(split_args("\"tada").is_err());
+        // Missing `'` at the end.
+        assert!(split_args("\'tada").is_err());
+
+        assert_eq!(
+            split_args("a \"b\" c"),
+            Ok(vec!["a".to_string(), "\"b\"".to_string(), "c".to_string()])
+        );
+        // Trailing whitespace characters.
+        assert_eq!(
+            split_args("    a    \"b\" c    "),
+            Ok(vec!["a".to_string(), "\"b\"".to_string(), "c".to_string()])
+        );
+    }
 }
