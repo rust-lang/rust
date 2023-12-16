@@ -79,6 +79,7 @@ declare_lint_pass! {
         PROC_MACRO_BACK_COMPAT,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        REDUNDANT_LIFETIMES,
         REFINING_IMPL_TRAIT_INTERNAL,
         REFINING_IMPL_TRAIT_REACHABLE,
         RENAMED_AND_REMOVED_LINTS,
@@ -1694,6 +1695,27 @@ declare_lint! {
     /// #[deny(unused_lifetimes)]
     ///
     /// pub fn foo<'a>() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unused lifetime parameters may signal a mistake or unfinished code.
+    /// Consider removing the parameter.
+    pub UNUSED_LIFETIMES,
+    Allow,
+    "detects lifetime parameters that are never used"
+}
+
+declare_lint! {
+    /// The `redundant_lifetimes` lint detects lifetime parameters that are
+    /// redundant because they are equal to another named lifetime.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[deny(redundant_lifetimes)]
     ///
     /// // `'a = 'static`, so all usages of `'a` can be replaced with `'static`
     /// pub fn bar<'a: 'static>() {}
@@ -1708,9 +1730,9 @@ declare_lint! {
     ///
     /// Unused lifetime parameters may signal a mistake or unfinished code.
     /// Consider removing the parameter.
-    pub UNUSED_LIFETIMES,
+    pub REDUNDANT_LIFETIMES,
     Allow,
-    "detects lifetime parameters that are never used"
+    "detects lifetime parameters that are redundant because they are equal to some other named lifetime"
 }
 
 declare_lint! {

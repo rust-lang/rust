@@ -2118,8 +2118,8 @@ fn lint_redundant_lifetimes<'tcx>(
                 && outlives_env.free_region_map().sub_free_regions(tcx, victim, candidate)
             {
                 shadowed.insert(victim);
-                tcx.emit_spanned_lint(
-                    rustc_lint_defs::builtin::UNUSED_LIFETIMES,
+                tcx.emit_node_span_lint(
+                    rustc_lint_defs::builtin::REDUNDANT_LIFETIMES,
                     tcx.local_def_id_to_hir_id(def_id.expect_local()),
                     tcx.def_span(def_id),
                     RedundantLifetimeArgsLint { candidate, victim },
