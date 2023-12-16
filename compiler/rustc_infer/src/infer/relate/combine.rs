@@ -552,7 +552,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     }
 
     pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        self.obligations.extend(obligations.into_iter());
+        self.obligations.extend(obligations);
     }
 
     pub fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>) {

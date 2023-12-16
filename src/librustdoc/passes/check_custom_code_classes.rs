@@ -48,7 +48,7 @@ struct TestsWithCustomClasses {
 
 impl crate::doctest::Tester for TestsWithCustomClasses {
     fn add_test(&mut self, _: String, config: LangString, _: usize) {
-        self.custom_classes_found.extend(config.added_classes.into_iter());
+        self.custom_classes_found.extend(config.added_classes);
     }
 }
 

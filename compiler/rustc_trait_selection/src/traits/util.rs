@@ -220,9 +220,8 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
         selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
     let impl_obligations = super::predicates_for_generics(cause, param_env, predicates);
 
-    let impl_obligations = impl_obligations
-        .chain(normalization_obligations1.into_iter())
-        .chain(normalization_obligations2.into_iter());
+    let impl_obligations =
+        impl_obligations.chain(normalization_obligations1).chain(normalization_obligations2);
 
     (subject, impl_obligations)
 }

@@ -396,7 +396,7 @@ pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                 })
                 .collect();
 
-            state_specific_fields.into_iter().chain(common_fields.into_iter()).collect()
+            state_specific_fields.into_iter().chain(common_fields).collect()
         },
         |cx| build_generic_type_param_di_nodes(cx, coroutine_type_and_layout.ty),
     )

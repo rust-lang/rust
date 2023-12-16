@@ -1260,9 +1260,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         // `a = lhs1; b = lhs2;`.
-        let stmts = self
-            .arena
-            .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
+        let stmts = self.arena.alloc_from_iter(std::iter::once(destructure_let).chain(assignments));
 
         // Wrap everything in a block.
         hir::ExprKind::Block(self.block_all(whole_span, stmts, None), None)
