@@ -197,109 +197,37 @@ pub trait LayoutCalculator {
             None => VariantIdx::new(0),
         };
 
-        let is_struct = !is_enum ||
-                    // Only one variant is present.
-                    (present_second.is_none() &&
-                        // Representation optimizations are allowed.
-                        !repr.inhibit_enum_layout_opt());
-        if is_struct {
-            // Struct, or univariant enum equivalent to a struct.
-            // (Typechecking will reject discriminant-sizing attrs.)
-
-            let v = present_first;
-            let kind = if is_enum || variants[v].is_empty() || always_sized {
-                StructKind::AlwaysSized
-            } else {
-                StructKind::MaybeUnsized
-            };
-
-            let mut st = self.univariant(dl, &variants[v], repr, kind)?;
-            st.variants = Variants::Single { index: v };
-
-            if is_unsafe_cell {
-                let hide_niches = |scalar: &mut _| match scalar {
-                    Scalar::Initialized { value, valid_range } => {
-                        *valid_range = WrappingRange::full(value.size(dl))
-                    }
-                    // Already doesn't have any niches
-                    Scalar::Union { .. } => {}
-                };
-                match &mut st.abi {
-                    Abi::Uninhabited => {}
-                    Abi::Scalar(scalar) => hide_niches(scalar),
-                    Abi::ScalarPair(a, b) => {
-                        hide_niches(a);
-                        hide_niches(b);
-                    }
-                    Abi::Vector { element, count: _ } => hide_niches(element),
-                    Abi::Aggregate { sized: _ } => {}
-                }
-                st.largest_niche = None;
-                return Some(st);
-            }
-
-            let (start, end) = scalar_valid_range;
-            match st.abi {
-                Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
-                    // Enlarging validity ranges would result in missed
-                    // optimizations, *not* wrongly assuming the inner
-                    // value is valid. e.g. unions already enlarge validity ranges,
-                    // because the values may be uninitialized.
-                    //
-                    // Because of that we only check that the start and end
-                    // of the range is representable with this scalar type.
-
-                    let max_value = scalar.size(dl).unsigned_int_max();
-                    if let Bound::Included(start) = start {
-                        // FIXME(eddyb) this might be incorrect - it doesn't
-                        // account for wrap-around (end < start) ranges.
-                        assert!(start <= max_value, "{start} > {max_value}");
-                        scalar.valid_range_mut().start = start;
-                    }
-                    if let Bound::Included(end) = end {
-                        // FIXME(eddyb) this might be incorrect - it doesn't
-                        // account for wrap-around (end < start) ranges.
-                        assert!(end <= max_value, "{end} > {max_value}");
-                        scalar.valid_range_mut().end = end;
-                    }
-
-                    // Update `largest_niche` if we have introduced a larger niche.
-                    let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
-                    if let Some(niche) = niche {
-                        match st.largest_niche {
-                            Some(largest_niche) => {
-                                // Replace the existing niche even if they're equal,
-                                // because this one is at a lower offset.
-                                if largest_niche.available(dl) <= niche.available(dl) {
-                                    st.largest_niche = Some(niche);
-                                }
-                            }
-                            None => st.largest_niche = Some(niche),
-                        }
-                    }
-                }
-                _ => assert!(
-                    start == Bound::Unbounded && end == Bound::Unbounded,
-                    "nonscalar layout for layout_scalar_valid_range type: {st:#?}",
-                ),
-            }
-
-            return Some(st);
+        // take the struct path if it is an actual struct
+        if !is_enum ||
+            // or for optimizing univariant enums
+            (present_second.is_none() && !repr.inhibit_enum_layout_opt())
+        {
+            layout_of_struct(
+                self,
+                repr,
+                variants,
+                is_enum,
+                is_unsafe_cell,
+                scalar_valid_range,
+                always_sized,
+                dl,
+                present_first,
+            )
+        } else {
+            // At this point, we have handled all unions and
+            // structs. (We have also handled univariant enums
+            // that allow representation optimization.)
+            assert!(is_enum);
+            layout_of_enum(
+                self,
+                repr,
+                variants,
+                discr_range_of_repr,
+                discriminants,
+                dont_niche_optimize_enum,
+                dl,
+            )
         }
-
-        // At this point, we have handled all unions and
-        // structs. (We have also handled univariant enums
-        // that allow representation optimization.)
-        assert!(is_enum);
-        layout_of_enum(
-            self,
-            repr,
-            variants,
-            discr_range_of_repr,
-            discriminants,
-            dont_niche_optimize_enum,
-            dl,
-        )
     }
 
     fn layout_of_union<
@@ -405,6 +333,106 @@ pub trait LayoutCalculator {
             unadjusted_abi_align,
         })
     }
+}
+
+/// single-variant enums are just structs, if you think about it
+fn layout_of_struct<'a, LC, FieldIdx: Idx, VariantIdx: Idx, F>(
+    layout_calc: &LC,
+    repr: &ReprOptions,
+    variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+    is_enum: bool,
+    is_unsafe_cell: bool,
+    scalar_valid_range: (Bound<u128>, Bound<u128>),
+    always_sized: bool,
+    dl: &TargetDataLayout,
+    present_first: VariantIdx,
+) -> Option<LayoutS<FieldIdx, VariantIdx>>
+where
+    LC: LayoutCalculator + ?Sized,
+    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+{
+    // Struct, or univariant enum equivalent to a struct.
+    // (Typechecking will reject discriminant-sizing attrs.)
+
+    let v = present_first;
+    let kind = if is_enum || variants[v].is_empty() || always_sized {
+        StructKind::AlwaysSized
+    } else {
+        StructKind::MaybeUnsized
+    };
+
+    let mut st = layout_calc.univariant(dl, &variants[v], repr, kind)?;
+    st.variants = Variants::Single { index: v };
+
+    if is_unsafe_cell {
+        let hide_niches = |scalar: &mut _| match scalar {
+            Scalar::Initialized { value, valid_range } => {
+                *valid_range = WrappingRange::full(value.size(dl))
+            }
+            // Already doesn't have any niches
+            Scalar::Union { .. } => {}
+        };
+        match &mut st.abi {
+            Abi::Uninhabited => {}
+            Abi::Scalar(scalar) => hide_niches(scalar),
+            Abi::ScalarPair(a, b) => {
+                hide_niches(a);
+                hide_niches(b);
+            }
+            Abi::Vector { element, count: _ } => hide_niches(element),
+            Abi::Aggregate { sized: _ } => {}
+        }
+        st.largest_niche = None;
+        return Some(st);
+    }
+
+    let (start, end) = scalar_valid_range;
+    match st.abi {
+        Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
+            // Enlarging validity ranges would result in missed
+            // optimizations, *not* wrongly assuming the inner
+            // value is valid. e.g. unions already enlarge validity ranges,
+            // because the values may be uninitialized.
+            //
+            // Because of that we only check that the start and end
+            // of the range is representable with this scalar type.
+
+            let max_value = scalar.size(dl).unsigned_int_max();
+            if let Bound::Included(start) = start {
+                // FIXME(eddyb) this might be incorrect - it doesn't
+                // account for wrap-around (end < start) ranges.
+                assert!(start <= max_value, "{start} > {max_value}");
+                scalar.valid_range_mut().start = start;
+            }
+            if let Bound::Included(end) = end {
+                // FIXME(eddyb) this might be incorrect - it doesn't
+                // account for wrap-around (end < start) ranges.
+                assert!(end <= max_value, "{end} > {max_value}");
+                scalar.valid_range_mut().end = end;
+            }
+
+            // Update `largest_niche` if we have introduced a larger niche.
+            let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
+            if let Some(niche) = niche {
+                match st.largest_niche {
+                    Some(largest_niche) => {
+                        // Replace the existing niche even if they're equal,
+                        // because this one is at a lower offset.
+                        if largest_niche.available(dl) <= niche.available(dl) {
+                            st.largest_niche = Some(niche);
+                        }
+                    }
+                    None => st.largest_niche = Some(niche),
+                }
+            }
+        }
+        _ => assert!(
+            start == Bound::Unbounded && end == Bound::Unbounded,
+            "nonscalar layout for layout_scalar_valid_range type: {st:#?}",
+        ),
+    }
+
+    Some(st)
 }
 
 fn layout_of_enum<'a, LC, FieldIdx: Idx, VariantIdx: Idx, F>(
