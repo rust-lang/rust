@@ -59,4 +59,5 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::undropped_manually_drops", "undropped_manually_drops"),
     ("clippy::unknown_clippy_lints", "unknown_lints"),
     ("clippy::unused_label", "unused_labels"),
+    ("clippy::vtable_address_comparisons", "ambiguous_wide_pointer_comparisons"),
 ];

@@ -281,7 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     }
 
                     if let Some(id) = path_to_local(recv)
-                        && let Node::Pat(pat) = cx.tcx.hir().get(id)
+                        && let Node::Pat(pat) = cx.tcx.hir_node(id)
                         && let PatKind::Binding(ann, ..) = pat.kind
                         && ann != BindingAnnotation::MUT
                     {

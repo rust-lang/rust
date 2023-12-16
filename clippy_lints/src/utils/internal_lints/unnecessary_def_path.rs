@@ -218,7 +218,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
         ExprKind::Path(ref qpath) => match cx.qpath_res(qpath, expr.hir_id) {
             Res::Local(hir_id) => {
                 let parent_id = cx.tcx.hir().parent_id(hir_id);
-                if let Some(Node::Local(Local { init: Some(init), .. })) = cx.tcx.hir().find(parent_id) {
+                if let Node::Local(Local { init: Some(init), .. }) = cx.tcx.hir_node(parent_id) {
                     path_to_matched_type(cx, init)
                 } else {
                     None
@@ -246,7 +246,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
 fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation, ty: Ty<'_>) -> Option<Vec<String>> {
     let (alloc, ty) = if let ty::Ref(_, ty, Mutability::Not) = *ty.kind() {
         let &alloc = alloc.provenance().ptrs().values().next()?;
-        if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc) {
+        if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc.alloc_id()) {
             (alloc.inner(), ty)
         } else {
             return None;
@@ -264,7 +264,7 @@ fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation
             .ptrs()
             .values()
             .map(|&alloc| {
-                if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc) {
+                if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc.alloc_id()) {
                     let alloc = alloc.inner();
                     str::from_utf8(alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()))
                         .ok()

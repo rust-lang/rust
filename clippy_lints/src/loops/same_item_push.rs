@@ -11,7 +11,6 @@ use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Nod
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use rustc_span::SyntaxContext;
-use std::iter::Iterator;
 
 /// Detects for loop pushing the same item into a Vec
 pub(super) fn check<'tcx>(
@@ -59,12 +58,12 @@ pub(super) fn check<'tcx>(
                 match cx.qpath_res(qpath, pushed_item.hir_id) {
                     // immutable bindings that are initialized with literal or constant
                     Res::Local(hir_id) => {
-                        let node = cx.tcx.hir().get(hir_id);
+                        let node = cx.tcx.hir_node(hir_id);
                         if let Node::Pat(pat) = node
                             && let PatKind::Binding(bind_ann, ..) = pat.kind
                             && !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut))
                             && let parent_node = cx.tcx.hir().parent_id(hir_id)
-                            && let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node)
+                            && let Some(Node::Local(parent_let_expr)) = cx.tcx.opt_hir_node(parent_node)
                             && let Some(init) = parent_let_expr.init
                         {
                             match init.kind {

@@ -13,8 +13,7 @@ use rustc_lint::LateContext;
 use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Symbol};
-use std::iter::{self, Iterator};
-use std::mem;
+use std::{iter, mem};
 
 /// Checks for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.

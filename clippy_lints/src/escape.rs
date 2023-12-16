@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_hir;
-use rustc_hir::{self, intravisit, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
+use rustc_hir::{intravisit, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, TraitRef, Ty};
+use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             .hir()
             .get_parent_item(cx.tcx.local_def_id_to_hir_id(fn_def_id))
             .def_id;
-        let parent_node = cx.tcx.hir().find_by_def_id(parent_id);
+        let parent_node = cx.tcx.opt_hir_node_by_def_id(parent_id);
 
         let mut trait_self_ty = None;
         if let Some(Node::Item(item)) = parent_node {
@@ -122,8 +122,8 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
 }
 
 // TODO: Replace with Map::is_argument(..) when it's fixed
-fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
-    match map.find(id) {
+fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
+    match tcx.opt_hir_node(id) {
         Some(Node::Pat(Pat {
             kind: PatKind::Binding(..),
             ..
@@ -131,7 +131,7 @@ fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
         _ => return false,
     }
 
-    matches!(map.find_parent(id), Some(Node::Param(_)))
+    matches!(tcx.hir().find_parent(id), Some(Node::Param(_)))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
@@ -154,7 +154,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty() {
             let map = &self.cx.tcx.hir();
-            if is_argument(*map, cmt.hir_id) {
+            if is_argument(self.cx.tcx, cmt.hir_id) {
                 // Skip closure arguments
                 let parent_id = map.parent_id(cmt.hir_id);
                 if let Some(Node::Expr(..)) = map.find_parent(parent_id) {

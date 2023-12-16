@@ -531,7 +531,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         kind: ExprKind::Lit(_),
                         span,
                         ..
-                    }) = self.lcx.tcx.hir().get(body_id.hir_id)
+                    }) = self.lcx.tcx.hir_node(body_id.hir_id)
                     && is_direct_expn_of(*span, "cfg").is_some()
                 {
                     return None;

@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_path, Visitor};
-use rustc_hir::{self, ExprKind, HirId, Node, PatKind, Path, QPath};
+use rustc_hir::{ExprKind, HirId, Node, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_span::{sym, Span};
@@ -135,7 +135,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
 
     fn visit_path(&mut self, path: &Path<'tcx>, _: HirId) {
         if let Res::Local(local_id) = path.res
-            && let Some(Node::Pat(pat)) = self.cx.tcx.hir().find(local_id)
+            && let Some(Node::Pat(pat)) = self.cx.tcx.opt_hir_node(local_id)
             && let PatKind::Binding(_, local_id, ..) = pat.kind
         {
             self.identifiers.insert(local_id);
@@ -166,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReferenceVisitor<'a, 'tcx> {
                 && let ExprKind::Path(ref path) = expr.kind
                 && let QPath::Resolved(_, path) = path
                 && let Res::Local(local_id) = path.res
-                && let Some(Node::Pat(pat)) = self.cx.tcx.hir().find(local_id)
+                && let Some(Node::Pat(pat)) = self.cx.tcx.opt_hir_node(local_id)
                 && let PatKind::Binding(_, local_id, ..) = pat.kind
                 && self.identifiers.contains(&local_id)
             {

@@ -51,6 +51,7 @@
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
+#![allow(ambiguous_wide_pointer_comparisons)]
 #![warn(clippy::almost_complete_range)]
 #![warn(clippy::disallowed_names)]
 #![warn(clippy::blocks_in_conditions)]
@@ -108,5 +109,6 @@
 #![warn(undropped_manually_drops)]
 #![warn(unknown_lints)]
 #![warn(unused_labels)]
+#![warn(ambiguous_wide_pointer_comparisons)]
 
 fn main() {}

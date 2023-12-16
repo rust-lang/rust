@@ -92,7 +92,7 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
         {
             return Some(span);
         }
-        if let TokenTree::Delimited(_, _, tts) = &curr {
+        if let TokenTree::Delimited(.., tts) = &curr {
             let span = contains_unhygienic_crate_reference(tts);
             if span.is_some() {
                 return span;

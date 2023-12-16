@@ -3,7 +3,7 @@ use std::{io, thread};
 
 use crate::doc::{NEEDLESS_DOCTEST_MAIN, TEST_ATTR_IN_DOCTEST};
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::{Async, Fn, FnRetTy, Item, ItemKind};
+use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
 use rustc_errors::Handler;
@@ -69,7 +69,7 @@ pub fn check(
                                 if !ignore {
                                     get_test_spans(&item, &mut test_attr_spans);
                                 }
-                                let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
+                                let is_async = matches!(sig.header.coroutine_kind, Some(CoroutineKind::Async { .. }));
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
                                     FnRetTy::Ty(ty) if ty.kind.is_unit() => true,

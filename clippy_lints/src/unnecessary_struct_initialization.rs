@@ -82,7 +82,7 @@ impl LateLintPass<'_> for UnnecessaryStruct {
 
 fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(hir_id) = path_to_local(expr)
-        && let Node::Pat(pat) = cx.tcx.hir().get(hir_id)
+        && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
     {
         matches!(pat.kind, PatKind::Binding(BindingAnnotation::MUT, ..))
     } else {
