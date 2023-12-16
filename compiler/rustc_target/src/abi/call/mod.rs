@@ -814,7 +814,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     }
                 }
             },
-            "aarch64" => {
+            "aarch64" | "arm64ec" => {
                 let kind = if cx.target_spec().is_like_osx {
                     aarch64::AbiKind::DarwinPCS
                 } else if cx.target_spec().is_like_windows {

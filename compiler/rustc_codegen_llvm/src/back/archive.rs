@@ -55,6 +55,7 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
         "x86_64" => LLVMMachineType::AMD64,
         "x86" => LLVMMachineType::I386,
         "aarch64" => LLVMMachineType::ARM64,
+        "arm64ec" => LLVMMachineType::ARM64EC,
         "arm" => LLVMMachineType::ARM,
         _ => panic!("unsupported cpu type {cpu}"),
     }
